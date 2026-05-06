@@ -34,6 +34,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.InvocationTargetException;
@@ -370,7 +371,9 @@ class PartitionWorkerTest {
       assertEquals("next-cursor", batchResult.nextCursor());
     }
 
-    verify(statsTracker).recordReaderBatch(2, 1, 3);
+    // Reader batch is now reported with the wall-clock duration (System.nanoTime delta).
+    // Match the count args exactly; allow any duration since it's environment-dependent.
+    verify(statsTracker).recordReaderBatch(eq(2), eq(1), eq(3), anyLong());
     verify(failureRecorder)
         .recordReaderEntityFailure("table", errorEntityId.toString(), null, "reader failure");
 
@@ -383,6 +386,66 @@ class PartitionWorkerTest {
     assertEquals("table", contextCaptor.getValue().get("entityType"));
     assertEquals(Boolean.FALSE, contextCaptor.getValue().get("recreateIndex"));
     assertEquals(statsTracker, contextCaptor.getValue().get(BulkSink.STATS_TRACKER_CONTEXT_KEY));
+  }
+
+  @Test
+  void processBatchExtractsIdFromEntityInterfaceForReaderFailure() throws Exception {
+    IndexingFailureRecorder failureRecorder = mock(IndexingFailureRecorder.class);
+    StageStatsTracker statsTracker = mock(StageStatsTracker.class);
+    PartitionWorker batchWorker =
+        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false, failureRecorder);
+
+    UUID errorEntityId = UUID.randomUUID();
+    EntityInterface failingEntity = mock(EntityInterface.class);
+    when(failingEntity.getId()).thenReturn(errorEntityId);
+    EntityInterface successEntity = mock(EntityInterface.class);
+
+    ResultList<EntityInterface> resultList = new ResultList<>();
+    resultList.setData(List.of(successEntity));
+    resultList.setErrors(
+        List.of(new EntityError().withEntity(failingEntity).withMessage("reader failure")));
+    resultList.setWarningsCount(0);
+    resultList.setPaging(new Paging().withAfter("next-cursor"));
+
+    try (MockedConstruction<PaginatedEntitiesSource> ignored =
+        mockConstruction(
+            PaginatedEntitiesSource.class,
+            (mock, context) -> doReturn(resultList).when(mock).readNextKeyset("cursor-1"))) {
+
+      invokeProcessBatch(batchWorker, "table", "cursor-1", 2, statsTracker);
+    }
+
+    verify(failureRecorder)
+        .recordReaderEntityFailure("table", errorEntityId.toString(), null, "reader failure");
+  }
+
+  @Test
+  void processBatchSkipsReaderFailureWhenEntityInterfaceHasNullId() throws Exception {
+    IndexingFailureRecorder failureRecorder = mock(IndexingFailureRecorder.class);
+    StageStatsTracker statsTracker = mock(StageStatsTracker.class);
+    PartitionWorker batchWorker =
+        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false, failureRecorder);
+
+    EntityInterface failingEntity = mock(EntityInterface.class);
+    when(failingEntity.getId()).thenReturn(null);
+    EntityInterface successEntity = mock(EntityInterface.class);
+
+    ResultList<EntityInterface> resultList = new ResultList<>();
+    resultList.setData(List.of(successEntity));
+    resultList.setErrors(
+        List.of(new EntityError().withEntity(failingEntity).withMessage("reader failure")));
+    resultList.setWarningsCount(0);
+    resultList.setPaging(new Paging().withAfter("next-cursor"));
+
+    try (MockedConstruction<PaginatedEntitiesSource> ignored =
+        mockConstruction(
+            PaginatedEntitiesSource.class,
+            (mock, context) -> doReturn(resultList).when(mock).readNextKeyset("cursor-1"))) {
+
+      invokeProcessBatch(batchWorker, "table", "cursor-1", 2, statsTracker);
+    }
+
+    verifyNoInteractions(failureRecorder);
   }
 
   @Test
@@ -411,6 +474,63 @@ class PartitionWorkerTest {
       assertEquals(1, exception.getIndexingError().getFailedCount());
       assertTrue(exception.getMessage().contains("sink unavailable"));
     }
+  }
+
+  @Test
+  void readEntitiesKeysetPassesSelectiveFieldsNotWildcard() throws Exception {
+    // Regression guard for the distributed-pipeline drift documented in PR #27876:
+    // PartitionWorker.readEntitiesKeyset used to construct PaginatedEntitiesSource with
+    // List.of("*"), which fans out every fieldFetcher in setFieldsInBulk on hot relationship
+    // types like Team/User. The fix is to share ReindexingUtil.getSearchIndexFields with the
+    // single-server path. We stub the helper here so the test stays focused on the
+    // PartitionWorker invocation contract; ReindexingUtilTest covers the helper's own
+    // filter/fallback logic.
+    ResultList<EntityInterface> resultList = new ResultList<>();
+    resultList.setData(List.of(mock(EntityInterface.class)));
+    AtomicReference<List<?>> constructorArgs = new AtomicReference<>();
+    List<String> selectiveFields = List.of("owners", "domains", "tags", "dataModel");
+
+    try (org.mockito.MockedStatic<org.openmetadata.service.workflows.searchIndex.ReindexingUtil>
+            reindexingUtilMock =
+                mockStatic(
+                    org.openmetadata.service.workflows.searchIndex.ReindexingUtil.class,
+                    org.mockito.Mockito.CALLS_REAL_METHODS);
+        MockedConstruction<PaginatedEntitiesSource> ignored =
+            mockConstruction(
+                PaginatedEntitiesSource.class,
+                (mock, context) -> {
+                  constructorArgs.set(List.copyOf(context.arguments()));
+                  doReturn(resultList).when(mock).readNextKeyset(any());
+                })) {
+      reindexingUtilMock
+          .when(
+              () ->
+                  org.openmetadata.service.workflows.searchIndex.ReindexingUtil
+                      .getSearchIndexFields(eq(Entity.CONTAINER)))
+          .thenReturn(selectiveFields);
+
+      invokePrivate(
+          worker,
+          "readEntitiesKeyset",
+          new Class<?>[] {String.class, String.class, int.class},
+          Entity.CONTAINER,
+          "cursor",
+          BATCH_SIZE);
+    }
+
+    assertEquals(Entity.CONTAINER, constructorArgs.get().get(0));
+    @SuppressWarnings("unchecked")
+    List<String> fields = (List<String>) constructorArgs.get().get(2);
+    assertEquals(
+        selectiveFields,
+        fields,
+        () ->
+            "Distributed reader did not pass the ReindexingUtil result through to"
+                + " PaginatedEntitiesSource. Got: "
+                + fields);
+    assertFalse(
+        fields.contains("*"),
+        () -> "Distributed reader regressed to wildcard fields. Got: " + fields);
   }
 
   @Test

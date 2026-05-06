@@ -72,7 +72,7 @@ mvn spotless:apply
 mvn test -pl openmetadata-service
 
 # Python — format, lint, then test
-cd ingestion && make py_format && make lint
+cd ingestion && make py_format && make py_format_check
 python -m pytest tests/unit/your_test.py -v
 
 # TypeScript — lint then test

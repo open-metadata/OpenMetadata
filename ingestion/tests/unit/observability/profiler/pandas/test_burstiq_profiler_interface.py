@@ -12,6 +12,7 @@
 Tests for BurstIQProfilerInterface — covers get_columns, _type_casted_dataset,
 and the full get_all_metrics profiler flow.
 """
+
 import math
 from contextlib import contextmanager
 from unittest.mock import Mock, patch
@@ -120,12 +121,15 @@ def _make_interface(df_factory, table_entity=FULL_TABLE_ENTITY):
     sampler.get_dataset.return_value = df_factory
     sampler.raw_dataset = df_factory
 
-    with patch(
-        "metadata.profiler.interface.profiler_interface.get_ssl_connection",
-        return_value=FakeConnection(),
-    ), patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
-        return_value=FakeConnection(),
+    with (
+        patch(
+            "metadata.profiler.interface.profiler_interface.get_ssl_connection",
+            return_value=FakeConnection(),
+        ),
+        patch(
+            "metadata.sampler.sampler_interface.get_ssl_connection",
+            return_value=FakeConnection(),
+        ),
     ):
         interface = BurstIQProfilerInterface(
             service_connection_config=BURSTIQ_CONNECTION,
@@ -142,7 +146,7 @@ def _make_interface(df_factory, table_entity=FULL_TABLE_ENTITY):
 
 def _get_cast_df(interface, input_df):
     """Pass a single DataFrame through the BurstIQ casting pipeline."""
-    dataset = lambda: iter([input_df.copy()])
+    dataset = lambda: iter([input_df.copy()])  # noqa: E731
     cast_gen = interface._type_casted_dataset(dataset)
     return next(cast_gen())
 
@@ -162,17 +166,11 @@ def _build_all_threadpool_metrics(interface, table_entity):
     metrics = get_default_metrics(Metrics, table_entity)
 
     static_metrics = [m for m in metrics if issubclass(m, StaticMetric)]
-    window_metrics = [
-        m for m in metrics if issubclass(m, StaticMetric) and m.is_window_metric()
-    ]
-    query_metrics = [
-        m for m in metrics if issubclass(m, QueryMetric) and m.is_col_metric()
-    ]
+    window_metrics = [m for m in metrics if issubclass(m, StaticMetric) and m.is_window_metric()]
+    query_metrics = [m for m in metrics if issubclass(m, QueryMetric) and m.is_col_metric()]
 
     table_tpm = ThreadPoolMetrics(
-        metrics=[
-            m for m in metrics if not m.is_col_metric() and not m.is_system_metrics()
-        ],
+        metrics=[m for m in metrics if not m.is_col_metric() and not m.is_system_metrics()],
         metric_type=MetricTypes.Table,
         column=None,
         table=table_entity,
@@ -182,11 +180,7 @@ def _build_all_threadpool_metrics(interface, table_entity):
     for col in interface.get_columns():
         column_tpms.append(
             ThreadPoolMetrics(
-                metrics=[
-                    m
-                    for m in static_metrics
-                    if m.is_col_metric() and not m.is_window_metric()
-                ],
+                metrics=[m for m in static_metrics if m.is_col_metric() and not m.is_window_metric()],
                 metric_type=MetricTypes.Static,
                 column=col,
                 table=table_entity,
@@ -201,7 +195,7 @@ def _build_all_threadpool_metrics(interface, table_entity):
             )
         )
         for qm in query_metrics:
-            column_tpms.append(
+            column_tpms.append(  # noqa: PERF401
                 ThreadPoolMetrics(
                     metrics=qm,
                     metric_type=MetricTypes.Query,
@@ -222,14 +216,14 @@ class TestGetColumns:
     """Unit tests for BurstIQProfilerInterface.get_columns()."""
 
     def test_returns_empty_list_when_dataset_is_none(self):
-        df_factory = lambda: iter([DF_NORMAL.copy()])
+        df_factory = lambda: iter([DF_NORMAL.copy()])  # noqa: E731
         with _make_interface(df_factory) as interface:
             interface.dataset = None
             result = interface.get_columns()
         assert result == []
 
     def test_returns_empty_list_when_generator_yields_nothing(self):
-        df_factory = lambda: iter([])
+        df_factory = lambda: iter([])  # noqa: E731
         with _make_interface(df_factory) as interface:
             result = interface.get_columns()
         assert result == []
@@ -240,7 +234,7 @@ class TestGetColumns:
         datetime64[ns, UTC] → DataType.STRING (not in _data_formats).
         BurstIQ override must return the OM-declared DataType instead.
         """
-        df_factory = lambda: iter([DF_NORMAL.copy()])
+        df_factory = lambda: iter([DF_NORMAL.copy()])  # noqa: E731
         with _make_interface(df_factory) as interface:
             columns = interface.get_columns()
 
@@ -258,7 +252,7 @@ class TestGetColumns:
         df_with_extra = DF_NORMAL.copy()
         df_with_extra["extra_col"] = [1, 2, 3, 4, 5]
 
-        df_factory = lambda: iter([df_with_extra])
+        df_factory = lambda: iter([df_with_extra])  # noqa: E731
         with _make_interface(df_factory) as interface:
             columns = interface.get_columns()
 
@@ -274,7 +268,7 @@ class TestGetColumns:
         get_columns() must iterate first_df.columns (not self.table.columns),
         so "tags" and "meta" must be absent from the result.
         """
-        df_factory = lambda: iter([DF_NORMAL.copy()])
+        df_factory = lambda: iter([DF_NORMAL.copy()])  # noqa: E731
         with _make_interface(df_factory) as interface:
             columns = interface.get_columns()
 
@@ -286,7 +280,7 @@ class TestGetColumns:
         assert set(col_names) == {"score", "name", "created_at", "count"}
 
     def test_returned_sqalike_column_has_correct_name_and_type(self):
-        df_factory = lambda: iter([DF_NORMAL.copy()])
+        df_factory = lambda: iter([DF_NORMAL.copy()])  # noqa: E731
         with _make_interface(df_factory) as interface:
             columns = interface.get_columns()
 
@@ -306,7 +300,7 @@ class TestTypeCastedDataset:
 
     def test_numeric_cols_cast_via_to_numeric(self):
         """DOUBLE and INT columns in the OM entity must be cast to numeric dtype."""
-        df_factory = lambda: iter([DF_NORMAL.copy()])
+        df_factory = lambda: iter([DF_NORMAL.copy()])  # noqa: E731
         with _make_interface(df_factory) as interface:
             result_df = _get_cast_df(interface, DF_NORMAL)
 
@@ -319,7 +313,7 @@ class TestTypeCastedDataset:
         pd.to_numeric(errors="coerce") must parse them; astype("float64")
         would silently leave them as object dtype.
         """
-        df_factory = lambda: iter([DF_SCIENTIFIC.copy()])
+        df_factory = lambda: iter([DF_SCIENTIFIC.copy()])  # noqa: E731
         with _make_interface(df_factory) as interface:
             result_df = _get_cast_df(interface, DF_SCIENTIFIC)
 
@@ -335,7 +329,7 @@ class TestTypeCastedDataset:
         Timezone-aware datetime columns (datetime64[ns, UTC]) raise TypeError
         when cast to timezone-naive. BurstIQ override skips them entirely.
         """
-        df_factory = lambda: iter([DF_NORMAL.copy()])
+        df_factory = lambda: iter([DF_NORMAL.copy()])  # noqa: E731
         with _make_interface(df_factory) as interface:
             result_df = _get_cast_df(interface, DF_NORMAL)
 
@@ -345,7 +339,7 @@ class TestTypeCastedDataset:
 
     def test_string_cols_cast_via_astype(self):
         """STRING columns that are not numeric or datetime go through astype()."""
-        df_factory = lambda: iter([DF_NORMAL.copy()])
+        df_factory = lambda: iter([DF_NORMAL.copy()])  # noqa: E731
         with _make_interface(df_factory) as interface:
             result_df = _get_cast_df(interface, DF_NORMAL)
 
@@ -374,7 +368,7 @@ class TestTypeCastedDataset:
                 "meta": [{"k": "v"}, {"k": "w"}],
             }
         )
-        df_factory = lambda: iter([df_complex.copy()])
+        df_factory = lambda: iter([df_complex.copy()])  # noqa: E731
         with _make_interface(df_factory, table_entity=table_with_complex) as interface:
             # Must not raise — tags and meta are excluded from astype()
             result_df = _get_cast_df(interface, df_complex)
@@ -388,7 +382,7 @@ class TestTypeCastedDataset:
         The ``if col_name in df.columns`` guard must prevent a KeyError.
         """
         df_missing_count = DF_NORMAL[["score", "name", "created_at"]].copy()
-        df_factory = lambda: iter([df_missing_count])
+        df_factory = lambda: iter([df_missing_count])  # noqa: E731
         with _make_interface(df_factory) as interface:
             result_df = _get_cast_df(interface, df_missing_count)
 
@@ -400,15 +394,13 @@ class TestTypeCastedDataset:
         The outer except-Exception block must catch unexpected errors and still
         yield the (possibly partially cast) DataFrame rather than propagating.
         """
-        df_factory = lambda: iter([DF_NORMAL.copy()])
-        with _make_interface(df_factory) as interface:
+        df_factory = lambda: iter([DF_NORMAL.copy()])  # noqa: E731
+        with _make_interface(df_factory) as interface:  # noqa: SIM117
             with patch(
                 "metadata.profiler.interface.pandas.burstiq.profiler_interface._pd.to_numeric",
                 side_effect=RuntimeError("unexpected numeric error"),
             ):
-                cast_gen = interface._type_casted_dataset(
-                    lambda: iter([DF_NORMAL.copy()])
-                )
+                cast_gen = interface._type_casted_dataset(lambda: iter([DF_NORMAL.copy()]))
                 result_dfs = list(cast_gen())
 
         assert len(result_dfs) == 1
@@ -429,7 +421,7 @@ class TestBurstIQProfilerIntegration:
     """
 
     def test_row_count_is_correct(self):
-        df_factory = lambda: iter([DF_NORMAL.copy()])
+        df_factory = lambda: iter([DF_NORMAL.copy()])  # noqa: E731
         with _make_interface(df_factory) as interface:
             all_metrics = _build_all_threadpool_metrics(interface, FULL_TABLE_ENTITY)
             profile_results = interface.get_all_metrics(all_metrics)
@@ -442,7 +434,7 @@ class TestBurstIQProfilerIntegration:
         pd.to_numeric must parse them so Min/Max metrics compute correctly.
         DF_SCIENTIFIC["score"] = ["9.87E+08", "1.23E+06", "4.56E+03", None, "7.89E+09"]
         """
-        df_factory = lambda: iter([DF_SCIENTIFIC.copy()])
+        df_factory = lambda: iter([DF_SCIENTIFIC.copy()])  # noqa: E731
         with _make_interface(df_factory) as interface:
             all_metrics = _build_all_threadpool_metrics(interface, FULL_TABLE_ENTITY)
             profile_results = interface.get_all_metrics(all_metrics)
@@ -460,7 +452,7 @@ class TestBurstIQProfilerIntegration:
         None to the string "None", making nullCount 0. Numeric columns are the
         relevant case for BurstIQ null handling since they go through pd.to_numeric.
         """
-        df_factory = lambda: iter([DF_NORMAL.copy()])
+        df_factory = lambda: iter([DF_NORMAL.copy()])  # noqa: E731
         with _make_interface(df_factory) as interface:
             all_metrics = _build_all_threadpool_metrics(interface, FULL_TABLE_ENTITY)
             profile_results = interface.get_all_metrics(all_metrics)
@@ -474,7 +466,7 @@ class TestBurstIQProfilerIntegration:
         raise KeyError for "tags" or "meta", and those columns must be absent
         from the column profiles (since they were not in the DataFrame).
         """
-        df_factory = lambda: iter([DF_NORMAL.copy()])
+        df_factory = lambda: iter([DF_NORMAL.copy()])  # noqa: E731
         with _make_interface(df_factory) as interface:
             all_metrics = _build_all_threadpool_metrics(interface, FULL_TABLE_ENTITY)
             profile_results = interface.get_all_metrics(all_metrics)
@@ -491,7 +483,7 @@ class TestBurstIQProfilerIntegration:
         astype() would try to cast it to "object" dtype → TypeError.
         BurstIQ's datetime-skip logic must prevent any crash.
         """
-        df_factory = lambda: iter([DF_NORMAL.copy()])
+        df_factory = lambda: iter([DF_NORMAL.copy()])  # noqa: E731
         with _make_interface(df_factory) as interface:
             all_metrics = _build_all_threadpool_metrics(interface, FULL_TABLE_ENTITY)
             # Must not raise
@@ -501,7 +493,7 @@ class TestBurstIQProfilerIntegration:
 
     def test_get_all_metrics_returns_complete_profile_results(self):
         """get_all_metrics must return the expected top-level structure."""
-        df_factory = lambda: iter([DF_NORMAL.copy()])
+        df_factory = lambda: iter([DF_NORMAL.copy()])  # noqa: E731
         with _make_interface(df_factory) as interface:
             all_metrics = _build_all_threadpool_metrics(interface, FULL_TABLE_ENTITY)
             profile_results = interface.get_all_metrics(all_metrics)
@@ -513,9 +505,7 @@ class TestBurstIQProfilerIntegration:
 
         # All four DataFrame columns must have a profile entry
         for col_name in ("score", "name", "created_at", "count"):
-            assert (
-                col_name in profile_results["columns"]
-            ), f"Missing column profile for '{col_name}'"
+            assert col_name in profile_results["columns"], f"Missing column profile for '{col_name}'"
             col_prof = profile_results["columns"][col_name]
             assert col_prof["name"] == col_name
             assert "timestamp" in col_prof

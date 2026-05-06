@@ -718,4 +718,15 @@ public interface SearchClient
     // Default implementation does nothing - concrete implementations can override
     // This allows backward compatibility for clients that don't need lineage features
   }
+
+  /**
+   * Evicts every cached lineage graph whose root, nodes, or edge endpoints reference
+   * the given FQN. Callers invoke this after a lineage edge involving the FQN is added
+   * or deleted so stale graphs are not served back to the UI.
+   *
+   * @param fqn Fully qualified name of the entity touched by the mutation
+   */
+  default void invalidateLineageCache(String fqn) {
+    // Default no-op; concrete clients delegate to their LineageGraphBuilder cache
+  }
 }

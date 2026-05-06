@@ -11,9 +11,10 @@
 """
 Utility module to extract JSON schema from sampled JSON data.
 """
+
 import json
 import traceback
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
@@ -48,8 +49,8 @@ _PYTHON_TYPE_TO_JSON_SCHEMA = {
 
 
 def infer_json_schema_from_sample(
-    json_values: List[Any],
-) -> Tuple[Optional[str], Optional[List[Column]]]:
+    json_values: List[Any],  # noqa: UP006
+) -> Tuple[Optional[str], Optional[List[Column]]]:  # noqa: UP006, UP045
     """
     Infer JSON schema from a list of JSON values (sampled from a column).
 
@@ -74,7 +75,7 @@ def infer_json_schema_from_sample(
         children = _build_column_children(merged_structure)
 
         json_schema_str = json.dumps(json_schema) if json_schema else None
-        return json_schema_str, children if children else None
+        return json_schema_str, children if children else None  # noqa: TRY300
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
@@ -82,7 +83,7 @@ def infer_json_schema_from_sample(
         return None, None
 
 
-def _parse_json_values(json_values: List[Any]) -> List[Dict]:
+def _parse_json_values(json_values: List[Any]) -> List[Dict]:  # noqa: UP006
     """
     Parse JSON values into Python dicts.
     Handles both string JSON and already-parsed dicts.
@@ -96,9 +97,7 @@ def _parse_json_values(json_values: List[Any]) -> List[Dict]:
         try:
             if isinstance(value, str):
                 if len(value) > MAX_JSON_VALUE_SIZE:
-                    logger.debug(
-                        f"Skipping JSON value exceeding size limit: {len(value)} bytes"
-                    )
+                    logger.debug(f"Skipping JSON value exceeding size limit: {len(value)} bytes")
                     continue
                 parsed_value = json.loads(value)
             elif isinstance(value, dict):
@@ -114,7 +113,7 @@ def _parse_json_values(json_values: List[Any]) -> List[Dict]:
     return parsed
 
 
-def _merge_json_structures(dicts: List[Dict]) -> Dict:
+def _merge_json_structures(dicts: List[Dict]) -> Dict:  # noqa: UP006
     """
     Merge multiple JSON objects to create a unified structure
     that captures all unique keys and their types.
@@ -131,7 +130,7 @@ def _merge_json_structures(dicts: List[Dict]) -> Dict:
     return result
 
 
-def _merge_single_dict(result: Dict, source: Dict) -> None:
+def _merge_single_dict(result: Dict, source: Dict) -> None:  # noqa: UP006
     """Merge a single dict into the result structure."""
     for key, value in source.items():
         if value is None:
@@ -154,12 +153,12 @@ def _merge_single_dict(result: Dict, source: Dict) -> None:
             else:
                 result[key] = _merge_array_items([], value)
 
-        else:
+        else:  # noqa: PLR5501
             if key not in result or not isinstance(result.get(key), dict):
                 result[key] = value
 
 
-def _merge_array_items(existing_items: List, new_items: List) -> List:
+def _merge_array_items(existing_items: List, new_items: List) -> List:  # noqa: UP006
     """
     Merge array items to capture the unified structure of array elements.
     Returns a list with a single representative item that captures all seen types.
@@ -180,7 +179,7 @@ def _merge_array_items(existing_items: List, new_items: List) -> List:
     return []
 
 
-def _build_json_schema(structure: Union[Dict, Any]) -> Dict:
+def _build_json_schema(structure: Union[Dict, Any]) -> Dict:  # noqa: UP006, UP007
     """
     Build a JSON Schema representation from the merged structure.
     """
@@ -194,7 +193,7 @@ def _build_json_schema(structure: Union[Dict, Any]) -> Dict:
             "properties": properties,
         }
 
-    elif isinstance(structure, list):
+    elif isinstance(structure, list):  # noqa: RET505
         if structure:
             items_schema = _build_json_schema(structure[0])
             return {
@@ -209,9 +208,7 @@ def _build_json_schema(structure: Union[Dict, Any]) -> Dict:
         return {"type": json_type}
 
 
-def _build_column_children(
-    structure: Dict, parent_name: Optional[str] = None
-) -> Optional[List[Column]]:
+def _build_column_children(structure: Dict, parent_name: Optional[str] = None) -> Optional[List[Column]]:  # noqa: UP006, UP045
     """
     Build Column children from the merged JSON structure.
     This creates a hierarchical representation suitable for the UI.
@@ -228,7 +225,7 @@ def _build_column_children(
     return children if children else None
 
 
-def _create_child_column(key: str, value: Any) -> Optional[Column]:
+def _create_child_column(key: str, value: Any) -> Optional[Column]:  # noqa: UP045
     """Create a Column object for a JSON field."""
     try:
         type_name = type(value).__name__
@@ -254,9 +251,7 @@ def _create_child_column(key: str, value: Any) -> Optional[Column]:
             if value:
                 first_item = value[0]
                 item_type_name = type(first_item).__name__
-                array_data_type = _PYTHON_TYPE_TO_DATA_TYPE.get(
-                    item_type_name, DataType.STRING
-                )
+                array_data_type = _PYTHON_TYPE_TO_DATA_TYPE.get(item_type_name, DataType.STRING)
                 column_dict["arrayDataType"] = array_data_type
 
                 if isinstance(first_item, dict):

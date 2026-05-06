@@ -1,6 +1,7 @@
 """
 Comprehensive unit tests for Query entity.
 """
+
 import unittest
 from unittest.mock import MagicMock
 from uuid import UUID
@@ -51,9 +52,7 @@ class TestQueryEntity(unittest.TestCase):
         result = Queries.retrieve(self.entity_id)
 
         self.assertEqual(str(result.id), self.entity_id)
-        self.mock_ometa.get_by_id.assert_called_once_with(
-            entity=QueryEntity, entity_id=self.entity_id, fields=None
-        )
+        self.mock_ometa.get_by_id.assert_called_once_with(entity=QueryEntity, entity_id=self.entity_id, fields=None)
 
     def test_retrieve_query_by_name(self):
         """Test retrieving a query by name"""
@@ -65,9 +64,7 @@ class TestQueryEntity(unittest.TestCase):
         result = Queries.retrieve_by_name(self.entity_fqn)
 
         self.assertEqual(result.fullyQualifiedName, self.entity_fqn)
-        self.mock_ometa.get_by_name.assert_called_once_with(
-            entity=QueryEntity, fqn=self.entity_fqn, fields=None
-        )
+        self.mock_ometa.get_by_name.assert_called_once_with(entity=QueryEntity, fqn=self.entity_fqn, fields=None)
 
     def test_update_query(self):
         """Test updating a query"""
@@ -77,11 +74,7 @@ class TestQueryEntity(unittest.TestCase):
 
         # Mock the get_by_id to return the current state
         current_entity = MagicMock(spec=type(entity_to_update))
-        current_entity.id = (
-            entity_to_update.id
-            if hasattr(entity_to_update, "id")
-            else UUID(self.entity_id)
-        )
+        current_entity.id = entity_to_update.id if hasattr(entity_to_update, "id") else UUID(self.entity_id)
         self.mock_ometa.get_by_id.return_value = current_entity
 
         # Mock the patch to return the updated entity

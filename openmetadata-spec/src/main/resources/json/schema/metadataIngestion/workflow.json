@@ -43,6 +43,9 @@
               "$ref": "storageServiceMetadataPipeline.json"
             },
             {
+              "$ref": "storageServiceAutoClassificationPipeline.json"
+            },
+            {
               "$ref": "driveServiceMetadataPipeline.json"
             },
             {

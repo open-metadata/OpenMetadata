@@ -48,13 +48,11 @@ from metadata.workflow.metadata import MetadataWorkflow
 # Constants
 # ---------------------------------------------------------------------------
 _TRACKED_REST_PATH = "metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST"
-_BASIC_AUTH_CALLBACK_PATH = (
-    "metadata.ingestion.source.pipeline.airflow.api.client.build_basic_auth_callback"
-)
+_BASIC_AUTH_CALLBACK_PATH = "metadata.ingestion.source.pipeline.airflow.api.client.build_basic_auth_callback"
 
 
 def _make_access_token_config(token: str = "test_token") -> AirflowRestApiConnection:
-    """Helper – build a RestAPI config using a static access token."""
+    """Helper – build a RestAPI config using a static access token."""  # noqa: RUF002
     return AirflowRestApiConnection(
         type="RestAPI",
         authConfig=accessTokenConfig.AccessToken(token=token),
@@ -62,7 +60,7 @@ def _make_access_token_config(token: str = "test_token") -> AirflowRestApiConnec
 
 
 def _make_airflow_connection(token: str = "test_token") -> AirflowConnection:
-    """Helper – build a full AirflowConnection using a static access token."""
+    """Helper – build a full AirflowConnection using a static access token."""  # noqa: RUF002
     return AirflowConnection(
         hostPort="http://localhost:8080",
         connection=_make_access_token_config(token),
@@ -483,9 +481,7 @@ class TestAirflowApiMockedIntegration:
             self._fake_rest(
                 mock_tracked_rest_cls,
                 [
-                    mock_airflow_responses[
-                        "version"
-                    ],  # _detect_api_version /v2/version
+                    mock_airflow_responses["version"],  # _detect_api_version /v2/version
                     mock_airflow_responses["version"],  # get_version()
                 ],
             )
@@ -503,15 +499,13 @@ class TestAirflowApiMockedIntegration:
             hostPort="http://localhost:8080",
             connection=AirflowRestApiConnection(
                 type="RestAPI",
-                authConfig=basicAuthConfig.BasicAuth(
-                    username="admin", password="admin123"
-                ),
+                authConfig=basicAuthConfig.BasicAuth(username="admin", password="admin123"),
             ),
         )
 
         # build_basic_auth_callback calls try_exchange_jwt (a real HTTP POST).
         # Patch it to return a dummy (callback, None) tuple.
-        dummy_callback = lambda: ("Basic YWRtaW46YWRtaW4xMjM=", 7 * 24 * 3600)
+        dummy_callback = lambda: ("Basic YWRtaW46YWRtaW4xMjM=", 7 * 24 * 3600)  # noqa: E731
         with (
             patch(_BASIC_AUTH_CALLBACK_PATH, return_value=(dummy_callback, None)),
             patch(_TRACKED_REST_PATH) as mock_tracked_rest_cls,
@@ -539,9 +533,7 @@ class TestAirflowApiMockedIntegration:
             self._fake_rest(
                 mock_tracked_rest_cls,
                 [
-                    mock_airflow_responses[
-                        "version"
-                    ],  # _detect_api_version /v2/version
+                    mock_airflow_responses["version"],  # _detect_api_version /v2/version
                     mock_airflow_responses["version"],  # get_version()
                 ],
             )
@@ -562,9 +554,7 @@ class TestAirflowApiMockedIntegration:
                 [
                     mock_airflow_responses["version"],  # _detect_api_version
                     mock_airflow_responses["dags"],  # _paginate → list_dags (page 1)
-                    mock_airflow_responses["tasks"][
-                        "sample_etl_dag"
-                    ],  # build_dag_details → get_dag_tasks
+                    mock_airflow_responses["tasks"]["sample_etl_dag"],  # build_dag_details → get_dag_tasks
                 ],
             )
 
@@ -597,7 +587,7 @@ class TestAirflowApiMockedIntegration:
             assert dag_details.dag_id == "sample_etl_dag"
             assert dag_details.description == "Sample ETL pipeline"
             assert dag_details.fileloc == "/opt/airflow/dags/sample_etl.py"
-            assert dag_details.is_paused == False
+            assert dag_details.is_paused == False  # noqa: E712
             assert dag_details.owners == ["data_team"]
 
             # Verify tags parsing
@@ -612,9 +602,7 @@ class TestAirflowApiMockedIntegration:
             assert "load_data" in task_ids
 
             # Verify modern task fields
-            extract_task = next(
-                t for t in dag_details.tasks if t.task_id == "extract_data"
-            )
+            extract_task = next(t for t in dag_details.tasks if t.task_id == "extract_data")
             assert hasattr(extract_task, "downstream_task_ids")
             assert "transform_data" in extract_task.downstream_task_ids
 
@@ -631,9 +619,7 @@ class TestAirflowApiMockedIntegration:
                 mock_tracked_rest_cls,
                 [
                     mock_airflow_responses["version"],  # _detect_api_version
-                    mock_airflow_responses["dag_runs"][
-                        "sample_etl_dag"
-                    ],  # list_dag_runs
+                    mock_airflow_responses["dag_runs"]["sample_etl_dag"],  # list_dag_runs
                 ],
             )
 
@@ -643,7 +629,7 @@ class TestAirflowApiMockedIntegration:
 
             assert len(dag_runs) == 2
 
-            # AirflowApiDagRun is a Pydantic model – use attribute access.
+            # AirflowApiDagRun is a Pydantic model – use attribute access.  # noqa: RUF003
             run1 = dag_runs[0]
             assert run1.dag_run_id == "scheduled__2024-01-01T00:00:00+00:00"
             assert run1.state == "success"
@@ -661,13 +647,11 @@ class TestAirflowApiMockedIntegration:
         ``get_task_instances_for_run`` (paginated helper) returns a list of
         ``AirflowApiTaskInstance`` model objects – use attribute access.
         The lower-level ``get_task_instances`` returns the raw API dict.
-        """
+        """  # noqa: RUF002
         config = _make_airflow_connection()
 
         run_id = "scheduled__2024-01-01T00:00:00+00:00"
-        raw_ti_response = mock_airflow_responses["task_instances"]["sample_etl_dag"][
-            run_id
-        ]
+        raw_ti_response = mock_airflow_responses["task_instances"]["sample_etl_dag"][run_id]
 
         with patch(_TRACKED_REST_PATH) as mock_tracked_rest_cls:
             self._fake_rest(
@@ -680,16 +664,12 @@ class TestAirflowApiMockedIntegration:
 
             airflow_client = AirflowApiClient(config)
 
-            task_instances = airflow_client.get_task_instances_for_run(
-                "sample_etl_dag", run_id
-            )
+            task_instances = airflow_client.get_task_instances_for_run("sample_etl_dag", run_id)
 
             assert len(task_instances) == 3
 
-            # AirflowApiTaskInstance is a Pydantic model – use attribute access.
-            extract_instance = next(
-                ti for ti in task_instances if ti.task_id == "extract_data"
-            )
+            # AirflowApiTaskInstance is a Pydantic model – use attribute access.  # noqa: RUF003
+            extract_instance = next(ti for ti in task_instances if ti.task_id == "extract_data")
             assert extract_instance.state == "success"
             assert extract_instance.start_date is not None
             assert extract_instance.end_date is not None
@@ -702,9 +682,7 @@ class TestAirflowApiMockedIntegration:
             mock_rest = mock_tracked_rest_cls.return_value
 
             # _detect_api_version will raise ConnectionError on /v2/version → re-raised
-            mock_rest.get.side_effect = requests.exceptions.ConnectionError(
-                "Connection refused"
-            )
+            mock_rest.get.side_effect = requests.exceptions.ConnectionError("Connection refused")
 
             airflow_client = AirflowApiClient(config)
 
@@ -722,9 +700,7 @@ class TestAirflowApiMockedIntegration:
             result = airflow_client.get_version()
             assert result["version"] == "3.0.1"
 
-    def test_full_workflow_integration(
-        self, mock_airflow_responses, mock_openmetadata_client
-    ):
+    def test_full_workflow_integration(self, mock_airflow_responses, mock_openmetadata_client):
         """Test complete workflow from Airflow ingestion to OM entity creation."""
         workflow_config = {
             "source": {
@@ -759,9 +735,7 @@ class TestAirflowApiMockedIntegration:
                 "metadata.workflow.base.create_ometa_client",
                 return_value=mock_openmetadata_client,
             ),
-            patch(
-                "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-            ),
+            patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"),
             patch(_TRACKED_REST_PATH) as mock_tracked_rest_cls,
         ):
             # The workflow will detect version, list dags, fetch tasks, runs, task instances
@@ -846,9 +820,7 @@ class TestAirflowApiMockedIntegration:
             dags = airflow_client.get_all_dags()
 
             # Verify dataset triggers in ML pipeline
-            ml_dag = next(
-                dag for dag in dags if dag["dag_id"] == "ml_training_pipeline"
-            )
+            ml_dag = next(dag for dag in dags if dag["dag_id"] == "ml_training_pipeline")
             assert "dataset_triggers" in ml_dag
             assert len(ml_dag["dataset_triggers"]) == 1
             assert ml_dag["dataset_triggers"][0]["uri"] == "s3://ml-data/training/"
@@ -987,8 +959,7 @@ class TestAirflowApiMockedIntegration:
 if __name__ == "__main__":
     pytest.main(
         [
-            __file__
-            + "::TestAirflowApiMockedIntegration::test_full_workflow_integration",
+            __file__ + "::TestAirflowApiMockedIntegration::test_full_workflow_integration",
             "-v",
         ]
     )

@@ -36,7 +36,7 @@ export const Label = ({
 
       <span
         className={cx(
-          'tw:hidden tw:text-brand-tertiary',
+          'tw:hidden tw:text-error-primary',
           isRequired && 'tw:block',
           typeof isRequired === 'undefined' && 'tw:group-required:block'
         )}>

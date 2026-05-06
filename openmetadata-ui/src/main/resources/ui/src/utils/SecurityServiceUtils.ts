@@ -12,22 +12,16 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { Type } from '../generated/entity/services/securityService';
+import rangerConnection from '../jsons/connectionSchemas/connections/security/rangerConnection.json';
 
 export const getSecurityConfig = (type: Type) => {
   let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
 
-  switch (type) {
-    case Type.Ranger: {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      schema = require('../jsons/connectionSchemas/connections/security/rangerConnection.json');
-
-      break;
-    }
-    default:
-      break;
+  if (type === Type.Ranger) {
+    schema = rangerConnection;
   }
 
   return cloneDeep({ schema, uiSchema });

@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
+import { expect } from '@playwright/test';
+import { EntityStatus } from '../../../src/generated/entity/data/searchIndex';
 import { COMMON_TIER_TAG } from '../../constant/common';
+import { DOMAIN_TAGS } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
+import { DataProduct } from '../../support/domain/DataProduct';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { MlModelClass } from '../../support/entity/MlModelClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { Glossary } from '../../support/glossary/Glossary';
@@ -22,28 +27,40 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   FIELDS,
+  fillRule,
+  fillStaticListRule,
   OPERATOR,
   runRuleGroupTests,
   runRuleGroupTestsWithNonExistingValue,
+  selectOption,
+  showAdvancedSearchDialog,
   verifyAllConditions,
 } from '../../utils/advancedSearch';
 import { redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
-const user = new UserClass();
-const table = new TableClass(undefined, 'Regular');
+let user: UserClass;
+let table: TableClass;
 let glossaryEntity: Glossary;
-const table1 = new TableClass();
-const table2 = new TableClass();
-const topic1 = new TopicClass();
-const topic2 = new TopicClass();
+let table1: TableClass;
+let table2: TableClass;
+let topic1: TopicClass;
+let topic2: TopicClass;
 
 test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
   let searchCriteria: Record<string, Array<string>> = {};
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
+
+    user = new UserClass();
+    table = new TableClass(undefined, 'Regular');
+    table1 = new TableClass();
+    table2 = new TableClass();
+    topic1 = new TopicClass();
+    topic2 = new TopicClass();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
@@ -226,32 +243,36 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
         table2.entityResponseData.columns[3].name,
       ],
       'displayName.keyword': [
-        table1.entityResponseData.displayName,
-        table2.entityResponseData.displayName,
+        table1.entityResponseData.displayName ?? '',
+        table2.entityResponseData.displayName ?? '',
       ],
       serviceType: [
-        table1.serviceResponseData.serviceType,
-        topic1.serviceResponseData.serviceType,
+        table1.serviceResponseData.serviceType ?? '',
+        topic1.serviceResponseData.serviceType ?? '',
       ],
       'messageSchema.schemaFields.name.keyword': [
-        topic1.entityResponseData?.messageSchema.schemaFields[0].name,
-        topic2.entityResponseData?.messageSchema.schemaFields[1].name,
+        topic1.entityResponseData?.messageSchema?.schemaFields?.[0].name ?? '',
+        topic2.entityResponseData?.messageSchema?.schemaFields?.[1].name ?? '',
       ],
       'dataModel.columns.name.keyword': [
-        EntityDataClass.container1.entityResponseData.dataModel.columns[0].name,
-        EntityDataClass.container2.entityResponseData.dataModel.columns[1].name,
+        EntityDataClass.container1.entityResponseData?.dataModel?.columns?.[0]
+          .name ?? '',
+        EntityDataClass.container2.entityResponseData?.dataModel?.columns?.[1]
+          .name ?? '',
       ],
       dataModelType: [
-        EntityDataClass.dashboard1.dataModelResponseData.dataModelType,
-        EntityDataClass.dashboard2.dataModelResponseData.dataModelType,
+        EntityDataClass.dashboard1.dataModelResponseData.dataModelType ?? '',
+        EntityDataClass.dashboard2.dataModelResponseData.dataModelType ?? '',
       ],
       'fields.name.keyword': [
-        EntityDataClass.searchIndex1.entityResponseData.fields[1].name,
-        EntityDataClass.searchIndex2.entityResponseData.fields[3].name,
+        EntityDataClass.searchIndex1.entityResponseData?.fields?.[1].name ?? '',
+        EntityDataClass.searchIndex2.entityResponseData?.fields?.[3].name ?? '',
       ],
       'tasks.displayName.keyword': [
-        EntityDataClass.pipeline1.entityResponseData.tasks[0].displayName,
-        EntityDataClass.pipeline2.entityResponseData.tasks[1].displayName,
+        EntityDataClass.pipeline1.entityResponseData?.tasks?.[0]?.displayName ??
+          '',
+        EntityDataClass.pipeline2.entityResponseData?.tasks?.[1]?.displayName ??
+          '',
       ],
       'domains.displayName.keyword': [
         EntityDataClass.domain1.responseData.displayName,
@@ -259,28 +280,24 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
       ],
       'responseSchema.schemaFields.name.keyword': [
         EntityDataClass.apiCollection1.apiEndpointResponseData.responseSchema
-          .schemaFields[0].name,
+          ?.schemaFields[0].name ?? '',
         EntityDataClass.apiCollection2.apiEndpointResponseData.responseSchema
-          .schemaFields[1].name,
+          ?.schemaFields[1].name ?? '',
       ],
       'requestSchema.schemaFields.name.keyword': [
         EntityDataClass.apiCollection1.apiEndpointResponseData.requestSchema
-          .schemaFields[0].name,
+          ?.schemaFields[0].name ?? '',
         EntityDataClass.apiCollection2.apiEndpointResponseData.requestSchema
-          .schemaFields[1].name,
+          ?.schemaFields[1].name ?? '',
       ],
       'name.keyword': [
         table1.entityResponseData.name,
         table2.entityResponseData.name,
       ],
       'project.keyword': [
-        EntityDataClass.dashboardDataModel1.entityResponseData.project,
-        EntityDataClass.dashboardDataModel2.entityResponseData.project,
+        EntityDataClass.dashboardDataModel1.entityResponseData.project || '',
+        EntityDataClass.dashboardDataModel2.entityResponseData.project || '',
       ],
-      entityStatus: ['Approved', 'In Review'],
-      // Some common field value search criteria are causing problems in not equal filter tests
-      // TODO: Refactor the advanced search tests so that these fields can be added back
-      // tableType: [table.entity.tableType, 'MaterializedView'],
       'charts.displayName.keyword': [
         EntityDataClass.dashboard1.chartsResponseData.displayName,
         EntityDataClass.dashboard2.chartsResponseData.displayName,
@@ -337,3 +354,279 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
     await runRuleGroupTestsWithNonExistingValue(page);
   });
 });
+
+const ENTITY_STATUSES = Object.values(EntityStatus);
+
+test.describe(
+  'Advanced Search - Entity Status Filter',
+  { tag: [DOMAIN_TAGS.DISCOVERY] },
+  () => {
+    type StatusEntry = {
+      status: EntityStatus;
+      endpoint: string;
+      id: () => string;
+      displayName: () => string;
+      fqn: () => string;
+    };
+
+    let glossaryForStatus: Glossary;
+    let glossaryTermApproved: GlossaryTerm;
+    let mlModelDraft: MlModelClass;
+    let dataProductInReview: DataProduct;
+    let statusEntries: StatusEntry[];
+
+    test.beforeAll(
+      'Create mixed entity types with distinct entity statuses',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        glossaryForStatus = new Glossary();
+        glossaryTermApproved = new GlossaryTerm(glossaryForStatus);
+        mlModelDraft = new MlModelClass();
+        dataProductInReview = new DataProduct();
+
+        await glossaryForStatus.create(apiContext);
+        await Promise.all([
+          glossaryTermApproved.create(apiContext),
+          mlModelDraft.create(apiContext),
+          dataProductInReview.create(apiContext),
+        ]);
+
+        statusEntries = [
+          {
+            status: EntityStatus.Approved,
+            endpoint: 'glossaryTerms',
+            id: () => glossaryTermApproved.responseData.id,
+            displayName: () => glossaryTermApproved.data.displayName,
+            fqn: () => glossaryTermApproved.responseData.fullyQualifiedName,
+          },
+          {
+            status: EntityStatus.Draft,
+            endpoint: 'mlmodels',
+            id: () => mlModelDraft.entityResponseData.id,
+            displayName: () => mlModelDraft.entity.displayName,
+            fqn: () => mlModelDraft.entityResponseData.fullyQualifiedName,
+          },
+          {
+            status: EntityStatus.InReview,
+            endpoint: 'dataProducts',
+            id: () => dataProductInReview.responseData.id ?? '',
+            displayName: () => dataProductInReview.data.displayName,
+            fqn: () =>
+              dataProductInReview.responseData.fullyQualifiedName ?? '',
+          },
+        ];
+
+        // Patch entityStatus on each entity
+        await Promise.all(
+          statusEntries.map(({ id, status, endpoint }) =>
+            apiContext.patch(`/api/v1/${endpoint}/${id()}`, {
+              data: [{ op: 'add', path: '/entityStatus', value: status }],
+              headers: { 'Content-Type': 'application/json-patch+json' },
+            })
+          )
+        );
+
+        await afterAction();
+      }
+    );
+
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.EXPLORE);
+    });
+
+    test('All entity status options are visible in the Status dropdown', async ({
+      page,
+    }) => {
+      await test.step('Open advanced search dialog', async () => {
+        await showAdvancedSearchDialog(page);
+      });
+
+      await test.step('Select Status field and == operator', async () => {
+        const ruleLocator = page.locator('.rule').nth(0);
+        await selectOption(
+          page,
+          ruleLocator.locator('.rule--field .ant-select'),
+          'Status',
+          true
+        );
+        await selectOption(
+          page,
+          ruleLocator.locator('.rule--operator .ant-select'),
+          '=='
+        );
+      });
+
+      await test.step('Open Status value dropdown and verify all hard-coded options appear', async () => {
+        const ruleLocator = page.locator('.rule').nth(0);
+        await ruleLocator.locator('.widget--widget > .ant-select').click();
+
+        const dropdown = page
+          .locator('.ant-select-dropdown')
+          .filter({ hasText: EntityStatus.Approved })
+          .last();
+
+        await expect(dropdown).toBeVisible();
+
+        for (const status of ENTITY_STATUSES) {
+          await expect(
+            dropdown
+              .locator('.ant-select-item-option')
+              .filter({ hasText: new RegExp(`^${status}$`, 'i') })
+              .first()
+          ).toBeVisible();
+        }
+      });
+    });
+
+    test('Filtering by status "==" shows matching entity and hides others across entity types', async ({
+      page,
+    }) => {
+      test.slow();
+
+      for (const entry of statusEntries) {
+        const { status } = entry;
+        const matchedName = entry.displayName();
+
+        await test.step(`Apply Status == "${status}" AND Name == "${matchedName}"`, async () => {
+          await showAdvancedSearchDialog(page);
+
+          await fillStaticListRule(page, {
+            fieldLabel: 'Status',
+            condition: '==',
+            value: status,
+            ruleIndex: 1,
+          });
+
+          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+
+          await fillRule(page, {
+            condition: '==',
+            field: { id: 'Display Name', name: 'displayName.keyword' },
+            searchCriteria: matchedName,
+            index: 2,
+          });
+
+          const searchRes = page.waitForResponse(
+            '/api/v1/search/query?*index=dataAsset*'
+          );
+          await page.getByTestId('apply-btn').click();
+          await searchRes;
+          await waitForAllLoadersToDisappear(page);
+        });
+
+        await test.step('Filter chip shows the applied status', async () => {
+          await expect(
+            page.getByTestId('advance-search-filter-container')
+          ).toContainText(`'${status}'`);
+        });
+
+        await test.step(`"${matchedName}" (${entry.endpoint}) is visible`, async () => {
+          await expect(
+            page.getByTestId(`table-data-card_${entry.fqn()}`)
+          ).toBeVisible();
+        });
+
+        await test.step('Entities with other statuses are not in results', async () => {
+          const otherEntries = statusEntries.filter((e) => e.status !== status);
+
+          for (const other of otherEntries) {
+            await expect(
+              page.getByTestId(`table-data-card_${other.fqn()}`)
+            ).not.toBeVisible();
+          }
+        });
+
+        await page.getByTestId('clear-filters').click();
+      }
+    });
+
+    test('Filtering by status "!=" excludes matched entity but shows all other entity types', async ({
+      page,
+    }) => {
+      const targetEntry = statusEntries.find(
+        (e) => e.status === EntityStatus.Approved
+      )!;
+      const approvedName = targetEntry.displayName();
+      const otherEntries = statusEntries.filter(
+        (e) => e.status !== EntityStatus.Approved
+      );
+
+      await test.step('Apply Status != "Approved" AND Name == approved entity name', async () => {
+        await showAdvancedSearchDialog(page);
+
+        await fillStaticListRule(page, {
+          fieldLabel: 'Status',
+          condition: '!=',
+          value: EntityStatus.Approved,
+          ruleIndex: 1,
+        });
+
+        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+
+        await fillRule(page, {
+          condition: '==',
+          field: { id: 'Display Name', name: 'displayName.keyword' },
+          searchCriteria: approvedName,
+          index: 2,
+        });
+
+        const searchRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await page.getByTestId('apply-btn').click();
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Filter chip reflects the != condition', async () => {
+        await expect(
+          page.getByTestId('advance-search-filter-container')
+        ).toContainText(`'${EntityStatus.Approved}'`);
+      });
+
+      await test.step('GlossaryTerm with Approved status is not visible', async () => {
+        await expect(
+          page.getByTestId(`table-data-card_${targetEntry.fqn()}`)
+        ).not.toBeVisible();
+      });
+
+      await test.step('Draft and In Review entities appear when searched by their name and non-Approved status', async () => {
+        for (const entry of otherEntries) {
+          await page.getByTestId('clear-filters').click();
+          await showAdvancedSearchDialog(page);
+
+          await fillStaticListRule(page, {
+            fieldLabel: 'Status',
+            condition: '!=',
+            value: EntityStatus.Approved,
+            ruleIndex: 1,
+          });
+
+          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+
+          await fillRule(page, {
+            condition: '==',
+            field: { id: 'Display Name', name: 'displayName.keyword' },
+            searchCriteria: entry.displayName(),
+            index: 2,
+          });
+
+          const searchRes = page.waitForResponse(
+            '/api/v1/search/query?*index=dataAsset*'
+          );
+          await page.getByTestId('apply-btn').click();
+          await searchRes;
+          await waitForAllLoadersToDisappear(page);
+
+          await expect(
+            page.getByTestId(`table-data-card_${entry.fqn()}`)
+          ).toBeVisible();
+        }
+      });
+
+      await page.getByTestId('clear-filters').click();
+    });
+  }
+);

@@ -39,20 +39,26 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   private final RDFConnection connection;
   private final String baseUri;
+  private final String endpoint;
+  private final String username;
+  private final String password;
 
   public JenaFusekiStorage(RdfConfiguration config) {
     this.baseUri =
         config.getBaseUri() != null ? config.getBaseUri().toString() : "https://open-metadata.org/";
 
-    String endpoint =
+    this.endpoint =
         config.getRemoteEndpoint() != null && !config.getRemoteEndpoint().toString().isEmpty()
             ? config.getRemoteEndpoint().toString()
             : "http://openmetadata-fuseki:3030/openmetadata";
+    this.username = config.getUsername();
+    this.password = config.getPassword();
 
-    // Ensure the dataset exists before connecting
-    ensureDatasetExists(endpoint, config.getUsername(), config.getPassword());
+    // Best-effort attempt to create the dataset at startup; callers should invoke
+    // ensureStorageReady() before running work to recover from later restarts of the RDF server.
+    ensureDatasetExists(endpoint, username, password);
 
-    if (config.getUsername() != null && config.getPassword() != null) {
+    if (username != null && password != null) {
       java.net.http.HttpClient httpClient =
           java.net.http.HttpClient.newBuilder()
               .authenticator(
@@ -71,6 +77,30 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       this.connection = RDFConnectionFuseki.create().destination(endpoint).build();
     }
     LOG.info("Connected to Apache Jena Fuseki at {}", endpoint);
+    loadOntology();
+  }
+
+  @Override
+  public void ensureStorageReady() {
+    if (testConnection()) {
+      LOG.debug("Fuseki dataset at {} is accessible", endpoint);
+      return;
+    }
+
+    LOG.warn(
+        "Fuseki dataset at {} is not accessible; attempting to (re)create it before running",
+        endpoint);
+    ensureDatasetExists(endpoint, username, password);
+
+    if (!testConnection()) {
+      throw new IllegalStateException(
+          String.format(
+              "RDF storage is not accessible at %s after attempting dataset creation. "
+                  + "Verify the configured RDF endpoint URL, credentials, that the Fuseki dataset "
+                  + "exists, and that the configured user has permission to create it.",
+              endpoint));
+    }
+    LOG.info("Fuseki dataset at {} is now ready", endpoint);
     loadOntology();
   }
 

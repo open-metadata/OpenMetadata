@@ -1,0 +1,433 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/tasks/task.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Task",
+  "description": "A Task represents an actionable work item for data governance workflows such as data access requests, glossary approvals, metadata updates, and custom workflows. Tasks have their own lifecycle, assignments, and tracking capabilities.",
+  "javaInterfaces": ["org.openmetadata.schema.NamedEntityInterface"],
+  "javaType": "org.openmetadata.schema.entity.tasks.Task",
+  "type": "object",
+  "definitions": {
+    "taskCategory": {
+      "javaType": "org.openmetadata.schema.type.TaskCategory",
+      "description": "Category of task for grouping similar task types.",
+      "type": "string",
+      "enum": [
+        "Approval",
+        "DataAccess",
+        "MetadataUpdate",
+        "Incident",
+        "Review",
+        "Custom"
+      ],
+      "javaEnums": [
+        {"name": "Approval"},
+        {"name": "DataAccess"},
+        {"name": "MetadataUpdate"},
+        {"name": "Incident"},
+        {"name": "Review"},
+        {"name": "Custom"}
+      ]
+    },
+    "taskType": {
+      "javaType": "org.openmetadata.schema.type.TaskEntityType",
+      "description": "Type of task determining the workflow and required payload.",
+      "type": "string",
+      "enum": [
+        "GlossaryApproval",
+        "RequestApproval",
+        "DataAccessRequest",
+        "DescriptionUpdate",
+        "TagUpdate",
+        "OwnershipUpdate",
+        "TierUpdate",
+        "DomainUpdate",
+        "Suggestion",
+        "TestCaseResolution",
+        "IncidentResolution",
+        "PipelineReview",
+        "DataQualityReview",
+        "CustomTask"
+      ],
+      "javaEnums": [
+        {"name": "GlossaryApproval"},
+        {"name": "RequestApproval"},
+        {"name": "DataAccessRequest"},
+        {"name": "DescriptionUpdate"},
+        {"name": "TagUpdate"},
+        {"name": "OwnershipUpdate"},
+        {"name": "TierUpdate"},
+        {"name": "DomainUpdate"},
+        {"name": "Suggestion"},
+        {"name": "TestCaseResolution"},
+        {"name": "IncidentResolution"},
+        {"name": "PipelineReview"},
+        {"name": "DataQualityReview"},
+        {"name": "CustomTask"}
+      ]
+    },
+    "taskStatus": {
+      "javaType": "org.openmetadata.schema.type.TaskEntityStatus",
+      "description": "Current status of the task in its lifecycle.",
+      "type": "string",
+      "enum": [
+        "Open",
+        "InProgress",
+        "Pending",
+        "Approved",
+        "Rejected",
+        "Completed",
+        "Cancelled",
+        "Failed"
+      ],
+      "javaEnums": [
+        {"name": "Open"},
+        {"name": "InProgress"},
+        {"name": "Pending"},
+        {"name": "Approved"},
+        {"name": "Rejected"},
+        {"name": "Completed"},
+        {"name": "Cancelled"},
+        {"name": "Failed"}
+      ],
+      "default": "Open"
+    },
+    "taskPriority": {
+      "javaType": "org.openmetadata.schema.type.TaskPriority",
+      "description": "Priority level of the task.",
+      "type": "string",
+      "enum": ["Critical", "High", "Medium", "Low"],
+      "javaEnums": [
+        {"name": "Critical"},
+        {"name": "High"},
+        {"name": "Medium"},
+        {"name": "Low"}
+      ],
+      "default": "Medium"
+    },
+    "resolutionType": {
+      "javaType": "org.openmetadata.schema.type.TaskResolutionType",
+      "description": "How the task was resolved.",
+      "type": "string",
+      "enum": [
+        "Approved",
+        "Rejected",
+        "Completed",
+        "Cancelled",
+        "TimedOut",
+        "AutoApproved",
+        "AutoRejected"
+      ],
+      "javaEnums": [
+        {"name": "Approved"},
+        {"name": "Rejected"},
+        {"name": "Completed"},
+        {"name": "Cancelled"},
+        {"name": "TimedOut"},
+        {"name": "AutoApproved"},
+        {"name": "AutoRejected"}
+      ]
+    },
+    "taskResolution": {
+      "javaType": "org.openmetadata.schema.type.TaskResolution",
+      "description": "Details about how the task was resolved.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/resolutionType"
+        },
+        "resolvedBy": {
+          "description": "User who resolved the task.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "resolvedAt": {
+          "description": "Timestamp when the task was resolved.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "comment": {
+          "description": "Optional comment explaining the resolution.",
+          "type": "string"
+        },
+        "newValue": {
+          "description": "The new value that was applied when task was resolved (for update tasks).",
+          "type": "string"
+        },
+        "payload": {
+          "description": "Structured resolution data submitted via the transition form at resolution time.",
+          "existingJavaType": "java.lang.Object",
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "externalReference": {
+      "javaType": "org.openmetadata.schema.type.TaskExternalReference",
+      "description": "Reference to an external system like JIRA or ServiceNow.",
+      "type": "object",
+      "properties": {
+        "system": {
+          "description": "Name of the external system (e.g., 'jira', 'serviceNow', 'asana', 'github').",
+          "type": "string"
+        },
+        "externalId": {
+          "description": "ID in the external system (e.g., JIRA issue key).",
+          "type": "string"
+        },
+        "externalUrl": {
+          "description": "URL to view the item in the external system.",
+          "$ref": "../../type/basic.json#/definitions/href"
+        },
+        "syncStatus": {
+          "description": "Status of sync with external system.",
+          "type": "string",
+          "enum": ["synced", "pending", "conflict", "error"],
+          "default": "synced"
+        },
+        "lastSyncedAt": {
+          "description": "Timestamp of last sync with external system.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      },
+      "required": ["system", "externalId"],
+      "additionalProperties": false
+    },
+    "taskComment": {
+      "javaType": "org.openmetadata.schema.type.TaskComment",
+      "description": "A comment on a task.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique identifier for the comment.",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "message": {
+          "description": "Comment content in Markdown format.",
+          "type": "string"
+        },
+        "author": {
+          "description": "User who posted the comment.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "createdAt": {
+          "description": "Timestamp when comment was posted.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "reactions": {
+          "description": "Reactions to the comment.",
+          "$ref": "../../type/reaction.json#/definitions/reactionList"
+        }
+      },
+      "required": ["id", "message", "author", "createdAt"],
+      "additionalProperties": false
+    },
+    "taskAvailableTransition": {
+      "javaType": "org.openmetadata.schema.type.TaskAvailableTransition",
+      "description": "A workflow transition currently available for this task.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Stable transition identifier used when resolving the task.",
+          "type": "string"
+        },
+        "label": {
+          "description": "Human-readable label shown in the UI for the transition.",
+          "type": "string"
+        },
+        "targetStageId": {
+          "description": "Workflow stage identifier reached after this transition.",
+          "type": "string"
+        },
+        "targetTaskStatus": {
+          "description": "Coarse task status mapped from the workflow stage after this transition.",
+          "$ref": "#/definitions/taskStatus"
+        },
+        "resolutionType": {
+          "description": "Optional resolution type emitted when this transition closes the task.",
+          "$ref": "#/definitions/resolutionType"
+        },
+        "formRef": {
+          "description": "Optional transition form reference in the bound TaskFormSchema.transitionForms object.",
+          "type": "string"
+        },
+        "requiresComment": {
+          "description": "Whether the transition requires a comment before submission.",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": ["id", "label", "targetStageId", "targetTaskStatus"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier (UUID) for this task.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "taskId": {
+      "description": "Human-readable task identifier (e.g., TASK-00001).",
+      "type": "string",
+      "pattern": "^TASK-[0-9]+$"
+    },
+    "name": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display name for the task.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "description": "Description of the task in Markdown format.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "category": {
+      "$ref": "#/definitions/taskCategory"
+    },
+    "type": {
+      "$ref": "#/definitions/taskType"
+    },
+    "status": {
+      "$ref": "#/definitions/taskStatus"
+    },
+    "priority": {
+      "$ref": "#/definitions/taskPriority"
+    },
+    "about": {
+      "description": "Reference to the entity this task is about.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "aboutFqnHash": {
+      "description": "Hash of the target entity's fully qualified name for efficient querying. Computed from about.fullyQualifiedName using FullyQualifiedName.buildHash().",
+      "type": "string"
+    },
+    "domains": {
+      "description": "Domains this task belongs to, inherited from the target entity for visibility scoping.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "createdBy": {
+      "description": "User who created this task.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "createdById": {
+      "description": "UUID of the user who created this task. Stored in JSON for efficient querying via generated column index.",
+      "type": "string"
+    },
+    "assignees": {
+      "description": "Users or teams assigned to complete this task.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "reviewers": {
+      "description": "Users or teams who should review this task.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "watchers": {
+      "description": "Users following this task for updates.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "payload": {
+      "description": "Task-specific payload validated at runtime by the resolved TaskFormSchema for the task type and category.",
+      "existingJavaType": "java.lang.Object",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "resolution": {
+      "description": "Resolution details when task is completed.",
+      "$ref": "#/definitions/taskResolution"
+    },
+    "dueDate": {
+      "description": "Due date for task completion.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "externalReference": {
+      "description": "Reference to external system (JIRA, ServiceNow, etc.).",
+      "$ref": "#/definitions/externalReference"
+    },
+    "workflowInstanceId": {
+      "description": "ID of the workflow instance managing this task.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "workflowDefinitionId": {
+      "description": "ID of the workflow definition bound to this task lifecycle.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "workflowStageId": {
+      "description": "Current workflow stage identifier for this task.",
+      "type": "string"
+    },
+    "workflowStageDisplayName": {
+      "description": "Human-readable workflow stage name shown to users.",
+      "type": "string"
+    },
+    "availableTransitions": {
+      "description": "Transitions available from the current workflow stage.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/taskAvailableTransition"
+      },
+      "default": []
+    },
+    "taskFormSchemaId": {
+      "description": "ID of the resolved TaskFormSchema used to validate and render this task.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "taskFormSchemaVersion": {
+      "description": "Version of the resolved TaskFormSchema captured when this task was created.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "comments": {
+      "description": "Comments on this task.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/taskComment"
+      },
+      "default": []
+    },
+    "commentCount": {
+      "description": "Number of comments on this task.",
+      "type": "integer",
+      "default": 0
+    },
+    "tags": {
+      "description": "Tags for this task.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": []
+    },
+    "createdAt": {
+      "description": "Timestamp when the task was created.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update timestamp.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the last update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the task.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When true indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["id", "name", "category", "type", "status", "createdBy"],
+  "additionalProperties": false
+}

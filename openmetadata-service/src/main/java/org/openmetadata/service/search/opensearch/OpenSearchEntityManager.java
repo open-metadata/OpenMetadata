@@ -1182,7 +1182,11 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
-                  req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                  req.index(
+                          Entity.getSearchRepository()
+                              .getWriteFanoutTargets(
+                                  Entity.getSearchRepository()
+                                      .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)))
                       .query(termQuery)
                       .conflicts(Conflicts.Proceed)
                       .script(
@@ -1261,7 +1265,11 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
-                  req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                  req.index(
+                          Entity.getSearchRepository()
+                              .getWriteFanoutTargets(
+                                  Entity.getSearchRepository()
+                                      .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)))
                       .query(idsQuery)
                       .conflicts(Conflicts.Proceed)
                       .script(
@@ -1332,7 +1340,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
-                  req.index(domainIndexName)
+                  req.index(Entity.getSearchRepository().getWriteFanoutTargets(domainIndexName))
                       .query(combinedQuery)
                       .conflicts(Conflicts.Proceed)
                       .script(
@@ -1394,7 +1402,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
-                  req.index(indexName)
+                  req.index(Entity.getSearchRepository().getWriteFanoutTargets(indexName))
                       .query(matchingDomainQuery)
                       .conflicts(Conflicts.Proceed)
                       .script(

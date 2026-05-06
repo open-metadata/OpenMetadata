@@ -13,7 +13,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
-import { postThread } from '../../../rest/feedsAPI';
+import { createTask } from '../../../rest/tasksAPI';
 import i18n from '../../../utils/i18next/LocalUtil';
 import RequestTag from './RequestTagPage';
 
@@ -42,6 +42,7 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
   ))
 );
 jest.mock('../../../utils/TasksUtils', () => ({
+  ...jest.requireActual('../../../utils/TasksUtils'),
   fetchEntityDetail: jest
     .fn()
     .mockImplementation((_entityType, _decodedEntityFQN, setEntityData) => {
@@ -74,16 +75,22 @@ jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => jest.fn().mockImplementation(() => <div>TitleBreadcrumb.component</div>)
 );
-jest.mock('../../../rest/feedsAPI', () => ({
-  postThread: jest.fn().mockResolvedValue({}),
+jest.mock('../shared/TaskPayloadSchemaFields', () =>
+  jest.fn().mockImplementation(() => <div>TagSuggestion.component</div>)
+);
+jest.mock('../../../rest/taskFormSchemasAPI', () => ({
+  resolveTaskFormSchema: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('../../../rest/tasksAPI', () => ({
+  createTask: jest.fn().mockResolvedValue({}),
+  TaskCategory: { MetadataUpdate: 'MetadataUpdate' },
+  TaskEntityType: { TagUpdate: 'TagUpdate' },
+  TaskPriority: { Medium: 'Medium' },
 }));
 jest.mock(
   '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard',
   () =>
     jest.fn().mockImplementation(() => <div>ExploreSearchCard.component</div>)
-);
-jest.mock('../shared/TagSuggestion', () =>
-  jest.fn().mockImplementation(() => <div>TagSuggestion.component</div>)
 );
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest
@@ -125,7 +132,7 @@ describe('RequestTagPage', () => {
   });
 
   it('should submit form when submit button is clicked', async () => {
-    const mockPostThread = postThread as jest.Mock;
+    const mockCreateTask = createTask as jest.Mock;
     render(<RequestTag pageTitle={i18n.t('label.request-tag-plural')} />, {
       wrapper: MemoryRouter,
     });
@@ -136,23 +143,21 @@ describe('RequestTagPage', () => {
       fireEvent.click(submitBtn);
     });
 
-    expect(mockPostThread).toHaveBeenCalledWith({
-      about:
-        '<#E::table::sample_data.ecommerce_db.shopify.dim_location::columns::"address.street_name"::tags>',
-      from: undefined,
-      message: 'Task message',
-      taskDetails: {
-        assignees: [
-          {
-            id: 'id1',
-            type: 'User',
-          },
-        ],
-        oldValue: '[]',
-        suggestion: '[]',
-        type: 'RequestTag',
+    expect(mockCreateTask).toHaveBeenCalledWith({
+      name: 'Task message',
+      category: 'MetadataUpdate',
+      type: 'TagUpdate',
+      priority: 'Medium',
+      about: 'sample_data.ecommerce_db.shopify.dim_location',
+      aboutType: 'table',
+      assignees: ['sample_data'],
+      payload: {
+        fieldPath: 'columns."address.street_name"',
+        currentTags: [],
+        tagsToAdd: [],
+        tagsToRemove: [],
+        operation: 'Add',
       },
-      type: 'Task',
     });
   });
 });

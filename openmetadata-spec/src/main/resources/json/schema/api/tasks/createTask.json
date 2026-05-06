@@ -1,0 +1,83 @@
+{
+  "$id": "https://open-metadata.org/schema/api/tasks/createTask.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateTaskRequest",
+  "description": "Request to create a new Task.",
+  "javaType": "org.openmetadata.schema.api.tasks.CreateTask",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Name of the task (auto-generated if not provided).",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display name for the task.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of what this task is about.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "category": {
+      "description": "Category of the task.",
+      "$ref": "../../entity/tasks/task.json#/definitions/taskCategory"
+    },
+    "type": {
+      "description": "Type of the task.",
+      "$ref": "../../entity/tasks/task.json#/definitions/taskType"
+    },
+    "priority": {
+      "description": "Priority of the task.",
+      "$ref": "../../entity/tasks/task.json#/definitions/taskPriority"
+    },
+    "about": {
+      "description": "FQN of the entity this task is about.",
+      "type": "string"
+    },
+    "aboutType": {
+      "description": "Type of the entity this task is about.",
+      "type": "string"
+    },
+    "domain": {
+      "description": "FQN of the domain this task belongs to.",
+      "type": "string"
+    },
+    "assignees": {
+      "description": "FQNs of users or teams to assign this task to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "reviewers": {
+      "description": "FQNs of users or teams who should review this task.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "payload": {
+      "description": "Task-specific payload validated at runtime by the resolved TaskFormSchema for the task type and category.",
+      "existingJavaType": "java.lang.Object",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "dueDate": {
+      "description": "Due date for task completion.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "externalReference": {
+      "description": "Reference to external system (JIRA, ServiceNow, etc.).",
+      "$ref": "../../entity/tasks/task.json#/definitions/externalReference"
+    },
+    "tags": {
+      "description": "Tags for this task.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      }
+    }
+  },
+  "required": ["category", "type"],
+  "additionalProperties": false
+}

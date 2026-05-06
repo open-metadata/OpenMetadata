@@ -24,28 +24,31 @@ import ResizablePanels from '../../../components/common/ResizablePanels/Resizabl
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
-import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import {
-  CreateThread,
-  TaskType,
-} from '../../../generated/api/feed/createThread';
 import { Glossary } from '../../../generated/entity/data/glossary';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
-import { postThread } from '../../../rest/feedsAPI';
+import { TaskFormSchema } from '../../../rest/taskFormSchemasAPI';
+import {
+  CreateTask,
+  createTask,
+  TaskCategory,
+  TaskEntityType,
+  TaskPayload,
+  TaskPriority,
+} from '../../../rest/tasksAPI';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
-  ENTITY_LINK_SEPARATOR,
-  getEntityFeedLink,
-} from '../../../utils/EntityUtils';
+  applyTaskFormSchemaDefaults,
+  getResolvedTaskFormSchema,
+} from '../../../utils/TaskFormSchemaUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
   getBreadCrumbList,
+  getTagTaskFieldPath,
   getTaskAssignee,
   getTaskEntityFQN,
   getTaskMessage,
@@ -53,7 +56,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Assignees from '../shared/Assignees';
-import TagSuggestion from '../shared/TagSuggestion';
+import TaskPayloadSchemaFields from '../shared/TaskPayloadSchemaFields';
 import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
@@ -72,7 +75,8 @@ const RequestTag = () => {
   const [entityData, setEntityData] = useState<EntityData>({} as EntityData);
   const [options, setOptions] = useState<Option[]>([]);
   const [assignees, setAssignees] = useState<Option[]>([]);
-  const [suggestion] = useState<TagLabel[]>([]);
+  const [payload, setPayload] = useState<TaskPayload>({});
+  const [taskFormSchema, setTaskFormSchema] = useState<TaskFormSchema>();
   const [isLoading, setIsLoading] = useState(false);
 
   const entityFQN = useMemo(
@@ -102,53 +106,56 @@ const RequestTag = () => {
     fetchOptions(data);
   };
 
-  const getTaskAbout = () => {
-    if (field && value) {
-      return `${field}${ENTITY_LINK_SEPARATOR}${value}${ENTITY_LINK_SEPARATOR}tags`;
-    } else {
-      return EntityField.TAGS;
-    }
+  const getFieldPath = () => {
+    return getTagTaskFieldPath(field, value);
   };
 
-  const onCreateTask: FormProps['onFinish'] = (value) => {
+  const onCreateTask: FormProps['onFinish'] = async (formValues) => {
     setIsLoading(true);
-    const data: CreateThread = {
-      message: value.title || taskMessage,
-      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
-      taskDetails: {
-        assignees: assignees.map((assignee) => ({
-          id: assignee.value,
-          type: assignee.type,
-        })),
-        suggestion: JSON.stringify(value.suggestTags),
-        type: TaskType.RequestTag,
-        oldValue: '[]',
-      },
-      type: ThreadType.Task,
+
+    const data: CreateTask = {
+      name: formValues.title || taskMessage,
+      category: TaskCategory.MetadataUpdate,
+      type: TaskEntityType.TagUpdate,
+      priority: TaskPriority.Medium,
+      about: entityFQN,
+      aboutType: entityType,
+      assignees: assignees.map((assignee) => assignee.name ?? ''),
+      payload: applyTaskFormSchemaDefaults(payload, taskFormSchema?.formSchema),
     };
-    postThread(data)
-      .then(() => {
-        showSuccessToast(
-          t('server.create-entity-success', {
-            entity: t('label.task'),
-          })
-        );
-        navigate(
-          entityUtilClassBase.getEntityLink(
-            entityType,
-            entityFQN,
-            EntityTabs.ACTIVITY_FEED,
-            ActivityFeedTabs.TASKS
-          )
-        );
-      })
-      .catch((err: AxiosError) => showErrorToast(err))
-      .finally(() => setIsLoading(false));
+
+    try {
+      await createTask(data);
+      showSuccessToast(
+        t('server.create-entity-success', {
+          entity: t('label.task'),
+        })
+      );
+      navigate(
+        entityUtilClassBase.getEntityLink(
+          entityType,
+          entityFQN,
+          EntityTabs.ACTIVITY_FEED,
+          ActivityFeedTabs.TASKS
+        )
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchEntityDetail(entityType, entityFQN, setEntityData);
   }, [entityFQN, entityType]);
+
+  useEffect(() => {
+    getResolvedTaskFormSchema(
+      TaskEntityType.TagUpdate,
+      TaskCategory.MetadataUpdate
+    ).then(setTaskFormSchema);
+  }, []);
 
   useEffect(() => {
     const defaultAssignee = getTaskAssignee(entityData as Glossary);
@@ -162,6 +169,22 @@ const RequestTag = () => {
       assignees: defaultAssignee,
     });
   }, [entityData]);
+
+  useEffect(() => {
+    setPayload({
+      fieldPath: getFieldPath(),
+      currentTags: [],
+      tagsToAdd: [],
+      tagsToRemove: [],
+      operation: 'Add',
+    });
+  }, [field, value]);
+
+  useEffect(() => {
+    setPayload((prevPayload) =>
+      applyTaskFormSchemaDefaults(prevPayload, taskFormSchema?.formSchema)
+    );
+  }, [taskFormSchema?.formSchema]);
 
   if (isEmpty(entityData)) {
     return <Loader />;
@@ -238,14 +261,12 @@ const RequestTag = () => {
                     onSearch={onSearch}
                   />
                 </Form.Item>
-                <Form.Item
-                  data-testid="tags-label"
-                  label={`${t('label.suggest-entity', {
-                    entity: t('label.tag-plural'),
-                  })}:`}
-                  name="suggestTags">
-                  <TagSuggestion />
-                </Form.Item>
+                <TaskPayloadSchemaFields
+                  payload={payload}
+                  schema={taskFormSchema?.formSchema}
+                  uiSchema={taskFormSchema?.uiSchema}
+                  onChange={setPayload}
+                />
 
                 <Form.Item>
                   <Space
@@ -260,7 +281,9 @@ const RequestTag = () => {
                       htmlType="submit"
                       loading={isLoading}
                       type="primary">
-                      {suggestion ? t('label.suggest') : t('label.save')}
+                      {(payload.tagsToAdd as TagLabel[] | undefined)?.length
+                        ? t('label.suggest')
+                        : t('label.save')}
                     </Button>
                   </Space>
                 </Form.Item>

@@ -38,8 +38,9 @@ function AddIngestionButton({
   const navigate = useNavigate();
 
   const supportedPipelineTypes = useMemo(
-    (): PipelineType[] => getSupportedPipelineTypes(serviceDetails),
-    [serviceDetails]
+    (): PipelineType[] =>
+      getSupportedPipelineTypes(serviceDetails, serviceCategory),
+    [serviceDetails, serviceCategory]
   );
 
   const handleAddIngestionClick = useCallback(

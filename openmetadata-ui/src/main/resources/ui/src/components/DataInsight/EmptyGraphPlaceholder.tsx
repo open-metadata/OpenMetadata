@@ -16,7 +16,7 @@ import { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DATA_INSIGHT_DOCS } from '../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
-import { Transi18next } from '../../utils/CommonUtils';
+import { Transi18next } from '../../utils/i18next/LocalUtil';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 
 export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {

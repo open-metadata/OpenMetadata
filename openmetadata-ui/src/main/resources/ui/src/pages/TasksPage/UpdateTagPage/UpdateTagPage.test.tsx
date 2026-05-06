@@ -13,10 +13,21 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
-import { postThread } from '../../../rest/feedsAPI';
+import { createTask } from '../../../rest/tasksAPI';
 import i18n from '../../../utils/i18next/LocalUtil';
 import UpdateTag from './UpdateTagPage';
+
 const mockNavigate = jest.fn();
+const mockSuggestedTag = {
+  tagFQN: 'PII.Sensitive',
+  name: 'Sensitive',
+  description:
+    'PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.',
+  source: 'Classification',
+  labelType: 'Manual',
+  state: 'Confirmed',
+};
+
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({
     search: 'field=columns&value="address.street_name"',
@@ -77,6 +88,7 @@ const mockTableData = {
   ],
 };
 jest.mock('../../../utils/TasksUtils', () => ({
+  ...jest.requireActual('../../../utils/TasksUtils'),
   fetchEntityDetail: jest
     .fn()
     .mockImplementation((_entityType, _decodedEntityFQN, setEntityData) => {
@@ -85,10 +97,10 @@ jest.mock('../../../utils/TasksUtils', () => ({
   fetchOptions: jest.fn(),
   getBreadCrumbList: jest.fn().mockReturnValue([]),
   getTaskMessage: jest.fn().mockReturnValue('Task message'),
-  getEntityColumnsDetails: jest
+  getTaskFieldColumns: jest
     .fn()
     .mockImplementation(() => mockTableData.columns),
-  getColumnObject: jest.fn().mockImplementation(() => ({
+  getColumnObjectByPath: jest.fn().mockImplementation(() => ({
     tags: mockTableData.columns[0].tags,
   })),
   getTaskEntityFQN: jest
@@ -96,6 +108,23 @@ jest.mock('../../../utils/TasksUtils', () => ({
     .mockReturnValue('sample_data.ecommerce_db.shopify.dim_location'),
   getTaskAssignee: jest.fn().mockReturnValue(MOCK_TASK_ASSIGNEE),
 }));
+
+const mockPayloadSchemaFields = jest
+  .fn()
+  .mockImplementation(({ payload, onChange }) => (
+    <button
+      data-testid="mock-tags-tabs"
+      onClick={() =>
+        onChange?.({
+          ...payload,
+          tagsToAdd: [mockSuggestedTag],
+          tagsToRemove: [],
+        })
+      }>
+      TagsTabs.component
+    </button>
+  ));
+
 jest.mock('../shared/Assignees', () =>
   jest.fn().mockImplementation(() => <div>Assignees.component</div>)
 );
@@ -103,16 +132,26 @@ jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => jest.fn().mockImplementation(() => <div>TitleBreadcrumb.component</div>)
 );
-jest.mock('../../../rest/feedsAPI', () => ({
-  postThread: jest.fn().mockResolvedValue({}),
+jest.mock('../../../rest/tasksAPI', () => ({
+  createTask: jest.fn().mockResolvedValue({}),
+  TaskCategory: { MetadataUpdate: 'MetadataUpdate' },
+  TaskEntityType: { TagUpdate: 'TagUpdate' },
+  TaskPriority: { Medium: 'Medium' },
+}));
+jest.mock('../../../rest/taskFormSchemasAPI', () => ({
+  resolveTaskFormSchema: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock(
   '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard',
   () =>
     jest.fn().mockImplementation(() => <div>ExploreSearchCard.component</div>)
 );
-jest.mock('../shared/TagsTabs', () => ({
-  TagsTabs: jest.fn().mockImplementation(() => <div>TagsTabs.component</div>),
+jest.mock('../shared/TaskPayloadSchemaFields', () => ({
+  __esModule: true,
+  default: (props: {
+    payload: Record<string, unknown>;
+    onChange?: (payload: Record<string, unknown>) => void;
+  }) => mockPayloadSchemaFields(props),
 }));
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest
@@ -121,6 +160,16 @@ jest.mock('../../../hooks/useFqn', () => ({
 }));
 
 describe('UpdateTagPage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    const { getColumnObjectByPath } = jest.requireMock(
+      '../../../utils/TasksUtils'
+    );
+    getColumnObjectByPath.mockImplementation(() => ({
+      tags: mockTableData.columns[0].tags,
+    }));
+  });
+
   it('should render component', async () => {
     await act(async () => {
       render(
@@ -163,7 +212,7 @@ describe('UpdateTagPage', () => {
   });
 
   it('should submit form when submit button is clicked', async () => {
-    const mockPostThread = postThread as jest.Mock;
+    const mockCreateTask = createTask as jest.Mock;
     render(
       <UpdateTag
         pageTitle={i18n.t('label.update-entity', {
@@ -179,27 +228,73 @@ describe('UpdateTagPage', () => {
       fireEvent.click(submitBtn);
     });
 
-    expect(mockPostThread).toHaveBeenCalledWith({
-      about:
-        '<#E::table::sample_data.ecommerce_db.shopify.dim_location::columns::"address.street_name"::tags>',
-      from: undefined,
-      message: 'Task message',
-      taskDetails: {
-        assignees: [
-          {
-            id: 'id1',
-            type: 'User',
-          },
-        ],
-        oldValue:
-          // eslint-disable-next-line max-len
-          '[{"tagFQN":"PII.Sensitive","name":"Sensitive","description":"PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.","source":"Classification","labelType":"Manual","state":"Confirmed"}]',
-        suggestion:
-          // eslint-disable-next-line max-len
-          '[{"tagFQN":"PII.Sensitive","name":"Sensitive","description":"PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.","source":"Classification","labelType":"Manual","state":"Confirmed"}]',
-        type: 'UpdateTag',
+    const expectedTags = [
+      {
+        tagFQN: 'PII.Sensitive',
+        name: 'Sensitive',
+        description:
+          'PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.',
+        source: 'Classification',
+        labelType: 'Manual',
+        state: 'Confirmed',
       },
-      type: 'Task',
+    ];
+
+    expect(mockCreateTask).toHaveBeenCalledWith({
+      name: 'Task message',
+      category: 'MetadataUpdate',
+      type: 'TagUpdate',
+      priority: 'Medium',
+      about: 'sample_data.ecommerce_db.shopify.dim_location',
+      aboutType: 'table',
+      assignees: ['sample_data'],
+      payload: {
+        fieldPath: 'columns."address.street_name"',
+        currentTags: expectedTags,
+        tagsToAdd: [],
+        tagsToRemove: [],
+        operation: 'Replace',
+      },
+    });
+  });
+
+  it('should allow adding suggested tags when the current field has no tags', async () => {
+    const mockCreateTask = createTask as jest.Mock;
+    const { getColumnObjectByPath } = jest.requireMock(
+      '../../../utils/TasksUtils'
+    );
+    getColumnObjectByPath.mockImplementation(() => ({ tags: [] }));
+
+    render(
+      <UpdateTag
+        pageTitle={i18n.t('label.update-entity', {
+          entity: i18n.t('label.tag'),
+        })}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    fireEvent.click(await screen.findByTestId('mock-tags-tabs'));
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('submit-tag-request'));
+    });
+
+    expect(mockCreateTask).toHaveBeenCalledWith({
+      name: 'Task message',
+      category: 'MetadataUpdate',
+      type: 'TagUpdate',
+      priority: 'Medium',
+      about: 'sample_data.ecommerce_db.shopify.dim_location',
+      aboutType: 'table',
+      assignees: ['sample_data'],
+      payload: {
+        fieldPath: 'columns."address.street_name"',
+        currentTags: [],
+        tagsToAdd: [mockSuggestedTag],
+        tagsToRemove: [],
+        operation: 'Replace',
+      },
     });
   });
 });

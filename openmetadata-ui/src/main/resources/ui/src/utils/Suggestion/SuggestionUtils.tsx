@@ -12,11 +12,8 @@
  */
 import { isEmpty } from 'lodash';
 import { SuggestionDataByTypes } from '../../components/Suggestions/SuggestionsProvider/SuggestionsProvider.interface';
-import {
-  Suggestion,
-  SuggestionType,
-} from '../../generated/entity/feed/suggestion';
 import { EntityReference } from '../../generated/type/entityReference';
+import { Suggestion, SuggestionType } from '../../types/taskSuggestion';
 
 export const getSuggestionByType = (suggestion: Suggestion[]) => {
   return suggestion.reduce(

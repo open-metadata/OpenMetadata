@@ -28,7 +28,7 @@ import {
 import { PageViewEvent } from '../generated/analytics/webAnalyticEventType/pageViewEvent';
 import { postWebAnalyticEvent } from '../rest/WebAnalyticsAPI';
 import { AnalyticsData } from './../components/WebAnalytics/WebAnalytics.interface';
-import { getPathNameFromWindowLocation } from './RouterUtils';
+import { getPathNameFromWindowLocation } from './LocationUtils';
 
 /**
  * Check if url is valid or not and return the pathname
@@ -77,7 +77,8 @@ const handlePostAnalytic = async (
     // collect the event data
     await postWebAnalyticEvent(webAnalyticEventData);
   } catch (error) {
-    // silently ignore the error
+    // eslint-disable-next-line no-console
+    console.error('Error tracking web analytic event:', error);
   }
 };
 
@@ -92,7 +93,7 @@ export const trackPageView = (pageData: AnalyticsData, userId?: string) => {
 
   const { payload } = pageData;
 
-  const { location, navigator, performance, document } = window;
+  const { location, navigator, performance, document } = globalThis;
   const { hostname } = location;
 
   const pageLoadTime = getPageLoadTime(performance);
@@ -134,7 +135,7 @@ export const trackCustomEvent = (eventData: AnalyticsData, userId?: string) => {
   const { payload } = eventData;
 
   const { meta, event: eventValue } = payload;
-  const { location } = window;
+  const { location } = globalThis;
 
   // timestamp for the current event
   const timestamp = meta.ts;

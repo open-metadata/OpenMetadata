@@ -1016,6 +1016,17 @@ public class DistributedSearchIndexExecutor {
       if (currentJob != null) {
         coordinator.requestStop(currentJob.getId());
       }
+
+      // Forcibly interrupt blocked worker threads. {@code worker.stop()} above only sets a
+      // boolean — workers parked inside the bulk-sink semaphore, a slow {@code
+      // initializeKeysetCursor} DB query, or {@code waitForSinkOperations} (5-minute deadline)
+      // won't observe that flag for a long time. {@code shutdownNow} sends Thread.interrupt()
+      // to every running task so the existing InterruptedException catch blocks unwind quickly
+      // and {@code workerLatch} can count down. Without this the user-clicked Stop is invisible
+      // for minutes, the aggregator keeps broadcasting stale state, and the UI stays "Running".
+      if (workerExecutor != null && !workerExecutor.isShutdown()) {
+        workerExecutor.shutdownNow();
+      }
     }
   }
 

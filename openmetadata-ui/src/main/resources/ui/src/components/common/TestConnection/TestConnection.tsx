@@ -50,7 +50,7 @@ import {
   getWorkflowById,
   triggerWorkflowById,
 } from '../../../rest/workflowAPI';
-import { Transi18next } from '../../../utils/CommonUtils';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../utils/JSONSchemaFormUtils';
 import {
   getServiceType,

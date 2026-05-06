@@ -12,8 +12,9 @@
 Helper module to handle data sampling
 for the profiler
 """
+
 import hashlib
-from typing import List, Optional, Union, cast
+from typing import List, Optional, Union, cast  # noqa: UP035
 
 from sqlalchemy import Column, inspect, select, text
 from sqlalchemy.orm import Query
@@ -71,9 +72,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._table = self.build_table_orm(
-            self.entity, self.service_connection_config, self.ometa_client
-        )
+        self._table = self.build_table_orm(self.entity, self.service_connection_config, self.ometa_client)
         self.session_factory = create_and_bind_thread_safe_session(self.connection)
 
     @property
@@ -108,7 +107,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def _process_array_value(self, value):
         """Process array values to convert numpy arrays to Python lists"""
-        import numpy as np  # pylint: disable=import-outside-toplevel
+        import numpy as np  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         if isinstance(value, np.ndarray):
             return value.tolist()
@@ -121,7 +120,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         """
         return column
 
-    def _base_sample_query(self, column: Optional[Column], label=None):
+    def _base_sample_query(self, column: Optional[Column], label=None):  # noqa: UP045
         """Base query for sampling
 
         Args:
@@ -165,13 +164,8 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                     (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                 ).cte(f"{self.get_sampler_table_name()}_rnd")
                 session_query = client.query(rnd)
-                session_query = session_query.where(
-                    rnd.c.random <= static.profileSample
-                )
-                if (
-                    static.profileSample == 100
-                    and self.sample_config.randomizedSample is True
-                ):
+                session_query = session_query.where(rnd.c.random <= static.profileSample)
+                if static.profileSample == 100 and self.sample_config.randomizedSample is True:
                     session_query = session_query.order_by(rnd.c.random)
                 return session_query.cte(f"{self.get_sampler_table_name()}_sample")
 
@@ -185,15 +179,11 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 else None,
             )
             query = (
-                session_query.order_by(RANDOM_LABEL)
-                if self.sample_config.randomizedSample is True
-                else session_query
+                session_query.order_by(RANDOM_LABEL) if self.sample_config.randomizedSample is True else session_query
             )
-            return query.limit(static.profileSample if static else None).cte(
-                f"{self.get_sampler_table_name()}_rnd"
-            )
+            return query.limit(static.profileSample if static else None).cte(f"{self.get_sampler_table_name()}_rnd")
 
-    def get_dataset(self, column=None, **__) -> Union[type, AliasedClass]:
+    def get_dataset(self, column=None, **__) -> Union[type, AliasedClass]:  # noqa: UP007
         """
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
@@ -218,7 +208,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
         return self.get_sample_query(column=column)
 
-    def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:
+    def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:  # noqa: UP006, UP045
         """
         Use the sampler to retrieve sample data rows as per limit given by user
 
@@ -237,14 +227,9 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             # we can't directly use columns as it is bound to self.raw_dataset and not the rnd table.
             # If we use it, it will result in a cross join between self.raw_dataset and rnd table
             names = [col.name for col in columns]
-            sqa_columns = [
-                col
-                for col in inspect(ds).c
-                if col.name != RANDOM_LABEL and col.name in names
-            ]
+            sqa_columns = [col for col in inspect(ds).c if col.name != RANDOM_LABEL and col.name in names]
 
         with self.session_factory() as client:
-
             # Handle array columns with special query modification
             max_elements = self._get_max_array_elements()
             select_columns = []
@@ -254,20 +239,13 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 if self._handle_array_column(col):
                     slice_expression = self._get_slice_expression(col)
                     select_columns.append(slice_expression)
-                    logger.debug(
-                        f"Limiting array column {col.name} to {max_elements} elements to prevent OOM"
-                    )
+                    logger.debug(f"Limiting array column {col.name} to {max_elements} elements to prevent OOM")
                     has_array_columns = True
                 else:
                     select_columns.append(col)
 
             # Create query with modified columns
-            sqa_sample = (
-                client.query(*select_columns)
-                .select_from(ds)
-                .limit(self.sample_limit)
-                .all()
-            )
+            sqa_sample = client.query(*select_columns).select_from(ds).limit(self.sample_limit).all()
 
         # Process rows: handle array columns and truncate large text values
         # to prevent OOM in downstream processing.
@@ -298,10 +276,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             columns = list(rnd.keys())
         return TableData(
             columns=columns,
-            rows=[
-                [self._truncate_cell(cell) for cell in row]
-                for row in rnd.fetchmany(100)
-            ],
+            rows=[[self._truncate_cell(cell) for cell in row] for row in rnd.fetchmany(100)],
         )
 
     def _rdn_sample_from_user_query(self) -> Query:
@@ -313,16 +288,14 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         stmt = stmt.columns(*list(inspect(self.raw_dataset).c))
 
         with self.session_factory() as client:
-            return client.query(stmt.subquery()).cte(
-                f"{self.get_sampler_table_name()}_user_sampled"
-            )
+            return client.query(stmt.subquery()).cte(f"{self.get_sampler_table_name()}_user_sampled")
 
     def _partitioned_table(self):
         """Return a CTE for partitioned tables.
 
         Build the CTE using Core select() so it does not require an active Session.
         """
-        self.partition_details = cast(PartitionProfilerConfig, self.partition_details)
+        self.partition_details = cast(PartitionProfilerConfig, self.partition_details)  # noqa: TC006
         partition_filter = build_partition_predicate(
             self.partition_details,
             self.raw_dataset.__table__.c,
@@ -332,9 +305,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def get_partitioned_query(self, query=None) -> Query:
         """Return the partitioned query"""
-        self.partition_details = cast(
-            PartitionProfilerConfig, self.partition_details
-        )  # satisfying type checker
+        self.partition_details = cast("PartitionProfilerConfig", self.partition_details)  # satisfying type checker
         partition_filter = build_partition_predicate(
             self.partition_details,
             self.raw_dataset.__table__.c,
@@ -358,7 +329,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def __del__(self):
         """Destructor to ensure cleanup when object is garbage collected"""
-        try:
+        try:  # noqa: SIM105
             self.close()
         except Exception:
             # Ignore errors during cleanup in destructor

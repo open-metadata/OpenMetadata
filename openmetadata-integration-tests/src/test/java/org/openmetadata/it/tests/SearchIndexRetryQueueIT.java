@@ -794,64 +794,6 @@ class SearchIndexRetryQueueIT {
   }
 
   // ---------------------------------------------------------------------------
-  // Suspension tests
-  // ---------------------------------------------------------------------------
-
-  @Test
-  void testSuspensionPreventsEnqueue(TestNamespace ns) {
-    String entityId = UUID.randomUUID().toString();
-    String entityFqn = ns.prefix("rq") + ".suspended.entity";
-    try {
-      SearchIndexRetryQueue.updateSuspension(java.util.Set.of(), true);
-      assertTrue(SearchIndexRetryQueue.isSuspendAllStreaming());
-
-      // Enqueue should still insert (suspension affects worker processing, not enqueueing)
-      SearchIndexRetryQueue.enqueue(entityId, entityFqn, "during suspension");
-      List<SearchIndexRetryRecord> records =
-          retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
-      assertTrue(records.stream().anyMatch(r -> r.getEntityId().equals(entityId)));
-    } finally {
-      SearchIndexRetryQueue.clearSuspension();
-      retryQueueDAO.deleteByEntity(entityId, entityFqn);
-    }
-  }
-
-  @Test
-  void testWorkerDeletesRecordsDuringSuspendAll(TestNamespace ns) throws Exception {
-    String entityId = UUID.randomUUID().toString();
-    String entityFqn = ns.prefix("rq") + ".suspended.entity";
-
-    retryQueueDAO.upsert(
-        entityId, entityFqn, "will be suspended", SearchIndexRetryQueue.STATUS_PENDING, "table");
-
-    try {
-      SearchIndexRetryQueue.updateSuspension(java.util.Set.of(), true);
-
-      SearchIndexRetryWorker worker = new SearchIndexRetryWorker(collectionDAO, searchRepository);
-      worker.start();
-      try {
-        Awaitility.await("Worker should delete record during full suspension")
-            .atMost(Duration.ofSeconds(30))
-            .pollInterval(Duration.ofSeconds(1))
-            .until(
-                () -> {
-                  List<SearchIndexRetryRecord> remaining =
-                      retryQueueDAO.findByStatuses(
-                          List.of(
-                              SearchIndexRetryQueue.STATUS_PENDING,
-                              SearchIndexRetryQueue.STATUS_IN_PROGRESS),
-                          1000);
-                  return remaining.stream().noneMatch(r -> r.getEntityId().equals(entityId));
-                });
-      } finally {
-        worker.stop();
-      }
-    } finally {
-      SearchIndexRetryQueue.clearSuspension();
-    }
-  }
-
-  // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
 

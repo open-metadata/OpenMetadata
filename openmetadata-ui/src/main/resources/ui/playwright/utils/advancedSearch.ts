@@ -92,16 +92,6 @@ export const FIELDS: EntityFields[] = [
     name: 'project.keyword',
   },
   {
-    id: 'Status',
-    name: 'entityStatus',
-  },
-  // Some common field value search criteria are causing problems in not equal filter tests
-  // TODO: Refactor the advanced search tests so that these fields can be added back
-  // {
-  //   id: 'Table Type',
-  //   name: 'tableType',
-  // },
-  {
     id: 'Chart',
     name: 'charts.displayName.keyword',
   },
@@ -220,7 +210,12 @@ export const selectOption = async (
   // Use .first() to handle multiple matches (acceptable when scoped to visible dropdown)
   const optionLocator = page
     .locator('.ant-select-dropdown:visible')
-    .locator(`[title="${optionTitle}"]`)
+    .locator('.ant-select-item-option')
+    .filter({
+      hasText: new RegExp(
+        `^${optionTitle.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
+      ),
+    })
     .first();
   await expect(optionLocator).toBeVisible();
 
@@ -695,6 +690,43 @@ export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
   await page.waitForTimeout(1000);
 
   await expect(dropdownText).not.toContainText('Loading...');
+};
+
+// For fields backed by hard-coded listValues (no aggregate API call), options are
+// rendered immediately — use selectOption directly instead of fillRule which waits
+// for a network response that never comes.
+export const fillStaticListRule = async (
+  page: Page,
+  {
+    fieldLabel,
+    condition,
+    value,
+    ruleIndex,
+  }: {
+    fieldLabel: string;
+    condition: string;
+    value: string;
+    ruleIndex: number;
+  }
+) => {
+  const ruleLocator = page.locator('.rule').nth(ruleIndex - 1);
+
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--field .ant-select'),
+    fieldLabel,
+    true
+  );
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--operator .ant-select'),
+    condition
+  );
+  await selectOption(
+    page,
+    ruleLocator.locator('.widget--widget > .ant-select'),
+    value
+  );
 };
 
 export const getFieldsSuggestionSearchText = (

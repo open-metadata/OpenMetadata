@@ -7,6 +7,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.getFlowable
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.Getter;
@@ -27,6 +28,27 @@ import org.openmetadata.service.governance.workflows.flowable.builders.EndEventB
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
 
 public class NoOpTrigger implements TriggerInterface {
+  private static final Set<String> TASK_WORKFLOW_PASSTHROUGH_VARIABLES =
+      Set.of(
+          "taskEntityId",
+          "taskWorkflowManaged",
+          "taskName",
+          "taskDisplayName",
+          "taskDescription",
+          "taskType",
+          "taskCategory",
+          "taskPriority",
+          "taskPayload",
+          "taskDueDate",
+          "taskExternalReference",
+          "taskTags",
+          "taskCreatedBy",
+          "taskUpdatedBy",
+          "taskReviewers",
+          "taskAssignees",
+          "taskFormSchemaId",
+          "taskFormSchemaVersion",
+          "workflowDefinitionId");
   private final Process process;
 
   @Getter private final String triggerWorkflowId;
@@ -83,14 +105,24 @@ public class NoOpTrigger implements TriggerInterface {
             .id(getFlowableElementId(triggerWorkflowId, "workflowTrigger"))
             .calledElement(mainWorkflowName)
             .inheritBusinessKey(true)
+            .inheritVariables(true)
             .build();
 
     List<IOParameter> inputParameters = new ArrayList<>();
 
-    for (String triggerOutput : triggerOutputs) {
+    Set<String> forwardedVariables = new LinkedHashSet<>();
+    forwardedVariables.addAll(triggerOutputs);
+    forwardedVariables.addAll(TASK_WORKFLOW_PASSTHROUGH_VARIABLES);
+
+    for (String triggerOutput : forwardedVariables) {
       IOParameter inputParameter = new IOParameter();
-      inputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, triggerOutput));
-      inputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, triggerOutput));
+      if (TASK_WORKFLOW_PASSTHROUGH_VARIABLES.contains(triggerOutput)) {
+        inputParameter.setSource(triggerOutput);
+        inputParameter.setTarget(triggerOutput);
+      } else {
+        inputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, triggerOutput));
+        inputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, triggerOutput));
+      }
       inputParameters.add(inputParameter);
     }
 

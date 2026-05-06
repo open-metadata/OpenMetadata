@@ -16,14 +16,14 @@ Constants for Kafka Connect connector configuration keys and mappings
 class ConnectorConfigKeys:
     """Configuration keys for various Kafka Connect connectors"""
 
-    TABLE_KEYS = [
+    TABLE_KEYS = [  # noqa: RUF012
         "table",  # Generic: Often used in simple JDBC source/sink configs
         "table.name.format",  # JDBC Sink: Defines the target table name (e.g., "kafka_${topic}")
         "collection",  # MongoDB: The Mongo equivalent of a Table
         "sanitizeTopics",  # BigQuery: Often used to map/clean topic names into Table names
     ]
 
-    TABLE_LIST_KEYS = [
+    TABLE_LIST_KEYS = [  # noqa: RUF012
         "table.whitelist",  # JDBC (Legacy): List of specific tables to ingest
         "table.include.list",  # Debezium/JDBC (Modern): Regex or list of tables to include
         "tables.include",  # Generic: Variation often seen in custom connectors
@@ -31,11 +31,11 @@ class ConnectorConfigKeys:
         "iceberg.tables",  # Iceberg Sink: Explicit list of target tables
     ]
 
-    TABLE_MAPPING_KEYS = [
+    TABLE_MAPPING_KEYS = [  # noqa: RUF012
         "snowflake.topic2table.map",  # Snowflake Sink: Critical mapping (e.g., "topicA:tableA, topicB:tableB")
     ]
 
-    DATABASE_KEYS = [
+    DATABASE_KEYS = [  # noqa: RUF012
         "database",  # Generic: Common in simple JDBC configs
         "db.name",  # Generic: Common variation
         "database.dbname",  # PostgreSQL/JDBC: The physical database name
@@ -47,34 +47,34 @@ class ConnectorConfigKeys:
         "cassandra.keyspace",  # Cassandra: Keyspace is the Cassandra equivalent of a Database
     ]
 
-    DATABASE_LIST_KEYS = [
+    DATABASE_LIST_KEYS = [  # noqa: RUF012
         "database.names",  # SQL Server: List of databases to monitor
         "databases.include",  # Variation (likely MongoDB or older configs)
         "database.include.list",  # Debezium: Explicit whitelist of databases
         "database.whitelist",  # Debezium (Legacy): Legacy whitelist
     ]
 
-    SCHEMA_KEYS = [
+    SCHEMA_KEYS = [  # noqa: RUF012
         "snowflake.schema.name",  # Snowflake: The Schema (e.g. "PUBLIC")
         "snowflake.schema",  # Snowflake variation
         "schema.name",  # Generic JDBC: Schema namespace
     ]
 
-    BUCKET_KEYS = [
+    BUCKET_KEYS = [  # noqa: RUF012
         "s3.bucket.name",
         "s3.bucket",
         "gcs.bucket.name",
         "azure.container.name",
     ]
 
-    PREFIX_KEYS = [
+    PREFIX_KEYS = [  # noqa: RUF012
         "topics.dir",
         "s3.prefix",
         "gcs.prefix",
         "directory.path",
     ]
 
-    TOPIC_KEYS = ["kafka.topic", "topics", "topic"]
+    TOPIC_KEYS = ["kafka.topic", "topics", "topic"]  # noqa: RUF012
 
 
 SUPPORTED_DATASETS = {

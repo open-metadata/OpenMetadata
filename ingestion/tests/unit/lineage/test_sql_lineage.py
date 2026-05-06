@@ -12,6 +12,7 @@
 """
 sql lineage utils tests
 """
+
 import uuid
 from unittest import TestCase
 
@@ -40,11 +41,7 @@ EXPECTED_LINEAGE_MAP = [
     {"<default>.mytable2": {"<default>.mytable1": [("*", "*")]}},
     {"<default>.mytable3": {"<default>.mytable1": [("ID", "ID"), ("NAME", "NAME")]}},
     {"<default>.myview2": {"<default>.mytable1": [("CITY", "CITY"), ("NAME", "NAME")]}},
-    {
-        "<default>.mytable5": {
-            "<default>.mytable1": [("CITY", "CITY"), ("ID", "ID"), ("NAME", "NAME")]
-        }
-    },
+    {"<default>.mytable5": {"<default>.mytable1": [("CITY", "CITY"), ("ID", "ID"), ("NAME", "NAME")]}},
 ]
 
 
@@ -65,9 +62,7 @@ class SqlLineageTest(TestCase):
         Method to test column wildcard
         """
         # Given
-        column_lineage_map = {
-            "testdb.public.target": {"testdb.public.users": [("*", "*")]}
-        }
+        column_lineage_map = {"testdb.public.target": {"testdb.public.users": [("*", "*")]}}
         to_entity = Table(
             id=uuid.uuid4(),
             name="target",
@@ -122,9 +117,7 @@ class SqlLineageTest(TestCase):
         # When
         lineage_map = populate_column_lineage_map(raw_column_lineage)
         # Then
-        self.assertEqual(
-            lineage_map, {"testdb.public.target": {"testdb.public.users": [("*", "*")]}}
-        )
+        self.assertEqual(lineage_map, {"testdb.public.target": {"testdb.public.users": [("*", "*")]}})
 
     def test_populate_column_lineage_map_ctes(self):
         """
@@ -157,11 +150,7 @@ class SqlLineageTest(TestCase):
         # Then
         self.assertEqual(
             lineage_map,
-            {
-                "testdb.public.target": {
-                    "testdb.public.users": [("ID", "ID"), ("NAME", "NAME")]
-                }
-            },
+            {"testdb.public.target": {"testdb.public.users": [("ID", "ID"), ("NAME", "NAME")]}},
         )
 
     @pytest.mark.skip(reason="It is flaky and must be reviewed.")
@@ -182,9 +171,7 @@ class SqlLineageTest(TestCase):
         values_format = "\t('value1{a}','value2{b}','value{c}','value{d}','value{e}')"
         values = [values_format.format(a=0, b=0, c=0, d=0, e=0)]
         for num in range(1, 2000):
-            values.insert(
-                0, values_format.format(a=num, b=num, c=num, d=num, e=num) + ","
-            )
+            values.insert(0, values_format.format(a=num, b=num, c=num, d=num, e=num) + ",")
         # When
         with self.assertLogs(Loggers.INGESTION.value, level="DEBUG") as logger:
             LineageParser(
@@ -194,10 +181,7 @@ class SqlLineageTest(TestCase):
             )
             # Then
             self.assertTrue(
-                any(
-                    "Parser has been running for more than 1 seconds." in log
-                    for log in logger.output
-                ),
+                any("Parser has been running for more than 1 seconds." in log for log in logger.output),
                 "Parser finished before the 1 expected seconds!",
             )
 
@@ -207,27 +191,19 @@ class SqlLineageTest(TestCase):
         """
         raw_query_name = "test.tab"
 
-        self.assertEqual(
-            get_table_fqn_from_query_name(raw_query_name), (None, "test", "tab")
-        )
+        self.assertEqual(get_table_fqn_from_query_name(raw_query_name), (None, "test", "tab"))
 
         raw_query_name = "db.test.tab"
 
-        self.assertEqual(
-            get_table_fqn_from_query_name(raw_query_name), ("db", "test", "tab")
-        )
+        self.assertEqual(get_table_fqn_from_query_name(raw_query_name), ("db", "test", "tab"))
 
         raw_query_name = "tab"
 
-        self.assertEqual(
-            get_table_fqn_from_query_name(raw_query_name), (None, None, "tab")
-        )
+        self.assertEqual(get_table_fqn_from_query_name(raw_query_name), (None, None, "tab"))
 
         raw_query_name = "project.dataset.info_schema.tab"
 
-        self.assertEqual(
-            get_table_fqn_from_query_name(raw_query_name), (None, None, "tab")
-        )
+        self.assertEqual(get_table_fqn_from_query_name(raw_query_name), (None, None, "tab"))
 
     def test_replace_target_table(self):
         """
@@ -415,10 +391,7 @@ class SqlLineageTest(TestCase):
         Test COPY INTO @stage FROM (SELECT ...) extracts the underlying
         source table correctly from the subquery.
         """
-        query = (
-            "COPY INTO @external_stage/path/ FROM "
-            "(SELECT col1, col2 FROM db.schema.source_table WHERE id > 100)"
-        )
+        query = "COPY INTO @external_stage/path/ FROM (SELECT col1, col2 FROM db.schema.source_table WHERE id > 100)"
         parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
 
         self.assertEqual(len(parser.source_tables), 1)

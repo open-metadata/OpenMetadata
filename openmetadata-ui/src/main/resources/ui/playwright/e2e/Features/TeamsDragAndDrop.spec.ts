@@ -25,7 +25,7 @@ import {
 } from '../../utils/dragDrop';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
-import { addTeamHierarchy, hardDeleteTeam } from '../../utils/team';
+import { addTeamHierarchy } from '../../utils/team';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -198,31 +198,6 @@ test.describe(
       await movedTeam.scrollIntoViewIfNeeded();
 
       await expect(movedTeam).toBeVisible();
-    });
-
-    test('Delete Teams', async ({ page }) => {
-      for (const teamName of [
-        teamNameBusiness,
-        teamNameDivision,
-        teamNameDepartment,
-        teamNameGroup,
-      ]) {
-        const getTeamResponse = page.waitForResponse(
-          `/api/v1/teams/name/${teamName}*`
-        );
-
-        await page.getByRole('link', { name: teamName }).click();
-        await getTeamResponse;
-
-        await waitForAllLoadersToDisappear(page);
-
-        await hardDeleteTeam(page, teamName);
-
-        // Validate the deleted team
-        await expect(
-          page.getByRole('cell', { name: teamName })
-        ).not.toBeVisible();
-      }
     });
   }
 );

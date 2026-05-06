@@ -133,11 +133,31 @@ export interface NodeConfiguration {
      */
     assignees?: Assignees;
     /**
+     * Optional label describing how assignees are derived for the stage.
+     */
+    assigneeStrategy?: string;
+    /**
      * Number of reviewers that must reject for the task to be rejected. Default is 1 (any
      * single reviewer can reject). This allows for scenarios where you want multiple approvals
      * but a single rejection can veto.
      */
     rejectionThreshold?: number;
+    /**
+     * Human-readable stage label shown to task assignees.
+     */
+    stageDisplayName?: string;
+    /**
+     * Workflow stage identifier stored on the task while this user task is active.
+     */
+    stageId?: string;
+    /**
+     * Coarse task status mapped while this user task is active.
+     */
+    taskStatus?: TaskStatus;
+    /**
+     * Transitions available from this stage. Edge conditions should match these transition ids.
+     */
+    transitionMetadata?: TransitionMetadatum[];
 }
 
 /**
@@ -212,6 +232,45 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Coarse task status mapped while this user task is active.
+ *
+ * Current status of the task in its lifecycle.
+ */
+export enum TaskStatus {
+    Approved = "Approved",
+    Cancelled = "Cancelled",
+    Completed = "Completed",
+    Failed = "Failed",
+    InProgress = "InProgress",
+    Open = "Open",
+    Pending = "Pending",
+    Rejected = "Rejected",
+}
+
+export interface TransitionMetadatum {
+    formRef?:         string;
+    id:               string;
+    label:            string;
+    requiresComment?: boolean;
+    resolutionType?:  ResolutionType;
+    targetStageId:    string;
+    targetTaskStatus: TaskStatus;
+}
+
+/**
+ * How the task was resolved.
+ */
+export enum ResolutionType {
+    Approved = "Approved",
+    AutoApproved = "AutoApproved",
+    AutoRejected = "AutoRejected",
+    Cancelled = "Cancelled",
+    Completed = "Completed",
+    Rejected = "Rejected",
+    TimedOut = "TimedOut",
 }
 
 export interface InputNamespaceMap {

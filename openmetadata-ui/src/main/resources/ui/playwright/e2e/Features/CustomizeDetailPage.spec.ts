@@ -619,7 +619,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('add-widget-button')
           .click();
 
-        await expect(adminPage.getByTestId('widget-info-tabs')).toBeHidden();
+        await expect(adminPage.getByTestId('add-widget-modal')).toBeHidden();
 
         await adminPage.getByTestId('save-button').click();
 

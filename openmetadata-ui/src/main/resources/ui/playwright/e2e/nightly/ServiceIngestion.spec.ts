@@ -83,6 +83,12 @@ Object.entries(services).forEach(([key, ServiceClass]) => {
       );
     });
 
+    test.afterAll('Delete service via API', async ({ browser }) => {
+      const { afterAction, apiContext } = await createNewPage(browser);
+      await service.deleteServiceByAPI(apiContext);
+      await afterAction();
+    });
+
     /**
      * Tests service creation and first ingestion run
      * @description Creates the service and triggers ingestion
@@ -122,14 +128,6 @@ Object.entries(services).forEach(([key, ServiceClass]) => {
         await service.runAdditionalTests(page, test);
       });
     }
-
-    /**
-     * Tests service deletion flow
-     * @description Deletes the service and validates removal
-     */
-    test(`Delete ${key} service`, async ({ page }) => {
-      await service.deleteService(page);
-    });
   });
 });
 
@@ -478,7 +476,7 @@ test.describe.serial(
         async (route) => {
           // Mock the pipelineStatus endpoint to simulate high latency
           // eslint-disable-next-line playwright/no-wait-for-timeout
-          await page.waitForTimeout(8000);
+          await page.waitForTimeout(5000);
           await route.continue();
         }
       );

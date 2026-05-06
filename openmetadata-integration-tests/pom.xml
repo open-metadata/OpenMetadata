@@ -221,6 +221,7 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
+                    <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -256,6 +257,7 @@
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
+                    <exclude>**/GlossaryOntologyExportIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -310,6 +312,7 @@
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
+                    <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -346,6 +349,7 @@
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
+                    <exclude>**/GlossaryOntologyExportIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -362,6 +366,101 @@
                 </configuration>
               </execution>
               <!-- Verify phase: Fails the build if any tests failed -->
+              <execution>
+                <id>verify</id>
+                <goals>
+                  <goal>verify</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <!-- PostgreSQL + OpenSearch + Redis cache enabled. Mirror of postgres-opensearch but
+         every IT runs against the Redis-fronted code path so we can spot any test that
+         depends on always-fresh-from-DB reads. -->
+    <profile>
+      <id>postgres-os-redis</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
+            <executions>
+              <execution>
+                <id>sequential-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/TagRecognizerFeedbackIT.java</include>
+                    <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
+                    <include>**/VectorEmbeddingIntegrationIT.java</include>
+                    <include>**/PatchTableEmbeddingIT.java</include>
+                    <include>**/GlossaryOntologyExportIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:15</databaseImage>
+                    <searchType>opensearch</searchType>
+                    <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
+                    <cacheProvider>redis</cacheProvider>
+                    <redisImage>redis:7-alpine</redisImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <execution>
+                <id>parallel-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/*IT.java</include>
+                    <include>**/*Test.java</include>
+                  </includes>
+                  <excludes>
+                    <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                    <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
+                    <exclude>**/PatchTableEmbeddingIT.java</exclude>
+                    <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                  </excludes>
+                  <systemPropertyVariables>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:15</databaseImage>
+                    <searchType>opensearch</searchType>
+                    <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
+                    <cacheProvider>redis</cacheProvider>
+                    <redisImage>redis:7-alpine</redisImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
               <execution>
                 <id>verify</id>
                 <goals>
@@ -399,6 +498,7 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
+                    <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -434,6 +534,7 @@
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
+                    <exclude>**/GlossaryOntologyExportIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -488,6 +589,7 @@
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
+                    <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -524,6 +626,7 @@
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
+                    <exclude>**/GlossaryOntologyExportIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -540,6 +643,148 @@
                 </configuration>
               </execution>
               <!-- Verify phase: Fails the build if any tests failed -->
+              <execution>
+                <id>verify</id>
+                <goals>
+                  <goal>verify</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <!-- MySQL + Elasticsearch + Redis (Redis cache enabled) -->
+    <profile>
+      <id>mysql-elasticsearch-redis</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
+            <executions>
+              <execution>
+                <id>sequential-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/TagRecognizerFeedbackIT.java</include>
+                    <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
+                    <include>**/VectorEmbeddingIntegrationIT.java</include>
+                    <include>**/GlossaryOntologyExportIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <databaseType>mysql</databaseType>
+                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+                    <cacheProvider>redis</cacheProvider>
+                    <redisImage>redis:7-alpine</redisImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <execution>
+                <id>parallel-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/*IT.java</include>
+                    <include>**/*Test.java</include>
+                  </includes>
+                  <excludes>
+                    <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                    <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
+                    <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                  </excludes>
+                  <systemPropertyVariables>
+                    <databaseType>mysql</databaseType>
+                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+                    <cacheProvider>redis</cacheProvider>
+                    <redisImage>redis:7-alpine</redisImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <execution>
+                <id>verify</id>
+                <goals>
+                  <goal>verify</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <!-- Redis cache correctness tests — fastest profile for verifying that mutations
+         invalidate the right keys. Brings up a Redis container, runs only the cache
+         correctness ITs, skips the heavier search/DB matrix. -->
+    <profile>
+      <id>cache-tests</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
+            <executions>
+              <execution>
+                <id>cache-correctness-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx2048m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/cache/*IT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:16-alpine</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+                    <cacheProvider>redis</cacheProvider>
+                    <redisImage>redis:7-alpine</redisImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
               <execution>
                 <id>verify</id>
                 <goals>
@@ -577,6 +822,7 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
+                    <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
@@ -614,6 +860,7 @@
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
+                    <exclude>**/GlossaryOntologyExportIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>

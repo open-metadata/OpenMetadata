@@ -99,7 +99,6 @@ import {
 import {
   filterSelectOptions,
   replaceAllSpacialCharWith_,
-  Transi18next,
 } from '../../../../utils/CommonUtils';
 import {
   convertSearchSourceToTable,
@@ -111,6 +110,7 @@ import {
   generateFormFields,
   getPopupContainer,
 } from '../../../../utils/formUtils';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
 import {

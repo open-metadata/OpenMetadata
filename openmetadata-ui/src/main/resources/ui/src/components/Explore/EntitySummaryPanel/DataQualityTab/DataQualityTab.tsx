@@ -33,15 +33,13 @@ import {
 import { Include } from '../../../../generated/type/include';
 import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { getListTestCaseBySearch } from '../../../../rest/testAPI';
-import {
-  getTableFQNFromColumnFQN,
-  Transi18next,
-} from '../../../../utils/CommonUtils';
+import { getTableFQNFromColumnFQN } from '../../../../utils/CommonUtils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityUtils';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { getTestCaseDetailPagePath } from '../../../../utils/RouterUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';

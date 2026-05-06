@@ -12,6 +12,7 @@
 """
 Tests for DSVDataFrameReader (CSV/TSV)
 """
+
 import gzip
 import tempfile
 import unittest
@@ -67,7 +68,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_tsv_reader_local(self):
         """Test basic TSV reading with tab separator."""
@@ -92,7 +93,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_csv_with_gzip_compression(self):
         """Test CSV reading with gzip compression."""
@@ -118,7 +119,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_malformed_quoted_csv(self):
         malformed_csv = '"col1,col2,col3"\n1,2,3\n4,5,6\n'
@@ -142,7 +143,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_custom_separator(self):
         """Test CSV reading with custom separator."""
@@ -167,7 +168,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     @patch("pandas.read_csv")
     def test_gcs_csv_reading(self, mock_read_csv):
@@ -211,9 +212,7 @@ class TestDSVReader(unittest.TestCase):
         }
 
         config = S3Config(
-            securityConfig=AWSCredentials(
-                awsAccessKeyId="test", awsSecretAccessKey="test", awsRegion="us-east-1"
-            )
+            securityConfig=AWSCredentials(awsAccessKeyId="test", awsSecretAccessKey="test", awsRegion="us-east-1")
         )
         reader = CSVDataFrameReader(config, mock_client)
 
@@ -224,9 +223,7 @@ class TestDSVReader(unittest.TestCase):
         self.assertEqual(len(chunks), 1)
         self.assertEqual(chunks[0].shape, (2, 2))
 
-        mock_client.get_object.assert_called_once_with(
-            Bucket="test-bucket", Key="test.csv"
-        )
+        mock_client.get_object.assert_called_once_with(Bucket="test-bucket", Key="test.csv")
 
     @patch("pandas.read_csv")
     @patch("metadata.readers.dataframe.dsv.return_azure_storage_options")
@@ -247,11 +244,7 @@ class TestDSVReader(unittest.TestCase):
 
         mock_read_csv.side_effect = mock_read_csv_impl
 
-        config = AzureConfig(
-            securityConfig=AzureCredentials(
-                accountName="test", clientId="test", tenantId="test"
-            )
-        )
+        config = AzureConfig(securityConfig=AzureCredentials(accountName="test", clientId="test", tenantId="test"))
         reader = CSVDataFrameReader(config, None)
 
         result = reader._read(key="test.csv", bucket_name="test-container")
@@ -300,7 +293,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_csv_complex_escaping_backslash_and_double_quote(self):
         """Test complex CSV with both backslash escaping (\") and double-quote escaping ("") in same file."""
@@ -337,24 +330,18 @@ class TestDSVReader(unittest.TestCase):
             # Row 2: both backslash and double-quote escaping in same fields
             self.assertEqual(chunks[0].iloc[1]["product"], "Component B")
             self.assertEqual(chunks[0].iloc[1]["quantity"], 10)
-            self.assertEqual(
-                chunks[0].iloc[1]["description"], 'Value with "quote" and, comma'
-            )
-            self.assertEqual(
-                chunks[0].iloc[1]["metadata"], 'Status: "Active" and "Ready"'
-            )
+            self.assertEqual(chunks[0].iloc[1]["description"], 'Value with "quote" and, comma')
+            self.assertEqual(chunks[0].iloc[1]["metadata"], 'Status: "Active" and "Ready"')
 
             # Row 3: Windows path with backslashes, double-quote in metadata
             self.assertEqual(chunks[0].iloc[2]["product"], "Item C")
             self.assertEqual(chunks[0].iloc[2]["quantity"], 3)
-            self.assertEqual(
-                chunks[0].iloc[2]["description"], "Windows path: C:\\Users\\data.txt"
-            )
+            self.assertEqual(chunks[0].iloc[2]["description"], "Windows path: C:\\Users\\data.txt")
             self.assertEqual(chunks[0].iloc[2]["metadata"], 'Mix of "both" styles')
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_csv_edge_cases_with_newlines_and_mixed_quotes(self):
         """Test edge cases with newlines in quoted fields and complex mixed escaping."""
@@ -388,14 +375,12 @@ class TestDSVReader(unittest.TestCase):
 
             # Row 2: both types of escaping in same field
             self.assertEqual(chunks[0].iloc[1]["id"], 2)
-            self.assertEqual(
-                chunks[0].iloc[1]["text"], 'Text with "double" and "backslash" quotes'
-            )
+            self.assertEqual(chunks[0].iloc[1]["text"], 'Text with "double" and "backslash" quotes')
             self.assertEqual(chunks[0].iloc[1]["value"], "Complex, with comma")
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_field_larger_than_default_csv_limit(self):
         """
@@ -422,7 +407,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_field_with_embedded_unescaped_quotes(self):
         """
@@ -448,7 +433,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_line_contains_nul(self):
         """
@@ -479,7 +464,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
 
 if __name__ == "__main__":

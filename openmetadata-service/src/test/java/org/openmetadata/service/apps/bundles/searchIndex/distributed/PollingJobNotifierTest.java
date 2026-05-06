@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,10 @@ class PollingJobNotifierTest {
     notifier.start();
     notifier.start();
     assertTrue(notifier.isRunning());
-    assertNotNull(getField(notifier, "scheduler"));
+    ScheduledExecutorService scheduler = (ScheduledExecutorService) getField(notifier, "scheduler");
+    assertNotNull(scheduler);
+    scheduler.shutdownNow();
+    assertTrue(scheduler.awaitTermination(5, TimeUnit.SECONDS));
 
     notifier.notifyJobStarted(jobId, "FULL");
     assertTrue(getKnownJobs(notifier).contains(jobId));

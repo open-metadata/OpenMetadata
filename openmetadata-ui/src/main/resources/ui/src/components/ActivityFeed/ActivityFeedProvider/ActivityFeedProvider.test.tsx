@@ -10,40 +10,105 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
+import { ReactionType } from '../../../generated/type/reaction';
 import { mockUserData } from '../../../mocks/MyDataPage.mock';
 import {
+  addActivityReaction,
   deletePostById,
   deleteThread,
   getAllFeeds,
+  getEntityActivityByFqn,
+  getMyActivityFeed,
   postFeedById,
+  postThread,
+  removeActivityReaction,
 } from '../../../rest/feedsAPI';
+import { listMyVisibleTasks, listTasks } from '../../../rest/tasksAPI';
 import ActivityFeedProvider from './ActivityFeedProvider';
 import {
+  DummyActivityCommentComponent,
+  DummyActivityFeedComponent,
+  DummyActivityReactionComponent,
   DummyChildrenComponent,
   DummyChildrenDeletePostComponent,
   DummyChildrenEntityComponent,
+  DummyChildrenMentionsComponent,
   DummyChildrenTaskCloseComponent,
+  DummyEntityActivityFeedComponent,
+  DummySetActiveActivityComponent,
 } from './DummyTestComponent';
 
+const mockUseApplicationStore = jest.fn(() => ({
+  currentUser: mockUserData,
+}));
+
 jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn(() => ({
-    currentUser: mockUserData,
-  })),
+  useApplicationStore: (...args: unknown[]) => mockUseApplicationStore(...args),
+}));
+
+const mockUseDomainStore = jest.fn((selector) =>
+  selector({ activeDomain: 'All Domains' })
+);
+
+jest.mock('../../../hooks/useDomainStore', () => ({
+  useDomainStore: (...args: unknown[]) => mockUseDomainStore(...args),
 }));
 
 jest.mock('../ActivityFeedDrawer/ActivityFeedDrawer', () =>
   jest.fn().mockImplementation(() => <p>Entity ActivityFeedDrawer</p>)
 );
 
+const mockActivityEvents: ActivityEvent[] = [
+  {
+    id: 'activity-123',
+    timestamp: 1234567890,
+    eventType: 'entityUpdated' as ActivityEvent['eventType'],
+    actor: { id: 'user-1', type: 'user', name: 'testuser' },
+    entity: { id: 'entity-1', type: 'table', name: 'testTable' },
+    about: '<#E::table::test>',
+    summary: 'Updated tags',
+    reactions: [],
+  },
+];
+
 jest.mock('../../../rest/feedsAPI', () => ({
-  deletePostById: jest.fn(),
-  deleteThread: jest.fn(),
-  getAllFeeds: jest.fn(),
+  deletePostById: jest.fn().mockResolvedValue(true),
+  deleteThread: jest.fn().mockResolvedValue({ id: '123', message: 'deleted' }),
+  getAllFeeds: jest.fn().mockResolvedValue({ data: [], paging: {} }),
   getFeedById: jest.fn(),
-  postFeedById: jest.fn(),
+  postFeedById: jest.fn().mockResolvedValue({ id: 'thread-123', posts: [] }),
+  postThread: jest.fn().mockResolvedValue({ id: 'new-thread-123', posts: [] }),
   updatePost: jest.fn(),
   updateThread: jest.fn(),
+  getMyActivityFeed: jest.fn().mockResolvedValue({ data: [], paging: {} }),
+  getEntityActivityByFqn: jest.fn().mockResolvedValue({ data: [], paging: {} }),
+  addActivityReaction: jest.fn().mockResolvedValue({
+    id: 'activity-123',
+    reactions: [{ reactionType: 'thumbsUp', user: { id: 'user-1' } }],
+  }),
+  removeActivityReaction: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('../../../rest/tasksAPI', () => ({
+  listTasks: jest.fn().mockResolvedValue({ data: [], paging: {} }),
+  listMyAssignedTasks: jest.fn().mockResolvedValue({ data: [], paging: {} }),
+  listMyCreatedTasks: jest.fn().mockResolvedValue({ data: [], paging: {} }),
+  listMyVisibleTasks: jest.fn().mockResolvedValue({ data: [], paging: {} }),
+  addTaskComment: jest.fn(),
+  getTaskById: jest.fn(),
+  tasksToThreads: jest.fn().mockReturnValue([]),
+  TaskEntityStatus: {
+    Open: 'Open',
+    Completed: 'Completed',
+  },
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
@@ -60,15 +125,33 @@ jest.mock('../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../../utils/FeedUtils', () => ({
-  getUpdatedThread: jest.fn(),
+  getUpdatedThread: jest.fn().mockResolvedValue({
+    id: '123',
+    posts: [],
+    postsCount: 0,
+  }),
 }));
 
 describe('ActivityFeedProvider', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseDomainStore.mockImplementation((selector) =>
+      selector({ activeDomain: 'All Domains' })
+    );
+    mockUseApplicationStore.mockReturnValue({
+      currentUser: {
+        ...mockUserData,
+        name: 'admin',
+        fullyQualifiedName: 'admin',
+      },
+    });
   });
 
   it('should show loading indicator in initial fetch', async () => {
+    (listMyVisibleTasks as jest.Mock).mockReturnValueOnce(
+      new Promise(() => {})
+    );
+
     render(
       <ActivityFeedProvider>
         <DummyChildrenComponent />
@@ -78,7 +161,7 @@ describe('ActivityFeedProvider', () => {
     expect(screen.getByTestId('loading')).toBeInTheDocument();
   });
 
-  it('should call getFeedData with open task for user', async () => {
+  it('should call listMyVisibleTasks with open status group for current user task feed', async () => {
     await act(async () => {
       render(
         <ActivityFeedProvider>
@@ -87,18 +170,18 @@ describe('ActivityFeedProvider', () => {
       );
     });
 
-    expect(getAllFeeds).toHaveBeenCalledWith(
-      undefined,
-      undefined,
-      'Task',
-      'OWNER_OR_FOLLOWS',
-      'Open',
-      undefined,
-      undefined
+    await waitFor(() =>
+      expect(listMyVisibleTasks).toHaveBeenCalledWith({
+        statusGroup: 'open',
+        after: undefined,
+        limit: undefined,
+        domain: undefined,
+        fields: 'assignees,createdBy,about,comments,payload',
+      })
     );
   });
 
-  it('should call getFeedData with closed task and afterThread for user', async () => {
+  it('should call listMyVisibleTasks with closed status group and after cursor for user', async () => {
     await act(async () => {
       render(
         <ActivityFeedProvider>
@@ -107,15 +190,45 @@ describe('ActivityFeedProvider', () => {
       );
     });
 
-    expect(getAllFeeds).toHaveBeenCalledWith(
-      undefined,
-      'after-234',
-      'Task',
-      'OWNER_OR_FOLLOWS',
-      'Closed',
-      undefined,
-      undefined
+    await waitFor(() =>
+      expect(listMyVisibleTasks).toHaveBeenCalledWith({
+        statusGroup: 'closed',
+        after: 'after-234',
+        limit: undefined,
+        domain: undefined,
+        fields: 'assignees,createdBy,about,comments,payload',
+      })
     );
+  });
+
+  it('should use visible task endpoint for current user task feed', async () => {
+    mockUseApplicationStore.mockReturnValue({
+      currentUser: {
+        ...mockUserData,
+        name: 'admin',
+        fullyQualifiedName: 'admin',
+      },
+    });
+
+    await act(async () => {
+      render(
+        <ActivityFeedProvider>
+          <DummyChildrenComponent />
+        </ActivityFeedProvider>
+      );
+    });
+
+    await waitFor(() =>
+      expect(listMyVisibleTasks).toHaveBeenCalledWith({
+        statusGroup: 'open',
+        after: undefined,
+        limit: undefined,
+        domain: undefined,
+        fields: 'assignees,createdBy,about,comments,payload',
+      })
+    );
+
+    expect(listTasks).not.toHaveBeenCalled();
   });
 
   it('should call getFeedData for table entity', async () => {
@@ -138,13 +251,64 @@ describe('ActivityFeedProvider', () => {
     );
   });
 
-  it('should call postFeed with button click', async () => {
+  it('should pass the active domain to entity activity requests', async () => {
+    mockUseDomainStore.mockImplementation((selector) =>
+      selector({ activeDomain: 'finance' })
+    );
+
     await act(async () => {
       render(
         <ActivityFeedProvider>
-          <DummyChildrenComponent />
+          <DummyEntityActivityFeedComponent />
         </ActivityFeedProvider>
       );
+    });
+
+    await waitFor(() =>
+      expect(getEntityActivityByFqn).toHaveBeenCalledWith(
+        'table',
+        'service.db.schema.table',
+        {
+          days: 7,
+          limit: 20,
+          domain: 'finance',
+        }
+      )
+    );
+  });
+
+  it('should keep mentions on the feed API instead of routing them through task fetches', async () => {
+    await act(async () => {
+      render(
+        <ActivityFeedProvider>
+          <DummyChildrenMentionsComponent />
+        </ActivityFeedProvider>
+      );
+    });
+
+    expect(getAllFeeds).toHaveBeenCalledWith(
+      undefined,
+      undefined,
+      'Conversation',
+      'MENTIONS',
+      undefined,
+      undefined,
+      undefined
+    );
+    expect(listTasks).not.toHaveBeenCalledWith(
+      expect.objectContaining({ mentionedUser: expect.anything() })
+    );
+  });
+
+  it('should call postFeed with button click', async () => {
+    render(
+      <ActivityFeedProvider>
+        <DummyChildrenComponent />
+      </ActivityFeedProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByTestId('post-feed'));
@@ -155,12 +319,14 @@ describe('ActivityFeedProvider', () => {
   });
 
   it('should call deleteThread with button click when isThread is true', async () => {
-    await act(async () => {
-      render(
-        <ActivityFeedProvider>
-          <DummyChildrenComponent />
-        </ActivityFeedProvider>
-      );
+    render(
+      <ActivityFeedProvider>
+        <DummyChildrenComponent />
+      </ActivityFeedProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByTestId('delete-feed'));
@@ -170,17 +336,248 @@ describe('ActivityFeedProvider', () => {
   });
 
   it('should call deletePostId with button click when isThread is false', async () => {
-    await act(async () => {
-      render(
-        <ActivityFeedProvider>
-          <DummyChildrenDeletePostComponent />
-        </ActivityFeedProvider>
-      );
+    render(
+      <ActivityFeedProvider>
+        <DummyChildrenDeletePostComponent />
+      </ActivityFeedProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('delete-feed')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByTestId('delete-feed'));
 
     expect(deleteThread).not.toHaveBeenCalled();
     expect(deletePostById).toHaveBeenCalledWith('123', '456');
+  });
+
+  describe('Activity Events', () => {
+    it('should fetch my activity feed and display activity events', async () => {
+      (getMyActivityFeed as jest.Mock).mockResolvedValueOnce({
+        data: mockActivityEvents,
+        paging: {},
+      });
+
+      await act(async () => {
+        render(
+          <ActivityFeedProvider>
+            <DummyActivityFeedComponent />
+          </ActivityFeedProvider>
+        );
+      });
+
+      await waitFor(() => {
+        expect(getMyActivityFeed).toHaveBeenCalledWith({ days: 7, limit: 20 });
+      });
+    });
+
+    it('should show loading state while fetching activity', async () => {
+      (getMyActivityFeed as jest.Mock).mockImplementation(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(() => resolve({ data: [], paging: {} }), 100)
+          )
+      );
+
+      render(
+        <ActivityFeedProvider>
+          <DummyActivityFeedComponent />
+        </ActivityFeedProvider>
+      );
+
+      expect(screen.getByTestId('activity-loading')).toBeInTheDocument();
+    });
+  });
+
+  describe('Activity Reactions', () => {
+    it('should call addActivityReaction when adding a reaction', async () => {
+      (getMyActivityFeed as jest.Mock).mockResolvedValueOnce({
+        data: mockActivityEvents,
+        paging: {},
+      });
+
+      await act(async () => {
+        render(
+          <ActivityFeedProvider>
+            <DummyActivityReactionComponent />
+          </ActivityFeedProvider>
+        );
+      });
+
+      fireEvent.click(screen.getByTestId('add-reaction'));
+
+      await waitFor(() => {
+        expect(addActivityReaction).toHaveBeenCalledWith(
+          'activity-123',
+          ReactionType.ThumbsUp
+        );
+      });
+    });
+
+    it('should call removeActivityReaction when removing a reaction', async () => {
+      (getMyActivityFeed as jest.Mock).mockResolvedValueOnce({
+        data: mockActivityEvents,
+        paging: {},
+      });
+
+      await act(async () => {
+        render(
+          <ActivityFeedProvider>
+            <DummyActivityReactionComponent />
+          </ActivityFeedProvider>
+        );
+      });
+
+      fireEvent.click(screen.getByTestId('remove-reaction'));
+
+      await waitFor(() => {
+        expect(removeActivityReaction).toHaveBeenCalledWith(
+          'activity-123',
+          ReactionType.ThumbsUp
+        );
+      });
+    });
+  });
+
+  describe('Activity Comments', () => {
+    const mockActivity: ActivityEvent = {
+      id: 'activity-456',
+      timestamp: 1234567890,
+      eventType: 'entityUpdated' as ActivityEvent['eventType'],
+      actor: { id: 'user-1', type: 'user', name: 'testuser' },
+      entity: { id: 'entity-1', type: 'table', name: 'testTable' },
+      about: '<#E::table::test>',
+      summary: 'Updated description',
+    };
+
+    it('should create a new thread when posting first comment on activity', async () => {
+      (getAllFeeds as jest.Mock).mockResolvedValueOnce({
+        data: [],
+        paging: {},
+      });
+
+      await act(async () => {
+        render(
+          <ActivityFeedProvider>
+            <DummyActivityCommentComponent activity={mockActivity} />
+          </ActivityFeedProvider>
+        );
+      });
+
+      fireEvent.click(screen.getByTestId('post-comment'));
+
+      await waitFor(() => {
+        expect(postThread).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: 'Test comment',
+            about: '<#E::table::test>',
+          })
+        );
+      });
+    });
+
+    it('should add to existing thread when posting comment on activity with thread', async () => {
+      const existingThread = {
+        id: 'existing-thread-123',
+        posts: [],
+      };
+      (getAllFeeds as jest.Mock).mockResolvedValue({
+        data: [existingThread],
+        paging: {},
+      });
+
+      await act(async () => {
+        render(
+          <ActivityFeedProvider>
+            <DummySetActiveActivityComponent activity={mockActivity} />
+          </ActivityFeedProvider>
+        );
+      });
+
+      fireEvent.click(screen.getByTestId('set-active'));
+
+      await waitFor(() => {
+        expect(getAllFeeds).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('Set Active Activity', () => {
+    const mockActivity: ActivityEvent = {
+      id: 'activity-789',
+      timestamp: 1234567890,
+      eventType: 'entityUpdated' as ActivityEvent['eventType'],
+      actor: { id: 'user-1', type: 'user', name: 'testuser' },
+      entity: { id: 'entity-1', type: 'table', name: 'testTable' },
+      about: '<#E::table::test>',
+      summary: 'Updated tags',
+    };
+
+    it('should fetch associated threads when setting active activity', async () => {
+      (getAllFeeds as jest.Mock).mockResolvedValue({
+        data: [{ id: 'thread-for-activity', posts: [] }],
+        paging: {},
+      });
+
+      await act(async () => {
+        render(
+          <ActivityFeedProvider>
+            <DummySetActiveActivityComponent activity={mockActivity} />
+          </ActivityFeedProvider>
+        );
+      });
+
+      fireEvent.click(screen.getByTestId('set-active'));
+
+      await waitFor(() => {
+        expect(getAllFeeds).toHaveBeenCalledWith(
+          '<#E::table::test>',
+          undefined,
+          'Conversation'
+        );
+      });
+    });
+
+    it('should handle no existing thread for activity', async () => {
+      (getAllFeeds as jest.Mock).mockResolvedValue({
+        data: [],
+        paging: {},
+      });
+
+      await act(async () => {
+        render(
+          <ActivityFeedProvider>
+            <DummySetActiveActivityComponent activity={mockActivity} />
+          </ActivityFeedProvider>
+        );
+      });
+
+      fireEvent.click(screen.getByTestId('set-active'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('activity-thread-id')).toHaveTextContent(
+          'no-thread'
+        );
+      });
+    });
+
+    it('should clear activity thread when setting active to undefined', async () => {
+      await act(async () => {
+        render(
+          <ActivityFeedProvider>
+            <DummySetActiveActivityComponent activity={undefined} />
+          </ActivityFeedProvider>
+        );
+      });
+
+      fireEvent.click(screen.getByTestId('set-active'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('selected-activity-id')).toHaveTextContent(
+          'none'
+        );
+      });
+    });
   });
 });

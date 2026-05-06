@@ -57,7 +57,7 @@ import {
   getStartOfDayInMillis,
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getDataQualityPagePath } from '../../../utils/RouterUtils';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import DataAssetsCoveragePieChartWidget from '../ChartWidgets/DataAssetsCoveragePieChartWidget/DataAssetsCoveragePieChartWidget.component';
 import EntityHealthStatusPieChartWidget from '../ChartWidgets/EntityHealthStatusPieChartWidget/EntityHealthStatusPieChartWidget.component';
 import IncidentTimeChartWidget from '../ChartWidgets/IncidentTimeChartWidget/IncidentTimeChartWidget.component';
@@ -633,7 +633,7 @@ const DataQualityDashboard = ({
     'tw:shadow-none': isGovernanceView,
   });
 
-  const cardBodyClass = isGovernanceView ? 'tw:py-6' : 'tw:p-6';
+  const cardBodyClass = 'tw:p-6';
 
   const filterBarContent = (
     <div
@@ -797,9 +797,10 @@ const DataQualityDashboard = ({
                   chartFilter={defaultFilters}
                   name="success"
                   redirectPath={{
-                    pathname: getDataQualityPagePath(
-                      DataQualityPageTabs.TEST_CASES
-                    ),
+                    pathname:
+                      observabilityRouterClassBase.getDataQualityPagePath(
+                        DataQualityPageTabs.TEST_CASES
+                      ),
                     search: QueryString.stringify({
                       testCaseStatus: TestCaseStatus.Success,
                     }),
@@ -814,9 +815,10 @@ const DataQualityDashboard = ({
                   chartFilter={defaultFilters}
                   name="aborted"
                   redirectPath={{
-                    pathname: getDataQualityPagePath(
-                      DataQualityPageTabs.TEST_CASES
-                    ),
+                    pathname:
+                      observabilityRouterClassBase.getDataQualityPagePath(
+                        DataQualityPageTabs.TEST_CASES
+                      ),
                     search: QueryString.stringify({
                       testCaseStatus: TestCaseStatus.Aborted,
                     }),
@@ -831,9 +833,10 @@ const DataQualityDashboard = ({
                   chartFilter={defaultFilters}
                   name="failed"
                   redirectPath={{
-                    pathname: getDataQualityPagePath(
-                      DataQualityPageTabs.TEST_CASES
-                    ),
+                    pathname:
+                      observabilityRouterClassBase.getDataQualityPagePath(
+                        DataQualityPageTabs.TEST_CASES
+                      ),
                     search: QueryString.stringify({
                       testCaseStatus: TestCaseStatus.Failed,
                     }),

@@ -18,7 +18,7 @@ import traceback
 from abc import ABC, abstractmethod
 from collections import namedtuple
 from datetime import datetime as _datetime
-from typing import Callable, List, Optional, Tuple, Type
+from typing import Callable, List, Optional, Tuple, Type  # noqa: UP035
 
 from sqlalchemy import (
     BigInteger,
@@ -65,17 +65,13 @@ ROW_COUNT = "rowCount"
 SIZE_IN_BYTES = "sizeInBytes"
 CREATE_DATETIME = "createDateTime"
 
-ERROR_MSG = (
-    "Schema/Table name not found in table args. Falling back to default computation"
-)
+ERROR_MSG = "Schema/Table name not found in table args. Falling back to default computation"
 
 
 class AbstractTableMetricComputer(ABC):
     """Base table computer"""
 
-    def __init__(
-        self, runner: QueryRunner, metrics: List[Metrics], conn_config, entity: OMTable
-    ):
+    def __init__(self, runner: QueryRunner, metrics: List[Metrics], conn_config, entity: OMTable):  # noqa: UP006
         """Instantiate base table computer"""
         self._runner = runner
         self._metrics = metrics
@@ -122,7 +118,7 @@ class AbstractTableMetricComputer(ABC):
             self._schema_name = self.runner.schema_name
             self._table_name = self.runner.table_name
         except AttributeError:
-            raise AttributeError(ERROR_MSG)
+            raise AttributeError(ERROR_MSG)  # noqa: B904
 
     def _build_table(self, table, schema) -> Table:
         """build table object from table name and schema name
@@ -138,7 +134,7 @@ class AbstractTableMetricComputer(ABC):
             return Table(table, MetaData(), schema=schema)
         return Table(table, MetaData())
 
-    def _get_col_names_and_count(self) -> Tuple[str, int]:
+    def _get_col_names_and_count(self) -> Tuple[str, int]:  # noqa: UP006
         """get column names and count from table
 
         Args:
@@ -147,17 +143,15 @@ class AbstractTableMetricComputer(ABC):
         Returns:
             Tuple[str, int]
         """
-        col_names = literal(
-            ",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String
-        ).label(COLUMN_NAMES)
+        col_names = literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String).label(COLUMN_NAMES)
         col_count = literal(len(inspect(self.runner.raw_dataset).c)).label(COLUMN_COUNT)
         return col_names, col_count
 
     def _build_query(
         self,
-        columns: List[Column],
+        columns: List[Column],  # noqa: UP006
         table: Table,
-        where_clause: Optional[List[ColumnOperators]] = None,
+        where_clause: Optional[List[ColumnOperators]] = None,  # noqa: UP006, UP045
     ):
         query = select(*columns).select_from(table)
         if where_clause:
@@ -177,9 +171,7 @@ class BaseTableMetricComputer(AbstractTableMetricComputer):
     def compute(self):
         """Default compute behavior for table metrics. This method will use the raw table
         to compute metrics and omit any sampling or partitioning logic."""
-        return self.runner.select_first_from_table(
-            *[metric().fn() for metric in self.metrics]
-        )
+        return self.runner.select_first_from_table(*[metric().fn() for metric in self.metrics])
 
 
 class SnowflakeTableMetricComputer(BaseTableMetricComputer):
@@ -264,9 +256,7 @@ class OracleTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res
@@ -288,16 +278,12 @@ class ClickHouseTableMetricComputer(BaseTableMetricComputer):
             Column("name") == self.table_name,
         ]
 
-        query = self._build_query(
-            columns, self._build_table("tables", "system"), where_clause
-        )
+        query = self._build_query(columns, self._build_table("tables", "system"), where_clause)
 
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res
@@ -342,9 +328,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res
@@ -363,7 +347,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
             Column("table_id") == self.table_name,
         ]
         schema = (
-            self.schema_name.startswith(f"{self._entity.database.name}.")
+            self.schema_name.startswith(f"{self._entity.database.name}.")  # noqa: RUF021
             and self.schema_name
             or f"{self._entity.database.name}.{self.schema_name}"
         )
@@ -375,9 +359,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res
@@ -387,7 +369,7 @@ class MySQLTableMetricComputer(BaseTableMetricComputer):
     """MySQL Table Metric Computer"""
 
     @inject
-    def compute(self, metrics: Inject[Type[MetricRegistry]] = None):
+    def compute(self, metrics: Inject[Type[MetricRegistry]] = None):  # noqa: UP006
         """compute table metrics for mysql"""
 
         if metrics is None:
@@ -405,16 +387,12 @@ class MySQLTableMetricComputer(BaseTableMetricComputer):
             Column("TABLE_SCHEMA") == self.schema_name,
             Column("TABLE_NAME") == self.table_name,
         ]
-        query = self._build_query(
-            columns, self._build_table("tables", "information_schema"), where_clause
-        )
+        query = self._build_query(columns, self._build_table("tables", "information_schema"), where_clause)
 
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res
@@ -453,9 +431,7 @@ class PostgresTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             return super().compute()
         return res
 
@@ -478,7 +454,7 @@ class TimescaleTableMetricComputer(PostgresTableMetricComputer):
                 sa_text(TIMESCALE_IS_HYPERTABLE),
                 {"schema": self.schema_name, "table": self.table_name},
             ).first()
-            return result is not None
+            return result is not None  # noqa: TRY300
         except Exception:
             return False
 
@@ -508,8 +484,7 @@ class TimescaleTableMetricComputer(PostgresTableMetricComputer):
                 )
         except Exception:
             logger.debug(
-                "TimescaleDB-specific metric query failed for %s.%s, "
-                "falling back to PostgreSQL logic",
+                "TimescaleDB-specific metric query failed for %s.%s, falling back to PostgreSQL logic",
                 self.schema_name,
                 self.table_name,
             )
@@ -536,15 +511,11 @@ class RedshiftTableMetricComputer(BaseTableMetricComputer):
             Column("table") == self.table_name,
         ]
 
-        query = self._build_query(
-            columns, self._build_table("svv_table_info", "pg_catalog"), where_clause
-        )
+        query = self._build_query(columns, self._build_table("svv_table_info", "pg_catalog"), where_clause)
         res = self.runner._session.execute(query).first()
         if not res:
             return super().compute()
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res
@@ -582,9 +553,7 @@ class MSSQLTableMetricComputer(BaseTableMetricComputer):
             self._build_query(
                 [
                     Column("object_id"),
-                    (func.sum(Column("reserved_page_count")) * 8192).label(
-                        "size_bytes"
-                    ),
+                    (func.sum(Column("reserved_page_count")) * 8192).label("size_bytes"),
                 ],
                 self._build_table("dm_db_partition_stats", "sys"),
             ).group_by(Column("object_id"))
@@ -629,9 +598,7 @@ class MSSQLTableMetricComputer(BaseTableMetricComputer):
 
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             return super().compute()
         return res
 
@@ -670,9 +637,7 @@ class MSSQLTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             return super().compute()
         return res
 
@@ -715,9 +680,7 @@ class CockroachTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             return super().compute()
         return res
 
@@ -748,11 +711,7 @@ class DB2TableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if (
-            res.rowCount is None
-            or res.rowCount < 0
-            or (res.rowCount == 0 and self._entity.tableType == TableType.View)
-        ):
+        if res.rowCount is None or res.rowCount < 0 or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             return super().compute()
         return res
 
@@ -782,9 +741,7 @@ class VerticaTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             return super().compute()
         return res
 
@@ -793,7 +750,50 @@ class SAPHanaTableMetricComputer(BaseTableMetricComputer):
     """SAP HANA Table Metric Computer"""
 
     def compute(self):
-        """compute table metrics for SAP HANA using SYS.M_TABLES"""
+        """Compute table metrics from SYS.M_TABLES and CREATE_TIME from SYS.TABLES."""
+        if not self.schema_name or not self.table_name:
+            logger.warning(
+                "Missing schema or table name for HANA table metric computation. "
+                "Falling back to base computation with schema_name=%r, table_name=%r",
+                self.schema_name,
+                self.table_name,
+            )
+            return super().compute()
+        # HANA system catalog stores identifiers in uppercase
+        schema_upper = self.schema_name.upper()
+        table_upper = self.table_name.upper()
+
+        m_tables_cte = cte(
+            self._build_query(
+                [
+                    Column("SCHEMA_NAME"),
+                    Column("TABLE_NAME"),
+                    Column("RECORD_COUNT"),
+                    Column("TABLE_SIZE"),
+                ],
+                self._build_table("M_TABLES", "SYS"),
+                [
+                    Column("SCHEMA_NAME") == schema_upper,
+                    Column("TABLE_NAME") == table_upper,
+                ],
+            )
+        )
+
+        tables_cte = cte(
+            self._build_query(
+                [
+                    Column("SCHEMA_NAME"),
+                    Column("TABLE_NAME"),
+                    Column("CREATE_TIME"),
+                ],
+                self._build_table("TABLES", "SYS"),
+                [
+                    Column("SCHEMA_NAME") == schema_upper,
+                    Column("TABLE_NAME") == table_upper,
+                ],
+            )
+        )
+
         columns = [
             Column("RECORD_COUNT").label(ROW_COUNT),
             Column("TABLE_SIZE").label(SIZE_IN_BYTES),
@@ -801,23 +801,19 @@ class SAPHanaTableMetricComputer(BaseTableMetricComputer):
             *self._get_col_names_and_count(),
         ]
 
-        where_clause = [
-            Column("SCHEMA_NAME") == self.schema_name,
-            Column("TABLE_NAME") == self.table_name,
-        ]
-
-        query = self._build_query(
-            columns,
-            self._build_table("M_TABLES", "SYS"),
-            where_clause,
+        query = self._build_query(columns, m_tables_cte).join(
+            tables_cte,
+            and_(
+                m_tables_cte.c.SCHEMA_NAME == tables_cte.c.SCHEMA_NAME,
+                m_tables_cte.c.TABLE_NAME == tables_cte.c.TABLE_NAME,
+            ),
+            isouter=True,
         )
 
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             return super().compute()
         return res
 
@@ -834,7 +830,7 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
     convert to a namedtuple so the date can be patched before returning.
     """
 
-    def _parse_created_datetime(self, value) -> Optional[_datetime]:
+    def _parse_created_datetime(self, value) -> Optional[_datetime]:  # noqa: UP045
         for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%m/%d/%Y"):
             try:
                 return _datetime.strptime(str(value), fmt)
@@ -849,15 +845,13 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
         These FunctionElement subclasses have @compiles(Dialects.Informix) overrides
         that set literal_binds=True, inlining values directly into SQL.
         """
-        from metadata.profiler.metrics.static.column_count import ColumnCountFn
-        from metadata.profiler.metrics.static.column_names import ColunNameFn
+        from metadata.profiler.metrics.static.column_count import ColumnCountFn  # noqa: PLC0415
+        from metadata.profiler.metrics.static.column_names import ColunNameFn  # noqa: PLC0415
 
-        col_names = ColunNameFn(
-            literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String)
-        ).label(COLUMN_NAMES)
-        col_count = ColumnCountFn(
-            literal(len(inspect(self.runner.raw_dataset).c))
-        ).label(COLUMN_COUNT)
+        col_names = ColunNameFn(literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String)).label(
+            COLUMN_NAMES
+        )
+        col_count = ColumnCountFn(literal(len(inspect(self.runner.raw_dataset).c))).label(COLUMN_COUNT)
         return col_names, col_count
 
     def compute(self):
@@ -895,7 +889,7 @@ class TableMetricComputer:
         self,
         dialect: str,
         runner: QueryRunner,
-        metrics: List[Metrics],
+        metrics: List[Metrics],  # noqa: UP006
         conn_config,
         entity: OMTable,
     ):
@@ -907,14 +901,12 @@ class TableMetricComputer:
         self._conn_config = conn_config
 
         effective_dialect = self._resolve_dialect(dialect, conn_config)
-        self.table_metric_computer: AbstractTableMetricComputer = (
-            table_metric_computer_factory.construct(
-                effective_dialect,
-                runner=self._runner,
-                metrics=self._metrics,
-                conn_config=self._conn_config,
-                entity=self._entity,
-            )
+        self.table_metric_computer: AbstractTableMetricComputer = table_metric_computer_factory.construct(
+            effective_dialect,
+            runner=self._runner,
+            metrics=self._metrics,
+            conn_config=self._conn_config,
+            entity=self._entity,
         )
 
     @staticmethod
@@ -924,7 +916,7 @@ class TableMetricComputer:
         TimescaleDB uses the PostgreSQL SQLAlchemy dialect but requires its own
         metric computer. We detect this by checking the connection config type.
         """
-        if dialect == Dialects.Postgres:
+        if dialect == Dialects.Postgres:  # noqa: SIM102
             if isinstance(conn_config, TimescaleConnectionConfig):
                 return Dialects.Timescale
         return dialect
@@ -956,7 +948,7 @@ class TableMetricComputerFactory:
         try:
             construct_instance: AbstractTableMetricComputer = construct(**kwargs)
             construct_instance._set_table_and_schema_name()
-            return construct_instance
+            return construct_instance  # noqa: TRY300
         except Exception:
             # if an error occurs, fallback to the base construct
             logger.debug(traceback.format_exc())
@@ -968,9 +960,7 @@ table_metric_computer_factory.register("base", BaseTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Redshift, RedshiftTableMetricComputer)
 table_metric_computer_factory.register(Dialects.MySQL, MySQLTableMetricComputer)
 table_metric_computer_factory.register(Dialects.BigQuery, BigQueryTableMetricComputer)
-table_metric_computer_factory.register(
-    Dialects.ClickHouse, ClickHouseTableMetricComputer
-)
+table_metric_computer_factory.register(Dialects.ClickHouse, ClickHouseTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Oracle, OracleTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Snowflake, SnowflakeTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Postgres, PostgresTableMetricComputer)

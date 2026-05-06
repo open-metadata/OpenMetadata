@@ -150,6 +150,7 @@ export function useGraphDataBuilder({
   expandedTermIds,
   clickedEdgeId,
   nodePositions,
+  glossaries,
   glossaryColorMap,
   layoutType,
   hierarchyCombos = [],
@@ -327,9 +328,20 @@ export function useGraphDataBuilder({
 
       const visibleIds = new Set([...visibleTermIds, ...visibleAssetIds]);
       nodesForGraph = inputNodes.filter((n) => visibleIds.has(n.id));
-      edgesForGraph = mergedEdgesList.filter(
-        (e) => visibleIds.has(e.from) && visibleIds.has(e.to)
-      );
+      edgesForGraph = mergedEdgesList.filter((e) => {
+        if (!visibleIds.has(e.from) || !visibleIds.has(e.to)) {
+          return false;
+        }
+        const fromIsAsset = allAssetIds.has(e.from);
+        const toIsAsset = allAssetIds.has(e.to);
+        if (fromIsAsset || toIsAsset) {
+          const termId = fromIsAsset ? e.to : e.from;
+
+          return idsToExpand.has(termId);
+        }
+
+        return true;
+      });
     } else if (explorationMode === 'hierarchy') {
       nodesForGraph = inputNodes;
       edgesForGraph = inputEdges.map((e) => ({
@@ -707,7 +719,10 @@ export function useGraphDataBuilder({
         if (terms.length === 0) {
           return;
         }
-        const name = terms[0].group ?? glossaryId;
+        const glossary = glossaries.find((g) => g.id === glossaryId);
+        const name =
+          terms[0].group ??
+          (glossary ? glossary.displayName || glossary.name : '');
         const color = glossaryColorMap[glossaryId] ?? 'var(--color-gray-400)';
         const isComboDimmed = Boolean(
           searchGlossarySet && !searchGlossarySet.has(glossaryId)
@@ -741,6 +756,7 @@ export function useGraphDataBuilder({
     explorationMode,
     hierarchyCombos,
     graphSearchHighlight,
+    glossaries,
   ]);
 
   const assetToTermMap = useMemo(() => {

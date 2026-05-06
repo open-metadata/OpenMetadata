@@ -12,19 +12,25 @@
       "type": "object",
       "properties": {
         "dataPath": {
-          "title": "Data path",
-          "description": "The path where the data resides in the container, excluding the bucket name",
+          "title": "Data Path",
+          "description": "Literal path relative to the bucket root, or a glob-style pattern. Use a single-star wildcard for one path level, a double-star wildcard for any depth, and a question mark for a single character.",
           "type": "string"
         },
         "structureFormat": {
-          "title": "Schema format",
-          "description": "What's the schema format for the container, eg. avro, parquet, csv.",
+          "title": "Structure Format",
+          "description": "Expected file format for schema inference. Leave blank to auto-detect from the file extension. Ignored when Unstructured Data is enabled.",
           "type": "string",
           "default": null
         },
+        "unstructuredData": {
+          "title": "Unstructured Data",
+          "description": "When true, files matching the glob dataPath are cataloged as individual containers without schema extraction. Use for images, documents, and other non-tabular files.",
+          "type": "boolean",
+          "default": false
+        },
         "unstructuredFormats": {
-          "title": "Unstructured format",
-          "description": "What the unstructured formats you want to ingest, eg. png, pdf, jpg.",
+          "title": "Unstructured Formats",
+          "description": "Legacy option for literal dataPath entries. List of file extensions (e.g. png, pdf, jpg) to catalog as unstructured. Prefer the unstructuredData flag with a glob dataPath for new configurations.",
           "type": "array",
           "items": {
             "type": "string"
@@ -49,12 +55,59 @@
           "type": "boolean",
           "default": false
         },
-        "partitionColumns": {
-          "title": "Partition Columns",
-          "description": "What are the partition columns in case the container's data is partitioned",
+        "autoPartitionDetection": {
+          "title": "Auto Partition Detection",
+          "description": "When true and dataPath is a glob, automatically detect Hive-style partition columns from matched paths (e.g. year=2024/month=01). Ignored for literal paths.",
+          "type": "boolean",
+          "default": false
+        },
+        "excludePaths": {
+          "title": "Exclude Path Segments",
+          "description": "Path segments to skip during glob discovery. Any file whose path contains one of these segments is ignored. Common defaults applied when unset: _delta_log, _temporary, _spark_metadata, .tmp, _SUCCESS.",
           "type": "array",
           "items": {
-            "$ref": "../../entity/data/table.json#/definitions/column"
+            "type": "string"
+          },
+          "default": null
+        },
+        "excludePatterns": {
+          "title": "Exclude Patterns",
+          "description": "Glob patterns to exclude during glob discovery. Any file matching one of these patterns is skipped.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null
+        },
+        "partitionColumns": {
+          "title": "Partition Columns",
+          "description": "Explicit partition column definitions. Overrides auto-detection when provided.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "title": "Name",
+                "description": "Partition column name.",
+                "type": "string"
+              },
+              "dataType": {
+                "title": "Data Type",
+                "description": "Partition column data type.",
+                "$ref": "../../entity/data/table.json#/definitions/dataType"
+              },
+              "dataTypeDisplay": {
+                "title": "Data Type Display",
+                "description": "Display name for the data type (optional).",
+                "type": "string"
+              },
+              "description": {
+                "title": "Description",
+                "description": "Description of the partition column (optional).",
+                "type": "string"
+              }
+            },
+            "required": ["name", "dataType"]
           },
           "default": null
         }

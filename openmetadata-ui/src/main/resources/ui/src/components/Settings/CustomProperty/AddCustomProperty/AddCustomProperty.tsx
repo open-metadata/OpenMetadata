@@ -30,7 +30,7 @@ import {
   TABLE_TYPE_CUSTOM_PROPERTY,
 } from '../../../../constants/CustomProperty.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
-import { CUSTOM_PROPERTY_NAME_REGEX } from '../../../../constants/regex.constants';
+import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
 import {
   CUSTOM_PROPERTY_CATEGORY,
   OPEN_METADATA,
@@ -270,7 +270,7 @@ const AddCustomProperty = ({
         placeholder: t('label.name'),
         rules: [
           {
-            pattern: CUSTOM_PROPERTY_NAME_REGEX,
+            pattern: ENTITY_NAME_REGEX,
             message: t('message.custom-property-name-validation'),
           },
         ],

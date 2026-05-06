@@ -15,6 +15,7 @@ package org.openmetadata.service.workflows.searchIndex;
 
 import static org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isStaleReferenceError;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -140,7 +141,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
               batchSize,
               cursor,
               true,
-              Entity.getFields(entityType, fields),
+              Entity.getOnlySupportedFields(entityType, fields),
               null);
 
       // Filter out EntityNotFoundExceptions from errors - these are expected when relationships
@@ -150,7 +151,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
         List<EntityError> warningErrors = new ArrayList<>();
 
         for (EntityError error : result.getErrors()) {
-          if (isEntityNotFoundError(error)) {
+          if (isStaleReferenceError(error)) {
             warningErrors.add(error);
           } else {
             realErrors.add(error);
@@ -240,7 +241,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
               batchSize,
               currentCursor,
               true,
-              Entity.getFields(entityType, fields),
+              Entity.getOnlySupportedFields(entityType, fields),
               null);
 
       // Filter out EntityNotFoundExceptions from errors - same as in read() method
@@ -249,7 +250,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       if (!result.getErrors().isEmpty()) {
         List<EntityError> realErrors = new ArrayList<>();
         for (EntityError error : result.getErrors()) {
-          if (isEntityNotFoundError(error)) {
+          if (isStaleReferenceError(error)) {
             warningsCount++;
             LOG.debug("Skipping entity due to missing relationship: {}", error.getMessage());
           } else {
@@ -298,13 +299,13 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
               keysetCursor,
               cachedTotalCount,
               true,
-              Entity.getFields(entityType, fields));
+              Entity.getOnlySupportedFields(entityType, fields));
 
       int warningsCount = 0;
       if (result.getErrors() != null && !result.getErrors().isEmpty()) {
         List<EntityError> realErrors = new ArrayList<>();
         for (EntityError error : result.getErrors()) {
-          if (isEntityNotFoundError(error)) {
+          if (isStaleReferenceError(error)) {
             warningsCount++;
             LOG.debug("Skipping entity due to missing relationship: {}", error.getMessage());
           } else {
@@ -377,16 +378,5 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
 
   public void updateStats(int currentSuccess, int currentFailed, int currentWarnings) {
     getUpdatedStats(stats, currentSuccess, currentFailed, currentWarnings);
-  }
-
-  private boolean isEntityNotFoundError(EntityError error) {
-    if (error == null || error.getMessage() == null) {
-      return false;
-    }
-    String message = error.getMessage().toLowerCase();
-    return message.contains("not found")
-        || message.contains("instance for")
-        || message.contains("does not exist")
-        || message.contains("entitynotfoundexception");
   }
 }

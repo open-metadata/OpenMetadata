@@ -34,11 +34,9 @@ import {
 import { Table } from '../../../../generated/entity/data/table';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { getColumnProfilerList } from '../../../../rest/tableAPI';
-import {
-  formatNumberWithComma,
-  Transi18next,
-} from '../../../../utils/CommonUtils';
+import { formatNumberWithComma } from '../../../../utils/CommonUtils';
 import documentationLinksClassBase from '../../../../utils/DocumentationLinksClassBase';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import {
   calculateColumnProfilerMetrics,
   calculateCustomMetrics,

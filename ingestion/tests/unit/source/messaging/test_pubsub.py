@@ -11,6 +11,7 @@
 """
 Unit tests for Google Cloud Pub/Sub connector
 """
+
 import os
 import uuid
 from unittest.mock import MagicMock, patch
@@ -125,19 +126,11 @@ class TestPubSubModels:
 class TestPubSubConnection:
     """Test Pub/Sub connection handling"""
 
-    @patch(
-        "metadata.ingestion.source.messaging.pubsub.connection.set_google_credentials"
-    )
-    @patch(
-        "metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.PublisherClient"
-    )
-    @patch(
-        "metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.SubscriberClient"
-    )
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.set_google_credentials")
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.PublisherClient")
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.SubscriberClient")
     @patch("metadata.ingestion.source.messaging.pubsub.connection.SchemaServiceClient")
-    def test_get_connection_with_project_id(
-        self, mock_schema_client, mock_subscriber, mock_publisher, mock_set_creds
-    ):
+    def test_get_connection_with_project_id(self, mock_schema_client, mock_subscriber, mock_publisher, mock_set_creds):
         """Test get_connection with explicit project ID"""
         from metadata.ingestion.source.messaging.pubsub.connection import (
             PubSubClient,
@@ -160,18 +153,10 @@ class TestPubSubConnection:
         mock_subscriber.assert_called_once()
         mock_schema_client.assert_called_once()
 
-    @patch(
-        "metadata.ingestion.source.messaging.pubsub.connection.set_google_credentials"
-    )
-    @patch(
-        "metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.PublisherClient"
-    )
-    @patch(
-        "metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.SubscriberClient"
-    )
-    def test_get_connection_without_schema_registry(
-        self, mock_subscriber, mock_publisher, mock_set_creds
-    ):
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.set_google_credentials")
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.PublisherClient")
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.SubscriberClient")
+    def test_get_connection_without_schema_registry(self, mock_subscriber, mock_publisher, mock_set_creds):
         """Test get_connection with schema registry disabled"""
         from metadata.ingestion.source.messaging.pubsub.connection import get_connection
 
@@ -186,22 +171,12 @@ class TestPubSubConnection:
 
         assert client.schema_client is None
 
-    @patch(
-        "metadata.ingestion.source.messaging.pubsub.connection.set_google_credentials"
-    )
-    @patch(
-        "metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.PublisherClient"
-    )
-    @patch(
-        "metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.SubscriberClient"
-    )
-    def test_get_connection_with_emulator(
-        self, mock_subscriber, mock_publisher, mock_set_creds
-    ):
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.set_google_credentials")
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.PublisherClient")
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.SubscriberClient")
+    def test_get_connection_with_emulator(self, mock_subscriber, mock_publisher, mock_set_creds):
         """Test get_connection with emulator enabled"""
-        pytest.importorskip(
-            "google.cloud.pubsub_v1", reason="google-cloud-pubsub not installed"
-        )
+        pytest.importorskip("google.cloud.pubsub_v1", reason="google-cloud-pubsub not installed")
         from metadata.ingestion.source.messaging.pubsub.connection import (
             PUBSUB_EMULATOR_HOST,
             get_connection,
@@ -222,18 +197,10 @@ class TestPubSubConnection:
         mock_set_creds.assert_not_called()
         assert PUBSUB_EMULATOR_HOST not in os.environ
 
-    @patch(
-        "metadata.ingestion.source.messaging.pubsub.connection.set_google_credentials"
-    )
-    @patch(
-        "metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.PublisherClient"
-    )
-    @patch(
-        "metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.SubscriberClient"
-    )
-    def test_get_connection_missing_project_id_raises(
-        self, mock_subscriber, mock_publisher, mock_set_creds
-    ):
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.set_google_credentials")
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.PublisherClient")
+    @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.SubscriberClient")
+    def test_get_connection_missing_project_id_raises(self, mock_subscriber, mock_publisher, mock_set_creds):
         """Test get_connection raises ValueError when project ID is missing"""
         from metadata.ingestion.source.messaging.pubsub.connection import get_connection
 
@@ -302,9 +269,7 @@ class TestPubSubMetadataParsing:
     @pytest.fixture
     def pubsub_source_class(self):
         """Import PubsubSource class"""
-        pytest.importorskip(
-            "google.cloud.pubsub_v1", reason="google-cloud-pubsub not installed"
-        )
+        pytest.importorskip("google.cloud.pubsub_v1", reason="google-cloud-pubsub not installed")
         from metadata.ingestion.source.messaging.pubsub.metadata import PubsubSource
 
         return PubsubSource
@@ -465,9 +430,7 @@ class TestPubSubTopicLineage:
         source.metadata = MagicMock()
         source.context = MagicMock()
         source.context.get.return_value.messaging_service = "test-pubsub-service"
-        source.yield_topic_lineage = PubsubSource.yield_topic_lineage.__get__(
-            source, PubsubSource
-        )
+        source.yield_topic_lineage = PubsubSource.yield_topic_lineage.__get__(source, PubsubSource)
         return source
 
     def test_yield_topic_lineage_no_subscriptions(self, mock_pubsub_source):
@@ -598,11 +561,10 @@ class TestPubSubTopicLineage:
             topic_metadata=topic_metadata,
         )
 
-        with patch(
-            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.search_table_from_es"
-        ) as mock_search, patch(
-            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.build"
-        ) as mock_fqn_build:
+        with (
+            patch("metadata.ingestion.source.messaging.pubsub.metadata.fqn.search_table_from_es") as mock_search,
+            patch("metadata.ingestion.source.messaging.pubsub.metadata.fqn.build") as mock_fqn_build,
+        ):
             mock_search.return_value = mock_table
             mock_fqn_build.return_value = "test-pubsub-service.test-topic"
             result = list(mock_pubsub_source.yield_topic_lineage(topic_details))
@@ -624,8 +586,8 @@ class TestPubSubTopicLineage:
         mock_topic = MagicMock()
         mock_topic.id = topic_uuid
 
-        mock_pubsub_source.metadata.get_by_name.side_effect = (
-            lambda entity, fqn: mock_topic if entity == Topic else None
+        mock_pubsub_source.metadata.get_by_name.side_effect = lambda entity, fqn: (
+            mock_topic if entity == Topic else None
         )
 
         subscription = PubSubSubscription(
@@ -641,11 +603,10 @@ class TestPubSubTopicLineage:
             topic_metadata=topic_metadata,
         )
 
-        with patch(
-            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.search_table_from_es"
-        ) as mock_search, patch(
-            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.build"
-        ) as mock_fqn_build:
+        with (
+            patch("metadata.ingestion.source.messaging.pubsub.metadata.fqn.search_table_from_es") as mock_search,
+            patch("metadata.ingestion.source.messaging.pubsub.metadata.fqn.build") as mock_fqn_build,
+        ):
             mock_search.return_value = mock_table
             mock_fqn_build.return_value = "test-pubsub-service.events-topic"
             result = list(mock_pubsub_source.yield_topic_lineage(topic_details))
@@ -677,8 +638,8 @@ class TestPubSubTopicLineage:
         mock_topic = MagicMock()
         mock_topic.id = topic_uuid
 
-        mock_pubsub_source.metadata.get_by_name.side_effect = (
-            lambda entity, fqn: mock_topic if entity == Topic else None
+        mock_pubsub_source.metadata.get_by_name.side_effect = lambda entity, fqn: (
+            mock_topic if entity == Topic else None
         )
 
         search_call_count = {"count": 0}
@@ -710,11 +671,10 @@ class TestPubSubTopicLineage:
             topic_metadata=topic_metadata,
         )
 
-        with patch(
-            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.search_table_from_es"
-        ) as mock_search, patch(
-            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.build"
-        ) as mock_fqn_build:
+        with (
+            patch("metadata.ingestion.source.messaging.pubsub.metadata.fqn.search_table_from_es") as mock_search,
+            patch("metadata.ingestion.source.messaging.pubsub.metadata.fqn.build") as mock_fqn_build,
+        ):
             mock_search.side_effect = search_side_effect
             mock_fqn_build.return_value = "test-pubsub-service.multi-topic"
             result = list(mock_pubsub_source.yield_topic_lineage(topic_details))
@@ -735,15 +695,13 @@ class TestPubSubTopicLineage:
         mock_topic = MagicMock()
         mock_topic.id = "topic-id"
 
-        mock_pubsub_source.metadata.get_by_name.side_effect = (
-            lambda entity, fqn: mock_topic if entity == Topic else None
+        mock_pubsub_source.metadata.get_by_name.side_effect = lambda entity, fqn: (
+            mock_topic if entity == Topic else None
         )
 
         subscription = PubSubSubscription(
             name="bq-sub",
-            bigquery_config=PubSubBigQueryConfig(
-                table="my-project.my_dataset.my_table"
-            ),
+            bigquery_config=PubSubBigQueryConfig(table="my-project.my_dataset.my_table"),
         )
         topic_metadata = PubSubTopicMetadata(
             name="projects/test/topics/test-topic",
@@ -754,11 +712,10 @@ class TestPubSubTopicLineage:
             topic_metadata=topic_metadata,
         )
 
-        with patch(
-            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.search_table_from_es"
-        ) as mock_search, patch(
-            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.build"
-        ) as mock_fqn_build:
+        with (
+            patch("metadata.ingestion.source.messaging.pubsub.metadata.fqn.search_table_from_es") as mock_search,
+            patch("metadata.ingestion.source.messaging.pubsub.metadata.fqn.build") as mock_fqn_build,
+        ):
             mock_search.return_value = mock_table
             mock_fqn_build.return_value = "test-pubsub-service.test-topic"
             list(mock_pubsub_source.yield_topic_lineage(topic_details))

@@ -12,6 +12,7 @@
 """
 Timeout utilities
 """
+
 import errno
 import functools
 import inspect
@@ -19,7 +20,7 @@ import os
 import platform
 import signal
 import threading
-from typing import Callable
+from typing import Callable  # noqa: UP035
 
 from metadata.utils.constants import TEN_MIN
 from metadata.utils.logger import utils_logger
@@ -49,10 +50,7 @@ def timeout(seconds: int = TEN_MIN) -> Callable:
         @functools.wraps(fn)
         def inner(*args, **kwargs):
             # SIGALRM is not supported on Windows or sub-threads
-            if (
-                platform.system() != "Windows"
-                and threading.current_thread() == threading.main_thread()
-            ):
+            if platform.system() != "Windows" and threading.current_thread() == threading.main_thread():
                 signal.signal(signal.SIGALRM, _handle_timeout)
                 signal.alarm(seconds)
                 try:
@@ -78,7 +76,7 @@ def cls_timeout(seconds: int = TEN_MIN):
     """
 
     def inner(cls):
-        for attr_name, attr in inspect.getmembers(  # pylint: disable=unused-variable
+        for attr_name, attr in inspect.getmembers(  # pylint: disable=unused-variable  # noqa: B007
             cls, inspect.ismethod
         ):
             setattr(cls, attr_name, timeout(seconds)(getattr(cls, attr_name)))

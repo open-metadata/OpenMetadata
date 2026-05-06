@@ -39,6 +39,7 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -151,6 +152,173 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("id") String id,
       @Bind("json") String json,
       @Bind("version") String version);
+
+  /**
+   * List (id, fullyQualifiedName) pairs for all rows whose FQN hash begins with {@code
+   * oldPrefixHash}. Used by rename cascade flows to enumerate which children need cache
+   * invalidation before an {@link #updateFqn} bulk rewrite.
+   */
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn FROM <table> "
+              + "WHERE <nameHashColumn> LIKE :prefix",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, json->>'fullyQualifiedName' AS fqn FROM <table> "
+              + "WHERE <nameHashColumn> LIKE :prefix",
+      connectionType = POSTGRES)
+  @RegisterRowMapper(EntityIdFqnPairMapper.class)
+  List<EntityIdFqnPair> listIdFqnByPrefixHash(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @Bind("prefix") String prefix);
+
+  default List<EntityIdFqnPair> listDescendantIdFqnByPrefix(String oldPrefix) {
+    if (!getNameHashColumn().equals("fqnHash")) {
+      return java.util.Collections.emptyList();
+    }
+    String prefixPattern = FullyQualifiedName.buildHash(oldPrefix) + ".%";
+    return listIdFqnByPrefixHash(getTableName(), getNameHashColumn(), prefixPattern);
+  }
+
+  final class EntityIdFqnPair {
+    public final UUID id;
+    public final String fqn;
+
+    public EntityIdFqnPair(UUID id, String fqn) {
+      this.id = id;
+      this.fqn = fqn;
+    }
+  }
+
+  class EntityIdFqnPairMapper implements RowMapper<EntityIdFqnPair> {
+    @Override
+    public EntityIdFqnPair map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new EntityIdFqnPair(UUID.fromString(rs.getString("id")), rs.getString("fqn"));
+    }
+  }
+
+  /**
+   * Lightweight projection of just the fields {@link EntityReference} needs (id, name,
+   * displayName, fullyQualifiedName, deleted). Used by paths that only need to render a
+   * reference — e.g. breadcrumbs — and want to avoid deserializing the full entity JSON for
+   * every row.
+   */
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) AS name, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) AS displayName, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn, "
+              + "deleted "
+              + "FROM <table> WHERE <nameHashColumn> IN (<names>) <cond>",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, "
+              + "json->>'name' AS name, "
+              + "json->>'displayName' AS displayName, "
+              + "json->>'fullyQualifiedName' AS fqn, "
+              + "deleted "
+              + "FROM <table> WHERE <nameHashColumn> IN (<names>) <cond>",
+      connectionType = POSTGRES)
+  @RegisterRowMapper(EntityReferenceRowMapper.class)
+  List<EntityReferenceRow> findReferencesByNameHashes(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @BindList("names") List<String> nameHashes,
+      @Define("cond") String cond);
+
+  /**
+   * Variant of {@link #findReferencesByNameHashes} for tables that don't carry a
+   * {@code deleted} column (entities that override {@link #supportsSoftDelete()} to return
+   * {@code false}). Selecting {@code deleted} on those tables would throw
+   * {@code SQLSyntaxErrorException}; the row mapper substitutes {@code FALSE} for the absent
+   * column so the call site can treat both cases uniformly.
+   */
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) AS name, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) AS displayName, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn, "
+              + "FALSE AS deleted "
+              + "FROM <table> WHERE <nameHashColumn> IN (<names>)",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, "
+              + "json->>'name' AS name, "
+              + "json->>'displayName' AS displayName, "
+              + "json->>'fullyQualifiedName' AS fqn, "
+              + "FALSE AS deleted "
+              + "FROM <table> WHERE <nameHashColumn> IN (<names>)",
+      connectionType = POSTGRES)
+  @RegisterRowMapper(EntityReferenceRowMapper.class)
+  List<EntityReferenceRow> findReferencesByNameHashesNoDeleted(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @BindList("names") List<String> nameHashes);
+
+  /**
+   * Resolve a list of FQNs to {@link EntityReference}s in a single batched query without
+   * deserializing the full entity JSON. Returns refs in arbitrary order — callers that need
+   * ordering should reorder by FQN.
+   */
+  default List<EntityReference> findReferencesByFqns(List<String> entityFQNs, Include include) {
+    if (CollectionUtils.isEmpty(entityFQNs)) {
+      return List.of();
+    }
+    List<String> nameHashes =
+        entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList();
+    int maxChunkSize = 30000;
+    if (nameHashes.size() <= maxChunkSize) {
+      return findReferenceRows(nameHashes, include).stream()
+          .map(row -> row.toEntityReference(Entity.getEntityTypeFromClass(getEntityClass())))
+          .toList();
+    }
+    List<EntityReference> all = new ArrayList<>(nameHashes.size());
+    for (int i = 0; i < nameHashes.size(); i += maxChunkSize) {
+      List<String> chunk = nameHashes.subList(i, Math.min(i + maxChunkSize, nameHashes.size()));
+      findReferenceRows(chunk, include).stream()
+          .map(row -> row.toEntityReference(Entity.getEntityTypeFromClass(getEntityClass())))
+          .forEach(all::add);
+    }
+    return all;
+  }
+
+  private List<EntityReferenceRow> findReferenceRows(List<String> nameHashes, Include include) {
+    if (!supportsSoftDelete()) {
+      return findReferencesByNameHashesNoDeleted(getTableName(), getNameHashColumn(), nameHashes);
+    }
+    return findReferencesByNameHashes(
+        getTableName(), getNameHashColumn(), nameHashes, getCondition(include));
+  }
+
+  record EntityReferenceRow(UUID id, String name, String displayName, String fqn, boolean deleted) {
+    public EntityReference toEntityReference(String entityType) {
+      return new EntityReference()
+          .withId(id)
+          .withType(entityType)
+          .withName(name)
+          .withDisplayName(displayName)
+          .withFullyQualifiedName(fqn)
+          .withDeleted(deleted);
+    }
+  }
+
+  class EntityReferenceRowMapper implements RowMapper<EntityReferenceRow> {
+    @Override
+    public EntityReferenceRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new EntityReferenceRow(
+          UUID.fromString(rs.getString("id")),
+          rs.getString("name"),
+          rs.getString("displayName"),
+          rs.getString("fqn"),
+          rs.getBoolean("deleted"));
+    }
+  }
 
   default void updateFqn(String oldPrefix, String newPrefix) {
     LOG.info("Updating FQN for {} from {} to {}", getTableName(), oldPrefix, newPrefix);
@@ -409,7 +577,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("startHash") String startHash,
       @Bind("endHash") String endHash);
 
-  @SqlQuery("SELECT json FROM <table> LIMIT :limit OFFSET :offset")
+  @SqlQuery("SELECT json FROM <table> ORDER BY id LIMIT :limit OFFSET :offset")
   List<String> listAfterWithOffset(
       @Define("table") String table, @Bind("limit") int limit, @Bind("offset") int offset);
 

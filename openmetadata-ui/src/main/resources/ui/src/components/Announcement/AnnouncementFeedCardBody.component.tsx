@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,266 +10,171 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Avatar, Button, Col, Popover, Row } from 'antd';
-import classNames from 'classnames';
-import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { MoreOutlined } from '@ant-design/icons';
+import { Button, Dropdown, Space, Typography } from 'antd';
+import { compare } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowBottom } from '../../assets/svg/ic-arrow-down.svg';
-import { ReactionOperation } from '../../enums/reactions.enum';
-import {
-  AnnouncementDetails,
-  ThreadType,
-} from '../../generated/api/feed/createThread';
-import { Post } from '../../generated/entity/feed/thread';
-import { Reaction, ReactionType } from '../../generated/type/reaction';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
-import {
-  getEntityField,
-  getEntityFQN,
-  getEntityType,
-} from '../../utils/FeedUtils';
-import FeedCardBody from '../ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBody';
-import FeedCardHeader from '../ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeader';
-import PopoverContent from '../ActivityFeed/ActivityFeedCard/PopoverContent';
-import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
+import { Link } from 'react-router-dom';
+import { AnnouncementEntity } from '../../rest/announcementsAPI';
+import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
+import RichTextEditorPreviewerV1 from '../common/RichTextEditor/RichTextEditorPreviewerV1';
 import EditAnnouncementModal from '../Modals/AnnouncementModal/EditAnnouncementModal';
 import { AnnouncementFeedCardBodyProp } from './Announcement.interface';
-import './announcement.less';
 
 const AnnouncementFeedCardBody = ({
-  feed,
-  entityLink,
-  isThread,
+  announcement,
   editPermission,
-  showRepliesButton = true,
-  showReplyThread,
-  onReply,
-  announcementDetails,
   onConfirmation,
-  updateThreadHandler,
-  task,
-  isReplyThreadOpen,
+  updateAnnouncementHandler,
 }: AnnouncementFeedCardBodyProp) => {
   const { t } = useTranslation();
-  const entityType = getEntityType(entityLink ?? '');
-  const entityFQN = getEntityFQN(entityLink ?? '');
-  const entityField = getEntityField(entityLink ?? '');
-  const { currentUser } = useApplicationStore();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [feedDetail, setFeedDetail] = useState<Post>(feed);
-
-  const [visible, setVisible] = useState<boolean>(false);
-  const [isEditAnnouncement, setIsEditAnnouncement] = useState<boolean>(false);
-  const [isEditPost, setIsEditPost] = useState<boolean>(false);
-
-  const isAuthor = feedDetail.from === currentUser?.name;
-
-  const { id: threadId, type: feedType, posts } = task;
-
-  const repliesPostAvatarGroup = useMemo(() => {
-    return (
-      <Avatar.Group>
-        {(posts ?? []).map((u) => (
-          <ProfilePicture
-            avatarType="outlined"
-            key={u.id}
-            name={u.from}
-            width="18"
-          />
-        ))}
-      </Avatar.Group>
-    );
-  }, [posts]);
-
-  const onFeedUpdate = (data: Operation[]) => {
-    updateThreadHandler(
-      threadId ?? feedDetail.id,
-      feedDetail.id,
-      Boolean(isThread),
-      data
-    );
+  const [isEditAnnouncement, setIsEditAnnouncement] = useState(false);
+  const entityType = getEntityType(announcement.entityLink ?? '');
+  const entityFQN = getEntityFQN(announcement.entityLink ?? '');
+  const announcementTitle = announcement.displayName ?? announcement.name;
+  const details = {
+    description: announcement.description,
+    startTime: announcement.startTime,
+    endTime: announcement.endTime,
   };
 
-  const onReactionSelect = (
-    reactionType: ReactionType,
-    reactionOperation: ReactionOperation
-  ) => {
-    let updatedReactions = feedDetail.reactions || [];
-    if (reactionOperation === ReactionOperation.ADD) {
-      const reactionObject = {
-        reactionType,
-        user: {
-          id: currentUser?.id as string,
-        },
-      };
-
-      updatedReactions = [...updatedReactions, reactionObject as Reaction];
-    } else {
-      updatedReactions = updatedReactions.filter(
-        (reaction) =>
-          !(
-            reaction.reactionType === reactionType &&
-            reaction.user.id === currentUser?.id
-          )
-      );
+  const entityLink = useMemo(() => {
+    if (!entityType || !entityFQN) {
+      return '';
     }
 
+    return entityUtilClassBase.getEntityLink(entityType, entityFQN);
+  }, [entityFQN, entityType]);
+
+  const dropdownItems = useMemo(
+    () =>
+      editPermission
+        ? [
+            {
+              key: 'edit',
+              label: (
+                <span data-testid="announcement-edit-action">
+                  {t('label.edit')}
+                </span>
+              ),
+              onClick: () => setIsEditAnnouncement(true),
+            },
+            {
+              key: 'delete',
+              label: (
+                <span data-testid="announcement-delete-action">
+                  {t('label.delete')}
+                </span>
+              ),
+              danger: true,
+              onClick: () =>
+                onConfirmation({
+                  state: true,
+                  threadId: announcement.id,
+                  postId: announcement.id,
+                  isThread: true,
+                }),
+            },
+          ]
+        : [],
+    [announcement.id, editPermission, onConfirmation, t]
+  );
+
+  const handleAnnouncementUpdate = async (
+    title: string,
+    updatedDetails: Pick<
+      AnnouncementEntity,
+      'description' | 'startTime' | 'endTime'
+    >
+  ) => {
+    const normalizedDisplayName =
+      title === announcement.name ? undefined : title.trim();
     const patch = compare(
-      { ...feedDetail, reactions: [...(feedDetail.reactions || [])] },
       {
-        ...feedDetail,
-        reactions: updatedReactions,
+        displayName: announcement.displayName,
+        description: announcement.description,
+        startTime: announcement.startTime,
+        endTime: announcement.endTime,
+      },
+      {
+        displayName: normalizedDisplayName,
+        description: updatedDetails.description,
+        startTime: updatedDetails.startTime,
+        endTime: updatedDetails.endTime,
       }
     );
 
     if (!isEmpty(patch)) {
-      onFeedUpdate(patch);
-    }
-  };
-
-  const handleAnnouncementUpdate = (
-    title: string,
-    announcement: AnnouncementDetails
-  ) => {
-    const existingAnnouncement = {
-      ...feedDetail,
-      announcement: announcementDetails,
-    };
-
-    const updatedAnnouncement = {
-      ...feedDetail,
-      message: title,
-      announcement,
-    };
-
-    const patch = compare(existingAnnouncement, updatedAnnouncement);
-
-    if (!isEmpty(patch)) {
-      onFeedUpdate(patch);
+      await updateAnnouncementHandler(announcement.id, patch);
     }
     setIsEditAnnouncement(false);
   };
 
-  const handlePostUpdate = (message: string) => {
-    const updatedPost = { ...feedDetail, message };
-
-    const patch = compare(feedDetail, updatedPost);
-
-    if (!isEmpty(patch)) {
-      onFeedUpdate(patch);
-    }
-    setIsEditPost(false);
-  };
-
-  const handleThreadEdit = () => {
-    if (announcementDetails) {
-      setIsEditAnnouncement(true);
-    } else {
-      setIsEditPost(true);
-    }
-  };
-
-  const handleVisibleChange = (newVisible: boolean) => setVisible(newVisible);
-
-  const onHide = () => setVisible(false);
-
-  useEffect(() => {
-    setFeedDetail(feed);
-  }, [feed]);
-
   return (
     <div
-      className={classNames(
-        'bg-grey-1-hover m--x-sm w-full p-x-sm m--t-xss py-2 m-b-xss rounded-4',
-        {
-          'bg-grey-1-hover': visible,
-        }
+      className="bg-grey-1-hover m--x-sm w-full p-x-sm m--t-xss py-2 m-b-xss rounded-4"
+      data-testid="main-message">
+      <div className="d-flex justify-between gap-4">
+        <div className="d-flex flex-column gap-2 flex-1">
+          <Typography.Text className="text-base font-medium">
+            {announcementTitle}
+          </Typography.Text>
+          <Space wrap size={8}>
+            {announcement.createdBy && (
+              <Typography.Text className="text-grey-muted text-xs">
+                {t('label.by-entity', { entity: announcement.createdBy })}
+              </Typography.Text>
+            )}
+            <Typography.Text className="text-grey-muted text-xs">
+              {formatDateTime(announcement.updatedAt ?? announcement.createdAt)}
+            </Typography.Text>
+            {entityType && entityFQN && (
+              <Typography.Text className="text-grey-muted text-xs">
+                {entityLink ? (
+                  <Link to={entityLink}>{entityFQN.split('.').pop()}</Link>
+                ) : (
+                  entityFQN.split('.').pop()
+                )}
+              </Typography.Text>
+            )}
+          </Space>
+        </div>
+        {dropdownItems.length > 0 && (
+          <Dropdown menu={{ items: dropdownItems }} trigger={['click']}>
+            <Button
+              data-testid="announcement-actions"
+              icon={<MoreOutlined />}
+              type="text"
+            />
+          </Dropdown>
+        )}
+      </div>
+
+      {details.description && (
+        <RichTextEditorPreviewerV1
+          className="m-t-sm"
+          data-testid="announcement-description"
+          markdown={details.description}
+        />
       )}
-      data-testid="main-message"
-      ref={containerRef}>
-      <Popover
-        align={{ targetOffset: [0, -16] }}
-        content={
-          <PopoverContent
-            editAnnouncementPermission={editPermission}
-            isAnnouncement={!isUndefined(announcementDetails)}
-            isAuthor={isAuthor}
-            isThread={isThread}
-            postId={feedDetail.id}
-            reactions={feedDetail.reactions || []}
-            threadId={threadId}
-            onConfirmation={onConfirmation}
-            onEdit={handleThreadEdit}
-            onPopoverHide={onHide}
-            onReactionSelect={onReactionSelect}
-            onReply={onReply}
-          />
-        }
-        destroyTooltipOnHide={{ keepParent: false }}
-        getPopupContainer={() => containerRef.current || document.body}
-        key="reaction-options-popover"
-        open={visible && !isEditPost}
-        overlayClassName="ant-popover-feed"
-        placement="topRight"
-        trigger="hover"
-        onOpenChange={handleVisibleChange}>
-        <Row gutter={[10, 0]} wrap={false}>
-          <Col className="avatar-column d-flex flex-column items-center justify-between">
-            <UserPopOverCard userName={feedDetail.from} />
 
-            {showRepliesButton && repliesPostAvatarGroup}
-          </Col>
-          <Col flex="auto">
-            <div>
-              <FeedCardHeader
-                isEntityFeed
-                createdBy={feedDetail.from}
-                entityFQN={entityFQN}
-                entityField={entityField ?? ''}
-                entityType={entityType}
-                feedType={feedType ?? ThreadType.Conversation}
-                task={task}
-                timeStamp={feedDetail.postTs}
-              />
-              <FeedCardBody
-                announcementDetails={announcementDetails}
-                isEditPost={isEditPost}
-                isThread={isThread}
-                message={feedDetail.message}
-                reactions={feedDetail.reactions || []}
-                onCancelPostUpdate={() => setIsEditPost(false)}
-                onPostUpdate={handlePostUpdate}
-                onReactionSelect={onReactionSelect}
-              />
-              {!isEmpty(task.posts) && showRepliesButton ? (
-                <Button
-                  className="p-0 h-auto line-height-16 text-announcement m-r-xs m-t-xs d-flex items-center"
-                  data-testid="show-reply-thread"
-                  type="text"
-                  onClick={showReplyThread}>
-                  {`${task.postsCount} ${t('label.reply-lowercase-plural')}`}
+      <Space wrap className="m-t-sm" size={16}>
+        <Typography.Text className="text-grey-muted text-xs">
+          {`${t('label.start-date')}: ${formatDateTime(details.startTime)}`}
+        </Typography.Text>
+        <Typography.Text className="text-grey-muted text-xs">
+          {`${t('label.end-date')}: ${formatDateTime(details.endTime)}`}
+        </Typography.Text>
+      </Space>
 
-                  <Icon
-                    className={classNames('arrow-icon', {
-                      'rotate-180': isReplyThreadOpen,
-                    })}
-                    component={ArrowBottom}
-                  />
-                </Button>
-              ) : null}
-            </div>
-          </Col>
-        </Row>
-      </Popover>
-
-      {isEditAnnouncement && announcementDetails && (
+      {isEditAnnouncement && (
         <EditAnnouncementModal
-          announcement={announcementDetails}
-          announcementTitle={feedDetail.message}
+          announcement={details}
+          announcementTitle={announcementTitle}
           open={isEditAnnouncement}
           onCancel={() => setIsEditAnnouncement(false)}
           onConfirm={handleAnnouncementUpdate}
