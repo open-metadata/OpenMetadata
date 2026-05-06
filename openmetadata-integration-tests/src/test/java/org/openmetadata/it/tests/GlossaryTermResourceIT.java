@@ -3011,6 +3011,64 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   }
 
   @Test
+  void get_assetsCountsPaginationSlicesAndPreservesTotal(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName(ns.prefix("asset_count_pagination_glossary"))
+            .withDescription("Glossary for asset count pagination test");
+    Glossary glossary = client.glossaries().create(createGlossary);
+
+    int termCount = 5;
+    java.util.List<String> createdTermFqns = new java.util.ArrayList<>();
+    for (int i = 0; i < termCount; i++) {
+      CreateGlossaryTerm req =
+          new CreateGlossaryTerm()
+              .withName(ns.prefix("count_pagination_term_" + i))
+              .withGlossary(glossary.getFullyQualifiedName())
+              .withDescription("Pagination term " + i);
+      createdTermFqns.add(createEntity(req).getFullyQualifiedName());
+    }
+
+    String fullCounts = getAssetCounts(client, glossary.getFullyQualifiedName());
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode unpaged = mapper.readTree(fullCounts);
+    for (String fqn : createdTermFqns) {
+      assertTrue(unpaged.has(fqn), "Unpaged response should contain term " + fqn);
+    }
+
+    String firstPageBody = getAssetCountsWithPaging(client, glossary.getFullyQualifiedName(), 2, 0);
+    JsonNode firstPage = mapper.readTree(firstPageBody);
+    assertEquals(
+        2,
+        firstPage.size(),
+        "First page should contain at most `limit` glossary terms when limit=2");
+
+    String secondPageBody =
+        getAssetCountsWithPaging(client, glossary.getFullyQualifiedName(), 2, 2);
+    JsonNode secondPage = mapper.readTree(secondPageBody);
+    assertTrue(
+        secondPage.size() <= 2,
+        "Second page should contain at most `limit` glossary terms when limit=2");
+
+    java.util.Set<String> firstPageKeys = new java.util.HashSet<>();
+    firstPage.fieldNames().forEachRemaining(firstPageKeys::add);
+    secondPage
+        .fieldNames()
+        .forEachRemaining(
+            key ->
+                assertFalse(
+                    firstPageKeys.contains(key),
+                    "Pages should not overlap: " + key + " appeared on both pages"));
+
+    String beyondEndBody =
+        getAssetCountsWithPaging(client, glossary.getFullyQualifiedName(), 5, 10000);
+    JsonNode beyondEnd = mapper.readTree(beyondEndBody);
+    assertEquals(0, beyondEnd.size(), "Offset past the end should return an empty asset-count map");
+  }
+
+  @Test
   void get_termAssetsById(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -3167,6 +3225,21 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
 
   private String getAssetCounts(OpenMetadataClient client, String parent) {
     RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+    if (parent != null) {
+      optionsBuilder.queryParam("parent", parent);
+    }
+    return client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.GET, "/v1/glossaryTerms/assets/counts", null, optionsBuilder.build());
+  }
+
+  private String getAssetCountsWithPaging(
+      OpenMetadataClient client, String parent, int limit, int offset) {
+    RequestOptions.Builder optionsBuilder =
+        RequestOptions.builder()
+            .queryParam("limit", String.valueOf(limit))
+            .queryParam("offset", String.valueOf(offset));
     if (parent != null) {
       optionsBuilder.queryParam("parent", parent);
     }
