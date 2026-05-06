@@ -142,8 +142,12 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
             current_path = current_path / part
             try:
                 current_path.mkdir(mode=0o700, exist_ok=False)
-            except FileExistsError:
-                continue
+            except FileExistsError as exc:
+                if current_path.is_dir():
+                    continue
+                raise ValueError(
+                    f"Invalid walletContent. Expected directory path but found existing file: {current_path}"
+                ) from exc
             current_path.chmod(0o700)
 
     def _extract_wallet_content(self, wallet_content: SecretStr) -> str:
