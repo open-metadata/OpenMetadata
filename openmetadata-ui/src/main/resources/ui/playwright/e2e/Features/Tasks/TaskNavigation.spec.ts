@@ -536,7 +536,7 @@ test.describe('Task Navigation - URL Validation', () => {
  * Task Notification Refresh (Issue #27433)
  *
  * Single-page scenario:
- *   1. User searches for "raw_order" and navigates to the entity page.
+ *   1. User navigates directly to a test-owned table entity page.
  *   2. Opens "Activity Feed & Tasks" tab and stays there.
  *   3. A task is created via API assigned to the same logged-in user.
  *   4. User opens the notification bell and clicks the latest task notification,
@@ -546,20 +546,27 @@ test.describe('Task Navigation - URL Validation', () => {
  */
 test.describe('Task Notification - activity-feed tab refreshes after clicking notification', () => {
   const adminUser = new UserClass();
+  const table = new TableClass();
+  let taskId: string | undefined;
 
-  test.beforeAll('Create admin user', async ({ browser }) => {
+  test.beforeAll('Create admin user and table', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     try {
       await adminUser.create(apiContext);
       await adminUser.setAdminRole(apiContext);
+      await table.create(apiContext);
     } finally {
       await afterAction();
     }
   });
 
-  test.afterAll('Delete admin user', async ({ browser }) => {
+  test.afterAll('Delete task, table and admin user', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     try {
+      if (taskId) {
+        await apiContext.delete(`/api/v1/tasks/${taskId}`);
+      }
+      await table.delete(apiContext);
       await adminUser.delete(apiContext);
     } finally {
       await afterAction();
@@ -571,36 +578,11 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
     async ({ page }) => {
       test.slow();
 
-      await test.step('Log in and dismiss welcome screen', async () => {
+      await test.step('Log in and navigate to entity page', async () => {
         await adminUser.login(page);
-        await redirectToHomePage(page);
-        await waitForAllLoadersToDisappear(page);
-
-        const welcomeScreen = page.getByTestId('welcome-screen');
-        if (await welcomeScreen.isVisible()) {
-          await page.getByTestId('welcome-screen-close-btn').click();
-        }
-      });
-
-      await test.step('Search raw_order and open entity page', async () => {
-        await page.getByTestId('searchBox').fill('raw_order');
-        await page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/search/query') &&
-            r.url().includes('index=dataAsset')
-        );
-        await page.keyboard.press('Enter');
-
-        await page.getByTestId('search-results').waitFor({ state: 'visible' });
-
-        await page
-          .locator(
-            '[data-testid="search-results"] .explore-search-card [data-testid="entity-link"]'
-          )
-          .filter({ hasText: 'raw_order' })
-          .first()
-          .click();
-
+        const entityFqn = table.entityResponseData?.fullyQualifiedName ?? '';
+        await page.goto(`/table/${encodeURIComponent(entityFqn)}`);
+        await waitForPageLoaded(page);
         await waitForAllLoadersToDisappear(page);
       });
 
@@ -615,14 +597,10 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       });
 
       await test.step('Create task via API assigned to the logged-in user', async () => {
-        // Extract the entity FQN from the current URL (/table/<fqn>/activity_feed)
-        const entityFqn = decodeURIComponent(
-          page.url().split('/table/')[1].split('/')[0]
-        );
-
+        const entityFqn = table.entityResponseData?.fullyQualifiedName ?? '';
         const { apiContext, afterAction } = await getApiContext(page);
         try {
-          await apiContext.post('/api/v1/tasks', {
+          const response = await apiContext.post('/api/v1/tasks', {
             data: {
               about: entityFqn,
               aboutType: 'table',
@@ -631,6 +609,8 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
               assignees: [adminUser.responseData.name],
             },
           });
+          const created = await response.json();
+          taskId = created.id;
         } finally {
           await afterAction();
         }
