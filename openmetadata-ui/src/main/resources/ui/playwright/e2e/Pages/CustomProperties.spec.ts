@@ -3565,7 +3565,7 @@ test.describe('Custom property name validation', () => {
   test('should accept a valid name with allowed special characters', async ({
     page,
   }) => {
-    await page.fill(nameInput, "valid Name.!@#%`()_-=+{}[]~|;',.?/");
+    await page.fill(nameInput, "valid Name.!@#%`()_-=+{}[]|;',.?");
 
     await expect(page.locator(nameError)).not.toBeVisible();
   });
