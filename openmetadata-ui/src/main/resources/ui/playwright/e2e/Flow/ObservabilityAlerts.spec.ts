@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import {
   INGESTION_PIPELINE_NAME,
   TEST_CASE_NAME,
@@ -20,7 +20,6 @@ import {
 import { Domain } from '../../support/domain/Domain';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { TableClass } from '../../support/entity/TableClass';
-import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -45,13 +44,13 @@ import {
   getObservabilityCreationDetails,
   visitObservabilityAlertPage,
 } from '../../utils/observabilityAlert';
+import { test as base } from '../fixtures/pages';
 
 const table1 = new TableClass();
 const table2 = new TableClass();
 const pipeline = new PipelineClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
-const admin = new AdminClass();
 const domain = new Domain();
 
 const SOURCE_NAME_1 = 'container';
@@ -61,18 +60,10 @@ const SOURCE_DISPLAY_NAME_2 = 'Pipeline';
 const SOURCE_NAME_3 = 'table';
 const SOURCE_DISPLAY_NAME_3 = 'Table';
 
-// Create 2 page and authenticate 1 with admin and another with normal user
 const test = base.extend<{
-  page: Page;
   userWithPermissionsPage: Page;
   userWithoutPermissionsPage: Page;
 }>({
-  page: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await admin.login(page);
-    await use(page);
-    await page.close();
-  },
   userWithPermissionsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     await user1.login(page);
@@ -100,7 +91,6 @@ const data = {
 };
 
 test.beforeAll(async ({ browser }) => {
-  test.slow();
 
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await commonPrerequisites({
@@ -138,14 +128,10 @@ test.afterAll(async ({ browser }) => {
 });
 
 test.beforeEach(async ({ page }) => {
-  test.slow();
-
   await visitObservabilityAlertPage(page);
 });
 
 test('Pipeline Alert', async ({ page }) => {
-  test.slow();
-
   const ALERT_NAME = generateAlertName();
 
   await test.step('Create alert', async () => {
@@ -233,8 +219,6 @@ for (const alertDetails of OBSERVABILITY_CREATION_DETAILS) {
   test(`${sourceDisplayName} alert`, async ({ page }) => {
     const ALERT_NAME = generateAlertName();
 
-    test.slow(true);
-
     await test.step('Create alert', async () => {
       await createCommonObservabilityAlert({
         page,
@@ -273,7 +257,6 @@ test('Alert operations for a user with and without permissions', async ({
     process.env.PLAYWRIGHT_IS_OSS !== 'true',
     'Skipping in AUT environment'
   );
-  test.slow();
 
   const ALERT_NAME = generateAlertName();
   const { apiContext } = await getApiContext(page);

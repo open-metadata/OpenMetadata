@@ -371,6 +371,7 @@ const ObservabilityAlertsPage = () => {
                   )}
                 </Table.Header>
                 <Table.Body
+                  dependencies={[loadingCount, alertPermissions]}
                   items={loading ? [] : alerts}
                   renderEmptyState={() =>
                     loading ? (
