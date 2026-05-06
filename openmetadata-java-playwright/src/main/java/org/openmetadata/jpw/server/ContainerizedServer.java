@@ -1,6 +1,9 @@
 package org.openmetadata.jpw.server;
 
+import com.github.dockerjava.api.model.ExposedPort;
 import com.github.dockerjava.api.model.HealthCheck;
+import com.github.dockerjava.api.model.PortBinding;
+import com.github.dockerjava.api.model.Ports;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
@@ -8,7 +11,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
+import org.openmetadata.jpw.server.sso.MockOidcServer;
+import org.openmetadata.jpw.server.sso.SsoProfile;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.opensearch.testcontainers.OpensearchContainer;
@@ -56,38 +62,77 @@ public final class ContainerizedServer implements AutoCloseable {
   private static final String JWT_KEY_ID = "test-key";
   private static final int SERVER_PORT = 8585;
   private static final int SEARCH_PORT = 9200;
+  private static final int FIXED_OM_HOST_PORT = 8585;
   private static final Duration SERVER_STARTUP_TIMEOUT = Duration.ofMinutes(5);
 
   private final Network network;
   private final MySQLContainer<?> mysql;
   private final OpensearchContainer<?> opensearch;
   private final GenericContainer<?> server;
+  private final MockOidcServer ssoIdp;
 
   private ContainerizedServer(
       final Network network,
       final MySQLContainer<?> mysql,
       final OpensearchContainer<?> opensearch,
-      final GenericContainer<?> server) {
+      final GenericContainer<?> server,
+      final MockOidcServer ssoIdp) {
     this.network = network;
     this.mysql = mysql;
     this.opensearch = opensearch;
     this.server = server;
+    this.ssoIdp = ssoIdp;
   }
 
+  /** Launches OM with the default basic-auth (JWT) configuration. */
   public static ContainerizedServer launch() {
+    return launch(null);
+  }
+
+  /**
+   * Launches OM wired to a {@link MockOidcServer} per the given SSO profile.
+   *
+   * <p>SSO mode binds the OM container to a fixed host port ({@link #FIXED_OM_HOST_PORT})
+   * because the OIDC callback URL must be known before the server starts. Only one SSO
+   * mode test JVM can run at a time on a host (acceptable since SSO suite runs are
+   * explicit, not bulk parallel).
+   */
+  public static ContainerizedServer launch(final SsoProfile profile) {
     final Network network = Network.newNetwork();
     final MySQLContainer<?> mysql = newMysql(network);
     final OpensearchContainer<?> opensearch = newOpenSearch(network);
     mysql.start();
     opensearch.start();
     runMigrations(network);
+    final MockOidcServer idp = (profile != null) ? MockOidcServer.launch(network) : null;
     final GenericContainer<?> server = newServer(network);
+    if (profile != null) {
+      applySsoEnv(server, profile, idp);
+      bindFixedHostPort(server, FIXED_OM_HOST_PORT, SERVER_PORT);
+    }
     server.start();
     LOG.info(
-        "Containerized OpenMetadata ready at http://{}:{}",
+        "Containerized OpenMetadata ready at http://{}:{} (sso={})",
         server.getHost(),
-        server.getMappedPort(SERVER_PORT));
-    return new ContainerizedServer(network, mysql, opensearch, server);
+        server.getMappedPort(SERVER_PORT),
+        profile != null ? profile.displayName() : "off");
+    return new ContainerizedServer(network, mysql, opensearch, server, idp);
+  }
+
+  private static void applySsoEnv(
+      final GenericContainer<?> server, final SsoProfile profile, final MockOidcServer idp) {
+    final Map<String, String> env = profile.serverEnv(idp, FIXED_OM_HOST_PORT);
+    env.forEach(server::withEnv);
+  }
+
+  private static void bindFixedHostPort(
+      final GenericContainer<?> container, final int hostPort, final int containerPort) {
+    container.withCreateContainerCmdModifier(
+        cmd ->
+            cmd.getHostConfig()
+                .withPortBindings(
+                    new PortBinding(
+                        Ports.Binding.bindPort(hostPort), new ExposedPort(containerPort))));
   }
 
   /**
@@ -143,10 +188,22 @@ public final class ContainerizedServer implements AutoCloseable {
     return URI.create("http://" + server.getHost() + ":" + server.getMappedPort(SERVER_PORT));
   }
 
+  /** The mock OIDC server bundled with this stack, or {@code null} in basic-auth mode. */
+  public MockOidcServer ssoIdp() {
+    return ssoIdp;
+  }
+
   @Override
   public void close() {
-    Stream.<Runnable>of(server::stop, opensearch::stop, mysql::stop, network::close)
-        .forEach(ContainerizedServer::silently);
+    final Stream.Builder<Runnable> closers = Stream.builder();
+    closers.add(server::stop);
+    if (ssoIdp != null) {
+      closers.add(ssoIdp::close);
+    }
+    closers.add(opensearch::stop);
+    closers.add(mysql::stop);
+    closers.add(network::close);
+    closers.build().forEach(ContainerizedServer::silently);
   }
 
   private static MySQLContainer<?> newMysql(final Network network) {
