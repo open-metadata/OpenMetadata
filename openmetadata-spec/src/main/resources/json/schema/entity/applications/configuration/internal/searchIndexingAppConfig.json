@@ -124,6 +124,24 @@
       "additionalProperties": {
         "type": "integer"
       }
+    },
+    "liveIndexSettings": {
+      "title": "Live Index Settings",
+      "description": "Settings applied to staged indexes before alias swap (live serving values). Tune for read freshness and HA. Defaults: refresh=1s (near-real-time, required if users/agents read-after-write), replicas=1, shards=1, durability=request.",
+      "$ref": "../../../../system/eventPublisherJob.json#/definitions/indexSettings"
+    },
+    "bulkIndexSettings": {
+      "title": "Bulk Index Settings (during reindex)",
+      "description": "Overrides applied to staged indexes during bulk reindex. Reverted to liveIndexSettings before alias swap. Nothing reads from staged indexes, so refresh=-1 and replicas=0 are safe. Defaults: refresh=-1, replicas=0, durability=async, syncInterval=30s, forceMergeOnPromote=false.",
+      "$ref": "../../../../system/eventPublisherJob.json#/definitions/bulkIndexOverrides"
+    },
+    "liveIndexSettingsByEntity": {
+      "title": "Per-Entity Live Index Settings",
+      "description": "Override liveIndexSettings for specific entity types. Useful for large or specialized entities (e.g. 'container' on instances with 500k+ assets, 'queryCostRecord' for high-cardinality time series). Keys are entity type names; values override the global liveIndexSettings.",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "../../../../system/eventPublisherJob.json#/definitions/indexSettings"
+      }
     }
   },
   "additionalProperties": false
