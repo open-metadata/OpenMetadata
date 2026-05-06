@@ -2476,6 +2476,7 @@
     "bot-email-confirmation": "{{email}} לבוט {{botName}}",
     "bulk-edit-entity-help": "ערוך מספר {{entity}} בבת אחת באמצעות CSV",
     "bulk-import-completed": "ייבוא בכמות הושלם",
+    "cache-service-not-configured-message": "Configure a Cache Service such as Redis or ElastiCache and make sure it is reachable to enable Cache Warmup.",
     "can-not-add-widget": "לא ניתן להוסיף את הווידג'ט לסקשן זה עקב הגבלות בגודל.",
     "can-you-add-a-description": "האם תוכל להוסיף תיאור?",
     "cannot-delete-relation-type-in-use": "לא ניתן למחוק: בשימוש על ידי {{count}} קשר(י) מונח. הסר קשרים אלה תחילה.",

@@ -61,6 +61,7 @@ import {
   triggerOnDemandApp,
   uninstallApp,
 } from '../../../../rest/applicationAPI';
+import { isCacheWarmupApplication } from '../../../../utils/ApplicationUtils';
 import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -99,6 +100,12 @@ const AppDetails = () => {
   });
   const { getResourceLimit } = useLimitStore();
   const { plugins } = useApplicationsProvider();
+  const isRuntimeDisabled = appData?.enabled === false && !appData.deleted;
+  const runtimeDisabledReason =
+    isRuntimeDisabled && isCacheWarmupApplication(appData?.name)
+      ? t('message.cache-service-not-configured-message')
+      : undefined;
+  const isAppUnavailable = Boolean(appData?.deleted) || isRuntimeDisabled;
 
   const fetchAppDetails = useCallback(async () => {
     setLoadingState((prev) => ({ ...prev, isFetchLoading: true }));
@@ -356,7 +363,10 @@ const AppDetails = () => {
       applicationsClassBase.getApplicationConfigurationComponent();
 
     const tabConfiguration =
-      appData?.appConfiguration && appData.allowConfiguration && jsonSchema
+      appData?.appConfiguration &&
+      appData.allowConfiguration &&
+      jsonSchema &&
+      !isRuntimeDisabled
         ? [
             {
               label: (
@@ -396,6 +406,8 @@ const AppDetails = () => {
                   {appData && (
                     <AppSchedule
                       appData={appData}
+                      disabled={isRuntimeDisabled}
+                      disabledReason={runtimeDisabledReason}
                       jsonSchema={jsonSchema as RJSFSchema}
                       loading={{
                         isRunLoading: loadingState.isRunLoading,
@@ -412,7 +424,7 @@ const AppDetails = () => {
           ]
         : []),
       ...tabConfiguration,
-      ...(!appData?.deleted && showScheduleTab
+      ...(!isAppUnavailable && showScheduleTab
         ? [
             {
               label: (
@@ -431,7 +443,7 @@ const AppDetails = () => {
             },
           ]
         : []),
-      ...(!appData?.deleted && appData?.name === 'SearchIndexingApplication'
+      ...(!isAppUnavailable && appData?.name === 'SearchIndexingApplication'
         ? [
             {
               label: (
@@ -446,7 +458,14 @@ const AppDetails = () => {
           ]
         : []),
     ];
-  }, [appData, jsonSchema, loadingState]);
+  }, [
+    appData,
+    isAppUnavailable,
+    isRuntimeDisabled,
+    jsonSchema,
+    loadingState,
+    runtimeDisabledReason,
+  ]);
 
   const actionText = useMemo(() => {
     switch (action) {
@@ -527,6 +546,16 @@ const AppDetails = () => {
               <Typography.Title level={4}>
                 {getEntityName(appData)}
               </Typography.Title>
+              {isRuntimeDisabled && (
+                <Tooltip title={runtimeDisabledReason}>
+                  <div
+                    className="deleted-badge-button text-xs flex-center app-runtime-disabled-badge"
+                    data-testid="runtime-disabled-badge">
+                    <StopOutlined className="d-flex m-r-xss font-medium text-xs" />
+                    {t('label.disabled')}
+                  </div>
+                </Tooltip>
+              )}
 
               <div className="d-flex items-center flex-wrap gap-6">
                 <Space size={8}>

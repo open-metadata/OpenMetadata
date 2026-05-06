@@ -2476,6 +2476,7 @@
     "bot-email-confirmation": "{{email}} voor {{botName}} bot",
     "bulk-edit-entity-help": "Bewerk meerdere {{entity}} tegelijk met CSV",
     "bulk-import-completed": "Bulkimport Voltooid",
+    "cache-service-not-configured-message": "Configure a Cache Service such as Redis or ElastiCache and make sure it is reachable to enable Cache Warmup.",
     "can-not-add-widget": "Kan de widget niet toevoegen aan deze sectie vanwege beperkingen in grootte.",
     "can-you-add-a-description": "Kunt u een beschrijving toevoegen?",
     "cannot-delete-relation-type-in-use": "Kan niet verwijderen: wordt gebruikt door {{count}} termrelatie(s). Verwijder eerst deze relaties.",

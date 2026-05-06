@@ -2476,6 +2476,7 @@
     "bot-email-confirmation": "{{email}} for {{botName}} bot",
     "bulk-edit-entity-help": "Edit multiple {{entity}} at once using CSV",
     "bulk-import-completed": "Bulk Import Completed",
+    "cache-service-not-configured-message": "Configure a Cache Service such as Redis or ElastiCache and make sure it is reachable to enable Cache Warmup.",
     "can-not-add-widget": "Can not add the widget to this section due to size restrictions.",
     "can-you-add-a-description": "Can you add a description?",
     "cannot-delete-relation-type-in-use": "Cannot delete: used by {{count}} term relation(s). Remove these relations first.",
