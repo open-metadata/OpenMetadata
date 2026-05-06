@@ -231,6 +231,47 @@ public class ColumnSearchIndexIT {
     }
 
     @Test
+    @DisplayName("Column parentId equals parent table id when embeddings are enabled")
+    void testColumnParentIdMatchesParentTable(TestNamespace ns) throws Exception {
+      OpenMetadataClient client = SdkClients.adminClient();
+
+      Table table = createTableWithColumns(ns, "col_parent_id");
+
+      TimeUnit.SECONDS.sleep(2);
+
+      String columnName = ns.prefix("user_email");
+      String response =
+          client
+              .search()
+              .query(columnName)
+              .index("column_search_index")
+              .size(10)
+              .deleted(false)
+              .execute();
+
+      JsonNode root = OBJECT_MAPPER.readTree(response);
+      JsonNode hits = root.path("hits").path("hits");
+
+      // parentId is only written when vector embeddings are enabled in the test environment.
+      // When present, it must be the parent table id so hybrid-search collapse groups column
+      // chunks with their table doc.
+      for (JsonNode hit : hits) {
+        JsonNode source = hit.path("_source");
+        String fqn = source.path("fullyQualifiedName").asText("");
+        if (fqn.contains(ns.prefix(""))) {
+          JsonNode parentIdNode = source.path("parentId");
+          if (!parentIdNode.isMissingNode() && !parentIdNode.asText().isEmpty()) {
+            assertEquals(
+                table.getId().toString(),
+                parentIdNode.asText(),
+                "Column parentId must match parent table id (hybrid-search collapse target)");
+          }
+          break;
+        }
+      }
+    }
+
+    @Test
     @DisplayName("Should return columns with databaseSchema reference for breadcrumb")
     void testColumnHasSchemaReference(TestNamespace ns) throws Exception {
       OpenMetadataClient client = SdkClients.adminClient();

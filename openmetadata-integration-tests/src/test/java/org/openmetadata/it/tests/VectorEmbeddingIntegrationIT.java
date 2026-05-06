@@ -26,6 +26,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
@@ -331,6 +333,59 @@ class VectorEmbeddingIntegrationIT {
   }
 
   @Test
+  void testGenerateColumnEmbeddingFields() {
+    Column column = createTestColumn("user_email", "Customer email address", testTable);
+
+    Map<String, Object> fields = vectorService.generateColumnEmbeddingFields(column, testTable);
+
+    assertNotNull(fields);
+    assertNotNull(fields.get("embedding"));
+    assertNotNull(fields.get("textToLLMContext"));
+    assertNotNull(fields.get("textToEmbed"));
+    assertNotNull(fields.get("fingerprint"));
+    assertEquals(0, fields.get("chunkIndex"));
+    assertTrue((int) fields.get("chunkCount") >= 1);
+
+    assertEquals(
+        testTable.getId().toString(),
+        fields.get("parentId"),
+        "Column parentId must point at the parent table id (Option B) so column hits collapse with their table in hybrid search");
+
+    float[] embedding = (float[]) fields.get("embedding");
+    assertEquals(
+        embeddingClient.getDimension(),
+        embedding.length,
+        "Column embedding dimension should match client dimension");
+
+    String textToEmbed = (String) fields.get("textToEmbed");
+    assertTrue(
+        textToEmbed.contains("user_email"), "textToEmbed should contain the column name");
+    assertTrue(
+        textToEmbed.contains(testTable.getName()), "textToEmbed should anchor in parent table");
+    assertTrue(
+        textToEmbed.contains("Customer email address"),
+        "textToEmbed should include the column description");
+  }
+
+  @Test
+  void testColumnFingerprintIsStableAndContentSensitive() {
+    Column column = createTestColumn("amount", "Order amount in USD", testTable);
+
+    Map<String, Object> first = vectorService.generateColumnEmbeddingFields(column, testTable);
+    Map<String, Object> second = vectorService.generateColumnEmbeddingFields(column, testTable);
+    assertEquals(
+        first.get("fingerprint"),
+        second.get("fingerprint"),
+        "Column fingerprint should be stable for unchanged content");
+
+    column.setDescription("Order amount in EUR");
+    Map<String, Object> updated = vectorService.generateColumnEmbeddingFields(column, testTable);
+    assertFalse(
+        first.get("fingerprint").equals(updated.get("fingerprint")),
+        "Column fingerprint should change when description changes");
+  }
+
+  @Test
   void testPatchTableDescriptionUpdatesEmbeddingForSemanticSearch() throws Exception {
     UUID decoyId = UUID.randomUUID();
     Table decoyTable =
@@ -579,5 +634,14 @@ class VectorEmbeddingIntegrationIT {
         .withVersion(1.0)
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy("test-user");
+  }
+
+  private Column createTestColumn(String name, String description, Table parentTable) {
+    return new Column()
+        .withName(name)
+        .withDescription(description)
+        .withDataType(ColumnDataType.VARCHAR)
+        .withDataTypeDisplay("varchar(255)")
+        .withFullyQualifiedName(parentTable.getFullyQualifiedName() + "." + name);
   }
 }
