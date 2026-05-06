@@ -15,8 +15,10 @@ import { expect, test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage } from '../../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { waitForPageLoaded } from '../../../utils/polling';
+import { waitForTaskListResponse } from '../../../utils/task';
 
 /**
  * Task Navigation Tests
@@ -528,4 +530,155 @@ test.describe('Task Navigation - URL Validation', () => {
       await afterAction();
     }
   });
+});
+
+/**
+ * Task Notification Refresh (Issue #27433)
+ *
+ * Single-page scenario:
+ *   1. User searches for "raw_order" and navigates to the entity page.
+ *   2. Opens "Activity Feed & Tasks" tab and stays there.
+ *   3. A task is created via API assigned to the same logged-in user.
+ *   4. User opens the notification bell and clicks the latest task notification,
+ *      which points to the same entity/activity-feed URL already open.
+ *   5. The fix (tasksRefreshKey in navigation state) must trigger a re-fetch so
+ *      the task list updates without a full page reload.
+ */
+test.describe('Task Notification - activity-feed tab refreshes after clicking notification', () => {
+  const adminUser = new UserClass();
+
+  test.beforeAll('Create admin user', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    try {
+      await adminUser.create(apiContext);
+      await adminUser.setAdminRole(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test.afterAll('Delete admin user', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    try {
+      await adminUser.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test(
+    'clicking task notification while on entity task tab refreshes the task list',
+    async ({ page }) => {
+      test.slow();
+
+      await test.step('Log in and dismiss welcome screen', async () => {
+        await adminUser.login(page);
+        await redirectToHomePage(page);
+        await waitForAllLoadersToDisappear(page);
+
+        const welcomeScreen = page.getByTestId('welcome-screen');
+        if (await welcomeScreen.isVisible()) {
+          await page.getByTestId('welcome-screen-close-btn').click();
+        }
+      });
+
+      await test.step('Search raw_order and open entity page', async () => {
+        await page.getByTestId('searchBox').fill('raw_order');
+        await page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/search/query') &&
+            r.url().includes('index=dataAsset')
+        );
+        await page.keyboard.press('Enter');
+
+        await page.getByTestId('search-results').waitFor({ state: 'visible' });
+
+        await page
+          .locator(
+            '[data-testid="search-results"] .explore-search-card [data-testid="entity-link"]'
+          )
+          .filter({ hasText: 'raw_order' })
+          .first()
+          .click();
+
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Open Activity Feed & Tasks tab and stay there', async () => {
+        const feedResponse = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/feed') && r.request().method() === 'GET'
+        );
+        await page.getByTestId('activity_feed').click();
+        await feedResponse;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Create task via API assigned to the logged-in user', async () => {
+        // Extract the entity FQN from the current URL (/table/<fqn>/activity_feed)
+        const entityFqn = decodeURIComponent(
+          page.url().split('/table/')[1].split('/')[0]
+        );
+
+        const { apiContext, afterAction } = await getApiContext(page);
+        try {
+          await apiContext.post('/api/v1/tasks', {
+            data: {
+              about: entityFqn,
+              aboutType: 'table',
+              type: 'DescriptionUpdate',
+              category: 'MetadataUpdate',
+              assignees: [adminUser.responseData.name],
+            },
+          });
+        } finally {
+          await afterAction();
+        }
+      });
+
+      await test.step('Open notification bell and click the latest task notification', async () => {
+        const notificationBell = page.getByTestId('task-notifications');
+        await expect(notificationBell).toBeVisible();
+
+        const notifFeedResponse = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/tasks/assigned') &&
+            r.url().includes('status=Open')
+        );
+        await notificationBell.click();
+        await notifFeedResponse;
+
+        const notificationBox = page.locator('.notification-box');
+        await expect(notificationBox).toBeVisible();
+
+        const latestNotification = notificationBox
+          .locator('li.ant-list-item.notification-dropdown-list-btn')
+          .first();
+        await expect(latestNotification).toBeVisible();
+
+        const taskListRefresh = waitForTaskListResponse(page);
+        await latestNotification.click();
+        await taskListRefresh;
+
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Task list is refreshed with the latest task details', async () => {
+        const taskCards = page.locator('[data-testid="task-feed-card"]');
+
+        await expect
+          .poll(
+            async () => taskCards.count(),
+            {
+              message: 'Waiting for refreshed task list to include the new task',
+              timeout: 30_000,
+              intervals: [1000, 2000, 3000],
+            }
+          )
+          .toBeGreaterThanOrEqual(1);
+
+        expect(page.url()).not.toMatch(/\/table\/TASK-/);
+      });
+    }
+  );
 });
