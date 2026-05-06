@@ -12,6 +12,7 @@ Run:
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 from typing import List, Optional  # noqa: UP035
 
@@ -310,8 +311,8 @@ class TableBuilderPy:
 def main() -> None:
     """Run the builder-style end-to-end example."""
     config = OpenMetadataConfig(
-        server_url="http://localhost:8585",
-        jwt_token="YOUR_JWT_OR_API_KEY",
+        server_url=os.environ.get("OPENMETADATA_HOST", "http://localhost:8585"),
+        jwt_token=os.environ.get("OPENMETADATA_JWT_TOKEN", ""),
         verify_ssl=False,
     )
     _ = OpenMetadata.initialize(config)

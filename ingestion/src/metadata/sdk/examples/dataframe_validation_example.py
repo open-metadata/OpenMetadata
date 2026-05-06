@@ -25,6 +25,8 @@ Installation:
 # pyright: reportUnknownVariableType=false, reportAttributeAccessIssue=false, reportUnknownMemberType=false
 # pyright: reportUnusedCallResult=false
 # pylint: disable=W5001
+import os
+
 import pandas as pd
 
 from metadata.sdk import configure
@@ -127,7 +129,10 @@ def integrating_with_openmetadata_example():
         """Transform the dataframe to dwh table."""
         return raw_df
 
-    configure(host="http://localhost:8585/api", jwt_token="your jwt token")
+    configure(
+        host=os.environ.get("OPENMETADATA_HOST", "http://localhost:8585/api"),
+        jwt_token=os.environ.get("OPENMETADATA_JWT_TOKEN", ""),
+    )
 
     df = pd.read_parquet("s3://some_bucket/raw_table.parquet")
 
@@ -150,7 +155,10 @@ def integrating_with_openmetadata_example():
 def processing_big_data_with_chunks_example():
     """Processing big data with chunks."""
 
-    configure(host="http://localhost:8585/api", jwt_token="your jwt token")
+    configure(
+        host=os.environ.get("OPENMETADATA_HOST", "http://localhost:8585/api"),
+        jwt_token=os.environ.get("OPENMETADATA_JWT_TOKEN", ""),
+    )
 
     validator = DataFrameValidator()
     validator.add_openmetadata_table_tests("DbService.database_name.schema_name.dwh_table")

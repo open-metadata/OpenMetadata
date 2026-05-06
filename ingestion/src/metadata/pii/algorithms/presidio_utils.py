@@ -174,7 +174,7 @@ class SanitizedCreditCardRecognizer(CreditCardRecognizer):
 )
 def credit_card_factory(**kwargs: Any) -> SanitizedCreditCardRecognizer:
     return SanitizedCreditCardRecognizer(
-        patterns=patterns.credit_cards,
+        patterns=patterns.credit_cards,  # nosec B703 B506 - NLP pattern list, not user-controlled HTML
         **kwargs,
     )
 

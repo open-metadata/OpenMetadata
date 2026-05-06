@@ -39,7 +39,6 @@ class SASClient:
             auth_token=self.get_auth_token,
             api_version="",
             allow_redirects=True,
-            verify=False,
         )
         self.client = TrackedREST(client_config, source_name="sas")
         # custom setting
@@ -167,5 +166,6 @@ class SASClient:
             "Authorization": "Basic c2FzLmNsaTo=",
         }
         url = base_url + endpoint
-        response = requests.request("POST", url, headers=headers, data=payload, verify=False, timeout=10)
+        response = requests.request("POST", url, headers=headers, data=payload, timeout=10)
+        logger.debug("Token request completed for SAS user: %s", user)
         return response.json()["access_token"]

@@ -72,7 +72,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
             logger.error(f"Failed to trigger dag [{dag_id}]: {exc}")
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
-                error=f"Workflow [{dag_id}] has filed to trigger due to [{exc}] ",
+                error="Workflow failed to trigger. Check server logs for details.",
             )
 
     return trigger_dag

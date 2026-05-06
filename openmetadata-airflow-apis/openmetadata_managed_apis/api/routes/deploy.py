@@ -81,7 +81,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
             )
             return ApiResponse.error(
                 status=ApiResponse.STATUS_BAD_REQUEST,
-                error=f"Request Validation Error parsing payload. IngestionPipeline expected: {err}",
+                error="Request Validation Error: invalid IngestionPipeline payload",
             )
 
         except Exception as exc:
@@ -89,7 +89,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
             logger.error(f"Internal error deploying [{json_request}] due to [{exc}] ")
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
-                error=f"Internal error while deploying due to [{exc}] ",
+                error="Internal error while deploying the ingestion pipeline",
             )
 
     return deploy_dag

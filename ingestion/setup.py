@@ -144,7 +144,7 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "cachetools",  # Used to cache masked queries in ingestion/src/metadata/ingestion/lineage/masker.py
     "chardet==4.0.0",  # Used in the profiler
-    "cryptography>=42.0.0",
+    "cryptography>=44.0.1",
     "google-cloud-secret-manager==2.24.0",
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
@@ -175,7 +175,7 @@ base_requirements = {
     # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
     "dbt-extractor>=0.5.0",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
-    "jaraco.context==6.0.1",
+    "jaraco.context==6.0.2",
     # TODO: Remove one once we have updated datadiff version
     VERSIONS["snowflake-connector"],
     "mysql-connector-python>=9.1",
@@ -240,7 +240,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["databricks-sdk"],
         VERSIONS["databricks-sql-connector"],
         "ndg-httpsclient~=0.5.1",
-        "pyOpenSSL~=24.1.0",
+        "pyOpenSSL~=25.0.0",
         "pyasn1~=0.6.0",
     },
     "datalake-azure": {
@@ -323,7 +323,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["giturlparse"],
         "python-liquid",
     },
-    "mlflow": {"mlflow-skinny~=3.6.0"},
+    "mlflow": {"mlflow-skinny~=3.7.0"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},

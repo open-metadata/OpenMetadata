@@ -16,6 +16,8 @@ Installation:
 
 # pyright: reportUnusedCallResult=false
 # pylint: disable=W5001
+import os
+
 from metadata.sdk import configure
 from metadata.sdk.data_quality import (
     ColumnValuesToBeNotNull,
@@ -27,8 +29,8 @@ from metadata.sdk.data_quality import (
 
 # Configure SDK connection
 configure(
-    host="http://localhost:8585/api",
-    jwt_token="your-jwt-token-here",
+    host=os.environ.get("OPENMETADATA_HOST", "http://localhost:8585/api"),
+    jwt_token=os.environ.get("OPENMETADATA_JWT_TOKEN", ""),
 )
 
 # Initialize test runner for a specific table
