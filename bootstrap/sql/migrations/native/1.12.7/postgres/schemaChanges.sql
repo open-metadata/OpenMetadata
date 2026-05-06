@@ -30,3 +30,9 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 DROP INDEX CONCURRENTLY IF EXISTS gin_tag_usage_targetfqn_trgm;
 CREATE INDEX CONCURRENTLY IF NOT EXISTS gin_tag_usage_targetfqn_trgm
 ON tag_usage USING GIN (targetFQNHash gin_trgm_ops);
+
+-- MCP OAuth: state parameter is opaque per RFC 6749 §4.1.1 and some clients (notably the
+-- Databricks MCP Proxy) send tokens longer than 255 characters. Widen mcp_state to TEXT to
+-- avoid INSERT failures on /mcp/authorize redirects.
+ALTER TABLE mcp_pending_auth_requests
+    ALTER COLUMN mcp_state TYPE TEXT;
