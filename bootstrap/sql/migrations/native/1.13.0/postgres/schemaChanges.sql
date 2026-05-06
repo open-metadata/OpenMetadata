@@ -505,3 +505,9 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_spreadsheet_entity_fqnhash_pattern
 DROP INDEX CONCURRENTLY IF EXISTS idx_worksheet_entity_fqnhash_pattern;
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_worksheet_entity_fqnhash_pattern
     ON worksheet_entity (fqnHash text_pattern_ops);
+
+-- MCP OAuth: state parameter is opaque per RFC 6749 §4.1.1 and some clients (notably the
+-- Databricks MCP Proxy) send tokens longer than 255 characters. Widen mcp_state to TEXT to
+-- avoid INSERT failures on /mcp/authorize redirects.
+ALTER TABLE mcp_pending_auth_requests
+    ALTER COLUMN mcp_state TYPE TEXT;
