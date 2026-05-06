@@ -15,16 +15,16 @@ Number of entities to process in each batch.
 $$
 
 $$section
-### Consumer Threads $(id="consumerThreads")
+### Warm Read Bundles $(id="warmBundles")
 
-Number of parallel threads for processing entities and warming cache.
+Pre-warm the per-entity bundle cache with tags and certification.
 
 $$
 
 $$section
-### Queue Size $(id="queueSize")
+### Enable Distributed Claim $(id="enableDistributedClaim")
 
-Internal queue size for entity processing pipeline.
+Claim each entity type through Redis so only one instance warms it.
 
 $$
 

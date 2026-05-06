@@ -6,8 +6,8 @@
       "all"
     ],
     "batchSize": 100,
-    "consumerThreads": 4,
-    "queueSize": 1000
+    "warmBundles": true,
+    "enableDistributedClaim": false
   },
   "appSchedule": {
     "scheduleTimeline": "Custom",

@@ -95,6 +95,8 @@ import org.quartz.JobExecutionContext;
 public class CacheWarmupApp extends AbstractNativeApplication {
   private static final String ALL = "all";
   private static final int DEFAULT_BATCH_SIZE = 1000;
+  private static final Set<String> LEGACY_APP_CONFIG_FIELDS =
+      Set.of("consumerThreads", "queueSize");
   // Built per-instance from cacheConfig.redis.keyspace so multi-environment deployments sharing
   // one Redis with different keyspaces don't collide on warmup metadata. TTL is one day for
   // checkpoints (long enough for ops staff to notice and resume a stuck warmup, short enough
@@ -150,10 +152,21 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   }
 
   private CacheWarmupAppConfig parseAppConfig(Object raw) {
+    return normalizeAppConfig(raw);
+  }
+
+  static CacheWarmupAppConfig normalizeAppConfig(Object raw) {
     if (raw == null) {
       return new CacheWarmupAppConfig();
     }
-    return JsonUtils.convertValue(raw, CacheWarmupAppConfig.class);
+    Object rawConfig =
+        raw instanceof String configJson
+            ? JsonUtils.readValue(configJson, new TypeReference<Map<String, Object>>() {})
+            : raw;
+    Map<String, Object> sanitized =
+        JsonUtils.convertValue(rawConfig, new TypeReference<Map<String, Object>>() {});
+    LEGACY_APP_CONFIG_FIELDS.forEach(sanitized::remove);
+    return JsonUtils.convertValue(sanitized, CacheWarmupAppConfig.class);
   }
 
   private EventPublisherJob newRuntimeJobData() {
@@ -320,7 +333,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   private CacheWarmupAppConfig loadAppConfig(JobExecutionContext ctx) {
     String raw = (String) ctx.getJobDetail().getJobDataMap().get(APP_CONFIG);
     if (raw != null) {
-      return JsonUtils.readValue(raw, CacheWarmupAppConfig.class);
+      return normalizeAppConfig(raw);
     }
     if (getApp() != null && getApp().getAppConfiguration() != null) {
       return parseAppConfig(getApp().getAppConfiguration());
@@ -805,7 +818,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   @Override
   protected void validateConfig(Map<String, Object> appConfig) {
     try {
-      JsonUtils.convertValue(appConfig, CacheWarmupAppConfig.class);
+      normalizeAppConfig(appConfig);
     } catch (IllegalArgumentException e) {
       throw AppException.byMessage(
           jakarta.ws.rs.core.Response.Status.BAD_REQUEST,
