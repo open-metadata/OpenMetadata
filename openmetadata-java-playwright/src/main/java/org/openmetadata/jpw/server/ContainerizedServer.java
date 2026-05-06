@@ -80,6 +80,7 @@ public final class ContainerizedServer implements AutoCloseable {
     final OpensearchContainer<?> opensearch = newOpenSearch(network);
     mysql.start();
     opensearch.start();
+    runMigrations(network);
     final GenericContainer<?> server = newServer(network);
     server.start();
     LOG.info(
@@ -87,6 +88,37 @@ public final class ContainerizedServer implements AutoCloseable {
         server.getHost(),
         server.getMappedPort(SERVER_PORT));
     return new ContainerizedServer(network, mysql, opensearch, server);
+  }
+
+  /**
+   * Runs Flyway + native migrations once via a transient container, mirroring the
+   * {@code execute-migrate-all} step in {@code docker/development/docker-compose.yml}. The
+   * server image expects the schema to already exist; without this the server crashes on
+   * boot looking for {@code ACT_GE_PROPERTY} and {@code openmetadata_settings}.
+   */
+  private static void runMigrations(final Network network) {
+    final String image = resolveImageTag();
+    LOG.info("Running OpenMetadata schema migrations against {}", DB_NAME);
+    try (GenericContainer<?> migrate =
+        new GenericContainer<>(
+                DockerImageName.parse(image).asCompatibleSubstituteFor("openmetadata-server"))
+            .withNetwork(network)
+            .withCommand("./bootstrap/openmetadata-ops.sh", "-d", "migrate", "--force")
+            .withStartupCheckStrategy(
+                new org.testcontainers.containers.startupcheck.OneShotStartupCheckStrategy()
+                    .withTimeout(Duration.ofMinutes(5)))
+            .withLogConsumer(
+                new Slf4jLogConsumer(LoggerFactory.getLogger("om-migrate"))
+                    .withSeparateOutputStreams())) {
+      applyServerEnv(migrate);
+      migrate.start();
+      LOG.info("Migrations completed");
+    }
+  }
+
+  private static String resolveImageTag() {
+    final String override = lookupEnvOrSystem("OM_TEST_IMAGE");
+    return (override != null && !override.isBlank()) ? override : DEFAULT_LOCAL_IMAGE_TAG;
   }
 
   public ServerHandle handle(final String adminJwt) {
@@ -208,9 +240,28 @@ public final class ContainerizedServer implements AutoCloseable {
   }
 
   private static void configureServer(final GenericContainer<?> container, final Network network) {
+    container.withNetwork(network).withExposedPorts(SERVER_PORT);
+    applyServerEnv(container);
     container
-        .withNetwork(network)
-        .withExposedPorts(SERVER_PORT)
+        .withCopyFileToContainer(
+            MountableFile.forClasspathResource("private_key.der"),
+            "/opt/openmetadata/conf/private_key.der")
+        .withCopyFileToContainer(
+            MountableFile.forClasspathResource("public_key.der"),
+            "/opt/openmetadata/conf/public_key.der")
+        .waitingFor(
+            Wait.forHttp("/api/v1/system/version")
+                .forPort(SERVER_PORT)
+                .withStartupTimeout(SERVER_STARTUP_TIMEOUT))
+        .withLogConsumer(
+            new Slf4jLogConsumer(LoggerFactory.getLogger("om-server-container"))
+                .withSeparateOutputStreams());
+    container.withCreateContainerCmdModifier(
+        cmd -> cmd.withHealthcheck(new HealthCheck().withTest(List.of("NONE"))));
+  }
+
+  private static void applyServerEnv(final GenericContainer<?> container) {
+    container
         .withEnv("DB_HOST", DB_ALIAS)
         .withEnv("DB_PORT", "3306")
         .withEnv("DB_USER", DB_USER)
@@ -232,22 +283,7 @@ public final class ContainerizedServer implements AutoCloseable {
         .withEnv("RSA_PUBLIC_KEY_FILE_PATH", "./conf/public_key.der")
         .withEnv("RSA_PRIVATE_KEY_FILE_PATH", "./conf/private_key.der")
         .withEnv("JWT_ISSUER", "open-metadata.org")
-        .withEnv("JWT_KEY_ID", JWT_KEY_ID)
-        .withCopyFileToContainer(
-            MountableFile.forClasspathResource("private_key.der"),
-            "/opt/openmetadata/conf/private_key.der")
-        .withCopyFileToContainer(
-            MountableFile.forClasspathResource("public_key.der"),
-            "/opt/openmetadata/conf/public_key.der")
-        .waitingFor(
-            Wait.forHttp("/api/v1/system/version")
-                .forPort(SERVER_PORT)
-                .withStartupTimeout(SERVER_STARTUP_TIMEOUT))
-        .withLogConsumer(
-            new Slf4jLogConsumer(LoggerFactory.getLogger("om-server-container"))
-                .withSeparateOutputStreams());
-    container.withCreateContainerCmdModifier(
-        cmd -> cmd.withHealthcheck(new HealthCheck().withTest(List.of("NONE"))));
+        .withEnv("JWT_KEY_ID", JWT_KEY_ID);
   }
 
   private static Path locateDistTarball() {
