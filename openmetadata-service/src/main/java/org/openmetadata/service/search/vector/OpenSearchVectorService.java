@@ -14,6 +14,8 @@ import java.util.Optional;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -153,6 +155,11 @@ public class OpenSearchVectorService implements VectorIndexService {
   @Override
   public Map<String, Object> generateEmbeddingFields(EntityInterface entity) {
     return VectorDocBuilder.buildEmbeddingFields(entity, embeddingClient);
+  }
+
+  @Override
+  public Map<String, Object> generateColumnEmbeddingFields(Column column, Table parentTable) {
+    return VectorDocBuilder.buildColumnEmbeddingFields(column, parentTable, embeddingClient);
   }
 
   @Override

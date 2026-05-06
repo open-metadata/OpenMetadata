@@ -187,6 +187,143 @@ public class VectorDocBuilder {
     return TextChunkManager.computeFingerprint(metaLight + "|" + body);
   }
 
+  /**
+   * Generate embedding fields for a {@link Column} doc indexed under the parent {@link Table}.
+   * Mirrors {@link #buildEmbeddingFields(EntityInterface, EmbeddingClient)} but works on a column
+   * (which is not an EntityInterface). {@code parentId} is set to the parent table id so the
+   * hybrid-search collapse groups column hits with their table — matching how chunks of the same
+   * doc are deduplicated.
+   */
+  public static Map<String, Object> buildColumnEmbeddingFields(
+      Column column, Table parentTable, EmbeddingClient embeddingClient) {
+    String parentId = parentTable.getId().toString();
+
+    String metaLight = buildColumnMetaLightText(column, parentTable);
+    String body = buildColumnBodyText(column);
+    String semanticMetaLight = buildColumnSemanticMetaLightText(column, parentTable);
+    String semanticBody = buildColumnSemanticBodyText(column);
+    String fingerprint = computeFingerprintForColumn(column, parentTable);
+
+    List<String> chunks = TextChunkManager.chunk(body);
+    int chunkCount = chunks.size();
+    List<String> semanticChunks = TextChunkManager.chunk(semanticBody);
+
+    String textToLLMContext =
+        String.format("%s%s | chunk %d/%d", metaLight, chunks.get(0), 1, chunkCount);
+    String semanticBodyChunk = semanticChunks.get(0);
+    String textToEmbed = joinSemanticParts(semanticMetaLight, semanticBodyChunk);
+
+    float[] embedding = embeddingClient.embed(textToEmbed);
+
+    Map<String, Object> fields = new HashMap<>();
+    fields.put("embedding", embedding);
+    fields.put("textToLLMContext", textToLLMContext);
+    fields.put("textToEmbed", textToEmbed);
+    fields.put("chunkIndex", 0);
+    fields.put("chunkCount", chunkCount);
+    fields.put("parentId", parentId);
+    fields.put("fingerprint", fingerprint);
+
+    return fields;
+  }
+
+  public static String computeFingerprintForColumn(Column column, Table parentTable) {
+    String metaLight = buildColumnMetaLightText(column, parentTable);
+    String body = buildColumnBodyText(column);
+    return TextChunkManager.computeFingerprint(metaLight + "|" + body);
+  }
+
+  static String buildColumnMetaLightText(Column column, Table parentTable) {
+    List<TagLabel> tagsPojo = column.getTags() != null ? column.getTags() : Collections.emptyList();
+    List<String> classificationTagFqns =
+        tagsPojo.stream()
+            .filter(tag -> tag.getSource() == null || !"Glossary".equals(tag.getSource().value()))
+            .filter(tag -> !tag.getTagFQN().startsWith("Tier."))
+            .map(TagLabel::getTagFQN)
+            .collect(Collectors.toList());
+    List<String> glossaryTermFqns =
+        tagsPojo.stream()
+            .filter(tag -> tag.getSource() != null && "Glossary".equals(tag.getSource().value()))
+            .map(TagLabel::getTagFQN)
+            .collect(Collectors.toList());
+
+    List<String> parts = new ArrayList<>();
+    parts.add("name: " + orEmpty(column.getName()));
+    parts.add("displayName: " + orEmpty(column.getDisplayName()));
+    parts.add("entityType: " + Entity.TABLE_COLUMN);
+    parts.add("fullyQualifiedName: " + orEmpty(column.getFullyQualifiedName()));
+    parts.add(
+        "dataType: " + (column.getDataType() != null ? column.getDataType().toString() : "[]"));
+    parts.add("dataTypeDisplay: " + orEmpty(column.getDataTypeDisplay()));
+    parts.add("table: " + orEmpty(parentTable.getFullyQualifiedName()));
+    parts.add("serviceType: " + orEmpty(extractServiceType(parentTable)));
+    parts.add("tags: " + joinOrEmpty(classificationTagFqns));
+    parts.add("Associated glossary terms: " + joinOrEmpty(glossaryTermFqns));
+    return String.join("; ", parts) + " | ";
+  }
+
+  static String buildColumnBodyText(Column column) {
+    return "description: " + removeHtml(orEmpty(column.getDescription()));
+  }
+
+  static String buildColumnSemanticMetaLightText(Column column, Table parentTable) {
+    List<String> phrases = new ArrayList<>();
+    String columnLabel = humanizeEntityType(Entity.TABLE_COLUMN);
+    String name = column.getName();
+    String displayName = column.getDisplayName();
+    String subject = null;
+    if (displayName != null && !displayName.isBlank() && !displayName.equals(name)) {
+      subject = (name == null || name.isBlank()) ? displayName : displayName + " (" + name + ")";
+    } else if (name != null && !name.isBlank()) {
+      subject = name;
+    }
+    if (subject != null) {
+      phrases.add(columnLabel + " " + subject);
+    } else {
+      phrases.add(columnLabel);
+    }
+
+    String tableName =
+        parentTable.getDisplayName() != null && !parentTable.getDisplayName().isBlank()
+            ? parentTable.getDisplayName()
+            : parentTable.getName();
+    if (tableName != null && !tableName.isBlank()) {
+      phrases.add("In table " + tableName);
+    }
+
+    if (column.getDataTypeDisplay() != null && !column.getDataTypeDisplay().isBlank()) {
+      phrases.add("Type " + column.getDataTypeDisplay());
+    } else if (column.getDataType() != null) {
+      phrases.add("Type " + column.getDataType());
+    }
+
+    List<TagLabel> tagsPojo = column.getTags() != null ? column.getTags() : Collections.emptyList();
+    List<String> classificationTagNames =
+        tagsPojo.stream()
+            .filter(tag -> tag.getSource() == null || !"Glossary".equals(tag.getSource().value()))
+            .filter(tag -> !tag.getTagFQN().startsWith("Tier."))
+            .map(tag -> tag.getTagFQN().replace('.', ' '))
+            .collect(Collectors.toList());
+    if (!classificationTagNames.isEmpty()) {
+      phrases.add("Tagged as " + String.join(", ", classificationTagNames));
+    }
+    List<String> glossaryTermNames =
+        tagsPojo.stream()
+            .filter(tag -> tag.getSource() != null && "Glossary".equals(tag.getSource().value()))
+            .map(tag -> tag.getName() != null ? tag.getName() : tag.getTagFQN())
+            .collect(Collectors.toList());
+    if (!glossaryTermNames.isEmpty()) {
+      phrases.add("Related glossary terms " + String.join(", ", glossaryTermNames));
+    }
+
+    return String.join(". ", phrases);
+  }
+
+  static String buildColumnSemanticBodyText(Column column) {
+    String description = removeHtml(column.getDescription() == null ? "" : column.getDescription());
+    return description.isEmpty() ? "" : description;
+  }
+
   static String buildMetaLightText(EntityInterface entity, String entityType) {
     boolean isGlossary = entity instanceof Glossary;
     boolean isGlossaryTerm = entity instanceof GlossaryTerm;
