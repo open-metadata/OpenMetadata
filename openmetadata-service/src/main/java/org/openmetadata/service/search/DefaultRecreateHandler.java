@@ -171,6 +171,18 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
           }
         }
 
+        // After the first reindex, the canonical name is an alias on the previous staged, not a
+        // concrete index. OpenSearch's listIndicesByPrefix returns that alias name as one of its
+        // result keys, which then drives a delete-by-name attempt that fails with
+        // "matches an alias, specify the corresponding concrete indices" and burns ~31s of
+        // exponential backoff per entity (1+2+4+8+16s before giving up). With 60 entity types
+        // a full reindex wastes ~30 minutes in cleanup. Drop the alias name from the cleanup set
+        // when it is currently an alias — it does not need to be deleted; the swap moves the
+        // alias atomically and the underlying old concrete is in oldIndicesToDelete already.
+        if (!searchClient.getIndicesByAlias(canonicalIndex).isEmpty()) {
+          oldIndicesToDelete.remove(canonicalIndex);
+        }
+
         LOG.debug(
             "finalizeReindex entity '{}': aliases={}, oldIndices={}, stagedIndex={}",
             entityType,
