@@ -129,7 +129,7 @@ public class DistributedSearchIndexExecutor {
 
   // Per-entity index promotion
   private EntityCompletionTracker entityTracker;
-  @Getter private RecreateIndexHandler recreateIndexHandler;
+  private RecreateIndexHandler recreateIndexHandler;
   private ReindexContext recreateContext;
 
   // Reader stats tracking (accumulated across all worker threads)
@@ -1099,6 +1099,7 @@ public class DistributedSearchIndexExecutor {
         partitionCountByEntity.size(),
         partitionCountByEntity);
 
+    // Set up per-entity promotion callback if recreating indices
     if (recreateIndex && recreateContext != null) {
       this.recreateIndexHandler = Entity.getSearchRepository().createReindexHandler();
       // Wire job configuration so applyLiveServingSettings can revert bulk-build overrides

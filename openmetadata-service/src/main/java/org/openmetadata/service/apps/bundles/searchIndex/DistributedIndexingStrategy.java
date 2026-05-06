@@ -185,19 +185,9 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
             recreateContext,
             !stopped.get() && !hasIncompleteProcessing(stats));
 
-    ExecutionResult.Status resultStatus = determineStatus(stats, recreateIndexHandler);
+    ExecutionResult.Status resultStatus = determineStatus(stats);
 
     StatsReconciler.reconcile(stats);
-
-    if (resultStatus == ExecutionResult.Status.FAILED) {
-      Set<String> dataLoss = collectDataLossPromotions(recreateIndexHandler);
-      listeners.onJobFailed(
-          stats,
-          new IllegalStateException(
-              "Promotion data loss for entities: "
-                  + dataLoss
-                  + ". Canonical index was deleted but alias not re-attached."));
-    }
 
     return ExecutionResult.builder()
         .status(resultStatus)
@@ -209,19 +199,6 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
         .finalStats(stats)
         .metadata(metadata)
         .build();
-  }
-
-  private Set<String> collectDataLossPromotions(RecreateIndexHandler strategyHandler) {
-    Set<String> all = new HashSet<>();
-    if (strategyHandler != null) {
-      all.addAll(strategyHandler.getDataLossPromotions());
-    }
-    RecreateIndexHandler executorHandler =
-        distributedExecutor != null ? distributedExecutor.getRecreateIndexHandler() : null;
-    if (executorHandler != null) {
-      all.addAll(executorHandler.getDataLossPromotions());
-    }
-    return all;
   }
 
   private void flushAndAwaitSink() {
@@ -475,15 +452,11 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
     return (int) Math.min(value, Integer.MAX_VALUE);
   }
 
-  private ExecutionResult.Status determineStatus(
-      Stats stats, RecreateIndexHandler strategyHandler) {
+  private ExecutionResult.Status determineStatus(Stats stats) {
     if (stopped.get()) {
       return ExecutionResult.Status.STOPPED;
     }
-    if (hasDataLossPromotions(strategyHandler)) {
-      return ExecutionResult.Status.FAILED;
-    }
-    if (hasIncompleteProcessing(stats) || hasFailedPromotions(strategyHandler)) {
+    if (hasIncompleteProcessing(stats)) {
       return ExecutionResult.Status.COMPLETED_WITH_ERRORS;
     }
     return ExecutionResult.Status.COMPLETED;
@@ -498,24 +471,6 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
     long processed = jobStats.getSuccessRecords() != null ? jobStats.getSuccessRecords() : 0;
     long total = jobStats.getTotalRecords() != null ? jobStats.getTotalRecords() : 0;
     return failed > 0 || (total > 0 && processed < total);
-  }
-
-  private boolean hasFailedPromotions(RecreateIndexHandler strategyHandler) {
-    if (strategyHandler != null && !strategyHandler.getFailedPromotions().isEmpty()) {
-      return true;
-    }
-    RecreateIndexHandler executorHandler =
-        distributedExecutor != null ? distributedExecutor.getRecreateIndexHandler() : null;
-    return executorHandler != null && !executorHandler.getFailedPromotions().isEmpty();
-  }
-
-  private boolean hasDataLossPromotions(RecreateIndexHandler strategyHandler) {
-    if (strategyHandler != null && !strategyHandler.getDataLossPromotions().isEmpty()) {
-      return true;
-    }
-    RecreateIndexHandler executorHandler =
-        distributedExecutor != null ? distributedExecutor.getRecreateIndexHandler() : null;
-    return executorHandler != null && !executorHandler.getDataLossPromotions().isEmpty();
   }
 
   private boolean finalizeAllEntityReindex(

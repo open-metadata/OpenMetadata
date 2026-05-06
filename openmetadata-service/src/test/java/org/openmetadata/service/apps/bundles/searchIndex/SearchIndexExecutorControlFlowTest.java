@@ -803,39 +803,6 @@ class SearchIndexExecutorControlFlowTest {
   }
 
   @Test
-  void determineStatusFlagsPromotionFailuresAndDataLoss() throws Exception {
-    Stats stats = new Stats();
-    stats.setJobStats(
-        new StepStats().withTotalRecords(10).withSuccessRecords(10).withFailedRecords(0));
-    executor.getStats().set(stats);
-
-    org.openmetadata.service.search.RecreateIndexHandler nonFailingHandler =
-        org.mockito.Mockito.mock(org.openmetadata.service.search.RecreateIndexHandler.class);
-    org.mockito.Mockito.when(nonFailingHandler.getFailedPromotions()).thenReturn(Set.of());
-    org.mockito.Mockito.when(nonFailingHandler.getDataLossPromotions()).thenReturn(Set.of());
-    setField("recreateIndexHandler", nonFailingHandler);
-    assertEquals(
-        ExecutionResult.Status.COMPLETED, invokePrivateMethod("determineStatus", new Class<?>[0]));
-
-    org.openmetadata.service.search.RecreateIndexHandler partialFailHandler =
-        org.mockito.Mockito.mock(org.openmetadata.service.search.RecreateIndexHandler.class);
-    org.mockito.Mockito.when(partialFailHandler.getFailedPromotions()).thenReturn(Set.of("table"));
-    org.mockito.Mockito.when(partialFailHandler.getDataLossPromotions()).thenReturn(Set.of());
-    setField("recreateIndexHandler", partialFailHandler);
-    assertEquals(
-        ExecutionResult.Status.COMPLETED_WITH_ERRORS,
-        invokePrivateMethod("determineStatus", new Class<?>[0]));
-
-    org.openmetadata.service.search.RecreateIndexHandler dataLossHandler =
-        org.mockito.Mockito.mock(org.openmetadata.service.search.RecreateIndexHandler.class);
-    org.mockito.Mockito.when(dataLossHandler.getFailedPromotions()).thenReturn(Set.of("table"));
-    org.mockito.Mockito.when(dataLossHandler.getDataLossPromotions()).thenReturn(Set.of("table"));
-    setField("recreateIndexHandler", dataLossHandler);
-    assertEquals(
-        ExecutionResult.Status.FAILED, invokePrivateMethod("determineStatus", new Class<?>[0]));
-  }
-
-  @Test
   void buildEntityReindexContextCopiesAliasAndIndexState() throws Exception {
     ReindexContext recreateContext = new ReindexContext();
     recreateContext.add(

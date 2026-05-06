@@ -10,12 +10,4 @@ public interface RecreateIndexHandler {
   ReindexContext reCreateIndexes(Set<String> entities);
 
   default void finalizeReindex(EntityReindexContext entityReindexContext, boolean reindexSuccess) {}
-
-  default Set<String> getFailedPromotions() {
-    return Set.of();
-  }
-
-  default Set<String> getDataLossPromotions() {
-    return Set.of();
-  }
 }

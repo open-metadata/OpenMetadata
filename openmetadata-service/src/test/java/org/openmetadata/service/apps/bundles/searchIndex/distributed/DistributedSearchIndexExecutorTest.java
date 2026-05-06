@@ -434,39 +434,6 @@ class DistributedSearchIndexExecutorTest {
   }
 
   @Test
-  void initializeEntityTrackerWiresJobDataIntoDefaultRecreateHandler() throws Exception {
-    UUID jobId = UUID.randomUUID();
-    ReindexContext recreateContext = mock(ReindexContext.class);
-    DefaultRecreateHandler recreateHandler = mock(DefaultRecreateHandler.class);
-    SearchRepository searchRepository = mock(SearchRepository.class);
-
-    EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
-    SearchIndexJob runningJob =
-        SearchIndexJob.builder()
-            .id(jobId)
-            .status(IndexJobStatus.RUNNING)
-            .jobConfiguration(jobConfig)
-            .build();
-
-    when(coordinator.getPartitions(jobId, null))
-        .thenReturn(List.of(partition(jobId, "table", PartitionStatus.PENDING)));
-    when(recreateContext.getEntities()).thenReturn(Set.of("table"));
-    setField("entityTracker", new EntityCompletionTracker(jobId));
-    setField("recreateContext", recreateContext);
-    setField("currentJob", runningJob);
-
-    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      when(searchRepository.createReindexHandler()).thenReturn(recreateHandler);
-
-      invokePrivate(
-          "initializeEntityTracker", new Class<?>[] {UUID.class, boolean.class}, jobId, true);
-    }
-
-    verify(recreateHandler).withJobData(jobConfig);
-  }
-
-  @Test
   void promoteEntityIndexUsesDefaultAndGenericHandlers() throws Exception {
     ReindexContext recreateContext = mock(ReindexContext.class);
     DefaultRecreateHandler defaultHandler = mock(DefaultRecreateHandler.class);

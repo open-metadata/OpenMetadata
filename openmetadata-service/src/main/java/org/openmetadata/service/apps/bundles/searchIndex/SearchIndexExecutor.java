@@ -1762,15 +1762,6 @@ public class SearchIndexExecutor implements AutoCloseable {
       listeners.onJobCompletedWithErrors(stats.get(), endTime - startTime);
     } else if (status == ExecutionResult.Status.STOPPED) {
       listeners.onJobStopped(stats.get());
-    } else if (status == ExecutionResult.Status.FAILED) {
-      Set<String> dataLoss =
-          recreateIndexHandler != null ? recreateIndexHandler.getDataLossPromotions() : Set.of();
-      listeners.onJobFailed(
-          stats.get(),
-          new IllegalStateException(
-              "Promotion data loss for entities: "
-                  + dataLoss
-                  + ". Canonical index was deleted but alias not re-attached."));
     }
 
     return ExecutionResult.fromStats(stats.get(), status, startTime);
@@ -1780,19 +1771,18 @@ public class SearchIndexExecutor implements AutoCloseable {
     if (stopped.get()) {
       return ExecutionResult.Status.STOPPED;
     }
-    if (hasDataLossPromotions()) {
-      return ExecutionResult.Status.FAILED;
-    }
+
     if (hasIncompleteProcessing()) {
       return ExecutionResult.Status.COMPLETED_WITH_ERRORS;
     }
+
     return ExecutionResult.Status.COMPLETED;
   }
 
   private boolean hasIncompleteProcessing() {
     Stats currentStats = stats.get();
     if (currentStats == null || currentStats.getJobStats() == null) {
-      return hasFailedPromotions();
+      return false;
     }
 
     StepStats jobStats = currentStats.getJobStats();
@@ -1800,15 +1790,7 @@ public class SearchIndexExecutor implements AutoCloseable {
     long processed = jobStats.getSuccessRecords() != null ? jobStats.getSuccessRecords() : 0;
     long total = jobStats.getTotalRecords() != null ? jobStats.getTotalRecords() : 0;
 
-    return failed > 0 || (total > 0 && processed < total) || hasFailedPromotions();
-  }
-
-  private boolean hasFailedPromotions() {
-    return recreateIndexHandler != null && !recreateIndexHandler.getFailedPromotions().isEmpty();
-  }
-
-  private boolean hasDataLossPromotions() {
-    return recreateIndexHandler != null && !recreateIndexHandler.getDataLossPromotions().isEmpty();
+    return failed > 0 || (total > 0 && processed < total);
   }
 
   public void stop() {
