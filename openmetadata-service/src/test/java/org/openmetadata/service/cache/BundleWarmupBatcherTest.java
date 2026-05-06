@@ -57,9 +57,11 @@ class BundleWarmupBatcherTest {
   private CacheProvider cache;
   private CacheKeys keys;
   private BundleWarmupBatcher batcher;
+  private EntityRelationshipRepository originalEntityRelationshipRepository;
 
   @BeforeEach
   void setUp() {
+    originalEntityRelationshipRepository = Entity.getEntityRelationshipRepository();
     dao = mock(CollectionDAO.class);
     tagUsageDAO = mock(CollectionDAO.TagUsageDAO.class);
     relationshipDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
@@ -72,7 +74,7 @@ class BundleWarmupBatcherTest {
 
   @AfterEach
   void tearDown() {
-    Entity.setEntityRelationshipRepository(null);
+    Entity.setEntityRelationshipRepository(originalEntityRelationshipRepository);
   }
 
   @Test
