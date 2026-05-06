@@ -72,6 +72,7 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           PLAYWRIGHT_IS_OSS: true
+          PLAYWRIGHT_NIGHTLY: true
         run: |
           # No explicit spec file path in workflow; project mapping lives in playwright.config.ts.
           npx playwright test --project=search-nightly --workers=1
