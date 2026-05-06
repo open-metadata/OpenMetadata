@@ -1549,6 +1549,7 @@ const SSOConfigurationFormRJSF = ({
                         formData={
                           internalData?.authenticationConfiguration as never
                         }
+                        hasExistingConfig={hasExistingConfig}
                         isDisabled={isLoading}
                         securityConfig={internalData as never}
                         triggerRef={testLoginTriggerRef}
@@ -1668,6 +1669,7 @@ const SSOConfigurationFormRJSF = ({
                       formData={
                         internalData?.authenticationConfiguration as never
                       }
+                      hasExistingConfig={hasExistingConfig}
                       isDisabled={isLoading}
                       securityConfig={internalData as never}
                       triggerRef={testLoginTriggerRef}

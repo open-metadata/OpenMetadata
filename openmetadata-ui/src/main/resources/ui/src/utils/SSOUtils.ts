@@ -1084,6 +1084,20 @@ export const prepareOidcSubmitPayload = (
   const derivedClientType = deriveOidcClientType(authConfig);
   authConfig.clientType = derivedClientType;
 
+  // Mirror nested oidcConfiguration.discoveryUri up to the root for both
+  // Public and Confidential paths so the backend's normalizeForPersistence
+  // can derive authority, publicKeyUrls (overwriting any stale value), and
+  // Azure tenant — it only reads root-level discoveryUri for derivation.
+  const authConfigWithDiscovery = authConfig as AuthenticationConfiguration & {
+    discoveryUri?: string;
+  };
+  const nestedDiscoveryUri = authConfig.oidcConfiguration?.discoveryUri as
+    | string
+    | undefined;
+  if (!authConfigWithDiscovery.discoveryUri && nestedDiscoveryUri) {
+    authConfigWithDiscovery.discoveryUri = nestedDiscoveryUri;
+  }
+
   if (derivedClientType !== ClientType.Public) {
     return cleanupProviderSpecificFields(cloned, provider);
   }

@@ -49,6 +49,7 @@ export interface TestLoginButtonHandle {
 interface TestLoginButtonProps {
   formData?: TestLoginFormData;
   securityConfig?: SecurityConfigForValidation;
+  hasExistingConfig?: boolean;
   isDisabled?: boolean;
   onSuccess: (result: TestLoginResult) => void;
   triggerRef?: RefObject<TestLoginButtonHandle | null>;
@@ -90,6 +91,7 @@ const submitFormToPopup = (action: string, fields: Record<string, string>) => {
 const TestLoginButton = ({
   formData,
   securityConfig,
+  hasExistingConfig = false,
   isDisabled = false,
   onSuccess,
   triggerRef,
@@ -251,6 +253,7 @@ const TestLoginButton = ({
     submitFormToPopup(
       `${window.location.origin}/api/v1/system/config/auth/test-login/saml-initiate`,
       {
+        mode: hasExistingConfig ? 'existing' : 'new',
         idpEntityId,
         idpSsoLoginUrl,
         idpX509Certificate,
@@ -264,7 +267,14 @@ const TestLoginButton = ({
     );
 
     timerRef.current = setTimeout(failTimeout, POPUP_TIMEOUT_MS);
-  }, [formData, t, failPopupBlocked, failTimeout, startCloseWatch]);
+  }, [
+    formData,
+    hasExistingConfig,
+    t,
+    failPopupBlocked,
+    failTimeout,
+    startCloseWatch,
+  ]);
 
   const startOidcTestLogin = useCallback(async () => {
     const discoveryUri =
@@ -354,6 +364,7 @@ const TestLoginButton = ({
     submitFormToPopup(
       `${window.location.origin}/api/v1/system/config/auth/test-login/initiate`,
       {
+        mode: hasExistingConfig ? 'existing' : 'new',
         discoveryUri,
         clientId,
         clientSecret,
@@ -373,6 +384,7 @@ const TestLoginButton = ({
     timerRef.current = setTimeout(failTimeout, POPUP_TIMEOUT_MS);
   }, [
     formData,
+    hasExistingConfig,
     securityConfig,
     t,
     failPopupBlocked,
@@ -396,6 +408,7 @@ const TestLoginButton = ({
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({
+            mode: hasExistingConfig ? 'existing' : 'new',
             ldapConfiguration: formData?.ldapConfiguration,
             email: ldapEmail,
             password: ldapPassword,
@@ -429,7 +442,7 @@ const TestLoginButton = ({
     } finally {
       setLdapModalLoading(false);
     }
-  }, [formData, ldapEmail, ldapPassword, onSuccess, t]);
+  }, [formData, hasExistingConfig, ldapEmail, ldapPassword, onSuccess, t]);
 
   const handleTestLogin = useCallback(() => {
     setIsLoading(true);

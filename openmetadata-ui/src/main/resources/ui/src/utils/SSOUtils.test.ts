@@ -3533,6 +3533,51 @@ describe('prepareOidcSubmitPayload', () => {
     expect(auth?.oidcConfiguration?.secret).toBe('super-secret');
   });
 
+  it('mirrors nested discoveryUri to root on Confidential so backend can derive authority and Azure tenant', () => {
+    const data: FormData = {
+      authenticationConfiguration: buildOidcAuthConfig({
+        provider: AuthProvider.Azure,
+        providerName: 'azure',
+      }),
+      authorizerConfiguration: buildAuthorizerConfig(),
+    };
+
+    const result = prepareOidcSubmitPayload(data);
+    const auth = result?.authenticationConfiguration as
+      | (FormData['authenticationConfiguration'] & { discoveryUri?: string })
+      | undefined;
+
+    expect(auth?.clientType).toBe(ClientType.Confidential);
+    expect(auth?.discoveryUri).toBe(
+      'https://idp.example.com/.well-known/openid-configuration'
+    );
+    expect(auth?.oidcConfiguration?.discoveryUri).toBe(
+      'https://idp.example.com/.well-known/openid-configuration'
+    );
+  });
+
+  it('does not override an explicit root discoveryUri on the Confidential path', () => {
+    const data: FormData = {
+      authenticationConfiguration: {
+        ...buildOidcAuthConfig({
+          provider: AuthProvider.Azure,
+          providerName: 'azure',
+        }),
+        discoveryUri: 'https://explicit.example.com/.well-known/openid-configuration',
+      } as FormData['authenticationConfiguration'] & { discoveryUri?: string },
+      authorizerConfiguration: buildAuthorizerConfig(),
+    };
+
+    const result = prepareOidcSubmitPayload(data);
+    const auth = result?.authenticationConfiguration as
+      | (FormData['authenticationConfiguration'] & { discoveryUri?: string })
+      | undefined;
+
+    expect(auth?.discoveryUri).toBe(
+      'https://explicit.example.com/.well-known/openid-configuration'
+    );
+  });
+
   it('reshapes to Public when secret is blank', () => {
     const data: FormData = {
       authenticationConfiguration: buildOidcAuthConfig({}, { secret: '' }),
@@ -3565,6 +3610,23 @@ describe('prepareOidcSubmitPayload', () => {
     expect(oidc?.secret).toBeUndefined();
     expect(oidc?.scope).toBeUndefined();
     expect(oidc?.useNonce).toBeUndefined();
+  });
+
+  it('mirrors nested discoveryUri to root on Public so backend re-derives publicKeyUrls', () => {
+    const data: FormData = {
+      authenticationConfiguration: buildOidcAuthConfig({}, { secret: '' }),
+      authorizerConfiguration: buildAuthorizerConfig(),
+    };
+
+    const result = prepareOidcSubmitPayload(data);
+    const auth = result?.authenticationConfiguration as
+      | (FormData['authenticationConfiguration'] & { discoveryUri?: string })
+      | undefined;
+
+    expect(auth?.clientType).toBe(ClientType.Public);
+    expect(auth?.discoveryUri).toBe(
+      'https://idp.example.com/.well-known/openid-configuration'
+    );
   });
 
   it('does not mutate the input on the Public path', () => {
