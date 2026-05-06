@@ -353,6 +353,7 @@ export const SAML_UI_SCHEMA = {
   callbackUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
   // Hide publicKeyUrls for SAML - uses internal LocalJwkProvider
   publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  enableAutoRedirect: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // OIDC Configuration UI Schema
@@ -852,6 +853,8 @@ const OIDC_CONFIDENTIAL_SUBSECTION: SSOSectionLayout = {
 
 const SAML_AUTH_ROOT: SSOSectionLayout = {
   samlConfiguration: 'main',
+  responseType: 'advanced',
+  providerName: 'advanced',
 };
 
 const SAML_SUBSECTION: SSOSectionLayout = {
@@ -859,6 +862,7 @@ const SAML_SUBSECTION: SSOSectionLayout = {
   sp: 'advanced',
   security: 'advanced',
   debugMode: 'advanced',
+  samlDisplayNameAttributes: 'advanced',
 };
 
 const LDAP_AUTH_ROOT: SSOSectionLayout = {
