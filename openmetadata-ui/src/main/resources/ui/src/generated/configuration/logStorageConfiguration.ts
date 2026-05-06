@@ -27,6 +27,14 @@ export interface LogStorageConfiguration {
      */
     bucketName?: string;
     /**
+     * How often (in minutes) the abandoned-run sweeper wakes up to check for expired streams.
+     */
+    cleanupIntervalMinutes?: number;
+    /**
+     * Triggers an out-of-band flush when pendingFlush exceeds this size in bytes (default 5 MB).
+     */
+    earlyFlushWatermarkBytes?: number;
+    /**
      * Enable it for pipelines deployed in the server
      */
     enabled?: boolean;
@@ -47,6 +55,14 @@ export interface LogStorageConfiguration {
      */
     maxConcurrentStreams?: number;
     /**
+     * Periodic cadence (in minutes) for flushing in-memory pendingFlush queue to partial.txt.
+     */
+    partialFlushIntervalMinutes?: number;
+    /**
+     * Emit an alerting metric after this many consecutive failed flushes for a single stream.
+     */
+    pendingFlushAlertAfterFailures?: number;
+    /**
      * S3 key prefix for organizing logs
      */
     prefix?: string;
@@ -59,7 +75,13 @@ export interface LogStorageConfiguration {
      */
     storageClass?: StorageClass;
     /**
-     * Timeout in minutes for idle log streams before automatic cleanup
+     * Idle threshold in hours before the abandoned-run sweeper finalizes a stream. Replaces
+     * streamTimeoutMinutes for new deployments.
+     */
+    streamTimeoutHours?: number;
+    /**
+     * Timeout in minutes for idle log streams before automatic cleanup (DEPRECATED: use
+     * streamTimeoutHours)
      */
     streamTimeoutMinutes?: number;
     /**
