@@ -709,6 +709,84 @@ class DefaultRecreateHandlerTest {
           handler.getDataLossPromotions().contains("table"),
           "swap2 (addAliases) failure after canonical delete is data unavailability");
     }
+
+    @Test
+    @DisplayName("post-delete indexExists throwing → marked failed (not data loss)")
+    void testPromoteEntityIndexHandlesIndexExistsPostCheckThrow() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index", Set.of("table_search_index"));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      // First indexExists (gate) returns true, second (post-delete check) throws.
+      lenient()
+          .when(client.indexExists("table_search_index"))
+          .thenReturn(true)
+          .thenThrow(new IllegalStateException("transport timeout"));
+
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+
+      DefaultRecreateHandler handler = new DefaultRecreateHandler();
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .canonicalAliases("table")
+                .existingAliases(new HashSet<>(Set.of("table_search_index")))
+                .parentAliases(new HashSet<>(Set.of("all")))
+                .build();
+
+        handler.promoteEntityIndex(context, true);
+      }
+
+      assertTrue(handler.getFailedPromotions().contains("table"));
+      assertFalse(
+          handler.getDataLossPromotions().contains("table"),
+          "post-delete indexExists throw is conservative — not classed as data loss");
+    }
+
+    @Test
+    @DisplayName("post-add getAliases throwing → marked data-loss (canonical already gone)")
+    void testPromoteEntityIndexHandlesGetAliasesPostCheckThrow() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index", Set.of("table_search_index"));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      org.mockito.Mockito.doThrow(new IllegalStateException("transport timeout"))
+          .when(client)
+          .getAliases("table_search_index_rebuild_new");
+
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+
+      DefaultRecreateHandler handler = new DefaultRecreateHandler();
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .canonicalAliases("table")
+                .existingAliases(new HashSet<>(Set.of("table_search_index")))
+                .parentAliases(new HashSet<>(Set.of("all")))
+                .build();
+
+        handler.promoteEntityIndex(context, true);
+      }
+
+      assertTrue(handler.getFailedPromotions().contains("table"));
+      assertTrue(
+          handler.getDataLossPromotions().contains("table"),
+          "post-add getAliases throw after canonical delete is data unavailability");
+    }
   }
 
   @Nested

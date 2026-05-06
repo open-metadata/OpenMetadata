@@ -327,7 +327,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     // ElasticSearchIndexManager#addAliasesInternal — same shape on the OS side). A try/catch
     // alone cannot detect failure. Verify outcome via post-state checks: the index is gone,
     // the alias is attached.
-    if (needsCanonicalAlias && searchClient.indexExists(canonicalIndex)) {
+    if (needsCanonicalAlias && safeIndexExists(searchClient, canonicalIndex, entityType)) {
       try {
         searchClient.deleteIndexWithBackoff(canonicalIndex);
       } catch (Exception ex) {
@@ -341,7 +341,18 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         markPromotionFailed(entityType, false);
         return false;
       }
-      if (searchClient.indexExists(canonicalIndex)) {
+      Boolean stillExistsAfterDelete = checkIndexExists(searchClient, canonicalIndex);
+      if (stillExistsAfterDelete == null) {
+        // post-check itself failed; conservatively assume not-deleted (dataLoss=false)
+        LOG.error(
+            "[ALIAS_PROMOTE_FAILED phase=delete-canonical entity={} stagedIndex={} canonicalIndex={} reason=post-check-failed]",
+            entityType,
+            stagedIndex,
+            canonicalIndex);
+        markPromotionFailed(entityType, false);
+        return false;
+      }
+      if (stillExistsAfterDelete) {
         LOG.error(
             "[ALIAS_PROMOTE_FAILED phase=delete-canonical entity={} stagedIndex={} canonicalIndex={} reason=delete-not-acknowledged] "
                 + "Client did not throw, but canonical index still exists. Old index keeps serving canonical-name lookups.",
@@ -368,7 +379,19 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         markPromotionFailed(entityType, true);
         return false;
       }
-      if (!searchClient.getAliases(stagedIndex).contains(canonicalIndex)) {
+      Boolean aliasAttached = checkAliasAttached(searchClient, stagedIndex, canonicalIndex);
+      if (aliasAttached == null) {
+        // post-check itself failed AND canonical is already deleted → assume data loss
+        LOG.error(
+            "[ALIAS_PROMOTE_FAILED phase=swap2 entity={} stagedIndex={} canonicalIndex={} reason=post-check-failed] "
+                + "DATA UNAVAILABLE: canonical was deleted, alias-attached check failed.",
+            entityType,
+            stagedIndex,
+            canonicalIndex);
+        markPromotionFailed(entityType, true);
+        return false;
+      }
+      if (!aliasAttached) {
         LOG.error(
             "[ALIAS_PROMOTE_FAILED phase=swap2 entity={} stagedIndex={} canonicalIndex={} reason=alias-not-attached] "
                 + "DATA UNAVAILABLE: client did not throw, but canonical-name alias is not on staged index. "
@@ -404,6 +427,56 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       }
     }
     return true;
+  }
+
+  /**
+   * indexExists at the gate before delete. If the call itself throws, treat as "does not exist"
+   * — falling through to skip the delete attempt is conservative; if canonical actually exists,
+   * step 3's addAliases will fail (name collision) and the alias-attached post-check will
+   * record the failure with the right blast radius.
+   */
+  private boolean safeIndexExists(SearchClient searchClient, String index, String entityType) {
+    try {
+      return searchClient.indexExists(index);
+    } catch (Exception ex) {
+      LOG.warn(
+          "indexExists check threw for entity '{}' index '{}'; assuming missing.",
+          entityType,
+          index,
+          ex);
+      return false;
+    }
+  }
+
+  /**
+   * Tristate post-check used after deleteIndexWithBackoff. Returns TRUE if the index still
+   * exists (delete didn't take), FALSE if it's gone (delete succeeded), null if the check
+   * itself threw.
+   */
+  private Boolean checkIndexExists(SearchClient searchClient, String index) {
+    try {
+      return searchClient.indexExists(index);
+    } catch (Exception ex) {
+      LOG.warn("indexExists post-check threw for index '{}'; cannot determine state.", index, ex);
+      return null;
+    }
+  }
+
+  /**
+   * Tristate post-check used after addAliases. Returns TRUE if the alias is on the staged
+   * index, FALSE if missing, null if the check itself threw. The caller treats null as the
+   * worst case (data loss) because the canonical has already been deleted at this point.
+   */
+  private Boolean checkAliasAttached(SearchClient searchClient, String stagedIndex, String alias) {
+    try {
+      return searchClient.getAliases(stagedIndex).contains(alias);
+    } catch (Exception ex) {
+      LOG.warn(
+          "getAliases post-check threw for staged index '{}'; cannot determine alias state.",
+          stagedIndex,
+          ex);
+      return null;
+    }
   }
 
   protected void recreateIndexFromMapping(
