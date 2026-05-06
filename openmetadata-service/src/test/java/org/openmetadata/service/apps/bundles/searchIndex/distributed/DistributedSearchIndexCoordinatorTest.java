@@ -871,8 +871,118 @@ class DistributedSearchIndexCoordinatorTest {
             anyLong(),
             any());
 
-    // Verify pending partitions were cancelled
-    verify(partitionDAO).cancelPendingPartitions(jobId.toString());
+    // Both PENDING and PROCESSING partitions must be cancelled — leaving PROCESSING orphaned
+    // means workerExecutor.shutdownNow() kills the threads but the rows stay PROCESSING in
+    // the DB, so checkAndUpdateJobCompletion (which requires processing.isEmpty()) never
+    // flips STOPPING → STOPPED and the strategy's monitor loop polls forever.
+    verify(partitionDAO).cancelInFlightPartitions(eq(jobId.toString()), anyLong());
+    verify(partitionDAO, never()).cancelPendingPartitions(jobId.toString());
+  }
+
+  /**
+   * Regression test for the user-visible "stop button does nothing" bug. Reproduces the exact
+   * production scenario: distributed reindex running with PROCESSING partitions, user clicks
+   * Stop. Without this fix the job would stay in STOPPING forever because
+   * checkAndUpdateJobCompletion requires processing.isEmpty() and PROCESSING rows were never
+   * cancelled. With the fix, requestStop cancels in-flight partitions AND drives the state
+   * machine forward in the same call, so the job transitions to STOPPED before requestStop
+   * returns.
+   */
+  @Test
+  void testRequestStop_ProcessingPartitionsTransitionToStopped() {
+    UUID jobId = UUID.randomUUID();
+    EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
+
+    SearchIndexJobRecord runningJob =
+        new SearchIndexJobRecord(
+            jobId.toString(),
+            IndexJobStatus.RUNNING.name(),
+            JsonUtils.pojoToJson(jobConfig),
+            "staged_123_",
+            null,
+            10000,
+            5000,
+            4900,
+            100,
+            "{}",
+            "admin",
+            System.currentTimeMillis() - 60000,
+            System.currentTimeMillis() - 50000,
+            null,
+            System.currentTimeMillis(),
+            null,
+            System.currentTimeMillis() - 55000,
+            2);
+
+    SearchIndexJobRecord stoppingJob =
+        new SearchIndexJobRecord(
+            runningJob.id(),
+            IndexJobStatus.STOPPING.name(),
+            runningJob.jobConfiguration(),
+            runningJob.targetIndexPrefix(),
+            runningJob.stagedIndexMapping(),
+            runningJob.totalRecords(),
+            runningJob.processedRecords(),
+            runningJob.successRecords(),
+            runningJob.failedRecords(),
+            runningJob.stats(),
+            runningJob.createdBy(),
+            runningJob.createdAt(),
+            runningJob.startedAt(),
+            runningJob.completedAt(),
+            System.currentTimeMillis(),
+            runningJob.errorMessage(),
+            runningJob.registrationDeadline(),
+            runningJob.registeredServerCount());
+
+    // First findById returns RUNNING (entry into requestStop). After the STOPPING write,
+    // checkAndUpdateJobCompletion's findById should see STOPPING.
+    when(jobDAO.findById(jobId.toString())).thenReturn(runningJob, stoppingJob);
+
+    // Critical: cancelInFlightPartitions empties both PENDING and PROCESSING. The
+    // post-cancel partition lists are all empty, so checkAndUpdateJobCompletion's
+    // pending.isEmpty() && processing.isEmpty() check passes and STOPPING → STOPPED fires.
+    when(partitionDAO.cancelInFlightPartitions(eq(jobId.toString()), anyLong())).thenReturn(3);
+    when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PENDING.name()))
+        .thenReturn(List.of());
+    when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name()))
+        .thenReturn(List.of());
+    when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.FAILED.name()))
+        .thenReturn(List.of());
+    when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.CANCELLED.name()))
+        .thenReturn(List.of());
+
+    coordinator.requestStop(jobId);
+
+    // STOPPING write happens first.
+    verify(jobDAO)
+        .update(
+            eq(jobId.toString()),
+            eq(IndexJobStatus.STOPPING.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            any(),
+            any(),
+            anyLong(),
+            any());
+
+    // STOPPED write happens before requestStop returns — driven by the in-call
+    // checkAndUpdateJobCompletion. Without the fix this never fires because PROCESSING
+    // rows were never cleaned up and the state machine couldn't advance.
+    verify(jobDAO)
+        .update(
+            eq(jobId.toString()),
+            eq(IndexJobStatus.STOPPED.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            any(),
+            any(),
+            anyLong(),
+            any());
   }
 
   @Test

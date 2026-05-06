@@ -57,7 +57,7 @@ public class PartitionWorker {
   private static final long MAX_CURSOR_INITIALIZATION_OFFSET = (long) Integer.MAX_VALUE + 1L;
 
   /** Time series entity types that need special handling */
-  private static final Set<String> TIME_SERIES_ENTITIES =
+  static final Set<String> TIME_SERIES_ENTITIES =
       Set.of(
           ReportData.ReportDataType.ENTITY_REPORT_DATA.value(),
           ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA.value(),
@@ -643,22 +643,29 @@ public class PartitionWorker {
     if (offset <= 0) {
       return null;
     }
-    if (!TIME_SERIES_ENTITIES.contains(entityType)) {
-      int cursorOffset = toCursorOffset(entityType, offset);
-      ListFilter filter = new ListFilter(Include.ALL);
-      String cursor =
-          Entity.getEntityRepository(entityType).getCursorAtOffset(filter, cursorOffset);
-      if (cursor == null) {
-        LOG.debug(
-            "getCursorAtOffset returned null for {} at offset {} (cursorOffset={})",
-            entityType,
-            offset,
-            cursorOffset);
-      }
-      return cursor;
-    } else {
+    if (TIME_SERIES_ENTITIES.contains(entityType)) {
       return RestUtil.encodeCursor(String.valueOf(offset));
     }
+    // Fast path: coordinator precomputed boundary cursors for every partition's
+    // rangeStart at job initialization (single keyset walk per entity type, O(N) total).
+    // Only the partition's first call lands on a known rangeStart value; mid-partition
+    // recomputes (after batch failure) won't hit this path and fall through to the
+    // OFFSET-based fallback below.
+    String precomputed = coordinator.getPartitionStartCursor(entityType, offset);
+    if (precomputed != null) {
+      return precomputed;
+    }
+    int cursorOffset = toCursorOffset(entityType, offset);
+    ListFilter filter = new ListFilter(Include.ALL);
+    String cursor = Entity.getEntityRepository(entityType).getCursorAtOffset(filter, cursorOffset);
+    if (cursor == null) {
+      LOG.debug(
+          "getCursorAtOffset returned null for {} at offset {} (cursorOffset={})",
+          entityType,
+          offset,
+          cursorOffset);
+    }
+    return cursor;
   }
 
   private int toCursorOffset(String entityType, long offset) {

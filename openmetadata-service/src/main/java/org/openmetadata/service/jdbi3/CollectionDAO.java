@@ -11833,6 +11833,12 @@ public interface CollectionDAO {
         "UPDATE search_index_partition SET status = 'CANCELLED' WHERE jobId = :jobId AND status = 'PENDING'")
     int cancelPendingPartitions(@Bind("jobId") String jobId);
 
+    @SqlUpdate(
+        "UPDATE search_index_partition SET status = 'CANCELLED', "
+            + "lastError = 'Stopped by user', completedAt = :now, lastUpdateAt = :now "
+            + "WHERE jobId = :jobId AND status IN ('PENDING','PROCESSING')")
+    int cancelInFlightPartitions(@Bind("jobId") String jobId, @Bind("now") long now);
+
     @SqlQuery(
         "SELECT * FROM search_index_partition WHERE jobId = :jobId AND status = 'PROCESSING' "
             + "AND lastUpdateAt < :staleThreshold")

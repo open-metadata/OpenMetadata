@@ -13,18 +13,22 @@
 
 package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO;
@@ -35,6 +39,9 @@ import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.Enti
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.SearchIndexPartitionRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.ServerStatsRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchReindexLockDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.util.RestUtil;
 
 /**
  * Coordinates distributed search index jobs across multiple OpenMetadata server instances.
@@ -93,6 +100,22 @@ public class DistributedSearchIndexCoordinator {
 
   /** Monotonic counter to guarantee unique claimedAt values across concurrent worker threads. */
   private final AtomicLong claimCounter = new AtomicLong(0);
+
+  /**
+   * Per-entity precomputed partition-boundary cursors. Replaces the per-PartitionWorker
+   * call to {@code EntityRepository.getCursorAtOffset(filter, partitionStart)} which
+   * underneath uses SQL {@code OFFSET partitionStart} — O(partitionStart) per worker, total
+   * O(N²) across all partitions. Now we walk each entity table once via keyset
+   * pagination at job start, recording the cursor at every partition boundary. Workers
+   * read in O(1) from this map.
+   *
+   * <p>Key: entityType. Value: map from partition rangeStart → encoded keyset cursor.
+   * A null value (or missing key) means "no cursor available, fall back to the slow
+   * path" — used when this coordinator did not initialize the partitions itself
+   * (recovery on a different server).
+   */
+  private final ConcurrentHashMap<String, Map<Long, String>> partitionStartCursors =
+      new ConcurrentHashMap<>();
 
   public DistributedSearchIndexCoordinator(CollectionDAO collectionDAO) {
     this.collectionDAO = collectionDAO;
@@ -194,6 +217,128 @@ public class DistributedSearchIndexCoordinator {
   }
 
   /**
+   * Look up the precomputed keyset cursor at a partition's start. Returns null when the
+   * cache has not been populated for this entity type (e.g., this server picked up a
+   * partition created by another server) — callers fall back to the slower OFFSET-based
+   * EntityRepository.getCursorAtOffset path.
+   *
+   * <p>Hits cache in O(1) for the normal case where this coordinator initialized the
+   * partitions and a worker on the same server is processing them.
+   */
+  public String getPartitionStartCursor(String entityType, long rangeStart) {
+    if (rangeStart <= 0) {
+      return null;
+    }
+    Map<Long, String> entityCursors = partitionStartCursors.get(entityType);
+    if (entityCursors == null) {
+      return null;
+    }
+    return entityCursors.get(rangeStart);
+  }
+
+  /**
+   * Walk each entity type's table once via keyset pagination, recording the cursor at
+   * every partition's rangeStart. Only called from initializePartitions. Time-series
+   * entities are skipped — their PartitionWorker uses a synthetic offset cursor that
+   * doesn't require a real keyset lookup.
+   */
+  private void precomputePartitionStartCursors(List<SearchIndexPartition> partitions) {
+    Map<String, List<SearchIndexPartition>> byEntity =
+        partitions.stream()
+            .filter(p -> p.getEntityType() != null)
+            .filter(p -> !PartitionWorker.TIME_SERIES_ENTITIES.contains(p.getEntityType()))
+            .collect(Collectors.groupingBy(SearchIndexPartition::getEntityType));
+
+    for (Map.Entry<String, List<SearchIndexPartition>> e : byEntity.entrySet()) {
+      String entityType = e.getKey();
+      try {
+        Map<Long, String> cursorByRangeStart = walkBoundaries(entityType, e.getValue());
+        partitionStartCursors.put(entityType, cursorByRangeStart);
+      } catch (Exception ex) {
+        // If precomputation fails (entity type not registered, transport error, etc.) the
+        // workers fall back to the existing OFFSET path. Don't block job initialization.
+        LOG.warn(
+            "Failed to precompute partition start cursors for entity {}; workers will fall back to OFFSET path",
+            entityType,
+            ex);
+      }
+    }
+  }
+
+  private Map<Long, String> walkBoundaries(
+      String entityType, List<SearchIndexPartition> entityPartitions) {
+    List<Long> sortedTargets =
+        entityPartitions.stream()
+            .map(SearchIndexPartition::getRangeStart)
+            .filter(r -> r > 0)
+            .sorted()
+            .distinct()
+            .collect(Collectors.toList());
+    Map<Long, String> result = new HashMap<>();
+    if (sortedTargets.isEmpty()) {
+      return result;
+    }
+
+    EntityRepository<?> repo = Entity.getEntityRepository(entityType);
+    ListFilter filter = new ListFilter(Include.ALL);
+
+    String afterName = null;
+    String afterId = null;
+    long currentOffset = 0;
+    int targetIdx = 0;
+    long nextTarget = sortedTargets.get(targetIdx);
+    final int batchSize = 10_000;
+
+    while (targetIdx < sortedTargets.size()) {
+      long need = nextTarget - currentOffset;
+      if (need <= 0) {
+        // Walked past this target via a larger batch; record the most recent boundary.
+        // Shouldn't happen in practice because we batch in fixed sizes, but be defensive.
+        targetIdx++;
+        if (targetIdx < sortedTargets.size()) {
+          nextTarget = sortedTargets.get(targetIdx);
+        }
+        continue;
+      }
+      int fetch = (int) Math.min(need, batchSize);
+      List<String> batch = repo.getDao().listAfter(filter, fetch, afterName, afterId);
+      if (batch.isEmpty()) {
+        break;
+      }
+      currentOffset += batch.size();
+      String lastJson = batch.get(batch.size() - 1);
+      Map<String, Object> lastEntity =
+          JsonUtils.readValue(lastJson, new TypeReference<Map<String, Object>>() {});
+      String lastName = (String) lastEntity.get("name");
+      Object lastIdObj = lastEntity.get("id");
+      String lastId = lastIdObj == null ? null : lastIdObj.toString();
+      afterName = lastName;
+      afterId = lastId;
+
+      if (currentOffset >= nextTarget) {
+        // The cursor for an offset N is the cursor of row N-1 (0-indexed boundary).
+        Map<String, String> cursorMap = new HashMap<>();
+        cursorMap.put("name", lastName);
+        cursorMap.put("id", lastId);
+        result.put(nextTarget, RestUtil.encodeCursor(JsonUtils.pojoToJson(cursorMap)));
+        targetIdx++;
+        if (targetIdx < sortedTargets.size()) {
+          nextTarget = sortedTargets.get(targetIdx);
+        }
+      }
+      if (batch.size() < fetch) {
+        break; // entity exhausted
+      }
+    }
+    LOG.debug(
+        "Precomputed {} boundary cursors for entity {} (currentOffset={})",
+        result.size(),
+        entityType,
+        currentOffset);
+    return result;
+  }
+
+  /**
    * Initialize partitions for a job.
    *
    * @param jobId The job ID
@@ -232,6 +377,11 @@ public class DistributedSearchIndexCoordinator {
           partitions.size(),
           jobId,
           entityTypes.size());
+
+      // Precompute keyset cursors at every partition boundary in a single keyset walk per
+      // entity type. Replaces per-worker EntityRepository.getCursorAtOffset(SQL OFFSET) calls
+      // — O(N²) total scan cost across all partitions — with one O(N) keyset traversal here.
+      precomputePartitionStartCursors(partitions);
     }
 
     // Calculate staggered claimableAt timestamps for partitions
@@ -613,19 +763,24 @@ public class DistributedSearchIndexCoordinator {
       return;
     }
 
+    long now = System.currentTimeMillis();
     SearchIndexJob stopping =
-        job.toBuilder()
-            .status(IndexJobStatus.STOPPING)
-            .updatedAt(System.currentTimeMillis())
-            .build();
+        job.toBuilder().status(IndexJobStatus.STOPPING).updatedAt(now).build();
 
     updateJob(jobDAO, stopping);
 
-    // Cancel all pending partitions
+    // Cancel both PENDING and PROCESSING partitions. The previous cancelPendingPartitions
+    // left PROCESSING rows orphaned: workerExecutor.shutdownNow() killed the worker threads
+    // but did not update partition status, so checkAndUpdateJobCompletion (which requires
+    // processing.isEmpty()) never flipped STOPPING → STOPPED. The strategy's monitor loop
+    // kept polling forever and the UI showed "Running" with a ticking timer.
     SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
-    partitionDAO.cancelPendingPartitions(jobId.toString());
+    int cancelled = partitionDAO.cancelInFlightPartitions(jobId.toString(), now);
+    LOG.info("Requested stop for job {} ({} in-flight partitions cancelled)", jobId, cancelled);
 
-    LOG.info("Requested stop for job {}", jobId);
+    // Drive STOPPING → STOPPED immediately so monitorDistributedJob exits without
+    // waiting for the next poll tick.
+    checkAndUpdateJobCompletion(jobId);
   }
 
   /**

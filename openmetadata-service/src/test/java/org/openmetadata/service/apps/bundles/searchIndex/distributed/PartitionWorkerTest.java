@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -287,6 +288,7 @@ class PartitionWorkerTest {
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
+      when(coordinator.getPartitionStartCursor("table", 5L)).thenReturn(null);
       when(repository.getCursorAtOffset(any(ListFilter.class), eq(4))).thenReturn("cursor-4");
 
       assertNull(
@@ -314,6 +316,35 @@ class PartitionWorkerTest {
             new Class<?>[] {String.class, long.class},
             Entity.QUERY_COST_RECORD,
             5L));
+  }
+
+  /**
+   * Bug 2 regression: precomputed cursor on the coordinator must short-circuit the
+   * OFFSET-based fallback. Without this, every PartitionWorker pays SQL OFFSET cost at the
+   * partition start (O(rangeStart) per partition, O(N²) across all partitions for a job).
+   * With it, workers hit the cache in O(1) and the slow path is never invoked.
+   */
+  @Test
+  void initializeKeysetCursorHitsPrecomputedCacheAndSkipsOffsetFallback() throws Exception {
+    @SuppressWarnings("unchecked")
+    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
+      when(coordinator.getPartitionStartCursor("table", 10000L)).thenReturn("precomputed-10k");
+
+      Object cursor =
+          invokePrivate(
+              worker,
+              "initializeKeysetCursor",
+              new Class<?>[] {String.class, long.class},
+              "table",
+              10000L);
+
+      assertEquals("precomputed-10k", cursor);
+      verify(coordinator).getPartitionStartCursor("table", 10000L);
+      verify(repository, never()).getCursorAtOffset(any(ListFilter.class), anyInt());
+    }
   }
 
   @Test
