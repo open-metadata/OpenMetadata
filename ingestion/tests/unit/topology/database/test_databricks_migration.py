@@ -90,6 +90,42 @@ class TestDatabricksBaseDefaultScheme:
         assert result is not None
         assert "databricks+connector" not in result
 
+    def test_token_nested_under_authtype(self):
+        """Real DatabricksConnection has token nested at authType.token (PAT
+        auth). The URL must embed that token; otherwise databricks-sql-connector
+        falls back to OAuth U2M and opens a browser."""
+        from metadata.ingestion.source.database.common.data_diff.databricks_base import (
+            DatabricksBaseTableParameter,
+        )
+
+        class FakeAuthType:
+            token = "dapi-pat-secret"
+
+        class FakeConfig:
+            hostPort = "host:443"  # noqa: N815
+            httpPath = "/sql/1.0/warehouses/abc"  # noqa: N815
+            authType = FakeAuthType()  # noqa: N815
+
+        result = DatabricksBaseTableParameter._get_service_connection_config(FakeConfig())
+        assert "dapi-pat-secret" in result
+        assert result == "databricks://:dapi-pat-secret@host:443/sql/1.0/warehouses/abc"
+
+    def test_missing_token_raises(self):
+        """An empty-token URL silently triggers OAuth U2M browser fallback in
+        the SQL driver. We prefer a hard error so non-interactive runs fail
+        fast with a clear message."""
+        import pytest
+
+        from metadata.ingestion.source.database.common.data_diff.databricks_base import (
+            DatabricksBaseTableParameter,
+        )
+
+        class FakeConfig:
+            hostPort = "host:443"  # noqa: N815
+
+        with pytest.raises(ValueError, match="Personal Access Token"):
+            DatabricksBaseTableParameter._get_service_connection_config(FakeConfig())
+
 
 class TestDatabricksPipelineConnectionUrl:
     """Verify pipeline connection URL uses new scheme"""
