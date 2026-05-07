@@ -30,6 +30,7 @@ from metadata.generated.schema.security.credentials.awsCredentials import AWSCre
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.profiler.api.models import DatabaseAndSchemaConfig, TableConfig
 from metadata.profiler.config import (
     get_database_profiler_config,
@@ -171,7 +172,7 @@ class ProfilerInterfaceTest(TestCase):
             entity_config=None,
             default_sample_config=SampleConfig(),
         )
-        static = actual.get_static_config()
+        static = actual.get_config(StaticSamplingConfig)
         self.assertIsNotNone(static)
         self.assertEqual(static.profileSample, 11)
         self.assertEqual(static.profileSampleType, ProfileSampleType.PERCENTAGE)
@@ -188,7 +189,7 @@ class ProfilerInterfaceTest(TestCase):
             entity_config=profiler,
             default_sample_config=SampleConfig(),
         )
-        static = actual.get_static_config()
+        static = actual.get_config(StaticSamplingConfig)
         self.assertIsNotNone(static)
         self.assertEqual(static.profileSample, 11)
         self.assertEqual(static.profileSampleType, ProfileSampleType.PERCENTAGE)
@@ -202,7 +203,7 @@ class ProfilerInterfaceTest(TestCase):
             entity_config=None,
             default_sample_config=SampleConfig(),
         )
-        static = actual.get_static_config()
+        static = actual.get_config(StaticSamplingConfig)
         self.assertIsNotNone(static)
         self.assertEqual(static.profileSample, 22)
         self.assertEqual(static.profileSampleType, ProfileSampleType.PERCENTAGE)

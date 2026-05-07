@@ -33,11 +33,9 @@ class TrinoSampler(SQASampler):
 
         super().__init__(*args, **kwargs)
 
-    def _base_sample_query(self, column, label=None):
-        sqa_columns = [
-            col for col in inspect(self.raw_dataset).c if col.name != RANDOM_LABEL
-        ]
-        entity = self.raw_dataset if column is None else column
+    def _base_sample_query(self, selectable, column, label=None):
+        sqa_columns = [col for col in inspect(self.raw_dataset).c if col.name != RANDOM_LABEL]
+        entity = selectable if column is None else column
         with self.get_client() as client:
             return client.query(entity, label).where(
                 or_(

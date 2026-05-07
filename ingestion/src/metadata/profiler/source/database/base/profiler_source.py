@@ -30,6 +30,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
@@ -44,8 +45,8 @@ from metadata.sampler.config import (
     get_exclude_columns,
     get_include_columns,
 )
-from metadata.sampler.models import ProfileSampleConfig, SampleConfig
-from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.sampler.models import SampleConfig
+from metadata.sampler.sampler_interface import SamplerInterface  # noqa: TC001
 from metadata.utils.dependency_injector.dependency_injector import (
     DependencyNotFoundError,
     Inject,

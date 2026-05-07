@@ -21,15 +21,15 @@ from datetime import datetime
 from typing import Dict, List, Literal, Optional, Union, cast
 
 from great_expectations.checkpoint import (
-    ActionContext,
-    CheckpointResult,
-    ValidationAction,
+    ActionContext,  # type: ignore
+    CheckpointResult,  # type: ignore
+    ValidationAction,  # type: ignore
 )
 from great_expectations.core.batch import Batch
 from great_expectations.core.expectation_validation_result import (
     ExpectationSuiteValidationResultMeta,
 )
-from great_expectations.datasource.fluent import DataAsset
+from great_expectations.datasource.fluent import DataAsset  # type: ignore
 from great_expectations.validator.validator import Validator
 from sqlalchemy.engine.base import Connection, Engine
 from sqlalchemy.engine.url import URL
@@ -84,7 +84,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
             Format: {"suite_name": {"database_name": "db", "schema_name": "schema", "table_name": "table"}}
     """
 
-    type: Literal["open_metadata_validation_action"] = "open_metadata_validation_action"
+    type: Literal["open_metadata_validation_action"] = "open_metadata_validation_action"  # type: ignore
     name: str = "OpenMetadataValidationAction"
     config_file_path: Optional[str] = None
     database_service_name: Optional[str] = None
@@ -161,7 +161,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
 
             if table_entity:
                 for result in v.results:
-                    self._handle_test_case(result, table_entity)
+                    self._handle_test_case(result, table_entity)  # type: ignore
 
     @staticmethod
     def _get_checkpoint_batch_spec(

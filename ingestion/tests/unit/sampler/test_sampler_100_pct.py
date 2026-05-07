@@ -18,11 +18,11 @@ randomization; None and False both skip randomization.
 from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.samplingConfig import SampleConfigType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.models import (
     ProfileSampleConfig,
-    ProfileSampleConfigType,
     SampleConfig,
-    StaticSamplingConfig,
 )
 
 
@@ -40,7 +40,7 @@ class TestSQASampler100Pct:
             sampler = SQASampler()
             sampler.sample_config = SampleConfig(
                 profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    sampleConfigType=SampleConfigType.STATIC,
                     config=StaticSamplingConfig(
                         profileSample=100,
                         profileSampleType=ProfileSampleType.PERCENTAGE,
@@ -92,7 +92,7 @@ class TestDatalakeSampler100Pct:
             sampler = DatalakeSampler()
             sampler.sample_config = SampleConfig(
                 profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    sampleConfigType=SampleConfigType.STATIC,
                     config=StaticSamplingConfig(
                         profileSample=100,
                         profileSampleType=ProfileSampleType.PERCENTAGE,

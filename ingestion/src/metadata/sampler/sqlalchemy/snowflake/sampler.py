@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.type.basic import ProfileSampleType, SamplingMethodType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
@@ -64,16 +65,19 @@ class SnowflakeSampler(SQASampler):
         )
         self.sampling_method_type = func.bernoulli
         if sample_config:
-            static = sample_config.get_static_config()
+            static = self._resolve_sample_config
             if static and static.samplingMethodType == SamplingMethodType.SYSTEM:
                 self.sampling_method_type = func.system
 
-    def set_tablesample(self, selectable: Table):
+    def set_tablesample(self, static: StaticSamplingConfig | None, selectable: Table):
         """Set the TABLESAMPLE clause for Snowflake
         Args:
-            selectable (Table): _description_
+            static (StaticSamplingConfig | None): sampling configuration
+            selectable (Table): table to sample
         """
-        static = self.sample_config.get_static_config()
+        if static is None:
+            return selectable
+
         if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
             return selectable.tablesample(
                 self.sampling_method_type(static.profileSample or 100)
@@ -83,11 +87,10 @@ class SnowflakeSampler(SQASampler):
             func.ROW(text(f"{static.profileSample or 100 if static else 100} ROWS"))
         )
 
-    def get_sample_query(self, *, column=None) -> CTE:
+    def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> CTE:
         """Override the base method as ROWS or PERCENT sampling handled through the tablesample clause"""
-        rnd = self._base_sample_query(column).cte(
-            f"{self.get_sampler_table_name()}_rnd"
-        )
+        selectable = self.set_tablesample(static, self.raw_dataset.__table__)  # type: ignore
+        rnd = self._base_sample_query(selectable, column).cte(f"{self.get_sampler_table_name()}_rnd")
         with self.session_factory() as client:
             query = client.query(rnd)
         return query.cte(f"{self.get_sampler_table_name()}_sample")

@@ -176,9 +176,6 @@ class WorkflowConfigBuilder:
             ),
             type=TestSuiteConfigType.TestSuite,
             serviceConnections=None,
-            profileSample=None,
-            profileSampleType=None,
-            samplingMethodType=None,
             testCases=None,
         )
 

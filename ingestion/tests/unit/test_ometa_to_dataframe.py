@@ -12,7 +12,7 @@
 """Test Ometa Dataframe utility tests"""
 import os
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pyarrow.parquet as pq
 
@@ -77,7 +77,7 @@ class TestStringMethods(unittest.TestCase):
                     ),
                     fileFormat=SupportedTypes.PARQUET.value,
                 ),
-                client=None,
+                client=MagicMock(),
             )
 
             assert resp == method_resp_file
@@ -110,7 +110,7 @@ class TestStringMethods(unittest.TestCase):
                         ),
                         fileFormat=None,
                     ),
-                    client=None,
+                    client=MagicMock(),
                 )
 
             self.assertEqual(context.exception.args[0], "Couldn't fetch test")

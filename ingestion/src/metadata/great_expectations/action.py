@@ -21,7 +21,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Union, cast
 
 from great_expectations.checkpoint.actions import ValidationAction
-from great_expectations.core import ExpectationConfiguration
+from great_expectations.core import ExpectationConfiguration  # type: ignore
 from great_expectations.core.batch import Batch
 from great_expectations.core.batch_spec import (
     RuntimeDataBatchSpec,
@@ -31,8 +31,8 @@ from great_expectations.core.batch_spec import (
 from great_expectations.core.expectation_validation_result import (
     ExpectationSuiteValidationResult,
 )
-from great_expectations.data_asset.data_asset import DataAsset
-from great_expectations.data_context.data_context import DataContext
+from great_expectations.data_asset.data_asset import DataAsset  # type: ignore
+from great_expectations.data_context.data_context import DataContext  # type: ignore
 
 from metadata.generated.schema.type.basic import Timestamp
 
@@ -116,7 +116,7 @@ class OpenMetadataValidationAction(ValidationAction):
         table_name: Optional[str] = None,
         expectation_suite_table_config_map: Optional[Dict[str, Dict[str, str]]] = None,
     ):
-        super().__init__(data_context, name=name)
+        super().__init__(data_context, name=name)  # type: ignore
         self.database_service_name = database_service_name
         self.database_name = database_name
         self.table_name = table_name
@@ -160,10 +160,8 @@ class OpenMetadataValidationAction(ValidationAction):
         expectation_suite_name = None
 
         if expectation_suite_identifier:
-            expectation_suite_name = expectation_suite_identifier.expectation_suite_name
-            self.expectation_suite = self.data_context.get_expectation_suite(
-                expectation_suite_name
-            )
+            expectation_suite_name = expectation_suite_identifier.expectation_suite_name  # type: ignore
+            self.expectation_suite = self.data_context.get_expectation_suite(expectation_suite_name)
 
         check_point_spec = self._get_checkpoint_batch_spec(data_asset)
         table_entity = None
@@ -205,7 +203,7 @@ class OpenMetadataValidationAction(ValidationAction):
 
         if table_entity:
             for result in validation_result_suite.results:
-                self._handle_test_case(result, table_entity)
+                self._handle_test_case(result, table_entity)  # type: ignore
 
     @staticmethod
     def _get_checkpoint_batch_spec(
