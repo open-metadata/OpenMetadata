@@ -29,7 +29,6 @@ from metadata.cli.dataquality import run_test
 from metadata.cli.ingest import run_ingest
 from metadata.cli.ingest_dbt import run_ingest_dbt
 from metadata.cli.lineage import run_lineage
-from metadata.cli.policy_agent import run_policy
 from metadata.cli.profile import run_profiler
 from metadata.cli.scaffold import (
     AUTH_CHOICES,
@@ -55,7 +54,6 @@ class MetadataCommands(Enum):
     LINEAGE = "lineage"
     APP = "app"
     AUTO_CLASSIFICATION = "classify"
-    POLICY = "policy"
     SCAFFOLD_CONNECTOR = "scaffold-connector"
 
 
@@ -68,7 +66,6 @@ RUN_PATH_METHODS = {
     MetadataCommands.TEST.value: run_test,
     MetadataCommands.APP.value: run_app,
     MetadataCommands.AUTO_CLASSIFICATION.value: run_classification,
-    MetadataCommands.POLICY.value: run_policy,
 }
 
 
@@ -153,12 +150,6 @@ def get_parser(args: Optional[List[str]] = None):  # noqa: UP006, UP045
         sub_parser.add_parser(
             MetadataCommands.AUTO_CLASSIFICATION.value,
             help="Workflow for running auto classification",
-        )
-    )
-    create_common_config_parser_args(
-        sub_parser.add_parser(
-            MetadataCommands.POLICY.value,
-            help="Workflow for applying access grants against the source system",
         )
     )
     webhook_args(

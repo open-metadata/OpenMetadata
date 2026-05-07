@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/metadataIngestion/policyAgentPipeline.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "PolicyAgentPipeline",
-  "description": "Policy Agent Pipeline Configuration. Applies access grants against the source system for database services.",
+  "description": "Policy Agent Pipeline Configuration. Applies access grants against the source system.",
   "type": "object",
   "javaType": "org.openmetadata.schema.metadataIngestion.PolicyAgentPipeline",
   "definitions": {
@@ -12,21 +12,8 @@
       "enum": ["PolicyAgent"],
       "default": "PolicyAgent"
     },
-    "principalType": {
-      "description": "Type of principal the grant is issued to.",
-      "type": "string",
-      "javaType": "org.openmetadata.schema.metadataIngestion.policyAgent.PrincipalType",
-      "enum": ["USER", "ROLE"],
-      "default": "USER"
-    },
-    "privilege": {
-      "description": "Privilege to grant.",
-      "type": "string",
-      "javaType": "org.openmetadata.schema.metadataIngestion.policyAgent.Privilege",
-      "enum": ["USAGE", "SELECT", "INSERT", "UPDATE", "DELETE", "ALL"]
-    },
     "policy": {
-      "description": "A single access grant to apply on the source.",
+      "description": "A single access grant entry. The per-service shape lives under `config`.",
       "type": "object",
       "javaType": "org.openmetadata.schema.metadataIngestion.policyAgent.Policy",
       "properties": {
@@ -34,42 +21,16 @@
           "description": "Unique id of the policy entry.",
           "$ref": "../type/basic.json#/definitions/uuid"
         },
-        "principalType": {
-          "$ref": "#/definitions/principalType",
-          "default": "USER"
-        },
-        "principal": {
-          "description": "Grantee identifier. For USER this is typically the email/username; for ROLE the role name.",
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 256,
-          "pattern": "^[^;'\" ]+$"
-        },
-        "databaseName": {
-          "description": "Database on which the grant is applied.",
-          "$ref": "../type/basic.json#/definitions/entityName"
-        },
-        "schemaName": {
-          "description": "Schema on which the grant is applied. If omitted, the grant is scoped to the database.",
-          "$ref": "../type/basic.json#/definitions/entityName"
-        },
-        "tableName": {
-          "description": "Table on which the grant is applied. Requires schemaName.",
-          "$ref": "../type/basic.json#/definitions/entityName"
-        },
-        "columnName": {
-          "description": "Column on which the grant is applied. Requires tableName. Supported only by connectors that allow column-level grants; ignored otherwise.",
-          "$ref": "../entity/data/table.json#/definitions/columnName"
-        },
-        "privilege": {
-          "$ref": "#/definitions/privilege"
+        "config": {
+          "description": "Per-service-type policy configuration.",
+          "oneOf": [
+            {
+              "$ref": "policyagentconfig/databasePolicyConfig.json"
+            }
+          ]
         }
       },
-      "required": ["id", "principal", "databaseName", "privilege"],
-      "dependencies": {
-        "tableName": ["schemaName"],
-        "columnName": ["tableName"]
-      },
+      "required": ["id", "config"],
       "additionalProperties": false
     }
   },

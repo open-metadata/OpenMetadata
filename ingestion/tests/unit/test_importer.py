@@ -63,25 +63,6 @@ class ImporterTest(TestCase):
             MysqlSource,
         )
 
-    def test_import_policy_source_class_invalid_format(self) -> None:
-        with self.assertRaises(DynamicImportException) as ctx:
-            import_source_class(service_type=ServiceType.Database, source_type="policy")
-        exc = ctx.exception
-        self.assertEqual(exc.module, "policy")
-        self.assertIn("Invalid policy source type", str(exc.cause))
-
-    def test_import_policy_source_class_unsupported_connector(self) -> None:
-        with self.assertRaises(DynamicImportException) as ctx:
-            import_source_class(
-                service_type=ServiceType.Database,
-                source_type="doesnotexist-policy",
-            )
-        exc = ctx.exception
-        self.assertIn(
-            "metadata.ingestion.source.database.doesnotexist.policy.PolicyAgentSource",
-            exc.module,
-        )
-
     def test_import_processor_class(self) -> None:
         from metadata.ingestion.processor.query_parser import QueryParserProcessor
 

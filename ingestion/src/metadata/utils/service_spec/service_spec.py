@@ -125,10 +125,7 @@ def import_source_class(service_type: ServiceType, source_type: str, from_: str 
     The source type can follow the format
     {base_source_type}{TYPE_SEPARATOR}{source_class_type} (for example,
     ``mysql-usage``), where ``source_class_type`` is one of ``metadata``,
-    ``lineage``, ``usage``, or ``policy``.
-
-    For ``policy`` source types, the class is imported from:
-    ``metadata.{from_}.source.{service_type}.{base_source_type}.policy.PolicyAgentSource``
+    ``lineage``, or ``usage``.
 
     For ``usage`` and ``lineage`` source types, and for all other source
     types, the class path is resolved from the source ``ServiceSpec`` via the
@@ -137,26 +134,6 @@ def import_source_class(service_type: ServiceType, source_type: str, from_: str 
     base_source_type, sep, source_class_type = source_type.rpartition(TYPE_SEPARATOR)
     if not sep:
         source_class_type = source_type
-    if source_class_type == "policy":
-        if not base_source_type:
-            raise DynamicImportException(
-                module=source_type,
-                cause=ValueError(
-                    f"Invalid policy source type '{source_type}'. Expected format '<connector>{TYPE_SEPARATOR}policy'."
-                ),
-            )
-
-        policy_class_path = f"metadata.{from_}.source.{service_type.name.lower()}.{get_module_dir(base_source_type)}.policy.PolicyAgentSource"
-        try:
-            return cast(
-                "type[Source]",
-                import_from_module(policy_class_path),
-            )
-        except DynamicImportException as exc:
-            raise DynamicImportException(
-                module=policy_class_path,
-                cause=exc,
-            ) from exc
     if source_class_type in ["usage", "lineage"]:
         field = f"{source_class_type}_source_class"
     else:

@@ -128,10 +128,6 @@ from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline
     PipelineMetadataConfigType,
     PipelineServiceMetadataPipeline,
 )
-from metadata.generated.schema.metadataIngestion.policyAgentPipeline import (
-    PolicyAgentConfigType,
-    PolicyAgentPipeline,
-)
 from metadata.generated.schema.metadataIngestion.searchServiceMetadataPipeline import (
     SearchMetadataConfigType,
     SearchServiceMetadataPipeline,
@@ -191,7 +187,6 @@ SOURCE_CONFIG_CLASS_MAP = {
     SecurityMetadataConfigType.SecurityMetadata.value: SecurityServiceMetadataPipeline,
     DriveMetadataConfigType.DriveMetadata.value: DriveServiceMetadataPipeline,
     DbtConfigType.DBT.value: DbtPipeline,
-    PolicyAgentConfigType.PolicyAgent.value: PolicyAgentPipeline,
 }
 
 DBT_CONFIG_TYPE_MAP = {
