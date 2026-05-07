@@ -673,7 +673,7 @@ test.describe(
       await sidebarClick(page, SidebarItem.EXPLORE);
     });
 
-    test(`Contains - table with that word in description is visible`, async ({
+    test(`Description Contains filter returns matching tables`, async ({
       page,
     }) => {
       await test.step('Open advanced search dialog', async () => {
