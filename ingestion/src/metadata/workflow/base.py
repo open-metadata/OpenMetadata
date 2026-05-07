@@ -104,6 +104,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self.service_type = service_type
         self._timer: Optional[RepeatedTimer] = None  # noqa: UP045
         self._ingestion_pipeline: Optional[IngestionPipeline] = None  # noqa: UP045
+        self._steps_closed = False
         self._start_ts = datetime_to_ts(datetime.now())
 
         # Execution time tracking is always enabled for workflows regardless of the log level
@@ -153,7 +154,14 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         must run before `print_status()` so the printed counts include those
         buffered records, while remaining separate from `stop()` so the
         streamable logging handler stays alive during status printing.
+
+        Idempotent: `execute()` calls this before `print_status()`, and
+        `stop()` calls it again so callers using `stop()` standalone still
+        get step cleanup. The `_steps_closed` flag prevents double-flush.
         """
+        if self._steps_closed:
+            return
+        self._steps_closed = True
         for step in self.workflow_steps():
             try:
                 step.close()
@@ -174,6 +182,15 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         # Reset progress and metrics tracking singletons
         ProgressTrackerState().reset()
         OperationMetricsState().reset()
+
+        # Close steps before tearing down the OM client so sinks can use it
+        # for any final flush. No-op when execute() already closed steps.
+        # Wrapped defensively so a flush failure doesn't leave the timer
+        # stopped but the OM client still open.
+        try:
+            self.close_steps()
+        except Exception:
+            logger.debug("close_steps failed during stop", exc_info=True)
 
         self.metadata.close()
 
