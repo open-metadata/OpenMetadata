@@ -58,7 +58,12 @@ class ProfilerConfigBuilder(BaseBuilder):
         self.config["source"]["sourceConfig"] = {
             "config": {
                 "type": "Profiler",
-                "profileSample": self.profilerSample,
+                "profileSampleConfig": {
+                    "sampleConfigType": "STATIC",
+                    "config": {
+                        "profileSample": self.profilerSample,
+                    },
+                },
             }
         }
 
