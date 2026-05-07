@@ -1,26 +1,47 @@
 package org.openmetadata.jpw.auth;
 
 import java.util.Locale;
+import org.openmetadata.jpw.server.sso.ClientType;
+import org.openmetadata.jpw.server.sso.CustomOidcProfile;
+import org.openmetadata.jpw.server.sso.GoogleProfile;
+import org.openmetadata.jpw.server.sso.OktaProfile;
 
 /**
  * Resolves the JVM's active {@link AuthBackend} from the {@code jpw.auth} system property
  * (or {@code JPW_AUTH} env var). Defaults to {@link BasicJwtBackend} when nothing is set.
  *
- * <p>Add a new provider by implementing {@link AuthBackend}, listing it in the {@code switch}
- * below, and adding it to the sealed-interface permits clause.
+ * <p>Adding a new provider × client-type combination:
+ * <ol>
+ *   <li>Implement {@code SsoProfile} for the new provider (record).
+ *   <li>Update {@code SsoProfile}'s {@code permits} clause.
+ *   <li>Add a switch case below; the existing {@link OidcBackend} handles all OIDC flows.
+ * </ol>
+ *
+ * <p>Names follow {@code sso-<provider>-<clienttype>} so they're greppable and obvious.
  */
 public final class AuthBackends {
 
   private AuthBackends() {}
 
   public static AuthBackend resolve() {
-    final String name = lookup();
-    return switch (name.toLowerCase(Locale.ROOT)) {
-      case "", BasicJwtBackend.NAME -> new BasicJwtBackend();
-      case GoogleConfidentialBackend.NAME -> new GoogleConfidentialBackend();
+    final String name = lookup().toLowerCase(Locale.ROOT);
+    return switch (name) {
+      case "", "basic" -> new BasicJwtBackend();
+      case "sso-google-public" -> new OidcBackend(new GoogleProfile(ClientType.PUBLIC));
+      case "sso-google-confidential" -> new OidcBackend(new GoogleProfile(ClientType.CONFIDENTIAL));
+      case "sso-okta-public" -> new OidcBackend(new OktaProfile(ClientType.PUBLIC));
+      case "sso-okta-confidential" -> new OidcBackend(new OktaProfile(ClientType.CONFIDENTIAL));
+      case "sso-custom-oidc-public" ->
+          new OidcBackend(new CustomOidcProfile(ClientType.PUBLIC));
+      case "sso-custom-oidc-confidential" ->
+          new OidcBackend(new CustomOidcProfile(ClientType.CONFIDENTIAL));
       default ->
           throw new IllegalArgumentException(
-              "Unknown jpw.auth='" + name + "'. Known: basic, sso-google-confidential.");
+              "Unknown jpw.auth='"
+                  + name
+                  + "'. Known: basic, sso-google-public, sso-google-confidential, "
+                  + "sso-okta-public, sso-okta-confidential, "
+                  + "sso-custom-oidc-public, sso-custom-oidc-confidential.");
     };
   }
 

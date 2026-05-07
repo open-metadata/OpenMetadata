@@ -14,9 +14,16 @@ import java.util.Map;
  * <p>Sealed so the set of supported providers stays narrow and explicit; add a new record
  * here when wiring a new provider rather than leaking provider knowledge into call sites.
  */
-public sealed interface SsoProfile permits GoogleProfile {
+public sealed interface SsoProfile permits GoogleProfile, OktaProfile, CustomOidcProfile {
 
+  /** Human-readable provider name. Drives the SSO button text on the OM sign-in page. */
   String displayName();
+
+  /**
+   * Short, kebab-case provider identifier ({@code "google"}, {@code "okta"},
+   * {@code "custom-oidc"}). Used to compose backend names for {@code jpw.auth}.
+   */
+  String providerSlug();
 
   String issuerId();
 

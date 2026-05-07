@@ -57,9 +57,34 @@ Setup via SDK. Cleanup via `TestNamespace`. Never click through the UI to seed s
 
 ## Auth
 
-- Default = `AdminJwtAuth` injected by `UiSessionExtension`. Tests do nothing.
-- Non-admin scenarios: implement a new `AuthStrategy` (e.g. `RoleJwtAuth`) and a small
-  follow-up extension/annotation to swap it. Don't open a UI login flow.
+The whole suite is parameterized by an `AuthBackend`. Pick one with `-Djpw.auth=<name>`
+(or `JPW_AUTH=<name>`); the same UI tests run unchanged regardless of which is active.
+
+| `jpw.auth` | OM auth provider | Token acquired by |
+|---|---|---|
+| `basic` *(default)* | OM built-in JWT | `JwtAuthProvider` (admin signing key) |
+| `sso-google-public` | Google + public client (`response_type=id_token`) | mock IdP `/google/token` (password grant) |
+| `sso-google-confidential` | Google + confidential client (`response_type=code`) | same |
+| `sso-okta-public` | Okta + public client | mock IdP `/okta/token` |
+| `sso-okta-confidential` | Okta + confidential client | same |
+| `sso-custom-oidc-public` | Custom OIDC + public | mock IdP `/custom-oidc/token` |
+| `sso-custom-oidc-confidential` | Custom OIDC + confidential | same |
+
+Per-test override (only when the test explicitly drives the sign-in surface and doesn't
+want a token preloaded):
+
+```java
+@Test
+@NoPreloadAuth
+void clickingSignInWithGoogleCompletesLogin(UiSession ui) { ... }
+```
+
+Tests that only make sense under one backend gate themselves with
+`AuthAssumptions.onlyWhenBackendIs("sso-google-confidential")`. They skip cleanly when the
+suite is running under any other backend.
+
+A daemon `TokenRefresher` keeps `AuthSession.current()` valid across long runs; tests
+read the current token at `@BeforeEach`, so refresh is transparent.
 
 ## Parallelism
 

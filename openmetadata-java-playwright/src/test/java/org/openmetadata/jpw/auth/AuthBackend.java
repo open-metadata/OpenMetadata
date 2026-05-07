@@ -22,7 +22,7 @@ import org.openmetadata.jpw.server.sso.SsoProfile;
  *       into a fresh {@link BrowserContext}
  * </ol>
  */
-public sealed interface AuthBackend permits BasicJwtBackend, GoogleConfidentialBackend {
+public sealed interface AuthBackend permits BasicJwtBackend, OidcBackend {
 
   String name();
 

@@ -7,27 +7,28 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.openmetadata.jpw.server.ServerHandle;
-import org.openmetadata.jpw.server.sso.ClientType;
-import org.openmetadata.jpw.server.sso.GoogleProfile;
 import org.openmetadata.jpw.server.sso.MockOidcServer;
 import org.openmetadata.jpw.server.sso.SsoProfile;
 
 /**
- * Boots OM in Google confidential-client SSO mode against the mock IdP, and acquires
- * tokens silently via direct REST calls to the IdP's token endpoint
- * (grant_type=password). No browser involved — the goal here is to hand a session token
- * to the rest of the suite, not to test the login UI itself.
+ * Single OIDC backend — works for any {@link SsoProfile} (Google, Okta, custom OIDC) and
+ * either {@code ClientType}. Boots OM with the profile's env vars and acquires tokens
+ * silently against the mock IdP using OAuth2 password / refresh-token grants.
+ *
+ * <p>Browser-based sign-in flows are tested by separate {@code *SignInUIIT} classes; this
+ * backend is what every other test reads from when running under SSO.
  */
-public final class GoogleConfidentialBackend implements AuthBackend {
+public final class OidcBackend implements AuthBackend {
 
-  static final String NAME = "sso-google-confidential";
   private static final String CLIENT_ID = "om-test-client";
   private static final String CLIENT_SECRET = "om-test-secret";
   private static final String SCOPE = "openid email profile";
@@ -43,12 +44,20 @@ public final class GoogleConfidentialBackend implements AuthBackend {
   private static final Pattern EXPIRES_IN_PATTERN =
       Pattern.compile("\"expires_in\"\\s*:\\s*(\\d+)");
 
-  private final SsoProfile profile = new GoogleProfile(ClientType.CONFIDENTIAL);
+  private final SsoProfile profile;
   private final HttpClient http = HttpClient.newBuilder().connectTimeout(HTTP_TIMEOUT).build();
+
+  public OidcBackend(final SsoProfile profile) {
+    this.profile = profile;
+  }
 
   @Override
   public String name() {
-    return NAME;
+    return String.format(
+        Locale.ROOT,
+        "sso-%s-%s",
+        profile.providerSlug(),
+        profile.clientType().name().toLowerCase(Locale.ROOT));
   }
 
   @Override
@@ -68,8 +77,10 @@ public final class GoogleConfidentialBackend implements AuthBackend {
 
   @Override
   public TokenSet acquireToken(final ServerHandle server, final MockOidcServer idp) {
-    return requestTokens(idp, "grant_type=password&username=%s&password=%s&scope=%s"
-        .formatted(DEFAULT_USER, DEFAULT_PASSWORD, urlEncode(SCOPE)));
+    return requestTokens(
+        idp,
+        "grant_type=password&username=%s&password=%s&scope=%s"
+            .formatted(DEFAULT_USER, DEFAULT_PASSWORD, urlEncode(SCOPE)));
   }
 
   @Override
@@ -89,8 +100,8 @@ public final class GoogleConfidentialBackend implements AuthBackend {
 
   private TokenSet requestTokens(final MockOidcServer idp, final String formBody) {
     final URI tokenUri = URI.create(idp.issuerUrl(profile.issuerId()) + "/token");
-    final String body = formBody + "&client_id=" + urlEncode(CLIENT_ID)
-        + "&client_secret=" + urlEncode(CLIENT_SECRET);
+    final String body =
+        formBody + "&client_id=" + urlEncode(CLIENT_ID) + "&client_secret=" + urlEncode(CLIENT_SECRET);
     final HttpRequest request =
         HttpRequest.newBuilder(tokenUri)
             .header("Content-Type", "application/x-www-form-urlencoded")
@@ -122,8 +133,7 @@ public final class GoogleConfidentialBackend implements AuthBackend {
     final String idToken = requireMatch(ID_TOKEN_PATTERN, body, "id_token");
     final String refreshToken = optionalMatch(REFRESH_TOKEN_PATTERN, body);
     final long expiresIn = Long.parseLong(requireMatch(EXPIRES_IN_PATTERN, body, "expires_in"));
-    return new TokenSet(
-        accessToken, refreshToken, idToken, Instant.now().plusSeconds(expiresIn));
+    return new TokenSet(accessToken, refreshToken, idToken, Instant.now().plusSeconds(expiresIn));
   }
 
   private static String requireMatch(final Pattern pattern, final String body, final String field) {
@@ -140,6 +150,6 @@ public final class GoogleConfidentialBackend implements AuthBackend {
   }
 
   private static String urlEncode(final String s) {
-    return java.net.URLEncoder.encode(s, StandardCharsets.UTF_8);
+    return URLEncoder.encode(s, StandardCharsets.UTF_8);
   }
 }
