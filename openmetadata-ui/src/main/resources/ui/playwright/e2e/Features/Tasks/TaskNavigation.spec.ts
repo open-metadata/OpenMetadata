@@ -545,29 +545,18 @@ test.describe('Task Navigation - URL Validation', () => {
  *      the task list updates without a full page reload.
  */
 test.describe('Task Notification - activity-feed tab refreshes after clicking notification', () => {
-  const adminUser = new UserClass();
-  const table = new TableClass();
+  let adminUser: UserClass;
+  let table: TableClass;
   let taskId: string | undefined;
 
   test.beforeAll('Create admin user and table', async ({ browser }) => {
+    adminUser = new UserClass();
+    table = new TableClass();
     const { apiContext, afterAction } = await performAdminLogin(browser);
     try {
       await adminUser.create(apiContext);
       await adminUser.setAdminRole(apiContext);
       await table.create(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test.afterAll('Delete task, table and admin user', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    try {
-      if (taskId) {
-        await apiContext.delete(`/api/v1/tasks/${taskId}`);
-      }
-      await table.delete(apiContext);
-      await adminUser.delete(apiContext);
     } finally {
       await afterAction();
     }
