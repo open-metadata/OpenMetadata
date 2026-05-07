@@ -583,13 +583,9 @@ public class S3LogStorageTest {
   }
 
   @Test
-  void testInitializeReadsNewConfigDefaults() throws Exception {
+  void testInitializeReadsStreamTimeoutDefault() throws Exception {
     S3LogStorage storage = createInitializedS3LogStorage();
-    assertEquals(24, getPrivateField(storage, "streamTimeoutHours"));
-    assertEquals(60, getPrivateField(storage, "cleanupIntervalMinutes"));
-    assertEquals(2, getPrivateField(storage, "partialFlushIntervalMinutes"));
-    assertEquals(5L * 1024 * 1024, getPrivateField(storage, "earlyFlushWatermarkBytes"));
-    assertEquals(10, getPrivateField(storage, "pendingFlushAlertAfterFailures"));
+    assertEquals(1440, getPrivateField(storage, "streamTimeoutMinutes"));
   }
 
   private S3LogStorage createInitializedS3LogStorage() throws IOException {

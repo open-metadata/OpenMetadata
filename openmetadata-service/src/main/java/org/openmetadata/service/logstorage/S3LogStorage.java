@@ -95,6 +95,11 @@ import software.amazon.awssdk.services.s3.model.StorageClass;
 @Slf4j
 public class S3LogStorage implements LogStorageInterface {
 
+  private static final int CLEANUP_INTERVAL_MINUTES = 60;
+  private static final int PARTIAL_FLUSH_INTERVAL_MINUTES = 2;
+  private static final long EARLY_FLUSH_WATERMARK_BYTES = 5L * 1024 * 1024;
+  private static final int PENDING_FLUSH_ALERT_AFTER_FAILURES = 10;
+
   private S3Client s3Client;
   private S3AsyncClient s3AsyncClient;
   private String bucketName;
@@ -107,11 +112,7 @@ public class S3LogStorage implements LogStorageInterface {
   private ServerSideEncryption sseAlgorithm = null;
   private String kmsKeyId = null;
 
-  private int streamTimeoutHours;
-  private int cleanupIntervalMinutes;
-  private int partialFlushIntervalMinutes;
-  private long earlyFlushWatermarkBytes;
-  private int pendingFlushAlertAfterFailures;
+  private int streamTimeoutMinutes;
 
   // Per-JVM identifier surfaced in partial.txt metadata. Useful for distinguishing the OM-server
   // instance that wrote a given partial.txt during cross-restart debugging.
@@ -184,30 +185,8 @@ public class S3LogStorage implements LogStorageInterface {
       this.maxConcurrentStreams =
           s3Config.getMaxConcurrentStreams() != null ? s3Config.getMaxConcurrentStreams() : 100;
 
-      this.streamTimeoutHours =
-          s3Config.getStreamTimeoutHours() != null ? s3Config.getStreamTimeoutHours() : 24;
-      this.cleanupIntervalMinutes =
-          s3Config.getCleanupIntervalMinutes() != null ? s3Config.getCleanupIntervalMinutes() : 60;
-      this.partialFlushIntervalMinutes =
-          s3Config.getPartialFlushIntervalMinutes() != null
-              ? s3Config.getPartialFlushIntervalMinutes()
-              : 2;
-      this.earlyFlushWatermarkBytes =
-          s3Config.getEarlyFlushWatermarkBytes() != null
-              ? s3Config.getEarlyFlushWatermarkBytes().longValue()
-              : 5L * 1024 * 1024;
-      this.pendingFlushAlertAfterFailures =
-          s3Config.getPendingFlushAlertAfterFailures() != null
-              ? s3Config.getPendingFlushAlertAfterFailures()
-              : 10;
-
-      if (s3Config.getStreamTimeoutMinutes() != null) {
-        LOG.warn(
-            "streamTimeoutMinutes={} is deprecated; migrate to streamTimeoutHours "
-                + "(current effective value: {}h). Values below 30 min may cause stream churn.",
-            s3Config.getStreamTimeoutMinutes(),
-            streamTimeoutHours);
-      }
+      this.streamTimeoutMinutes =
+          s3Config.getStreamTimeoutMinutes() != null ? s3Config.getStreamTimeoutMinutes() : 1440;
 
       S3ClientBuilder s3Builder =
           S3Client.builder().region(Region.of(s3Config.getAwsConfig().getAwsRegion()));
@@ -261,14 +240,14 @@ public class S3LogStorage implements LogStorageInterface {
 
       cleanupExecutor.scheduleWithFixedDelay(
           this::cleanupAbandonedStreams,
-          cleanupIntervalMinutes,
-          cleanupIntervalMinutes,
+          CLEANUP_INTERVAL_MINUTES,
+          CLEANUP_INTERVAL_MINUTES,
           TimeUnit.MINUTES);
 
       cleanupExecutor.scheduleWithFixedDelay(
           this::writePartialLogs,
-          partialFlushIntervalMinutes,
-          partialFlushIntervalMinutes,
+          PARTIAL_FLUSH_INTERVAL_MINUTES,
+          PARTIAL_FLUSH_INTERVAL_MINUTES,
           TimeUnit.MINUTES);
 
       if (expirationDays > 0) {
@@ -282,11 +261,11 @@ public class S3LogStorage implements LogStorageInterface {
       }
 
       LOG.info(
-          "S3LogStorage initialized with bucket: {}, prefix: {}, maxStreams: {}, timeoutHours: {}",
+          "S3LogStorage initialized with bucket: {}, prefix: {}, maxStreams: {}, timeoutMinutes: {}",
           bucketName,
           prefix,
           maxConcurrentStreams,
-          streamTimeoutHours);
+          streamTimeoutMinutes);
     } catch (Exception e) {
       throw new IOException("Failed to initialize S3LogStorage", e);
     }
@@ -363,7 +342,7 @@ public class S3LogStorage implements LogStorageInterface {
         }
         bytes.addAndGet(addedBytes);
         counter.addAndGet(lineCount);
-        if (bytes.get() >= earlyFlushWatermarkBytes) {
+        if (bytes.get() >= EARLY_FLUSH_WATERMARK_BYTES) {
           final String key = streamKey;
           cleanupExecutor.execute(() -> writePartialLogsForStream(key));
         }
@@ -865,7 +844,7 @@ public class S3LogStorage implements LogStorageInterface {
 
   void cleanupAbandonedStreams() {
     long now = System.currentTimeMillis();
-    long timeoutMs = streamTimeoutHours * 60L * 60L * 1000L;
+    long timeoutMs = streamTimeoutMinutes * 60L * 1000L;
 
     List<String> expired = new ArrayList<>();
     for (Map.Entry<String, StreamContext> entry : activeStreams.entrySet()) {
@@ -898,7 +877,7 @@ public class S3LogStorage implements LogStorageInterface {
     try {
       // Re-check expiration under the lock — appendLogs may have bumped lastAccessTime.
       StreamContext ctx = activeStreams.get(streamKey);
-      long timeoutMs = streamTimeoutHours * 60L * 60L * 1000L;
+      long timeoutMs = streamTimeoutMinutes * 60L * 1000L;
       if (ctx == null || System.currentTimeMillis() - ctx.lastAccessTime <= timeoutMs) {
         return; // Stream is no longer expired (or already finalized by another path).
       }
@@ -1080,7 +1059,7 @@ public class S3LogStorage implements LogStorageInterface {
         consecutiveFlushFailures
             .computeIfAbsent(streamKey, k -> new AtomicInteger(0))
             .incrementAndGet();
-    if (count >= pendingFlushAlertAfterFailures) {
+    if (count >= PENDING_FLUSH_ALERT_AFTER_FAILURES) {
       LOG.error(
           "Persistent flush failure for stream {} ({} consecutive failures): {}",
           streamKey,
