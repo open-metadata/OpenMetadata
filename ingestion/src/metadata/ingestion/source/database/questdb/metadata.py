@@ -16,6 +16,7 @@ import traceback
 from collections import defaultdict
 from collections.abc import Iterable
 from itertools import chain
+from typing import TYPE_CHECKING
 
 from sqlalchemy.engine.reflection import Inspector
 
@@ -44,6 +45,9 @@ from metadata.ingestion.source.database.questdb.utils import (
     get_materialized_view_definition,
     query_tables,
 )
+
+if TYPE_CHECKING:
+    from metadata.ingestion.source.database.questdb.models import QuestDBTableRow
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -78,15 +82,14 @@ class QuestDBSource(CommonDbSourceService):
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata) -> None:
         super().__init__(config, metadata)
+        self._tables_cache: defaultdict[str, dict[str, QuestDBTableRow]] = defaultdict(dict)
         try:
             rows = query_tables(self.connection)
-            self._tables_cache: defaultdict[str, dict[str, object]] = defaultdict(dict)
             for row in rows:
                 self._tables_cache[row.table_type][row.name] = row
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to load QuestDB table catalog: %s — partition details will be unavailable", exc)
-            self._tables_cache = {}
 
     def get_database_names(self) -> Iterable[str]:
         yield QUESTDB_DEFAULT_DATABASE
