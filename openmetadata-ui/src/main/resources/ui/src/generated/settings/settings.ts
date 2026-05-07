@@ -2173,13 +2173,17 @@ export interface NaturalLanguageSearch {
      */
     djl?: Djl;
     /**
-     * The provider to use for generating vector embeddings (e.g., bedrock, openai).
+     * The provider to use for generating vector embeddings (e.g., bedrock, openai, google, djl).
      */
     embeddingProvider?: string;
     /**
      * Enable or disable natural language search
      */
     enabled?: boolean;
+    /**
+     * Google Gemini configuration for embedding generation via the Generative Language API.
+     */
+    google?: Google;
     /**
      * Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)
      */
@@ -2282,6 +2286,29 @@ export interface Djl {
      * DJL model name for embedding generation
      */
     embeddingModel?: string;
+}
+
+/**
+ * Google Gemini configuration for embedding generation via the Generative Language API.
+ */
+export interface Google {
+    /**
+     * API key from Google AI Studio for authenticating with the Generative Language API.
+     */
+    apiKey?: string;
+    /**
+     * Dimension of the embedding vector. Must match the model's native output dimension (e.g.,
+     * 768 for text-embedding-004).
+     */
+    embeddingDimension?: number;
+    /**
+     * Gemini embedding model identifier (e.g., text-embedding-004, gemini-embedding-001).
+     */
+    embeddingModelId?: string;
+    /**
+     * Custom endpoint URL. Leave empty for the default Generative Language API.
+     */
+    endpoint?: string;
 }
 
 /**
