@@ -728,7 +728,8 @@ public class S3LogStorageTest {
             .metadata(
                 java.util.Map.of(
                     "last-flushed-line", "5",
-                    "total-bytes", Integer.toString(existingBody.length()),
+                    "total-bytes",
+                        Integer.toString(existingBody.getBytes(StandardCharsets.UTF_8).length),
                     "writer-epoch", "1",
                     "writer-version", "streamable-logs-v2"))
             .build();

@@ -1009,7 +1009,8 @@ public class S3LogStorage implements LogStorageInterface {
 
     Map<String, String> metadata = new HashMap<>();
     metadata.put("last-flushed-line", Long.toString(lastFlushedLine));
-    metadata.put("total-bytes", Integer.toString(mergedBody.length()));
+    metadata.put(
+        "total-bytes", Integer.toString(mergedBody.getBytes(StandardCharsets.UTF_8).length));
     metadata.put("writer-epoch", Long.toString(writerEpoch));
     metadata.put("writer-version", "streamable-logs-v2");
 
