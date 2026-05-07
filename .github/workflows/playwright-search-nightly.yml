@@ -68,12 +68,14 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright@1.57.0 install chromium --with-deps
 
-      - name: Run Search Nightly Placeholder
+      - name: Run Search Nightly
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           PLAYWRIGHT_IS_OSS: true
         run: |
-          # No explicit spec file path in workflow; project mapping lives in playwright.config.ts.
+          # All search tests live in playwright/e2e/Search/. The search-nightly
+          # project in playwright.config.ts maps testMatch to **/Search/** so only
+          # that folder is picked up. Add new search specs to that folder.
           npx playwright test --project=search-nightly --workers=1
 
       - name: Upload HTML report
