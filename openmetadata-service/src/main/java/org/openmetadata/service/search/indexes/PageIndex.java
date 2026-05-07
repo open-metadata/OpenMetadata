@@ -44,7 +44,7 @@ public class PageIndex implements SearchIndex {
     return doc;
   }
 
-  int calculateFqnDepth(String fullyQualifiedName) {
+  public static int calculateFqnDepth(String fullyQualifiedName) {
     if (fullyQualifiedName == null || fullyQualifiedName.isEmpty()) {
       return 0;
     }
