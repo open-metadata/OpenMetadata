@@ -273,7 +273,7 @@ connexion==2.14.2
 crcmod==1.7
 cron_descriptor==2.0.6
 croniter==6.0.0
-cryptography==42.0.8
+cryptography==44.0.3
 curlify==3.0.0
 darabonba-core==1.0.5
 databricks-sql-connector==4.2.4
