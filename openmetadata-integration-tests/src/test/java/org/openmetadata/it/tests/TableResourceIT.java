@@ -5876,13 +5876,13 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     CreateClassification createClassification =
         new CreateClassification()
-            .withName(ns.prefix("profile_test_cls"))
+            .withName(ns.prefix("cls"))
             .withDescription("Classification for profile regression test");
     Classification cls = client.classifications().create(createClassification);
 
     CreateTag createTag =
         new CreateTag()
-            .withName(ns.prefix("profile_test_tag"))
+            .withName(ns.prefix("tag"))
             .withDescription("Tag for profile regression test")
             .withClassification(cls.getName());
     Tag tag = client.tags().create(createTag);
