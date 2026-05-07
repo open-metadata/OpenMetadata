@@ -48,7 +48,7 @@ import {
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
-import { Column, Table, TableType } from '../../generated/entity/data/table';
+import { Table, TableType } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import { TestCaseStatus } from '../../generated/tests/testCase';
@@ -64,7 +64,6 @@ import { getDataQualityLineage } from '../../rest/lineageAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
   addFollower,
-  getTableColumnsByFQN,
   getTableDetailsByFQN,
   patchTableDetails,
   removeFollower,
@@ -208,50 +207,16 @@ const TableDetailsPageV1: React.FC = () => {
           fields += `,${TabSpecificField.TESTSUITE}`;
         }
 
-        const [details, columnsResponse] = await Promise.all([
-          getTableDetailsByFQN(tableFqn, { fields }),
-          getTableColumnsByFQN(tableFqn, {
-            fields: 'tags,customMetrics,extension',
-          }).catch(() => null),
-        ]);
+        const tableDetails = await getTableDetailsByFQN(tableFqn, { fields });
 
-        let finalColumns = details.columns || [];
-        if (columnsResponse?.data && columnsResponse.data.length > 0) {
-          // Merge fresh columns from /columns API into the full list from /tables API
-          // This ensures we keep the correct total count while having fresh data for visible columns
-          columnsResponse.data.forEach((freshCol) => {
-            finalColumns = updateColumnInNestedStructure(
-              finalColumns,
-              freshCol.fullyQualifiedName ?? '',
-              freshCol
-            );
-          });
-        }
-
-        const mergedDetails = {
-          ...details,
-          columns: finalColumns,
-        };
-
-        setTableDetails((current) => {
-          // Prevent stale server data from overwriting newer local state (optimistic updates)
-          if (
-            current?.updatedAt &&
-            mergedDetails.updatedAt &&
-            mergedDetails.updatedAt < current.updatedAt
-          ) {
-            return current;
-          }
-
-          return mergedDetails;
-        });
+        setTableDetails(tableDetails);
         addToRecentViewed({
-          displayName: getEntityName(details),
+          displayName: getEntityName(tableDetails),
           entityType: EntityType.TABLE,
-          fqn: details.fullyQualifiedName ?? '',
-          serviceType: details.serviceType,
+          fqn: tableDetails.fullyQualifiedName ?? '',
+          serviceType: tableDetails.serviceType,
           timestamp: 0,
-          id: details.id,
+          id: tableDetails.id,
         });
       } catch (error) {
         if (
@@ -625,38 +590,6 @@ const TableDetailsPageV1: React.FC = () => {
     setTableDetails(updatedTable);
   }, []);
 
-  const handleColumnsUpdate = useCallback((newColumns: Column[]) => {
-    if (isEmpty(newColumns)) {
-      return;
-    }
-
-    setTableDetails((current) => {
-      if (!current) {
-        return current;
-      }
-
-      const newColumnsMap = new Map(
-        newColumns.map((c) => [c.fullyQualifiedName, c])
-      );
-      const updatedColumns = (current.columns || []).map((col) => {
-        if (
-          col.fullyQualifiedName &&
-          newColumnsMap.has(col.fullyQualifiedName)
-        ) {
-          return newColumnsMap.get(col.fullyQualifiedName) as Column;
-        }
-
-        return col;
-      });
-
-      return {
-        ...current,
-        columns: updatedColumns,
-        updatedAt: Date.now(), // Update timestamp to prevent stale overrides
-      };
-    });
-  }, []);
-
   const onTierUpdate = useCallback(
     async (newTier?: Tag) => {
       if (tableDetails) {
@@ -916,7 +849,6 @@ const TableDetailsPageV1: React.FC = () => {
         key={tableFqn}
         permissions={tablePermissions}
         type={EntityType.TABLE}
-        onColumnsUpdate={handleColumnsUpdate}
         onEntitySync={handleTableSync}
         onUpdate={onTableUpdate}>
         <Row gutter={[0, 12]}>
