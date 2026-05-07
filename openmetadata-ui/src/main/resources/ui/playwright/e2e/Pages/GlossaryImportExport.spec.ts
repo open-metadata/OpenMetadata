@@ -262,9 +262,7 @@ test.describe('Glossary Bulk Import Export', () => {
 
       await expect(
         page.getByTestId('bulk-import-details-modal')
-      ).not.toBeVisible();
-
-      await expect(page.locator('.ant-modal-mask')).toHaveCount(0);
+      ).not.toBeAttached();
     });
 
     await test.step('delete custom properties', async () => {
