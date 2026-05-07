@@ -178,16 +178,60 @@ const DimensionalityTab = () => {
       });
   }, [dimensionData]);
 
-  const dimensionTableColumns = [
-    { id: 'status', label: t('label.status') },
-    {
-      id: 'impactScore',
-      label: t('label.impact-score'),
-      tooltip: t('message.impact-score-helper'),
-    },
-    { id: 'dimensionValue', label: t('label.dimension') },
-    { id: 'lastRun', label: t('label.last-run') },
-  ];
+  const dimensionTableColumns = useMemo(
+    () => [
+      { id: 'status', label: t('label.status') },
+      {
+        id: 'impactScore',
+        label: t('label.impact-score'),
+        tooltip: t('message.impact-score-helper'),
+      },
+      { id: 'dimensionValue', label: t('label.dimension') },
+      { id: 'lastRun', label: t('label.last-run') },
+    ],
+    [t]
+  );
+
+  const renderCell = (
+    col: { id: string },
+    row: (typeof getLatestResultPerDimension)[number]
+  ) => {
+    switch (col.id) {
+      case 'status':
+        return row.result?.testCaseStatus ? (
+          <StatusBadge
+            dataTestId="status-badge"
+            label={TEST_CASE_STATUS_LABELS[row.result.testCaseStatus]}
+            status={toLower(row.result.testCaseStatus) as StatusType}
+          />
+        ) : (
+          <span className="tw:text-sm">--</span>
+        );
+      case 'impactScore':
+        return (
+          <span className="tw:text-sm">{row.result?.impactScore ?? '--'}</span>
+        );
+      case 'dimensionValue':
+        return (
+          <Link
+            className="tw:text-text-brand-secondary"
+            to={getTestCaseDimensionsDetailPagePath(
+              testCase?.fullyQualifiedName || '',
+              row.result.dimensionKey || ''
+            )}>
+            {row.dimensionValue}
+          </Link>
+        );
+      case 'lastRun':
+        return row.result?.timestamp ? (
+          <DateTimeDisplay timestamp={row.result.timestamp} />
+        ) : (
+          <span className="tw:text-sm">--</span>
+        );
+      default:
+        return null;
+    }
+  };
 
   const noDataPlaceholder = useMemo(() => {
     if (isLoading) {
@@ -283,44 +327,7 @@ const DimensionalityTab = () => {
                     key={row.key}>
                     {(col) => (
                       <Table.Cell key={col.id}>
-                        {col.id === 'status' ? (
-                          row.result?.testCaseStatus ? (
-                            <StatusBadge
-                              dataTestId="status-badge"
-                              label={
-                                TEST_CASE_STATUS_LABELS[
-                                  row.result.testCaseStatus
-                                ]
-                              }
-                              status={
-                                toLower(
-                                  row.result.testCaseStatus
-                                ) as StatusType
-                              }
-                            />
-                          ) : (
-                            <span className="tw:text-sm">--</span>
-                          )
-                        ) : col.id === 'impactScore' ? (
-                          <span className="tw:text-sm">
-                            {row.result?.impactScore ?? '--'}
-                          </span>
-                        ) : col.id === 'dimensionValue' ? (
-                          <Link
-                            className="tw:text-text-brand-secondary"
-                            to={getTestCaseDimensionsDetailPagePath(
-                              testCase?.fullyQualifiedName || '',
-                              row.result.dimensionKey || ''
-                            )}>
-                            {row.dimensionValue}
-                          </Link>
-                        ) : col.id === 'lastRun' ? (
-                          row.result?.timestamp ? (
-                            <DateTimeDisplay timestamp={row.result.timestamp} />
-                          ) : (
-                            <span className="tw:text-sm">--</span>
-                          )
-                        ) : null}
+                        {renderCell(col, row)}
                       </Table.Cell>
                     )}
                   </Table.Row>
