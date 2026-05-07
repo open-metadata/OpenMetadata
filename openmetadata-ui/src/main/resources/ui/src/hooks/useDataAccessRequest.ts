@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useApplicationStore } from '../hooks/useApplicationStore';
-import { listTasks, Task, TaskCategory, TaskEntityType } from '../rest/tasksAPI';
+import {
+  listTasks,
+  Task,
+  TaskCategory,
+  TaskEntityType,
+} from '../rest/tasksAPI';
 import { isDarApprovalActive } from '../utils/TasksUtils';
+import { useApplicationStore } from './useApplicationStore';
 
 interface UseDataAccessRequestParams {
   entityFqn: string | undefined;
@@ -81,7 +86,7 @@ export const useDataAccessRequest = ({
       existingDarTasks.some((task) => {
         const stage = (
           task.workflowStageDisplayName ??
-          task.status ??
+          task.workflowStageId ??
           ''
         ).toLowerCase();
         if (stage === 'approved') {
@@ -90,7 +95,7 @@ export const useDataAccessRequest = ({
             | undefined;
 
           return isDarApprovalActive(
-            task.createdAt,
+            task.updatedAt ?? task.createdAt,
             payload?.duration,
             payload?.expirationDate
           );

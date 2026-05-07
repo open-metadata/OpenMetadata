@@ -801,7 +801,8 @@ describe('DataAssetsHeader component', () => {
             id: 'task-2',
             status: 'InProgress',
             workflowStageDisplayName: 'approved',
-            createdAt: Date.now(),
+            createdAt: Date.now() - 86_400_000,
+            updatedAt: Date.now(),
             payload: { expirationDate: Date.now() + 86_400_000 },
           },
         ],
@@ -822,6 +823,7 @@ describe('DataAssetsHeader component', () => {
             status: 'InProgress',
             workflowStageDisplayName: 'approved',
             createdAt: Date.now() - 86_400_000 * 60,
+            updatedAt: Date.now() - 86_400_000 * 30,
             payload: { expirationDate: Date.now() - 1000 },
           },
         ],
@@ -836,11 +838,78 @@ describe('DataAssetsHeader component', () => {
       });
     });
 
+    it('should use updatedAt (approval time) not createdAt for duration window', async () => {
+      const approvedAt = Date.now() - 86_400_000 * 3;
+
+      mockListTasks.mockResolvedValue({
+        data: [
+          {
+            id: 'task-dur',
+            status: 'InProgress',
+            workflowStageDisplayName: 'approved',
+            createdAt: Date.now() - 86_400_000 * 30,
+            updatedAt: approvedAt,
+            payload: { duration: 'P7D' },
+          },
+        ],
+      });
+
+      render(<DataAssetsHeader {...tableProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('request-data-access-button')).toBeDisabled();
+      });
+    });
+
+    it('should treat expirationDate 0 as expired (not as missing)', async () => {
+      mockListTasks.mockResolvedValue({
+        data: [
+          {
+            id: 'task-zero-exp',
+            status: 'InProgress',
+            workflowStageDisplayName: 'approved',
+            createdAt: Date.now() - 86_400_000,
+            updatedAt: Date.now() - 86_400_000,
+            payload: { expirationDate: 0 },
+          },
+        ],
+      });
+
+      render(<DataAssetsHeader {...tableProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('request-data-access-button')
+        ).not.toBeDisabled();
+      });
+    });
+
+    it('should disable when workflowStageDisplayName missing but workflowStageId is approved', async () => {
+      mockListTasks.mockResolvedValue({
+        data: [
+          {
+            id: 'task-stageid',
+            status: 'InProgress',
+            workflowStageId: 'approved',
+            createdAt: Date.now() - 86_400_000,
+            updatedAt: Date.now(),
+            payload: { expirationDate: Date.now() + 86_400_000 },
+          },
+        ],
+      });
+
+      render(<DataAssetsHeader {...tableProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('request-data-access-button')).toBeDisabled();
+      });
+    });
+
     it('should not call listTasks when currentUser has no name', async () => {
       const { useApplicationStore } = jest.requireMock(
         '../../../hooks/useApplicationStore'
       );
-      (useApplicationStore as jest.Mock).mockReturnValueOnce({
+      (useApplicationStore as jest.Mock).mockReturnValue({
         currentUser: { id: 'user-1' },
       });
 
