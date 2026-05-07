@@ -262,14 +262,14 @@ test.describe('Glossary Bulk Import Export', () => {
 
       await expect(
         page.getByTestId('bulk-import-details-modal')
-      ).not.toBeVisible();
-
-      await page.getByRole('dialog').getByRole('img').click();
+      ).not.toBeAttached();
     });
 
     await test.step('delete custom properties', async () => {
       for (const propertyName of Object.values(propertyListName)) {
         await settingClick(page, GlobalSettingOptions.GLOSSARY_TERM, true);
+
+        await page.waitForURL('**/settings/customProperties/glossaryTerm');
 
         await waitForAllLoadersToDisappear(page);
 

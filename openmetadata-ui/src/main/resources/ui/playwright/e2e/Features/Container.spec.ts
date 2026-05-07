@@ -14,9 +14,8 @@ import { expect } from '@playwright/test';
 import { DataType } from '../../../src/generated/entity/data/table';
 import { CONTAINER_CHILDREN } from '../../constant/contianer';
 import { ContainerClass } from '../../support/entity/ContainerClass';
-import { performAdminLogin } from '../../utils/admin';
 import {
-  isContainerChildrenListRequest,
+  getDefaultAdminAPIContext,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
@@ -60,7 +59,9 @@ test.describe('Container entity specific tests ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
 
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
     await container.create(apiContext, CONTAINER_CHILDREN);
 
     await afterAction();
@@ -69,7 +70,9 @@ test.describe('Container entity specific tests ', () => {
   test.afterAll('Clean up', async ({ browser }) => {
     test.slow(true);
 
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     await container.delete(apiContext);
 
@@ -107,11 +110,10 @@ test.describe('Container entity specific tests ', () => {
     );
 
     // Check the second page pagination
-    const childrenResponse = page.waitForResponse((response) =>
-      isContainerChildrenListRequest(response, {
-        limit: '15',
-        offset: '15',
-      })
+    const childrenResponse = page.waitForResponse(
+      (req) =>
+        req.url().includes('/api/v1/containers/name') &&
+        req.url().includes('children?limit=15&offset=15')
     );
     await page.getByTestId('next').click();
     await childrenResponse;
@@ -122,11 +124,10 @@ test.describe('Container entity specific tests ', () => {
     );
 
     // Check around the page sizing change
-    const childrenResponseSizeChange = page.waitForResponse((response) =>
-      isContainerChildrenListRequest(response, {
-        limit: '25',
-        offset: '0',
-      })
+    const childrenResponseSizeChange = page.waitForResponse(
+      (req) =>
+        req.url().includes('/api/v1/containers/name') &&
+        req.url().includes('children?limit=25&offset=0')
     );
     await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByText('25 / Page').click();
@@ -143,11 +144,10 @@ test.describe('Container entity specific tests ', () => {
     );
 
     // Back to the original page size
-    const childrenResponseSizeChange2 = page.waitForResponse((response) =>
-      isContainerChildrenListRequest(response, {
-        limit: '15',
-        offset: '0',
-      })
+    const childrenResponseSizeChange2 = page.waitForResponse(
+      (req) =>
+        req.url().includes('/api/v1/containers/name') &&
+        req.url().includes('children?limit=15&offset=0')
     );
     await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByText('15 / Page').click();
@@ -167,9 +167,8 @@ test.describe('Container entity specific tests ', () => {
     page,
     browser,
   }) => {
-    const { apiContext, afterAction: afterSetup } = await performAdminLogin(
-      browser
-    );
+    const { apiContext, afterAction: afterSetup } =
+      await getDefaultAdminAPIContext(browser);
     const nestedContainer = new ContainerClass();
     const structColName = `struct_col_${uuid()}`;
     const nestedFieldName = `nested_field_${uuid()}`;
@@ -317,7 +316,9 @@ test.describe('Deeply nested container navigation', () => {
 
   test.beforeAll('Setup deeply nested containers', async ({ browser }) => {
     test.slow(true);
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     const serviceRes = await apiContext.post(
       '/api/v1/services/storageServices',
@@ -373,7 +374,9 @@ test.describe('Deeply nested container navigation', () => {
 
   test.afterAll('Clean up deeply nested containers', async ({ browser }) => {
     test.slow(true);
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     await apiContext.delete(
       `/api/v1/services/storageServices/name/${encodeURIComponent(
@@ -502,7 +505,9 @@ test.describe('Children tab search + Deleted toggle', () => {
   let parentFqn = '';
 
   test.beforeAll('Setup search/deleted fixtures', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     await apiContext.post('/api/v1/services/storageServices', {
       data: {
@@ -567,7 +572,9 @@ test.describe('Children tab search + Deleted toggle', () => {
   });
 
   test.afterAll('Tear down search/deleted fixtures', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     await apiContext.delete(
       `/api/v1/services/storageServices/name/${encodeURIComponent(
@@ -782,7 +789,9 @@ test.describe('Children tab Deleted toggle is scoped per-level', () => {
   test.beforeAll(
     'Setup three-level chain with deleted leaf',
     async ({ browser }) => {
-      const { afterAction, apiContext } = await performAdminLogin(browser);
+      const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+        browser
+      );
 
       await apiContext.post('/api/v1/services/storageServices', {
         data: {
@@ -827,7 +836,9 @@ test.describe('Children tab Deleted toggle is scoped per-level', () => {
   );
 
   test.afterAll('Tear down three-level chain', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     await apiContext.delete(
       `/api/v1/services/storageServices/name/${encodeURIComponent(
