@@ -1934,7 +1934,9 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
                 .withId(table.getId())
                 .withType("table")));
 
-    client.getHttpClient().put("/v1/tags/" + tag.getId() + "/assets/add", request, Object.class);
+    client
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/tags/" + tag.getId() + "/assets/add", request, Object.class);
 
     org.openmetadata.schema.entity.data.Table tableAfterDryRun =
         client.tables().get(table.getId().toString(), "tags");
@@ -1998,7 +2000,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
     client
         .getHttpClient()
-        .put("/v1/tags/" + tag.getId() + "/assets/remove", removeRequest, Object.class);
+        .execute(HttpMethod.PUT, "/v1/tags/" + tag.getId() + "/assets/remove", removeRequest, Object.class);
 
     org.openmetadata.schema.entity.data.Table tableAfterDryRunRemove =
         client.tables().get(table.getId().toString(), "tags");
