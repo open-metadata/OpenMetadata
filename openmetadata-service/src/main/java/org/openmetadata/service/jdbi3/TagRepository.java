@@ -503,11 +503,20 @@ public class TagRepository extends EntityRepository<Tag> {
   @Override
   public BulkOperationResult bulkRemoveAndValidateTagsToAssets(
       UUID classificationTagId, BulkAssetsRequestInterface request) {
+    AddTagToAssetsRequest removeTagFromAssetsRequest = (AddTagToAssetsRequest) request;
+    boolean dryRun = Boolean.TRUE.equals(removeTagFromAssetsRequest.getDryRun());
+
     Tag tag = this.get(null, classificationTagId, getFields("id"));
 
-    BulkOperationResult result =
-        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+    BulkOperationResult result = new BulkOperationResult().withDryRun(dryRun);
     List<BulkResponse> success = new ArrayList<>();
+
+    if (dryRun || nullOrEmpty(request.getAssets())) {
+      // Nothing to Validate
+      return result
+          .withStatus(ApiStatus.SUCCESS)
+          .withSuccessRequest(List.of(new BulkResponse().withMessage("Nothing to Validate.")));
+    }
 
     // Validation for entityReferences
     EntityUtil.populateEntityReferences(request.getAssets());
