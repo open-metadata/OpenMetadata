@@ -23,6 +23,7 @@ import pandas as pd
 
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.sampler.config import resolve_static_sampling_config
 from metadata.sampler.pandas.sampler import DatalakeSampler
 from metadata.utils.datalake.datalake_utils import DatalakeColumnWrapper
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -127,8 +128,14 @@ class BurstIQSampler(DatalakeSampler):
         return available, rows
 
     def _compute_total_limit(self, chain: str) -> Optional[int]:  # noqa: UP045
-        """Compute the total record limit based on the sampling config."""
-        static = self._resolve_sample_config
+        """Compute the total record limit based on the sampling config.
+
+        Uses ``resolve_static_sampling_config`` with ``row_count=None``
+        instead of the ``_resolve_sample_config`` cached property to avoid a
+        circular dependency: _resolve_sample_config may call
+        _get_asset_row_count → raw_dataset() → _compute_total_limit.
+        """
+        static = resolve_static_sampling_config(self.sample_config.profileSampleConfig)
         if not static or not static.profileSample:
             return None
         if static.profileSampleType == ProfileSampleType.ROWS:
