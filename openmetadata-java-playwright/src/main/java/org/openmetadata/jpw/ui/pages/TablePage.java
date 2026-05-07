@@ -2,7 +2,6 @@ package org.openmetadata.jpw.ui.pages;
 
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
-import com.microsoft.playwright.options.AriaRole;
 import org.openmetadata.jpw.ui.UiSession;
 
 /**
@@ -18,7 +17,10 @@ public final class TablePage extends PageObject {
   // name testid is always present. We accept either so the locator is robust across both.
   private static final String TESTID_ENTITY_NAME = "entity-header-name";
   private static final String TESTID_ENTITY_DISPLAY_NAME = "entity-header-display-name";
-  private static final String SCHEMA_TAB_NAME = "Schema";
+  // The primary tab on every entity page carries data-testid="schema" (the EntityTabs.SCHEMA
+  // enum key). Visible label varies — Tables show "Columns", Topics show "Schema" — so a
+  // role+text match would only work for some types; testid is stable across all of them.
+  private static final String TESTID_SCHEMA_TAB = "schema";
 
   private TablePage(final Page page, final UiSession session) {
     super(page, session);
@@ -37,7 +39,7 @@ public final class TablePage extends PageObject {
   }
 
   public Locator schemaTab() {
-    return page.getByRole(AriaRole.TAB).filter(new Locator.FilterOptions().setHasText(SCHEMA_TAB_NAME));
+    return byTestId(TESTID_SCHEMA_TAB);
   }
 
   @Override

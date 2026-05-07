@@ -2,19 +2,15 @@ package org.openmetadata.jpw.scenarios.ui.topic;
 
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.factories.TopicTestFactory;
-import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.jpw.ui.UiSession;
 import org.openmetadata.jpw.ui.UiSessionExtension;
 import org.openmetadata.jpw.ui.pages.TopicPage;
-import org.openmetadata.jpw.util.UiTestServer;
 import org.openmetadata.schema.entity.data.Topic;
-import org.openmetadata.sdk.fluent.Apps;
 
 /**
  * Java port of {@code Features/Topic.spec.ts}.
@@ -25,12 +21,6 @@ import org.openmetadata.sdk.fluent.Apps;
  */
 @ExtendWith({UiSessionExtension.class, TestNamespaceExtension.class})
 class TopicUIIT {
-
-  @BeforeAll
-  static void setup() {
-    SdkClients.useFluentApis(UiTestServer.get().sdk());
-    Apps.setDefaultClient(UiTestServer.get().sdk());
-  }
 
   @Test
   void topicDetailsPageShowsSchemaTabWithFieldCount(

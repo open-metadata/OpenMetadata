@@ -2,7 +2,6 @@ package org.openmetadata.jpw.ui.pages;
 
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
-import com.microsoft.playwright.options.AriaRole;
 import org.openmetadata.jpw.ui.UiSession;
 
 /**
@@ -21,7 +20,9 @@ public final class TopicPage extends PageObject {
   private static final String TESTID_EXPAND_ICON = "expand-icon";
   private static final String TESTID_CLOSE_BUTTON = "close-button";
   private static final String COLUMN_DETAIL_PANEL_SELECTOR = ".column-detail-panel";
-  private static final String SCHEMA_TAB_NAME = "Schema";
+  // EntityTabs.SCHEMA enum key — matches the data-testid on the primary tab regardless of
+  // the visible label (Topic shows "Schema", Table shows "Columns", same testid).
+  private static final String TESTID_SCHEMA_TAB = "schema";
 
   private TopicPage(final Page page, final UiSession session) {
     super(page, session);
@@ -40,8 +41,7 @@ public final class TopicPage extends PageObject {
   }
 
   public Locator schemaTab() {
-    return page.getByRole(AriaRole.TAB)
-        .filter(new Locator.FilterOptions().setHasText(SCHEMA_TAB_NAME));
+    return byTestId(TESTID_SCHEMA_TAB);
   }
 
   public Locator schemaFieldsTable() {
