@@ -19,9 +19,9 @@ import {
   useRef,
   useState,
 } from 'react';
+import useAutoSizeTextArea from '../../../hooks/useAutosizeTextArea';
 import i18n from '../../../utils/i18next/LocalUtil';
 import './title-component.less';
-import useAutoSizeTextArea from '../../../hooks/useAutosizeTextArea';
 
 interface Props {
   value: string;
