@@ -129,13 +129,13 @@ class BigQuerySampler(SQASampler):
 
     def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> Query:
         """get query for sample data"""
-        selectable = self.set_tablesample(static, self.raw_dataset.__table__)
+        selectable = self.set_tablesample(static, self.raw_dataset.__table__)  # type: ignore
         # TABLESAMPLE SYSTEM is not supported for views
         if (
             static
             and static.profileSampleType == ProfileSampleType.PERCENTAGE
             and self.raw_dataset_type != TableType.View
         ):
-            return self._base_sample_query(selectable, column).cte(f"{self.get_sampler_table_name()}_sample")
+            return self._base_sample_query(selectable, column).cte(f"{self.get_sampler_table_name()}_sample")  # type: ignore
 
         return super().get_sample_query(static, column=column)

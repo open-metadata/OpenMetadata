@@ -172,8 +172,8 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         with self.session_factory() as session:
             runner = QueryRunner(
                 session=session,
-                dataset=self.raw_dataset,
-                raw_dataset=self.raw_dataset,
+                dataset=self.raw_dataset,  # type: ignore
+                raw_dataset=self.raw_dataset,  # type: ignore
             )
             computer = table_metric_computer_factory.construct(
                 session.get_bind().dialect.name,
@@ -204,7 +204,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> Query:
         """get query for sample data"""
-        selectable = self.set_tablesample(static, self.raw_dataset.__table__)
+        selectable = self.set_tablesample(static, self.raw_dataset.__table__)  # type: ignore
         with self.session_factory() as client:
             if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
                 rnd = self._base_sample_query(
@@ -257,7 +257,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
             return self.raw_dataset
 
-        return self.get_sample_query(static, column=column)
+        return self.get_sample_query(static, column=column)  # type: ignore
 
     def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:  # noqa: UP006, UP045
         """

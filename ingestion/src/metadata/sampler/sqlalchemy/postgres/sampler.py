@@ -84,8 +84,8 @@ class PostgresSampler(SQASampler):
         return selectable
 
     def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> Query:
-        selectable = self.set_tablesample(static, self.raw_dataset.__table__)
+        selectable = self.set_tablesample(static, self.raw_dataset.__table__)  # type: ignore
         if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
-            return self._base_sample_query(selectable, column).cte(f"{self.get_sampler_table_name()}_rnd")
+            return self._base_sample_query(selectable, column).cte(f"{self.get_sampler_table_name()}_rnd")  # type: ignore
 
         return super().get_sample_query(static, column=column)

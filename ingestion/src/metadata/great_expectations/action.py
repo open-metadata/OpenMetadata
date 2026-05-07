@@ -182,7 +182,7 @@ class OpenMetadataValidationAction(ValidationAction):
 
         if table_entity:
             for result in validation_result_suite.results:
-                self._handle_test_case(result, table_entity)
+                self._handle_test_case(result, table_entity)  # type: ignore
 
     @staticmethod
     def _get_checkpoint_batch_spec(

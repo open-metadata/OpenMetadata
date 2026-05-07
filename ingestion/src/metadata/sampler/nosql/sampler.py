@@ -97,7 +97,7 @@ class NoSQLSampler(SamplerInterface):
         Returns:
             int: The total number of rows in the asset.
         """
-        self._row_count = self.client.item_count(self.raw_dataset)
+        self._row_count = self.client.item_count(self.raw_dataset)  # type: ignore
         if not self._row_count:
             self._row_count = SAMPLE_DATA_DEFAULT_COUNT
 
