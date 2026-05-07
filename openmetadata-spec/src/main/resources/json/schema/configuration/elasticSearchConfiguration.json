@@ -149,7 +149,7 @@
           "default": 0.6
         },
         "embeddingProvider": {
-          "description": "The provider to use for generating vector embeddings (e.g., bedrock, openai).",
+          "description": "The provider to use for generating vector embeddings (e.g., bedrock, openai, google, djl).",
           "type": "string",
           "default": "bedrock"
         },
@@ -237,6 +237,32 @@
               "description": "Azure OpenAI API version. Only used with Azure OpenAI.",
               "type": "string",
               "default": "2024-02-01"
+            }
+          },
+          "additionalProperties": false
+        },
+        "google": {
+          "description": "Google Gemini configuration for embedding generation via the Generative Language API.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.Google",
+          "properties": {
+            "apiKey": {
+              "description": "API key from Google AI Studio for authenticating with the Generative Language API.",
+              "type": "string"
+            },
+            "embeddingModelId": {
+              "description": "Gemini embedding model identifier (e.g., text-embedding-004, gemini-embedding-001).",
+              "type": "string",
+              "default": "text-embedding-004"
+            },
+            "embeddingDimension": {
+              "description": "Dimension of the embedding vector. Must match the model's native output dimension (e.g., 768 for text-embedding-004).",
+              "type": "integer",
+              "default": 768
+            },
+            "endpoint": {
+              "description": "Custom endpoint URL. Leave empty for the default Generative Language API.",
+              "type": "string"
             }
           },
           "additionalProperties": false
