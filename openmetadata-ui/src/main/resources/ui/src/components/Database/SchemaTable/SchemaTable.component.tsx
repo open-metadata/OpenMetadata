@@ -384,7 +384,7 @@ const SchemaTable = () => {
         const activeCol = findColumnByEntityLink(
           tableFqn ?? '',
           prev,
-          suggestion.entityLink
+          suggestion.entityLink ?? ''
         );
 
         if (activeCol) {
@@ -886,7 +886,11 @@ const SchemaTable = () => {
   };
 
   useEffect(() => {
-    setExpandedRowKeys(getExpandAllKeysToDepth(tableColumns ?? [], 1));
+    setExpandedRowKeys((prev) => {
+      const autoKeys = getExpandAllKeysToDepth(tableColumns ?? [], 1);
+
+      return [...new Set([...autoKeys, ...prev])];
+    });
   }, [tableColumns]);
 
   // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
