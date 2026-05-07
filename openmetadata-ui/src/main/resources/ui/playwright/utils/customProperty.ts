@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
-import { INVALID_NAMES } from '../constant/common';
 import {
+  CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
   ENTITY_REFERENCE_PROPERTIES,
+  NAME_SUFFIX,
 } from '../constant/customProperty';
 import { SidebarItem } from '../constant/sidebar';
 import {
@@ -525,7 +526,7 @@ export const createCustomPropertyForEntity = async (
   };
 
   for (const item of propertyList) {
-    const customPropertyName = `cp${item.name}${uuid()}`;
+    const customPropertyName = `cp-${item.name}-${uuid()}${NAME_SUFFIX}`;
     const payload = {
       name: customPropertyName,
       description: customPropertyName,
@@ -652,10 +653,10 @@ export const addCustomPropertiesForEntity = async ({
   // Click the switch to show service doc panel
   await page.locator('[data-testid="show-side-panel-switch"]').click();
 
-  // Validation check — only '::' is blocked
+  // Validation check — name must start with a letter/number and must not contain: " * : ^ $ \ < > & ~ /
   await page.fill(
     '[data-testid="name"] input',
-    INVALID_NAMES.WITH_SPECIAL_CHARS
+    CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_COLON
   );
 
   await expect(page.locator('#name_help')).toContainText(
@@ -770,12 +771,7 @@ export const addCustomPropertiesForEntity = async ({
 
   expect(response.status()).toBe(200);
   await expect(
-    page.getByRole('row', {
-      name: new RegExp(
-        propertyName.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-        'i'
-      ),
-    })
+    page.locator('tr').filter({ hasText: propertyName })
   ).toBeVisible();
 };
 

@@ -26,7 +26,16 @@
  */
 
 import { APIRequestContext, expect, test } from '@playwright/test';
-import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
+import {
+  CP_NAME_MAX_LENGTH_VALIDATION_ERROR,
+  INVALID_NAMES,
+} from '../../constant/common';
+import {
+  CUSTOM_PROPERTIES_ENTITIES,
+  CUSTOM_PROPERTY_INVALID_NAMES,
+  CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
+  NAME_SUFFIX,
+} from '../../constant/customProperty';
 import {
   CP_BASE_VALUES,
   CP_PARTIAL_SEARCH_VALUES,
@@ -267,11 +276,15 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       createdCPData: [],
     };
     const propertyNames: Record<string, string> = {};
-    const dashboardSearchPropertyName = `cp${uuid()}${entity.name}`;
+    const dashboardSearchPropertyName = `cp-${uuid()}-${
+      entity.name
+    }${NAME_SUFFIX}`;
     const dashboardPropertyValue = `EXECUTIVE_DASHBOARD_${uuid()}`;
 
     // Pipeline-specific state
-    const pipelineSearchPropertyName = `cp${uuid()}${entity.name}`;
+    const pipelineSearchPropertyName = `cp-${uuid()}-${
+      entity.name
+    }${NAME_SUFFIX}`;
     const pipelinePropertyValue = `ETL_PRODUCTION_${uuid()}`;
 
     test.beforeAll(async ({ browser }) => {
@@ -352,7 +365,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
     BASIC_PROPERTIES.forEach((property) => {
       test(property, async ({ page }) => {
         test.slow();
-        const propertyName = `cp${uuid()}${entity.name}`;
+        const propertyName = `cp-${uuid()}-${entity.name}${NAME_SUFFIX}`;
 
         await settingClick(
           page,
@@ -387,7 +400,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
     CONFIG_PROPERTIES.forEach((propertyConfig) => {
       test(propertyConfig.name, async ({ page }) => {
         test.slow();
-        const propertyName = `cp${uuid()}${entity.name}`;
+        const propertyName = `cp-${uuid()}-${entity.name}${NAME_SUFFIX}`;
 
         await settingClick(
           page,
@@ -3279,5 +3292,178 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         }
       });
     }
+  });
+});
+
+test.describe('Custom property name validation', () => {
+  test.use({ storageState: 'playwright/.auth/admin.json' });
+
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+    await settingClick(page, GlobalSettingOptions.TABLES, true);
+    await page.click('[data-testid="add-field-button"]');
+  });
+
+  const nameInput = '[data-testid="name"] input';
+  const nameError = '#name_help';
+
+  test('should show error when name starts with a non-alphanumeric character', async ({
+    page,
+  }) => {
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.STARTS_WITH_SPECIAL_CHAR
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains a colon', async ({ page }) => {
+    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_COLON);
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains a dollar sign', async ({
+    page,
+  }) => {
+    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_DOLLAR);
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains a caret', async ({ page }) => {
+    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_CARET);
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains a double quote', async ({
+    page,
+  }) => {
+    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_QUOTE);
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains a backslash', async ({ page }) => {
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_BACKSLASH
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains a less-than sign', async ({
+    page,
+  }) => {
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_LESS_THAN
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains a greater-than sign', async ({
+    page,
+  }) => {
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_GREATER_THAN
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains an ampersand', async ({
+    page,
+  }) => {
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_AMPERSAND
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains an asterisk', async ({ page }) => {
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_ASTERISK
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains a forward slash', async ({
+    page,
+  }) => {
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_FORWARD_SLASH
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains a tilde', async ({ page }) => {
+    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_TILDE);
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should accept a valid name starting with a letter', async ({
+    page,
+  }) => {
+    await page.fill(nameInput, 'validName_123');
+
+    await expect(page.locator(nameError)).not.toBeVisible();
+  });
+
+  test('should accept a valid name with allowed special characters', async ({
+    page,
+  }) => {
+    await page.fill(nameInput, "valid Name.!@#%`()_-=+{}[]|;',.?");
+
+    await expect(page.locator(nameError)).not.toBeVisible();
+  });
+
+  test('should show error when name exceeds 256 characters', async ({
+    page,
+  }) => {
+    await page.fill(
+      nameInput,
+      `${INVALID_NAMES.MAX_LENGTH}${INVALID_NAMES.MAX_LENGTH}`
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CP_NAME_MAX_LENGTH_VALIDATION_ERROR
+    );
   });
 });
