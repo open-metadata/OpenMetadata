@@ -14,6 +14,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
+import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { TestSuites } from './TestSuites.component';
 
 const testSuitePermission = {
@@ -272,5 +273,42 @@ describe('TestSuites component', () => {
     expect(
       await screen.findByTestId('error-placeholder-type-PERMISSION')
     ).toBeInTheDocument();
+  });
+
+  describe('observabilityRouterClassBase migration', () => {
+    it('logical test suite name link should use observabilityRouterClassBase.getTestSuitePath', async () => {
+      // Restore permission for this test
+      testSuitePermission.ViewAll = true;
+      mockLocation.search = '';
+
+      const logicalSuiteName = 'svc.suite';
+      (getListTestSuitesBySearch as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          data: [
+            {
+              id: 'logical-id',
+              name: logicalSuiteName,
+              fullyQualifiedName: logicalSuiteName,
+              description: 'logical suite',
+              serviceType: 'TestSuite',
+              href: 'href',
+              deleted: false,
+              basic: false,
+              testCaseResultSummary: [],
+            },
+          ],
+          paging: { offset: 0, limit: 15, total: 1 },
+        })
+      );
+
+      render(<TestSuites />, { wrapper: MemoryRouter });
+
+      const link = await screen.findByTestId(logicalSuiteName);
+
+      expect(link.getAttribute('to')).toBe(
+        observabilityRouterClassBase.getTestSuitePath(logicalSuiteName)
+      );
+      expect(link.getAttribute('to')).toBe(`/test-suites/${logicalSuiteName}`);
+    });
   });
 });
