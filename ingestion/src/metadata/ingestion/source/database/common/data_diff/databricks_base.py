@@ -53,10 +53,20 @@ class DatabricksBaseTableParameter(BaseTableParameter):
         token = getattr(auth_type, "token", None) if auth_type is not None else None
         if token is None:
             token = getattr(service_connection_config, "token", None)
-        if token is None:
+        # Resolve to the bare string before validating: an empty-string token
+        # (e.g. `$E2E_DATABRICKS_TOKEN` set but empty, or `token: ""` in YAML)
+        # would otherwise build a URL like `databricks://:@host/...` and the
+        # SQL driver would fall back to OAuth U2M, opening a browser. Validate
+        # the resolved value so we fail fast in non-interactive environments.
+        token_value = (
+            token.get_secret_value()
+            if hasattr(token, "get_secret_value")
+            else (str(token) if token else "")
+        )
+        if not token_value:
             raise ValueError(
                 "Databricks data diff requires Personal Access Token authentication; "
                 "no token found on the service connection. OAuth and Azure AD auth "
                 "types are not supported by the URL-based data-diff connection."
             )
-        return token.get_secret_value() if hasattr(token, "get_secret_value") else str(token)
+        return token_value

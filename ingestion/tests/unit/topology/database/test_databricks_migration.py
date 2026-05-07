@@ -126,6 +126,51 @@ class TestDatabricksBaseDefaultScheme:
         with pytest.raises(ValueError, match="Personal Access Token"):
             DatabricksBaseTableParameter._get_service_connection_config(FakeConfig())
 
+    def test_empty_string_token_raises(self):
+        """`token: ""` in YAML or `$E2E_DATABRICKS_TOKEN` set to an empty
+        string would otherwise build a `databricks://:@host/...` URL and fall
+        back to OAuth U2M. Empty strings must fail the same way as missing
+        tokens."""
+        import pytest
+
+        from metadata.ingestion.source.database.common.data_diff.databricks_base import (
+            DatabricksBaseTableParameter,
+        )
+
+        class FakeAuthTypeFlat:
+            token = ""
+
+        class FakeConfigFlat:
+            hostPort = "host:443"  # noqa: N815
+            authType = FakeAuthTypeFlat()  # noqa: N815
+
+        with pytest.raises(ValueError, match="Personal Access Token"):
+            DatabricksBaseTableParameter._get_service_connection_config(FakeConfigFlat())
+
+    def test_empty_secretstr_token_raises(self):
+        """A `SecretStr("")` produces an empty `get_secret_value()` and would
+        slip past a None-only guard. Validate the resolved value, not just
+        the raw attribute."""
+        import pytest
+
+        from metadata.ingestion.source.database.common.data_diff.databricks_base import (
+            DatabricksBaseTableParameter,
+        )
+
+        class FakeSecret:
+            def get_secret_value(self) -> str:
+                return ""
+
+        class FakeAuthType:
+            token = FakeSecret()
+
+        class FakeConfig:
+            hostPort = "host:443"  # noqa: N815
+            authType = FakeAuthType()  # noqa: N815
+
+        with pytest.raises(ValueError, match="Personal Access Token"):
+            DatabricksBaseTableParameter._get_service_connection_config(FakeConfig())
+
 
 class TestDatabricksPipelineConnectionUrl:
     """Verify pipeline connection URL uses new scheme"""
