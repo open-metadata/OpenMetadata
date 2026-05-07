@@ -2478,6 +2478,7 @@
     "bot-email-confirmation": "{{botName}} 機器人的 {{email}}",
     "bulk-edit-entity-help": "使用 CSV 一次編輯多個{{entity}}",
     "bulk-import-completed": "批次匯入完成",
+    "cache-service-not-configured-message": "Configure a Cache Service such as Redis or ElastiCache and make sure it is reachable to enable Cache Warmup.",
     "can-not-add-widget": "由於大小限制，無法將小工具新增到此區段。",
     "can-you-add-a-description": "您可以新增描述嗎？",
     "cannot-delete-relation-type-in-use": "無法刪除：正被{{count}}個術語關係使用中。請先移除這些關係。",
