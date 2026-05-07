@@ -1887,6 +1887,14 @@ export interface LogStorageConfiguration {
      */
     bucketName?: string;
     /**
+     * How often the sweeper wakes up to check for abandoned streams
+     */
+    cleanupIntervalMinutes?: number;
+    /**
+     * Triggers an out-of-band flush when pendingFlush exceeds this size
+     */
+    earlyFlushWatermarkBytes?: number;
+    /**
      * Enable it for pipelines deployed in the server
      */
     enabled?: boolean;
@@ -1906,6 +1914,14 @@ export interface LogStorageConfiguration {
      * Maximum number of concurrent log streams allowed
      */
     maxConcurrentStreams?: number;
+    /**
+     * Periodic cadence for flushing pendingFlush to partial.txt
+     */
+    partialFlushIntervalMinutes?: number;
+    /**
+     * Emit an alerting metric after this many consecutive failed flushes for a stream
+     */
+    pendingFlushAlertAfterFailures?: number;
     /**
      * S3 key prefix for organizing logs
      */

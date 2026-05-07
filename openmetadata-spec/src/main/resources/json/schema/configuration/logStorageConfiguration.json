@@ -67,6 +67,30 @@
       "type": "integer",
       "minimum": 1,
       "default": 1440
+    },
+    "cleanupIntervalMinutes": {
+      "description": "How often the sweeper wakes up to check for abandoned streams",
+      "type": "integer",
+      "minimum": 1,
+      "default": 60
+    },
+    "partialFlushIntervalMinutes": {
+      "description": "Periodic cadence for flushing pendingFlush to partial.txt",
+      "type": "integer",
+      "minimum": 1,
+      "default": 2
+    },
+    "earlyFlushWatermarkBytes": {
+      "description": "Triggers an out-of-band flush when pendingFlush exceeds this size",
+      "type": "integer",
+      "minimum": 1,
+      "default": 5242880
+    },
+    "pendingFlushAlertAfterFailures": {
+      "description": "Emit an alerting metric after this many consecutive failed flushes for a stream",
+      "type": "integer",
+      "minimum": 1,
+      "default": 10
     }
   },
   "required": ["type"],

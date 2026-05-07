@@ -2,8 +2,6 @@
 
 This document describes the end-to-end design of OpenMetadata's streamable ingestion-pipeline log system: how logs flow from a running connector to durable S3 storage, how the UI reads them while a run is in progress, and how the system handles long idle gaps, restarts, and abandoned runs.
 
-The design described here reflects the system after the stability fix specified in [`docs/superpowers/specs/2026-05-05-streamable-logs-stability-design.md`](superpowers/specs/2026-05-05-streamable-logs-stability-design.md).
-
 ## Overview
 
 Ingestion pipelines (metadata, profiler, lineage, usage, dbt, etc.) emit logs as they run. Operators need to:
@@ -120,11 +118,11 @@ Every `partialFlushIntervalMinutes` (default 2) and on demand from the early-flu
 
 1. Snapshot `pendingFlush` and clear it.
 2. If empty, no-op (idle streams cost nothing).
-3. `GetObject partial.txt` → existing body and metadata. On 404, treat as empty.
-4. Build new body = existing + `\n`-joined snapshot.
-5. Build new metadata (`last-flushed-line`, `total-bytes`, `writer-epoch`, `writer-version`).
-6. `PutObject partial.txt` with body and metadata atomically.
-7. On failure, re-merge the snapshot to the head of `pendingFlush` and try again next tick. No data loss.
+3. `GetObject partial.txt` → reads `Content-Length` and metadata from the response headers. On 404, treat as empty.
+4. Build new metadata (`last-flushed-line`, `total-bytes`, `writer-epoch`, `writer-version`).
+5. **If existing body < 5 MB** — read the body, build merged body = existing + `\n`-joined snapshot, `PutObject` atomically.
+6. **If existing body ≥ 5 MB** — abort the body stream and concatenate server-side via Multipart Upload: `CreateMultipartUpload`, `UploadPartCopy` (existing body as part 1), `UploadPart` (new content as part 2, the last part has no 5 MB minimum), `CompleteMultipartUpload`. The merged body never enters JVM heap and is not re-uploaded.
+7. On failure, abort any in-flight multipart upload, re-merge the snapshot to the head of `pendingFlush`, and try again next tick. No data loss.
 
 Because `pendingFlush` is unbounded by the `SimpleLogBuffer` cap, no line is ever evicted before being flushed.
 
@@ -176,7 +174,7 @@ Legacy `partial.txt` files written by older code (without S3 metadata) read norm
 Connectors can die without calling `/close` — process killed, OOM, network partition, infrastructure failure. To bound resource use and still produce a final `logs.txt`, a sweeper runs periodically:
 
 - **Schedule**: every `cleanupIntervalMinutes` (default 60).
-- **Threshold**: `streamTimeoutHours` since last `appendLogs` (default 24).
+- **Threshold**: `streamTimeoutMinutes` since last `appendLogs` (default 1440 = 24h).
 
 For each expired stream, the sweeper does the same finalization steps as `/close` (final flush, copy to `logs.txt`, delete `partial.txt`, drop in-memory state). The end result is identical: an abandoned run produces a finalized `logs.txt` artifact that the UI can read, just delayed.
 
@@ -205,23 +203,17 @@ All settings live under `LogStorageConfiguration` in `openmetadata.yaml`:
 | `sseAlgorithm` | `AES_256` | Or `AWS_KMS` (requires `kmsKeyId`). |
 | `storageClass` | `STANDARD_IA` | S3 storage class for log objects. |
 | `expirationDays` | 30 | Bucket lifecycle: expire all logs after this many days. |
-| `streamTimeoutHours` | 24 | Idle threshold before the abandoned-run sweeper finalizes a stream. |
+| `streamTimeoutMinutes` | 1440 | Idle threshold (in minutes) before the abandoned-run sweeper finalizes a stream. |
 | `cleanupIntervalMinutes` | 60 | How often the sweeper wakes up to check for abandoned streams. |
 | `partialFlushIntervalMinutes` | 2 | Periodic `pendingFlush` → `partial.txt` cadence. |
-| `earlyFlushWatermarkBytes` | 5 MB | Triggers an out-of-band flush when `pendingFlush` exceeds this size. |
+| `earlyFlushWatermarkBytes` | 5242880 (5 MB) | Triggers an out-of-band flush when `pendingFlush` exceeds this size. |
 | `pendingFlushAlertAfterFailures` | 10 | Emit an alerting metric after this many consecutive failed flushes for a stream. |
 | `maxConcurrentStreams` | 100 | Bound on in-flight pipeline runs per OM-server instance. |
 | `awsConfig.*` | — | AWS credentials / region / endpoint (also supports IAM role + custom endpoints for MinIO). |
 
-Deprecated fields (kept for backward compatibility):
-
-| Field | Replacement |
-|-------|-------------|
-| `streamTimeoutMinutes` | `streamTimeoutHours`. If set, used as-is; if `< 30`, a deprecation warning is logged. |
-
 ## Concurrency Model
 
-Coordination is a per-stream `ReentrantLock` keyed by `streamKey = fqn + "/" + runId`. The lock is held for the duration of `appendLogs`, periodic flush, abandoned-run cleanup, and `/close`. Locks live in a `ConcurrentHashMap<String, ReentrantLock>` and are removed when the stream is dropped.
+Coordination is a per-stream lock keyed by `streamKey = fqn + "/" + runId`. The lock is held for the duration of `appendLogs`, periodic flush, abandoned-run cleanup, and `/close`. Locks are backed by a Guava `Striped<Lock>` with a fixed stripe count, so memory does not grow with completed-run accumulation; the same key always maps to the same lock instance, eliminating the acquire-vs-remove race that a per-key map would have. False contention across stripes is bounded by `maxConcurrentStreams << stripe count`.
 
 A single-threaded `ScheduledExecutorService` (`cleanupExecutor`) drives:
 - Periodic flushes (`writePartialLogs`)
@@ -264,5 +256,4 @@ If stickiness is broken (cookie stripped by a proxy, multi-cluster routing witho
   - `openmetadata-service/src/main/java/org/openmetadata/service/resources/services/ingestionpipelines/IngestionPipelineResource.java`
   - `ingestion/src/metadata/utils/streamable_logger.py`
   - `ingestion/src/metadata/ingestion/ometa/mixins/logs_mixin.py`
-- Design spec: [`docs/superpowers/specs/2026-05-05-streamable-logs-stability-design.md`](superpowers/specs/2026-05-05-streamable-logs-stability-design.md)
 - Related PRs: #23590, #24198, #24287, #24410

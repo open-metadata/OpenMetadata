@@ -33,6 +33,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.google.common.util.concurrent.Striped;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -44,7 +45,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.Lock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -60,8 +61,12 @@ import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3AsyncClientBuilder;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
+import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadResponse;
 import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
+import software.amazon.awssdk.services.s3.model.CopyPartResult;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectResponse;
 import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
@@ -79,7 +84,10 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Object;
+import software.amazon.awssdk.services.s3.model.UploadPartCopyRequest;
+import software.amazon.awssdk.services.s3.model.UploadPartCopyResponse;
 import software.amazon.awssdk.services.s3.model.UploadPartRequest;
+import software.amazon.awssdk.services.s3.model.UploadPartResponse;
 
 @ExtendWith(MockitoExtension.class)
 public class S3LogStorageTest {
@@ -610,16 +618,14 @@ public class S3LogStorageTest {
   }
 
   @Test
-  void testAppendLogsAcquiresPerStreamLock() throws Exception {
+  void testAppendLogsReleasesPerStreamLock() throws Exception {
     mockAsyncPutObject();
     s3LogStorage.appendLogs(testPipelineFQN, testRunId, "line 1");
     @SuppressWarnings("unchecked")
-    Map<String, ReentrantLock> locks =
-        (Map<String, ReentrantLock>) getPrivateField(s3LogStorage, "streamLocks");
-    String streamKey = testPipelineFQN + "/" + testRunId;
-    assertNotNull(locks.get(streamKey), "stream lock should be created on first appendLogs");
-    assertFalse(
-        locks.get(streamKey).isLocked(), "lock should be released after appendLogs returns");
+    Striped<Lock> locks = (Striped<Lock>) getPrivateField(s3LogStorage, "streamLocks");
+    Lock lock = locks.get(testPipelineFQN + "/" + testRunId);
+    assertTrue(lock.tryLock(), "lock should be released after appendLogs returns");
+    lock.unlock();
   }
 
   @Test
@@ -710,6 +716,119 @@ public class S3LogStorageTest {
       }
     }
     assertTrue(foundMerged, "expected at least one PUT to partial.txt with merged body");
+  }
+
+  @Test
+  void testFlushUsesMultipartCopyWhenExistingPartialIsLarge() throws Exception {
+    String streamKey = testPipelineFQN + "/" + testRunId;
+    String partialKey =
+        testPrefix
+            + "/"
+            + testPipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_")
+            + "/"
+            + testRunId
+            + "/partial.txt";
+
+    long largeSize = 6L * 1024 * 1024;
+    GetObjectResponse getResponse =
+        GetObjectResponse.builder()
+            .contentLength(largeSize)
+            .metadata(java.util.Map.of("last-flushed-line", "100"))
+            .build();
+    when(mockS3Client.getObject(
+            argThat((GetObjectRequest req) -> req != null && partialKey.equals(req.key()))))
+        .thenReturn(
+            new ResponseInputStream<>(
+                getResponse, AbortableInputStream.create(new ByteArrayInputStream(new byte[0]))));
+
+    when(mockS3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+        .thenReturn(CreateMultipartUploadResponse.builder().uploadId("upload-id-123").build());
+    when(mockS3Client.uploadPartCopy(any(UploadPartCopyRequest.class)))
+        .thenReturn(
+            UploadPartCopyResponse.builder()
+                .copyPartResult(CopyPartResult.builder().eTag("etag-1").build())
+                .build());
+    when(mockS3Client.uploadPart(
+            any(UploadPartRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+        .thenReturn(UploadPartResponse.builder().eTag("etag-2").build());
+    when(mockS3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+        .thenReturn(CompleteMultipartUploadResponse.builder().build());
+
+    mockAsyncPutObject();
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "new-line-1\nnew-line-2\n");
+
+    java.lang.reflect.Method m =
+        S3LogStorage.class.getDeclaredMethod("writePartialLogsForStream", String.class);
+    m.setAccessible(true);
+    m.invoke(s3LogStorage, streamKey);
+
+    org.mockito.ArgumentCaptor<CreateMultipartUploadRequest> createCaptor =
+        org.mockito.ArgumentCaptor.forClass(CreateMultipartUploadRequest.class);
+    verify(mockS3Client).createMultipartUpload(createCaptor.capture());
+    assertEquals(partialKey, createCaptor.getValue().key());
+    assertEquals("102", createCaptor.getValue().metadata().get("last-flushed-line"));
+
+    org.mockito.ArgumentCaptor<UploadPartCopyRequest> copyCaptor =
+        org.mockito.ArgumentCaptor.forClass(UploadPartCopyRequest.class);
+    verify(mockS3Client).uploadPartCopy(copyCaptor.capture());
+    assertEquals("upload-id-123", copyCaptor.getValue().uploadId());
+    assertEquals(1, copyCaptor.getValue().partNumber());
+    assertEquals("bytes=0-" + (largeSize - 1), copyCaptor.getValue().copySourceRange());
+
+    org.mockito.ArgumentCaptor<UploadPartRequest> partCaptor =
+        org.mockito.ArgumentCaptor.forClass(UploadPartRequest.class);
+    verify(mockS3Client)
+        .uploadPart(partCaptor.capture(), any(software.amazon.awssdk.core.sync.RequestBody.class));
+    assertEquals(2, partCaptor.getValue().partNumber());
+
+    verify(mockS3Client).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
+    verify(mockS3Client, never())
+        .putObject(
+            argThat((PutObjectRequest req) -> req != null && partialKey.equals(req.key())),
+            any(software.amazon.awssdk.core.sync.RequestBody.class));
+  }
+
+  @Test
+  void testFlushAbortsMultipartUploadOnFailure() throws Exception {
+    String streamKey = testPipelineFQN + "/" + testRunId;
+    String partialKey =
+        testPrefix
+            + "/"
+            + testPipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_")
+            + "/"
+            + testRunId
+            + "/partial.txt";
+
+    long largeSize = 6L * 1024 * 1024;
+    GetObjectResponse getResponse =
+        GetObjectResponse.builder()
+            .contentLength(largeSize)
+            .metadata(java.util.Map.of("last-flushed-line", "0"))
+            .build();
+    when(mockS3Client.getObject(
+            argThat((GetObjectRequest req) -> req != null && partialKey.equals(req.key()))))
+        .thenReturn(
+            new ResponseInputStream<>(
+                getResponse, AbortableInputStream.create(new ByteArrayInputStream(new byte[0]))));
+
+    when(mockS3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+        .thenReturn(CreateMultipartUploadResponse.builder().uploadId("upload-id-456").build());
+    when(mockS3Client.uploadPartCopy(any(UploadPartCopyRequest.class)))
+        .thenThrow(new RuntimeException("simulated copy failure"));
+
+    mockAsyncPutObject();
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "line\n");
+
+    java.lang.reflect.Method m =
+        S3LogStorage.class.getDeclaredMethod("writePartialLogsForStream", String.class);
+    m.setAccessible(true);
+    m.invoke(s3LogStorage, streamKey);
+
+    verify(mockS3Client)
+        .abortMultipartUpload(
+            argThat(
+                (software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest req) ->
+                    req != null && "upload-id-456".equals(req.uploadId())));
   }
 
   @Test

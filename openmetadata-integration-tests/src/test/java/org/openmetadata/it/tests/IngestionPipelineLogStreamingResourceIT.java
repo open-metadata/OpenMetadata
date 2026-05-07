@@ -237,7 +237,12 @@ public class IngestionPipelineLogStreamingResourceIT {
 
   @Test
   @Order(100)
-  void testIdleGapDoesNotClobberPartial(TestNamespace ns) throws OpenMetadataException {
+  void testSequentialBurstsBothPersist(TestNamespace ns) throws OpenMetadataException {
+    // Verifies that two sequential append batches both land in storage with no clobber.
+    // True idle-gap recovery (sweeper finalizing an abandoned run) is exercised by the
+    // unit test S3LogStorageTest#testCleanupAbandonedStreamsCopiesPartialToLogsAndDrops;
+    // the IT environment cannot deterministically advance time across the per-stream
+    // cleanup interval without making the test slow or flaky.
     IngestionPipeline pipeline = createTestPipeline(ns);
     UUID runId = UUID.randomUUID();
     String pipelineFQN = pipeline.getFullyQualifiedName();
