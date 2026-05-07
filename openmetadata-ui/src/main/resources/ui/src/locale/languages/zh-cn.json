@@ -1346,6 +1346,7 @@
     "my-data": "我的数据",
     "my-task": "我的任务",
     "my-task-plural": "我的任务",
+    "n-a": "N/A",
     "n-days-ago": "{{count}} 天前",
     "n-hours-ago": "{{count}} 小时前",
     "n-minutes-ago": "{{count}} 分钟前",

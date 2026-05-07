@@ -59,6 +59,7 @@ import { ModifiedColumn } from '../TableProfiler.interface';
 import { useTableProfiler } from '../TableProfilerProvider';
 
 interface FlatRow {
+  id: string;
   record: ModifiedColumn;
   depth: number;
   hasChildren: boolean;
@@ -186,7 +187,12 @@ const ColumnProfileTable = () => {
         ) as ModifiedColumn[];
         const hasChildren = children.length > 0;
 
-        result.push({ record: row, depth, hasChildren });
+        result.push({
+          id: row.fullyQualifiedName ?? row.name,
+          record: row,
+          depth,
+          hasChildren,
+        });
 
         if (hasChildren && expandedKeys.has(row.fullyQualifiedName ?? '')) {
           addRows(children, depth + 1);
@@ -268,18 +274,21 @@ const ColumnProfileTable = () => {
   }, [tableFqn, currentPage, searchText, pageSize]);
 
   const renderRow = (
+    id: string,
     record: ModifiedColumn,
     depth: number,
     hasChildren: boolean
   ) => {
-    const rowKey = record.fullyQualifiedName ?? '';
+    const rowKey = id;
     const isExpanded = expandedKeys.has(rowKey);
     const testCounts =
       testCaseSummary?.[record.fullyQualifiedName?.toLocaleLowerCase() ?? ''];
 
     return (
       <Table.Row data-row-key={rowKey} id={rowKey} key={rowKey}>
-        <Table.Cell style={{ paddingLeft: `${16 + depth * 12}px`, width: 250 }}>
+        <Table.Cell
+          className="tw:w-62.5"
+          style={{ paddingLeft: `${16 + depth * 12}px` }}>
           <div
             className="d-inline-flex flex-column hover-icon-group"
             style={{ maxWidth: '75%' }}>
@@ -324,27 +333,27 @@ const ColumnProfileTable = () => {
           </div>
         </Table.Cell>
 
-        <Table.Cell style={{ width: 200 }}>
+        <Table.Cell className="tw:w-50">
           <Typography>
             <span className="break-word">
-              {record.dataTypeDisplay || 'N/A'}
+              {record.dataTypeDisplay || t('label.n-a')}
             </span>
           </Typography>
         </Table.Cell>
 
-        <Table.Cell style={{ width: 200 }}>
+        <Table.Cell className="tw:w-50">
           {!isNil(record.profile?.nullProportion)
             ? calculatePercentage(record.profile!.nullProportion, 1, 2, true)
             : '--'}
         </Table.Cell>
 
-        <Table.Cell style={{ width: 200 }}>
+        <Table.Cell className="tw:w-50">
           {!isNil(record.profile?.uniqueProportion)
             ? calculatePercentage(record.profile!.uniqueProportion, 1, 2, true)
             : '--'}
         </Table.Cell>
 
-        <Table.Cell style={{ width: 200 }}>
+        <Table.Cell className="tw:w-50">
           {!isNil(record.profile?.distinctProportion)
             ? calculatePercentage(
                 record.profile!.distinctProportion,
@@ -355,14 +364,14 @@ const ColumnProfileTable = () => {
             : '--'}
         </Table.Cell>
 
-        <Table.Cell style={{ width: 200 }}>
+        <Table.Cell className="tw:w-50">
           {record.profile?.valuesCount !== undefined &&
           record.profile?.valuesCount !== null
             ? formatNumberWithComma(record.profile.valuesCount)
             : '--'}
         </Table.Cell>
 
-        <Table.Cell style={{ width: 110 }}>
+        <Table.Cell className="tw:w-27.5">
           {isUndefined(testCounts?.success) || testCounts?.success === 0 ? (
             '--'
           ) : (
@@ -381,7 +390,7 @@ const ColumnProfileTable = () => {
           )}
         </Table.Cell>
 
-        <Table.Cell style={{ width: 100 }}>
+        <Table.Cell className="tw:w-25">
           {isUndefined(testCounts?.failed) || testCounts?.failed === 0 ? (
             '--'
           ) : (
@@ -400,7 +409,7 @@ const ColumnProfileTable = () => {
           )}
         </Table.Cell>
 
-        <Table.Cell style={{ width: 100 }}>
+        <Table.Cell className="tw:w-25">
           {isUndefined(testCounts?.aborted) || testCounts?.aborted === 0 ? (
             '--'
           ) : (
@@ -486,8 +495,8 @@ const ColumnProfileTable = () => {
                     <FilterTablePlaceHolder />
                   )
                 }>
-                {({ record, depth, hasChildren }) =>
-                  renderRow(record, depth, hasChildren)
+                {({ id, record, depth, hasChildren }) =>
+                  renderRow(id, record, depth, hasChildren)
                 }
               </Table.Body>
             </Table>
