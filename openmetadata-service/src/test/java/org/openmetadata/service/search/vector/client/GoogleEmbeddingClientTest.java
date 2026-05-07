@@ -33,6 +33,9 @@ import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLangua
 
 class GoogleEmbeddingClientTest {
 
+  private static final String EMBED_ENDPOINT =
+      "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent";
+
   private static class StubHttpResponse implements HttpResponse<String> {
     private final String body;
     private final int statusCode;
@@ -173,12 +176,7 @@ class GoogleEmbeddingClientTest {
     StubHttpClient httpClient = new StubHttpClient(response, 200);
 
     GoogleEmbeddingClient client =
-        new GoogleEmbeddingClient(
-            httpClient,
-            "test-key",
-            "text-embedding-004",
-            3,
-            "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
+        new GoogleEmbeddingClient(httpClient, "test-key", "text-embedding-004", 3, EMBED_ENDPOINT);
 
     float[] embedding = client.embed("hello world");
 
@@ -334,11 +332,7 @@ class GoogleEmbeddingClientTest {
 
     GoogleEmbeddingClient client =
         new GoogleEmbeddingClient(
-            httpClient,
-            "test-key",
-            "text-embedding-004",
-            768,
-            "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
+            httpClient, "test-key", "text-embedding-004", 768, EMBED_ENDPOINT);
 
     RuntimeException ex = assertThrows(RuntimeException.class, () -> client.embed("hello"));
     assertTrue(ex.getMessage().contains("429"));
@@ -351,11 +345,7 @@ class GoogleEmbeddingClientTest {
 
     GoogleEmbeddingClient client =
         new GoogleEmbeddingClient(
-            httpClient,
-            "test-key",
-            "text-embedding-004",
-            768,
-            "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
+            httpClient, "test-key", "text-embedding-004", 768, EMBED_ENDPOINT);
 
     RuntimeException ex = assertThrows(RuntimeException.class, () -> client.embed("hello"));
     assertTrue(ex.getMessage().contains("503"));
@@ -368,11 +358,7 @@ class GoogleEmbeddingClientTest {
 
     GoogleEmbeddingClient client =
         new GoogleEmbeddingClient(
-            httpClient,
-            "test-key",
-            "text-embedding-004",
-            768,
-            "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
+            httpClient, "test-key", "text-embedding-004", 768, EMBED_ENDPOINT);
 
     RuntimeException ex = assertThrows(RuntimeException.class, () -> client.embed("hello"));
     assertTrue(ex.getMessage().contains("no embedding object"));
@@ -384,11 +370,7 @@ class GoogleEmbeddingClientTest {
 
     GoogleEmbeddingClient client =
         new GoogleEmbeddingClient(
-            httpClient,
-            "test-key",
-            "text-embedding-004",
-            768,
-            "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
+            httpClient, "test-key", "text-embedding-004", 768, EMBED_ENDPOINT);
 
     RuntimeException ex = assertThrows(RuntimeException.class, () -> client.embed("hello"));
     assertTrue(ex.getMessage().contains("no values array"));
@@ -400,11 +382,7 @@ class GoogleEmbeddingClientTest {
 
     GoogleEmbeddingClient client =
         new GoogleEmbeddingClient(
-            httpClient,
-            "test-key",
-            "text-embedding-004",
-            768,
-            "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
+            httpClient, "test-key", "text-embedding-004", 768, EMBED_ENDPOINT);
 
     RuntimeException ex = assertThrows(RuntimeException.class, () -> client.embed("hello"));
     assertTrue(ex.getMessage().contains("no values array"));
@@ -417,11 +395,7 @@ class GoogleEmbeddingClientTest {
 
     GoogleEmbeddingClient client =
         new GoogleEmbeddingClient(
-            httpClient,
-            "my-secret-key",
-            "text-embedding-004",
-            1,
-            "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
+            httpClient, "my-secret-key", "text-embedding-004", 1, EMBED_ENDPOINT);
 
     client.embed("hi");
 
@@ -438,11 +412,7 @@ class GoogleEmbeddingClientTest {
 
     GoogleEmbeddingClient client =
         new GoogleEmbeddingClient(
-            httpClient,
-            "my-secret-key",
-            "text-embedding-004",
-            1,
-            "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
+            httpClient, "my-secret-key", "text-embedding-004", 1, EMBED_ENDPOINT);
 
     client.embed("hi");
 
@@ -459,11 +429,7 @@ class GoogleEmbeddingClientTest {
 
     GoogleEmbeddingClient client =
         new GoogleEmbeddingClient(
-            httpClient,
-            "my-secret-key",
-            "text-embedding-004",
-            1,
-            "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
+            httpClient, "my-secret-key", "text-embedding-004", 1, EMBED_ENDPOINT);
 
     client.embed("the quick brown fox");
 
@@ -483,11 +449,7 @@ class GoogleEmbeddingClientTest {
 
     GoogleEmbeddingClient client =
         new GoogleEmbeddingClient(
-            httpClient,
-            "key with spaces&chars",
-            "text-embedding-004",
-            1,
-            "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
+            httpClient, "key with spaces&chars", "text-embedding-004", 1, EMBED_ENDPOINT);
 
     client.embed("hi");
 
@@ -498,6 +460,8 @@ class GoogleEmbeddingClientTest {
 
   private static String extractBody(HttpRequest request) {
     java.util.concurrent.atomic.AtomicReference<String> captured =
+        new java.util.concurrent.atomic.AtomicReference<>();
+    java.util.concurrent.atomic.AtomicReference<Throwable> failure =
         new java.util.concurrent.atomic.AtomicReference<>();
     request
         .bodyPublisher()
@@ -521,7 +485,9 @@ class GoogleEmbeddingClientTest {
                     }
 
                     @Override
-                    public void onError(Throwable throwable) {}
+                    public void onError(Throwable throwable) {
+                      failure.set(throwable);
+                    }
 
                     @Override
                     public void onComplete() {
@@ -530,7 +496,14 @@ class GoogleEmbeddingClientTest {
                   };
               publisher.subscribe(subscriber);
             });
-    return captured.get();
+    if (failure.get() != null) {
+      throw new RuntimeException("Body publisher failed", failure.get());
+    }
+    String body = captured.get();
+    if (body == null) {
+      throw new IllegalStateException("Request had no body publisher");
+    }
+    return body;
   }
 
   private ElasticSearchConfiguration buildConfig(String apiKey, String modelId, int dimension) {
