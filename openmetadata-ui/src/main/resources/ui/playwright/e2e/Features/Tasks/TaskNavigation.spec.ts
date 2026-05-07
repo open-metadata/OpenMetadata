@@ -546,16 +546,19 @@ test.describe('Task Navigation - URL Validation', () => {
  */
 test.describe('Task Notification - activity-feed tab refreshes after clicking notification', () => {
   let adminUser: UserClass;
+  let otherUser: UserClass;
   let table: TableClass;
   let taskId: string | undefined;
 
-  test.beforeAll('Create admin user and table', async ({ browser }) => {
+  test.beforeAll('Create admin user, other user and table', async ({ browser }) => {
     adminUser = new UserClass();
+    otherUser = new UserClass();
     table = new TableClass();
     const { apiContext, afterAction } = await performAdminLogin(browser);
     try {
       await adminUser.create(apiContext);
       await adminUser.setAdminRole(apiContext);
+      await otherUser.create(apiContext);
       await table.create(apiContext);
     } finally {
       await afterAction();
@@ -645,5 +648,110 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
 
       expect(page.url()).not.toMatch(/\/table\/TASK-/);
     });
+  });
+
+  test('two sessions: admin on Columns tab creates task, assignee sees refresh on notification click', async ({
+    browser,
+  }) => {
+    test.slow();
+
+    const entityFqn = table.entityResponseData?.fullyQualifiedName ?? '';
+
+    const adminContext = await browser.newContext();
+    const userContext = await browser.newContext();
+    const adminPage = await adminContext.newPage();
+    const userPage = await userContext.newPage();
+
+    try {
+      await test.step('Log in both sessions', async () => {
+        await adminUser.login(adminPage);
+        await otherUser.login(userPage);
+      });
+
+      await test.step('Admin navigates to entity Columns (Schema) tab', async () => {
+        await table.visitEntityPage(adminPage);
+        const schemaTab = adminPage.getByRole('tab', { name: /schema/i });
+        if (await schemaTab.isVisible()) {
+          await schemaTab.click();
+          await waitForAllLoadersToDisappear(adminPage);
+        }
+      });
+
+      await test.step('Other user navigates to entity Activity Feed & Tasks tab', async () => {
+        await userPage.goto(`/table/${encodeURIComponent(entityFqn)}`);
+        await waitForPageLoaded(userPage);
+        await waitForAllLoadersToDisappear(userPage);
+        const feedResponse = userPage.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/feed') && r.request().method() === 'GET'
+        );
+        await userPage.getByTestId('activity_feed').click();
+        await feedResponse;
+        await waitForAllLoadersToDisappear(userPage);
+      });
+
+      await test.step('Admin creates a task via API and assigns to other user', async () => {
+        const { apiContext, afterAction } = await getApiContext(adminPage);
+        try {
+          const response = await apiContext.post('/api/v1/tasks', {
+            data: {
+              about: entityFqn,
+              aboutType: 'table',
+              type: 'DescriptionUpdate',
+              category: 'MetadataUpdate',
+              assignees: [otherUser.responseData.name],
+            },
+          });
+          const created = await response.json();
+          taskId = created.id;
+        } finally {
+          await afterAction();
+        }
+      });
+
+      await test.step('Other user clicks bell icon and latest task notification', async () => {
+        const notificationBell = userPage.getByTestId('task-notifications');
+        await expect(notificationBell).toBeVisible();
+
+        const notifFeedResponse = userPage.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/tasks/assigned') &&
+            r.url().includes('status=Open')
+        );
+        await notificationBell.click();
+        await notifFeedResponse;
+
+        const notificationBox = userPage.locator('.notification-box');
+        await expect(notificationBox).toBeVisible();
+
+        const latestNotification = notificationBox
+          .locator('li.ant-list-item.notification-dropdown-list-btn')
+          .first();
+        await expect(latestNotification).toBeVisible();
+
+        const taskListRefresh = waitForTaskListResponse(userPage);
+        await latestNotification.click();
+        await taskListRefresh;
+
+        await waitForAllLoadersToDisappear(userPage);
+      });
+
+      await test.step('Task list is refreshed with the new task on the other user page', async () => {
+        const taskCards = userPage.locator('[data-testid="task-feed-card"]');
+
+        await expect
+          .poll(async () => taskCards.count(), {
+            message: 'Waiting for refreshed task list to include the new task',
+            timeout: 30_000,
+            intervals: [1000, 2000, 3000],
+          })
+          .toBeGreaterThanOrEqual(1);
+
+        expect(userPage.url()).not.toMatch(/\/table\/TASK-/);
+      });
+    } finally {
+      await adminContext.close();
+      await userContext.close();
+    }
   });
 });
