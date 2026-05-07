@@ -74,6 +74,7 @@ export interface KnowledgeDetailPageHeaderProps {
   onVoteChange: (type: VotingDataProps) => Promise<void>;
   onFollowChange: () => Promise<void>;
   onToggleDelete: () => void;
+  onSave?: () => void;
   fetchKnowledgePageHierarchy?: (forceRefresh?: boolean) => Promise<void>;
 }
 
@@ -85,6 +86,7 @@ const KnowledgeDetailPageHeader: FC<KnowledgeDetailPageHeaderProps> = ({
   permissions,
   onFollowChange,
   onToggleDelete,
+  onSave,
   isLoading,
   fetchKnowledgePageHierarchy,
 }) => {
@@ -269,6 +271,13 @@ const KnowledgeDetailPageHeader: FC<KnowledgeDetailPageHeaderProps> = ({
     [knowledgePage]
   );
 
+  const showSaveButton =
+    Boolean(onSave) &&
+    contentChangeState === ContentChangeState.UN_SAVED &&
+    (permissions.EditAll ||
+      permissions.EditDescription ||
+      permissions.EditDisplayName);
+
   if (isLoading) {
     return (
       <div className="p-y-sm p-x-sm w-full border-bottom bg-white flex justify-between">
@@ -355,6 +364,11 @@ const KnowledgeDetailPageHeader: FC<KnowledgeDetailPageHeaderProps> = ({
                 )
               }
             />
+            {showSaveButton && (
+              <Button data-testid="save-button" type="primary" onClick={onSave}>
+                {t('label.save')}
+              </Button>
+            )}
             <ButtonGroup size="small">
               <Voting
                 disabled={knowledgePage?.deleted}

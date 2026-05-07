@@ -10,9 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ChangeEvent, FC, KeyboardEvent, useRef, useState } from 'react';
+import {
+  ChangeEvent,
+  forwardRef,
+  KeyboardEvent,
+  MutableRefObject,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import i18n from '../../../utils/i18next/LocalUtil';
 import './title-component.less';
+import useAutoSizeTextArea from '../../../hooks/useAutosizeTextArea';
 
 interface Props {
   value: string;
@@ -22,36 +31,59 @@ interface Props {
   onKeyDown: (event: KeyboardEvent) => void;
 }
 
-export const TitleComponent: FC<Props> = ({
-  value,
-  onChange,
-  onKeyDown,
-  autoFocus = true,
-  readOnly = false,
-}) => {
-  const [titleValue, setTitleValue] = useState<string>(value);
-  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+export const TitleComponent = forwardRef<HTMLTextAreaElement, Props>(
+  (
+    { value, onChange, onKeyDown, autoFocus = false, readOnly = false },
+    ref
+  ) => {
+    const [titleValue, setTitleValue] = useState<string>(value);
+    const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleOnChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    const { value } = e.target;
-    setTitleValue(value);
-    onChange(value);
-  };
+    useAutoSizeTextArea('title-input', textAreaRef.current, titleValue);
 
-  return (
-    <textarea
-      autoFocus={autoFocus}
-      className="knowledge-page-title-input"
-      data-testid="entity-header-display-name"
-      id="title-input"
-      placeholder={i18n.t('label.untitled')}
-      readOnly={readOnly}
-      ref={textAreaRef}
-      rows={1}
-      spellCheck={false}
-      value={titleValue}
-      onChange={handleOnChange}
-      onKeyDown={onKeyDown}
-    />
-  );
-};
+    // Defer focus by 100ms to ensure TipTap/ProseMirror (sibling BlockEditor) has
+    // finished initializing its EditorView, which can otherwise steal focus on mount.
+    useEffect(() => {
+      if (!autoFocus) {
+        return;
+      }
+      const id = setTimeout(() => textAreaRef.current?.focus(), 100);
+
+      return () => clearTimeout(id);
+    }, [autoFocus]);
+
+    const setRef = (el: HTMLTextAreaElement | null) => {
+      (textAreaRef as MutableRefObject<HTMLTextAreaElement | null>).current =
+        el;
+      if (typeof ref === 'function') {
+        ref(el);
+      } else if (ref) {
+        (ref as MutableRefObject<HTMLTextAreaElement | null>).current = el;
+      }
+    };
+
+    const handleOnChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+      const { value } = e.target;
+      setTitleValue(value);
+      onChange(value);
+    };
+
+    return (
+      <textarea
+        className="knowledge-page-title-input"
+        data-testid="entity-header-display-name"
+        id="title-input"
+        placeholder={i18n.t('label.untitled')}
+        readOnly={readOnly}
+        ref={setRef}
+        rows={1}
+        spellCheck={false}
+        value={titleValue}
+        onChange={handleOnChange}
+        onKeyDown={onKeyDown}
+      />
+    );
+  }
+);
+
+TitleComponent.displayName = 'TitleComponent';

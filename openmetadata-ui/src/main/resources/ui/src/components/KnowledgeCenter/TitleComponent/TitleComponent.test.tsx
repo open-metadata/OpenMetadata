@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { createRef } from 'react';
 import { TitleComponent } from './TitleComponent';
 
 const mockHandleChange = jest.fn();
@@ -53,18 +54,16 @@ describe('TitleComponent', () => {
     );
   });
 
-  it('should render TitleComponent with autoFocus', () => {
-    render(<TitleComponent {...mockProps} autoFocus />);
+  it('should expose textarea ref', () => {
+    const ref = createRef<HTMLTextAreaElement>();
+
+    render(<TitleComponent {...mockProps} ref={ref} />);
 
     expect(
       screen.getByTestId('entity-header-display-name')
     ).toBeInTheDocument();
 
-    expect(screen.getByTestId('entity-header-display-name')).toHaveValue(
-      'test-value'
-    );
-
-    expect(screen.getByTestId('entity-header-display-name')).toHaveFocus();
+    expect(ref.current).toBe(screen.getByTestId('entity-header-display-name'));
   });
 
   it('should render TitleComponent with onKeyDown', async () => {

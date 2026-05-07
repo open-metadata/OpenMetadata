@@ -100,6 +100,7 @@ const mockOnSetThreadLink = jest.fn();
 const mockOnVoteChange = jest.fn();
 const mockOnFollowChange = jest.fn();
 const mockOnToggleDelete = jest.fn();
+const mockOnSave = jest.fn();
 
 const mockProps: KnowledgeDetailPageHeaderProps = {
   isLoading: false,
@@ -210,5 +211,42 @@ describe('KnowledgeDetailPageHeader', () => {
     fireEvent.click(versionButton);
 
     expect(mockPush).toHaveBeenCalled();
+  });
+
+  it('should render Save button for unsaved editable content', () => {
+    render(
+      <KnowledgeDetailPageHeader
+        {...mockProps}
+        contentChangeState={ContentChangeState.UN_SAVED}
+        permissions={{ ...mockProps.permissions, EditDescription: true }}
+        onSave={mockOnSave}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const saveButton = screen.getByTestId('save-button');
+
+    expect(saveButton).toHaveTextContent('label.save');
+
+    fireEvent.click(saveButton);
+
+    expect(mockOnSave).toHaveBeenCalled();
+  });
+
+  it('should not render Save button without edit permissions', () => {
+    render(
+      <KnowledgeDetailPageHeader
+        {...mockProps}
+        contentChangeState={ContentChangeState.UN_SAVED}
+        onSave={mockOnSave}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(screen.queryByTestId('save-button')).not.toBeInTheDocument();
   });
 });

@@ -52,14 +52,7 @@ import {
   KnowledgePage,
   RecentlyViewedQuickLinks,
 } from 'interface/knowledge-center.interface';
-import {
-  cloneDeep,
-  debounce,
-  isEmpty,
-  isEqual,
-  isNil,
-  isUndefined,
-} from 'lodash';
+import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import {
   FC,
@@ -109,6 +102,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   const { hash } = useCustomLocation();
   const { currentUser } = useApplicationStore();
   const editorRef = useRef<BlockEditorRef>({} as BlockEditorRef);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const location = useLocation();
   const navigate = useNavigate();
@@ -463,6 +457,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     [handleDisplayNameUpdate, updateDelay, permissions]
   );
 
+  const handleSave = useCallback(() => {
+    handleDisplayNameSave.flush();
+    handleContentSave.flush();
+  }, [handleDisplayNameSave, handleContentSave]);
+
   const handleDisplayNameChange = useCallback(
     (updatedDisplayName: string) => {
       const isChanged = !isEqual(
@@ -545,8 +544,9 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         children: (
           <>
             <TitleComponent
-              autoFocus={isEmpty(displayName)}
+              autoFocus={hash.slice(1) === CREATE_PAGE_HASH}
               readOnly={!(permissions.EditAll || permissions.EditDisplayName)}
+              ref={titleRef}
               value={displayName}
               onChange={handleDisplayNameChange}
               onKeyDown={handleTitleKeyDown}
@@ -611,6 +611,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         knowledgePage={knowledgePage}
         permissions={permissions}
         onFollowChange={handleFollowChange}
+        onSave={handleSave}
         onSetThreadLink={setThreadLink}
         onToggleDelete={handleToggleDelete}
         onVoteChange={handleVoteChange}
@@ -624,6 +625,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       setThreadLink,
       handleToggleDelete,
       handleVoteChange,
+      handleSave,
     ]
   );
 

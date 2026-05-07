@@ -688,15 +688,14 @@ export const createLink = async (
   await expect(linkButton).toBeVisible();
   await linkButton.click();
 
-  await page.waitForSelector('.ant-modal-body', {
-    state: 'visible',
-  });
+  const linkDialog = page.getByRole('dialog', { name: 'Add link' });
+  await expect(linkDialog).toBeVisible();
 
   const linkInput = page.locator('#href');
   await expect(linkInput).toBeVisible();
   await linkInput.fill(url);
 
-  const saveButton = page.getByRole('button', { name: 'Save' });
+  const saveButton = linkDialog.getByRole('button', { name: 'Save' });
   await expect(saveButton).toBeVisible();
   await saveButton.click();
 };
