@@ -40,6 +40,9 @@ RUN dpkg --configure -a \
     wget --no-install-recommends \
     # Accept MSSQL ODBC License
     && ACCEPT_EULA=Y apt-get -qq install -y msodbcsql18 \
+    && apt-get -qq purge -y \
+         'imagemagick*' 'libmagick*' 'graphicsmagick*' \
+    && apt-get -qq autoremove -y --purge \
     && rm -rf /var/lib/apt/lists/*
 
 # Add updated postgres/redshift dependencies based on libq
