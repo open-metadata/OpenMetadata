@@ -12,6 +12,7 @@ package org.openmetadata.service.search.vector.client;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -185,6 +186,128 @@ class GoogleEmbeddingClientTest {
     assertEquals(0.1f, embedding[0], 0.001f);
     assertEquals(0.2f, embedding[1], 0.001f);
     assertEquals(0.3f, embedding[2], 0.001f);
+  }
+
+  @Test
+  void testClientCreationWithConfig() {
+    ElasticSearchConfiguration config = buildConfig("test-key", "text-embedding-004", 768);
+    GoogleEmbeddingClient client = new GoogleEmbeddingClient(config);
+
+    assertEquals(768, client.getDimension());
+    assertEquals("text-embedding-004", client.getModelId());
+  }
+
+  @Test
+  void testClientCreationWithCustomModel() {
+    ElasticSearchConfiguration config = buildConfig("test-key", "gemini-embedding-001", 3072);
+    GoogleEmbeddingClient client = new GoogleEmbeddingClient(config);
+
+    assertEquals(3072, client.getDimension());
+    assertEquals("gemini-embedding-001", client.getModelId());
+  }
+
+  @Test
+  void testMissingGoogleConfigThrows() {
+    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
+    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
+    config.setNaturalLanguageSearch(nlsCfg);
+
+    assertThrows(IllegalArgumentException.class, () -> new GoogleEmbeddingClient(config));
+  }
+
+  @Test
+  void testMissingApiKeyThrows() {
+    Google googleCfg =
+        new Google().withEmbeddingModelId("text-embedding-004").withEmbeddingDimension(768);
+
+    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
+    nlsCfg.setGoogle(googleCfg);
+
+    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
+    config.setNaturalLanguageSearch(nlsCfg);
+
+    assertThrows(IllegalArgumentException.class, () -> new GoogleEmbeddingClient(config));
+  }
+
+  @Test
+  void testBlankApiKeyThrows() {
+    Google googleCfg =
+        new Google()
+            .withApiKey("   ")
+            .withEmbeddingModelId("text-embedding-004")
+            .withEmbeddingDimension(768);
+
+    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
+    nlsCfg.setGoogle(googleCfg);
+
+    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
+    config.setNaturalLanguageSearch(nlsCfg);
+
+    assertThrows(IllegalArgumentException.class, () -> new GoogleEmbeddingClient(config));
+  }
+
+  @Test
+  void testMissingModelIdThrows() {
+    Google googleCfg = new Google().withApiKey("test-key").withEmbeddingDimension(768);
+    googleCfg.setEmbeddingModelId(null);
+
+    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
+    nlsCfg.setGoogle(googleCfg);
+
+    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
+    config.setNaturalLanguageSearch(nlsCfg);
+
+    assertThrows(IllegalArgumentException.class, () -> new GoogleEmbeddingClient(config));
+  }
+
+  @Test
+  void testZeroDimensionThrows() {
+    Google googleCfg =
+        new Google()
+            .withApiKey("test-key")
+            .withEmbeddingModelId("text-embedding-004")
+            .withEmbeddingDimension(0);
+
+    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
+    nlsCfg.setGoogle(googleCfg);
+
+    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
+    config.setNaturalLanguageSearch(nlsCfg);
+
+    assertThrows(IllegalArgumentException.class, () -> new GoogleEmbeddingClient(config));
+  }
+
+  @Test
+  void testNegativeDimensionThrows() {
+    Google googleCfg =
+        new Google()
+            .withApiKey("test-key")
+            .withEmbeddingModelId("text-embedding-004")
+            .withEmbeddingDimension(-100);
+
+    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
+    nlsCfg.setGoogle(googleCfg);
+
+    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
+    config.setNaturalLanguageSearch(nlsCfg);
+
+    assertThrows(IllegalArgumentException.class, () -> new GoogleEmbeddingClient(config));
+  }
+
+  @Test
+  void testNullTextThrows() {
+    ElasticSearchConfiguration config = buildConfig("test-key", "text-embedding-004", 768);
+    GoogleEmbeddingClient client = new GoogleEmbeddingClient(config);
+
+    assertThrows(IllegalArgumentException.class, () -> client.embed(null));
+  }
+
+  @Test
+  void testBlankTextThrows() {
+    ElasticSearchConfiguration config = buildConfig("test-key", "text-embedding-004", 768);
+    GoogleEmbeddingClient client = new GoogleEmbeddingClient(config);
+
+    assertThrows(IllegalArgumentException.class, () -> client.embed("   "));
   }
 
   private ElasticSearchConfiguration buildConfig(String apiKey, String modelId, int dimension) {
