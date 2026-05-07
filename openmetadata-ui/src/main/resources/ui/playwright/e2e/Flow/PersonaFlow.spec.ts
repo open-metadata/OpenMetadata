@@ -11,18 +11,25 @@
  *  limitations under the License.
  */
 
-import { test, expect } from '../../support/fixtures/userPages';
 import { DELETE_TERM } from '../../constant/common';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/userPages';
 import { PersonaClass } from '../../support/persona/PersonaClass';
+import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
+import { selectOption } from '../../utils/advancedSearch';
 import {
   createNewPage,
   descriptionBox,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
-import { TeamClass } from '../../support/team/TeamClass';
+import {
+  navigateToCustomizeLandingPage,
+  openAddCustomizeWidgetModal,
+  selectAssetTypes,
+} from '../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateFormNameFieldInput } from '../../utils/form';
 import {
@@ -320,111 +327,103 @@ test.describe.serial('Default persona setting and removal flow', () => {
 
     test.slow(true);
 
-    await test.step(
-      'Admin creates a persona and sets the default persona',
-      async () => {
-        await navigateToPersonaSettings(adminPage);
-        await adminPage.getByTestId('add-persona-button').click();
+    await test.step('Admin creates a persona and sets the default persona', async () => {
+      await navigateToPersonaSettings(adminPage);
+      await adminPage.getByTestId('add-persona-button').click();
 
-        await validateFormNameFieldInput({
-          page: adminPage,
-          value: PERSONA_DETAILS.name,
-          fieldName: 'Name',
-          fieldSelector: '[data-testid="name"]',
-          errorDivSelector: '#name_help',
-        });
+      await validateFormNameFieldInput({
+        page: adminPage,
+        value: PERSONA_DETAILS.name,
+        fieldName: 'Name',
+        fieldSelector: '[data-testid="name"]',
+        errorDivSelector: '#name_help',
+      });
 
-        await adminPage
-          .getByTestId('displayName')
-          .fill(PERSONA_DETAILS.displayName);
+      await adminPage
+        .getByTestId('displayName')
+        .fill(PERSONA_DETAILS.displayName);
 
-        await adminPage
-          .locator(descriptionBox)
-          .fill(PERSONA_DETAILS.description);
+      await adminPage.locator(descriptionBox).fill(PERSONA_DETAILS.description);
 
-        const userListResponse = adminPage.waitForResponse(
-          '/api/v1/users?limit=*&isBot=false*'
-        );
-        await adminPage.getByTestId('add-users').click();
-        await userListResponse;
+      const userListResponse = adminPage.waitForResponse(
+        '/api/v1/users?limit=*&isBot=false*'
+      );
+      await adminPage.getByTestId('add-users').click();
+      await userListResponse;
 
-        await adminPage.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
-        const searchUser = adminPage.waitForResponse(
-          `/api/v1/search/query?q=*${encodeURIComponent(
-            user.responseData.displayName
-          )}*`
-        );
-        await adminPage
-          .getByTestId('searchbar')
-          .fill(user.responseData.displayName);
-        await searchUser;
+      const searchUser = adminPage.waitForResponse(
+        `/api/v1/search/query?q=*${encodeURIComponent(
+          user.responseData.displayName
+        )}*`
+      );
+      await adminPage
+        .getByTestId('searchbar')
+        .fill(user.responseData.displayName);
+      await searchUser;
 
-        await adminPage
-          .getByRole('listitem', { name: user.responseData.displayName })
-          .click();
-        await adminPage.getByTestId('selectable-list-update-btn').click();
+      await adminPage
+        .getByRole('listitem', { name: user.responseData.displayName })
+        .click();
+      await adminPage.getByTestId('selectable-list-update-btn').click();
 
-        await adminPage.getByRole('button', { name: 'Create' }).click();
+      await adminPage.getByRole('button', { name: 'Create' }).click();
 
-        await adminPage.waitForLoadState('networkidle');
+      await adminPage.waitForLoadState('networkidle');
 
-        await navigateToPersonaSettings(adminPage);
+      await navigateToPersonaSettings(adminPage);
 
-        await waitForAllLoadersToDisappear(adminPage, 'skeleton-card-loader');
+      await waitForAllLoadersToDisappear(adminPage, 'skeleton-card-loader');
 
-        const personaResponse = adminPage.waitForResponse(
-          `/api/v1/personas/name/${encodeURIComponent(
-            PERSONA_DETAILS.name
-          )}?fields=users`
-        );
-
-        await navigateToPersonaWithPagination(
-          adminPage,
-          PERSONA_DETAILS.name,
-          true
-        );
-
-        await personaResponse;
-
-        await adminPage.getByRole('tab', { name: 'Users' }).click();
-
-        await adminPage.waitForSelector('[data-testid="entity-header-name"]', {
-          state: 'visible',
-        });
-
-        await expect(adminPage.getByTestId('entity-header-name')).toContainText(
+      const personaResponse = adminPage.waitForResponse(
+        `/api/v1/personas/name/${encodeURIComponent(
           PERSONA_DETAILS.name
-        );
+        )}?fields=users`
+      );
 
-        await expect(
-          adminPage.getByTestId('entity-header-display-name')
-        ).toContainText(PERSONA_DETAILS.displayName);
+      await navigateToPersonaWithPagination(
+        adminPage,
+        PERSONA_DETAILS.name,
+        true
+      );
 
-        await expect(
-          adminPage.locator(
-            '[data-testid="viewer-container"] [data-testid="markdown-parser"]'
-          )
-        ).toContainText(PERSONA_DETAILS.description);
+      await personaResponse;
 
-        await expect(
-          adminPage.getByTestId(user.responseData.name)
-        ).toContainText(user.responseData.name);
+      await adminPage.getByRole('tab', { name: 'Users' }).click();
 
-        await setPersonaAsDefault(adminPage);
-      }
-    );
+      await adminPage.waitForSelector('[data-testid="entity-header-name"]', {
+        state: 'visible',
+      });
 
-    await test.step(
-      'User refreshes and checks the default persona is applied',
-      async () => {
-        await userPage.reload();
-        await waitForAllLoadersToDisappear(userPage);
-        await checkPersonaInProfile(userPage, PERSONA_DETAILS.displayName);
-      }
-    );
+      await expect(adminPage.getByTestId('entity-header-name')).toContainText(
+        PERSONA_DETAILS.name
+      );
+
+      await expect(
+        adminPage.getByTestId('entity-header-display-name')
+      ).toContainText(PERSONA_DETAILS.displayName);
+
+      await expect(
+        adminPage.locator(
+          '[data-testid="viewer-container"] [data-testid="markdown-parser"]'
+        )
+      ).toContainText(PERSONA_DETAILS.description);
+
+      await expect(adminPage.getByTestId(user.responseData.name)).toContainText(
+        user.responseData.name
+      );
+
+      await setPersonaAsDefault(adminPage);
+    });
+
+    await test.step('User refreshes and checks the default persona is applied', async () => {
+      await userPage.reload();
+      await waitForAllLoadersToDisappear(userPage);
+      await checkPersonaInProfile(userPage, PERSONA_DETAILS.displayName);
+    });
 
     await test.step('Changing default persona', async () => {
       const personaListResponse =
@@ -621,123 +620,112 @@ test.describe.serial('Team persona setting flow', () => {
       expect(teamPatchRevertResponseData.status()).toBe(200);
     });
 
-    await test.step(
-      'Admin can verify the team persona is applied to the team user',
-      async () => {
-        // Navigate to the Users tab in the Team page
-        await adminPage.getByTestId('users').click();
+    await test.step('Admin can verify the team persona is applied to the team user', async () => {
+      // Navigate to the Users tab in the Team page
+      await adminPage.getByTestId('users').click();
 
-        // Wait for list to load and click on the specific user
-        const userProfileResponse = adminPage.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/users/name/') &&
-            response.request().method() === 'GET' &&
-            response.status() === 200
-        );
-        await adminPage.getByTestId(teamUser.responseData.name).click();
-        await userProfileResponse;
+      // Wait for list to load and click on the specific user
+      const userProfileResponse = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/users/name/') &&
+          response.request().method() === 'GET' &&
+          response.status() === 200
+      );
+      await adminPage.getByTestId(teamUser.responseData.name).click();
+      await userProfileResponse;
 
-        // Verify the user inherited the team's default persona
-        await adminPage.waitForSelector('[data-testid="persona-details-card"]');
-        const defaultPersonaChip = adminPage
-          .locator(
-            '[data-testid="default-persona-chip"] [data-testid="tag-chip"]'
-          )
-          .first();
+      // Verify the user inherited the team's default persona
+      await adminPage.waitForSelector('[data-testid="persona-details-card"]');
+      const defaultPersonaChip = adminPage
+        .locator(
+          '[data-testid="default-persona-chip"] [data-testid="tag-chip"]'
+        )
+        .first();
 
-        await expect(defaultPersonaChip).toContainText(
-          teamPersona.responseData.displayName
-        );
+      await expect(defaultPersonaChip).toContainText(
+        teamPersona.responseData.displayName
+      );
 
-        // Verify the inherited icon is displayed
-        await expect(
-          adminPage.locator(
-            '[data-testid="default-persona-chip"] .inherit-icon'
-          )
-        ).toBeVisible();
-      }
-    );
+      // Verify the inherited icon is displayed
+      await expect(
+        adminPage.locator('[data-testid="default-persona-chip"] .inherit-icon')
+      ).toBeVisible();
+    });
   });
 
   test('Admin can remove the default persona for a team', async ({
     adminPage,
     browser,
   }) => {
-    await test.step(
-      'Admin removes the default persona for a team',
-      async () => {
-        // Ensure the team has a default persona set via API before attempting removal
-        const { apiContext, afterAction } = await createNewPage(browser);
-        await testTeam.patch(apiContext, [
-          {
-            op: 'add',
-            path: '/defaultPersona',
-            value: {
-              id: teamPersona.responseData.id,
-              type: 'persona',
-            },
+    await test.step('Admin removes the default persona for a team', async () => {
+      // Ensure the team has a default persona set via API before attempting removal
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await testTeam.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/defaultPersona',
+          value: {
+            id: teamPersona.responseData.id,
+            type: 'persona',
           },
-        ]);
-        await afterAction();
+        },
+      ]);
+      await afterAction();
 
-        await redirectToHomePage(adminPage);
-        await testTeam.visitTeamPage(adminPage);
+      await redirectToHomePage(adminPage);
+      await testTeam.visitTeamPage(adminPage);
 
-        // Verify persona is displayed before trying to remove
-        await expect(adminPage.getByTestId('team-persona')).toContainText(
-          teamPersona.responseData.displayName
-        );
+      // Verify persona is displayed before trying to remove
+      await expect(adminPage.getByTestId('team-persona')).toContainText(
+        teamPersona.responseData.displayName
+      );
 
-        await adminPage.getByTestId('default-edit-user-persona').click();
+      await adminPage.getByTestId('default-edit-user-persona').click();
 
-        await waitForAllLoadersToDisappear(adminPage);
+      await waitForAllLoadersToDisappear(adminPage);
 
-        await adminPage.waitForSelector(
-          '[data-testid="default-persona-select-list"]'
-        );
+      await adminPage.waitForSelector(
+        '[data-testid="default-persona-select-list"]'
+      );
 
-        // Hover over the select to reveal the clear button, then click it
-        await adminPage
-          .locator('[data-testid="default-persona-select-list"]')
-          .hover();
+      // Hover over the select to reveal the clear button, then click it
+      await adminPage
+        .locator('[data-testid="default-persona-select-list"]')
+        .hover();
 
-        await adminPage
-          .locator(
-            '[data-testid="default-persona-select-list"] .ant-select-clear'
-          )
-          .click();
+      await adminPage
+        .locator(
+          '[data-testid="default-persona-select-list"] .ant-select-clear'
+        )
+        .click();
 
-        const defaultPersonaChangeResponse =
-          adminPage.waitForResponse('/api/v1/teams/*');
+      const defaultPersonaChangeResponse =
+        adminPage.waitForResponse('/api/v1/teams/*');
 
-        // Save the changes
-        await adminPage
-          .locator('[data-testid="user-profile-default-persona-edit-save"]')
-          .click();
+      // Save the changes
+      await adminPage
+        .locator('[data-testid="user-profile-default-persona-edit-save"]')
+        .click();
 
-        // Wait for the API call to complete and verify no default persona is shown
-        await defaultPersonaChangeResponse;
-        await expect(adminPage.getByTestId('team-persona')).toContainText(
-          'No persona assigned'
-        );
-      }
-    );
+      // Wait for the API call to complete and verify no default persona is shown
+      await defaultPersonaChangeResponse;
+      await expect(adminPage.getByTestId('team-persona')).toContainText(
+        'No persona assigned'
+      );
+    });
   });
 
   test('User without permissions cannot edit team persona', async ({
     dataConsumerPage,
   }) => {
-    await test.step(
-      'User without permissions cannot edit team persona',
-      async () => {
-        await redirectToHomePage(dataConsumerPage);
-        await testTeam.visitTeamPage(dataConsumerPage);
+    await test.step('User without permissions cannot edit team persona', async () => {
+      await redirectToHomePage(dataConsumerPage);
+      await testTeam.visitTeamPage(dataConsumerPage);
 
-        await expect(
-          dataConsumerPage.getByTestId('default-edit-user-persona')
-        ).not.toBeVisible();
-      }
-    );
+      await expect(
+        dataConsumerPage.getByTestId('default-edit-user-persona')
+      ).not.toBeVisible();
+    });
   });
 
   test('Non-group team types do not have a default persona setting', async ({
@@ -761,6 +749,139 @@ test.describe.serial('Team persona setting flow', () => {
       // Cleanup
       await businessUnitTeam.delete(apiContext);
       await afterAction();
+    });
+  });
+});
+
+let CURATED_DESCRIPTION_TEXT;
+let WORD_TO_SEARCH: string;
+const curatedAdminUser = new UserClass();
+const curatedPersona = new PersonaClass();
+const curatedTable = new TableClass();
+
+test.describe('Curated Assets – Description filter', () => {
+  test.beforeAll('Setup', async ({ browser }) => {
+    const UNIQUE_WORD = `unique-word-${uuid()}`;
+    WORD_TO_SEARCH = `table with a unique description ${UNIQUE_WORD}.`;
+    CURATED_DESCRIPTION_TEXT = `This is a curated table with a unique description ${UNIQUE_WORD}. It is bioluminescent and not an oscilloscope.`;
+
+    const { afterAction, apiContext } = await createNewPage(browser);
+
+    await curatedAdminUser.create(apiContext);
+    await curatedAdminUser.setAdminRole(apiContext);
+    await curatedPersona.create(apiContext, [curatedAdminUser.responseData.id]);
+
+    await curatedTable.create(apiContext);
+    await curatedTable.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'replace',
+          path: '/description',
+          value: CURATED_DESCRIPTION_TEXT,
+        },
+      ],
+    });
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { afterAction, apiContext } = await createNewPage(browser);
+
+    await curatedTable.delete(apiContext);
+    await curatedPersona.delete(apiContext);
+    await curatedAdminUser.delete(apiContext);
+
+    await afterAction();
+  });
+
+  const addCuratedAssetWidget = async (
+    adminPage: import('@playwright/test').Page
+  ) => {
+    await navigateToCustomizeLandingPage(adminPage, {
+      personaName: curatedPersona.responseData.name,
+    });
+
+    await openAddCustomizeWidgetModal(adminPage);
+    await waitForAllLoadersToDisappear(adminPage);
+
+    await adminPage
+      .getByRole('dialog', { name: 'Customize Home' })
+      .getByTestId('KnowledgePanel.CuratedAssets')
+      .click();
+
+    await adminPage.locator('[data-testid="apply-btn"]').click();
+
+    await expect(
+      adminPage
+        .getByTestId('page-layout-v1')
+        .getByTestId('KnowledgePanel.CuratedAssets')
+    ).toBeVisible();
+  };
+
+  test('Description Contains filter – table with matching description appears in widget', async ({
+    adminPage,
+  }) => {
+    await test.step('Navigate to persona settings and add curated assets widget', async () => {
+      await addCuratedAssetWidget(adminPage);
+    });
+
+    await test.step('Click Create in curated assets widget and fill Description Contains filter', async () => {
+      await adminPage
+        .getByTestId('KnowledgePanel.CuratedAssets')
+        .getByText('Create')
+        .click();
+
+      await adminPage.locator('[data-testid="title-input"]').clear();
+      await adminPage
+        .locator('[data-testid="title-input"]')
+        .fill('Description Contains Filter');
+
+      await selectAssetTypes(adminPage, ['Table']);
+
+      const rule0 = adminPage.locator('.rule').nth(0);
+
+      await selectOption(
+        adminPage,
+        rule0.locator('.rule--field .ant-select'),
+        'Description',
+        true
+      );
+      await selectOption(
+        adminPage,
+        rule0.locator('.rule--operator .ant-select'),
+        'Contains'
+      );
+      await rule0
+        .locator('.rule--widget--TEXT input[type="text"]')
+        .fill(WORD_TO_SEARCH.toLowerCase());
+    });
+
+    await test.step('Save and verify table appears in curated assets widget', async () => {
+      await expect(
+        adminPage.locator('[data-testid="saveButton"]')
+      ).toBeEnabled();
+
+      const queryResponse = adminPage.waitForResponse((response) =>
+        response.url().includes('/api/v1/search/query')
+      );
+
+      await adminPage.locator('[data-testid="saveButton"]').click();
+      await queryResponse;
+      await waitForAllLoadersToDisappear(adminPage, 'entity-list-skeleton');
+
+      const tableName =
+        curatedTable.entityResponseData.displayName ||
+        curatedTable.entityResponseData.name;
+
+      await expect(
+        adminPage
+          .getByTestId('KnowledgePanel.CuratedAssets')
+          .locator('.entity-list-item-title')
+          .filter({ hasText: tableName })
+          .first()
+      ).toBeVisible();
     });
   });
 });
