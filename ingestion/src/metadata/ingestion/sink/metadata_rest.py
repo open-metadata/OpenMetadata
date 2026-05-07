@@ -16,7 +16,7 @@ to the OM API.
 
 import traceback
 from functools import singledispatchmethod
-from typing import Any, Dict, List, Optional, TypeVar, Union  # noqa: UP035
+from typing import Any, Optional, TypeVar, Union
 
 from pydantic import BaseModel
 from requests.exceptions import HTTPError
@@ -99,7 +99,6 @@ from metadata.ingestion.models.pipeline_status import (
 )
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
-from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.ingestion.models.tests_data import (
     OMetaLogicalTestSuiteSample,
     OMetaTestCaseResolutionStatus,
@@ -160,7 +159,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         self.deferred_lifecycle_processed = False
         # Track entity names in buffer for O(1) duplicate checking
         # Key: (entity_type, name), Value: True
-        self.buffered_entity_names: Dict[tuple, bool] = {}  # noqa: UP006
+        self.buffered_entity_names: dict[tuple, bool] = {}
 
     @classmethod
     def create(
@@ -379,7 +378,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         return Either(right=patched_entity)
 
     @_run_dispatch.register
-    def write_custom_properties(self, record: OMetaCustomProperties) -> Either[Dict]:  # noqa: UP006
+    def write_custom_properties(self, record: OMetaCustomProperties) -> Either[dict]:
         """
         Create or update the custom properties
         """
@@ -434,7 +433,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         return Either(right=tag)
 
     @_run_dispatch.register
-    def write_lineage(self, add_lineage: AddLineageRequest) -> Either[Dict[str, Any]]:  # noqa: UP006
+    def write_lineage(self, add_lineage: AddLineageRequest) -> Either[dict[str, Any]]:
         created_lineage = self.metadata.add_lineage(add_lineage, check_patch=True)
         if created_lineage.get("error"):
             return Either(left=StackTraceError(name="AddLineageRequestError", error=created_lineage["error"]))
@@ -442,7 +441,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         return Either(right=created_lineage["entity"]["fullyQualifiedName"])
 
     @_run_dispatch.register
-    def write_override_lineage(self, add_lineage: OMetaLineageRequest) -> Either[Dict[str, Any]]:  # noqa: UP006
+    def write_override_lineage(self, add_lineage: OMetaLineageRequest) -> Either[dict[str, Any]]:
         """
         Writes the override lineage for the given lineage request.
 
@@ -790,42 +789,6 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             return True
         return False
 
-    @singledispatchmethod
-    def _patch_entity_column_tags(self, entity, column_tags: List[ColumnTag]):  # noqa: UP006
-        """
-        Generic dispatcher for patching column tags on any classifiable entity.
-        Uses singledispatchmethod for polymorphic dispatch based on entity type.
-
-        Args:
-            entity: The classifiable entity
-            column_tags: Column tags to patch
-
-        Returns:
-            bool: Success status
-
-        Raises:
-            NotImplementedError: If entity type is not supported
-        """
-        raise NotImplementedError(f"Column tag patching not implemented for entity type {type(entity).__name__}")
-
-    @_patch_entity_column_tags.register
-    def _(self, entity: Table, column_tags: List[ColumnTag]) -> bool:  # noqa: UP006
-        """Table-specific column tag patching implementation"""
-        patched = self.metadata.patch_column_tags(table=entity, column_tags=column_tags)
-        if patched:
-            logger.debug(f"Successfully patched tags for {entity.fullyQualifiedName.root}")
-            return True
-        return False
-
-    @_patch_entity_column_tags.register
-    def _(self, entity: Container, column_tags: List[ColumnTag]) -> bool:  # noqa: UP006
-        """Container-specific column tag patching implementation"""
-        patched = self.metadata.patch_column_tags(table=entity, column_tags=column_tags)
-        if patched:
-            logger.debug(f"Successfully patched tags for {entity.fullyQualifiedName.root}")
-            return True
-        return False
-
     @_run_dispatch.register
     def write_sampler_response(self, record: SamplerResponse) -> Either[ClassifiableEntityType]:
         """Ingest the sample data - if needed - and the PII tags"""
@@ -850,17 +813,16 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 )
 
         if record.column_tags:
-            try:
-                success = self._patch_entity_column_tags(entity, column_tags=record.column_tags)
-                if not success:
-                    self.status.warning(
-                        key=entity.fullyQualifiedName.root,
-                        reason="Error patching tags for entity",
-                    )
-            except NotImplementedError as exc:
+            patched = self.metadata.patch_column_tags(table=entity, column_tags=record.column_tags)
+            if patched:
+                logger.debug(
+                    "Successfully patched tags for %s",
+                    entity.fullyQualifiedName.root,
+                )
+            else:
                 self.status.warning(
                     key=entity.fullyQualifiedName.root,
-                    reason=str(exc),
+                    reason="Error patching tags for entity",
                 )
 
         return Either(right=record.entity)

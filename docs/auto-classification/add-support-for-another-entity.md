@@ -441,24 +441,60 @@ from metadata.generated.schema.entity.data.topic import Topic  # Your new entity
 ClassifiableEntityType = Union[Table, Container, Topic]
 ```
 
-#### 3.2 Update PII Processor
+#### 3.2 Register Entity Adapter
 
-**Location:** `ingestion/src/metadata/pii/base_processor.py`
+**Location:** `ingestion/src/metadata/sampler/entity_adapters.py`
 
-**Update `_get_entity_columns` method:**
+This is the single source of truth for all per-entity-type knowledge. Adding a new entity means adding one adapter class and two registry entries here — no other ingestion files need to change.
 
 ```python
-@staticmethod
-def _get_entity_columns(entity) -> Optional[List[Column]]:
-    """Get columns from a classifiable entity"""
-    if isinstance(entity, Table):
-        return entity.columns
-    if isinstance(entity, Container):
-        return entity.dataModel.columns if entity.dataModel else None
-    if isinstance(entity, Topic):  # Your new entity
+from typing import ClassVar
+
+from metadata.generated.schema.entity.data.topic import Topic  # Your new entity
+from metadata.generated.schema.metadataIngestion.messagingServiceAutoClassificationPipeline import (
+    MessagingServiceAutoClassificationPipeline,
+)
+
+class TopicAdapter(EntityAdapter):
+    pipeline_config_class = MessagingServiceAutoClassificationPipeline
+    service_type = ServiceType.Messaging
+    patch_fields: ClassVar[list[str]] = ["tags", "messageSchema"]
+
+    def get_columns(self, entity: Topic) -> list[Column] | None:
         return entity.messageSchema.schemaFields if entity.messageSchema else None
-    return None
+
+    def set_columns(self, entity: Topic, columns) -> None:
+        if entity.messageSchema:
+            entity.messageSchema.schemaFields = columns
+
+    def build_sampler_kwargs(
+        self,
+        config: OpenMetadataWorkflowConfig,
+        metadata: OpenMetadata,
+        entity: Topic,
+        profiler_config,
+        source_config,
+    ) -> dict | None:
+        return {
+            "service_connection_config": deepcopy(config.source.serviceConnection.root.config),
+            "ometa_client": metadata,
+            "entity": entity,
+            "schema_entity": None,
+            "database_entity": None,
+            "table_config": None,
+            "default_sample_config": SampleConfig(),
+            "default_sample_data_count": source_config.sampleDataCount,
+        }
+
+
+# Instantiate once, register in both dicts at the bottom of the file:
+_TOPIC_ADAPTER = TopicAdapter()
+
+_BY_ENTITY[Topic] = _TOPIC_ADAPTER
+_BY_PIPELINE[MessagingServiceAutoClassificationPipeline] = _TOPIC_ADAPTER
 ```
+
+**What this buys you:** `sampler/processor.py`, `pii/base_processor.py`, `ometa/mixins/patch_mixin.py`, and `ingestion/sink/metadata_rest.py` (column tag path) all pick up the new entity automatically — zero changes required in those files. The only sink change needed is registering a `_ingest_entity_sample_data` handler (step 3.7).
 
 #### 3.3 Create Fetcher Strategy
 
@@ -600,143 +636,46 @@ class YourServiceSampler(SamplerInterface):
         )
 ```
 
-#### 3.5 Update Sampler Processor
+#### 3.5 Update Sampler Processor — No Changes Required
 
-**Location:** `ingestion/src/metadata/sampler/processor.py`
-
-**Add entity type detection with fallback:**
+`ingestion/src/metadata/sampler/processor.py` does **not** need to change. It resolves the service type and dispatches via the adapter registry:
 
 ```python
-def __init__(self, config, metadata, profiler_config_class):
-    # ... existing init code
+# __init__ — picks up the new pipeline config class automatically:
+_adapter = adapter_for_pipeline(self.source_config)  # finds TopicAdapter
+self.service_type = _adapter.service_type             # ServiceType.Messaging
 
-    self._interface_type: str = config.source.type.lower()
-
-    # Determine service type based on configuration
-    # First try to detect based on pipeline config type
-    if isinstance(self.source_config, StorageServiceAutoClassificationPipeline):
-        self.service_type = ServiceType.Storage
-    elif isinstance(self.source_config, MessagingServiceAutoClassificationPipeline):
-        self.service_type = ServiceType.Messaging
-    else:
-        # Fallback: detect based on source type for non-database services
-        # This handles cases where the package might not be fully updated
-        storage_sources = ["s3", "gcs", "azuredatalake", "customstorage"]
-        messaging_sources = ["kafka", "pulsar", "redpanda"]  # Example
-
-        if self._interface_type in storage_sources:
-            self.service_type = ServiceType.Storage
-        elif self._interface_type in messaging_sources:
-            self.service_type = ServiceType.Messaging
-        else:
-            self.service_type = ServiceType.Database
-
-    # Add logging to help debug service type detection issues
-    profiler_logger.info(
-        f"Sampler processor initialized with service_type={self.service_type}, "
-        f"source_config_type={type(self.source_config).__name__}, "
-        f"interface_type={self._interface_type}"
-    )
+# _run — picks up the new entity class automatically:
+adapter = adapter_for(entity)                         # finds TopicAdapter
+sampler_kwargs = adapter.build_sampler_kwargs(...)
 ```
 
-**Why the fallback is important:** In environments like Airflow where the ingestion package might be cached or not fully updated, the isinstance check for the new pipeline config type can fail. The fallback ensures the correct service type is detected based on the source connector name.
-
-**Add entity processing method:**
-
-```python
-def _run(self, record: ProfilerSourceAndEntity) -> Either[SamplerResponse]:
-    """Fetch the sample data and pass it down the pipeline"""
-    entity = record.entity
-
-    if isinstance(entity, Table):
-        if not entity.columns:
-            logger.warning("Skipping sampler: no columns found")
-            return Either()
-        return self._run_for_table(entity, record)
-
-    if isinstance(entity, Container):
-        if not entity.dataModel or not entity.dataModel.columns:
-            logger.warning("Skipping sampler: no columns found")
-            return Either()
-        return self._run_for_container(entity, record)
-
-    if isinstance(entity, YourEntity):  # Your new entity
-        if not entity.columns:  # Adjust based on your entity structure
-            logger.warning("Skipping sampler: no columns found")
-            return Either()
-        return self._run_for_your_entity(entity, record)
-
-    return Either(
-        left=StackTraceError(
-            name=record.entity.fullyQualifiedName.root,
-            error=f"Unsupported entity type {type(entity).__name__}",
-            stackTrace=traceback.format_exc(),
-        )
-    )
-
-def _run_for_your_entity(
-    self, entity: YourEntity, record: ProfilerSourceAndEntity
-) -> Either[SamplerResponse]:
-    """Process YourEntity for sampling"""
-    service_conn_config = self._copy_service_config(self.config, None)
-
-    sampler_interface: SamplerInterface = self.sampler_class.create(
-        service_connection_config=service_conn_config,
-        ometa_client=self.metadata,
-        entity=entity,
-        schema_entity=None,
-        database_entity=None,
-        table_config=None,
-        default_sample_config=SampleConfig(),
-        default_sample_data_count=self.source_config.sampleDataCount,
-    )
-
-    sample_data = SampleData(
-        data=sampler_interface.generate_sample_data(),
-        store=self.source_config.storeSampleData,
-    )
-    sampler_interface.close()
-
-    return Either(
-        right=SamplerResponse(
-            entity=entity,
-            sample_data=sample_data,
-        )
-    )
-```
+The only file to change is `entity_adapters.py` (step 3.2).
 
 #### 3.6 Add OpenMetadata API Mixin
+
+The mixin covers **sample data ingestion only** — column tag patching is fully adapter-driven and requires no mixin changes.
 
 **Location:** `ingestion/src/metadata/ingestion/ometa/mixins/<entity>_mixin.py`
 
 ```python
-from metadata.generated.schema.api.data.createYourEntity import CreateYourEntityRequest
 from metadata.generated.schema.entity.data.yourEntity import YourEntity
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.table import TableData
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
 class OMetaYourEntityMixin:
-    """Mixin for YourEntity-specific OpenMetadata API operations"""
+    """Mixin for YourEntity sample data API operations"""
 
     client: REST
 
-    def ingest_entity_sample_data(
+    def ingest_your_entity_sample_data(
         self,
         entity: YourEntity,
         sample_data: TableData,
     ) -> YourEntity:
-        """Ingest sample data for an entity
-
-        Args:
-            entity: The entity to add sample data to
-            sample_data: The sample data to ingest
-
-        Returns:
-            Updated entity with sample data
-        """
         try:
             resp = self.client.put(
                 f"{self.get_suffix(YourEntity)}/{entity.id}/sampleData",
@@ -746,7 +685,9 @@ class OMetaYourEntityMixin:
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Failed to ingest sample data for [{entity.fullyQualifiedName.root}]: {exc}"
+                "Failed to ingest sample data for [%s]: %s",
+                entity.fullyQualifiedName.root,
+                exc,
             )
             return entity
 ```
@@ -756,7 +697,7 @@ class OMetaYourEntityMixin:
 **Location:** `ingestion/src/metadata/ingestion/ometa/ometa_api.py`
 
 ```python
-from metadata.ingestion.ometa.mixins.entity_mixin import OMetaYourEntityMixin
+from metadata.ingestion.ometa.mixins.your_entity_mixin import OMetaYourEntityMixin
 
 class OpenMetadata(
     ...,
@@ -769,34 +710,26 @@ class OpenMetadata(
 
 **Location:** `ingestion/src/metadata/ingestion/sink/metadata_rest.py`
 
-**Add sink handling for new entity:**
+Column tag patching (`patch_column_tags`) is fully adapter-driven — `write_sampler_response` calls it directly for any entity type and no changes are needed there.
+
+For **sample data storage**, the sink uses a `@singledispatchmethod`. Add one `@register` for your entity type:
 
 ```python
-def write_record(self, record: SamplerResponse) -> None:
-    entity = record.entity
-
-    if isinstance(entity, YourEntity):
-        self._write_entity_sample_data(entity, record)
-    elif isinstance(entity, Table):
-        self._write_table_sample_data(entity, record)
-    # ... other entity types
-
-def _write_entity_sample_data(
-    self, entity: YourEntity, record: SamplerResponse
-) -> None:
-    """Write sample data and tags for YourEntity"""
-    if record.sample_data and record.sample_data.store:
-        self.metadata.ingest_entity_sample_data(
-            entity=entity,
-            sample_data=record.sample_data.data,
+@_ingest_entity_sample_data.register
+def _(self, entity: YourEntity, sample_data: TableData) -> bool:
+    result = self.metadata.ingest_your_entity_sample_data(
+        entity=entity, sample_data=sample_data
+    )
+    if result:
+        logger.debug(
+            "Successfully ingested sample data for %s",
+            entity.fullyQualifiedName.root,
         )
-
-    if record.column_tags:
-        self.metadata.patch_tags(
-            entity=entity,
-            tag_labels=record.column_tags,
-        )
+        return True
+    return False
 ```
+
+`write_sampler_response` itself needs no changes — it calls `_ingest_entity_sample_data` and `patch_column_tags` generically for all entity types.
 
 #### 3.8 Register Sampler in Service Spec
 
@@ -1293,16 +1226,16 @@ Before submitting your PR, verify:
 - [ ] Java code formatted with `mvn spotless:apply`
 
 ### Ingestion (Python)
-- [ ] `ClassifiableEntityType` union includes new entity
-- [ ] PII processor's `_get_entity_columns` handles new entity
+- [ ] `ClassifiableEntityType` union in `pii/types.py` includes new entity
+- [ ] `EntityAdapter` subclass added in `sampler/entity_adapters.py` with correct `pipeline_config_class`, `service_type`, `patch_fields`, `get_columns`, `set_columns`, `build_sampler_kwargs`
+- [ ] New adapter registered in `_BY_ENTITY` and `_BY_PIPELINE` dicts in `entity_adapters.py`
 - [ ] Fetcher strategy created for service type
 - [ ] Sampler implementation created for connector(s)
-- [ ] Sampler processor updated with entity type detection
-- [ ] Sampler processor includes `_run_for_your_entity` method
-- [ ] OMetaMixin created for sample data ingestion
+- [ ] OMetaMixin created for sample data ingestion (`ingest_your_entity_sample_data`)
 - [ ] Mixin registered in `OpenMetadata` class
-- [ ] Metadata sink handles new entity type
+- [ ] `_ingest_entity_sample_data` `@register` added for new entity type in `metadata_rest.py`
 - [ ] Service spec registers sampler class
+- [ ] `workflow/classification.py` isinstance tuple extended with new pipeline config class
 - [ ] Code formatted with `make py_format`
 - [ ] Type checks pass with `make static-checks`
 
@@ -1342,9 +1275,9 @@ Before submitting your PR, verify:
    - `Container`: `entity.dataModel.columns`
    - `Topic`: `entity.messageSchema.schemaFields`
 
-   Update ALL places that access columns (PII processor, sampler, fetcher).
+   Define `get_columns` and `set_columns` correctly in your adapter — that is the only place this logic lives. The PII processor, sampler processor, and patch mixin all delegate to the adapter automatically.
 
-3. **Missing service type detection**: Sampler processor must detect the correct `ServiceType` based on pipeline config to load the right sampler class.
+3. **Missing service type detection**: The sampler processor looks up the `ServiceType` via `adapter_for_pipeline(source_config)`. If your new `pipeline_config_class` is not registered in `_BY_PIPELINE` in `entity_adapters.py`, the processor will raise a `ValueError` at startup. Register it before testing.
 
 4. **Incomplete filter patterns**: Each service type needs entity-specific filters (e.g., `bucketFilterPattern`, `topicFilterPattern`). Don't just copy database patterns.
 
@@ -1358,7 +1291,9 @@ Before submitting your PR, verify:
 
 8. **`storeSampleData` defaults to `false`**: Sample data will NOT be ingested unless `storeSampleData: true` is explicitly set in the pipeline configuration. This is by design to avoid storing potentially large sample datasets by default. The sink only ingests sample data when `record.sample_data.store` is true.
 
-9. **Service type detection in cached environments**: If you see errors like `No module named 'metadata.ingestion.source.database.gcs'`, the service type detection failed. The system tried to load a database sampler for a storage service. Ensure the fallback pattern is implemented in the sampler processor (see section 3.5).
+9. **Service type not found at startup**: If you see `ValueError: Could not determine service type from config`, the pipeline config class is not registered in `_BY_PIPELINE` in `entity_adapters.py`. Register it there — the sampler processor does not need any code changes.
+
+10. **Sample data not dispatched in sink**: `_ingest_entity_sample_data` in `metadata_rest.py` uses `@singledispatchmethod`. If you forget to add a `@register` for your entity type, calling it raises `NotImplementedError` and sample data is silently skipped. The column tag path (`patch_column_tags`) is fully adapter-driven and needs no sink changes — but sample data storage does require its own `@register`.
 
 ---
 
@@ -1399,18 +1334,18 @@ Before submitting your PR, verify:
    ```
    Cannot import metadata.ingestion.source.database.<connector>
    ```
-   This means the sampler processor detected the wrong service type. Verify the fallback logic is present.
+   This means the adapter registry resolved the wrong service type. Verify your pipeline config class is registered in `_BY_PIPELINE` in `sampler/entity_adapters.py` with the correct `service_type`.
 
 ### Module Import Errors
 
 **Symptom:** `DynamicImportException: Cannot import metadata.ingestion.source.database.<connector>`
 
-**Cause:** The sampler processor detected `ServiceType.Database` instead of the correct service type (e.g., `ServiceType.Storage`).
+**Cause:** The sampler processor resolved `ServiceType.Database` instead of the correct service type (e.g., `ServiceType.Storage`). This means `adapter_for_pipeline(source_config)` returned `None` or the wrong adapter.
 
 **Solution:**
-1. Verify the isinstance checks in sampler processor `__init__` include your pipeline config type
-2. Add your source type to the fallback list (e.g., add `"myconnector"` to `storage_sources` list)
-3. Check logs for "Sampler processor initialized" message showing wrong service_type
+1. Verify your new `pipeline_config_class` is registered in `_BY_PIPELINE` in `ingestion/src/metadata/sampler/entity_adapters.py`
+2. Check that the adapter's `service_type` field is set to the correct `ServiceType`
+3. Confirm the pipeline schema is listed in `workflow.json` so it's properly deserialized from config
 
 ### PII Tags Not Applied
 
@@ -1446,7 +1381,7 @@ Key commits:
 
 If you encounter issues:
 
-1. Review existing implementations: `Table`, `Container`
+1. Review existing adapter implementations: `TableAdapter`, `ContainerAdapter` in `ingestion/src/metadata/sampler/entity_adapters.py`
 2. Check type definitions in `ingestion/src/metadata/pii/types.py`
 3. Examine sampler interface: `ingestion/src/metadata/sampler/sampler_interface.py`
 4. Review fetcher strategies: `ingestion/src/metadata/profiler/source/fetcher/fetcher_strategy.py`
