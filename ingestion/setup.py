@@ -175,11 +175,12 @@ base_requirements = {
     # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
     "dbt-extractor>=0.5.0",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
-    "jaraco.context==6.0.2",
+    "jaraco.context>=6.1.0",
     # TODO: Remove one once we have updated datadiff version
     VERSIONS["snowflake-connector"],
     "mysql-connector-python>=9.1",
     "httpx~=0.28.0",
+    "click>=8.1.8",  # CVE-2024-34069: ReDoS in parameter parsing fixed in 8.1.8
 }
 
 plugins: Dict[str, Set[str]] = {  # noqa: UP006
