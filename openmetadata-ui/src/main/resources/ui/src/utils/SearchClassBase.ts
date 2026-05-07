@@ -12,7 +12,7 @@
  */
 import { SearchOutlined } from '@ant-design/icons';
 import { QuickLink } from 'generated/api/data/createPage';
-import { PageType } from 'interface/knowledge-center.interface';
+import { PageType } from '../interface/knowledge-center.interface';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';

@@ -11,27 +11,27 @@
  *  limitations under the License.
  */
 import { Col, Row, Typography } from 'antd';
-import { ReactComponent as IconArticle } from 'assets/svg/ic-articles.svg';
-import { ReactComponent as LinkIcon } from 'assets/svg/ic-link.svg';
+import { ReactComponent as IconArticle } from '../../../assets/svg/ic-articles.svg';
+import { ReactComponent as LinkIcon } from '../../../assets/svg/ic-link.svg';
 import classNames from 'classnames';
-import ExpandableCard from 'components/common/ExpandableCard/ExpandableCard';
-import Loader from 'components/common/Loader/Loader';
-import { useGenericContext } from 'components/Customization/GenericProvider/GenericProvider';
-import { PAGE_SIZE, ROUTES } from 'constants/constants';
-import { DetailPageWidgetKeys } from 'enums/CustomizeDetailPage.enum';
-import { Paging } from 'generated/type/paging';
+import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
+import Loader from '../../../components/common/Loader/Loader';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
+import { PAGE_SIZE, ROUTES } from '../../../constants/constants';
+import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
+import { Paging } from '../../../generated/type/paging';
 import {
   KnowledgePage,
   PageType,
   QuickLink,
-} from 'interface/knowledge-center.interface';
+} from '../../../interface/knowledge-center.interface';
 import { isEmpty, map } from 'lodash';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getListKnowledgePages } from 'rest/knowledgeCenterAPI';
-import { getEntityName } from 'utils/EntityUtils';
-import { getKnowledgePagePath } from 'utils/KnowledgePageUtils';
+import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';
 
 const KnowledgePages: FC = () => {
   const { t } = useTranslation();

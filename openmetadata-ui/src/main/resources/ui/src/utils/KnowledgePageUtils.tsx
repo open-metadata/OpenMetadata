@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { DataNode } from 'antd/lib/tree';
-import { ROUTES } from 'constants/constants';
-import { EntityTabs } from 'enums/entity.enum';
+import { ROUTES } from '../constants/constants';
+import { EntityTabs } from '../enums/entity.enum';
 import { cloneDeep, get, isEmpty } from 'lodash';
 import {
   PLACEHOLDER_ROUTE_FQN,
@@ -32,19 +32,19 @@ import {
 } from '../interface/knowledge-center.interface';
 
 import { Space } from 'antd';
-import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
+import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   GLOSSARY_TERMS_WIDGET,
   TAGS_WIDGET,
-} from 'constants/CustomizeWidgets.constants';
-import { usePersistentStorage } from 'hooks/currentUserStore/useCurrentUserStore';
-import { useApplicationStore } from 'hooks/useApplicationStore';
-import { RecentlyViewedData } from 'Models';
+} from '../constants/CustomizeWidgets.constants';
+import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../hooks/useApplicationStore';
+import { RecentlyViewedData } from '../Models';
 import { Link } from 'react-router-dom';
-import { arraySorterByKey } from 'utils/CommonUtils';
-import Fqn from 'utils/Fqn';
-import { t } from 'utils/i18next/LocalUtil';
+import { arraySorterByKey } from './CommonUtils';
+import Fqn from './Fqn';
+import { t } from './i18next/LocalUtil';
 import { ReactComponent as IconArticle } from '../assets/svg/ic-articles.svg';
 import i18n from './i18next/LocalUtil';
 

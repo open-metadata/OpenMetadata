@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { getKnowledgePageByFqn } from 'rest/knowledgeCenterAPI';
+import { getKnowledgePageByFqn } from '../rest/knowledgeCenterAPI';
 import { EntityUnion } from '../components/Explore/ExplorePage.interface';
 import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { ServiceCategoryPlural } from '../enums/service.enum';

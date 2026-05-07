@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import { EntityHistory } from 'generated/type/entityHistory';
 import { toString, uniqueId } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import KnowledgePageVersion from '../../components/KnowledgeCenter/KnowledgePageVersion/KnowledgePageVersion';
+import { EntityHistory } from '../../generated/type/entityHistory';
 import {
   KnowledgeCenterPageProps,
   KnowledgePage,
@@ -28,15 +28,15 @@ import {
 } from '../../rest/knowledgeCenterAPI';
 
 import { Col, Row, Skeleton, Space } from 'antd';
-import TitleBreadcrumb from 'components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { ROUTES } from 'constants/constants';
-import i18n from 'utils/i18next/LocalUtil';
-import { showErrorToast } from 'utils/ToastUtils';
-import { useRequiredParams } from 'utils/useRequiredParams';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { ROUTES } from '../../constants/constants';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   getKnowledgePagePath,
   getKnowledgeVersionsPath,
 } from '../../utils/KnowledgePageUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 interface KnowledgePageVersionPageProps {
   onPageChange: (page: Partial<KnowledgeCenterPageProps>) => void;

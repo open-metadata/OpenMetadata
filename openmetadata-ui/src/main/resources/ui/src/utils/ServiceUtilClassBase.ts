@@ -12,8 +12,8 @@
  */
 
 import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
-import { PageType } from 'interface/knowledge-center.interface';
-import { KnowledgePageSearchSource } from 'interface/search.interface';
+import { PageType } from '../interface/knowledge-center.interface';
+import { KnowledgePageSearchSource } from '../interface/search.interface';
 import { get, isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
 import GlossaryIcon from '../assets/svg/book.svg';

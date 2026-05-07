@@ -12,15 +12,15 @@
  */
 import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import ExpandableCard from 'components/common/ExpandableCard/ExpandableCard';
-import Loader from 'components/common/Loader/Loader';
-import { EntityType, TabSpecificField } from 'enums/entity.enum';
-import { useApplicationStore } from 'hooks/useApplicationStore';
-import { KnowledgePage } from 'interface/knowledge-center.interface';
+import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
+import Loader from '../../../components/common/Loader/Loader';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { isEmpty, map } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
-import { getUserById } from 'rest/userAPI';
-import { showErrorToast } from 'utils/ToastUtils';
+import { getUserById } from '../../../rest/userAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { ReactComponent as BookMarkIcon } from '../../../assets/svg/ic-bookmark.svg';
 import { t } from '../../../utils/i18next/LocalUtil';
 import { getLink } from '../../../utils/KnowledgePageUtils';

@@ -12,48 +12,48 @@
  */
 import { Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import { ActivityFeedLayoutType } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import BlockEditor from 'components/BlockEditor/BlockEditor';
-import { BlockEditorRef } from 'components/BlockEditor/BlockEditor.interface';
-import { EntityAttachmentProvider } from 'components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import ErrorPlaceHolder from 'components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import TabsLabel from 'components/common/TabsLabel/TabsLabel.component';
-import { GenericProvider } from 'components/Customization/GenericProvider/GenericProvider';
-import { QueryVoteType } from 'components/Database/TableQueries/TableQueries.interface';
-import { VotingDataProps } from 'components/Entity/Voting/voting.interface';
-import { CREATE_PAGE_HASH, LONG_DELAY, SHORT_DELAY } from 'constants/constants';
-import { CustomizeEntityType } from 'constants/Customize.constants';
-import { FEED_COUNT_INITIAL_DATA } from 'constants/entity.constants';
+import { useActivityFeedProvider } from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import ActivityThreadPanel from '../../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import BlockEditor from '../../../components/BlockEditor/BlockEditor';
+import { BlockEditorRef } from '../../../components/BlockEditor/BlockEditor.interface';
+import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../../components/Customization/GenericProvider/GenericProvider';
+import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
+import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
+import { CREATE_PAGE_HASH, LONG_DELAY, SHORT_DELAY } from '../../../constants/constants';
+import { CustomizeEntityType } from '../../../constants/Customize.constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import {
   getKnowledgePageFields,
   KNOWLEDGE_PAGE_FIELDS,
   KNOWLEDGE_PAGE_UN_SAVED_CHANGE_STATE,
-} from 'constants/KnowledgeCenter.constant';
-import { usePermissionProvider } from 'context/PermissionProvider/PermissionProvider';
+} from '../../../constants/KnowledgeCenter.constant';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from 'context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { compare } from 'fast-json-patch';
-import { CreateThread, ThreadType } from 'generated/api/feed/createThread';
-import { TagLabel } from 'generated/type/tagLabel';
-import { useCurrentUserPreferences } from 'hooks/currentUserStore/useCurrentUserStore';
-import { useApplicationStore } from 'hooks/useApplicationStore';
-import useCustomLocation from 'hooks/useCustomLocation/useCustomLocation';
-import { FeedCounts } from 'interface/feed.interface';
+import { CreateThread, ThreadType } from '../../../generated/api/feed/createThread';
+import { TagLabel } from '../../../generated/type/tagLabel';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { FeedCounts } from '../../../interface/feed.interface';
 import {
   ContentChangeState,
   KnowledgeCenterPageProps,
   KnowledgePage,
   RecentlyViewedQuickLinks,
-} from 'interface/knowledge-center.interface';
+} from '../../../interface/knowledge-center.interface';
 import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
-import { EntityTags } from 'Models';
+import { EntityTags } from '../../../Models';
 import {
   FC,
   KeyboardEvent,
@@ -64,26 +64,26 @@ import {
   useState,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { postThread } from 'rest/feedsAPI';
+import { postThread } from '../../../rest/feedsAPI';
 import {
   followKnowledgePage,
   getKnowledgePageByFqn,
   patchKnowledgePage,
   unFollowKnowledgePage,
   updateKnowledgePageVote,
-} from 'rest/knowledgeCenterAPI';
-import { getFeedCounts } from 'utils/CommonUtils';
-import i18n from 'utils/i18next/LocalUtil';
+} from '../../../rest/knowledgeCenterAPI';
+import { getFeedCounts } from '../../../utils/CommonUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 import {
   addToKnowledgeCenterRecentViewed,
   getKnowledgePagePath,
   updateKnowledgeCenterRecentViewed,
-} from 'utils/KnowledgePageUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { getTagsWithoutTier } from 'utils/TableUtils';
-import { createTagObject } from 'utils/TagsUtils';
-import { showErrorToast } from 'utils/ToastUtils';
-import { useRequiredParams } from 'utils/useRequiredParams';
+} from '../../../utils/KnowledgePageUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getTagsWithoutTier } from '../../../utils/TableUtils';
+import { createTagObject } from '../../../utils/TagsUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import KnowledgeDetailPageHeader from '../KnowledgeDetailPageHeader/KnowledgeDetailPageHeader';
 import KnowledgePageDetailRightPanel from '../KnowledgePageDetailRightPanel/KnowledgePageDetailRightPanel';
 import { TitleComponent } from '../TitleComponent/TitleComponent';

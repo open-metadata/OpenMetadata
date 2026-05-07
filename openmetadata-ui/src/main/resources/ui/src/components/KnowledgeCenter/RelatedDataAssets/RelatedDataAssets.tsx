@@ -12,23 +12,23 @@
  */
 import { Button, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { KnowledgePage } from 'interface/knowledge-center.interface';
+import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { isEmpty } from 'lodash';
 
-import ExpandableCard from 'components/common/ExpandableCard/ExpandableCard';
+import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
 import {
   EditIconButton,
   PlusIconButton,
-} from 'components/common/IconButtons/EditIconButton';
-import { DataAssetOption } from 'components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
-import { EntityReference } from 'generated/entity/type';
+} from '../../../components/common/IconButtons/EditIconButton';
+import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import { EntityReference } from '../../../generated/entity/type';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import entityUtilClassBase from 'utils/EntityUtilClassBase';
-import { getEntityName } from 'utils/EntityUtils';
-import { getEntityIcon } from 'utils/TableUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityIcon } from '../../../utils/TableUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { RelatedDataAssetsForm } from './RelatedDataAssetsForm';
 
 interface RelatedDataAssetsProps {

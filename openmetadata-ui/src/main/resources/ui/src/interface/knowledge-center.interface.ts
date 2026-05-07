@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityStatus } from 'generated/entity/data/glossaryTerm';
-import { ChangeDescription, EntityReference } from 'generated/entity/type';
-import { TagLabel } from 'generated/type/tagLabel';
-import { Votes } from 'generated/type/votes';
+import { EntityStatus } from '../generated/entity/data/glossaryTerm';
+import { ChangeDescription, EntityReference } from '../generated/entity/type';
+import { TagLabel } from '../generated/type/tagLabel';
+import { Votes } from '../generated/type/votes';
 
 export enum PageType {
   ARTICLE = 'Article',

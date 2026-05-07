@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TabSpecificField } from 'enums/entity.enum';
-import { ContentChangeState } from 'interface/knowledge-center.interface';
+import { TabSpecificField } from '../enums/entity.enum';
+import { ContentChangeState } from '../interface/knowledge-center.interface';
 
 const CENTER_PANEL_DEFAULT_WIDTH = 750;
 const CENTER_PANEL_PANEL_MARGIN = 75;

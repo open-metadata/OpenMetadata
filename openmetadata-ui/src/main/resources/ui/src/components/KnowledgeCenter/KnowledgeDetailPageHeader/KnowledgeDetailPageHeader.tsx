@@ -23,47 +23,47 @@ import {
   Typography,
 } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
-import { ReactComponent as ConversationIcon } from 'assets/svg/ic-conversation.svg';
-import { ReactComponent as IconSaved } from 'assets/svg/ic-saved.svg';
-import { ReactComponent as ShareIcon } from 'assets/svg/ic-share.svg';
-import { ReactComponent as StarFilledIcon } from 'assets/svg/ic-star-filled.svg';
-import { ReactComponent as StarIcon } from 'assets/svg/ic-star.svg';
-import { ReactComponent as IconUnSaved } from 'assets/svg/ic-unsaved.svg';
-import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
+import { ReactComponent as ConversationIcon } from '../../../assets/svg/ic-conversation.svg';
+import { ReactComponent as IconSaved } from '../../../assets/svg/ic-saved.svg';
+import { ReactComponent as ShareIcon } from '../../../assets/svg/ic-share.svg';
+import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
+import { ReactComponent as StarIcon } from '../../../assets/svg/ic-star.svg';
+import { ReactComponent as IconUnSaved } from '../../../assets/svg/ic-unsaved.svg';
+import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import classNames from 'classnames';
-import { DeleteType } from 'components/common/DeleteWidget/DeleteWidget.interface';
-import ManageButton from 'components/common/EntityPageInfos/ManageButton/ManageButton';
-import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
-import TitleBreadcrumb from 'components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { QueryVoteType } from 'components/Database/TableQueries/TableQueries.interface';
-import { EntityStatusBadge } from 'components/Entity/EntityStatusBadge/EntityStatusBadge.component';
-import Voting from 'components/Entity/Voting/Voting.component';
-import { VotingDataProps } from 'components/Entity/Voting/voting.interface';
-import { ROUTES, TEXT_BODY_COLOR } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from 'enums/entity.enum';
-import { EntityStatus } from 'generated/entity/data/glossaryTerm';
-import { useCurrentUserPreferences } from 'hooks/currentUserStore/useCurrentUserStore';
-import { useApplicationStore } from 'hooks/useApplicationStore';
-import { useClipboard } from 'hooks/useClipBoard';
-import { useFqn } from 'hooks/useFqn';
+import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
+import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
+import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
+import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
+import { EntityStatusBadge } from '../../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
+import Voting from '../../../components/Entity/Voting/Voting.component';
+import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
+import { ROUTES, TEXT_BODY_COLOR } from '../../../constants/constants';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../../enums/entity.enum';
+import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useClipboard } from '../../../hooks/useClipBoard';
+import { useFqn } from '../../../hooks/useFqn';
 import {
   ContentChangeState,
   KnowledgePage,
   RecentlyViewedQuickLinks,
-} from 'interface/knowledge-center.interface';
+} from '../../../interface/knowledge-center.interface';
 import { isEmpty, isUndefined, map, toString, uniqBy, uniqueId } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import deleteWidgetClassBase from 'utils/DeleteWidget/DeleteWidgetClassBase';
-import EntityLink from 'utils/EntityLink';
-import { getEntityName } from 'utils/EntityUtils';
-import i18n from 'utils/i18next/LocalUtil';
+import deleteWidgetClassBase from '../../../utils/DeleteWidget/DeleteWidgetClassBase';
+import EntityLink from '../../../utils/EntityLink';
+import { getEntityName } from '../../../utils/EntityUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 import {
   getKnowledgeVersionsPath,
   updateKnowledgeCenterRecentViewed,
-} from 'utils/KnowledgePageUtils';
+} from '../../../utils/KnowledgePageUtils';
 
 export interface KnowledgeDetailPageHeaderProps {
   isLoading: boolean;

@@ -12,37 +12,37 @@
  */
 import Icon from '@ant-design/icons';
 import { Col, Divider, Row, Space, Typography } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as IconDelete } from 'assets/svg/ic-delete.svg';
-import { ReactComponent as ThumbsUpFilled } from 'assets/svg/thumbs-up-filled.svg';
-import { ReactComponent as ThumbsUpOutline } from 'assets/svg/thumbs-up-outline.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as ThumbsUpFilled } from '../../../assets/svg/thumbs-up-filled.svg';
+import { ReactComponent as ThumbsUpOutline } from '../../../assets/svg/thumbs-up-outline.svg';
 import { AxiosError } from 'axios';
-import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
-import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
-import RichTextEditorPreviewerV1 from 'components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import { EntityType } from 'enums/entity.enum';
+import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
+import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
+import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import { EntityType } from '../../../enums/entity.enum';
 import { isUndefined } from 'lodash';
 
-import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
-import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
+import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
+import { DisplayType } from '../../../components/Tag/TagsViewer/TagsViewer.interface';
 
-import Loader from 'components/common/Loader/Loader';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import { QueryVoteType } from 'components/Database/TableQueries/TableQueries.interface';
-import { VotingDataProps } from 'components/Entity/Voting/voting.interface';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { usePermissionProvider } from 'context/PermissionProvider/PermissionProvider';
+import Loader from '../../../components/common/Loader/Loader';
+import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
+import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
+import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from 'context/PermissionProvider/PermissionProvider.interface';
-import { useApplicationStore } from 'hooks/useApplicationStore';
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { formatDate } from 'utils/date-time/DateTimeUtils';
-import { getFrontEndFormat } from 'utils/FeedUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { formatDate } from '../../../utils/date-time/DateTimeUtils';
+import { getFrontEndFormat } from '../../../utils/FeedUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { ReactComponent as IconArticle } from '../../../assets/svg/ic-articles.svg';
 import { ReactComponent as BookMarkIcon } from '../../../assets/svg/ic-bookmark.svg';
 import { ReactComponent as BookMarkedIcon } from '../../../assets/svg/ic-bookmarked.svg';
@@ -66,7 +66,7 @@ import {
   QuickLinkFormModalFormData,
 } from '../QuickLinkFormModal/QuickLinkFormModal';
 
-import { useCurrentUserPreferences } from 'hooks/currentUserStore/useCurrentUserStore';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import './knowledge-card.less';
 
 export interface KnowledgeCardProps {

@@ -13,9 +13,9 @@
 import { Button, Modal, Skeleton, Tree, Typography } from 'antd';
 import { DataNode } from 'antd/es/tree';
 import { AntTreeNodeProps, DirectoryTreeProps, TreeProps } from 'antd/lib/tree';
-import { ReactComponent as KnowledgeCenterIcon } from 'assets/svg/ic-knowledge-page.svg';
+import { ReactComponent as KnowledgeCenterIcon } from '../../../assets/svg/ic-knowledge-page.svg';
 import { AxiosError } from 'axios';
-import { CREATE_PAGE_HASH, ROUTES } from 'constants/constants';
+import { CREATE_PAGE_HASH, ROUTES } from '../../../constants/constants';
 import {
   CreateKnowledgePage,
   KnowledgePage,
@@ -24,7 +24,7 @@ import {
   PageHierarchy,
   PageType,
   RecentlyViewedQuickLinks,
-} from 'interface/knowledge-center.interface';
+} from '../../../interface/knowledge-center.interface';
 
 import {
   forwardRef,
@@ -44,40 +44,40 @@ import {
   getPageHierarchyFromES,
   patchKnowledgePage,
   postKnowledgePage,
-} from 'rest/knowledgeCenterAPI';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../../rest/knowledgeCenterAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 
 import { PlusOutlined } from '@ant-design/icons';
-import { ReactComponent as DragIcon } from 'assets/svg/drag.svg';
-import { ReactComponent as IconDown } from 'assets/svg/ic-arrow-down.svg';
-import { ReactComponent as IconRight } from 'assets/svg/ic-arrow-right.svg';
-import { ReactComponent as DeleteIcon } from 'assets/svg/ic-delete.svg';
+import { ReactComponent as DragIcon } from '../../../assets/svg/drag.svg';
+import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
+import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
+import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import classNames from 'classnames';
-import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
-import CreateErrorPlaceHolder from 'components/common/ErrorWithPlaceholder/CreateErrorPlaceHolder';
-import Loader from 'components/common/Loader/Loader';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
+import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
+import CreateErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/CreateErrorPlaceHolder';
+import Loader from '../../../components/common/Loader/Loader';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import {
   KNOWLEDGE_CENTER_INSTANCE_NAME_LENGTH,
   KNOWLEDGE_CENTER_PAGINATION_LIMIT,
   KNOWLEDGE_CENTER_PAGINATION_OFFSET_INCREMENT,
   KNOWLEDGE_CENTER_TREE_HEIGHT_OFFSET,
   KNOWLEDGE_CENTER_TREE_HEIGHT_OFFSET_CHILD_ARTICLE,
-} from 'constants/KnowledgeCenter.constant';
-import { useLimitStore } from 'context/LimitsProvider/useLimitsStore';
-import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
+} from '../../../constants/KnowledgeCenter.constant';
+import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { SIZE } from 'enums/common.enum';
-import { EntityType } from 'enums/entity.enum';
+import { SIZE } from '../../../enums/common.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { compare } from 'fast-json-patch';
-import { useCurrentUserPreferences } from 'hooks/currentUserStore/useCurrentUserStore';
-import { useApplicationStore } from 'hooks/useApplicationStore';
-import useCustomLocation from 'hooks/useCustomLocation/useCustomLocation';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { isUndefined, uniq } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from 'utils/EntityUtils';
-import Fqn from 'utils/Fqn';
-import { Transi18next } from 'utils/i18next/LocalUtil';
+import { getEntityName } from '../../../utils/EntityUtils';
+import Fqn from '../../../utils/Fqn';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import {
   convertToTreeData,
   extractKnowledgePageParentFQN,
@@ -93,8 +93,8 @@ import {
   integrateNodesIntoHierarchy,
   updateKnowledgeCenterRecentViewed,
   updateTreeData,
-} from 'utils/KnowledgePageUtils';
-import { useRequiredParams } from 'utils/useRequiredParams';
+} from '../../../utils/KnowledgePageUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import './knowledge-pages-hierarchy.less';
 const { DirectoryTree } = Tree;
 

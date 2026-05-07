@@ -14,7 +14,7 @@ import { Operation } from 'fast-json-patch';
 import {
   getKnowledgePageByFqn,
   patchKnowledgePage,
-} from 'rest/knowledgeCenterAPI';
+} from '../../rest/knowledgeCenterAPI';
 import { MapPatchAPIResponse } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from '../../enums/entity.enum';

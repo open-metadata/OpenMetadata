@@ -11,22 +11,22 @@
  *  limitations under the License.
  */
 import { Col, Divider, Row, Typography } from 'antd';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import CommonEntitySummaryInfo from 'components/Explore/EntitySummaryPanel/CommonEntitySummaryInfo/CommonEntitySummaryInfo';
-import { EntityUnion } from 'components/Explore/ExplorePage.interface';
+import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
+import SummaryTagsDescription from '../../../components/common/SummaryTagsDescription/SummaryTagsDescription.component';
+import CommonEntitySummaryInfo from '../../../components/Explore/EntitySummaryPanel/CommonEntitySummaryInfo/CommonEntitySummaryInfo';
+import { EntityUnion } from '../../../components/Explore/ExplorePage.interface';
 import {
   KnowledgePage,
   PageType,
   QuickLink,
-} from 'interface/knowledge-center.interface';
+} from '../../../interface/knowledge-center.interface';
 import { isEmpty } from 'lodash';
 
-import SummaryPanelSkeleton from 'components/common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import SummaryPanelSkeleton from '../../../components/common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
-import i18n, { t } from 'utils/i18next/LocalUtil';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityUtils';
+import i18n, { t } from '../../../utils/i18next/LocalUtil';
 import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';
 
 const KnowledgePageSummary = ({

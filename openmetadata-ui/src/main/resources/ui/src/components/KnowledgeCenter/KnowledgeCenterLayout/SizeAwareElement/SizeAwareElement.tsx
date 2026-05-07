@@ -15,7 +15,7 @@ import {
   CENTER_PANEL_PADDING_HORIZONTAL,
   CENTER_PANEL_PADDING_VERTICAL,
   CENTER_PANEL_PANEL_MARGIN,
-} from 'constants/KnowledgeCenter.constant';
+} from '../../../../constants/KnowledgeCenter.constant';
 import { CSSProperties, ReactNode, useMemo } from 'react';
 
 interface SizeAwareElementProps {

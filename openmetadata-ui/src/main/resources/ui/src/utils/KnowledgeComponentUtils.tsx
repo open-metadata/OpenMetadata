@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactComponent as IconArticle } from 'assets/svg/ic-articles.svg';
-import { ReactComponent as LinkIcon } from 'assets/svg/ic-link.svg';
-import KnowledgePageSummary from 'components/KnowledgeCenter/KnowledgePageSummary/KnowledgePageSummary';
-import { KnowledgePage, PageType } from 'interface/knowledge-center.interface';
+import { ReactComponent as IconArticle } from '../assets/svg/ic-articles.svg';
+import { ReactComponent as LinkIcon } from '../assets/svg/ic-link.svg';
+import KnowledgePageSummary from '../components/KnowledgeCenter/KnowledgePageSummary/KnowledgePageSummary';
+import { KnowledgePage, PageType } from '../interface/knowledge-center.interface';
 
 export const getPageIcon = (pageType: PageType) => {
   const isQuickLink = pageType === PageType.QUICK_LINK;

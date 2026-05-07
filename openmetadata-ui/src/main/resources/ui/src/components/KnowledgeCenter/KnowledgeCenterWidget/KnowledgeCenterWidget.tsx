@@ -12,23 +12,23 @@
  */
 import Icon from '@ant-design/icons';
 import { Col, Row, Typography } from 'antd';
-import { ReactComponent as KnowledgeCenterNoDataPlaceholder } from 'assets/svg/no-folder-data.svg';
+import { ReactComponent as KnowledgeCenterNoDataPlaceholder } from '../../../assets/svg/no-folder-data.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import WidgetEmptyState from 'components/MyData/Widgets/Common/WidgetEmptyState/WidgetEmptyState';
-import WidgetFooter from 'components/MyData/Widgets/Common/WidgetFooter/WidgetFooter';
-import WidgetHeader from 'components/MyData/Widgets/Common/WidgetHeader/WidgetHeader';
-import WidgetWrapper from 'components/MyData/Widgets/Common/WidgetWrapper/WidgetWrapper';
-import { PAGE_SIZE_MEDIUM } from 'constants/constants';
-import { SIZE } from 'enums/common.enum';
-import { EntityType } from 'enums/entity.enum';
-import { useApplicationStore } from 'hooks/useApplicationStore';
+import WidgetEmptyState from '../../../components/MyData/Widgets/Common/WidgetEmptyState/WidgetEmptyState';
+import WidgetFooter from '../../../components/MyData/Widgets/Common/WidgetFooter/WidgetFooter';
+import WidgetHeader from '../../../components/MyData/Widgets/Common/WidgetHeader/WidgetHeader';
+import WidgetWrapper from '../../../components/MyData/Widgets/Common/WidgetWrapper/WidgetWrapper';
+import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import { SIZE } from '../../../enums/common.enum';
+import { EntityType } from '../../../enums/entity.enum';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { isEmpty, map } from 'lodash';
-import { WidgetCommonProps } from 'pages/CustomizablePage/CustomizablePage.interface';
+import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { ReactComponent as IconArticle } from '../../../assets/svg/ic-article.svg';
 import { ReactComponent as KnowledgeCenterWidgetIcon } from '../../../assets/svg/ic-knowledge-center-widget.svg';
 import { ReactComponent as LinkIcon } from '../../../assets/svg/ic-quick-link.svg';
@@ -42,7 +42,7 @@ import { t } from '../../../utils/i18next/LocalUtil';
 import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';
 import './KnowledgeCenterWidget.less';
 
-import { ROUTES } from 'constants/constants';
+import { ROUTES } from '../../../constants/constants';
 const KnowledgeCenterWidget = ({
   isEditView = false,
   widgetKey,

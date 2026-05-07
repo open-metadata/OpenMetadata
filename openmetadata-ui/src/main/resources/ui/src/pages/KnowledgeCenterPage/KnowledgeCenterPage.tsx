@@ -14,45 +14,45 @@ import { DownOutlined } from '@ant-design/icons';
 import { Button, Dropdown, MenuProps, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { withActivityFeed } from 'components/AppRouter/withActivityFeed';
-import KnowledgeCenterLayout from 'components/KnowledgeCenter/KnowledgeCenterLayout/KnowledgeCenterLayout';
-import KnowledgePageDetailComponent from 'components/KnowledgeCenter/KnowledgePageDetailComponent/KnowledgePageDetailComponent';
-import KnowledgePageListComponent from 'components/KnowledgeCenter/KnowledgePageListComponent/KnowledgePageListComponent';
-import KnowledgePagesHierarchy from 'components/KnowledgeCenter/KnowledgePagesHierarchy/KnowledgePagesHierarchy';
+import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
+import KnowledgeCenterLayout from '../../components/KnowledgeCenter/KnowledgeCenterLayout/KnowledgeCenterLayout';
+import KnowledgePageDetailComponent from '../../components/KnowledgeCenter/KnowledgePageDetailComponent/KnowledgePageDetailComponent';
+import KnowledgePageListComponent from '../../components/KnowledgeCenter/KnowledgePageListComponent/KnowledgePageListComponent';
+import KnowledgePagesHierarchy from '../../components/KnowledgeCenter/KnowledgePagesHierarchy/KnowledgePagesHierarchy';
 import {
   QuickLinkFormModal,
   QuickLinkFormModalFormData,
-} from 'components/KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
-import { LearningIcon } from 'components/Learning/LearningIcon/LearningIcon.component';
-import PageLayoutV1 from 'components/PageLayoutV1/PageLayoutV1';
-import { CREATE_PAGE_HASH } from 'constants/constants';
-import { LEARNING_PAGE_IDS } from 'constants/Learning.constants';
-import { useLimitStore } from 'context/LimitsProvider/useLimitsStore';
-import { usePermissionProvider } from 'context/PermissionProvider/PermissionProvider';
+} from '../../components/KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
+import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { CREATE_PAGE_HASH } from '../../constants/constants';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from 'context/PermissionProvider/PermissionProvider.interface';
-import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import LimitWrapper from 'hoc/LimitWrapper';
-import { useApplicationStore } from 'hooks/useApplicationStore';
-import { useFqn } from 'hooks/useFqn';
+} from '../../context/PermissionProvider/PermissionProvider.interface';
+import LimitWrapper from '../../hoc/LimitWrapper';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useFqn } from '../../hooks/useFqn';
 import {
   CreateKnowledgePage,
   KnowledgeCenterPageProps,
   KnowledgeCenterPageRef,
   KnowledgePagesHierarchyRef,
   PageType,
-} from 'interface/knowledge-center.interface';
-import KnowledgePageVersionPage from 'pages/KnowledgePageVersionPage/KnowledgePageVersionPage';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { postKnowledgePage } from 'rest/knowledgeCenterAPI';
-import { getKnowledgePagePath } from 'utils/KnowledgePageUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { showErrorToast } from 'utils/ToastUtils';
-import { useRequiredParams } from 'utils/useRequiredParams';
+} from '../../interface/knowledge-center.interface';
+import { postKnowledgePage } from '../../rest/knowledgeCenterAPI';
+import { getKnowledgePagePath } from '../../utils/KnowledgePageUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
+import KnowledgePageVersionPage from '../KnowledgePageVersionPage/KnowledgePageVersionPage';
 import './knowledge-center-page.less';
 
 const KnowledgeCenterPage = () => {

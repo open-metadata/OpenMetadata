@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import KnowledgeCenterWidget from 'components/KnowledgeCenter/KnowledgeCenterWidget/KnowledgeCenterWidget';
-import { DetailPageWidgetKeys } from 'enums/CustomizeDetailPage.enum';
+import KnowledgeCenterWidget from '../components/KnowledgeCenter/KnowledgeCenterWidget/KnowledgeCenterWidget';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { FC } from 'react';
 import ActivityFeedImg from '../assets/img/activity-feed-widget.png';
 import CuratedAssetsImg from '../assets/img/curated-assets.png';

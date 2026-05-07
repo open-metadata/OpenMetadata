@@ -12,31 +12,31 @@
  */
 import { Col, Row, Skeleton, Space } from 'antd';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from 'components/common/Loader/Loader';
-import TitleBreadcrumb from 'components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import KnowledgeCard from 'components/KnowledgeCenter/KnowledgeCard/KnowledgeCard';
-import PageLayoutV1 from 'components/PageLayoutV1/PageLayoutV1';
-import { PAGE_SIZE_BASE, ROUTES } from 'constants/constants';
-import { getKnowledgePageFields } from 'constants/KnowledgeCenter.constant';
-import { usePermissionProvider } from 'context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityType } from 'enums/entity.enum';
-import { Paging } from 'generated/type/paging';
-import { useLocationSearch } from 'hooks/LocationSearch/useLocationSearch';
-import { useElementInView } from 'hooks/useElementInView';
-import { KnowledgePage } from 'interface/knowledge-center.interface';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
 import { RefObject, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getListKnowledgePages } from 'rest/knowledgeCenterAPI';
-import { getEntityLinkFromType, getEntityName } from 'utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import KnowledgeCard from '../../components/KnowledgeCenter/KnowledgeCard/KnowledgeCard';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { PAGE_SIZE_BASE, ROUTES } from '../../constants/constants';
+import { getKnowledgePageFields } from '../../constants/KnowledgeCenter.constant';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
+import { Paging } from '../../generated/type/paging';
+import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
+import { useElementInView } from '../../hooks/useElementInView';
+import { KnowledgePage } from '../../interface/knowledge-center.interface';
+import { getListKnowledgePages } from '../../rest/knowledgeCenterAPI';
+import { getEntityLinkFromType, getEntityName } from '../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 type KnowledgeCenterFilter = {
   entityId: string;

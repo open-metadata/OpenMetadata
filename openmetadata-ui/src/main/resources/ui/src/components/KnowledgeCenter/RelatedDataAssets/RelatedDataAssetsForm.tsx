@@ -12,11 +12,11 @@
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Col, Form, Row, Space } from 'antd';
-import DataAssetAsyncSelectList from 'components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
-import { DataAssetOption } from 'components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import DataAssetAsyncSelectList from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
+import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 
 import { FC, useState } from 'react';
-import i18n from 'utils/i18next/LocalUtil';
+import i18n from '../../../utils/i18next/LocalUtil';
 
 interface RelatedDataAssetsFormProps {
   defaultValue?: string[];
