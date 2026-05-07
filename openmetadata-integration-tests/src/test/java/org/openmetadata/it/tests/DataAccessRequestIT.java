@@ -14,14 +14,17 @@
 
 package org.openmetadata.it.tests;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -141,12 +144,28 @@ public class DataAccessRequestIT {
     Task created =
         SdkClients.adminClient().tasks().create(buildDarRequest(ns, tableFqn, "FullAccess"));
 
-    assertEquals(TaskEntityStatus.Open, created.getStatus());
-    assertEquals("review", created.getWorkflowStageId());
-    List<String> openTransitions =
-        created.getAvailableTransitions().stream().map(TaskAvailableTransition::getId).toList();
-    assertTrue(openTransitions.contains("approve"));
-    assertTrue(openTransitions.contains("reject"));
+    AtomicReference<Task> reviewTaskRef = new AtomicReference<>();
+    await()
+        .atMost(Duration.ofSeconds(20))
+        .pollInterval(Duration.ofMillis(250))
+        .untilAsserted(
+            () -> {
+              Task t =
+                  SdkClients.adminClient()
+                      .tasks()
+                      .get(
+                          created.getId().toString(),
+                          "status,workflowStageId,availableTransitions");
+              assertEquals(TaskEntityStatus.Open, t.getStatus());
+              assertEquals("review", t.getWorkflowStageId());
+              List<String> transitions =
+                  t.getAvailableTransitions().stream().map(TaskAvailableTransition::getId).toList();
+              assertTrue(transitions.contains("approve"));
+              assertTrue(transitions.contains("reject"));
+              reviewTaskRef.set(t);
+            });
+
+    Task reviewed = reviewTaskRef.get();
 
     // Approve → moves to ApprovedAccess userTask. Status stays non-terminal so the workflow
     // can continue to a Revoke transition (matches IncidentResolution pattern).
@@ -154,7 +173,7 @@ public class DataAccessRequestIT {
         SdkClients.adminClient()
             .tasks()
             .resolve(
-                created.getId().toString(),
+                reviewed.getId().toString(),
                 new ResolveTask().withTransitionId("approve").withComment("approved"));
 
     assertEquals(TaskEntityStatus.InProgress, approved.getStatus());
