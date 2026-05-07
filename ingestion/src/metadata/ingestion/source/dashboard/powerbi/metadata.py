@@ -694,14 +694,14 @@ class PowerbiSource(DashboardServiceSource):
                 return
             for chart in charts or []:
                 if chart.reportId:
-                    logger.debug(f"Dashboard's chart {chart.id} is linked with report id: {chart.reportId!s}")
+                    logger.debug(f"Dashboard's chart {chart.id} is linked with report id: {str(chart.reportId)}")
                 else:
                     logger.debug(f"Dashboard's chart {chart.id} is not linked with any report")
                     continue
                 report = self._fetch_report_from_workspace(chart.reportId)
                 if report:
                     logger.debug(
-                        f"Fetched report details for report id: {chart.reportId!s} from workspace data to create lineage with dashboard: {dashboard_details.id}"
+                        f"Fetched report details for report id: {str(chart.reportId)} from workspace data to create lineage with dashboard: {dashboard_details.id}"
                     )
                     report_fqn = fqn.build(
                         self.metadata,
@@ -724,7 +724,7 @@ class PowerbiSource(DashboardServiceSource):
                         yield self._get_add_lineage_request(to_entity=dashboard_entity, from_entity=report_entity)
                 else:
                     logger.debug(
-                        f"Could not fetch report with report id: {chart.reportId!s} from workspace data to create lineage with dashboard: {dashboard_details.id}"
+                        f"Could not fetch report with report id: {str(chart.reportId)} from workspace data to create lineage with dashboard: {dashboard_details.id}"
                     )
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
