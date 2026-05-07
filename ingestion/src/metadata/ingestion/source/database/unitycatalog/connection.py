@@ -117,6 +117,31 @@ def get_sqlalchemy_connection(connection: UnityCatalogConnection) -> Engine:
     return engine
 
 
+def select_test_catalog(
+    workspace_client: WorkspaceClient,
+    table_obj: DatabricksTable,
+    configured_catalog: Optional[str],  # noqa: UP045
+) -> None:
+    """Pick the catalog used by the rest of the test-connection probes.
+
+    Honors `configured_catalog` from the service config when set. Otherwise
+    walks `catalogs.list()` and skips both `__databricks_internal` and any
+    foreign/federated catalog — their `information_schema.*_tags` queries
+    are pushed down to the source DB and fail on stale credentials.
+    """
+    if configured_catalog:
+        table_obj.catalog_name = configured_catalog
+        return
+    for catalog in workspace_client.catalogs.list():
+        if catalog.name == "__databricks_internal":
+            continue
+        catalog_type = str(getattr(catalog, "catalog_type", "") or "").upper()
+        if "FOREIGN" in catalog_type:
+            continue
+        table_obj.catalog_name = catalog.name
+        return
+
+
 def test_connection(
     metadata: OpenMetadata,
     connection: WorkspaceClient,
@@ -130,12 +155,6 @@ def test_connection(
     """
     table_obj = DatabricksTable()
     engine = get_sqlalchemy_connection(service_connection)
-
-    def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable):
-        for catalog in connection.catalogs.list():
-            if catalog.name != "__databricks_internal":
-                table_obj.catalog_name = catalog.name
-                return
 
     def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable):
         for schema in connection.schemas.list(catalog_name=table_obj.catalog_name):
@@ -182,7 +201,7 @@ def test_connection(
 
     test_fn = {
         "CheckAccess": connection.catalogs.list,
-        "GetDatabases": partial(get_catalogs, connection, table_obj),
+        "GetDatabases": partial(select_test_catalog, connection, table_obj, service_connection.catalog),
         "GetSchemas": partial(get_schemas, connection, table_obj),
         "GetTables": partial(get_tables, connection, table_obj),
         "GetViews": partial(get_tables, connection, table_obj),
