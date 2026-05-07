@@ -349,11 +349,7 @@ export interface CollateAIAppConfig {
      */
     queueSize?: number;
     /**
-     * This schema publisher run modes.
-     */
-    recreateIndex?: boolean;
-    /**
-     * Recreate Indexes with updated Language
+     * Search index mapping language.
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
@@ -1357,7 +1353,7 @@ export interface Resource {
 }
 
 /**
- * Recreate Indexes with updated Language
+ * Search index mapping language.
  *
  * This schema defines the language options available for search index mappings.
  */
