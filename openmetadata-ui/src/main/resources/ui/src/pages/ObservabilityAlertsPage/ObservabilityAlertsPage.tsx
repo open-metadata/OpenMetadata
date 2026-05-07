@@ -190,7 +190,6 @@ const ObservabilityAlertsPage = () => {
   const onPageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
-        fetchAlerts({ [cursorType]: paging[cursorType] });
         handlePageChange(
           currentPage,
           { cursorType, cursorValue: paging[cursorType] },
@@ -198,7 +197,7 @@ const ObservabilityAlertsPage = () => {
         );
       }
     },
-    [paging]
+    [paging, pageSize, handlePageChange]
   );
 
   const columnList = useMemo<AlertTableColumn[]>(
@@ -401,7 +400,6 @@ const ObservabilityAlertsPage = () => {
             {showPagination && (
               <div className="tw:py-3">
                 <NextPrevious
-                  isNumberBased
                   currentPage={currentPage}
                   isLoading={loading}
                   pageSize={pageSize}
