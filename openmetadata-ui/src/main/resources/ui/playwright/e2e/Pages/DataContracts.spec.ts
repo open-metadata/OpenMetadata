@@ -506,7 +506,7 @@ test.describe('Data Contracts', () => {
           await expect(
             page
               .getByTestId('test-suite-table')
-              .locator('.ant-table-cell')
+              .locator('[role="gridcell"]')
               .filter({
                 hasText: `Data Contract - ${DATA_CONTRACT_DETAILS.name}`,
               })
