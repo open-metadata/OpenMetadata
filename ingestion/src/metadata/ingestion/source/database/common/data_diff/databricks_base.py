@@ -58,11 +58,12 @@ class DatabricksBaseTableParameter(BaseTableParameter):
         # would otherwise build a URL like `databricks://:@host/...` and the
         # SQL driver would fall back to OAuth U2M, opening a browser. Validate
         # the resolved value so we fail fast in non-interactive environments.
-        token_value = (
-            token.get_secret_value()
-            if hasattr(token, "get_secret_value")
-            else (str(token) if token else "")
-        )
+        if token is None:
+            token_value = ""
+        elif hasattr(token, "get_secret_value"):
+            token_value = token.get_secret_value()
+        else:
+            token_value = str(token)
         if not token_value:
             raise ValueError(
                 "Databricks data diff requires Personal Access Token authentication; "

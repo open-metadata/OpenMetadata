@@ -107,7 +107,7 @@ class TestDatabricksBaseDefaultScheme:
             authType = FakeAuthType()  # noqa: N815
 
         result = DatabricksBaseTableParameter._get_service_connection_config(FakeConfig())
-        assert "dapi-pat-secret" in result
+        assert isinstance(result, str)
         assert result == "databricks://:dapi-pat-secret@host:443/sql/1.0/warehouses/abc"
 
     def test_missing_token_raises(self):
