@@ -675,6 +675,7 @@ class PowerbiSource(DashboardServiceSource):
     ) -> Iterable[Either[CreateDashboardRequest]]:
         """Create lineage between report and dashboard"""
         try:
+            logger.debug(f"Processing to create report and dashboard lineage for dashboard: {dashboard_details.id!s}")
             charts = dashboard_details.tiles
             dashboard_fqn = fqn.build(
                 self.metadata,
@@ -686,9 +687,22 @@ class PowerbiSource(DashboardServiceSource):
                 entity=Dashboard,
                 fqn=dashboard_fqn,
             )
+            if not dashboard_entity:
+                logger.debug(
+                    f"Dashboard entity not found to create lineage between report and dashboard for dashboard: {dashboard_details.id!s}"
+                )
+                return
             for chart in charts or []:
+                if chart.reportId:
+                    logger.debug(f"Dashboard's chart {chart.id!s} is linked with report id: {chart.reportId!s}")
+                else:
+                    logger.debug(f"Dashboard's chart {chart.id!s} is not linked with any report")
+                    continue
                 report = self._fetch_report_from_workspace(chart.reportId)
                 if report:
+                    logger.debug(
+                        f"Fetched report details for report id: {chart.reportId!s} from workspace data to create lineage with dashboard: {dashboard_details.id!s}"
+                    )
                     report_fqn = fqn.build(
                         self.metadata,
                         entity_type=Dashboard,
@@ -699,9 +713,19 @@ class PowerbiSource(DashboardServiceSource):
                         entity=Dashboard,
                         fqn=report_fqn,
                     )
-
+                    if not report_entity:
+                        logger.debug(
+                            f"Report entity not found to create lineage between report={report.id!s} and dashboard={dashboard_details.id!s}"
+                        )
                     if report_entity and dashboard_entity:
+                        logger.debug(
+                            f"Creating lineage between report={report.id!s} and dashboard={dashboard_details.id!s}"
+                        )
                         yield self._get_add_lineage_request(to_entity=dashboard_entity, from_entity=report_entity)
+                else:
+                    logger.debug(
+                        f"Could not fetch report with report id: {chart.reportId!s} from workspace data to create lineage with dashboard: {dashboard_details.id!s}"
+                    )
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
@@ -729,6 +753,8 @@ class PowerbiSource(DashboardServiceSource):
                 )
                 if match:
                     dataset_ids.append(match.group(1))
+        if dataset_ids:
+            logger.debug(f"Extracted dataset IDs from report datasources API call for report_id={report_id}")
         return dataset_ids
 
     def create_datamodel_report_lineage(
@@ -740,6 +766,7 @@ class PowerbiSource(DashboardServiceSource):
         create the lineage between datamodel and report
         """
         try:
+            logger.debug(f"Processing to create datamodel and report lineage for report: {dashboard_details.id!s}")
             report_fqn = fqn.build(
                 self.metadata,
                 entity_type=Dashboard,
@@ -750,10 +777,19 @@ class PowerbiSource(DashboardServiceSource):
                 entity=Dashboard,
                 fqn=report_fqn,
             )
+            if not report_entity:
+                logger.debug(
+                    f"Report entity not found to create lineage between datamodel and report for report: {dashboard_details.id!s}"
+                )
+                return
             dataset_ids = []
             if dashboard_details.datasetId:
+                logger.debug(f"Report linked datasetId is present in api response for report: {dashboard_details.id!s}")
                 dataset_ids = [dashboard_details.datasetId]
             else:
+                logger.debug(
+                    f"Processing to get report datasources from API to extract datasetIds for report: {dashboard_details.id!s} as datasetId is not present in api response"
+                )
                 dataset_ids = self._get_dataset_ids_from_report_datasources(report_id=dashboard_details.id)
 
             if dataset_ids:
@@ -768,6 +804,10 @@ class PowerbiSource(DashboardServiceSource):
                         entity=DashboardDataModel,
                         fqn=datamodel_fqn,
                     )
+                    if not datamodel_entity:
+                        logger.debug(
+                            f"Data model entity not found for dataset_id={str(dataset_id)} while creating lineage with report={str(dashboard_details.id)}"  # noqa: RUF010
+                        )
                     if datamodel_entity and report_entity:
                         logger.debug(
                             f"Creating lineage between datamodel={str(dataset_id)} and report={str(dashboard_details.id)}"  # noqa: RUF010
@@ -778,7 +818,7 @@ class PowerbiSource(DashboardServiceSource):
                         )
             else:
                 logger.debug(
-                    f"Skipping datamodel and report lineage for {dashboard_details.id} as datasetId is not found"
+                    f"Skipping datamodel and report lineage for report: {dashboard_details.id!s} as datasetId is not found on api response and also could not be extracted from report datasources API call"
                 )
 
         except Exception as exc:  # pylint: disable=broad-except
@@ -2062,7 +2102,7 @@ class PowerbiSource(DashboardServiceSource):
                     return dataset_data
         return None
 
-    def _fetch_report_from_workspace(self, report_id: Optional[str]) -> Optional[Dataset]:  # noqa: UP045
+    def _fetch_report_from_workspace(self, report_id: Optional[str]) -> Optional[PowerBIReport]:  # noqa: UP045
         """
         Method to search the report using id in the workspace dict
         """
