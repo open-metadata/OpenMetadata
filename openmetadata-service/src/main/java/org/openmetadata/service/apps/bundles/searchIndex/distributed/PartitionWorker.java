@@ -133,7 +133,7 @@ public class PartitionWorker {
   }
 
   private PartitionResult processPartitionInternal(SearchIndexPartition partition) {
-    String entityType = partition.getEntityType();
+    String entityType = SearchIndexEntityTypes.normalizeEntityType(partition.getEntityType());
     long rangeStart = partition.getRangeStart();
     long rangeEnd = partition.getRangeEnd();
 
@@ -581,19 +581,21 @@ public class PartitionWorker {
    */
   private ResultList<?> readEntitiesKeyset(String entityType, String keysetCursor, int limit)
       throws SearchIndexException {
+    String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
 
     // Selective fields avoid running expensive field fetchers that are stripped out before
     // indexing.
-    List<String> fields = ReindexingUtil.getSearchIndexFields(entityType);
+    List<String> fields = ReindexingUtil.getSearchIndexFields(normalizedEntityType);
 
-    if (!SearchIndexEntityTypes.isTimeSeriesEntity(entityType)) {
-      PaginatedEntitiesSource source = new PaginatedEntitiesSource(entityType, limit, fields, 0);
+    if (!SearchIndexEntityTypes.isTimeSeriesEntity(normalizedEntityType)) {
+      PaginatedEntitiesSource source =
+          new PaginatedEntitiesSource(normalizedEntityType, limit, fields, 0);
       return source.readNextKeyset(keysetCursor);
     } else {
       Long filterStartTs = null;
       Long filterEndTs = null;
       if (reindexConfig != null) {
-        long startTs = reindexConfig.getTimeSeriesStartTs(entityType);
+        long startTs = reindexConfig.getTimeSeriesStartTs(normalizedEntityType);
         if (startTs > 0) {
           filterStartTs = startTs;
           filterEndTs = System.currentTimeMillis();
@@ -602,8 +604,8 @@ public class PartitionWorker {
       PaginatedEntityTimeSeriesSource source =
           (filterStartTs != null)
               ? new PaginatedEntityTimeSeriesSource(
-                  entityType, limit, fields, filterStartTs, filterEndTs)
-              : new PaginatedEntityTimeSeriesSource(entityType, limit, fields, 0);
+                  normalizedEntityType, limit, fields, filterStartTs, filterEndTs)
+              : new PaginatedEntityTimeSeriesSource(normalizedEntityType, limit, fields, 0);
       return source.readWithCursor(keysetCursor);
     }
   }
@@ -612,7 +614,7 @@ public class PartitionWorker {
     if (offset <= 0) {
       return null;
     }
-    String entityType = partition.getEntityType();
+    String entityType = SearchIndexEntityTypes.normalizeEntityType(partition.getEntityType());
     if (SearchIndexEntityTypes.isTimeSeriesEntity(entityType)) {
       return RestUtil.encodeCursor(String.valueOf(offset));
     }
@@ -662,8 +664,9 @@ public class PartitionWorker {
   private void writeToSink(
       String entityType, ResultList<?> resultList, Map<String, Object> contextData)
       throws Exception {
+    String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
 
-    if (!SearchIndexEntityTypes.isTimeSeriesEntity(entityType)) {
+    if (!SearchIndexEntityTypes.isTimeSeriesEntity(normalizedEntityType)) {
       List<EntityInterface> entities = (List<EntityInterface>) resultList.getData();
       searchIndexSink.write(entities, contextData);
     } else {
@@ -681,8 +684,9 @@ public class PartitionWorker {
    * @return Context data map
    */
   private Map<String, Object> createContextData(String entityType, StageStatsTracker statsTracker) {
+    String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
     Map<String, Object> contextData = new java.util.HashMap<>();
-    contextData.put(ENTITY_TYPE_KEY, entityType);
+    contextData.put(ENTITY_TYPE_KEY, normalizedEntityType);
     contextData.put(STAGED_WRITE_KEY, true);
 
     if (statsTracker != null) {
@@ -696,11 +700,11 @@ public class PartitionWorker {
 
     String targetIndex =
         stagedIndexContext
-            .getStagedIndex(entityType)
+            .getStagedIndex(normalizedEntityType)
             .orElseThrow(
                 () ->
                     new IllegalStateException(
-                        "No staged index configured for entity type: " + entityType));
+                        "No staged index configured for entity type: " + normalizedEntityType));
     contextData.put(STAGED_CONTEXT_KEY, stagedIndexContext);
     contextData.put(TARGET_INDEX_KEY, targetIndex);
 

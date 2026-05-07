@@ -94,9 +94,10 @@ public class DistributedIndexingStrategy {
       ReindexingConfiguration config, ReindexingJobContext context, long startTime) {
 
     this.config = config;
-    LOG.info("Starting distributed reindexing for entities: {}", config.entities());
+    Set<String> entityTypes = SearchIndexEntityTypes.normalizeEntityTypes(config.entities());
+    LOG.info("Starting distributed reindexing for entities: {}", entityTypes);
 
-    Stats stats = initializeTotalRecords(config.entities());
+    Stats stats = initializeTotalRecords(entityTypes);
     currentStats.set(stats);
 
     int partitionSize = jobData.getPartitionSize() != null ? jobData.getPartitionSize() : 10000;
@@ -106,7 +107,7 @@ public class DistributedIndexingStrategy {
     distributedExecutor.addListener(listeners);
 
     SearchIndexJob distributedJob =
-        distributedExecutor.createJob(config.entities(), jobData, createdBy, config);
+        distributedExecutor.createJob(entityTypes, jobData, createdBy, config);
 
     LOG.info(
         "Created distributed job {} with {} total records",
@@ -121,7 +122,7 @@ public class DistributedIndexingStrategy {
     if (stagedIndexHandler instanceof DefaultRecreateHandler defaultHandler) {
       defaultHandler.withJobData(jobData);
     }
-    ReindexContext stagedIndexContext = stagedIndexHandler.reCreateIndexes(config.entities());
+    ReindexContext stagedIndexContext = stagedIndexHandler.reCreateIndexes(entityTypes);
     if (stagedIndexContext == null || stagedIndexContext.isEmpty()) {
       throw new IllegalStateException(
           "Staged index preparation did not produce any target indexes");

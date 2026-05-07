@@ -64,6 +64,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
+import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageCounter;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
 import org.openmetadata.service.exception.SearchIndexException;
@@ -424,6 +425,27 @@ class PartitionWorkerTest {
   }
 
   @Test
+  void createContextDataNormalizesLegacyEntityAliasesBeforeStagedIndexLookup() throws Exception {
+    when(stagedIndexContext.getStagedIndex(Entity.QUERY_COST_RECORD))
+        .thenReturn(Optional.of("query_cost_record_staging"));
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> contextData =
+        (Map<String, Object>)
+            invokePrivate(
+                worker,
+                "createContextData",
+                new Class<?>[] {String.class, StageStatsTracker.class},
+                SearchIndexEntityTypes.QUERY_COST_RESULT,
+                null);
+
+    assertEquals(Entity.QUERY_COST_RECORD, contextData.get("entityType"));
+    assertEquals("query_cost_record_staging", contextData.get("targetIndex"));
+    verify(stagedIndexContext).getStagedIndex(Entity.QUERY_COST_RECORD);
+    verify(stagedIndexContext, never()).getStagedIndex(SearchIndexEntityTypes.QUERY_COST_RESULT);
+  }
+
+  @Test
   void processBatchWritesEntitiesAndRecordsReaderFailures() throws Exception {
     IndexingFailureRecorder failureRecorder = mock(IndexingFailureRecorder.class);
     StageStatsTracker statsTracker = mock(StageStatsTracker.class);
@@ -642,6 +664,43 @@ class PartitionWorkerTest {
               "readEntitiesKeyset",
               new Class<?>[] {String.class, String.class, int.class},
               Entity.QUERY_COST_RECORD,
+              "cursor",
+              3));
+    }
+
+    assertEquals(Entity.QUERY_COST_RECORD, constructorArgs.get().get(0));
+    assertEquals(3, constructorArgs.get().get(1));
+    assertEquals(List.of(), constructorArgs.get().get(2));
+    assertEquals(100L, constructorArgs.get().get(3));
+    assertNotNull(constructorArgs.get().get(4));
+  }
+
+  @Test
+  void readEntitiesKeysetNormalizesLegacyTimeSeriesAliases() throws Exception {
+    PartitionWorker timeSeriesWorker =
+        new PartitionWorker(
+            coordinator, bulkSink, BATCH_SIZE, stagedIndexContext, null, reindexingConfiguration);
+    when(reindexingConfiguration.getTimeSeriesStartTs(Entity.QUERY_COST_RECORD)).thenReturn(100L);
+
+    ResultList<EntityTimeSeriesInterface> resultList = new ResultList<>();
+    resultList.setData(List.of(mock(EntityTimeSeriesInterface.class)));
+    AtomicReference<List<?>> constructorArgs = new AtomicReference<>();
+
+    try (MockedConstruction<PaginatedEntityTimeSeriesSource> ignored =
+        mockConstruction(
+            PaginatedEntityTimeSeriesSource.class,
+            (mock, context) -> {
+              constructorArgs.set(List.copyOf(context.arguments()));
+              doReturn(resultList).when(mock).readWithCursor("cursor");
+            })) {
+
+      assertEquals(
+          resultList,
+          invokePrivate(
+              timeSeriesWorker,
+              "readEntitiesKeyset",
+              new Class<?>[] {String.class, String.class, int.class},
+              SearchIndexEntityTypes.QUERY_COST_RESULT,
               "cursor",
               3));
     }

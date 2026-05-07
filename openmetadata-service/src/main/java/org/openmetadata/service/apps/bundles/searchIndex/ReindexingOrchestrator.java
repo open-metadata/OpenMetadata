@@ -500,10 +500,11 @@ public class ReindexingOrchestrator {
   }
 
   private void setupEntities() {
-    boolean containsAll = jobData.getEntities().contains(SearchIndexEntityTypes.ALL);
-    if (containsAll) {
-      jobData.setEntities(getAll());
-    }
+    Set<String> entities =
+        jobData.getEntities().contains(SearchIndexEntityTypes.ALL)
+            ? getAll()
+            : jobData.getEntities();
+    jobData.setEntities(SearchIndexEntityTypes.normalizeEntityTypes(entities));
   }
 
   private Set<String> getAll() {

@@ -505,6 +505,80 @@ class DistributedIndexingStrategyTest {
 
   @Test
   @SuppressWarnings({"rawtypes", "unchecked"})
+  void executeNormalizesLegacyEntityAliasesBeforeDistributedSetup() {
+    @SuppressWarnings("unchecked")
+    EntityTimeSeriesRepository<?> timeSeriesRepository = mock(EntityTimeSeriesRepository.class);
+    EntityTimeSeriesDAO timeSeriesDao = mock(EntityTimeSeriesDAO.class);
+    BulkSink bulkSink = mock(BulkSink.class);
+    UUID jobId = UUID.fromString("00000000-0000-0000-0000-000000000032");
+    SearchIndexJob completedJob =
+        SearchIndexJob.builder()
+            .id(jobId)
+            .status(IndexJobStatus.COMPLETED)
+            .totalRecords(5)
+            .successRecords(5)
+            .failedRecords(0)
+            .entityStats(
+                Map.of(
+                    Entity.QUERY_COST_RECORD,
+                    SearchIndexJob.EntityTypeStats.builder()
+                        .entityType(Entity.QUERY_COST_RECORD)
+                        .totalRecords(5)
+                        .successRecords(5)
+                        .failedRecords(0)
+                        .build()))
+            .build();
+    RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    ReindexContext stagedIndexContext = stagedContext(Entity.QUERY_COST_RECORD);
+    ReindexingConfiguration reindexConfig =
+        ReindexingConfiguration.builder()
+            .entities(Set.of(SearchIndexEntityTypes.QUERY_COST_RESULT))
+            .build();
+
+    when(timeSeriesRepository.getTimeSeriesDao()).thenReturn(timeSeriesDao);
+    when(timeSeriesDao.listCount(any(ListFilter.class))).thenReturn(5);
+    when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
+    when(searchRepository.createReindexHandler()).thenReturn(indexPromotionHandler);
+    when(indexPromotionHandler.reCreateIndexes(Set.of(Entity.QUERY_COST_RECORD)))
+        .thenReturn(stagedIndexContext);
+    when(bulkSink.getPendingVectorTaskCount()).thenReturn(0);
+    when(bulkSink.flushAndAwait(60)).thenReturn(true);
+    when(bulkSink.getStats())
+        .thenReturn(new StepStats().withSuccessRecords(5).withFailedRecords(0));
+    when(bulkSink.getVectorStats()).thenReturn(new StepStats().withTotalRecords(0));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedConstruction<DistributedSearchIndexExecutor> executorConstruction =
+            mockConstruction(
+                DistributedSearchIndexExecutor.class,
+                (mock, context) -> {
+                  when(mock.createJob(
+                          any(Set.class), any(EventPublisherJob.class), eq("admin"), any()))
+                      .thenReturn(completedJob);
+                  when(mock.getJobWithFreshStats()).thenReturn(completedJob);
+                })) {
+      entityMock
+          .when(() -> Entity.getEntityTimeSeriesRepository(Entity.QUERY_COST_RECORD))
+          .thenReturn(timeSeriesRepository);
+
+      ExecutionResult result = strategy.execute(reindexConfig, context(jobId));
+
+      assertEquals(ExecutionResult.Status.COMPLETED, result.status());
+      DistributedSearchIndexExecutor constructed = executorConstruction.constructed().getFirst();
+      ArgumentCaptor<Set> entityTypesCaptor = ArgumentCaptor.forClass(Set.class);
+      verify(constructed)
+          .createJob(
+              entityTypesCaptor.capture(),
+              any(EventPublisherJob.class),
+              eq("admin"),
+              eq(reindexConfig));
+      assertEquals(Set.of(Entity.QUERY_COST_RECORD), entityTypesCaptor.getValue());
+      verify(indexPromotionHandler).reCreateIndexes(Set.of(Entity.QUERY_COST_RECORD));
+    }
+  }
+
+  @Test
+  @SuppressWarnings({"rawtypes", "unchecked"})
   void executeReturnsFailedResultWhenDistributedExecutorStartupFails() {
     EntityRepository entityRepository = mock(EntityRepository.class);
     EntityDAO entityDao = mock(EntityDAO.class);

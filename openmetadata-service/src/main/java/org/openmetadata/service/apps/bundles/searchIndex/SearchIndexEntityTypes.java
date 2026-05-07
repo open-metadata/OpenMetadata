@@ -17,12 +17,13 @@ import static org.openmetadata.service.Entity.QUERY_COST_RECORD;
 import static org.openmetadata.service.Entity.TEST_CASE_RESOLUTION_STATUS;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 
+import java.util.LinkedHashSet;
 import java.util.Set;
 import org.openmetadata.schema.analytics.ReportData;
 
 public final class SearchIndexEntityTypes {
   public static final String ALL = "all";
-  private static final String QUERY_COST_RESULT = "queryCostResult";
+  public static final String QUERY_COST_RESULT = "queryCostResult";
 
   public static final Set<String> TIME_SERIES_ENTITIES =
       Set.of(
@@ -39,6 +40,17 @@ public final class SearchIndexEntityTypes {
 
   public static String normalizeEntityType(String entityType) {
     return QUERY_COST_RESULT.equals(entityType) ? QUERY_COST_RECORD : entityType;
+  }
+
+  public static Set<String> normalizeEntityTypes(Set<String> entityTypes) {
+    if (entityTypes == null || entityTypes.isEmpty()) {
+      return entityTypes;
+    }
+    Set<String> normalizedEntityTypes = new LinkedHashSet<>();
+    for (String entityType : entityTypes) {
+      normalizedEntityTypes.add(normalizeEntityType(entityType));
+    }
+    return normalizedEntityTypes;
   }
 
   public static boolean isTimeSeriesEntity(String entityType) {
