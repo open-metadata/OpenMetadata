@@ -14,13 +14,9 @@
 package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.Entity.QUERY_COST_RECORD;
-import static org.openmetadata.service.Entity.TEST_CASE_RESOLUTION_STATUS;
-import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -28,7 +24,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
-import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
@@ -36,6 +31,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
+import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
 import org.openmetadata.service.cache.EntityCacheBypass;
 import org.openmetadata.service.exception.SearchIndexException;
@@ -56,26 +52,14 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 public class PartitionWorker {
   private static final long MAX_CURSOR_INITIALIZATION_OFFSET = (long) Integer.MAX_VALUE + 1L;
 
-  /** Time series entity types that need special handling */
-  static final Set<String> TIME_SERIES_ENTITIES =
-      Set.of(
-          ReportData.ReportDataType.ENTITY_REPORT_DATA.value(),
-          ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA.value(),
-          ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA.value(),
-          ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA.value(),
-          ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA.value(),
-          TEST_CASE_RESOLUTION_STATUS,
-          TEST_CASE_RESULT,
-          QUERY_COST_RECORD);
-
   /** Context key for entity type */
   private static final String ENTITY_TYPE_KEY = "entityType";
 
-  /** Context key for recreate index flag */
-  private static final String RECREATE_INDEX = "recreateIndex";
+  /** Context key used by search sinks to write into staged indexes. */
+  private static final String STAGED_WRITE_KEY = "recreateIndex";
 
-  /** Context key for recreate context */
-  private static final String RECREATE_CONTEXT = "recreateContext";
+  /** Context key for staged index context. */
+  private static final String STAGED_CONTEXT_KEY = "recreateContext";
 
   /** Context key for target index */
   private static final String TARGET_INDEX_KEY = "targetIndex";
@@ -92,8 +76,7 @@ public class PartitionWorker {
   private final DistributedSearchIndexCoordinator coordinator;
   private final BulkSink searchIndexSink;
   private final int batchSize;
-  private final ReindexContext recreateContext;
-  private final boolean recreateIndex;
+  private final ReindexContext stagedIndexContext;
   private final AtomicBoolean stopped = new AtomicBoolean(false);
   private final IndexingFailureRecorder failureRecorder;
   private final ReindexingConfiguration reindexConfig;
@@ -102,41 +85,30 @@ public class PartitionWorker {
       DistributedSearchIndexCoordinator coordinator,
       BulkSink searchIndexSink,
       int batchSize,
-      ReindexContext recreateContext,
-      boolean recreateIndex) {
-    this(coordinator, searchIndexSink, batchSize, recreateContext, recreateIndex, null, null);
+      ReindexContext stagedIndexContext) {
+    this(coordinator, searchIndexSink, batchSize, stagedIndexContext, null, null);
   }
 
   public PartitionWorker(
       DistributedSearchIndexCoordinator coordinator,
       BulkSink searchIndexSink,
       int batchSize,
-      ReindexContext recreateContext,
-      boolean recreateIndex,
+      ReindexContext stagedIndexContext,
       IndexingFailureRecorder failureRecorder) {
-    this(
-        coordinator,
-        searchIndexSink,
-        batchSize,
-        recreateContext,
-        recreateIndex,
-        failureRecorder,
-        null);
+    this(coordinator, searchIndexSink, batchSize, stagedIndexContext, failureRecorder, null);
   }
 
   public PartitionWorker(
       DistributedSearchIndexCoordinator coordinator,
       BulkSink searchIndexSink,
       int batchSize,
-      ReindexContext recreateContext,
-      boolean recreateIndex,
+      ReindexContext stagedIndexContext,
       IndexingFailureRecorder failureRecorder,
       ReindexingConfiguration reindexConfig) {
     this.coordinator = coordinator;
     this.searchIndexSink = searchIndexSink;
     this.batchSize = batchSize;
-    this.recreateContext = recreateContext;
-    this.recreateIndex = recreateIndex;
+    this.stagedIndexContext = stagedIndexContext;
     this.failureRecorder = failureRecorder;
     this.reindexConfig = reindexConfig;
   }
@@ -610,14 +582,11 @@ public class PartitionWorker {
   private ResultList<?> readEntitiesKeyset(String entityType, String keysetCursor, int limit)
       throws SearchIndexException {
 
-    // Selective fields, not "*". Asking for "*" runs every registered fieldFetcher in
-    // setFieldsInBulk — including expensive ones like fetchAndSetOwns on Team/User where every
-    // owned entity becomes an Entity.getEntityReferenceById round-trip — and the index class then
-    // strips most of those out via getExcludedFields anyway. Mirror what EntityReader does on the
-    // single-server pipeline (PR #27723) so both paths request the same minimal set.
+    // Selective fields avoid running expensive field fetchers that are stripped out before
+    // indexing.
     List<String> fields = ReindexingUtil.getSearchIndexFields(entityType);
 
-    if (!TIME_SERIES_ENTITIES.contains(entityType)) {
+    if (!SearchIndexEntityTypes.isTimeSeriesEntity(entityType)) {
       PaginatedEntitiesSource source = new PaginatedEntitiesSource(entityType, limit, fields, 0);
       return source.readNextKeyset(keysetCursor);
     } else {
@@ -644,7 +613,7 @@ public class PartitionWorker {
       return null;
     }
     String entityType = partition.getEntityType();
-    if (TIME_SERIES_ENTITIES.contains(entityType)) {
+    if (SearchIndexEntityTypes.isTimeSeriesEntity(entityType)) {
       return RestUtil.encodeCursor(String.valueOf(offset));
     }
     // Fast path: coordinator precomputed boundary cursors for every partition's
@@ -694,7 +663,7 @@ public class PartitionWorker {
       String entityType, ResultList<?> resultList, Map<String, Object> contextData)
       throws Exception {
 
-    if (!TIME_SERIES_ENTITIES.contains(entityType)) {
+    if (!SearchIndexEntityTypes.isTimeSeriesEntity(entityType)) {
       List<EntityInterface> entities = (List<EntityInterface>) resultList.getData();
       searchIndexSink.write(entities, contextData);
     } else {
@@ -714,18 +683,26 @@ public class PartitionWorker {
   private Map<String, Object> createContextData(String entityType, StageStatsTracker statsTracker) {
     Map<String, Object> contextData = new java.util.HashMap<>();
     contextData.put(ENTITY_TYPE_KEY, entityType);
-    contextData.put(RECREATE_INDEX, recreateIndex);
+    contextData.put(STAGED_WRITE_KEY, true);
 
     if (statsTracker != null) {
       contextData.put(BulkSink.STATS_TRACKER_CONTEXT_KEY, statsTracker);
     }
 
-    if (recreateContext != null) {
-      contextData.put(RECREATE_CONTEXT, recreateContext);
-      recreateContext
-          .getStagedIndex(entityType)
-          .ifPresent(index -> contextData.put(TARGET_INDEX_KEY, index));
+    if (stagedIndexContext == null) {
+      throw new IllegalStateException(
+          "Staged index context is required for distributed reindexing");
     }
+
+    String targetIndex =
+        stagedIndexContext
+            .getStagedIndex(entityType)
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "No staged index configured for entity type: " + entityType));
+    contextData.put(STAGED_CONTEXT_KEY, stagedIndexContext);
+    contextData.put(TARGET_INDEX_KEY, targetIndex);
 
     return contextData;
   }

@@ -127,10 +127,10 @@ public class DistributedSearchIndexExecutor {
   private IndexingFailureRecorder failureRecorder;
   private BulkSink searchIndexSink;
 
-  // Per-entity index promotion
+  // Per-entity staged index promotion
   private EntityCompletionTracker entityTracker;
-  private RecreateIndexHandler recreateIndexHandler;
-  private ReindexContext recreateContext;
+  private RecreateIndexHandler indexPromotionHandler;
+  private ReindexContext stagedIndexContext;
 
   // Reader stats tracking (accumulated across all worker threads)
   private final AtomicLong coordinatorReaderSuccess = new AtomicLong(0);
@@ -311,18 +311,18 @@ public class DistributedSearchIndexExecutor {
    * none remain 3. Coordinates with other servers for load balancing
    *
    * @param bulkSink The sink for writing to search index
-   * @param recreateContext Context for index recreation, if applicable
-   * @param recreateIndex Whether indices should be recreated
+   * @param stagedIndexContext Context for staged index writes and promotion
    * @return Execution result with statistics
    */
   public ExecutionResult execute(
-      BulkSink bulkSink,
-      ReindexContext recreateContext,
-      boolean recreateIndex,
-      ReindexingConfiguration reindexConfig) {
+      BulkSink bulkSink, ReindexContext stagedIndexContext, ReindexingConfiguration reindexConfig) {
 
     if (currentJob == null) {
       throw new IllegalStateException("No job to execute - call createJob() or joinJob() first");
+    }
+    if (stagedIndexContext == null || stagedIndexContext.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Staged index context is required for distributed reindexing");
     }
 
     UUID jobId = currentJob.getId();
@@ -406,12 +406,12 @@ public class DistributedSearchIndexExecutor {
     // Stats are tracked per-entityType by StageStatsTracker in PartitionWorker
     // No need for redundant server-level stats persistence
 
-    // Store recreate context for per-entity promotion
-    this.recreateContext = recreateContext;
+    // Store staged index context for per-entity promotion
+    this.stagedIndexContext = stagedIndexContext;
 
     // Initialize entity completion tracker for per-entity index promotion
     this.entityTracker = new EntityCompletionTracker(jobId);
-    initializeEntityTracker(jobId, recreateIndex);
+    initializeEntityTracker(jobId);
     coordinator.setEntityCompletionTracker(entityTracker);
 
     // Start lock refresh thread to prevent lock expiration during long-running jobs
@@ -462,8 +462,7 @@ public class DistributedSearchIndexExecutor {
                   workerId,
                   bulkSink,
                   batchSize,
-                  recreateContext,
-                  recreateIndex,
+                  stagedIndexContext,
                   totalSuccess,
                   totalFailed,
                   reindexConfig);
@@ -491,7 +490,7 @@ public class DistributedSearchIndexExecutor {
       // Final reconciliation pass: catch ALL participant-server completions before
       // the stale-reclaimer is killed. Participant workers may have finished partitions
       // that were never reconciled by the stale-reclaimer's periodic loop.
-      if (entityTracker != null && recreateContext != null) {
+      if (entityTracker != null && stagedIndexContext != null) {
         LOG.info("Running final DB reconciliation for job {}", jobId);
         List<SearchIndexPartition> allPartitions = coordinator.getPartitions(jobId, null);
         entityTracker.reconcileFromDatabase(allPartitions);
@@ -656,8 +655,7 @@ public class DistributedSearchIndexExecutor {
       int workerId,
       BulkSink bulkSink,
       int batchSize,
-      ReindexContext recreateContext,
-      boolean recreateIndex,
+      ReindexContext stagedIndexContext,
       AtomicLong totalSuccess,
       AtomicLong totalFailed,
       ReindexingConfiguration reindexConfig) {
@@ -666,13 +664,7 @@ public class DistributedSearchIndexExecutor {
 
     PartitionWorker worker =
         new PartitionWorker(
-            coordinator,
-            bulkSink,
-            batchSize,
-            recreateContext,
-            recreateIndex,
-            failureRecorder,
-            reindexConfig);
+            coordinator, bulkSink, batchSize, stagedIndexContext, failureRecorder, reindexConfig);
 
     synchronized (activeWorkers) {
       activeWorkers.add(worker);
@@ -1080,7 +1072,7 @@ public class DistributedSearchIndexExecutor {
   /**
    * Initialize the entity completion tracker with partition counts and promotion callback.
    */
-  private void initializeEntityTracker(UUID jobId, boolean recreateIndex) {
+  private void initializeEntityTracker(UUID jobId) {
     // Count partitions per entity
     Map<String, Integer> partitionCountByEntity = new HashMap<>();
     List<SearchIndexPartition> allPartitions = coordinator.getPartitions(jobId, null);
@@ -1099,51 +1091,49 @@ public class DistributedSearchIndexExecutor {
         partitionCountByEntity.size(),
         partitionCountByEntity);
 
-    // Set up per-entity promotion callback if recreating indices
-    if (recreateIndex && recreateContext != null) {
-      this.recreateIndexHandler = Entity.getSearchRepository().createReindexHandler();
-      // Wire job configuration so applyLiveServingSettings can revert bulk-build overrides
-      // (refresh=-1, replicas=0, async translog) before the per-entity alias swap.
-      if (recreateIndexHandler instanceof DefaultRecreateHandler defaultHandler
-          && currentJob != null
-          && currentJob.getJobConfiguration() != null) {
-        defaultHandler.withJobData(currentJob.getJobConfiguration());
-      }
-      entityTracker.setOnEntityComplete(this::promoteEntityIndex);
-      LOG.info(
-          "Per-entity promotion callback SET for job {} (recreateIndex={}, recreateContext entities={})",
-          jobId,
-          recreateIndex,
-          recreateContext.getEntities());
-    } else {
-      LOG.info(
-          "Per-entity promotion callback NOT set for job {} (recreateIndex={}, recreateContext={})",
-          jobId,
-          recreateIndex,
-          recreateContext != null ? "present" : "null");
+    if (partitionCountByEntity.isEmpty()) {
+      LOG.info("No partitions found for job {}; finalizer will promote staged indexes", jobId);
+      return;
     }
+
+    if (stagedIndexContext == null || stagedIndexContext.isEmpty()) {
+      throw new IllegalStateException("Staged index context is required for entity promotion");
+    }
+    indexPromotionHandler = Entity.getSearchRepository().createReindexHandler();
+    // Wire job configuration so applyLiveServingSettings can revert bulk-build overrides
+    // (refresh=-1, replicas=0, async translog) before the per-entity alias swap.
+    if (indexPromotionHandler instanceof DefaultRecreateHandler defaultHandler
+        && currentJob != null
+        && currentJob.getJobConfiguration() != null) {
+      defaultHandler.withJobData(currentJob.getJobConfiguration());
+    }
+    entityTracker.setOnEntityComplete(this::promoteEntityIndex);
+    LOG.info(
+        "Per-entity promotion callback set for job {} (staged index entities={})",
+        jobId,
+        stagedIndexContext.getEntities());
   }
 
   /**
    * Promote a single entity's index when all its partitions complete.
    */
   private void promoteEntityIndex(String entityType, boolean success) {
-    if (recreateIndexHandler == null || recreateContext == null) {
+    if (indexPromotionHandler == null || stagedIndexContext == null) {
       LOG.warn(
-          "Cannot promote index for entity '{}' - no recreateIndexHandler or recreateContext",
+          "Cannot promote index for entity '{}' - no index promotion handler or staged context",
           entityType);
       return;
     }
 
-    Optional<String> stagedIndexOpt = recreateContext.getStagedIndex(entityType);
+    Optional<String> stagedIndexOpt = stagedIndexContext.getStagedIndex(entityType);
     if (stagedIndexOpt.isEmpty()) {
       LOG.debug("No staged index for entity '{}', skipping promotion", entityType);
       return;
     }
 
     try {
-      String canonicalIndex = recreateContext.getCanonicalIndex(entityType).orElse(null);
-      String originalIndex = recreateContext.getOriginalIndex(entityType).orElse(null);
+      String canonicalIndex = stagedIndexContext.getCanonicalIndex(entityType).orElse(null);
+      String originalIndex = stagedIndexContext.getOriginalIndex(entityType).orElse(null);
 
       LOG.debug(
           "Promoting entity '{}': success={}, canonicalIndex={}, stagedIndex={}",
@@ -1159,17 +1149,17 @@ public class DistributedSearchIndexExecutor {
               .canonicalIndex(canonicalIndex)
               .activeIndex(originalIndex)
               .stagedIndex(stagedIndexOpt.get())
-              .canonicalAliases(recreateContext.getCanonicalAlias(entityType).orElse(null))
-              .existingAliases(recreateContext.getExistingAliases(entityType))
+              .canonicalAliases(stagedIndexContext.getCanonicalAlias(entityType).orElse(null))
+              .existingAliases(stagedIndexContext.getExistingAliases(entityType))
               .parentAliases(
-                  new HashSet<>(listOrEmpty(recreateContext.getParentAliases(entityType))))
+                  new HashSet<>(listOrEmpty(stagedIndexContext.getParentAliases(entityType))))
               .build();
 
-      if (recreateIndexHandler instanceof DefaultRecreateHandler defaultHandler) {
+      if (indexPromotionHandler instanceof DefaultRecreateHandler defaultHandler) {
         LOG.info("Promoting index for entity '{}' (success={})", entityType, success);
         defaultHandler.promoteEntityIndex(entityContext, success);
       } else {
-        recreateIndexHandler.finalizeReindex(entityContext, success);
+        indexPromotionHandler.finalizeReindex(entityContext, success);
       }
     } catch (Exception e) {
       LOG.error("Failed to promote index for entity '{}'", entityType, e);

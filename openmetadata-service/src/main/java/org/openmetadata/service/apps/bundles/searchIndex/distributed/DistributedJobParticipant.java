@@ -28,6 +28,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder
 import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -341,20 +342,16 @@ public class DistributedJobParticipant implements Managed {
               ? job.getJobConfiguration().getBatchSize()
               : 100;
 
-      // Check if this job is doing index recreation
-      boolean recreateIndex = Boolean.TRUE.equals(job.getJobConfiguration().getRecreateIndex());
-      org.openmetadata.service.search.ReindexContext recreateContext = null;
-
-      if (recreateIndex && job.getStagedIndexMapping() != null) {
-        // Reconstruct context from job's staged index mapping
-        recreateContext =
-            org.openmetadata.service.search.ReindexContext.fromStagedIndexMapping(
-                job.getStagedIndexMapping());
-        LOG.info(
-            "Participant using staged index mapping from job {}: {}",
-            job.getId(),
-            job.getStagedIndexMapping());
+      if (job.getStagedIndexMapping() == null || job.getStagedIndexMapping().isEmpty()) {
+        throw new IllegalStateException(
+            "Distributed reindex job has no staged index mapping: " + job.getId());
       }
+      ReindexContext stagedIndexContext =
+          ReindexContext.fromStagedIndexMapping(job.getStagedIndexMapping());
+      LOG.info(
+          "Participant using staged index mapping from job {}: {}",
+          job.getId(),
+          job.getStagedIndexMapping());
 
       // Set up failure callback on bulk sink to record sink failures
       final IndexingFailureRecorder recorder = failureRecorder;
@@ -369,10 +366,9 @@ public class DistributedJobParticipant implements Managed {
             }
           });
 
-      // Create partition worker with recreate context and failure recorder
       PartitionWorker worker =
           new PartitionWorker(
-              coordinator, bulkSink, batchSize, recreateContext, recreateIndex, failureRecorder);
+              coordinator, bulkSink, batchSize, stagedIndexContext, failureRecorder);
 
       int partitionsProcessed = 0;
       long totalReaderSuccess = 0;

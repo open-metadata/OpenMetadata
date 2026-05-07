@@ -237,6 +237,7 @@ class DistributedJobParticipantTest {
             .id(jobId)
             .status(IndexJobStatus.RUNNING)
             .jobConfiguration(config)
+            .stagedIndexMapping(Map.of("table", "table_staged"))
             .totalRecords(100)
             .build();
 
@@ -245,6 +246,7 @@ class DistributedJobParticipantTest {
             .id(jobId)
             .status(IndexJobStatus.COMPLETED)
             .jobConfiguration(config)
+            .stagedIndexMapping(Map.of("table", "table_staged"))
             .totalRecords(100)
             .processedRecords(100)
             .successRecords(100)
@@ -329,6 +331,7 @@ class DistributedJobParticipantTest {
             .id(jobId)
             .status(IndexJobStatus.RUNNING)
             .jobConfiguration(config)
+            .stagedIndexMapping(Map.of("table", "table_staged"))
             .totalRecords(100)
             .build();
 
@@ -401,6 +404,7 @@ class DistributedJobParticipantTest {
             .id(jobId)
             .status(IndexJobStatus.RUNNING)
             .jobConfiguration(config)
+            .stagedIndexMapping(Map.of("table", "table_staged"))
             .totalRecords(100)
             .build();
 
@@ -409,6 +413,7 @@ class DistributedJobParticipantTest {
             .id(jobId)
             .status(IndexJobStatus.COMPLETED)
             .jobConfiguration(config)
+            .stagedIndexMapping(Map.of("table", "table_staged"))
             .totalRecords(100)
             .processedRecords(100)
             .successRecords(100)
@@ -498,6 +503,7 @@ class DistributedJobParticipantTest {
             .id(jobId)
             .status(IndexJobStatus.RUNNING)
             .jobConfiguration(config)
+            .stagedIndexMapping(Map.of("table", "table_staged"))
             .totalRecords(100)
             .build();
 
@@ -506,6 +512,7 @@ class DistributedJobParticipantTest {
             .id(jobId)
             .status(IndexJobStatus.COMPLETED)
             .jobConfiguration(config)
+            .stagedIndexMapping(Map.of("table", "table_staged"))
             .totalRecords(100)
             .processedRecords(100)
             .successRecords(100)
@@ -668,6 +675,7 @@ class DistributedJobParticipantTest {
             .id(jobId)
             .status(IndexJobStatus.RUNNING)
             .jobConfiguration(config)
+            .stagedIndexMapping(Map.of("table", "table_staged"))
             .build();
 
     SearchIndexPartition pendingPartition =
@@ -847,7 +855,6 @@ class DistributedJobParticipantTest {
     config.setBatchSize(50);
     config.setMaxConcurrentRequests(8);
     config.setPayLoadSize(4096L);
-    config.setRecreateIndex(true);
 
     SearchIndexJob runningJob =
         SearchIndexJob.builder()
@@ -882,7 +889,7 @@ class DistributedJobParticipantTest {
     CollectionDAO.AppExtensionTimeSeries appExtensionDao =
         mock(CollectionDAO.AppExtensionTimeSeries.class);
     AtomicReference<BulkSink.FailureCallback> callbackRef = new AtomicReference<>();
-    AtomicReference<Object> recreateContextRef = new AtomicReference<>();
+    AtomicReference<Object> stagedIndexContextRef = new AtomicReference<>();
     SuccessContext successContext = new SuccessContext().withAdditionalProperty("recovered", "yes");
 
     when(appRepository.getDao()).thenReturn(appDao);
@@ -928,7 +935,7 @@ class DistributedJobParticipantTest {
             mockConstruction(
                 PartitionWorker.class,
                 (mock, context) -> {
-                  recreateContextRef.set(context.arguments().get(3));
+                  stagedIndexContextRef.set(context.arguments().get(3));
                   when(mock.processPartition(partition))
                       .thenReturn(new PartitionWorker.PartitionResult(4, 1, false, 2, 3));
                 });
@@ -947,7 +954,7 @@ class DistributedJobParticipantTest {
           "processJobPartitions", new Class<?>[] {SearchIndexJob.class}, runningJob);
 
       assertNotNull(callbackRef.get());
-      assertNotNull(recreateContextRef.get());
+      assertNotNull(stagedIndexContextRef.get());
       callbackRef
           .get()
           .onFailure(
@@ -1017,6 +1024,7 @@ class DistributedJobParticipantTest {
             .id(jobId)
             .status(IndexJobStatus.RUNNING)
             .jobConfiguration(config)
+            .stagedIndexMapping(Map.of("table", "table_staged"))
             .build();
     SearchIndexPartition pendingPartition =
         SearchIndexPartition.builder()
