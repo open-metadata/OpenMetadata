@@ -169,7 +169,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
         children: (col: { id: string; label: string }) => React.ReactNode;
       }) => (
         <thead>
-          <tr>{columns?.map((col) => <th key={col.id}>{children(col)}</th>)}</tr>
+          <tr>
+            {columns?.map((col) => (
+              <th key={col.id}>{children(col)}</th>
+            ))}
+          </tr>
         </thead>
       ),
       Head: ({ label }: { label?: string }) => <span>{label}</span>,
@@ -189,13 +193,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
             : items.map((item) => children(item))}
         </tbody>
       ),
-      Row: ({
-        children,
-        id,
-      }: {
-        children?: React.ReactNode;
-        id?: string;
-      }) => <tr data-rowid={id}>{children}</tr>,
+      Row: ({ children, id }: { children?: React.ReactNode; id?: string }) => (
+        <tr data-rowid={id}>{children}</tr>
+      ),
       Cell: ({ children }: { children?: React.ReactNode }) => (
         <td>{children}</td>
       ),

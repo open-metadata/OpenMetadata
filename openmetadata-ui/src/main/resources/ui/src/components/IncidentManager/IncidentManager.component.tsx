@@ -620,8 +620,7 @@ const IncidentManager = ({
       '.'
     );
     const hasPermission = testCasePermissions.find(
-      (item) =>
-        item.fullyQualifiedName === ref?.fullyQualifiedName
+      (item) => item.fullyQualifiedName === ref?.fullyQualifiedName
     );
 
     return (
