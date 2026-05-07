@@ -197,27 +197,33 @@ class TestBaseWorkflow(TestCase):
 
 class TestWorkflowExecuteTeardown:
     """
-    Validates the execute() teardown contract: status must be printed before
-    stop() tears down resources (so final records are flushed while the
-    metadata client and steps are alive), and stop() must still run when
-    print_status() raises so we never leak the timer thread or OM client.
+    Validates the execute() teardown contract:
+      1. close_steps() flushes step buffers before print_status() so the
+         printed counts include records that sinks only commit on close().
+      2. print_status() runs before stop() so the streamable logging handler
+         (torn down inside stop()) is still alive when the final summary is
+         emitted.
+      3. stop() must still run when print_status() raises so we never leak
+         the timer thread, OM client, or any step resources.
     """
 
-    def test_print_status_runs_before_stop(self):
+    def test_close_steps_runs_before_print_status_and_stop(self):
         workflow = SimpleWorkflow(config=config)
         manager = MagicMock()
 
         with (
+            patch.object(workflow, "close_steps", wraps=workflow.close_steps) as mock_close_steps,
             patch.object(workflow, "print_status", wraps=workflow.print_status) as mock_print_status,
             patch.object(workflow, "stop", wraps=workflow.stop) as mock_stop,
         ):
+            manager.attach_mock(mock_close_steps, "close_steps")
             manager.attach_mock(mock_print_status, "print_status")
             manager.attach_mock(mock_stop, "stop")
 
             workflow.execute()
 
         ordered_names = [mock_call[0] for mock_call in manager.mock_calls]
-        assert ordered_names == ["print_status", "stop"]
+        assert ordered_names == ["close_steps", "print_status", "stop"]
 
     def test_stop_still_runs_when_print_status_raises(self):
         workflow = SimpleWorkflow(config=config)
@@ -234,4 +240,21 @@ class TestWorkflowExecuteTeardown:
                 workflow.execute()
 
             mock_print_status.assert_called_once()
+            mock_stop.assert_called_once()
+
+    def test_stop_still_runs_when_close_steps_raises(self):
+        workflow = SimpleWorkflow(config=config)
+
+        with (
+            patch.object(
+                workflow,
+                "close_steps",
+                side_effect=RuntimeError("flush-boom"),
+            ) as mock_close_steps,
+            patch.object(workflow, "stop", wraps=workflow.stop) as mock_stop,
+        ):
+            with pytest.raises(RuntimeError, match="flush-boom"):
+                workflow.execute()
+
+            mock_close_steps.assert_called_once()
             mock_stop.assert_called_once()

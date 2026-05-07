@@ -143,6 +143,23 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         return self._ingestion_pipeline
 
+    def close_steps(self) -> None:
+        """
+        Close workflow steps so that any buffered records are flushed and
+        reflected in the step status before it is printed.
+
+        Sinks like the metadata REST sink batch entities and only flush them
+        in `close()`, where they are also added to the status counters. This
+        must run before `print_status()` so the printed counts include those
+        buffered records, while remaining separate from `stop()` so the
+        streamable logging handler stays alive during status printing.
+        """
+        for step in self.workflow_steps():
+            try:
+                step.close()
+            except Exception as exc:
+                logger.warning(f"Error trying to close the step {step} due to [{exc}]")
+
     def stop(self) -> None:
         """
         Main stopping logic
@@ -159,12 +176,6 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         OperationMetricsState().reset()
 
         self.metadata.close()
-
-        for step in self.workflow_steps():
-            try:
-                step.close()
-            except Exception as exc:
-                logger.warning(f"Error trying to close the step {step} due to [{exc}]")
 
     @property
     def timer(self) -> RepeatedTimer:
@@ -264,6 +275,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             ingestion_status = self.build_ingestion_status()
             self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
             try:
+                self.close_steps()
                 self.print_status()
             finally:
                 self.stop()
