@@ -13,6 +13,7 @@ package org.openmetadata.service.search.vector.client;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -264,10 +265,7 @@ class GoogleEmbeddingClientTest {
   @Test
   void testBlankModelIdThrows() {
     Google googleCfg =
-        new Google()
-            .withApiKey("test-key")
-            .withEmbeddingModelId("   ")
-            .withEmbeddingDimension(768);
+        new Google().withApiKey("test-key").withEmbeddingModelId("   ").withEmbeddingDimension(768);
 
     NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
     nlsCfg.setGoogle(googleCfg);
@@ -326,6 +324,89 @@ class GoogleEmbeddingClientTest {
     GoogleEmbeddingClient client = new GoogleEmbeddingClient(config);
 
     assertThrows(IllegalArgumentException.class, () -> client.embed("   "));
+  }
+
+  @Test
+  void testNon200StatusThrowsWithExtractedErrorMessage() {
+    String errorBody =
+        "{\"error\":{\"code\":429,\"message\":\"Quota exceeded\",\"status\":\"RESOURCE_EXHAUSTED\"}}";
+    StubHttpClient httpClient = new StubHttpClient(errorBody, 429);
+
+    GoogleEmbeddingClient client =
+        new GoogleEmbeddingClient(
+            httpClient,
+            "test-key",
+            "text-embedding-004",
+            768,
+            "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
+
+    RuntimeException ex = assertThrows(RuntimeException.class, () -> client.embed("hello"));
+    assertTrue(ex.getMessage().contains("429"));
+    assertTrue(ex.getMessage().contains("Quota exceeded"));
+  }
+
+  @Test
+  void testNon200StatusWithNonJsonBodyEchoesBody() {
+    StubHttpClient httpClient = new StubHttpClient("Service Unavailable", 503);
+
+    GoogleEmbeddingClient client =
+        new GoogleEmbeddingClient(
+            httpClient,
+            "test-key",
+            "text-embedding-004",
+            768,
+            "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
+
+    RuntimeException ex = assertThrows(RuntimeException.class, () -> client.embed("hello"));
+    assertTrue(ex.getMessage().contains("503"));
+    assertTrue(ex.getMessage().contains("Service Unavailable"));
+  }
+
+  @Test
+  void testMissingEmbeddingObjectThrows() {
+    StubHttpClient httpClient = new StubHttpClient("{\"foo\":\"bar\"}", 200);
+
+    GoogleEmbeddingClient client =
+        new GoogleEmbeddingClient(
+            httpClient,
+            "test-key",
+            "text-embedding-004",
+            768,
+            "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
+
+    RuntimeException ex = assertThrows(RuntimeException.class, () -> client.embed("hello"));
+    assertTrue(ex.getMessage().contains("no embedding object"));
+  }
+
+  @Test
+  void testMissingValuesArrayThrows() {
+    StubHttpClient httpClient = new StubHttpClient("{\"embedding\":{}}", 200);
+
+    GoogleEmbeddingClient client =
+        new GoogleEmbeddingClient(
+            httpClient,
+            "test-key",
+            "text-embedding-004",
+            768,
+            "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
+
+    RuntimeException ex = assertThrows(RuntimeException.class, () -> client.embed("hello"));
+    assertTrue(ex.getMessage().contains("no values array"));
+  }
+
+  @Test
+  void testEmptyValuesArrayThrows() {
+    StubHttpClient httpClient = new StubHttpClient("{\"embedding\":{\"values\":[]}}", 200);
+
+    GoogleEmbeddingClient client =
+        new GoogleEmbeddingClient(
+            httpClient,
+            "test-key",
+            "text-embedding-004",
+            768,
+            "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
+
+    assertThrows(RuntimeException.class, () -> client.embed("hello"));
   }
 
   private ElasticSearchConfiguration buildConfig(String apiKey, String modelId, int dimension) {
