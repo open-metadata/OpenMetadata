@@ -251,13 +251,6 @@ public class S3LogStorageTest {
   }
 
   @Test
-  void testGetLogOutputStreamThrowsUnsupportedOperation() {
-    assertThrows(
-        UnsupportedOperationException.class,
-        () -> s3LogStorage.getLogOutputStream(testPipelineFQN, testRunId));
-  }
-
-  @Test
   void testGetLogs() throws IOException {
     String logContent = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n";
 

@@ -23,7 +23,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -291,12 +290,6 @@ public class S3LogStorage implements LogStorageInterface {
           "AWS credentials not configured for S3 log storage. Either provide "
               + "awsAccessKeyId/awsSecretAccessKey or set enabled=true to use IAM authentication.");
     }
-  }
-
-  @Override
-  public OutputStream getLogOutputStream(String pipelineFQN, UUID runId) {
-    throw new UnsupportedOperationException(
-        "Streaming output is no longer supported; use appendLogs.");
   }
 
   @Override
