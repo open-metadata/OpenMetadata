@@ -198,32 +198,52 @@ class TestBaseWorkflow(TestCase):
 class TestWorkflowExecuteTeardown:
     """
     Validates the execute() teardown contract:
-      1. close_steps() flushes step buffers before print_status() so the
-         printed counts include records that sinks only commit on close().
+      1. close_steps() flushes step buffers before any consumer reads from the
+         step statuses. Both the persisted pipeline status (built from
+         Summary.from_step) and the printed summary share those same step
+         status objects, so the flush must happen before either reads them.
       2. print_status() runs before stop() so the streamable logging handler
          (torn down inside stop()) is still alive when the final summary is
          emitted.
-      3. stop() must still run when print_status() raises so we never leak
-         the timer thread, OM client, or any step resources.
+      3. stop() must still run when an inner step raises so we never leak the
+         timer thread, OM client, or any step resources.
     """
 
-    def test_close_steps_runs_before_print_status_and_stop(self):
+    def test_close_steps_runs_before_status_publishing_and_stop(self):
         workflow = SimpleWorkflow(config=config)
         manager = MagicMock()
 
         with (
             patch.object(workflow, "close_steps", wraps=workflow.close_steps) as mock_close_steps,
+            patch.object(
+                workflow,
+                "build_ingestion_status",
+                wraps=workflow.build_ingestion_status,
+            ) as mock_build_ingestion_status,
+            patch.object(
+                workflow,
+                "set_ingestion_pipeline_status",
+                wraps=workflow.set_ingestion_pipeline_status,
+            ) as mock_set_ingestion_pipeline_status,
             patch.object(workflow, "print_status", wraps=workflow.print_status) as mock_print_status,
             patch.object(workflow, "stop", wraps=workflow.stop) as mock_stop,
         ):
             manager.attach_mock(mock_close_steps, "close_steps")
+            manager.attach_mock(mock_build_ingestion_status, "build_ingestion_status")
+            manager.attach_mock(mock_set_ingestion_pipeline_status, "set_ingestion_pipeline_status")
             manager.attach_mock(mock_print_status, "print_status")
             manager.attach_mock(mock_stop, "stop")
 
             workflow.execute()
 
         ordered_names = [mock_call[0] for mock_call in manager.mock_calls]
-        assert ordered_names == ["close_steps", "print_status", "stop"]
+        assert ordered_names == [
+            "close_steps",
+            "build_ingestion_status",
+            "set_ingestion_pipeline_status",
+            "print_status",
+            "stop",
+        ]
 
     def test_stop_still_runs_when_print_status_raises(self):
         workflow = SimpleWorkflow(config=config)

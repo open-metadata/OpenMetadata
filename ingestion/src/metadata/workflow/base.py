@@ -272,10 +272,14 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         # Force resource closing. Required for killing the threading
         finally:
-            ingestion_status = self.build_ingestion_status()
-            self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
             try:
+                # Flush sink buffers first so the step statuses include records
+                # that some sinks only commit in close(). Both the persisted
+                # pipeline status (build_ingestion_status -> Summary.from_step)
+                # and the printed summary read from those same step statuses.
                 self.close_steps()
+                ingestion_status = self.build_ingestion_status()
+                self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
                 self.print_status()
             finally:
                 self.stop()
