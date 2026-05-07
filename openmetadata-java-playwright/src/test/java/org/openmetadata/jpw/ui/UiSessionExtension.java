@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolver;
 import org.openmetadata.jpw.auth.AuthSession;
+import org.openmetadata.jpw.auth.NoPreloadAuth;
 import org.openmetadata.jpw.server.ServerHandle;
 import org.openmetadata.jpw.util.UiTestServer;
 import org.slf4j.Logger;
@@ -48,7 +49,9 @@ public final class UiSessionExtension
   public void beforeEach(final ExtensionContext extensionContext) {
     final ServerHandle server = UiTestServer.get();
     final BrowserContext context = SessionBrowser.get().newContext(buildContextOptions());
-    AuthSession.backend().injectIntoBrowser(context, AuthSession.current());
+    if (!hasNoPreloadAuth(extensionContext)) {
+      AuthSession.backend().injectIntoBrowser(context, AuthSession.current());
+    }
     final TraceRecorder recorder = TraceRecorder.start(context);
     final UiSession session = new UiSession(context, server);
     final ExtensionContext.Store store = extensionContext.getStore(NAMESPACE);
@@ -109,6 +112,13 @@ public final class UiSessionExtension
       options.setRecordVideoDir(VIDEO_DIR);
     }
     return options;
+  }
+
+  private static boolean hasNoPreloadAuth(final ExtensionContext extensionContext) {
+    return extensionContext
+        .getTestMethod()
+        .map(method -> method.isAnnotationPresent(NoPreloadAuth.class))
+        .orElse(false);
   }
 
   private static boolean isVideoEnabled() {
