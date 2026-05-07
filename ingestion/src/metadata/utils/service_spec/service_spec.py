@@ -131,7 +131,7 @@ def import_source_class(service_type: ServiceType, source_type: str, from_: str 
     types, the class path is resolved from the source ``ServiceSpec`` via the
     corresponding ``*_source_class`` field.
     """
-    base_source_type, sep, source_class_type = source_type.rpartition(TYPE_SEPARATOR)
+    _, sep, source_class_type = source_type.rpartition(TYPE_SEPARATOR)
     if not sep:
         source_class_type = source_type
     if source_class_type in ["usage", "lineage"]:
