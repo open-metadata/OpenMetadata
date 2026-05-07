@@ -550,20 +550,40 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
   let table: TableClass;
   let taskId: string | undefined;
 
-  test.beforeAll('Create admin user, other user and table', async ({ browser }) => {
-    adminUser = new UserClass();
-    otherUser = new UserClass();
-    table = new TableClass();
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await otherUser.create(apiContext);
-      await table.create(apiContext);
-    } finally {
-      await afterAction();
+  test.afterAll(
+    'Delete task, table, admin user and other user',
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      try {
+        if (taskId) {
+          await apiContext.delete(`/api/v1/tasks/${taskId}`);
+        }
+        await table.delete(apiContext);
+        await adminUser.delete(apiContext);
+        await otherUser.delete(apiContext);
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
+
+  test.beforeAll(
+    'Create admin user, other user and table',
+    async ({ browser }) => {
+      adminUser = new UserClass();
+      otherUser = new UserClass();
+      table = new TableClass();
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      try {
+        await adminUser.create(apiContext);
+        await adminUser.setAdminRole(apiContext);
+        await otherUser.create(apiContext);
+        await table.create(apiContext);
+      } finally {
+        await afterAction();
+      }
+    }
+  );
 
   test('clicking task notification while on entity task tab refreshes the task list', async ({
     page,
