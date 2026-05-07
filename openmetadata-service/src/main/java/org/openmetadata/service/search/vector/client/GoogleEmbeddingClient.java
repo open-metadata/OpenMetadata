@@ -186,7 +186,6 @@ public final class GoogleEmbeddingClient extends EmbeddingClient {
         return error.get("message").asText();
       }
     } catch (Exception ignored) {
-      // fall through to raw body
     }
     return responseBody;
   }

@@ -309,6 +309,42 @@ class GoogleEmbeddingClientTest {
   }
 
   @Test
+  void testNullDimensionThrows() {
+    Google googleCfg =
+        new Google().withApiKey("test-key").withEmbeddingModelId("text-embedding-004");
+    googleCfg.setEmbeddingDimension(null);
+
+    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
+    nlsCfg.setGoogle(googleCfg);
+
+    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
+    config.setNaturalLanguageSearch(nlsCfg);
+
+    assertThrows(IllegalArgumentException.class, () -> new GoogleEmbeddingClient(config));
+  }
+
+  @Test
+  void testCustomEndpointConstruction() {
+    Google googleCfg =
+        new Google()
+            .withApiKey("test-key")
+            .withEmbeddingModelId("text-embedding-004")
+            .withEmbeddingDimension(768)
+            .withEndpoint("https://proxy.example.com/v1/embed/");
+
+    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
+    nlsCfg.setGoogle(googleCfg);
+
+    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
+    config.setNaturalLanguageSearch(nlsCfg);
+
+    GoogleEmbeddingClient client = new GoogleEmbeddingClient(config);
+    assertNotNull(client);
+    assertEquals("text-embedding-004", client.getModelId());
+    assertEquals(768, client.getDimension());
+  }
+
+  @Test
   void testNullTextThrows() {
     ElasticSearchConfiguration config = buildConfig("test-key", "text-embedding-004", 768);
     GoogleEmbeddingClient client = new GoogleEmbeddingClient(config);
