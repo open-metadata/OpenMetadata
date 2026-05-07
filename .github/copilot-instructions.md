@@ -448,8 +448,8 @@ yarn pre-commit       # Run precommit checks (lint-staged): license headers, i18
 
 ### Python
 ```bash
-make py_format        # Format with black, isort, pycln
-make lint             # Run pylint
+make py_format        # Apply ruff lint-fix + format
+make py_format_check  # Verify lint + format (matches CI; catches non-auto-fixable issues)
 make static-checks    # Run type checking with basedpyright
 ```
 

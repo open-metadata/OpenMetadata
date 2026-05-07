@@ -12,10 +12,11 @@
 """
 Source connection handler
 """
-import traceback
-from typing import Any, Dict, Optional, Union
 
-import tableauserverclient as TSC
+import traceback
+from typing import Any, Dict, Optional, Union  # noqa: UP035
+
+import tableauserverclient as TSC  # noqa: N812
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -59,14 +60,12 @@ def get_connection(connection: TableauConnection) -> TableauClient:
         )
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise SourceConnectionException(
-            f"Unknown error connecting with {connection}: {exc}."
-        )
+        raise SourceConnectionException(f"Unknown error connecting with {connection}: {exc}.")  # noqa: B904
 
 
 def set_verify_ssl(
     connection: TableauConnection,
-) -> tuple[Union[bool, str], Optional[SSLManager]]:
+) -> tuple[Union[bool, str], Optional[SSLManager]]:  # noqa: UP007, UP045
     """
     Set verify ssl based on connection configuration
     ref: https://tableau.github.io/server-client-python/docs/sign-in-out#handling-ssl-certificates-for-tableau-server
@@ -96,13 +95,12 @@ def set_verify_ssl(
         # If no CA certificate is provided, use default verification
         if ssl_manager.ca_file_path:
             return ssl_manager.ca_file_path, ssl_manager
-        else:
+        else:  # noqa: RET505
             # If no CA certificate is provided but SSL is enabled, use default verification
             return True, ssl_manager
 
     raise ValueError(
-        f"Unsupported verifySSL value: {connection.verifySSL.value}. "
-        "Expected one of ['no-ssl', 'ignore', 'validate']."
+        f"Unsupported verifySSL value: {connection.verifySSL.value}. Expected one of ['no-ssl', 'ignore', 'validate']."
     )
 
 
@@ -110,8 +108,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: TableauClient,
     service_connection: TableauConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -137,7 +135,7 @@ def test_connection(
     )
 
 
-def build_server_config(connection: TableauConnection) -> Dict[str, Dict[str, Any]]:
+def build_server_config(connection: TableauConnection) -> Dict[str, Dict[str, Any]]:  # noqa: UP006
     """
     Build client configuration
     Args:
@@ -159,6 +157,6 @@ def build_server_config(connection: TableauConnection) -> Dict[str, Dict[str, An
             site_id=connection.siteName if connection.siteName else "",
         )
     else:
-        raise ValueError("Unsupported authentication type")
+        raise ValueError("Unsupported authentication type")  # noqa: TRY004
 
     return tableau_auth

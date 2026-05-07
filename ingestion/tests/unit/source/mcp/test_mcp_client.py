@@ -121,7 +121,8 @@ class TestHttpTransport:
 
     def test_connect_sets_headers(self):
         transport = HttpTransport(
-            url="http://localhost:8080", api_key="test-api-key-00000"  # NOSONAR
+            url="http://localhost:8080",
+            api_key="test-api-key-00000",  # NOSONAR
         )
         transport.connect()
         assert "Authorization" in transport.session.headers
@@ -174,8 +175,8 @@ class TestHttpTransport:
 
         with patch("metadata.ingestion.source.mcp.client.logger") as mock_logger:
             transport.send_notification("notifications/initialized", {})
-            mock_logger.warning.assert_called_once()
-            assert "server down" in str(mock_logger.warning.call_args)
+            mock_logger.error.assert_called_once()
+            assert "server down" in str(mock_logger.error.call_args)
 
 
 class TestMcpClient:
@@ -357,9 +358,7 @@ class TestDiscoverServersFromConfigFiles:
         assert servers[0].command == "cmd1"
 
     def test_discover_with_nonexistent_files(self):
-        servers = discover_servers_from_config_files(
-            ["/nonexistent1.json", "/nonexistent2.json"]
-        )
+        servers = discover_servers_from_config_files(["/nonexistent1.json", "/nonexistent2.json"])
         assert servers == []
 
     def test_discover_empty_list(self):

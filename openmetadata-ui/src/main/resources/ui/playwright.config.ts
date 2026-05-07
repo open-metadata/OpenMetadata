@@ -94,7 +94,7 @@ export default defineConfig({
     },
     {
       name: 'sso-auth',
-      testMatch: '**/SSOLogin.spec.ts',
+      testMatch: ['**/SSOLogin.spec.ts', '**/SSORenewal.spec.ts'],
       use: { ...devices['Desktop Chrome'] },
       fullyParallel: false,
       workers: 1,

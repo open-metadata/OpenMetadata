@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { ADMONITION_TYPES } from './BlockEditor.constants';
+
 export const UrlEntityCharRegEx = /[#.%;?/\\]/g;
 export const EMAIL_REG_EX = /^\S+@\S+\.\S+$/;
 
@@ -75,3 +77,8 @@ export const IMAGE_URL_PATTERN =
   /^(https?:\/\/.+|\/[^\s]+|data:image\/.+)|^[\w\-.]+\.(png|jpg|jpeg|gif|svg|webp|bmp|ico)$/i;
 
 export const SECTION_BLOCK_REGEX = /\$\$section\n([\s\S]*?)\n\$\$/g;
+
+export const ADMONITION_BLOCK_REGEX = new RegExp(
+  `^\\$\\$(${ADMONITION_TYPES.join('|')})\\n([\\s\\S]*?)\\n\\$\\$`,
+  'gm'
+);

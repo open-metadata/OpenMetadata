@@ -14,8 +14,9 @@ Parser for SSRS RDL (Report Definition Language) XML documents.
 RDL namespaces differ across SSRS versions (2008/2010/2016+). Traversal is
 namespace-agnostic: we compare element local names.
 """
+
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple  # noqa: UP035
 from xml.etree import ElementTree as ET
 
 SERVER_KEYS = {"data source", "server", "address", "addr", "network address"}
@@ -26,33 +27,33 @@ FORBIDDEN_XML_TOKENS = (b"<!doctype", b"<!entity")
 @dataclass
 class SsrsField:
     name: str
-    data_field: Optional[str] = None
+    data_field: Optional[str] = None  # noqa: UP045
 
 
 @dataclass
 class SsrsDataSource:
     name: str
-    data_provider: Optional[str] = None
-    connect_string: Optional[str] = None
-    server: Optional[str] = None
-    database: Optional[str] = None
-    shared_reference: Optional[str] = None
+    data_provider: Optional[str] = None  # noqa: UP045
+    connect_string: Optional[str] = None  # noqa: UP045
+    server: Optional[str] = None  # noqa: UP045
+    database: Optional[str] = None  # noqa: UP045
+    shared_reference: Optional[str] = None  # noqa: UP045
 
 
 @dataclass
 class SsrsDataSet:
     name: str
-    data_source_name: Optional[str] = None
-    command_type: Optional[str] = None
-    command_text: Optional[str] = None
-    fields: List[SsrsField] = field(default_factory=list)
-    shared_reference: Optional[str] = None
+    data_source_name: Optional[str] = None  # noqa: UP045
+    command_type: Optional[str] = None  # noqa: UP045
+    command_text: Optional[str] = None  # noqa: UP045
+    fields: List[SsrsField] = field(default_factory=list)  # noqa: UP006
+    shared_reference: Optional[str] = None  # noqa: UP045
 
 
 @dataclass
 class SsrsReportDefinition:
-    data_sources: List[SsrsDataSource] = field(default_factory=list)
-    data_sets: List[SsrsDataSet] = field(default_factory=list)
+    data_sources: List[SsrsDataSource] = field(default_factory=list)  # noqa: UP006
+    data_sets: List[SsrsDataSet] = field(default_factory=list)  # noqa: UP006
 
 
 def parse_rdl(rdl_bytes: bytes) -> SsrsReportDefinition:
@@ -76,16 +77,16 @@ def parse_rdl(rdl_bytes: bytes) -> SsrsReportDefinition:
 
 
 def parse_connect_string(
-    connect_string: Optional[str],
-) -> Tuple[Optional[str], Optional[str]]:
+    connect_string: Optional[str],  # noqa: UP045
+) -> Tuple[Optional[str], Optional[str]]:  # noqa: UP006, UP045
     """Extract ``(server, database)`` from a connection string.
 
     Accepts common SSRS/SQL-Server variants (``Data Source=``, ``Server=``,
     ``Initial Catalog=``, ``Database=``). Case-insensitive, semicolon-delimited."""
     if not connect_string:
         return None, None
-    server: Optional[str] = None
-    database: Optional[str] = None
+    server: Optional[str] = None  # noqa: UP045
+    database: Optional[str] = None  # noqa: UP045
     for segment in connect_string.split(";"):
         if "=" not in segment:
             continue
@@ -105,29 +106,29 @@ def _local(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
 
-def _find_child(parent: ET.Element, name: str) -> Optional[ET.Element]:
+def _find_child(parent: ET.Element, name: str) -> Optional[ET.Element]:  # noqa: UP045
     for child in parent:
         if _local(child.tag) == name:
             return child
     return None
 
 
-def _find_children(parent: ET.Element, name: str) -> List[ET.Element]:
+def _find_children(parent: ET.Element, name: str) -> List[ET.Element]:  # noqa: UP006
     return [child for child in parent if _local(child.tag) == name]
 
 
-def _text(elem: Optional[ET.Element]) -> Optional[str]:
+def _text(elem: Optional[ET.Element]) -> Optional[str]:  # noqa: UP045
     if elem is None or elem.text is None:
         return None
     stripped = elem.text.strip()
     return stripped or None
 
 
-def _parse_data_sources(root: ET.Element) -> List[SsrsDataSource]:
+def _parse_data_sources(root: ET.Element) -> List[SsrsDataSource]:  # noqa: UP006
     container = _find_child(root, "DataSources")
     if container is None:
         return []
-    sources: List[SsrsDataSource] = []
+    sources: List[SsrsDataSource] = []  # noqa: UP006
     for ds_elem in _find_children(container, "DataSource"):
         name = ds_elem.attrib.get("Name") or ""
         if not name:
@@ -155,11 +156,11 @@ def _parse_data_sources(root: ET.Element) -> List[SsrsDataSource]:
     return sources
 
 
-def _parse_data_sets(root: ET.Element) -> List[SsrsDataSet]:
+def _parse_data_sets(root: ET.Element) -> List[SsrsDataSet]:  # noqa: UP006
     container = _find_child(root, "DataSets")
     if container is None:
         return []
-    datasets: List[SsrsDataSet] = []
+    datasets: List[SsrsDataSet] = []  # noqa: UP006
     for ds_elem in _find_children(container, "DataSet"):
         name = ds_elem.attrib.get("Name") or ""
         if not name:
@@ -172,9 +173,7 @@ def _parse_data_sets(root: ET.Element) -> List[SsrsDataSet]:
     return datasets
 
 
-def _build_dataset(
-    ds_elem: ET.Element, name: str, shared_ref: Optional[str]
-) -> SsrsDataSet:
+def _build_dataset(ds_elem: ET.Element, name: str, shared_ref: Optional[str]) -> SsrsDataSet:  # noqa: UP045
     query = _find_child(ds_elem, "Query")
     command_type = None
     command_text = None
@@ -193,11 +192,11 @@ def _build_dataset(
     )
 
 
-def _parse_fields(ds_elem: ET.Element) -> List[SsrsField]:
+def _parse_fields(ds_elem: ET.Element) -> List[SsrsField]:  # noqa: UP006
     fields_container = _find_child(ds_elem, "Fields")
     if fields_container is None:
         return []
-    fields: List[SsrsField] = []
+    fields: List[SsrsField] = []  # noqa: UP006
     for field_elem in _find_children(fields_container, "Field"):
         field_name = field_elem.attrib.get("Name")
         if not field_name:

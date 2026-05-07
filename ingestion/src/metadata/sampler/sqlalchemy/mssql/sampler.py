@@ -13,7 +13,6 @@ Helper module to handle data sampling
 for the profiler
 """
 
-
 from sqlalchemy import Table, text
 from sqlalchemy.sql.selectable import CTE
 
@@ -36,19 +35,13 @@ class MssqlSampler(SQASampler):
         static = self.sample_config.get_static_config()
         if self.entity.tableType != TableType.View:
             if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
-                return selectable.tablesample(
-                    text(f"{static.profileSample or 100} PERCENT")
-                )
+                return selectable.tablesample(text(f"{static.profileSample or 100} PERCENT"))
 
-            return selectable.tablesample(
-                text(f"{int(static.profileSample or 100 if static else 100)} ROWS")
-            )
+            return selectable.tablesample(text(f"{int(static.profileSample or 100 if static else 100)} ROWS"))
         return selectable
 
     def get_sample_query(self, *, column=None) -> CTE:
         """Override the base method as ROWS or PERCENT sampling handled through the tablesample clause"""
-        rnd = self._base_sample_query(column).cte(
-            f"{self.get_sampler_table_name()}_rnd"
-        )
+        rnd = self._base_sample_query(column).cte(f"{self.get_sampler_table_name()}_rnd")
         query = self.get_client().query(rnd)
         return query.cte(f"{self.get_sampler_table_name()}_sample")

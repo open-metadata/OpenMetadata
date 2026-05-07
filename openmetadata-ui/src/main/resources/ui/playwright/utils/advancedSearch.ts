@@ -692,6 +692,43 @@ export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
   await expect(dropdownText).not.toContainText('Loading...');
 };
 
+// For fields backed by hard-coded listValues (no aggregate API call), options are
+// rendered immediately — use selectOption directly instead of fillRule which waits
+// for a network response that never comes.
+export const fillStaticListRule = async (
+  page: Page,
+  {
+    fieldLabel,
+    condition,
+    value,
+    ruleIndex,
+  }: {
+    fieldLabel: string;
+    condition: string;
+    value: string;
+    ruleIndex: number;
+  }
+) => {
+  const ruleLocator = page.locator('.rule').nth(ruleIndex - 1);
+
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--field .ant-select'),
+    fieldLabel,
+    true
+  );
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--operator .ant-select'),
+    condition
+  );
+  await selectOption(
+    page,
+    ruleLocator.locator('.widget--widget > .ant-select'),
+    value
+  );
+};
+
 export const getFieldsSuggestionSearchText = (
   fieldLabel: string,
   data: Record<string, string>

@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from functools import partial
 from typing import Optional
 from urllib.parse import quote_plus
@@ -63,18 +64,12 @@ def get_connection(connection: PrestoConnection) -> Engine:
     """
     Create connection
     """
-    connection.connectionArguments = (
-        connection.connectionArguments or init_empty_connection_arguments()
-    )
+    connection.connectionArguments = connection.connectionArguments or init_empty_connection_arguments()
     if connection.protocol:
         connection.connectionArguments.root["protocol"] = connection.protocol
     if connection.verify:
-        connection.connectionArguments = (
-            connection.connectionArguments or init_empty_connection_arguments()
-        )
-        connection.connectionArguments.root["requests_kwargs"] = {
-            "verify": connection.verify
-        }
+        connection.connectionArguments = connection.connectionArguments or init_empty_connection_arguments()
+        connection.connectionArguments.root["requests_kwargs"] = {"verify": connection.verify}
 
     return create_generic_db_connection(
         connection=connection,
@@ -87,8 +82,8 @@ def test_connection(
     metadata: OpenMetadata,
     engine: Engine,
     service_connection: PrestoConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -101,14 +96,12 @@ def test_connection(
         if schema_name:
             for schema in schema_name:
                 table_name = inspector.get_table_names(schema)
-                return table_name
+                return table_name  # noqa: RET504
         return None
 
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, engine),
-        "GetDatabases": partial(
-            test_query, engine=engine, statement=PRESTO_SHOW_CATALOGS
-        ),
+        "GetDatabases": partial(test_query, engine=engine, statement=PRESTO_SHOW_CATALOGS),
         "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
         "GetTables": custom_executor_for_table,
     }

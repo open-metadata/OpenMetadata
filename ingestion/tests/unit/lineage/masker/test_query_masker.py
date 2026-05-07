@@ -15,6 +15,7 @@ Query masking tests — core masking logic
 Tests for masking SQL queries with different parsers (SqlGlot, SqlFluff, SqlParse).
 Covers: parser dispatch, caching, literal types, ordinal preservation edge cases.
 """
+
 from unittest import TestCase
 
 from ingestion.tests.unit.lineage.masker.helpers import assert_masked_query
@@ -44,7 +45,7 @@ class TestQueryMasker(TestCase):
                 "dialect": Dialect.MYSQL.value,
             },
             {
-                "query": """insert into user values ('mayur',123,'my random address 1'), ('mayur',123,'my random address 1');""",  # noqa: E501
+                "query": """insert into user values ('mayur',123,'my random address 1'), ('mayur',123,'my random address 1');""",  # noqa: E501, RUF100
                 "expected": """insert into user values (?,?,?), (?,?,?);""",
                 "dialect": Dialect.ANSI.value,
             },
@@ -67,13 +68,13 @@ class TestQueryMasker(TestCase):
                 "dialect": Dialect.ANSI.value,
             },
             {
-                "query": """with test as (SELECT CASE address WHEN '5th Street' THEN 'CEO' ELSE 'Unknown' END AS person FROM user) select * from test;""",  # noqa: E501
-                "expected": """with test as (SELECT CASE address WHEN ? THEN ? ELSE ? END AS person FROM user) select * from test;""",  # noqa: E501
+                "query": """with test as (SELECT CASE address WHEN '5th Street' THEN 'CEO' ELSE 'Unknown' END AS person FROM user) select * from test;""",  # noqa: E501, RUF100
+                "expected": """with test as (SELECT CASE address WHEN ? THEN ? ELSE ? END AS person FROM user) select * from test;""",  # noqa: E501, RUF100
                 "dialect": Dialect.ANSI.value,
             },
             {
-                "query": """select * from (select * from (SELECT CASE address WHEN '5th Street' THEN 'CEO' ELSE 'Unknown' END AS person FROM user));""",  # noqa: E501
-                "expected": """select * from (select * from (SELECT CASE address WHEN ? THEN ? ELSE ? END AS person FROM user));""",  # noqa: E501
+                "query": """select * from (select * from (SELECT CASE address WHEN '5th Street' THEN 'CEO' ELSE 'Unknown' END AS person FROM user));""",  # noqa: E501, RUF100
+                "expected": """select * from (select * from (SELECT CASE address WHEN ? THEN ? ELSE ? END AS person FROM user));""",  # noqa: E501, RUF100
                 "dialect": Dialect.ANSI.value,
             },
             {
@@ -82,8 +83,8 @@ class TestQueryMasker(TestCase):
                 "dialect": Dialect.ANSI.value,
             },
             {
-                "query": """CREATE TABLE "db001"."table001" AS SELECT * FROM "db002"."table002" WHERE age > 18 AND name = 'John';""",  # noqa: E501
-                "expected": """CREATE TABLE "db001"."table001" AS SELECT * FROM "db002"."table002" WHERE age > ? AND name = ?;""",  # noqa: E501
+                "query": """CREATE TABLE "db001"."table001" AS SELECT * FROM "db002"."table002" WHERE age > 18 AND name = 'John';""",  # noqa: E501, RUF100
+                "expected": """CREATE TABLE "db001"."table001" AS SELECT * FROM "db002"."table002" WHERE age > ? AND name = ?;""",  # noqa: E501, RUF100
                 "dialect": Dialect.ANSI.value,
             },
         ]
@@ -122,7 +123,6 @@ class TestQueryMasker(TestCase):
         ]
 
         for test_case in query_test_cases:
-
             # ValueError: Unknown dialect 'random_invalid_dialect'.
             with self.assertRaises(ValueError):
                 assert_masked_query(
@@ -186,8 +186,8 @@ class TestQueryMasker(TestCase):
         """
         query_test_cases = [
             {
-                "query": """SELECT * FROM products WHERE price = 99.99 AND quantity > 100 AND discount = 0.15 AND stock_level >= 5000;""",  # noqa: E501
-                "expected": """SELECT * FROM products WHERE price = ? AND quantity > ? AND discount = ? AND stock_level >= ?;""",  # noqa: E501
+                "query": """SELECT * FROM products WHERE price = 99.99 AND quantity > 100 AND discount = 0.15 AND stock_level >= 5000;""",  # noqa: E501, RUF100
+                "expected": """SELECT * FROM products WHERE price = ? AND quantity > ? AND discount = ? AND stock_level >= ?;""",  # noqa: E501, RUF100
                 "dialect": Dialect.ANSI.value,
             },
         ]
@@ -225,7 +225,6 @@ class TestQueryMasker(TestCase):
         ]
 
         for test_case in query_test_cases:
-
             # compute and cache
             masked_query_cache.clear()
             assert_masked_query(
@@ -298,8 +297,8 @@ class TestQueryMasker(TestCase):
         """
         query_test_cases = [
             {
-                "query": "SELECT a, b, c FROM t WHERE x > 5 GROUP BY 1, 2, 3 HAVING COUNT(*) > 1 ORDER BY 1 ASC LIMIT 500 OFFSET 0;",  # noqa: E501
-                "expected": "SELECT a, b, c FROM t WHERE x > ? GROUP BY 1, 2, 3 HAVING COUNT(*) > ? ORDER BY 1 ASC LIMIT ? OFFSET ?;",  # noqa: E501
+                "query": "SELECT a, b, c FROM t WHERE x > 5 GROUP BY 1, 2, 3 HAVING COUNT(*) > 1 ORDER BY 1 ASC LIMIT 500 OFFSET 0;",  # noqa: E501, RUF100
+                "expected": "SELECT a, b, c FROM t WHERE x > ? GROUP BY 1, 2, 3 HAVING COUNT(*) > ? ORDER BY 1 ASC LIMIT ? OFFSET ?;",  # noqa: E501, RUF100
                 "dialect": Dialect.ANSI.value,
             },
             {
@@ -310,14 +309,14 @@ class TestQueryMasker(TestCase):
             },
             {
                 # CTE with GROUP BY positional references (similar to reported Payoneer query)
-                "query": "WITH cte AS (SELECT a FROM t WHERE x = 'val' GROUP BY 1, 2, 3 HAVING COUNT(*) > 1 ORDER BY 1 ASC) SELECT * FROM cte LIMIT 500 OFFSET 0;",  # noqa: E501
-                "expected": "WITH cte AS (SELECT a FROM t WHERE x = ? GROUP BY 1, 2, 3 HAVING COUNT(*) > ? ORDER BY 1 ASC) SELECT * FROM cte LIMIT ? OFFSET ?;",  # noqa: E501
+                "query": "WITH cte AS (SELECT a FROM t WHERE x = 'val' GROUP BY 1, 2, 3 HAVING COUNT(*) > 1 ORDER BY 1 ASC) SELECT * FROM cte LIMIT 500 OFFSET 0;",  # noqa: E501, RUF100
+                "expected": "WITH cte AS (SELECT a FROM t WHERE x = ? GROUP BY 1, 2, 3 HAVING COUNT(*) > ? ORDER BY 1 ASC) SELECT * FROM cte LIMIT ? OFFSET ?;",  # noqa: E501, RUF100
                 "dialect": Dialect.ANSI.value,
             },
             {
                 # BigQuery dialect with GROUP BY positional references
-                "query": "SELECT full_name, COUNT(*) AS rn FROM t WHERE role = 'admin' AND dept IN ('a', 'b') GROUP BY 1, 2, 3, 4, 5, 6 HAVING COUNT(*) > 1 ORDER BY 1 ASC LIMIT 500 OFFSET 0;",  # noqa: E501
-                "expected": "SELECT full_name, COUNT(*) AS rn FROM t WHERE role = ? AND dept IN (?, ?) GROUP BY 1, 2, 3, 4, 5, 6 HAVING COUNT(*) > ? ORDER BY 1 ASC LIMIT ? OFFSET ?;",  # noqa: E501
+                "query": "SELECT full_name, COUNT(*) AS rn FROM t WHERE role = 'admin' AND dept IN ('a', 'b') GROUP BY 1, 2, 3, 4, 5, 6 HAVING COUNT(*) > 1 ORDER BY 1 ASC LIMIT 500 OFFSET 0;",  # noqa: E501, RUF100
+                "expected": "SELECT full_name, COUNT(*) AS rn FROM t WHERE role = ? AND dept IN (?, ?) GROUP BY 1, 2, 3, 4, 5, 6 HAVING COUNT(*) > ? ORDER BY 1 ASC LIMIT ? OFFSET ?;",  # noqa: E501, RUF100
                 "dialect": Dialect.BIGQUERY.value,
             },
         ]

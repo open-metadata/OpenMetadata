@@ -15,7 +15,7 @@ Auth helper functions for the Airflow REST API client.
 import base64
 import traceback
 from datetime import datetime, timedelta, timezone
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple  # noqa: UP035
 
 import requests
 
@@ -27,19 +27,13 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-TokenCallback = Callable[[], Tuple[str, object]]
+TokenCallback = Callable[[], Tuple[str, object]]  # noqa: UP006
 
-_JWT_REFRESH_INTERVAL_SECONDS = (
-    25 * 60
-)  # re-fetch every 25 min, well within Airflow's ~30-60 min TTL
-_BASIC_AUTH_TTL_SECONDS = (
-    7 * 24 * 3600
-)  # basic auth doesn't expire; skip retry for 7 days
+_JWT_REFRESH_INTERVAL_SECONDS = 25 * 60  # re-fetch every 25 min, well within Airflow's ~30-60 min TTL
+_BASIC_AUTH_TTL_SECONDS = 7 * 24 * 3600  # basic auth doesn't expire; skip retry for 7 days
 
 
-def try_exchange_jwt(
-    host: str, username: str, password: str, verify: bool
-) -> Optional[str]:
+def try_exchange_jwt(host: str, username: str, password: str, verify: bool) -> Optional[str]:  # noqa: UP045
     """POST {host}/auth/token to get a JWT Bearer token (Airflow 3.x). Returns None on failure."""
     try:
         resp = requests.post(
@@ -51,9 +45,7 @@ def try_exchange_jwt(
         resp.raise_for_status()
         return resp.json().get("access_token")
     except Exception:
-        logger.debug(
-            "JWT token exchange failed (likely Airflow 2.x): %s", traceback.format_exc()
-        )
+        logger.debug("JWT token exchange failed (likely Airflow 2.x): %s", traceback.format_exc())
         return None
 
 
@@ -62,9 +54,7 @@ def build_access_token_callback(token: str) -> TokenCallback:
     return lambda: (token, 0)
 
 
-def build_basic_auth_callback(
-    host: str, username: str, password: str, verify: bool
-) -> Tuple[TokenCallback, None]:
+def build_basic_auth_callback(host: str, username: str, password: str, verify: bool) -> Tuple[TokenCallback, None]:  # noqa: UP006
     """
     Returns (callback, None). auth_token_mode=None means client.py uses the
     token value as-is; the callback embeds 'Bearer' or 'Basic' prefix itself.
@@ -74,7 +64,7 @@ def build_basic_auth_callback(
     Falls back to Basic auth for Airflow 2.x servers.
     """
 
-    def _callback() -> Tuple[str, object]:
+    def _callback() -> Tuple[str, object]:  # noqa: UP006
         jwt = try_exchange_jwt(host, username, password, verify)
         if jwt:
             return f"Bearer {jwt}", _JWT_REFRESH_INTERVAL_SECONDS
@@ -99,9 +89,9 @@ def build_gcp_token_callback(gcp_credentials) -> TokenCallback:
     set_google_credentials(gcp_credentials)
     impersonate = gcp_credentials.gcpImpersonateServiceAccount
 
-    def _callback() -> Tuple[str, datetime]:
-        import google.auth
-        from google.auth.transport.requests import Request as AuthRequest
+    def _callback() -> Tuple[str, datetime]:  # noqa: UP006
+        import google.auth  # noqa: PLC0415
+        from google.auth.transport.requests import Request as AuthRequest  # noqa: PLC0415
 
         if impersonate and impersonate.impersonateServiceAccount:
             credentials = get_gcp_impersonate_credentials(
@@ -110,14 +100,10 @@ def build_gcp_token_callback(gcp_credentials) -> TokenCallback:
                 lifetime=impersonate.lifetime,
             )
         else:
-            credentials, _ = google.auth.default(
-                scopes=["https://www.googleapis.com/auth/cloud-platform"]
-            )
+            credentials, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
 
         credentials.refresh(AuthRequest())
-        expiry = getattr(credentials, "expiry", None) or (
-            datetime.now(timezone.utc) + timedelta(minutes=55)
-        )
+        expiry = getattr(credentials, "expiry", None) or (datetime.now(timezone.utc) + timedelta(minutes=55))
         return (credentials.token, expiry)
 
     return _callback

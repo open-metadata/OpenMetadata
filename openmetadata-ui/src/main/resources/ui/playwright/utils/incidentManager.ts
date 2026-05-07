@@ -210,7 +210,7 @@ export const assignIncident = async (data: {
     await addAssigneeFromPopoverWidget({ page, user, testCaseName });
   } else {
     await page.click(`[data-testid="${testCaseName}-status"]`);
-    await page.getByRole('menuitem', { name: 'Assigned' }).click();
+    await page.getByTestId('status-item-Assigned').click();
     await page.getByTestId(`${testCaseName}-assignee-popover`).waitFor();
     await page.click('[data-testid="assignee-search-input"]');
 

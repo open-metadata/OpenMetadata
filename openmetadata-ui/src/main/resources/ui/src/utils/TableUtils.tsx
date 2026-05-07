@@ -517,7 +517,7 @@ export const getEntityIcon = (
     case EntityType.SEARCH_SERVICE:
     case SearchIndex.SEARCH_SERVICE:
       Icon = SearchOutlined;
-      className = 'text-sm text-inherit';
+      className = classNames('text-sm text-inherit', iconClass);
 
       break;
 

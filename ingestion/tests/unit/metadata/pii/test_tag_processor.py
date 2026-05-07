@@ -11,6 +11,7 @@
 """
 Unit tests for Tag Processor
 """
+
 from unittest.mock import Mock
 
 import pytest
@@ -109,9 +110,7 @@ class TestTagProcessor:
         email_recognizer = RecognizerFactory.create(
             name="Email",
             description="Recognizes email addresses",
-            recognizerConfig=PredefinedRecognizerFactory.create(
-                name=Name.EmailRecognizer
-            ),
+            recognizerConfig=PredefinedRecognizerFactory.create(name=Name.EmailRecognizer),
             confidenceThreshold=0.8,
             exceptionList=[],
             target=recognizer.Target.content,
@@ -223,9 +222,7 @@ class TestTagProcessor:
         result = processor.create_column_tag_labels(column, sample_data)
         assert result == []
 
-    def test_classify_email_column(
-        self, processor: TagProcessor, email_tag: Tag
-    ) -> None:
+    def test_classify_email_column(self, processor: TagProcessor, email_tag: Tag) -> None:
         """Test classifying an email column"""
         column = Column(
             name=ColumnName(root="customer_email"),
@@ -262,9 +259,7 @@ class TestTagProcessor:
             ),
         )
 
-    def test_classify_phone_column(
-        self, processor: TagProcessor, phone_tag: Tag
-    ) -> None:
+    def test_classify_phone_column(self, processor: TagProcessor, phone_tag: Tag) -> None:
         """Test classifying a phone number column"""
         column = Column(
             name=ColumnName(root="phone_number"),
@@ -381,9 +376,7 @@ class TestTagProcessor:
         assert len(result) == 1
         assert result[0].tagFQN.root == "PII.MixedTag"
 
-    def test_column_with_non_pii_tag_still_gets_pii_classification(
-        self, processor: TagProcessor
-    ) -> None:
+    def test_column_with_non_pii_tag_still_gets_pii_classification(self, processor: TagProcessor) -> None:
         """Test that columns with non-PII tags can still get PII classification"""
         # Column already has a data quality tag but contains PII
         column = Column(
@@ -544,9 +537,7 @@ class TestTagProcessor:
             "bob@company.net",
         ]
 
-        classification_manager = FakeClassificationManager(
-            (pii_classification, [email_tag])
-        )
+        classification_manager = FakeClassificationManager((pii_classification, [email_tag]))
 
         processor = TagProcessor(
             config=workflow_config,
@@ -616,9 +607,7 @@ class TestBuildTagLabel:
         assert tag_label.reason == "Detected by recognizer"
         assert tag_label.metadata is None
 
-    def test_builds_tag_label_with_recognizer_metadata(
-        self, email_tag, recognizer_metadata
-    ):
+    def test_builds_tag_label_with_recognizer_metadata(self, email_tag, recognizer_metadata):
         scored_tag = ScoredTag(
             tag=email_tag,
             score=0.85,
@@ -636,9 +625,7 @@ class TestBuildTagLabel:
         assert tag_label.metadata is not None
         assert tag_label.metadata.recognizer == recognizer_metadata
 
-    def test_wraps_recognizer_metadata_in_tag_label_metadata(
-        self, email_tag, recognizer_metadata
-    ):
+    def test_wraps_recognizer_metadata_in_tag_label_metadata(self, email_tag, recognizer_metadata):
         scored_tag = ScoredTag(
             tag=email_tag,
             score=0.85,
@@ -650,10 +637,7 @@ class TestBuildTagLabel:
 
         assert tag_label.metadata is not None
         assert tag_label.metadata.recognizer is not None
-        assert (
-            tag_label.metadata.recognizer.recognizerId
-            == recognizer_metadata.recognizerId
-        )
+        assert tag_label.metadata.recognizer.recognizerId == recognizer_metadata.recognizerId
         assert tag_label.metadata.recognizer.recognizerName == "email_recognizer"
         assert tag_label.metadata.recognizer.score == 0.85
         assert tag_label.metadata.recognizer.target.value == "content"

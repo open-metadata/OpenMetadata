@@ -827,7 +827,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       ).toBeVisible();
 
       await page.click(`[data-testid="${testCaseName}-status"]`);
-      await page.getByRole('menuitem', { name: 'Resolved' }).click();
+      await page.getByTestId('status-item-Resolved').click();
       await page.click('[data-testid="reason-chip-MissingData"]');
       await page.getByTestId('resolved-comment-textarea').click();
       await page

@@ -1145,7 +1145,7 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
           .includes(
             `/api/v1/tables/name/${encodeURIComponent(tableFqn)}/columns`
           ) &&
-        response.url().includes('profile') &&
+        response.url().includes('fields') &&
         response.request().method() === 'GET',
       // TODO: Reduce timeout once the latency issue is fixed
       { timeout: 150_000 }

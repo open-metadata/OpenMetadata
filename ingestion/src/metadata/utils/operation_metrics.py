@@ -38,7 +38,7 @@ from contextlib import contextmanager
 from functools import wraps
 from queue import Empty, Queue
 from time import perf_counter
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional  # noqa: UP035
 
 from pydantic import BaseModel, Field
 
@@ -52,14 +52,14 @@ class RunningStatistics:
     O(1) space complexity regardless of number of operations tracked.
     """
 
-    __slots__ = ("count", "total", "mean", "min_val", "max_val", "_m2")
+    __slots__ = ("count", "total", "mean", "min_val", "max_val", "_m2")  # noqa: RUF023
 
     def __init__(self):
         self.count: int = 0
         self.total: float = 0.0
         self.mean: float = 0.0
-        self.min_val: Optional[float] = None
-        self.max_val: Optional[float] = None
+        self.min_val: Optional[float] = None  # noqa: UP045
+        self.max_val: Optional[float] = None  # noqa: UP045
         self._m2: float = 0.0  # For variance calculation if needed
 
     def add(self, value: float) -> None:
@@ -95,9 +95,7 @@ class RunningStatistics:
         # Parallel algorithm for merging means and M2
         combined_count = self.count + other.count
         delta = other.mean - self.mean
-        combined_mean = (
-            self.count * self.mean + other.count * other.mean
-        ) / combined_count
+        combined_mean = (self.count * self.mean + other.count * other.mean) / combined_count
         combined_m2 = (
             self._m2
             + other._m2  # pylint: disable=protected-access
@@ -110,14 +108,14 @@ class RunningStatistics:
         self._m2 = combined_m2
 
         # Merge min/max
-        if other.min_val is not None:
+        if other.min_val is not None:  # noqa: SIM102
             if self.min_val is None or other.min_val < self.min_val:
                 self.min_val = other.min_val
-        if other.max_val is not None:
+        if other.max_val is not None:  # noqa: SIM102
             if self.max_val is None or other.max_val > self.max_val:
                 self.max_val = other.max_val
 
-    def to_summary_dict(self) -> Dict:
+    def to_summary_dict(self) -> Dict:  # noqa: UP006
         """Convert to API-compatible dictionary."""
         return {
             "count": self.count,
@@ -134,10 +132,10 @@ class OperationSummary(BaseModel):
     count: int = Field(default=0, description="Total operations")
     total_time_ms: float = Field(default=0.0, description="Total time in ms")
     avg_time_ms: float = Field(default=0.0, description="Average time in ms")
-    min_time_ms: Optional[float] = Field(default=None, description="Min time in ms")
-    max_time_ms: Optional[float] = Field(default=None, description="Max time in ms")
+    min_time_ms: Optional[float] = Field(default=None, description="Min time in ms")  # noqa: UP045
+    max_time_ms: Optional[float] = Field(default=None, description="Max time in ms")  # noqa: UP045
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> Dict:  # noqa: UP006
         """Convert to dictionary for API response"""
         return {
             "count": self.count,
@@ -185,24 +183,22 @@ class OperationMetricsState(metaclass=Singleton):
 
     def __init__(self):
         # Global metrics: category -> operation -> entity_type -> RunningStatistics
-        self._global_metrics: Dict[
-            str, Dict[str, Dict[str, RunningStatistics]]
-        ] = _create_category_dict()
+        self._global_metrics: Dict[str, Dict[str, Dict[str, RunningStatistics]]] = _create_category_dict()  # noqa: UP006
         # Per-thread metrics for lock-free recording
-        self._thread_metrics: Dict[
-            int, Dict[str, Dict[str, Dict[str, RunningStatistics]]]
-        ] = defaultdict(_create_category_dict)
+        self._thread_metrics: Dict[int, Dict[str, Dict[str, Dict[str, RunningStatistics]]]] = defaultdict(  # noqa: UP006
+            _create_category_dict
+        )
         self._lock = threading.Lock()
 
         # Async processing queue and worker
         self._async_queue: Queue = Queue()
-        self._worker_thread: Optional[threading.Thread] = None
+        self._worker_thread: Optional[threading.Thread] = None  # noqa: UP045
         self._shutdown_flag = threading.Event()
         self._async_enabled = True
 
         # Run context for associating metrics with a workflow run
-        self._run_id: Optional[str] = None
-        self._pipeline_fqn: Optional[str] = None
+        self._run_id: Optional[str] = None  # noqa: UP045
+        self._pipeline_fqn: Optional[str] = None  # noqa: UP045
 
         # Start background worker
         self._start_worker()
@@ -212,9 +208,7 @@ class OperationMetricsState(metaclass=Singleton):
         """Start the background worker thread for async metric processing."""
         if self._worker_thread is None or not self._worker_thread.is_alive():
             self._shutdown_flag.clear()
-            self._worker_thread = threading.Thread(
-                target=self._worker_loop, daemon=True, name="MetricsWorker"
-            )
+            self._worker_thread = threading.Thread(target=self._worker_loop, daemon=True, name="MetricsWorker")
             self._worker_thread.start()
 
     def _worker_loop(self) -> None:
@@ -249,9 +243,7 @@ class OperationMetricsState(metaclass=Singleton):
         if self._worker_thread and self._worker_thread.is_alive():
             self._worker_thread.join(timeout=1.0)
 
-    def set_run_context(
-        self, run_id: Optional[str] = None, pipeline_fqn: Optional[str] = None
-    ) -> None:
+    def set_run_context(self, run_id: Optional[str] = None, pipeline_fqn: Optional[str] = None) -> None:  # noqa: UP045
         """
         Set the run context for associating metrics with a workflow run.
 
@@ -281,7 +273,7 @@ class OperationMetricsState(metaclass=Singleton):
             except Empty:
                 break
 
-    def get_run_context(self) -> Dict[str, Optional[str]]:
+    def get_run_context(self) -> Dict[str, Optional[str]]:  # noqa: UP006, UP045
         """Get the current run context."""
         return {"run_id": self._run_id, "pipeline_fqn": self._pipeline_fqn}
 
@@ -290,7 +282,7 @@ class OperationMetricsState(metaclass=Singleton):
         category: str,
         operation: str,
         duration_ms: float,
-        entity_type: Optional[str] = None,
+        entity_type: Optional[str] = None,  # noqa: UP045
     ) -> None:
         """
         Record an operation metric asynchronously.
@@ -314,7 +306,7 @@ class OperationMetricsState(metaclass=Singleton):
         category: str,
         operation: str,
         duration_ms: float,
-        entity_type: Optional[str] = None,
+        entity_type: Optional[str] = None,  # noqa: UP045
     ) -> None:
         """
         Record an operation metric synchronously (used by worker thread).
@@ -325,11 +317,9 @@ class OperationMetricsState(metaclass=Singleton):
         thread_id = threading.get_ident()
         entity_key = entity_type or "_default"
 
-        self._thread_metrics[thread_id][category][operation][entity_key].add(
-            duration_ms
-        )
+        self._thread_metrics[thread_id][category][operation][entity_key].add(duration_ms)
 
-    def merge_thread_metrics(self, thread_id: Optional[int] = None) -> None:
+    def merge_thread_metrics(self, thread_id: Optional[int] = None) -> None:  # noqa: UP045
         """
         Merge metrics from a specific thread into global state.
 
@@ -349,9 +339,7 @@ class OperationMetricsState(metaclass=Singleton):
             for category, operations in thread_data.items():
                 for operation, entity_types in operations.items():
                     for entity_type, stats in entity_types.items():
-                        self._global_metrics[category][operation][entity_type].merge(
-                            stats
-                        )
+                        self._global_metrics[category][operation][entity_type].merge(stats)
 
     def merge_all_threads(self) -> None:
         """Merge metrics from all threads into global state"""
@@ -359,7 +347,7 @@ class OperationMetricsState(metaclass=Singleton):
         for tid in thread_ids:
             self.merge_thread_metrics(tid)
 
-    def get_summary(self) -> Dict[str, Dict[str, Dict[str, Dict]]]:
+    def get_summary(self) -> Dict[str, Dict[str, Dict[str, Dict]]]:  # noqa: UP006
         """
         Get aggregated operation metrics summary.
 
@@ -370,7 +358,7 @@ class OperationMetricsState(metaclass=Singleton):
         self.merge_all_threads()
 
         with self._lock:
-            result: Dict[str, Dict[str, Dict[str, Dict]]] = {}
+            result: Dict[str, Dict[str, Dict[str, Dict]]] = {}  # noqa: UP006
 
             for category, operations in self._global_metrics.items():
                 result[category] = {}
@@ -378,13 +366,11 @@ class OperationMetricsState(metaclass=Singleton):
                     result[category][operation] = {}
                     for entity_type, stats in entity_types.items():
                         if stats.count > 0:
-                            result[category][operation][
-                                entity_type
-                            ] = stats.to_summary_dict()
+                            result[category][operation][entity_type] = stats.to_summary_dict()
 
             return result
 
-    def get_flat_summary(self) -> Dict[str, int]:
+    def get_flat_summary(self) -> Dict[str, int]:  # noqa: UP006
         """
         Get a flat summary with total counts per category.
 
@@ -397,28 +383,18 @@ class OperationMetricsState(metaclass=Singleton):
         with self._lock:
             result = {}
             for category, operations in self._global_metrics.items():
-                total_count = sum(
-                    stats.count
-                    for op_data in operations.values()
-                    for stats in op_data.values()
-                )
-                total_time = sum(
-                    stats.total
-                    for op_data in operations.values()
-                    for stats in op_data.values()
-                )
+                total_count = sum(stats.count for op_data in operations.values() for stats in op_data.values())
+                total_time = sum(stats.total for op_data in operations.values() for stats in op_data.values())
                 result[f"{category}_count"] = total_count
                 result[f"{category}_total_ms"] = total_time
             return result
 
-    def _aggregate_by_entity_type(
-        self, result: Dict, result_key: str, source_category: str
-    ) -> None:
+    def _aggregate_by_entity_type(self, result: Dict, result_key: str, source_category: str) -> None:  # noqa: UP006
         """Helper to aggregate metrics by entity type."""
         if source_category not in self._global_metrics:
             return
 
-        for _, entity_types in self._global_metrics[source_category].items():
+        for _, entity_types in self._global_metrics[source_category].items():  # noqa: PERF102
             for entity_type, stats in entity_types.items():
                 if stats.count > 0:
                     result[result_key]["total_ms"] += stats.total
@@ -429,22 +405,16 @@ class OperationMetricsState(metaclass=Singleton):
                             "total_ms": 0.0,
                             "call_count": 0,
                         }
-                    result[result_key]["by_entity_type"][entity_type][
-                        "total_ms"
-                    ] += stats.total
-                    result[result_key]["by_entity_type"][entity_type][
-                        "call_count"
-                    ] += stats.count
+                    result[result_key]["by_entity_type"][entity_type]["total_ms"] += stats.total
+                    result[result_key]["by_entity_type"][entity_type]["call_count"] += stats.count
 
-    def _aggregate_by_operation(
-        self, result: Dict, result_key: str, source_category: str
-    ) -> None:
+    def _aggregate_by_operation(self, result: Dict, result_key: str, source_category: str) -> None:  # noqa: UP006
         """Helper to aggregate metrics by operation."""
         if source_category not in self._global_metrics:
             return
 
         for operation, entity_types in self._global_metrics[source_category].items():
-            for _, stats in entity_types.items():
+            for _, stats in entity_types.items():  # noqa: PERF102
                 if stats.count > 0:
                     result[result_key]["total_ms"] += stats.total
                     result[result_key]["call_count"] += stats.count
@@ -454,14 +424,10 @@ class OperationMetricsState(metaclass=Singleton):
                             "total_ms": 0.0,
                             "call_count": 0,
                         }
-                    result[result_key]["by_operation"][operation][
-                        "total_ms"
-                    ] += stats.total
-                    result[result_key]["by_operation"][operation][
-                        "call_count"
-                    ] += stats.count
+                    result[result_key]["by_operation"][operation]["total_ms"] += stats.total
+                    result[result_key]["by_operation"][operation]["call_count"] += stats.count
 
-    def get_workflow_timing(self) -> Dict[str, Dict]:
+    def get_workflow_timing(self) -> Dict[str, Dict]:  # noqa: UP006
         """
         Get high-level workflow timing for source operations.
 
@@ -495,9 +461,7 @@ class OperationMetricsState(metaclass=Singleton):
 
             # Aggregate metrics using helper methods
             self._aggregate_by_entity_type(result, "source", "source_fetch")
-            self._aggregate_by_operation(
-                result, "source_db_queries", "source_db_queries"
-            )
+            self._aggregate_by_operation(result, "source_db_queries", "source_db_queries")
             self._aggregate_by_operation(result, "source_api_calls", "source_api_calls")
             self._aggregate_by_entity_type(result, "stage", "stage_process")
 
@@ -524,9 +488,7 @@ class OperationMetricsState(metaclass=Singleton):
             self._pipeline_fqn = None
 
 
-def track_operation(
-    category: str, operation: Optional[str] = None, entity_type: Optional[str] = None
-) -> Callable:
+def track_operation(category: str, operation: Optional[str] = None, entity_type: Optional[str] = None) -> Callable:  # noqa: UP045
     """
     Decorator to track operation timing.
 
@@ -554,9 +516,7 @@ def track_operation(
                 return func(*args, **kwargs)
             finally:
                 duration_ms = (perf_counter() - start) * 1000
-                OperationMetricsState().record_operation(
-                    category, op_name, duration_ms, entity_type
-                )
+                OperationMetricsState().record_operation(category, op_name, duration_ms, entity_type)
 
         return wrapper
 
@@ -575,13 +535,11 @@ class TrackOperation:
             response = client.get("/dashboards")
     """
 
-    def __init__(
-        self, category: str, operation: str, entity_type: Optional[str] = None
-    ):
+    def __init__(self, category: str, operation: str, entity_type: Optional[str] = None):  # noqa: UP045
         self.category = category
         self.operation = operation
         self.entity_type = entity_type
-        self.start: Optional[float] = None
+        self.start: Optional[float] = None  # noqa: UP045
 
     def __enter__(self) -> "TrackOperation":
         self.start = perf_counter()
@@ -590,15 +548,11 @@ class TrackOperation:
     def __exit__(self, *args) -> None:
         if self.start is not None:
             duration_ms = (perf_counter() - self.start) * 1000
-            OperationMetricsState().record_operation(
-                self.category, self.operation, duration_ms, self.entity_type
-            )
+            OperationMetricsState().record_operation(self.category, self.operation, duration_ms, self.entity_type)
 
 
 @contextmanager
-def track_operation_context(
-    category: str, operation: str, entity_type: Optional[str] = None
-):
+def track_operation_context(category: str, operation: str, entity_type: Optional[str] = None):  # noqa: UP045
     """
     Generator-based context manager for operation tracking.
 
@@ -613,6 +567,4 @@ def track_operation_context(
         yield
     finally:
         duration_ms = (perf_counter() - start) * 1000
-        OperationMetricsState().record_operation(
-            category, operation, duration_ms, entity_type
-        )
+        OperationMetricsState().record_operation(category, operation, duration_ms, entity_type)

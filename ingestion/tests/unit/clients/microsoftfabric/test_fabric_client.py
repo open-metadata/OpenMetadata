@@ -388,9 +388,7 @@ class FabricClientConfigTest(TestCase):
         workspaces_endpoint = "/v1/workspaces"
         items_endpoint = f"/v1/workspaces/{workspace_id}/items"
         pipelines_endpoint = f"/v1/workspaces/{workspace_id}/dataPipelines"
-        pipeline_runs_endpoint = (
-            f"/v1/workspaces/{workspace_id}/dataPipelines/{pipeline_id}/pipelineJobs"
-        )
+        pipeline_runs_endpoint = f"/v1/workspaces/{workspace_id}/dataPipelines/{pipeline_id}/pipelineJobs"
 
         self.assertEqual(workspaces_endpoint, "/v1/workspaces")
         self.assertIn(workspace_id, items_endpoint)
@@ -401,15 +399,13 @@ class FabricClientConfigTest(TestCase):
         """Test client can be initialized with required parameters"""
         from unittest.mock import patch
 
-        with patch(
-            "metadata.clients.microsoftfabric.fabric_client.FabricAuthenticator"
-        ) as mock_auth:
+        with patch("metadata.clients.microsoftfabric.fabric_client.FabricAuthenticator") as mock_auth:
             mock_auth_instance = MagicMock()
             mock_auth.return_value = mock_auth_instance
 
             from metadata.clients.microsoftfabric.fabric_client import FabricClient
 
-            client = FabricClient(
+            client = FabricClient(  # noqa: F841
                 tenant_id="test-tenant",
                 client_id="test-client",
                 client_secret="test-secret",
@@ -427,16 +423,14 @@ class FabricClientConfigTest(TestCase):
         """Test client with custom authority URI"""
         from unittest.mock import patch
 
-        with patch(
-            "metadata.clients.microsoftfabric.fabric_client.FabricAuthenticator"
-        ) as mock_auth:
+        with patch("metadata.clients.microsoftfabric.fabric_client.FabricAuthenticator") as mock_auth:
             mock_auth_instance = MagicMock()
             mock_auth.return_value = mock_auth_instance
 
             from metadata.clients.microsoftfabric.fabric_client import FabricClient
 
             custom_authority = "https://login.microsoftonline.us/"
-            client = FabricClient(
+            client = FabricClient(  # noqa: F841
                 tenant_id="test-tenant",
                 client_id="test-client",
                 client_secret="test-secret",

@@ -13,8 +13,9 @@
 Main entrypoints to create and test connections
 for any source.
 """
+
 import traceback
-from typing import Any, Callable, Optional, Type
+from typing import Any, Callable, Optional, Type  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -37,12 +38,12 @@ TEST_CONNECTION_FN_NAME = "test_connection"
 # Once we migrate all connectors we shouldn't need this.
 def _get_connection_class_from_spec(
     connection: BaseModel,
-) -> Optional[Type[BaseConnection]]:
+) -> Optional[Type[BaseConnection]]:  # noqa: UP006, UP045
     """
     Helper method to get the connection class from the connection spec.
     Returns the connection class if successful, None otherwise.
     """
-    from metadata.utils.service_spec.service_spec import (  # pylint: disable=import-outside-toplevel
+    from metadata.utils.service_spec.service_spec import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
         BaseSpec,
         import_connection_class,
     )
@@ -53,19 +54,15 @@ def _get_connection_class_from_spec(
         try:
             spec = BaseSpec.get_for_source(service_type, connection_type.value.lower())
             if getattr(spec, "connection_class", None):
-                connection_class = import_connection_class(
-                    service_type, connection_type.value.lower()
-                )
-                return connection_class
+                connection_class = import_connection_class(service_type, connection_type.value.lower())
+                return connection_class  # noqa: RET504
         except Exception:
-            logger.error(
-                f"Error importing connection class for {connection_type.value}"
-            )
+            logger.error(f"Error importing connection class for {connection_type.value}")
             logger.debug(traceback.format_exc())
     return None
 
 
-def _get_connection_fn_from_service_spec(connection: BaseModel) -> Optional[Callable]:
+def _get_connection_fn_from_service_spec(connection: BaseModel) -> Optional[Callable]:  # noqa: UP045
     """
     Import the get_connection function from the source, or use ServiceSpec connection_class if defined.
     """
@@ -79,7 +76,7 @@ def _get_connection_fn_from_service_spec(connection: BaseModel) -> Optional[Call
     return None
 
 
-def _get_test_fn_from_service_spec(connection: BaseModel) -> Optional[Callable]:
+def _get_test_fn_from_service_spec(connection: BaseModel) -> Optional[Callable]:  # noqa: UP045
     """
     Import the get_connection function from the source, or use ServiceSpec connection_class if defined.
     """
@@ -98,9 +95,7 @@ def get_connection_fn(connection: BaseModel) -> Callable:
     if connection_fn:
         return connection_fn
     # Fallback to default
-    return import_connection_fn(
-        connection=connection, function_name=GET_CONNECTION_FN_NAME
-    )
+    return import_connection_fn(connection=connection, function_name=GET_CONNECTION_FN_NAME)
 
 
 def get_test_connection_fn(connection: BaseModel) -> Callable:
@@ -111,9 +106,7 @@ def get_test_connection_fn(connection: BaseModel) -> Callable:
     if test_fn:
         return test_fn
     # Fallback to default
-    return import_connection_fn(
-        connection=connection, function_name=TEST_CONNECTION_FN_NAME
-    )
+    return import_connection_fn(connection=connection, function_name=TEST_CONNECTION_FN_NAME)
 
 
 def get_connection(connection: BaseModel) -> Any:

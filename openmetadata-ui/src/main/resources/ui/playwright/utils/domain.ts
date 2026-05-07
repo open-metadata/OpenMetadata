@@ -414,10 +414,15 @@ export const fillDomainForm = async (
 ) => {
   await fillCommonFormItems(page, entity);
 
-  const domainTypeCombo = page.getByRole('combobox', { name: 'Domain Type' });
-  await domainTypeCombo.click();
+  const domainTypeTrigger = page
+    .getByTestId('add-domain-form')
+    .getByTestId('domainType')
+    .getByRole('button');
+  await domainTypeTrigger.click();
 
-  await page.getByRole('option', { name: entity.domainType }).click();
+  await page
+    .getByRole('option', { name: entity.domainType, exact: true })
+    .click();
 };
 
 export const checkDomainDisplayName = async (
@@ -822,9 +827,10 @@ export const createDataProductFromListPage = async (
   await fillCommonFormItems(page, dataProduct);
 
   // Fill domain field (required when creating from list page)
-  const domainInput = page.getByTestId('domain-select');
-  await domainInput.scrollIntoViewIfNeeded();
-  await domainInput.waitFor({ state: 'visible' });
+  const domainContainer = page.getByTestId('domain-select');
+  await domainContainer.scrollIntoViewIfNeeded();
+  await domainContainer.waitFor({ state: 'visible' });
+  const domainInput = domainContainer.getByRole('combobox');
   await domainInput.click();
 
   const searchDomain = page.waitForResponse(
@@ -1396,7 +1402,7 @@ export const verifyDataProductsCount = async (
         },
         {
           message: `Wait for data product search index to show ${expectedCount} results for domain "${domainFqn}"`,
-          timeout: 30_000,
+          timeout: 120_000,
           intervals: [2_000, 3_000, 5_000],
         }
       )
@@ -1647,45 +1653,19 @@ export const selectDomainFromNavbar = async (
   const domainDropdown = page.getByTestId('domain-dropdown');
   const domainTree = page.getByTestId('domain-selectable-tree');
   const searchTerm = domain.displayName ?? domain.name;
-  const domainOption = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
 
-  const openDropdown = async () => {
-    await domainDropdown.click();
-    await domainTree.waitFor({ state: 'visible' });
-  };
+  await domainDropdown.click();
+  await page
+    .getByTestId('domain-selectable-tree')
+    .waitFor({ state: 'visible' });
 
-  await openDropdown();
+  await domainTree.getByTestId('searchbar').waitFor({ state: 'visible' });
 
-  const searchBar = domainTree.locator('input[placeholder]').first();
+  await domainTree.getByTestId('searchbar').click();
+  await page.keyboard.press('Control+a');
+  await domainTree.getByTestId('searchbar').pressSequentially(searchTerm);
 
-  await expect
-    .poll(
-      async () => {
-        if (!(await domainTree.isVisible().catch(() => false))) {
-          await openDropdown();
-        }
-
-        const isSearchBarVisible = await searchBar
-          .isVisible()
-          .catch(() => false);
-
-        if (isSearchBarVisible) {
-          await searchBar.focus();
-          await searchBar.press('Control+a');
-          await searchBar.pressSequentially(searchTerm);
-        }
-
-        return await domainOption.isVisible().catch(() => false);
-      },
-      {
-        timeout: 60000,
-        intervals: [1000, 2000, 5000],
-        message: `Timed out waiting for domain ${searchTerm} to appear in navbar selector`,
-      }
-    )
-    .toBe(true);
-
-  await domainOption.click();
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -1833,9 +1813,10 @@ export const openDataProductDrawer = async (page: Page, domain: Domain) => {
   await descriptionEditor.click();
   await page.keyboard.type('Test data product description');
 
-  const domainInput = page.getByTestId('domain-select');
-  await domainInput.scrollIntoViewIfNeeded();
-  await domainInput.waitFor({ state: 'visible' });
+  const domainContainer = page.getByTestId('domain-select');
+  await domainContainer.scrollIntoViewIfNeeded();
+  await domainContainer.waitFor({ state: 'visible' });
+  const domainInput = domainContainer.getByRole('combobox');
   await domainInput.click();
 
   const searchDomain = page.waitForResponse(

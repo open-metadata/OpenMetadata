@@ -66,13 +66,11 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   public void close() {
-    try {
-      if (client != null && client._transport() != null) {
-        client._transport().close();
-      }
-    } catch (Exception e) {
-      LOG.warn("Error closing OpenSearch transport: {}", e.getMessage());
-    }
+    // No-op by design. The opensearch-java client stored here was constructed
+    // elsewhere and its transport is shared with OpenSearchClient and every
+    // other manager. Closing the transport from here permanently shuts down
+    // the HC5 IOReactor for the whole application, which was a root cause of
+    // production "I/O reactor has been shut down" errors.
   }
 
   public void ensureHybridSearchPipeline(double keywordWeight, double semanticWeight) {

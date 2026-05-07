@@ -22,6 +22,10 @@ interface FormFieldProps<
 > {
   name: TName;
   control: Control<TFieldValues>;
+  rules?: Omit<
+    import('react-hook-form').RegisterOptions<TFieldValues, TName>,
+    'valueAsNumber' | 'valueAsDate' | 'setValueAs' | 'disabled'
+  >;
   children:
     | ReactNode
     | ((control: UseControllerReturn<TFieldValues, TName>) => ReactNode);
