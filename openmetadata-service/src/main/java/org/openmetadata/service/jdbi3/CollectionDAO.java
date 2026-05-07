@@ -891,7 +891,15 @@ public interface CollectionDAO {
     // segment below the parent — same shape used by the root listing in listRootAfter, just
     // without the cursor pagination. Returns the slim projection used by the children table
     // UI; the caller restores the service reference separately. `:includeDeleted` is a
-    // tri-state: 'NON_DELETED' (default), 'DELETED', or 'ALL'.
+    // tri-state: 'NON_DELETED' (default), 'DELETED', or 'ALL'. `:nameLike` is a LIKE pattern
+    // applied to LOWER(name); callers pass '%' for "no filter" or '%<lowercased-escaped>%'
+    // for a substring search. ESCAPE '!' is set explicitly so the same pattern semantics
+    // hold on MySQL (default escape is '\') and PostgreSQL (default has no escape char).
+    // '!' is preferred over '\' because the JDBI ColonPrefixSqlParser scans string literals
+    // to skip ':' bind markers inside them, and a literal {@code '\'} confuses the scanner
+    // (it treats the trailing backslash as an escape and consumes the closing quote),
+    // leaving a downstream {@code :includeDeleted} bind un-substituted and the prepared
+    // statement malformed.
     @ConnectionAwareSqlQuery(
         value =
             "SELECT id, name, "
@@ -901,6 +909,7 @@ public interface CollectionDAO {
                 + "deleted "
                 + "FROM storage_container_entity "
                 + "WHERE fqnHash LIKE :parentHash AND fqnHash NOT LIKE :parentHashChild "
+                + "  AND LOWER(name) LIKE :nameLike ESCAPE '!' "
                 + "  AND (:includeDeleted = 'ALL' "
                 + "       OR (:includeDeleted = 'DELETED' AND deleted = TRUE) "
                 + "       OR (:includeDeleted = 'NON_DELETED' AND deleted = FALSE)) "
@@ -915,6 +924,7 @@ public interface CollectionDAO {
                 + "deleted "
                 + "FROM storage_container_entity "
                 + "WHERE fqnHash LIKE :parentHash AND fqnHash NOT LIKE :parentHashChild "
+                + "  AND LOWER(name) LIKE :nameLike ESCAPE '!' "
                 + "  AND (:includeDeleted = 'ALL' "
                 + "       OR (:includeDeleted = 'DELETED' AND deleted = TRUE) "
                 + "       OR (:includeDeleted = 'NON_DELETED' AND deleted = FALSE)) "
@@ -924,6 +934,7 @@ public interface CollectionDAO {
     List<Container> listDirectChildSummariesByParentHash(
         @Bind("parentHash") String parentHash,
         @Bind("parentHashChild") String parentHashChild,
+        @Bind("nameLike") String nameLike,
         @Bind("includeDeleted") String includeDeleted,
         @Bind("limit") int limit,
         @Bind("offset") int offset);
@@ -932,6 +943,7 @@ public interface CollectionDAO {
         value =
             "SELECT count(fqnHash) FROM storage_container_entity "
                 + "WHERE fqnHash LIKE :parentHash AND fqnHash NOT LIKE :parentHashChild "
+                + "  AND LOWER(name) LIKE :nameLike ESCAPE '!' "
                 + "  AND (:includeDeleted = 'ALL' "
                 + "       OR (:includeDeleted = 'DELETED' AND deleted = TRUE) "
                 + "       OR (:includeDeleted = 'NON_DELETED' AND deleted = FALSE))",
@@ -940,6 +952,7 @@ public interface CollectionDAO {
         value =
             "SELECT count(*) FROM storage_container_entity "
                 + "WHERE fqnHash LIKE :parentHash AND fqnHash NOT LIKE :parentHashChild "
+                + "  AND LOWER(name) LIKE :nameLike ESCAPE '!' "
                 + "  AND (:includeDeleted = 'ALL' "
                 + "       OR (:includeDeleted = 'DELETED' AND deleted = TRUE) "
                 + "       OR (:includeDeleted = 'NON_DELETED' AND deleted = FALSE))",
@@ -947,6 +960,7 @@ public interface CollectionDAO {
     int countDirectChildrenByParentHash(
         @Bind("parentHash") String parentHash,
         @Bind("parentHashChild") String parentHashChild,
+        @Bind("nameLike") String nameLike,
         @Bind("includeDeleted") String includeDeleted);
   }
 
@@ -11818,6 +11832,40 @@ public interface CollectionDAO {
     @SqlUpdate(
         "UPDATE search_index_partition SET status = 'CANCELLED' WHERE jobId = :jobId AND status = 'PENDING'")
     int cancelPendingPartitions(@Bind("jobId") String jobId);
+
+    @SqlUpdate(
+        "UPDATE search_index_partition SET status = 'CANCELLED', "
+            + "lastError = 'Stopped by user', completedAt = :now, lastUpdateAt = :now "
+            + "WHERE jobId = :jobId AND status IN ('PENDING','PROCESSING')")
+    int cancelInFlightPartitions(@Bind("jobId") String jobId, @Bind("now") long now);
+
+    /**
+     * Status-guarded update: only mutates the row when it is still PROCESSING. Used by
+     * completion / failure paths so a late-arriving worker write cannot revert a CANCELLED
+     * row (set by requestStop) back to COMPLETED/FAILED. Returns the number of rows
+     * updated — 0 means another writer (typically requestStop) already moved the row to
+     * a terminal state and the caller should treat its update as a no-op.
+     */
+    @SqlUpdate(
+        "UPDATE search_index_partition SET status = :status, processingCursor = :cursor, "
+            + "processedCount = :processedCount, successCount = :successCount, failedCount = :failedCount, "
+            + "assignedServer = :assignedServer, claimedAt = :claimedAt, startedAt = :startedAt, "
+            + "completedAt = :completedAt, lastUpdateAt = :lastUpdateAt, lastError = :lastError, "
+            + "retryCount = :retryCount WHERE id = :id AND status = 'PROCESSING'")
+    int updateIfProcessing(
+        @Bind("id") String id,
+        @Bind("status") String status,
+        @Bind("cursor") long cursor,
+        @Bind("processedCount") long processedCount,
+        @Bind("successCount") long successCount,
+        @Bind("failedCount") long failedCount,
+        @Bind("assignedServer") String assignedServer,
+        @Bind("claimedAt") Long claimedAt,
+        @Bind("startedAt") Long startedAt,
+        @Bind("completedAt") Long completedAt,
+        @Bind("lastUpdateAt") Long lastUpdateAt,
+        @Bind("lastError") String lastError,
+        @Bind("retryCount") int retryCount);
 
     @SqlQuery(
         "SELECT * FROM search_index_partition WHERE jobId = :jobId AND status = 'PROCESSING' "

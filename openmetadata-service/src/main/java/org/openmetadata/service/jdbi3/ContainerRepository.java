@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -604,7 +605,12 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   public ResultList<Container> listChildren(String parentFQN, Integer limit, Integer offset) {
-    return listChildren(parentFQN, limit, offset, Include.NON_DELETED);
+    return listChildren(parentFQN, limit, offset, Include.NON_DELETED, null);
+  }
+
+  public ResultList<Container> listChildren(
+      String parentFQN, Integer limit, Integer offset, Include include) {
+    return listChildren(parentFQN, limit, offset, include, null);
   }
 
   /**
@@ -634,14 +640,24 @@ public class ContainerRepository extends EntityRepository<Container> {
    * segment below" is expressible as {@code fqnHash LIKE :parentHash AND fqnHash NOT LIKE
    * :parentHashChild}, where {@code :parentHash} is {@code <hash>.%} and
    * {@code :parentHashChild} is {@code <hash>.%.%}.
+   *
+   * <p>{@code search} narrows the page to children whose name contains the given substring
+   * (case-insensitive). Empty / null disables the filter — the caller passes the raw text
+   * the user typed; LIKE wildcards in the query are escaped here so {@code _} and
+   * {@code %} match literally. Searches bypass {@link ChildrenPageCache} since the same
+   * parent will typically be queried with many different substrings (cache hit rate ≈ 0)
+   * and caching every variant inflates the working set; the depth-only listing remains
+   * cached as before.
    */
   public ResultList<Container> listChildren(
-      String parentFQN, Integer limit, Integer offset, Include include) {
+      String parentFQN, Integer limit, Integer offset, Include include, String search) {
     int safeLimit = limit != null ? limit : 0;
     int safeOffset = offset != null ? offset : 0;
     Include safeInclude = include != null ? include : Include.NON_DELETED;
+    String nameLike = buildNameLikeBind(search);
+    boolean hasSearch = !"%".equals(nameLike);
 
-    ChildrenPageCache pageCache = CacheBundle.getChildrenPageCache();
+    ChildrenPageCache pageCache = hasSearch ? null : CacheBundle.getChildrenPageCache();
     if (pageCache != null) {
       ResultList<Container> cached;
       try (var ignored = RequestLatencyContext.phase("listChildrenCacheGet")) {
@@ -667,13 +683,14 @@ public class ContainerRepository extends EntityRepository<Container> {
       try (var ignored = RequestLatencyContext.phase("listChildrenPage")) {
         children =
             containerDAO.listDirectChildSummariesByParentHash(
-                parentHash, parentHashChild, includeBind, safeLimit, safeOffset);
+                parentHash, parentHashChild, nameLike, includeBind, safeLimit, safeOffset);
       }
 
       int total;
       try (var ignored = RequestLatencyContext.phase("listChildrenCount")) {
         total =
-            containerDAO.countDirectChildrenByParentHash(parentHash, parentHashChild, includeBind);
+            containerDAO.countDirectChildrenByParentHash(
+                parentHash, parentHashChild, nameLike, includeBind);
       }
 
       if (children.isEmpty()) {
@@ -700,6 +717,32 @@ public class ContainerRepository extends EntityRepository<Container> {
               "Failed to fetch children for container [%s]: %s", parentFQN, e.getMessage()),
           e);
     }
+  }
+
+  /**
+   * Build the LIKE bind for the optional name filter. Returns {@code "%"} (which always
+   * matches) when no search is supplied so the SQL stays branch-free. When a search is
+   * supplied the pattern is lowercased to match the {@code LOWER(name)} expression in the
+   * SQL and the LIKE wildcards {@code %} and {@code _} (plus the escape character
+   * {@code !}) are escaped so a name containing them matches literally rather than
+   * acting as a wildcard. The SQL declares {@code ESCAPE '!'} explicitly because the
+   * MySQL/PostgreSQL defaults differ; {@code !} is preferred over {@code \} because
+   * a literal backslash inside a single-quoted SQL string confuses JDBI's
+   * ColonPrefixSqlParser when it scans for {@code :name} bind markers, leaving a
+   * downstream bind un-substituted (see ContainerDAO comment block).
+   */
+  private static String buildNameLikeBind(String search) {
+    if (search == null || search.isBlank()) {
+      return "%";
+    }
+    String escaped =
+        search
+            .trim()
+            .toLowerCase(Locale.ROOT)
+            .replace("!", "!!")
+            .replace("%", "!%")
+            .replace("_", "!_");
+    return "%" + escaped + "%";
   }
 
   /**
