@@ -11,36 +11,6 @@
  *  limitations under the License.
  */
 /**
- * Policy Agent Pipeline Configuration. Applies access grants against the source system.
- */
-export interface PolicyAgentPipeline {
-    /**
-     * List of access grants to apply on the source.
-     */
-    policies: Policy[];
-    /**
-     * Pipeline type
-     */
-    type: PolicyAgentConfigType;
-}
-
-/**
- * A single access grant entry. The per-service shape lives under `config`.
- */
-export interface Policy {
-    /**
-     * Per-service-type policy configuration.
-     */
-    config: DatabasePolicyConfig;
-    /**
-     * Unique id of the policy entry.
-     */
-    id: string;
-}
-
-/**
- * Per-service-type policy configuration.
- *
  * Policy config for database service connectors (snowflake, postgres, etc.).
  */
 export interface DatabasePolicyConfig {
@@ -87,13 +57,4 @@ export enum Privilege {
     Select = "SELECT",
     Update = "UPDATE",
     Usage = "USAGE",
-}
-
-/**
- * Pipeline type
- *
- * Policy Agent Pipeline type
- */
-export enum PolicyAgentConfigType {
-    PolicyAgent = "PolicyAgent",
 }

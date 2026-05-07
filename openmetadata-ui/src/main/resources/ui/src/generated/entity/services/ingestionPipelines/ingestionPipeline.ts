@@ -974,8 +974,7 @@ export interface SourceConfig {
  *
  * McpService Metadata Pipeline Configuration.
  *
- * Policy Agent Pipeline Configuration. Applies access grants against the source system for
- * database services.
+ * Policy Agent Pipeline Configuration. Applies access grants against the source system.
  */
 export interface Pipeline {
     /**
@@ -3425,9 +3424,25 @@ export interface OwnerConfiguration {
 }
 
 /**
- * A single access grant to apply on the source.
+ * A single access grant entry. The per-service shape lives under `config`.
  */
 export interface Policy {
+    /**
+     * Per-service-type policy configuration.
+     */
+    config: DatabasePolicyConfig;
+    /**
+     * Unique id of the policy entry.
+     */
+    id: string;
+}
+
+/**
+ * Per-service-type policy configuration.
+ *
+ * Policy config for database service connectors (snowflake, postgres, etc.).
+ */
+export interface DatabasePolicyConfig {
     /**
      * Column on which the grant is applied. Requires tableName. Supported only by connectors
      * that allow column-level grants; ignored otherwise.
@@ -3437,10 +3452,6 @@ export interface Policy {
      * Database on which the grant is applied.
      */
     databaseName: string;
-    /**
-     * Unique id of the policy entry.
-     */
-    id: string;
     /**
      * Grantee identifier. For USER this is typically the email/username; for ROLE the role name.
      */
