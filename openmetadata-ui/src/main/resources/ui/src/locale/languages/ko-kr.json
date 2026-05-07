@@ -2477,6 +2477,7 @@
     "bot-email-confirmation": "{{botName}} 봇의 {{email}}",
     "bulk-edit-entity-help": "CSV를 사용하여 여러 {{entity}}를 한 번에 편집",
     "bulk-import-completed": "대량 가져오기 완료",
+    "cache-service-not-configured-message": "Configure a Cache Service such as Redis or ElastiCache and make sure it is reachable to enable Cache Warmup.",
     "can-not-add-widget": "크기 제한으로 인해 이 섹션에 위젯을 추가할 수 없습니다.",
     "can-you-add-a-description": "설명을 추가하시겠습니까?",
     "cannot-delete-relation-type-in-use": "삭제할 수 없습니다: {{count}}개의 용어 관계에서 사용 중입니다. 먼저 해당 관계를 제거하세요.",
