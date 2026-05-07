@@ -49,6 +49,7 @@ const VECTOR_INDEXABLE_ENTITIES = new Set([
   'glossary',
   'glossaryterm',
   'chart',
+  'container',
   'dashboard',
   'dashboarddatamodel',
   'database',
