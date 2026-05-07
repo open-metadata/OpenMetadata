@@ -475,7 +475,7 @@ export const formatDuration = (ms: number) => {
 };
 export const formatDurationToHHMMSS = (ms: number) => {
   if (ms > 0 && ms < 1000) {
-    return `${Math.round(ms)} ms`;
+    return `${Math.floor(ms)} ms`;
   }
 
   return Duration.fromMillis(ms).toFormat('hh:mm:ss');

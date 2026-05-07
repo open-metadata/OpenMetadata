@@ -204,6 +204,7 @@ class BundleWarmupBatcherTest {
     assertEquals(ownerId, dto.relations.get(FIELD_OWNERS).get(0).getId());
     assertEquals(1, dto.relations.get(FIELD_DOMAINS).size());
     assertEquals(domainId, dto.relations.get(FIELD_DOMAINS).get(0).getId());
+    verify(relationshipRepository, times(1)).getEntityReferences(any(), eq(NON_DELETED));
   }
 
   @Test

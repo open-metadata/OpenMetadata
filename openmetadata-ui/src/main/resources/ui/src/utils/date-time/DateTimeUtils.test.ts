@@ -77,6 +77,7 @@ describe('DateTimeUtils tests', () => {
   it(`formatDurationToHHMMSS should show milliseconds for short runs`, () => {
     expect(formatDurationToHHMMSS(0)).toBe('00:00:00');
     expect(formatDurationToHHMMSS(210)).toBe('210 ms');
+    expect(formatDurationToHHMMSS(999.6)).toBe('999 ms');
     expect(formatDurationToHHMMSS(1000)).toBe('00:00:01');
   });
 

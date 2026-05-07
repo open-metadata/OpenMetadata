@@ -228,19 +228,45 @@ public class BundleWarmupBatcher {
       final Map<UUID, Map<String, List<EntityReference>>> relationsByEntity,
       final List<EntityRelationshipObject> incomingRecords,
       final List<EntityRelationshipObject> outgoingRecords) {
-    for (final RelationshipWarmupSpec spec : RELATIONSHIP_SPECS) {
+    final Map<RelationshipWarmupSpec, List<EntityRelationshipObject>> recordsBySpec =
+        recordsBySpec(incomingRecords, outgoingRecords);
+    final Map<String, EntityReference> referencesByKey = resolveRelatedReferences(recordsBySpec);
+    for (final Map.Entry<RelationshipWarmupSpec, List<EntityRelationshipObject>> entry :
+        recordsBySpec.entrySet()) {
       populateRelationshipField(
-          relationsByEntity,
-          spec,
-          recordsForDirection(spec.direction(), incomingRecords, outgoingRecords));
+          relationsByEntity, entry.getKey(), entry.getValue(), referencesByKey);
     }
   }
 
-  private static List<EntityRelationshipObject> recordsForDirection(
-      final Direction direction,
+  private static Map<RelationshipWarmupSpec, List<EntityRelationshipObject>> recordsBySpec(
       final List<EntityRelationshipObject> incomingRecords,
       final List<EntityRelationshipObject> outgoingRecords) {
-    return direction == Direction.INCOMING ? incomingRecords : outgoingRecords;
+    final Map<RelationshipWarmupSpec, List<EntityRelationshipObject>> recordsBySpec =
+        new HashMap<>();
+    addRecordsBySpec(recordsBySpec, Direction.INCOMING, incomingRecords);
+    addRecordsBySpec(recordsBySpec, Direction.OUTGOING, outgoingRecords);
+    return recordsBySpec;
+  }
+
+  private static void addRecordsBySpec(
+      final Map<RelationshipWarmupSpec, List<EntityRelationshipObject>> recordsBySpec,
+      final Direction direction,
+      final List<EntityRelationshipObject> records) {
+    for (final EntityRelationshipObject record : records) {
+      final RelationshipWarmupSpec spec = matchingSpec(record, direction);
+      if (spec != null) {
+        recordsBySpec.computeIfAbsent(spec, ignored -> new ArrayList<>()).add(record);
+      }
+    }
+  }
+
+  private static RelationshipWarmupSpec matchingSpec(
+      final EntityRelationshipObject record, final Direction direction) {
+    return RELATIONSHIP_SPECS.stream()
+        .filter(spec -> spec.direction() == direction)
+        .filter(spec -> relationshipRecordMatches(record, spec))
+        .findFirst()
+        .orElse(null);
   }
 
   private static void sortReferences(
@@ -264,29 +290,20 @@ public class BundleWarmupBatcher {
   private void populateRelationshipField(
       final Map<UUID, Map<String, List<EntityReference>>> relationsByEntity,
       final RelationshipWarmupSpec spec,
-      final List<EntityRelationshipObject> records) {
-    final List<EntityRelationshipObject> matchingRecords =
-        matchingRelationshipRecords(records, spec);
-    if (matchingRecords.isEmpty()) {
-      return;
-    }
-
-    final Map<String, EntityReference> referencesByKey =
-        resolveRelatedReferences(matchingRecords, spec);
-    for (final EntityRelationshipObject record : matchingRecords) {
+      final List<EntityRelationshipObject> records,
+      final Map<String, EntityReference> referencesByKey) {
+    for (final EntityRelationshipObject record : records) {
       addRelationshipReference(relationsByEntity, spec, referencesByKey, record);
     }
   }
 
-  private static List<EntityRelationshipObject> matchingRelationshipRecords(
-      final List<EntityRelationshipObject> records, final RelationshipWarmupSpec spec) {
-    return records.stream()
-        .filter(record -> record.getRelation() == spec.relationship().ordinal())
-        .filter(record -> relatedEntityMatches(record, spec))
-        .filter(record -> owningEntityId(record, spec.direction()) != null)
-        .filter(record -> relatedEntityId(record, spec.direction()) != null)
-        .filter(record -> relatedEntityType(record, spec.direction()) != null)
-        .toList();
+  private static boolean relationshipRecordMatches(
+      final EntityRelationshipObject record, final RelationshipWarmupSpec spec) {
+    return record.getRelation() == spec.relationship().ordinal()
+        && relatedEntityMatches(record, spec)
+        && owningEntityId(record, spec.direction()) != null
+        && relatedEntityId(record, spec.direction()) != null
+        && relatedEntityType(record, spec.direction()) != null;
   }
 
   private static void addRelationshipReference(
@@ -312,12 +329,12 @@ public class BundleWarmupBatcher {
         relatedEntityType(record, spec.direction()), relatedEntityId(record, spec.direction()));
   }
 
-  private Map<String, EntityReference> resolveRelatedReferences(
-      final List<EntityRelationshipObject> records, final RelationshipWarmupSpec spec) {
-    if (Entity.getEntityRelationshipRepository() == null) {
+  private static Map<String, EntityReference> resolveRelatedReferences(
+      final Map<RelationshipWarmupSpec, List<EntityRelationshipObject>> recordsBySpec) {
+    if (recordsBySpec.isEmpty() || Entity.getEntityRelationshipRepository() == null) {
       return Collections.emptyMap();
     }
-    final List<EntityRelationshipRecord> relationRecords = relationshipRecords(records, spec);
+    final List<EntityRelationshipRecord> relationRecords = relationshipRecords(recordsBySpec);
     final Map<String, EntityReference> referencesByKey = new HashMap<>();
     Entity.getEntityRelationshipRepository()
         .getEntityReferences(relationRecords, NON_DELETED)
@@ -327,16 +344,24 @@ public class BundleWarmupBatcher {
   }
 
   private static List<EntityRelationshipRecord> relationshipRecords(
-      final List<EntityRelationshipObject> records, final RelationshipWarmupSpec spec) {
-    return records.stream()
-        .map(
-            record ->
-                EntityRelationshipRecord.builder()
-                    .id(UUID.fromString(relatedEntityId(record, spec.direction())))
-                    .type(relatedEntityType(record, spec.direction()))
-                    .json(record.getJson())
-                    .build())
-        .toList();
+      final Map<RelationshipWarmupSpec, List<EntityRelationshipObject>> recordsBySpec) {
+    final Map<String, EntityRelationshipRecord> recordsByKey = new HashMap<>();
+    recordsBySpec.forEach(
+        (spec, records) ->
+            records.forEach(
+                record ->
+                    recordsByKey.putIfAbsent(
+                        relatedReferenceKey(record, spec), relationshipRecord(record, spec))));
+    return new ArrayList<>(recordsByKey.values());
+  }
+
+  private static EntityRelationshipRecord relationshipRecord(
+      final EntityRelationshipObject record, final RelationshipWarmupSpec spec) {
+    return EntityRelationshipRecord.builder()
+        .id(UUID.fromString(relatedEntityId(record, spec.direction())))
+        .type(relatedEntityType(record, spec.direction()))
+        .json(record.getJson())
+        .build();
   }
 
   private static boolean relatedEntityMatches(

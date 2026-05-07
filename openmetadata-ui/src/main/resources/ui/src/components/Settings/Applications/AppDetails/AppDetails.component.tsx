@@ -358,114 +358,103 @@ const AppDetails = () => {
     return plugin?.getAppDetails?.(appData) || null;
   }, [appData?.name, plugins]);
 
-  const tabs = useMemo(() => {
-    const ApplicationConfigurationComponent =
-      applicationsClassBase.getApplicationConfigurationComponent();
+  const ApplicationConfigurationComponent =
+    applicationsClassBase.getApplicationConfigurationComponent();
+  const showScheduleTab = appData?.scheduleType !== ScheduleType.NoSchedule;
+  const tabConfiguration =
+    appData?.appConfiguration &&
+    appData.allowConfiguration &&
+    jsonSchema &&
+    !isRuntimeDisabled
+      ? [
+          {
+            label: (
+              <TabsLabel
+                id={ApplicationTabs.CONFIGURATION}
+                name={t('label.configuration')}
+              />
+            ),
+            key: ApplicationTabs.CONFIGURATION,
+            children: (
+              <ApplicationConfigurationComponent
+                appData={appData}
+                isLoading={loadingState.isSaveLoading}
+                jsonSchema={jsonSchema}
+                onConfigSave={onConfigSave}
+              />
+            ),
+          },
+        ]
+      : [];
 
-    const tabConfiguration =
-      appData?.appConfiguration &&
-      appData.allowConfiguration &&
-      jsonSchema &&
-      !isRuntimeDisabled
-        ? [
-            {
-              label: (
-                <TabsLabel
-                  id={ApplicationTabs.CONFIGURATION}
-                  name={t('label.configuration')}
-                />
-              ),
-              key: ApplicationTabs.CONFIGURATION,
-              children: (
-                <ApplicationConfigurationComponent
-                  appData={appData}
-                  isLoading={loadingState.isSaveLoading}
-                  jsonSchema={jsonSchema}
-                  onConfigSave={onConfigSave}
-                />
-              ),
-            },
-          ]
-        : [];
-
-    const showScheduleTab = appData?.scheduleType !== ScheduleType.NoSchedule;
-
-    return [
-      ...(showScheduleTab
-        ? [
-            {
-              label: (
-                <TabsLabel
-                  id={ApplicationTabs.SCHEDULE}
-                  name={t('label.schedule')}
-                />
-              ),
-              key: ApplicationTabs.SCHEDULE,
-              children: (
-                <div className="bg-white p-lg border-default border-radius-sm">
-                  {appData && (
-                    <AppSchedule
-                      appData={appData}
-                      disabled={isRuntimeDisabled}
-                      disabledReason={runtimeDisabledReason}
-                      jsonSchema={jsonSchema as RJSFSchema}
-                      loading={{
-                        isRunLoading: loadingState.isRunLoading,
-                        isDeployLoading: loadingState.isDeployLoading,
-                      }}
-                      onDemandTrigger={onDemandTrigger}
-                      onDeployTrigger={onDeployTrigger}
-                      onSave={onAppScheduleSave}
-                    />
-                  )}
-                </div>
-              ),
-            },
-          ]
-        : []),
-      ...tabConfiguration,
-      ...(!isAppUnavailable && showScheduleTab
-        ? [
-            {
-              label: (
-                <TabsLabel
-                  id={ApplicationTabs.RECENT_RUNS}
-                  name={t('label.recent-run-plural')}
-                />
-              ),
-              key: ApplicationTabs.RECENT_RUNS,
-              children: (
-                <AppRunsHistory
-                  appData={appData}
-                  jsonSchema={jsonSchema as RJSFSchema}
-                />
-              ),
-            },
-          ]
-        : []),
-      ...(!isAppUnavailable && appData?.name === 'SearchIndexingApplication'
-        ? [
-            {
-              label: (
-                <TabsLabel
-                  id={ApplicationTabs.LIVE_INDEXING}
-                  name={t('label.live-indexing')}
-                />
-              ),
-              key: ApplicationTabs.LIVE_INDEXING,
-              children: <AppLiveIndexing appData={appData} />,
-            },
-          ]
-        : []),
-    ];
-  }, [
-    appData,
-    isAppUnavailable,
-    isRuntimeDisabled,
-    jsonSchema,
-    loadingState,
-    runtimeDisabledReason,
-  ]);
+  const tabs = [
+    ...(showScheduleTab
+      ? [
+          {
+            label: (
+              <TabsLabel
+                id={ApplicationTabs.SCHEDULE}
+                name={t('label.schedule')}
+              />
+            ),
+            key: ApplicationTabs.SCHEDULE,
+            children: (
+              <div className="bg-white p-lg border-default border-radius-sm">
+                {appData && (
+                  <AppSchedule
+                    appData={appData}
+                    disabled={isRuntimeDisabled}
+                    disabledReason={runtimeDisabledReason}
+                    jsonSchema={jsonSchema as RJSFSchema}
+                    loading={{
+                      isRunLoading: loadingState.isRunLoading,
+                      isDeployLoading: loadingState.isDeployLoading,
+                    }}
+                    onDemandTrigger={onDemandTrigger}
+                    onDeployTrigger={onDeployTrigger}
+                    onSave={onAppScheduleSave}
+                  />
+                )}
+              </div>
+            ),
+          },
+        ]
+      : []),
+    ...tabConfiguration,
+    ...(!isAppUnavailable && showScheduleTab
+      ? [
+          {
+            label: (
+              <TabsLabel
+                id={ApplicationTabs.RECENT_RUNS}
+                name={t('label.recent-run-plural')}
+              />
+            ),
+            key: ApplicationTabs.RECENT_RUNS,
+            children: (
+              <AppRunsHistory
+                appData={appData}
+                jsonSchema={jsonSchema as RJSFSchema}
+              />
+            ),
+          },
+        ]
+      : []),
+    ...(!isAppUnavailable && appData?.name === 'SearchIndexingApplication'
+      ? [
+          {
+            label: (
+              <TabsLabel
+                id={ApplicationTabs.LIVE_INDEXING}
+                name={t('label.live-indexing')}
+              />
+            ),
+            key: ApplicationTabs.LIVE_INDEXING,
+            children: <AppLiveIndexing appData={appData} />,
+          },
+        ]
+      : []),
+  ];
 
   const actionText = useMemo(() => {
     switch (action) {
@@ -478,7 +467,7 @@ const AppDetails = () => {
       default:
         return '';
     }
-  }, [action]);
+  }, [action, t]);
 
   useEffect(() => {
     fetchAppDetails();
