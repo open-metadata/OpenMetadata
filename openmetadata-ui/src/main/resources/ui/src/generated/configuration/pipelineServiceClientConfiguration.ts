@@ -255,10 +255,6 @@ export enum AuthProvider {
  */
 export interface LogStorageConfiguration {
     /**
-     * Size of async buffer in MB for batching log writes
-     */
-    asyncBufferSizeMB?: number;
-    /**
      * AWS credentials configuration
      */
     awsConfig?: AWSCredentials;
@@ -266,14 +262,6 @@ export interface LogStorageConfiguration {
      * S3 bucket name for storing logs (required for S3 type)
      */
     bucketName?: string;
-    /**
-     * How often (in minutes) the abandoned-run sweeper wakes up to check for expired streams.
-     */
-    cleanupIntervalMinutes?: number;
-    /**
-     * Triggers an out-of-band flush when pendingFlush exceeds this size in bytes (default 5 MB).
-     */
-    earlyFlushWatermarkBytes?: number;
     /**
      * Enable it for pipelines deployed in the server
      */
@@ -295,14 +283,6 @@ export interface LogStorageConfiguration {
      */
     maxConcurrentStreams?: number;
     /**
-     * Periodic cadence (in minutes) for flushing in-memory pendingFlush queue to partial.txt.
-     */
-    partialFlushIntervalMinutes?: number;
-    /**
-     * Emit an alerting metric after this many consecutive failed flushes for a single stream.
-     */
-    pendingFlushAlertAfterFailures?: number;
-    /**
      * S3 key prefix for organizing logs
      */
     prefix?: string;
@@ -315,13 +295,7 @@ export interface LogStorageConfiguration {
      */
     storageClass?: StorageClass;
     /**
-     * Idle threshold in hours before the abandoned-run sweeper finalizes a stream. Replaces
-     * streamTimeoutMinutes for new deployments.
-     */
-    streamTimeoutHours?: number;
-    /**
-     * Timeout in minutes for idle log streams before automatic cleanup (DEPRECATED: use
-     * streamTimeoutHours)
+     * Idle threshold in minutes before the abandoned-run sweeper finalizes a stream
      */
     streamTimeoutMinutes?: number;
     /**
