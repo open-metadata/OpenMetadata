@@ -30,8 +30,9 @@ import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLangua
 @Slf4j
 public final class GoogleEmbeddingClient extends EmbeddingClient {
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String MODELS_PREFIX = "models/";
   private static final String DEFAULT_BASE_URL =
-      "https://generativelanguage.googleapis.com/v1beta/models/";
+      "https://generativelanguage.googleapis.com/v1beta/" + MODELS_PREFIX;
 
   private final HttpClient httpClient;
   private final String apiKey;
@@ -127,7 +128,7 @@ public final class GoogleEmbeddingClient extends EmbeddingClient {
 
   private String buildRequestBody(String text) throws IOException {
     ObjectNode payload = MAPPER.createObjectNode();
-    payload.put("model", "models/" + modelId);
+    payload.put("model", MODELS_PREFIX + modelId);
     ObjectNode content = payload.putObject("content");
     ArrayNode parts = content.putArray("parts");
     ObjectNode part = parts.addObject();
