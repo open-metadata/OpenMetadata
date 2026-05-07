@@ -813,6 +813,7 @@ const IncidentManager = ({
             isPermissionLoading,
             testCasePermissions,
             testCaseListData.data,
+            tableDetails?.deleted,
           ]}
           items={testCaseListData.isLoading ? [] : testCaseListData.data}
           renderEmptyState={() =>
