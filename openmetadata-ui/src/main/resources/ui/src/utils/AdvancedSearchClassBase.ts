@@ -177,8 +177,8 @@ class AdvancedSearchClassBase {
       sqlOp: 'NOT IN',
     },
     match_phrase: {
-      label: t('label.contains'),
-      labelForFormat: t('label.contains'),
+      label: t('label.contain-plural'),
+      labelForFormat: t('label.contain-plural'),
       reversedOp: 'not_match_phrase',
       elasticSearchQueryType: 'match_phrase',
       valueSources: ['value'],

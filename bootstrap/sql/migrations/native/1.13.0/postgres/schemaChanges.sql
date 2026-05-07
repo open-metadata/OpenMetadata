@@ -235,6 +235,37 @@ WHERE json #>> '{pipelineType}' = 'profiler'
     OR json::jsonb #>> '{sourceConfig,config,profileSampleType}' IS NOT NULL
     OR json::jsonb #>> '{sourceConfig,config,samplingMethodType}' IS NOT NULL);
 
+-- ingestion_pipeline_entity (testSuite pipelines): build profileSampleConfig (skip if already migrated)
+UPDATE ingestion_pipeline_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{sourceConfig,config,profileSampleConfig}',
+    jsonb_build_object(
+        'sampleConfigType', 'STATIC',
+        'config', jsonb_build_object(
+            'profileSample', json::jsonb #> '{sourceConfig,config,profileSample}',
+            'profileSampleType', COALESCE(
+                json::jsonb #> '{sourceConfig,config,profileSampleType}',
+                '"PERCENTAGE"'::jsonb
+            ),
+            'samplingMethodType', json::jsonb #> '{sourceConfig,config,samplingMethodType}'
+        )
+    )
+)::json
+WHERE json #>> '{pipelineType}' = 'testSuite'
+  AND json::jsonb #>> '{sourceConfig,config,profileSample}' IS NOT NULL
+  AND json::jsonb #> '{sourceConfig,config,profileSampleConfig}' IS NULL;
+
+-- ingestion_pipeline_entity (testSuite pipelines): remove old flat fields
+UPDATE ingestion_pipeline_entity
+SET json = (json::jsonb #- '{sourceConfig,config,profileSample}'
+                        #- '{sourceConfig,config,profileSampleType}'
+                        #- '{sourceConfig,config,samplingMethodType}')::json
+WHERE json #>> '{pipelineType}' = 'testSuite'
+  AND (json::jsonb #>> '{sourceConfig,config,profileSample}' IS NOT NULL
+    OR json::jsonb #>> '{sourceConfig,config,profileSampleType}' IS NOT NULL
+    OR json::jsonb #>> '{sourceConfig,config,samplingMethodType}' IS NOT NULL);
+
 -- RDF distributed indexing state tables
 CREATE TABLE IF NOT EXISTS rdf_index_job (
     id VARCHAR(36) NOT NULL,
