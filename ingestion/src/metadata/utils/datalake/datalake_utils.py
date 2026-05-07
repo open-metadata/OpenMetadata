@@ -334,14 +334,19 @@ class GenericDataFrameColumnParser:
         """
         data_type = None  # default to string
         try:
-            if data_frame[column_name].dtypes.name == "object" and any(data_frame[column_name].dropna().values):
+            if data_frame[column_name].dtypes.name == "object" and len(data_frame[column_name].dropna()) > 0:
                 try:
                     # Safely evaluate the input string
                     df_row_val_list = data_frame[column_name].dropna().values[:1000]
                     parsed_object_datatype_list = []
                     for df_row_val in df_row_val_list:
                         try:
-                            parsed_object_datatype_list.append(type(ast.literal_eval(str(df_row_val))).__name__.lower())
+                            if isinstance(df_row_val, (dict, list)):
+                                parsed_object_datatype_list.append(type(df_row_val).__name__.lower())
+                            else:
+                                parsed_object_datatype_list.append(
+                                    type(ast.literal_eval(str(df_row_val))).__name__.lower()
+                                )
                         except (ValueError, SyntaxError):
                             # we try to parse the value as a datetime, if it fails, we fallback to string
                             # as literal_eval will fail for string
@@ -459,16 +464,23 @@ class GenericDataFrameColumnParser:
         from pandas import Series  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         json_column = cast(Series, json_column)  # noqa: TC006
-        try:
-            json_column = json_column.apply(json.loads)
-        except TypeError as exc:
-            # if values are not strings, we will assume they are already json objects
-            # based on the read class logic
-            logger.debug(
-                f"TypeError while parsing JSON column children: {exc}. Assuming values are already JSON objects."
-            )
-        json_structure = cls.unique_json_structure(json_column.values.tolist())
 
+        dict_values = []
+        for value in json_column.dropna().values:
+            if isinstance(value, dict):
+                dict_values.append(value)
+            elif isinstance(value, str):
+                try:
+                    parsed = json.loads(value)
+                    if isinstance(parsed, dict):
+                        dict_values.append(parsed)
+                except (TypeError, json.JSONDecodeError):
+                    pass
+
+        if not dict_values:
+            return []
+
+        json_structure = cls.unique_json_structure(dict_values)
         return cls.construct_json_column_children(json_structure)
 
     @classmethod
