@@ -11,7 +11,7 @@ final class SearchIndexAppConfigSanitizer {
   private SearchIndexAppConfigSanitizer() {}
 
   static Map<String, Object> copyWithoutRemovedOptions(Map<String, Object> config) {
-    if (config == null || config.isEmpty()) {
+    if (config == null) {
       return config;
     }
     Map<String, Object> sanitized = new LinkedHashMap<>(config);
