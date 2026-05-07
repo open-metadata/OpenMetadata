@@ -35,11 +35,14 @@ from metadata.generated.schema.entity.data.table import (
     SystemProfile,
     TableProfile,
 )
+from metadata.generated.schema.entity.data.table import (
+    ProfileSampleType as TableProfileSampleType,
+)
 from metadata.generated.schema.settings.settings import Settings  # noqa: TC001
 from metadata.generated.schema.tests.customMetric import (
     CustomMetric as CustomMetricEntity,  # noqa: TC001
 )
-from metadata.generated.schema.type.basic import Timestamp
+from metadata.generated.schema.type.basic import ProfileSampleType, Timestamp
 from metadata.profiler.api.models import ProfilerResponse, ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface  # noqa: TC001
 from metadata.profiler.metrics.core import (
@@ -508,23 +511,20 @@ class Profiler(Generic[TMetric]):
             if raw_create_date:
                 raw_create_date = raw_create_date.replace(tzinfo=timezone.utc)
 
+            sampler = self.profiler_interface.sampler
+            sample_config = sampler._sample_config
+
             table_profile = TableProfile(
                 timestamp=self.profile_ts,
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
                 createDateTime=raw_create_date,
                 sizeInByte=self._table_results.get("sizeInBytes"),
-                profileSample=(
-                    self.profiler_interface.sampler.sample_config.get_static_config().profileSample
-                    if self.profiler_interface.sampler.sample_config
-                    and self.profiler_interface.sampler.sample_config.get_static_config()
-                    else None
-                ),
-                profileSampleType=(
-                    self.profiler_interface.sampler.sample_config.get_static_config().profileSampleType
-                    if self.profiler_interface.sampler.sample_config
-                    and self.profiler_interface.sampler.sample_config.get_static_config()
-                    else None
+                profileSample=(sample_config.profileSample if sample_config else None),
+                profileSampleType=TableProfileSampleType(
+                    sample_config.profileSampleType
+                    if sample_config and sample_config.profileSampleType
+                    else ProfileSampleType.PERCENTAGE
                 ),
                 customMetrics=self._table_results.get("customMetrics"),
             )
