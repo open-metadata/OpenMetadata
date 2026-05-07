@@ -48,8 +48,8 @@ import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
 import { pruneEmptyChildren } from '../../../../../utils/TableUtils';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
 import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
 import { ProfilerTabPath } from '../../ProfilerDashboard/profilerDashboard.interface';
@@ -105,9 +105,7 @@ const ColumnProfileTable = () => {
 
   const searchData = useMemo(() => {
     const param = location.search;
-    const parsed = Qs.parse(
-      param.startsWith('?') ? param.substring(1) : param
-    );
+    const parsed = Qs.parse(param.startsWith('?') ? param.substring(1) : param);
 
     return parsed as { activeColumnFqn: string };
   }, [location.search]);
@@ -154,8 +152,7 @@ const ColumnProfileTable = () => {
           return a.dataType.localeCompare(b.dataType);
         case 'nullProportion':
           return (
-            (a.profile?.nullProportion || 0) -
-            (b.profile?.nullProportion || 0)
+            (a.profile?.nullProportion || 0) - (b.profile?.nullProportion || 0)
           );
         case 'uniqueProportion':
           return (
@@ -168,9 +165,7 @@ const ColumnProfileTable = () => {
             (b.profile?.distinctProportion || 0)
           );
         case 'valuesCount':
-          return (
-            (a.profile?.valuesCount || 0) - (b.profile?.valuesCount || 0)
-          );
+          return (a.profile?.valuesCount || 0) - (b.profile?.valuesCount || 0);
         default:
           return 0;
       }
@@ -272,7 +267,11 @@ const ColumnProfileTable = () => {
     }
   }, [tableFqn, currentPage, searchText, pageSize]);
 
-  const renderRow = (record: ModifiedColumn, depth: number, hasChildren: boolean) => {
+  const renderRow = (
+    record: ModifiedColumn,
+    depth: number,
+    hasChildren: boolean
+  ) => {
     const rowKey = record.fullyQualifiedName ?? '';
     const isExpanded = expandedKeys.has(rowKey);
     const testCounts =
@@ -280,8 +279,7 @@ const ColumnProfileTable = () => {
 
     return (
       <Table.Row data-row-key={rowKey} id={rowKey} key={rowKey}>
-        <Table.Cell
-          style={{ paddingLeft: `${16 + depth * 12}px`, width: 250 }}>
+        <Table.Cell style={{ paddingLeft: `${16 + depth * 12}px`, width: 250 }}>
           <div
             className="d-inline-flex flex-column hover-icon-group"
             style={{ maxWidth: '75%' }}>
@@ -342,12 +340,7 @@ const ColumnProfileTable = () => {
 
         <Table.Cell style={{ width: 200 }}>
           {!isNil(record.profile?.uniqueProportion)
-            ? calculatePercentage(
-                record.profile!.uniqueProportion,
-                1,
-                2,
-                true
-              )
+            ? calculatePercentage(record.profile!.uniqueProportion, 1, 2, true)
             : '--'}
         </Table.Cell>
 

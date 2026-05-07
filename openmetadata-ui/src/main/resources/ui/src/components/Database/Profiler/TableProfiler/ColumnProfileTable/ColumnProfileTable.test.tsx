@@ -10,39 +10,72 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
 import { useTableProfiler } from '../TableProfilerProvider';
 import ColumnProfileTable from './ColumnProfileTable';
 
 jest.mock('@openmetadata/ui-core-components', () => {
-  const Table = jest.fn().mockImplementation(({ children }) => (
-    <div data-testid="column-profile-table">{children}</div>
-  ));
-  Table.Header = jest
-    .fn()
-    .mockImplementation(({ children, columns }) => (
-      <thead>{columns?.map(children)}</thead>
-    ));
-  Table.Head = jest
-    .fn()
-    .mockImplementation(({ label }) => <th>{label}</th>);
-  Table.Body = jest
-    .fn()
-    .mockImplementation(({ children, items, renderEmptyState }) =>
-      items?.length
-        ? items.map((item: unknown) => children(item))
-        : renderEmptyState?.()
-    );
-  Table.Row = jest
-    .fn()
-    .mockImplementation(({ children }) => <tr>{children}</tr>);
-  Table.Cell = jest
-    .fn()
-    .mockImplementation(({ children }) => <td>{children}</td>);
+  const Table = Object.assign(
+    jest
+      .fn()
+      .mockImplementation(({ children }: { children: React.ReactNode }) => (
+        <div data-testid="column-profile-table">{children}</div>
+      )),
+    {
+      Header: jest
+        .fn()
+        .mockImplementation(
+          ({
+            children,
+            columns,
+          }: {
+            children: (col: unknown) => React.ReactNode;
+            columns?: unknown[];
+          }) => <thead>{columns?.map(children)}</thead>
+        ),
+      Head: jest
+        .fn()
+        .mockImplementation(({ label }: { label: string }) => <th>{label}</th>),
+      Body: jest
+        .fn()
+        .mockImplementation(
+          ({
+            children,
+            items,
+            renderEmptyState,
+          }: {
+            children: (item: unknown) => React.ReactNode;
+            items?: unknown[];
+            renderEmptyState?: () => React.ReactNode;
+          }) => (items?.length ? items.map(children) : renderEmptyState?.())
+        ),
+      Row: jest
+        .fn()
+        .mockImplementation(({ children }: { children: React.ReactNode }) => (
+          <tr>{children}</tr>
+        )),
+      Cell: jest
+        .fn()
+        .mockImplementation(({ children }: { children: React.ReactNode }) => (
+          <td>{children}</td>
+        )),
+    }
+  );
 
-  return { Table, Typography: ({ children }: { children: React.ReactNode }) => <span>{children}</span> };
+  return {
+    Table,
+    Typography: ({ children }: { children: React.ReactNode }) => (
+      <span>{children}</span>
+    ),
+  };
 });
 
 jest.mock('../../../../common/SummaryCard/SummaryCardV1', () =>
