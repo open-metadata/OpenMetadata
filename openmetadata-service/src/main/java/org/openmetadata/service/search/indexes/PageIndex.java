@@ -1,11 +1,15 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.openmetadata.service.jdbi3.KnowledgePageRepository.KNOWLEDGE_PAGE_ENTITY;
+
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.schema.entity.data.Page;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.FullyQualifiedName;
 
-public class PageIndex implements TaggableIndex {
+public class PageIndex implements SearchIndex {
   final Page page;
 
   public PageIndex(Page page) {
@@ -19,13 +23,23 @@ public class PageIndex implements TaggableIndex {
 
   @Override
   public String getEntityTypeName() {
-    return Entity.PAGE;
+    return KNOWLEDGE_PAGE_ENTITY;
   }
 
   @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(SearchIndex.super.getRequiredReindexFields());
+    fields.add("parent");
+    fields.add("children");
+    fields.add("editors");
+    fields.add("relatedEntities");
+    return Collections.unmodifiableSet(fields);
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     doc.put("fqnDepth", calculateFqnDepth(page.getFullyQualifiedName()));
-    // Pages are hard-deleted (not soft-deleted), so always appear as not-deleted in search
+    // Override common deleted field: pages are hard-deleted (not soft-deleted),
+    // so they should always appear as not-deleted in the search index
     doc.put("deleted", Boolean.FALSE);
     return doc;
   }
