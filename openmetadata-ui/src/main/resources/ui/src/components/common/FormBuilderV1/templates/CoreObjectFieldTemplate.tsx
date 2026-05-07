@@ -61,7 +61,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
 
   const propertiesContent = (
     <>
-      <div className="tw:flex tw:flex-col tw:gap-8">
+      <div className="tw:flex tw:flex-col tw:gap-4">
         {!isRoot && schema.additionalProperties && (
           <div className="tw:flex tw:items-center tw:justify-between">
             <Typography
@@ -89,14 +89,14 @@ export const CoreObjectFieldTemplate: FunctionComponent<
 
       {advancedProperties.length > 0 && (
         <div className="tw:my-3">
-          <Accordion>
+          <Accordion className="tw:ring-0 tw:divide-y-0 tw:rounded-lg tw:border tw:border-secondary">
             <AccordionItem id={`${idSchema.$id}-advanced`}>
-              <AccordionHeader>
+              <AccordionHeader className="tw:py-3 tw:px-3 tw:text-md tw:font-medium tw:text-secondary tw:bg-secondary">
                 {title
                   ? `${title} ${t('label.advanced-config')}`
                   : t('label.advanced-config')}
               </AccordionHeader>
-              <AccordionPanel className="tw:flex tw:flex-col tw:gap-4">
+              <AccordionPanel className="tw:flex tw:flex-col tw:bg-secondary tw:gap-4 tw:border-t-0">
                 {advancedProperties.map((element) => (
                   <div key={element.name}>{element.content}</div>
                 ))}
@@ -110,7 +110,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
 
   if (!isRoot && title) {
     return (
-      <div className="tw:flex tw:flex-col tw:gap-4">
+      <div className="tw:flex tw:flex-col tw:gap-4 tw:rounded-xl tw:p-4 tw:bg-secondary tw:bg-secondary">
         <div className="tw:flex tw:flex-col tw:gap-0.5">
           <Typography
             as="label"

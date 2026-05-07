@@ -50,30 +50,34 @@ const CoreSelectWidget = ({
   );
 
   return (
-    <Select
-      hint={getWidgetHint({ rawErrors, schema, options })}
-      isDisabled={disabled || readonly}
-      isInvalid={!!rawErrors?.length}
-      isRequired={required}
-      items={items}
-      label={getWidgetLabel({ hideLabel, label })}
-      placeholder={placeholder}
-      selectedKey={value === undefined || value === null ? null : String(value)}
-      onSelectionChange={(key: Key | null) => {
-        if (key === null) {
-          onChange(options.emptyValue ?? undefined);
-
-          return;
+    <div className="tw:rounded-xl tw:mt-2 tw:bg-secondary tw:p-4">
+      <Select
+        hint={getWidgetHint({ rawErrors, schema, options })}
+        isDisabled={disabled || readonly}
+        isInvalid={!!rawErrors?.length}
+        isRequired={required}
+        items={items}
+        label={getWidgetLabel({ hideLabel, label })}
+        placeholder={placeholder}
+        selectedKey={
+          value === undefined || value === null ? null : String(value)
         }
+        onSelectionChange={(key: Key | null) => {
+          if (key === null) {
+            onChange(options.emptyValue ?? undefined);
 
-        onChange(optionValueMap.get(String(key)));
-      }}>
-      {(item) => (
-        <Select.Item id={item.id} key={item.id} textValue={item.label}>
-          {item.label}
-        </Select.Item>
-      )}
-    </Select>
+            return;
+          }
+
+          onChange(optionValueMap.get(String(key)));
+        }}>
+        {(item) => (
+          <Select.Item id={item.id} key={item.id} textValue={item.label}>
+            {item.label}
+          </Select.Item>
+        )}
+      </Select>
+    </div>
   );
 };
 

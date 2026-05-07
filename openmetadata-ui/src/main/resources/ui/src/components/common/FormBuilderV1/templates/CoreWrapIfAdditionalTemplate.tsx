@@ -41,7 +41,7 @@ export const CoreWrapIfAdditionalTemplate: FunctionComponent<
   }
 
   return (
-    <div className="tw:flex tw:w-full tw:items-end tw:gap-2">
+    <div className="tw:flex tw:w-full tw:items-center tw:gap-2  tw:bg-secondary">
       <div className="tw:w-2/5 tw:shrink-0">
         <Input
           id={`${id}-key`}
