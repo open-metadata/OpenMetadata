@@ -343,6 +343,8 @@ export const SOCKET_EVENTS = {
   QUERY_RUNNER_CHANNEL: 'queryRunnerChannel',
 };
 
+export const CACHE_WARMUP_APPLICATION_NAME = 'CacheWarmupApplication';
+
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
   '/database/': [i18n.t('message.in-this-database')],
 };

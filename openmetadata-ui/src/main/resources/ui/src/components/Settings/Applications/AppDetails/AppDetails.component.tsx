@@ -61,6 +61,7 @@ import {
   triggerOnDemandApp,
   uninstallApp,
 } from '../../../../rest/applicationAPI';
+import { isCacheWarmupApplication } from '../../../../utils/ApplicationUtils';
 import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -99,6 +100,12 @@ const AppDetails = () => {
   });
   const { getResourceLimit } = useLimitStore();
   const { plugins } = useApplicationsProvider();
+  const isRuntimeDisabled = appData?.enabled === false && !appData.deleted;
+  const runtimeDisabledReason =
+    isRuntimeDisabled && isCacheWarmupApplication(appData?.name)
+      ? t('message.cache-service-not-configured-message')
+      : undefined;
+  const isAppUnavailable = Boolean(appData?.deleted) || isRuntimeDisabled;
 
   const fetchAppDetails = useCallback(async () => {
     setLoadingState((prev) => ({ ...prev, isFetchLoading: true }));
@@ -125,9 +132,9 @@ const AppDetails = () => {
     }
   }, [fqn, setLoadingState, t]);
 
-  const onBrowseAppsClick = () => {
+  const onBrowseAppsClick = useCallback(() => {
     navigate(getSettingPath(GlobalSettingOptions.APPLICATIONS));
-  };
+  }, [navigate]);
 
   const handleRestore = useCallback(async () => {
     if (appData) {
@@ -145,7 +152,7 @@ const AppDetails = () => {
         onBrowseAppsClick();
       }
     }
-  }, [appData]);
+  }, [appData, onBrowseAppsClick, t]);
 
   const onConfirmAction = useCallback(async () => {
     try {
@@ -174,7 +181,15 @@ const AppDetails = () => {
     } finally {
       setLoadingState((prev) => ({ ...prev, isSaveLoading: false }));
     }
-  }, [appData, action, setLoadingState]);
+  }, [
+    action,
+    appData,
+    getResourceLimit,
+    handleRestore,
+    onBrowseAppsClick,
+    setLoadingState,
+    t,
+  ]);
 
   const manageButtonContent: ItemType[] = [
     ...(appData?.deleted
@@ -244,70 +259,74 @@ const AppDetails = () => {
         ]),
   ];
 
-  const onConfigSave = async (
-    data: IChangeEvent & { ingestionRunner?: EntityReference }
-  ) => {
-    if (appData) {
-      setLoadingState((prev) => ({ ...prev, isSaveLoading: true }));
+  const onConfigSave = useCallback(
+    async (data: IChangeEvent & { ingestionRunner?: EntityReference }) => {
+      if (appData) {
+        setLoadingState((prev) => ({ ...prev, isSaveLoading: true }));
 
-      const { formData, ingestionRunner } = data;
+        const { formData, ingestionRunner } = data;
 
-      const updatedFormData = formatFormDataForSubmit(formData);
-      const updatedData = {
-        ...appData,
-        appConfiguration: updatedFormData,
-        ...(ingestionRunner && { ingestionRunner }),
-      };
+        const updatedFormData = formatFormDataForSubmit(formData);
+        const updatedData = {
+          ...appData,
+          appConfiguration: updatedFormData,
+          ...(ingestionRunner && { ingestionRunner }),
+        };
 
-      const jsonPatch = compare(appData, updatedData);
+        const jsonPatch = compare(appData, updatedData);
 
-      try {
-        const response = await patchApplication(appData.id, jsonPatch);
-        // call configure endpoint also to update configuration
-        await configureApp(appData.fullyQualifiedName ?? '', updatedFormData);
-        setAppData(response);
-        showSuccessToast(
-          t('message.entity-saved-successfully', {
-            entity: t('label.configuration'),
-          })
-        );
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setLoadingState((prev) => ({ ...prev, isSaveLoading: false }));
+        try {
+          const response = await patchApplication(appData.id, jsonPatch);
+          // call configure endpoint also to update configuration
+          await configureApp(appData.fullyQualifiedName ?? '', updatedFormData);
+          setAppData(response);
+          showSuccessToast(
+            t('message.entity-saved-successfully', {
+              entity: t('label.configuration'),
+            })
+          );
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        } finally {
+          setLoadingState((prev) => ({ ...prev, isSaveLoading: false }));
+        }
       }
-    }
-  };
+    },
+    [appData, t]
+  );
 
-  const onAppScheduleSave = async (cron: string) => {
-    if (appData) {
-      const updatedData = {
-        ...appData,
-        appSchedule: {
-          scheduleTimeline: isEmpty(cron)
-            ? ScheduleTimeline.None
-            : ScheduleTimeline.Custom,
-          ...(cron ? { cronExpression: cron } : {}),
-        },
-      };
+  const onAppScheduleSave = useCallback(
+    async (cron: string) => {
+      if (appData) {
+        const updatedData = {
+          ...appData,
+          appSchedule: {
+            scheduleTimeline: isEmpty(cron)
+              ? ScheduleTimeline.None
+              : ScheduleTimeline.Custom,
+            ...(cron ? { cronExpression: cron } : {}),
+          },
+        };
 
-      const jsonPatch = compare(appData, updatedData);
+        const jsonPatch = compare(appData, updatedData);
 
-      try {
-        const response = await patchApplication(appData.id, jsonPatch);
-        setAppData(response);
-        showSuccessToast(
-          t('message.entity-saved-successfully', {
-            entity: t('label.schedule'),
-          })
-        );
-      } catch (error) {
-        showErrorToast(error as AxiosError);
+        try {
+          const response = await patchApplication(appData.id, jsonPatch);
+          setAppData(response);
+          showSuccessToast(
+            t('message.entity-saved-successfully', {
+              entity: t('label.schedule'),
+            })
+          );
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        }
       }
-    }
-  };
+    },
+    [appData, t]
+  );
 
-  const onDemandTrigger = async () => {
+  const onDemandTrigger = useCallback(async () => {
     try {
       setLoadingState((prev) => ({ ...prev, isRunLoading: true }));
       await triggerOnDemandApp(appData?.fullyQualifiedName ?? '');
@@ -321,9 +340,9 @@ const AppDetails = () => {
     } finally {
       setLoadingState((prev) => ({ ...prev, isRunLoading: false }));
     }
-  };
+  }, [appData?.fullyQualifiedName, t]);
 
-  const onDeployTrigger = async () => {
+  const onDeployTrigger = useCallback(async () => {
     try {
       setLoadingState((prev) => ({ ...prev, isDeployLoading: true }));
       await deployApp(appData?.fullyQualifiedName ?? '');
@@ -338,7 +357,7 @@ const AppDetails = () => {
     } finally {
       setLoadingState((prev) => ({ ...prev, isDeployLoading: false }));
     }
-  };
+  }, [appData?.fullyQualifiedName, fetchAppDetails, t]);
 
   // Check if there's a plugin app details component for this app
   const pluginAppDetailsComponent = useMemo(() => {
@@ -354,9 +373,12 @@ const AppDetails = () => {
   const tabs = useMemo(() => {
     const ApplicationConfigurationComponent =
       applicationsClassBase.getApplicationConfigurationComponent();
-
+    const showScheduleTab = appData?.scheduleType !== ScheduleType.NoSchedule;
     const tabConfiguration =
-      appData?.appConfiguration && appData.allowConfiguration && jsonSchema
+      appData?.appConfiguration &&
+      appData.allowConfiguration &&
+      jsonSchema &&
+      !isRuntimeDisabled
         ? [
             {
               label: (
@@ -378,8 +400,6 @@ const AppDetails = () => {
           ]
         : [];
 
-    const showScheduleTab = appData?.scheduleType !== ScheduleType.NoSchedule;
-
     return [
       ...(showScheduleTab
         ? [
@@ -396,6 +416,8 @@ const AppDetails = () => {
                   {appData && (
                     <AppSchedule
                       appData={appData}
+                      disabled={isRuntimeDisabled}
+                      disabledReason={runtimeDisabledReason}
                       jsonSchema={jsonSchema as RJSFSchema}
                       loading={{
                         isRunLoading: loadingState.isRunLoading,
@@ -412,7 +434,7 @@ const AppDetails = () => {
           ]
         : []),
       ...tabConfiguration,
-      ...(!appData?.deleted && showScheduleTab
+      ...(!isAppUnavailable && showScheduleTab
         ? [
             {
               label: (
@@ -431,7 +453,7 @@ const AppDetails = () => {
             },
           ]
         : []),
-      ...(!appData?.deleted && appData?.name === 'SearchIndexingApplication'
+      ...(!isAppUnavailable && appData?.name === 'SearchIndexingApplication'
         ? [
             {
               label: (
@@ -446,7 +468,21 @@ const AppDetails = () => {
           ]
         : []),
     ];
-  }, [appData, jsonSchema, loadingState]);
+  }, [
+    appData,
+    isAppUnavailable,
+    isRuntimeDisabled,
+    jsonSchema,
+    loadingState.isDeployLoading,
+    loadingState.isRunLoading,
+    loadingState.isSaveLoading,
+    onAppScheduleSave,
+    onConfigSave,
+    onDemandTrigger,
+    onDeployTrigger,
+    runtimeDisabledReason,
+    t,
+  ]);
 
   const actionText = useMemo(() => {
     switch (action) {
@@ -459,7 +495,7 @@ const AppDetails = () => {
       default:
         return '';
     }
-  }, [action]);
+  }, [action, t]);
 
   useEffect(() => {
     fetchAppDetails();
@@ -527,6 +563,16 @@ const AppDetails = () => {
               <Typography.Title level={4}>
                 {getEntityName(appData)}
               </Typography.Title>
+              {isRuntimeDisabled && (
+                <Tooltip title={runtimeDisabledReason}>
+                  <div
+                    className="deleted-badge-button text-xs flex-center app-runtime-disabled-badge"
+                    data-testid="runtime-disabled-badge">
+                    <StopOutlined className="d-flex m-r-xss font-medium text-xs" />
+                    {t('label.disabled')}
+                  </div>
+                </Tooltip>
+              )}
 
               <div className="d-flex items-center flex-wrap gap-6">
                 <Space size={8}>

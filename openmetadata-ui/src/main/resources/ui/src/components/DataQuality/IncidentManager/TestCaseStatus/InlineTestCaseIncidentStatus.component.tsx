@@ -47,7 +47,10 @@ import {
   TaskEntityType,
   TaskResolutionType,
 } from '../../../../rest/tasksAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  getEntityFeedLink,
+  getEntityName,
+} from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import { UserTag } from '../../../common/UserTag/UserTag.component';
@@ -173,8 +176,7 @@ const InlineTestCaseIncidentStatus = ({
           name: `Incident: ${testCaseName}`,
           category: TaskCategory.Incident,
           type: TaskEntityType.TestCaseResolution,
-          about: testCaseFqn,
-          aboutType: 'testCase',
+          about: getEntityFeedLink('testCase', testCaseFqn),
         });
 
         if (targetStatus !== TestCaseResolutionStatusTypes.New && newTask?.id) {

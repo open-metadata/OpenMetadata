@@ -57,7 +57,7 @@ public class PartitionWorker {
   private static final long MAX_CURSOR_INITIALIZATION_OFFSET = (long) Integer.MAX_VALUE + 1L;
 
   /** Time series entity types that need special handling */
-  private static final Set<String> TIME_SERIES_ENTITIES =
+  static final Set<String> TIME_SERIES_ENTITIES =
       Set.of(
           ReportData.ReportDataType.ENTITY_REPORT_DATA.value(),
           ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA.value(),
@@ -203,7 +203,7 @@ public class PartitionWorker {
 
       // Initialize keyset cursor for efficient pagination (avoids OFFSET degradation)
       long cursorInitStart = System.currentTimeMillis();
-      String keysetCursor = initializeKeysetCursor(entityType, rangeStart);
+      String keysetCursor = initializeKeysetCursor(partition, rangeStart);
       LOG.debug(
           "initializeKeysetCursor for {} offset={} took {}ms",
           entityType,
@@ -244,7 +244,7 @@ public class PartitionWorker {
 
           // If keyset cursor exhausted, recompute or stop
           if (keysetCursor == null && currentOffset < rangeEnd) {
-            keysetCursor = initializeKeysetCursor(entityType, currentOffset);
+            keysetCursor = initializeKeysetCursor(partition, currentOffset);
             if (keysetCursor == null) {
               LOG.debug(
                   "{} partition {} data exhausted at offset {} (rangeEnd: {}), "
@@ -301,7 +301,7 @@ public class PartitionWorker {
 
           // Recompute keyset cursor after failure
           if (currentOffset < rangeEnd) {
-            keysetCursor = initializeKeysetCursor(entityType, currentOffset);
+            keysetCursor = initializeKeysetCursor(partition, currentOffset);
             if (keysetCursor == null) {
               break;
             }
@@ -639,26 +639,36 @@ public class PartitionWorker {
     }
   }
 
-  private String initializeKeysetCursor(String entityType, long offset) {
+  private String initializeKeysetCursor(SearchIndexPartition partition, long offset) {
     if (offset <= 0) {
       return null;
     }
-    if (!TIME_SERIES_ENTITIES.contains(entityType)) {
-      int cursorOffset = toCursorOffset(entityType, offset);
-      ListFilter filter = new ListFilter(Include.ALL);
-      String cursor =
-          Entity.getEntityRepository(entityType).getCursorAtOffset(filter, cursorOffset);
-      if (cursor == null) {
-        LOG.debug(
-            "getCursorAtOffset returned null for {} at offset {} (cursorOffset={})",
-            entityType,
-            offset,
-            cursorOffset);
-      }
-      return cursor;
-    } else {
+    String entityType = partition.getEntityType();
+    if (TIME_SERIES_ENTITIES.contains(entityType)) {
       return RestUtil.encodeCursor(String.valueOf(offset));
     }
+    // Fast path: coordinator precomputed boundary cursors for every partition's
+    // rangeStart at job initialization (single keyset walk per entity type, O(N) total).
+    // Only the partition's first call lands on a known rangeStart value; mid-partition
+    // recomputes (after batch failure) won't hit this path and fall through to the
+    // OFFSET-based fallback below. Cache lookup is scoped by jobId to avoid stale hits
+    // from a previous job that ran on the same server.
+    String precomputed =
+        coordinator.getPartitionStartCursor(partition.getJobId(), entityType, offset);
+    if (precomputed != null) {
+      return precomputed;
+    }
+    int cursorOffset = toCursorOffset(entityType, offset);
+    ListFilter filter = new ListFilter(Include.ALL);
+    String cursor = Entity.getEntityRepository(entityType).getCursorAtOffset(filter, cursorOffset);
+    if (cursor == null) {
+      LOG.debug(
+          "getCursorAtOffset returned null for {} at offset {} (cursorOffset={})",
+          entityType,
+          offset,
+          cursorOffset);
+    }
+    return cursor;
   }
 
   private int toCursorOffset(String entityType, long offset) {
