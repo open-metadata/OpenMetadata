@@ -276,7 +276,7 @@ const ObservabilityAlertsPage = () => {
   };
 
   const renderRow = (record: EventSubscription) => (
-    <Table.Row id={record.id} key={record.id}>
+    <Table.Row data-row-key={record.id} id={record.id} key={record.id}>
       <Table.Cell
         className={getAlertTableCellLayoutClassName(
           ALERT_TABLE_COLUMN_IDS.NAME
