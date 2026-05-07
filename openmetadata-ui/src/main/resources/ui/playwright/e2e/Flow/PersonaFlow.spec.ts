@@ -753,14 +753,18 @@ test.describe.serial('Team persona setting flow', () => {
   });
 });
 
-let CURATED_DESCRIPTION_TEXT;
+let CURATED_DESCRIPTION_TEXT: string;
 let WORD_TO_SEARCH: string;
-const curatedAdminUser = new UserClass();
-const curatedPersona = new PersonaClass();
-const curatedTable = new TableClass();
+let curatedAdminUser: UserClass;
+let curatedPersona: PersonaClass;
+let curatedTable: TableClass;
 
 test.describe('Curated Assets – Description filter', () => {
   test.beforeAll('Setup', async ({ browser }) => {
+    curatedAdminUser = new UserClass();
+    curatedPersona = new PersonaClass();
+    curatedTable = new TableClass();
+
     const UNIQUE_WORD = `unique-word-${uuid()}`;
     WORD_TO_SEARCH = `table with a unique description ${UNIQUE_WORD}.`;
     CURATED_DESCRIPTION_TEXT = `This is a curated table with a unique description ${UNIQUE_WORD}. It is bioluminescent and not an oscilloscope.`;
@@ -824,6 +828,7 @@ test.describe('Curated Assets – Description filter', () => {
     adminPage,
   }) => {
     await test.step('Navigate to persona settings and add curated assets widget', async () => {
+      await redirectToHomePage(adminPage);
       await addCuratedAssetWidget(adminPage);
     });
 

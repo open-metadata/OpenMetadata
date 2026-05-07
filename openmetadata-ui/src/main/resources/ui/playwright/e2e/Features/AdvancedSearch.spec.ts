@@ -673,7 +673,7 @@ test.describe(
       await sidebarClick(page, SidebarItem.EXPLORE);
     });
 
-    test(`Contains - table with that word in description is visible`, async ({
+    test('Description Contains filter returns matching tables', async ({
       page,
     }) => {
       await test.step('Open advanced search dialog', async () => {
@@ -756,7 +756,7 @@ test.describe(
       await page.getByTestId('clear-filters').click();
     });
 
-    test(`Not Contains – table IS visible (word absent from description)`, async ({
+    test('Not Contains – table IS visible (word absent from description)', async ({
       page,
     }) => {
       await test.step('Open advanced search dialog', async () => {
