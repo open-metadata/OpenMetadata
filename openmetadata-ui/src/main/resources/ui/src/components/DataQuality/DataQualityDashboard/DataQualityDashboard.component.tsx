@@ -34,7 +34,7 @@ import {
   FAILED_CHART_COLOR_SCHEME,
   SUCCESS_CHART_COLOR_SCHEME,
 } from '../../../constants/Chart.constants';
-import { PAGE_SIZE_BASE, ROUTES } from '../../../constants/constants';
+import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import {
   DATA_QUALITY_DASHBOARD_HEADER,
   DQ_FILTER_KEYS,
@@ -861,7 +861,7 @@ const DataQualityDashboard = ({
                   incidentStatusType={TestCaseResolutionStatusTypes.New}
                   name="open-incident"
                   redirectPath={{
-                    pathname: ROUTES.INCIDENT_MANAGER,
+                    pathname: observabilityRouterClassBase.getIncidentManagerPath(),
                     search: QueryString.stringify({
                       testCaseResolutionStatusType:
                         TestCaseResolutionStatusTypes.New,
@@ -878,7 +878,7 @@ const DataQualityDashboard = ({
                   incidentStatusType={TestCaseResolutionStatusTypes.Resolved}
                   name="resolved-incident"
                   redirectPath={{
-                    pathname: ROUTES.INCIDENT_MANAGER,
+                    pathname: observabilityRouterClassBase.getIncidentManagerPath(),
                     search: QueryString.stringify({
                       testCaseResolutionStatusType:
                         TestCaseResolutionStatusTypes.Resolved,

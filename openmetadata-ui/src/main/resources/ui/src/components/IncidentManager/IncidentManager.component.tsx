@@ -65,10 +65,8 @@ import {
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import {
-  getEntityDetailsPath,
-  getTestCaseDetailPagePath,
-} from '../../utils/RouterUtils';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
+import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
 import DateTimeDisplay from '../common/DateTimeDisplay/DateTimeDisplay';
@@ -607,7 +605,7 @@ const IncidentManager = ({
             <Link
               className="m-0 break-all text-primary"
               data-testid={`test-case-${record.testCaseReference?.name}`}
-              to={getTestCaseDetailPagePath(
+              to={observabilityRouterClassBase.getTestCaseDetailPagePath(
                 record.testCaseReference?.fullyQualifiedName ?? ''
               )}>
               {getEntityName(record.testCaseReference)}

@@ -59,10 +59,7 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { getPopupContainer } from '../../../../utils/formUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
-import {
-  getEntityDetailsPath,
-  getTestSuitePath,
-} from '../../../../utils/RouterUtils';
+import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { ownerTableObject } from '../../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -171,7 +168,7 @@ export const TestSuites = () => {
               ) : (
                 <Link
                   data-testid={name}
-                  to={getTestSuitePath(
+                  to={observabilityRouterClassBase.getTestSuitePath(
                     record.fullyQualifiedName ?? record.name
                   )}>
                   {getEntityName(record)}

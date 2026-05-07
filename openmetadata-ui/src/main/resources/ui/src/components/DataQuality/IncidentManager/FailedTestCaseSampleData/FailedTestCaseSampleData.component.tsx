@@ -34,8 +34,8 @@ import {
 } from '../../../../rest/testAPI';
 import { getEntityDeleteMessage } from '../../../../utils/CommonUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityUtils';
+import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
-import { getTestCaseDetailPagePath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -222,7 +222,7 @@ const FailedTestCaseSampleData = ({
         <div className="d-flex gap-4">
           {testCaseData?.inspectionQuery && !isVersionPage && (
             <Link
-              to={getTestCaseDetailPagePath(
+              to={observabilityRouterClassBase.getTestCaseDetailPagePath(
                 testCaseData?.fullyQualifiedName ?? '',
                 TestCasePageTabs.SQL_QUERY
               )}>

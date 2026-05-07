@@ -26,11 +26,7 @@ import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import {
-  PAGE_SIZE_LARGE,
-  ROUTES,
-  VALIDATION_MESSAGES,
-} from '../../constants/constants';
+import { PAGE_SIZE_LARGE, VALIDATION_MESSAGES } from '../../constants/constants';
 import { NAME_FIELD_RULES } from '../../constants/Form.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -65,7 +61,7 @@ import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
-import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AddAlertPageLoadingState } from '../AddNotificationPage/AddNotificationPage.interface';
 import {
@@ -149,7 +145,7 @@ function AddObservabilityPage() {
       },
       {
         name: t('label.alert-plural'),
-        url: ROUTES.OBSERVABILITY_ALERTS,
+        url: observabilityRouterClassBase.getObservabilityAlertsListPath(),
       },
       {
         name: fqn
@@ -175,7 +171,9 @@ function AddObservabilityPage() {
           updateAlertAPI: updateObservabilityAlert,
           afterSaveAction: async (fqn: string) => {
             !fqn && (await getResourceLimit('eventsubscription', true, true));
-            navigate(getObservabilityAlertDetailsPath(fqn));
+            navigate(
+              observabilityRouterClassBase.getObservabilityAlertDetailsPath(fqn)
+            );
           },
           setInlineAlertDetails,
         });
