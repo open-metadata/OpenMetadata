@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -18,6 +18,7 @@ import {
   Container,
   StorageServiceType,
 } from '../../../generated/entity/data/container';
+import { Table } from '../../../generated/entity/data/table';
 import { ContractExecutionStatus } from '../../../generated/entity/data/dataContract';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
 import { LabelType, State, TagSource } from '../../../generated/tests/testCase';
@@ -29,6 +30,7 @@ import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
+import { listTasks } from '../../../rest/tasksAPI';
 import { ExtraInfoLink } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -187,6 +189,21 @@ jest.mock('../../../utils/TableClassBase', () => ({
     .mockImplementation(() => mockIsAlertSupported),
   getShowRequestDataAccess: jest.fn().mockImplementation(() => false),
   getRequestDataAccessDrawer: jest.fn().mockImplementation(() => null),
+}));
+
+jest.mock('../../../rest/tasksAPI', () => ({
+  ...jest.requireActual('../../../rest/tasksAPI'),
+  listTasks: jest.fn().mockResolvedValue({ data: [] }),
+}));
+
+jest.mock('../../../utils/TasksUtils', () =>
+  jest.requireActual('../../../utils/TasksUtils')
+);
+
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockReturnValue({
+    currentUser: { id: 'user-1', name: 'test.user' },
+  }),
 }));
 
 jest.mock('../../../rest/lineageAPI', () => ({
@@ -665,6 +682,182 @@ describe('DataAssetsHeader component', () => {
     expect(
       screen.queryByTestId('request-data-access-button')
     ).not.toBeInTheDocument();
+  });
+
+  describe('request data access button (DAR)', () => {
+    const tableProps: DataAssetsHeaderProps = {
+      ...mockProps,
+      entityType: EntityType.TABLE,
+      dataAsset: {
+        id: 'table-id',
+        name: 'my_table',
+        fullyQualifiedName: 'service.db.schema.my_table',
+        owners: [],
+        columns: [],
+      } as unknown as Table,
+      permissions: { ...DEFAULT_ENTITY_PERMISSION, ViewAll: true },
+    };
+
+    const mockListTasks = listTasks as jest.Mock;
+
+    beforeEach(() => {
+      mockListTasks.mockResolvedValue({ data: [] });
+      const { getShowRequestDataAccess } = jest.requireMock(
+        '../../../utils/TableClassBase'
+      );
+      (getShowRequestDataAccess as jest.Mock).mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      const { getShowRequestDataAccess } = jest.requireMock(
+        '../../../utils/TableClassBase'
+      );
+      (getShowRequestDataAccess as jest.Mock).mockReturnValue(false);
+    });
+
+    it('should not render when entity is not TABLE', () => {
+      render(<DataAssetsHeader {...mockProps} entityType={EntityType.CONTAINER} />);
+
+      expect(
+        screen.queryByTestId('request-data-access-button')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not render when user is an owner', async () => {
+      render(
+        <DataAssetsHeader
+          {...tableProps}
+          dataAsset={{
+            ...tableProps.dataAsset,
+            owners: [{ id: 'user-1', type: 'user' }],
+          }}
+        />
+      );
+
+      expect(
+        screen.queryByTestId('request-data-access-button')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render enabled button when no existing DAR task', async () => {
+      mockListTasks.mockResolvedValue({ data: [] });
+
+      render(<DataAssetsHeader {...tableProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('request-data-access-button')
+        ).not.toBeDisabled();
+      });
+    });
+
+    it('should call listTasks with correct server-side filters', async () => {
+      render(<DataAssetsHeader {...tableProps} />);
+
+      await waitFor(() => {
+        expect(mockListTasks).toHaveBeenCalledWith(
+          expect.objectContaining({
+            aboutEntity: 'service.db.schema.my_table',
+            category: 'DataAccess',
+            type: 'DataAccessRequest',
+            createdBy: 'test.user',
+            statusGroup: 'open',
+          })
+        );
+      });
+    });
+
+    it('should disable button when a task is in review stage', async () => {
+      mockListTasks.mockResolvedValue({
+        data: [
+          {
+            id: 'task-1',
+            status: 'Open',
+            workflowStageDisplayName: 'review',
+            createdAt: Date.now(),
+          },
+        ],
+      });
+
+      render(<DataAssetsHeader {...tableProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('request-data-access-button')
+        ).toBeDisabled();
+      });
+    });
+
+    it('should disable button when task is in approved stage and approval is still active', async () => {
+      mockListTasks.mockResolvedValue({
+        data: [
+          {
+            id: 'task-2',
+            status: 'InProgress',
+            workflowStageDisplayName: 'approved',
+            createdAt: Date.now(),
+            payload: { expirationDate: Date.now() + 86_400_000 },
+          },
+        ],
+      });
+
+      render(<DataAssetsHeader {...tableProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('request-data-access-button')
+        ).toBeDisabled();
+      });
+    });
+
+    it('should enable button when task is in approved stage but approval has expired', async () => {
+      mockListTasks.mockResolvedValue({
+        data: [
+          {
+            id: 'task-3',
+            status: 'InProgress',
+            workflowStageDisplayName: 'approved',
+            createdAt: Date.now() - 86_400_000 * 60,
+            payload: { expirationDate: Date.now() - 1000 },
+          },
+        ],
+      });
+
+      render(<DataAssetsHeader {...tableProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('request-data-access-button')
+        ).not.toBeDisabled();
+      });
+    });
+
+    it('should not call listTasks when currentUser has no name', async () => {
+      const { useApplicationStore } = jest.requireMock(
+        '../../../hooks/useApplicationStore'
+      );
+      (useApplicationStore as jest.Mock).mockReturnValueOnce({
+        currentUser: { id: 'user-1' },
+      });
+
+      render(<DataAssetsHeader {...tableProps} />);
+
+      await waitFor(() => {
+        expect(mockListTasks).not.toHaveBeenCalled();
+      });
+    });
+
+    it('should enable button when listTasks throws', async () => {
+      mockListTasks.mockRejectedValue(new Error('network error'));
+
+      render(<DataAssetsHeader {...tableProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('request-data-access-button')
+        ).not.toBeDisabled();
+      });
+    });
   });
 
   describe('dataContractLatestResultButton', () => {

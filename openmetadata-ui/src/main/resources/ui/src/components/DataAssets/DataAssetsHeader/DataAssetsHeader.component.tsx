@@ -65,10 +65,9 @@ import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
 import {
-  listMyCreatedTasks,
+  listTasks,
   Task,
   TaskCategory,
-  TaskEntityStatus,
   TaskEntityType,
 } from '../../../rest/tasksAPI';
 import {
@@ -168,9 +167,7 @@ export const DataAssetsHeader = ({
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
   const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
-  const [existingDarTask, setExistingDarTask] = useState<
-    Task | null | undefined
-  >(undefined);
+  const [existingDarTasks, setExistingDarTasks] = useState<Task[]>([]);
 
   const fetchDataContract = async (entityId: string) => {
     try {
@@ -183,33 +180,25 @@ export const DataAssetsHeader = ({
 
   const fetchExistingDar = useCallback(async () => {
     const entityFqn = dataAsset.fullyQualifiedName;
-    if (!entityFqn || entityType !== EntityType.TABLE) {
+    if (!entityFqn || !currentUser?.name || entityType !== EntityType.TABLE) {
       return;
     }
 
     try {
-      const res = await listMyCreatedTasks({
+      const res = await listTasks({
+        aboutEntity: entityFqn,
+        category: TaskCategory.DataAccess,
+        type: TaskEntityType.DataAccessRequest,
+        createdBy: currentUser.name,
+        statusGroup: 'open',
         fields: 'about,resolution',
-        limit: 50,
+        limit: 10,
       });
-      const match = (res.data ?? []).find((task) => {
-        if (
-          task.category !== TaskCategory.DataAccess ||
-          task.type !== TaskEntityType.DataAccessRequest
-        ) {
-          return false;
-        }
-
-        return (
-          task.about?.fullyQualifiedName === entityFqn ||
-          task.about?.id === dataAsset.id
-        );
-      });
-      setExistingDarTask(match ?? null);
+      setExistingDarTasks(res.data ?? []);
     } catch {
-      setExistingDarTask(null);
+      setExistingDarTasks([]);
     }
-  }, [dataAsset.fullyQualifiedName, dataAsset.id, entityType]);
+  }, [dataAsset.fullyQualifiedName, entityType, currentUser?.name]);
 
   const icon = useMemo(() => {
     const serviceType = get(dataAsset, 'serviceType', '');
@@ -631,34 +620,26 @@ export const DataAssetsHeader = ({
       return null;
     }
 
-    const reapplyStatuses = new Set([
-      TaskEntityStatus.Rejected,
-      TaskEntityStatus.Revoked,
-      TaskEntityStatus.Cancelled,
-      TaskEntityStatus.Failed,
-    ]);
-
-    const isDisabled = (() => {
-      if (!existingDarTask) {
-        return false;
-      }
-      if (reapplyStatuses.has(existingDarTask.status)) {
-        return false;
-      }
-      if (existingDarTask.status === TaskEntityStatus.Approved) {
-        const payload = existingDarTask.payload as
+    const isDisabled = existingDarTasks.some((task) => {
+      const stage = (
+        task.workflowStageDisplayName ??
+        task.status ??
+        ''
+      ).toLowerCase();
+      if (stage === 'approved') {
+        const payload = task.payload as
           | { duration?: string; expirationDate?: number }
           | undefined;
 
         return isDarApprovalActive(
-          existingDarTask.createdAt,
+          task.createdAt,
           payload?.duration,
           payload?.expirationDate
         );
       }
 
       return true;
-    })();
+    });
 
     const tooltipTitle = isDisabled
       ? t('message.data-access-request-already-exists')
@@ -675,7 +656,7 @@ export const DataAssetsHeader = ({
         </Button>
       </Tooltip>
     );
-  }, [entityType, deleted, isOwner, existingDarTask, t]);
+  }, [entityType, deleted, isOwner, existingDarTasks, t]);
 
   useEffect(() => {
     if (dataAsset.id) {
