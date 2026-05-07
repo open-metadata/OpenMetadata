@@ -1140,6 +1140,7 @@ public class TaskWorkflowHandler {
       case Rejected, AutoRejected -> "reject";
       case Completed -> "complete";
       case Cancelled -> "cancel";
+      case Revoked -> "revoke";
       case TimedOut -> "timeout";
     };
   }
@@ -1186,6 +1187,7 @@ public class TaskWorkflowHandler {
         case Rejected -> TaskResolutionType.Rejected;
         case Completed -> TaskResolutionType.Completed;
         case Cancelled -> TaskResolutionType.Cancelled;
+        case Revoked -> TaskResolutionType.Revoked;
         case Failed -> TaskResolutionType.TimedOut;
         case Open, InProgress, Pending -> null;
       };

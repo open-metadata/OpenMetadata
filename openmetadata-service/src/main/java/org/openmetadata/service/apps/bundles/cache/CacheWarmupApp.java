@@ -77,12 +77,11 @@ import org.quartz.JobExecutionContext;
  *       worst case is redundant SETs of identical JSON.</li>
  * </ul>
  *
- * <p>The {@code bundle:{<uuid>}:<type>} entries are pre-warmed by default via
- * {@link org.openmetadata.service.cache.BundleWarmupBatcher}, which uses the cheap batched
- * tag_usage query to populate tags + certification (the parts of the bundle that don't require
- * full relationship hydration). Relations are left null so the {@link
- * org.openmetadata.service.cache.CachedReadBundle} read path lazily populates them on first
- * read. Set {@code warmBundles=false} in the app config (or
+ * <p>The {@code bundle:{<uuid>}:<type>} entries are pre-warmed by default via {@link
+ * org.openmetadata.service.cache.BundleWarmupBatcher}, which uses cheap batched queries to populate
+ * tags + certification. Operators can opt into {@code warmRelationships=true} to also batch-warm
+ * common low-cardinality relation fields in the bundle. Set {@code warmBundles=false} in the app
+ * config (or
  * {@code -Dom.cache.warmBundles=false} at JVM start) to skip the bundle pass for very large
  * installs.
  *
@@ -95,6 +94,8 @@ import org.quartz.JobExecutionContext;
 public class CacheWarmupApp extends AbstractNativeApplication {
   private static final String ALL = "all";
   private static final int DEFAULT_BATCH_SIZE = 1000;
+  private static final Set<String> LEGACY_APP_CONFIG_FIELDS =
+      Set.of("consumerThreads", "queueSize");
   // Built per-instance from cacheConfig.redis.keyspace so multi-environment deployments sharing
   // one Redis with different keyspaces don't collide on warmup metadata. TTL is one day for
   // checkpoints (long enough for ops staff to notice and resume a stuck warmup, short enough
@@ -150,10 +151,27 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   }
 
   private CacheWarmupAppConfig parseAppConfig(Object raw) {
+    return normalizeAppConfig(raw);
+  }
+
+  static CacheWarmupAppConfig normalizeAppConfig(final Object raw) {
     if (raw == null) {
       return new CacheWarmupAppConfig();
     }
-    return JsonUtils.convertValue(raw, CacheWarmupAppConfig.class);
+    final Object rawConfig =
+        raw instanceof String configJson
+            ? JsonUtils.readValue(configJson, new TypeReference<Map<String, Object>>() {})
+            : raw;
+    if (rawConfig == null) {
+      return new CacheWarmupAppConfig();
+    }
+    final Map<String, Object> sanitized =
+        JsonUtils.convertValue(rawConfig, new TypeReference<Map<String, Object>>() {});
+    if (sanitized == null) {
+      return new CacheWarmupAppConfig();
+    }
+    LEGACY_APP_CONFIG_FIELDS.forEach(sanitized::remove);
+    return JsonUtils.convertValue(sanitized, CacheWarmupAppConfig.class);
   }
 
   private EventPublisherJob newRuntimeJobData() {
@@ -219,7 +237,8 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       claimKeyPrefix = ks + ":warmup:claim:";
     }
     if (warmBundlesEnabled() && cacheProvider != null && keys != null) {
-      bundleBatcher = new BundleWarmupBatcher(collectionDAO, cacheProvider, keys);
+      bundleBatcher =
+          new BundleWarmupBatcher(collectionDAO, cacheProvider, keys, warmRelationshipsEnabled());
     }
   }
 
@@ -228,6 +247,13 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       return appConfig.getWarmBundles();
     }
     return Boolean.parseBoolean(System.getProperty("om.cache.warmBundles", "true"));
+  }
+
+  private boolean warmRelationshipsEnabled() {
+    if (appConfig != null && appConfig.getWarmRelationships() != null) {
+      return appConfig.getWarmRelationships();
+    }
+    return Boolean.parseBoolean(System.getProperty("om.cache.warmRelationships", "false"));
   }
 
   private boolean distributedClaimEnabled() {
@@ -288,7 +314,8 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   private void initJobData(JobExecutionContext ctx) {
     boolean isOnDemand = ctx.getJobDetail().getKey().getName().equals(ON_DEMAND_JOB);
     // For on-demand runs, OmAppJobListener places the user-supplied config (with overrides
-    // for entities / batchSize / warmBundles / enableDistributedClaim) into the Quartz
+    // for entities / batchSize / warmBundles / warmRelationships / enableDistributedClaim) into the
+    // Quartz
     // JobDataMap[APP_CONFIG]. {@code init(App)} ran earlier and cached the persisted App
     // config in {@code appConfig}; if we don't reload here, those manual overrides are
     // silently ignored. Always reload for on-demand; for scheduled runs the persisted config
@@ -320,7 +347,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   private CacheWarmupAppConfig loadAppConfig(JobExecutionContext ctx) {
     String raw = (String) ctx.getJobDetail().getJobDataMap().get(APP_CONFIG);
     if (raw != null) {
-      return JsonUtils.readValue(raw, CacheWarmupAppConfig.class);
+      return normalizeAppConfig(raw);
     }
     if (getApp() != null && getApp().getAppConfiguration() != null) {
       return parseAppConfig(getApp().getAppConfiguration());
@@ -805,7 +832,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   @Override
   protected void validateConfig(Map<String, Object> appConfig) {
     try {
-      JsonUtils.convertValue(appConfig, CacheWarmupAppConfig.class);
+      normalizeAppConfig(appConfig);
     } catch (IllegalArgumentException e) {
       throw AppException.byMessage(
           jakarta.ws.rs.core.Response.Status.BAD_REQUEST,
