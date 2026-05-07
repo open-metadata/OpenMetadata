@@ -14,7 +14,7 @@ import { Select, Skeleton, Table } from '@openmetadata/ui-core-components';
 import { format } from 'date-fns';
 import { isEmpty, split, toLower } from 'lodash';
 import { DateRangeObject } from 'Models';
-import { type ComponentType, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
