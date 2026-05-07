@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -18,8 +24,8 @@ import {
   Container,
   StorageServiceType,
 } from '../../../generated/entity/data/container';
-import { Table } from '../../../generated/entity/data/table';
 import { ContractExecutionStatus } from '../../../generated/entity/data/dataContract';
+import { Table } from '../../../generated/entity/data/table';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
 import { LabelType, State, TagSource } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
@@ -716,7 +722,9 @@ describe('DataAssetsHeader component', () => {
     });
 
     it('should not render when entity is not TABLE', () => {
-      render(<DataAssetsHeader {...mockProps} entityType={EntityType.CONTAINER} />);
+      render(
+        <DataAssetsHeader {...mockProps} entityType={EntityType.CONTAINER} />
+      );
 
       expect(
         screen.queryByTestId('request-data-access-button')
@@ -782,9 +790,7 @@ describe('DataAssetsHeader component', () => {
       render(<DataAssetsHeader {...tableProps} />);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('request-data-access-button')
-        ).toBeDisabled();
+        expect(screen.getByTestId('request-data-access-button')).toBeDisabled();
       });
     });
 
@@ -804,9 +810,7 @@ describe('DataAssetsHeader component', () => {
       render(<DataAssetsHeader {...tableProps} />);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('request-data-access-button')
-        ).toBeDisabled();
+        expect(screen.getByTestId('request-data-access-button')).toBeDisabled();
       });
     });
 

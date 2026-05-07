@@ -55,6 +55,7 @@ import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useDataAccessRequest } from '../../../hooks/useDataAccessRequest';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
   AnnouncementEntity,
@@ -64,12 +65,6 @@ import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
-import {
-  listTasks,
-  Task,
-  TaskCategory,
-  TaskEntityType,
-} from '../../../rest/tasksAPI';
 import {
   getDataAssetsHeaderInfo,
   isDataAssetsWithServiceField,
@@ -87,7 +82,6 @@ import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
-import { isDarApprovalActive } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
@@ -167,7 +161,10 @@ export const DataAssetsHeader = ({
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
   const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
-  const [existingDarTasks, setExistingDarTasks] = useState<Task[]>([]);
+  const { isDarDisabled, refetch: refetchExistingDar } = useDataAccessRequest({
+    entityFqn: dataAsset.fullyQualifiedName,
+    enabled: entityType === EntityType.TABLE,
+  });
 
   const fetchDataContract = async (entityId: string) => {
     try {
@@ -177,28 +174,6 @@ export const DataAssetsHeader = ({
       // Do nothing
     }
   };
-
-  const fetchExistingDar = useCallback(async () => {
-    const entityFqn = dataAsset.fullyQualifiedName;
-    if (!entityFqn || !currentUser?.name || entityType !== EntityType.TABLE) {
-      return;
-    }
-
-    try {
-      const res = await listTasks({
-        aboutEntity: entityFqn,
-        category: TaskCategory.DataAccess,
-        type: TaskEntityType.DataAccessRequest,
-        createdBy: currentUser.name,
-        statusGroup: 'open',
-        fields: 'about,resolution',
-        limit: 10,
-      });
-      setExistingDarTasks(res.data ?? []);
-    } catch {
-      setExistingDarTasks([]);
-    }
-  }, [dataAsset.fullyQualifiedName, entityType, currentUser?.name]);
 
   const icon = useMemo(() => {
     const serviceType = get(dataAsset, 'serviceType', '');
@@ -620,28 +595,7 @@ export const DataAssetsHeader = ({
       return null;
     }
 
-    const isDisabled = existingDarTasks.some((task) => {
-      const stage = (
-        task.workflowStageDisplayName ??
-        task.status ??
-        ''
-      ).toLowerCase();
-      if (stage === 'approved') {
-        const payload = task.payload as
-          | { duration?: string; expirationDate?: number }
-          | undefined;
-
-        return isDarApprovalActive(
-          task.createdAt,
-          payload?.duration,
-          payload?.expirationDate
-        );
-      }
-
-      return true;
-    });
-
-    const tooltipTitle = isDisabled
+    const tooltipTitle = isDarDisabled
       ? t('message.data-access-request-already-exists')
       : undefined;
 
@@ -650,23 +604,19 @@ export const DataAssetsHeader = ({
         <Button
           className="source-url-button font-semibold"
           data-testid="request-data-access-button"
-          disabled={isDisabled}
+          disabled={isDarDisabled}
           onClick={() => setIsRequestDataAccessOpen(true)}>
           {t('label.request-data-access')}
         </Button>
       </Tooltip>
     );
-  }, [entityType, deleted, isOwner, existingDarTasks, t]);
+  }, [entityType, deleted, isOwner, isDarDisabled, t]);
 
   useEffect(() => {
     if (dataAsset.id) {
       fetchDataContract(dataAsset.id);
     }
   }, [dataAsset?.id]);
-
-  useEffect(() => {
-    fetchExistingDar();
-  }, [fetchExistingDar]);
 
   return (
     <>
@@ -979,7 +929,7 @@ export const DataAssetsHeader = ({
         dataAsset.fullyQualifiedName ?? '',
         getEntityName(dataAsset),
         entityType,
-        fetchExistingDar
+        refetchExistingDar
       )}
     </>
   );

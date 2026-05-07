@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Avatar, Button as CoreButton } from '@openmetadata/ui-core-components';
+import {
+  Avatar,
+  Button as CoreButton,
+  Tooltip as CoreTooltip,
+} from '@openmetadata/ui-core-components';
 import { Button, Dropdown, Tabs, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
@@ -55,6 +59,7 @@ import { ContractExecutionStatus } from '../../../generated/type/contractExecuti
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useDataAccessRequest } from '../../../hooks/useDataAccessRequest';
 import { useFqn } from '../../../hooks/useFqn';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -67,16 +72,9 @@ import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataProductPortsView } from '../../../rest/dataProductAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import {
-  listTasks,
-  Task,
-  TaskCategory,
-  TaskEntityType,
-} from '../../../rest/tasksAPI';
-import {
   getEntityDeleteMessage,
   getFeedCounts,
 } from '../../../utils/CommonUtils';
-import { isDarApprovalActive } from '../../../utils/TasksUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -180,9 +178,12 @@ const DataProductsDetailsPage = ({
   const [dataContract, setDataContract] = useState<DataContract>();
   const [inputPortsCount, setInputPortsCount] = useState(0);
   const [outputPortsCount, setOutputPortsCount] = useState(0);
-  const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] =
-    useState(false);
-  const [existingDarTasks, setExistingDarTasks] = useState<Task[]>([]);
+  const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
+  const { isDarDisabled } = useDataAccessRequest({
+    entityFqn: dataProduct.fullyQualifiedName,
+    enabled: dataProductClassBase.getShowRequestDataAccess(),
+    listenForEvents: true,
+  });
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -351,32 +352,6 @@ const DataProductsDetailsPage = ({
     () => dataProduct.owners?.some((o) => o.id === currentUser?.id) ?? false,
     [dataProduct.owners, currentUser?.id]
   );
-
-  const fetchExistingDar = useCallback(async () => {
-    const entityFqn = dataProduct.fullyQualifiedName;
-    if (
-      !entityFqn ||
-      !currentUser?.name ||
-      !dataProductClassBase.getShowRequestDataAccess()
-    ) {
-      return;
-    }
-
-    try {
-      const res = await listTasks({
-        aboutEntity: entityFqn,
-        category: TaskCategory.DataAccess,
-        type: TaskEntityType.DataAccessRequest,
-        createdBy: currentUser.name,
-        statusGroup: 'open',
-        fields: 'about,resolution',
-        limit: 10,
-      });
-      setExistingDarTasks(res.data ?? []);
-    } catch {
-      setExistingDarTasks([]);
-    }
-  }, [dataProduct.fullyQualifiedName, currentUser?.name]);
 
   const handleVoteChange = useCallback(
     async (data: VotingDataProps) => {
@@ -691,21 +666,6 @@ const DataProductsDetailsPage = ({
     fetchPortCounts();
   }, [dataProductFqn, fetchPortCounts]);
 
-  useEffect(() => {
-    fetchExistingDar();
-  }, [fetchExistingDar]);
-
-  useEffect(() => {
-    const handler = () => fetchExistingDar();
-    globalThis.addEventListener('dar-task-created', handler);
-    globalThis.addEventListener('dar-task-resolved', handler);
-
-    return () => {
-      globalThis.removeEventListener('dar-task-created', handler);
-      globalThis.removeEventListener('dar-task-resolved', handler);
-    };
-  }, [fetchExistingDar]);
-
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
   };
@@ -817,47 +777,20 @@ const DataProductsDetailsPage = ({
             <div className="tw:flex tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
               {!isVersionsView &&
                 !isOwner &&
-                dataProductClassBase.getShowRequestDataAccess() &&
-                (() => {
-                  const isDarDisabled = existingDarTasks.some((task) => {
-                    const stage = (
-                      task.workflowStageDisplayName ??
-                      task.status ??
-                      ''
-                    ).toLowerCase();
-                    if (stage === 'approved') {
-                      const payload = task.payload as
-                        | { duration?: string; expirationDate?: number }
-                        | undefined;
-
-                      return isDarApprovalActive(
-                        task.createdAt,
-                        payload?.duration,
-                        payload?.expirationDate
-                      );
-                    }
-
-                    return true;
-                  });
-
-                  return (
-                    <Tooltip
-                      title={
-                        isDarDisabled
-                          ? t('message.data-access-request-already-exists')
-                          : undefined
-                      }>
-                      <CoreButton
-                        color="primary"
-                        data-testid="request-data-access-button"
-                        isDisabled={isDarDisabled}
-                        size="md"
-                        onClick={() => setIsRequestDataAccessOpen(true)}>
-                        {t('label.request-data-access')}
-                      </CoreButton>
-                    </Tooltip>
-                  );
-                })()}
+                dataProductClassBase.getShowRequestDataAccess() && (
+                  <CoreTooltip
+                    isDisabled={!isDarDisabled}
+                    title={t('message.data-access-request-already-exists')}>
+                    <CoreButton
+                      color="primary"
+                      data-testid="request-data-access-button"
+                      isDisabled={isDarDisabled}
+                      size="md"
+                      onClick={() => setIsRequestDataAccessOpen(true)}>
+                      {t('label.request-data-access')}
+                    </CoreButton>
+                  </CoreTooltip>
+                )}
 
               {!isVersionsView && dataProductPermission.Create && (
                 <Button
