@@ -3533,7 +3533,7 @@ test.describe('Custom property name validation', () => {
     );
   });
 
-  test('should show error when name contains an forward slash', async ({
+  test('should show error when name contains a forward slash', async ({
     page,
   }) => {
     await page.fill(
@@ -3546,7 +3546,7 @@ test.describe('Custom property name validation', () => {
     );
   });
 
-  test('should show error when name contains an tilde', async ({ page }) => {
+  test('should show error when name contains a tilde', async ({ page }) => {
     await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_TILDE);
 
     await expect(page.locator(nameError)).toContainText(

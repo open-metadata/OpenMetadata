@@ -658,7 +658,7 @@ export const addCustomPropertiesForEntity = async ({
   // Click the switch to show service doc panel
   await page.locator('[data-testid="show-side-panel-switch"]').click();
 
-  // Validation check — only '::' is blocked
+  // Validation check — name must start with a letter/number and must not contain: " * : ^ $ \ < > & ~ /
   await page.fill(
     '[data-testid="name"] input',
     CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_COLON
