@@ -22,8 +22,8 @@ export interface CreateTaskData {
   priority?: string;
   assignees?: string[];
   about?: string;
-  aboutType?: string;
   domain?: string;
+  payload?: Record<string, unknown>;
 }
 
 export interface TaskResponseData {
@@ -56,8 +56,8 @@ export class TaskClass {
       priority: data?.priority ?? 'Medium',
       assignees: data?.assignees,
       about: data?.about,
-      aboutType: data?.aboutType,
       domain: data?.domain,
+      payload: data?.payload,
     };
   }
 

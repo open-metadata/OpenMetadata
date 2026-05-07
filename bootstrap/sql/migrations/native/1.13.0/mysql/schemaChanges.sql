@@ -216,6 +216,42 @@ WHERE pipelineType = 'profiler'
     OR JSON_CONTAINS_PATH(json, 'one', '$.sourceConfig.config.profileSampleType')
     OR JSON_CONTAINS_PATH(json, 'one', '$.sourceConfig.config.samplingMethodType'));
 
+-- ingestion_pipeline_entity (testSuite pipelines): build profileSampleConfig (skip if already migrated)
+UPDATE ingestion_pipeline_entity
+SET json = JSON_SET(
+    json,
+    '$.sourceConfig.config.profileSampleConfig',
+    JSON_OBJECT(
+        'sampleConfigType', 'STATIC',
+        'config', JSON_OBJECT(
+            'profileSample', JSON_EXTRACT(json, '$.sourceConfig.config.profileSample'),
+            'profileSampleType', COALESCE(
+                JSON_EXTRACT(json, '$.sourceConfig.config.profileSampleType'),
+                CAST('"PERCENTAGE"' AS JSON)
+            ),
+            'samplingMethodType', JSON_EXTRACT(json, '$.sourceConfig.config.samplingMethodType')
+        )
+    )
+)
+WHERE pipelineType = 'testSuite'
+  AND JSON_EXTRACT(json, '$.sourceConfig.config.profileSample') IS NOT NULL
+  AND JSON_TYPE(JSON_EXTRACT(json, '$.sourceConfig.config.profileSample')) != 'NULL'
+  AND NOT JSON_CONTAINS_PATH(json, 'one', '$.sourceConfig.config.profileSampleConfig');
+
+-- ingestion_pipeline_entity (testSuite pipelines): remove old flat fields
+UPDATE ingestion_pipeline_entity
+SET json = JSON_REMOVE(
+    JSON_REMOVE(
+        JSON_REMOVE(json, '$.sourceConfig.config.samplingMethodType'),
+        '$.sourceConfig.config.profileSampleType'
+    ),
+    '$.sourceConfig.config.profileSample'
+)
+WHERE pipelineType = 'testSuite'
+  AND (JSON_CONTAINS_PATH(json, 'one', '$.sourceConfig.config.profileSample')
+    OR JSON_CONTAINS_PATH(json, 'one', '$.sourceConfig.config.profileSampleType')
+    OR JSON_CONTAINS_PATH(json, 'one', '$.sourceConfig.config.samplingMethodType'));
+
 -- RDF distributed indexing state tables
 CREATE TABLE IF NOT EXISTS rdf_index_job (
     id VARCHAR(36) NOT NULL,
@@ -321,3 +357,9 @@ ALTER TABLE search_index_server_stats
 -- already declared `CHARACTER SET ascii COLLATE ascii_bin`, a binary
 -- collation that lets the existing unique B-tree on `fqnHash` answer LIKE
 -- prefix predicates directly. No change required on the MySQL side.
+
+-- MCP OAuth: state parameter is opaque per RFC 6749 §4.1.1 and some clients (notably the
+-- Databricks MCP Proxy) send tokens longer than 255 characters. Widen mcp_state to TEXT to
+-- avoid INSERT failures on /mcp/authorize redirects.
+ALTER TABLE mcp_pending_auth_requests
+    MODIFY COLUMN mcp_state TEXT;

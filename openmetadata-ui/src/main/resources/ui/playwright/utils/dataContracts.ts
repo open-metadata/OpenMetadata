@@ -76,9 +76,7 @@ export const validateDataContractInsideBundleTestSuites = async (
       response.status() === 200
   );
 
-  await page
-    .locator('label:has([data-testid="bundle-suite-radio-btn"])')
-    .click();
+  await page.getByTestId('bundle-suite-radio-btn').click();
 
   await bundleSuitesResponse;
 
@@ -155,7 +153,7 @@ export const waitForContractExecutionWithFallback = async (
 
     const suiteNameCell = page
       .getByTestId('test-suite-table')
-      .locator('.ant-table-cell')
+      .locator('[role="gridcell"]')
       .filter({ hasText: `Data Contract - ${contractName}` });
 
     await expect(suiteNameCell).toBeVisible();

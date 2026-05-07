@@ -41,6 +41,12 @@ export interface CacheWarmupAppConfig {
      * deploy doesn't fan out to the DB. Disable for very large installs.
      */
     warmBundles?: boolean;
+    /**
+     * Optionally pre-warm common relationship fields in the read bundle cache. Requires Warm
+     * Read Bundles. This adds extra relationship-table and entity-reference reads during
+     * warmup, so enable it only when first-read relationship latency matters.
+     */
+    warmRelationships?: boolean;
 }
 
 /**
