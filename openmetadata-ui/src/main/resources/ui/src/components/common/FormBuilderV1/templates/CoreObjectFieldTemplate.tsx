@@ -127,9 +127,12 @@ export const CoreObjectFieldTemplate: FunctionComponent<
             {title}
           </Typography>
           {description && (
-            <span className="tw:text-xs tw:text-[var(--color-text-secondary)]">
+            <Typography
+              as="span"
+              className="tw:text-secondary"
+              size="text-xs">
               {description}
-            </span>
+            </Typography>
           )}
         </div>
         {propertiesContent}

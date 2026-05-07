@@ -147,9 +147,12 @@ const CoreOneOfField = (props: FieldProps) => {
             {fieldLabel}
           </Typography>
           {required && (
-            <span className="tw:text-[var(--color-error-primary)] tw:text-sm">
+            <Typography
+              as="span"
+              className="tw:text-error-primary"
+              size="text-sm">
               *
-            </span>
+            </Typography>
           )}
         </div>
       )}
