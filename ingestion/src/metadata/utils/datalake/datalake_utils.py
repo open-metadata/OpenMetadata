@@ -359,11 +359,11 @@ class GenericDataFrameColumnParser:
                                 if not str(df_row_val).isnumeric():
                                     # check if the row value is time
                                     try:
-                                        datetime.strptime(df_row_val, "%H:%M:%S").time()
+                                        datetime.strptime(str(df_row_val), "%H:%M:%S").time()
                                         dtype_ = "timedelta[ns]"
                                     except (ValueError, TypeError):
                                         # check if the row value is date / time / datetime
-                                        type(parse(df_row_val)).__name__.lower()
+                                        type(parse(str(df_row_val))).__name__.lower()
                                         dtype_ = "datetime64[ns]"
                                 parsed_object_datatype_list.append(dtype_)
                             except (ParserError, TypeError):
