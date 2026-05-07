@@ -13,7 +13,9 @@ QuestDB source module
 """
 
 import traceback
+from collections import defaultdict
 from collections.abc import Iterable
+from itertools import chain
 
 from sqlalchemy.engine.reflection import Inspector
 
@@ -52,6 +54,11 @@ QUESTDB_TABLE_TYPE_MATERIALIZED_VIEW = "M"
 QUESTDB_PARTITION_NONE = "NONE"
 QUESTDB_PARTITION_NA = "N/A"
 
+QUESTDB_VIEW_TYPE_MAP = {
+    QUESTDB_TABLE_TYPE_VIEW: TableType.View,
+    QUESTDB_TABLE_TYPE_MATERIALIZED_VIEW: TableType.MaterializedView,
+}
+
 
 class QuestDBSource(CommonDbSourceService):
     """
@@ -73,8 +80,9 @@ class QuestDBSource(CommonDbSourceService):
         super().__init__(config, metadata)
         try:
             rows = query_tables(self.connection)
-            self._tables_cache = {row.name: row for row in rows}
-            logger.info("Loaded %d entries from QuestDB tables() catalog", len(self._tables_cache))
+            self._tables_cache: defaultdict[str, dict[str, object]] = defaultdict(dict)
+            for row in rows:
+                self._tables_cache[row.table_type][row.name] = row
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to load QuestDB table catalog: %s — partition details will be unavailable", exc)
@@ -90,9 +98,7 @@ class QuestDBSource(CommonDbSourceService):
         Tables with a ``partitionBy`` value other than ``NONE`` are typed
         ``TableType.Partitioned``; all others are ``TableType.Regular``.
         """
-        for row in self._tables_cache.values():
-            if row.table_type != QUESTDB_TABLE_TYPE_TABLE:
-                continue
+        for row in self._tables_cache.get(QUESTDB_TABLE_TYPE_TABLE, {}).values():
             try:
                 table_type = (
                     TableType.Partitioned
@@ -111,12 +117,12 @@ class QuestDBSource(CommonDbSourceService):
         Rows with ``table_type == "V"`` are typed ``TableType.View``; rows with
         ``table_type == "M"`` are typed ``TableType.MaterializedView``.
         """
-        for row in self._tables_cache.values():
-            if row.table_type not in (QUESTDB_TABLE_TYPE_VIEW, QUESTDB_TABLE_TYPE_MATERIALIZED_VIEW):
-                continue
+        for row in chain(
+            self._tables_cache.get(QUESTDB_TABLE_TYPE_VIEW, {}).values(),
+            self._tables_cache.get(QUESTDB_TABLE_TYPE_MATERIALIZED_VIEW, {}).values(),
+        ):
             try:
-                table_type = TableType.View if row.table_type == QUESTDB_TABLE_TYPE_VIEW else TableType.MaterializedView
-                yield TableNameAndType(name=row.name, type_=table_type)
+                yield TableNameAndType(name=row.name, type_=QUESTDB_VIEW_TYPE_MAP[row.table_type])
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning("Skipping view %s: %s", row.name, exc)
@@ -152,7 +158,7 @@ class QuestDBSource(CommonDbSourceService):
         ``TIME_UNIT`` column using the designated timestamp and partition interval.
         """
         try:
-            row = self._tables_cache.get(table_name)
+            row = self._tables_cache.get(QUESTDB_TABLE_TYPE_TABLE, {}).get(table_name)
             if row is None:
                 return False, None
             partition_by = row.partition_by

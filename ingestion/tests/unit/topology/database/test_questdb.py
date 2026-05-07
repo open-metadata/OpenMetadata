@@ -346,21 +346,23 @@ def _make_source_with_cache(mock_tuples):
     Each entry in mock_tuples is a 4-tuple:
     (name, partition_by, designated_timestamp, table_type).
     """
+    from collections import defaultdict
+
     with patch(
         "metadata.ingestion.source.database.questdb.metadata.QuestDBSource.__init__",
         return_value=None,
     ):
         source = QuestDBSource.__new__(QuestDBSource)
 
-    source._tables_cache = {
-        name: QuestDBTableRow(
+    cache: defaultdict = defaultdict(dict)
+    for name, pb, dt, tt in mock_tuples:
+        cache[tt][name] = QuestDBTableRow(
             name=name,
             partition_by=pb,
             designated_timestamp=dt,
             table_type=tt,
         )
-        for name, pb, dt, tt in mock_tuples
-    }
+    source._tables_cache = cache
     return source
 
 
