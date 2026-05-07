@@ -43,6 +43,12 @@
       "type": "boolean",
       "default": true
     },
+    "warmRelationships": {
+      "title": "Warm Relationships",
+      "description": "Optionally pre-warm common relationship fields in the read bundle cache. Requires Warm Read Bundles. This adds extra relationship-table and entity-reference reads during warmup, so enable it only when first-read relationship latency matters.",
+      "type": "boolean",
+      "default": false
+    },
     "enableDistributedClaim": {
       "title": "Enable Distributed Claim",
       "description": "In multi-instance deployments, claim each entity type via Redis SETNX so only one instance warms it. Disable to let every instance warm independently (idempotent but redundant).",
