@@ -249,7 +249,25 @@ class GoogleEmbeddingClientTest {
   @Test
   void testMissingModelIdThrows() {
     Google googleCfg = new Google().withApiKey("test-key").withEmbeddingDimension(768);
+    // Schema defaults embeddingModelId to "text-embedding-004"; force-null to exercise the guard.
     googleCfg.setEmbeddingModelId(null);
+
+    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
+    nlsCfg.setGoogle(googleCfg);
+
+    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
+    config.setNaturalLanguageSearch(nlsCfg);
+
+    assertThrows(IllegalArgumentException.class, () -> new GoogleEmbeddingClient(config));
+  }
+
+  @Test
+  void testBlankModelIdThrows() {
+    Google googleCfg =
+        new Google()
+            .withApiKey("test-key")
+            .withEmbeddingModelId("   ")
+            .withEmbeddingDimension(768);
 
     NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
     nlsCfg.setGoogle(googleCfg);
