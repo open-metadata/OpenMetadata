@@ -5927,7 +5927,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             .withColumnProfile(List.of(idProfile, emailProfile));
     client.tables().updateTableProfile(table.getId(), createProfile);
 
-    // Verify all four field combinations don't regress:
+    // Verify the three field combinations exercised below don't regress:
     // (a) fields=profile — profile data returned, no full-table-scan on profiler_data_time_series
     TableColumnList withProfile =
         assertTimeout(
@@ -5976,7 +5976,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             .anyMatch(t -> tag.getFullyQualifiedName().equals(t.getTagFQN())),
         "id column should carry the test tag");
 
-    // (c) fields=tags,profile — duplicate populateEntityFieldTags must not run twice
+    // (c) fields=tags,profile — both tags and profile are populated correctly when requested
+    //     together (the dedup of populateEntityFieldTags is exercised here, but this test
+    //     verifies the observable contract — tags + profile both present on the result —
+    //     not the internal call count)
     TableColumnList withTagsAndProfile =
         assertTimeout(
             Duration.ofSeconds(30),

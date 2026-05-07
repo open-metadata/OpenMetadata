@@ -2906,7 +2906,7 @@ public class TableRepository extends EntityRepository<Table> {
         }
       }
       for (Column column : paginatedColumns) {
-        column.setCustomMetrics(metricsByColumn.getOrDefault(column.getName(), new ArrayList<>()));
+        column.setCustomMetrics(metricsByColumn.getOrDefault(column.getName(), List.of()));
       }
     }
 
@@ -3275,7 +3275,7 @@ public class TableRepository extends EntityRepository<Table> {
         }
       }
       for (Column column : paginatedResults) {
-        column.setCustomMetrics(metricsByColumn.getOrDefault(column.getName(), new ArrayList<>()));
+        column.setCustomMetrics(metricsByColumn.getOrDefault(column.getName(), List.of()));
       }
     }
 
