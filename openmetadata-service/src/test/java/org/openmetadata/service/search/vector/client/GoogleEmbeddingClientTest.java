@@ -406,7 +406,8 @@ class GoogleEmbeddingClientTest {
             768,
             "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
 
-    assertThrows(RuntimeException.class, () -> client.embed("hello"));
+    RuntimeException ex = assertThrows(RuntimeException.class, () -> client.embed("hello"));
+    assertTrue(ex.getMessage().contains("no values array"));
   }
 
   private ElasticSearchConfiguration buildConfig(String apiKey, String modelId, int dimension) {
