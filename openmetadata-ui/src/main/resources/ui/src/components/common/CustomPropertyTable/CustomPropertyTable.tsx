@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Row, Skeleton, Typography } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Col, Divider, Row, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -240,12 +241,12 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   if (isRenderedInRightPanel) {
     const header = (
-      <div className={classNames('d-flex justify-between')}>
-        <Typography.Text className={classNames('text-sm font-medium')}>
+      <Box align="center" direction="row" justify="between">
+        <Typography className="tw:text-primary" size="text-sm" weight="medium">
           {t('label.custom-property-plural')}
-        </Typography.Text>
+        </Typography>
         {viewAllBtn}
-      </div>
+      </Box>
     );
     const propertyList = (
       <div className="custom-property-right-panel-container">

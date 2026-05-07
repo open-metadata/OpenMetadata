@@ -207,6 +207,293 @@ jest.mock('@mui/material', () => {
   };
 });
 
+/**
+ * Mock @openmetadata/ui-core-components so tests that transitively import
+ * from the package (via ExpandableCard, DescriptionV1, widget shells, etc.)
+ * do not need to spin up the full react-aria-components / MUI styled engine
+ * inside jsdom. Lightweight DOM shims preserve data-testid, className, and
+ * event handlers — matching the pattern used elsewhere in the suite.
+ */
+jest.mock('@openmetadata/ui-core-components', () => {
+  const React = require('react');
+
+  const Box = React.forwardRef(({ children, className, ...rest }, ref) =>
+    React.createElement('div', { ...rest, ref, className }, children)
+  );
+
+  const Typography = ({
+    children,
+    className,
+    as: Component = 'span',
+    ...rest
+  }) => React.createElement(Component, { ...rest, className }, children);
+
+  const Card = React.forwardRef(({ children, className, ...rest }, ref) =>
+    React.createElement('div', { ...rest, ref, className }, children)
+  );
+  Card.Header = ({ title, extra, className, ...rest }) =>
+    React.createElement('div', { ...rest, className }, [
+      title && React.createElement('div', { key: 'title' }, title),
+      extra && React.createElement('div', { key: 'extra' }, extra),
+    ]);
+  Card.Content = ({ children, className, ...rest }) =>
+    React.createElement('div', { ...rest, className }, children);
+  Card.Footer = ({ children, className, ...rest }) =>
+    React.createElement('div', { ...rest, className }, children);
+
+  const renderIcon = (icon) => {
+    if (!icon) {
+      return null;
+    }
+    if (React.isValidElement(icon)) {
+      return icon;
+    }
+    if (typeof icon === 'function') {
+      return React.createElement(icon, {});
+    }
+
+    return null;
+  };
+
+  const ButtonUtility = ({
+    onClick,
+    isDisabled,
+    tabIndex,
+    className,
+    tooltip,
+    icon,
+    'data-testid': testId,
+  }) =>
+    React.createElement(
+      'button',
+      {
+        'aria-label': tooltip,
+        className,
+        'data-testid': testId,
+        disabled: isDisabled,
+        onClick,
+        tabIndex,
+        type: 'button',
+      },
+      renderIcon(icon)
+    );
+
+  const Avatar = ({ children, ...rest }) =>
+    React.createElement('div', { ...rest }, children);
+
+  const Badge = ({ children, className, 'data-testid': testId, ...rest }) =>
+    React.createElement(
+      'span',
+      { className, 'data-testid': testId, ...rest },
+      children
+    );
+
+  const Grid = ({ children, className, style, ...rest }) =>
+    React.createElement('div', { ...rest, className, style }, children);
+  Grid.Item = ({ children, className, style, ...rest }) =>
+    React.createElement('div', { ...rest, className, style }, children);
+
+  const DropdownRoot = ({ children }) =>
+    React.createElement(React.Fragment, null, children);
+  const DropdownPopover = ({ children, className }) =>
+    React.createElement('div', { className }, children);
+  const DropdownMenu = ({ children, items }) => {
+    if (typeof children === 'function' && Array.isArray(items)) {
+      return React.createElement(
+        'div',
+        null,
+        items.map((item, index) =>
+          React.createElement(
+            React.Fragment,
+            { key: item?.key ?? item?.id ?? index },
+            children(item)
+          )
+        )
+      );
+    }
+
+    return React.createElement('div', null, children);
+  };
+  const DropdownItem = ({ label, id, isDisabled, onAction, children }) =>
+    React.createElement(
+      'button',
+      {
+        'data-id': id,
+        disabled: isDisabled,
+        onClick: onAction,
+        type: 'button',
+      },
+      label ?? children
+    );
+  const DropdownSection = ({ children }) =>
+    React.createElement('div', null, children);
+  const DropdownSectionHeader = ({ children }) =>
+    React.createElement('div', null, children);
+  const DropdownSeparator = () => React.createElement('hr', null);
+  const DropdownDotsButton = (props) =>
+    React.createElement('button', { ...props, type: 'button' });
+
+  const Dropdown = {
+    Root: DropdownRoot,
+    Popover: DropdownPopover,
+    Menu: DropdownMenu,
+    Section: DropdownSection,
+    SectionHeader: DropdownSectionHeader,
+    Item: DropdownItem,
+    Separator: DropdownSeparator,
+    DotsButton: DropdownDotsButton,
+  };
+
+  return {
+    Box,
+    Card,
+    Typography,
+    ButtonUtility,
+    Avatar,
+    Badge,
+    Grid,
+    Dropdown,
+    createMuiTheme: () =>
+      require('@mui/material/styles').createTheme({
+        palette: {
+          allShades: new Proxy(
+            {},
+            {
+              get: () =>
+                new Proxy(
+                  {},
+                  {
+                    get: () => '#ffffff',
+                  }
+                ),
+            }
+          ),
+        },
+      }),
+    Tooltip: ({ children, title }) =>
+      React.createElement(React.Fragment, null, [
+        children,
+        title ? React.createElement('span', { key: 'title' }, title) : null,
+      ]),
+    TooltipTrigger: ({ children }) => children,
+    Button: ({
+      children,
+      onClick,
+      onPress,
+      isDisabled,
+      isLoading,
+      iconLeading: IconLeading,
+      iconTrailing: IconTrailing,
+      ...rest
+    }) =>
+      React.createElement(
+        'button',
+        {
+          ...rest,
+          disabled: isDisabled || isLoading,
+          onClick: onClick || onPress,
+          type: 'button',
+        },
+        IconLeading
+          ? React.createElement(IconLeading, { key: 'leading' })
+          : null,
+        children,
+        IconTrailing
+          ? React.createElement(IconTrailing, { key: 'trailing' })
+          : null
+      ),
+    Toggle: ({ isSelected, onChange, isDisabled, 'data-testid': testId }) =>
+      React.createElement('button', {
+        'aria-checked': isSelected,
+        'aria-disabled': isDisabled,
+        'data-testid': testId,
+        role: 'switch',
+        onClick: () => onChange?.(!isSelected),
+        type: 'button',
+      }),
+    SlideoutMenu: ({ children }) =>
+      React.createElement(React.Fragment, null, children),
+    Drawer: ({ children }) => children,
+    Elevation: ({ children }) => children,
+    NavList: ({ children }) => children,
+    NavItemBase: ({ children }) => children,
+    NavItemButton: ({ children }) => children,
+    Tabs: ({ children }) => children,
+    Table: ({ children }) => children,
+    ModalOverlay: ({ children, isOpen }) =>
+      isOpen === false ? null : children,
+    Modal: ({ children }) => children,
+    Dialog: Object.assign(
+      ({ children, title, 'data-testid': testId }) =>
+        React.createElement('div', { 'data-testid': testId, role: 'dialog' }, [
+          title ? React.createElement('h2', { key: 'title' }, title) : null,
+          children,
+        ]),
+      {
+        Header: ({ children, title }) =>
+          React.createElement('div', null, [
+            title ? React.createElement('h3', { key: 'title' }, title) : null,
+            children,
+          ]),
+        Content: ({ children }) => React.createElement('div', null, children),
+        Footer: ({ children }) => React.createElement('div', null, children),
+      }
+    ),
+    DialogTrigger: ({ children }) =>
+      React.createElement(React.Fragment, null, children),
+    Heading: ({ children }) => React.createElement('h2', null, children),
+    Alert: ({ title, children, className, ...rest }) =>
+      React.createElement('div', { ...rest, className, role: 'alert' }, [
+        title ? React.createElement('strong', { key: 'title' }, title) : null,
+        children,
+      ]),
+    Skeleton: ({ className, style, 'data-testid': testId }) =>
+      React.createElement('div', {
+        className,
+        'data-testid': testId,
+        style,
+      }),
+    Checkbox: ({
+      label,
+      isSelected,
+      onChange,
+      isDisabled,
+      className,
+      'data-testid': testId,
+    }) =>
+      React.createElement(
+        'label',
+        { className, 'data-testid': testId },
+        React.createElement('input', {
+          checked: !!isSelected,
+          disabled: isDisabled,
+          onChange: (e) => onChange?.(e.target.checked),
+          type: 'checkbox',
+        }),
+        label
+      ),
+    Input: ({
+      value,
+      onChange,
+      placeholder,
+      'data-testid': testId,
+      'aria-label': ariaLabel,
+      inputClassName,
+      isDisabled,
+    }) =>
+      React.createElement('input', {
+        'aria-label': ariaLabel,
+        className: inputClassName,
+        'data-testid': testId,
+        disabled: isDisabled,
+        onChange: (e) => onChange?.(e.target.value),
+        placeholder,
+        type: 'text',
+        value: value ?? '',
+      }),
+  };
+});
+
 jest.mock('./utils/i18next/LocalUtil', () => {
   const React = require('react');
 

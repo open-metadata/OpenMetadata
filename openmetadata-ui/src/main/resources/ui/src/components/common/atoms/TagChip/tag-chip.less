@@ -1,0 +1,141 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-weight: 400;
+  min-width: 0;
+  position: relative;
+  cursor: inherit;
+  user-select: none;
+  background: transparent;
+  box-sizing: border-box;
+}
+
+.tag-chip__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tag-chip__label {
+  display: inline-block;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.tag-chip--has-ellipsis {
+  .tag-chip__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.tag-chip__delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  border-radius: 4px;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.06);
+  }
+}
+
+// Color bar (left edge indicator) ----------------------------------------------
+
+.tag-chip--has-color-bar {
+  padding-left: 12px;
+}
+
+.tag-chip__color-bar {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 70%;
+  border-radius: 2px 0 0 2px;
+}
+
+// Sizes ---------------------------------------------------------------------
+
+.tag-chip--size-small {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.tag-chip--size-medium {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.tag-chip--size-large {
+  height: 30px;
+  padding: 4px 8px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+// Variants ------------------------------------------------------------------
+
+// blueGray — default; matches the legacy theme variant
+//   bg #EFF4FA, border #D2DBEA, text #404040
+.tag-chip--variant-blueGray {
+  background-color: #eff4fa;
+  border-color: #d2dbea;
+  color: #404040;
+}
+
+// filled — neutral light
+.tag-chip--variant-filled {
+  background-color: #f5f5f5;
+  border-color: #f5f5f5;
+  color: #414651;
+}
+
+// outlined — transparent with grey ring
+.tag-chip--variant-outlined {
+  background-color: transparent;
+  border-color: #d5d7da;
+  color: #414651;
+}
+
+// brand-soft — used by AutomatedTag chip in TagsV1
+//   bg brand[50] #EFF8FF, border brand[100] #D1E9FF, text brand[900] #194185
+.tag-chip--variant-brand-soft {
+  background-color: #eff8ff;
+  border-color: #d1e9ff;
+  color: #194185;
+
+  &:hover {
+    background-color: #eff8ff;
+  }
+}

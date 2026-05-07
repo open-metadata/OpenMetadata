@@ -11,25 +11,13 @@
  *  limitations under the License.
  */
 
-import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
 import { fireEvent, getByTestId, render } from '@testing-library/react';
+import { Fragment } from 'react';
 import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import TagsV1 from './TagsV1.component';
 
 const mockLinkButton = jest.fn();
-
-const theme: Theme = createTheme({
-  palette: {
-    allShades: {
-      brand: {
-        50: '#EFF8FF',
-        100: '#D1E9FF',
-        900: '#194185',
-      },
-    },
-  },
-});
 
 jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children, ...rest }) => (
@@ -49,7 +37,7 @@ jest.mock('../../../utils/CommonUtils', () => ({
 }));
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <ThemeProvider theme={theme}>{children}</ThemeProvider>
+  <Fragment>{children}</Fragment>
 );
 
 describe('Test tags Component', () => {

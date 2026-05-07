@@ -14,24 +14,41 @@
 
 .page-search-bar {
   width: 100%;
-  .ant-input-affix-wrapper {
-    border-radius: 10px;
-    border: 1px solid @border-color-6;
-    background: @grey-50;
-    height: 40px;
+}
 
-    .ant-input {
-      background: @grey-50;
+.search-bar-input-wrapper {
+  position: relative;
+  display: block;
+  width: 100%;
+}
 
-      &::placeholder {
-        color: @grey-21;
-        font-weight: 300;
-      }
-    }
-  }
+.search-bar-trailing {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
 
-  .ant-input-affix-wrapper:focus,
-  .ant-input-affix-wrapper-focused {
-    box-shadow: none;
+.search-bar-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: @grey-21;
+  cursor: pointer;
+  pointer-events: auto;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.06);
+    color: @text-color;
   }
 }

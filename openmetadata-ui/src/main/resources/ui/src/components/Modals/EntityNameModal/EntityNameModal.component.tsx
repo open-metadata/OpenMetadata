@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Form, FormProps, Modal, Typography } from 'antd';
+import {
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+} from '@openmetadata/ui-core-components';
+import { Form, FormProps } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
@@ -43,72 +49,71 @@ const EntityNameModal = <T extends EntityName>({
   };
 
   useEffect(() => {
-    form.setFieldsValue(entity);
+    if (visible) {
+      form.setFieldsValue(entity);
+    }
   }, [visible]);
 
-  return (
-    <Modal
-      destroyOnClose
-      closable={false}
-      footer={[
-        <Button key="cancel-btn" type="link" onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>,
-        <Button
-          data-testid="save-button"
-          key="save-btn"
-          loading={isLoading}
-          type="primary"
-          onClick={() => form.submit()}>
-          {t('label.save')}
-        </Button>,
-      ]}
-      maskClosable={false}
-      okText={t('label.save')}
-      open={visible}
-      title={
-        <Typography.Text strong data-testid="header">
-          {title}
-        </Typography.Text>
-      }
-      wrapProps={{
-        'data-react-aria-top-layer': 'true',
-      }}
-      onCancel={onCancel}>
-      <Form form={form} layout="vertical" onFinish={handleSave}>
-        <Form.Item
-          label={t('label.name')}
-          name="name"
-          rules={[
-            {
-              required: true,
-              message: `${t('label.field-required', {
-                field: t('label.name'),
-              })}`,
-            },
-            {
-              pattern: ENTITY_NAME_REGEX,
-              message: t('message.entity-name-validation'),
-            },
-            ...nameValidationRules,
-          ]}>
-          <SanitizedInput
-            disabled={!allowRename}
-            placeholder={t('label.enter-entity-name', {
-              entity: t('label.glossary'),
-            })}
-          />
-        </Form.Item>
-        <Form.Item
-          label={t('label.display-name')}
-          name="displayName"
-          rules={displayNameValidationRules}>
-          <SanitizedInput placeholder={t('message.enter-display-name')} />
-        </Form.Item>
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      onCancel();
+    }
+  };
 
-        {additionalFields}
-      </Form>
-    </Modal>
+  return (
+    <ModalOverlay isOpen={visible} onOpenChange={handleOpenChange}>
+      <Modal>
+        <Dialog data-testid="entity-name-modal" title={title}>
+          <Dialog.Content>
+            <Form form={form} layout="vertical" onFinish={handleSave}>
+              <Form.Item
+                label={t('label.name')}
+                name="name"
+                rules={[
+                  {
+                    required: true,
+                    message: `${t('label.field-required', {
+                      field: t('label.name'),
+                    })}`,
+                  },
+                  {
+                    pattern: ENTITY_NAME_REGEX,
+                    message: t('message.entity-name-validation'),
+                  },
+                  ...nameValidationRules,
+                ]}>
+                <SanitizedInput
+                  disabled={!allowRename}
+                  placeholder={t('label.enter-entity-name', {
+                    entity: t('label.glossary'),
+                  })}
+                />
+              </Form.Item>
+              <Form.Item
+                label={t('label.display-name')}
+                name="displayName"
+                rules={displayNameValidationRules}>
+                <SanitizedInput placeholder={t('message.enter-display-name')} />
+              </Form.Item>
+
+              {additionalFields}
+            </Form>
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button color="secondary" onPress={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="save-button"
+              isLoading={isLoading}
+              onPress={() => form.submit()}>
+              {t('label.save')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

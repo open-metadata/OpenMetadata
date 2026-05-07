@@ -241,96 +241,165 @@ jest.mock('../../utils/TagsUtils', () => ({
     .mockImplementation(() => <a href="/">Usage Count</a>),
 }));
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Badge: ({
-    children,
-    'data-testid': testId,
-    className,
-  }: {
-    children: React.ReactNode;
-    'data-testid'?: string;
-    className?: string;
-  }) => (
-    <span className={className} data-testid={testId}>
-      {children}
-    </span>
-  ),
-  Typography: ({
+jest.mock('@openmetadata/ui-core-components', () => {
+  const Box = ({
     children,
     className,
-    as: Tag = 'span',
   }: {
-    children: React.ReactNode;
+    children?: React.ReactNode;
     className?: string;
-    as?: keyof JSX.IntrinsicElements;
-  }) => (
-    <Tag className={className} spec-url="">
-      {children}
-    </Tag>
-  ),
-  Button: ({
+  }) => <div className={className}>{children}</div>;
+
+  const Card = ({
     children,
-    onClick,
-    isDisabled,
-    'data-testid': testId,
     className,
   }: {
-    children: React.ReactNode;
-    onClick?: () => void;
-    isDisabled?: boolean;
-    'data-testid'?: string;
+    children?: React.ReactNode;
     className?: string;
-  }) => (
-    <button
-      className={className}
-      data-testid={testId}
-      disabled={isDisabled}
-      onClick={onClick}>
-      {children}
-    </button>
-  ),
-  Tooltip: ({
-    children,
+  }) => <div className={className}>{children}</div>;
+  Card.Header = ({
     title,
+    extra,
+    className,
   }: {
-    children: React.ReactNode;
     title?: React.ReactNode;
+    extra?: React.ReactNode;
+    className?: string;
   }) => (
-    <div data-testid="tooltip" title={title as string}>
-      {children}
+    <div className={className}>
+      {title}
+      {extra}
     </div>
-  ),
-  TooltipTrigger: ({
+  );
+  Card.Content = ({
     children,
     className,
   }: {
-    children: React.ReactNode;
+    children?: React.ReactNode;
     className?: string;
-  }) => <button className={className}>{children}</button>,
-  Toggle: ({
-    isSelected,
-    onChange,
-    isDisabled,
-    'data-testid': testId,
+  }) => <div className={className}>{children}</div>;
+  Card.Footer = ({
+    children,
+    className,
   }: {
-    isSelected?: boolean;
-    onChange?: (val: boolean) => void;
-    isDisabled?: boolean;
-    'data-testid'?: string;
-  }) => (
-    <button
-      aria-checked={isSelected}
-      aria-disabled={isDisabled}
-      data-testid={testId}
-      role="switch"
-      onClick={() => onChange?.(!isSelected)}>
-      toggle
-    </button>
-  ),
-  SlideoutMenu: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
-}));
+    children?: React.ReactNode;
+    className?: string;
+  }) => <div className={className}>{children}</div>;
+
+  return {
+    Box,
+    Card,
+    Badge: ({
+      children,
+      'data-testid': testId,
+      className,
+    }: {
+      children: React.ReactNode;
+      'data-testid'?: string;
+      className?: string;
+    }) => (
+      <span className={className} data-testid={testId}>
+        {children}
+      </span>
+    ),
+    Typography: ({
+      children,
+      className,
+      as: Tag = 'span',
+    }: {
+      children: React.ReactNode;
+      className?: string;
+      as?: keyof JSX.IntrinsicElements;
+    }) => (
+      <Tag className={className} spec-url="">
+        {children}
+      </Tag>
+    ),
+    Button: ({
+      children,
+      onClick,
+      isDisabled,
+      'data-testid': testId,
+      className,
+    }: {
+      children: React.ReactNode;
+      onClick?: () => void;
+      isDisabled?: boolean;
+      'data-testid'?: string;
+      className?: string;
+    }) => (
+      <button
+        className={className}
+        data-testid={testId}
+        disabled={isDisabled}
+        onClick={onClick}>
+        {children}
+      </button>
+    ),
+    ButtonUtility: ({
+      onClick,
+      isDisabled,
+      'data-testid': testId,
+      className,
+      tooltip,
+    }: {
+      onClick?: () => void;
+      isDisabled?: boolean;
+      'data-testid'?: string;
+      className?: string;
+      tooltip?: string;
+    }) => (
+      <button
+        aria-label={tooltip}
+        className={className}
+        data-testid={testId}
+        disabled={isDisabled}
+        onClick={onClick}
+      />
+    ),
+    Tooltip: ({
+      children,
+      title,
+    }: {
+      children: React.ReactNode;
+      title?: React.ReactNode;
+    }) => (
+      <div data-testid="tooltip" title={title as string}>
+        {children}
+      </div>
+    ),
+    TooltipTrigger: ({
+      children,
+      className,
+    }: {
+      children: React.ReactNode;
+      className?: string;
+    }) => <button className={className}>{children}</button>,
+    Toggle: ({
+      isSelected,
+      onChange,
+      isDisabled,
+      'data-testid': testId,
+    }: {
+      isSelected?: boolean;
+      onChange?: (val: boolean) => void;
+      isDisabled?: boolean;
+      'data-testid'?: string;
+    }) => (
+      <button
+        aria-checked={isSelected}
+        aria-disabled={isDisabled}
+        data-testid={testId}
+        role="switch"
+        onClick={() => onChange?.(!isSelected)}>
+        toggle
+      </button>
+    ),
+    SlideoutMenu: ({ children }: { children: React.ReactNode }) => (
+      <div>{children}</div>
+    ),
+  };
+});
 
 jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (

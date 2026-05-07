@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Form, Row, Space, Typography } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Col, Form, Row, Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import classNames from 'classnames';
 import { isArray, isEmpty, isEqual } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -321,21 +321,53 @@ const TagsContainerV2 = ({
   );
 
   const header = useMemo(() => {
+    if (newLook) {
+      return (
+        <Box align="center" direction="row" gap={2}>
+          <Typography
+            className="tw:text-primary"
+            size="text-sm"
+            weight="medium">
+            {isGlossaryType ? t('label.glossary-term') : t('label.tag-plural')}
+          </Typography>
+          {permission && (
+            <>
+              {addTagButton ?? (
+                <EditIconButton
+                  newLook
+                  data-testid="edit-button"
+                  size="small"
+                  title={t('label.edit-entity', {
+                    entity:
+                      tagType === TagSource.Classification
+                        ? t('label.tag-plural')
+                        : t('label.glossary-term'),
+                  })}
+                  onClick={handleAddClick}
+                />
+              )}
+              {showTaskHandler && (
+                <>
+                  {tagType === TagSource.Classification && requestTagElement}
+                  {conversationThreadElement}
+                </>
+              )}
+            </>
+          )}
+        </Box>
+      );
+    }
+
     return (
       <Space>
-        <Typography.Text
-          className={classNames({
-            'text-sm font-medium': newLook,
-            'right-panel-label': !newLook,
-          })}>
+        <span className="right-panel-label">
           {isGlossaryType ? t('label.glossary-term') : t('label.tag-plural')}
-        </Typography.Text>
+        </span>
         {permission && (
           <>
             {addTagButton ?? (
               <EditIconButton
                 data-testid="edit-button"
-                newLook={newLook}
                 size="small"
                 title={t('label.edit-entity', {
                   entity:

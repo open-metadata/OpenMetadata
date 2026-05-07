@@ -22,7 +22,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -63,10 +63,10 @@ export const OwnerLabelV2 = <
   }, [permissions?.EditOwners, permissions?.EditAll, props?.hasPermission]);
   const header = useMemo(
     () => (
-      <div className="d-flex items-center gap-2">
-        <Typography.Text className="text-sm font-medium">
+      <Box align="center" direction="row" gap={2}>
+        <Typography className="tw:text-primary" size="text-sm" weight="medium">
           {t('label.owner-plural')}
-        </Typography.Text>
+        </Typography>
         {!isVersionView && hasPermission && (
           <UserTeamSelectableList
             hasPermission={hasPermission}
@@ -97,7 +97,7 @@ export const OwnerLabelV2 = <
             )}
           </UserTeamSelectableList>
         )}
-      </div>
+      </Box>
     ),
     [data, hasPermission, handleUpdatedOwner, isVersionView, entityRules]
   );

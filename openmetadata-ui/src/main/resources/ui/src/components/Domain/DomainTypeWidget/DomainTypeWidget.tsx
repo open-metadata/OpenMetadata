@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Typography } from 'antd';
-import classNames from 'classnames';
-
+import { Box } from '@openmetadata/ui-core-components';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,10 +50,8 @@ export const DomainTypeWidget = () => {
   };
 
   const header = (
-    <div className={classNames('d-flex items-center gap-2')}>
-      <Typography.Text
-        className="right-panel-label"
-        data-testid="domainType-heading-name">
+    <Box align="center" direction="row" gap={2}>
+      <span className="right-panel-label" data-testid="domainType-heading-name">
         <FormItemLabel
           align={{ targetOffset: [18, 0] }}
           helperText={domainTypeTooltipDataRender()}
@@ -63,7 +59,7 @@ export const DomainTypeWidget = () => {
           overlayClassName="domain-type-tooltip-container"
           placement="topLeft"
         />
-      </Typography.Text>
+      </span>
 
       {!isVersionView && editAllPermission && domain.domainType && (
         <EditIconButton
@@ -76,15 +72,15 @@ export const DomainTypeWidget = () => {
           onClick={() => setEditDomainType(true)}
         />
       )}
-    </div>
+    </Box>
   );
 
   const content = (
     <>
       {!editDomainType && (
-        <Space wrap data-testid="domain-type-label" size={6}>
+        <Box data-testid="domain-type-label" gap={2} wrap="wrap">
           {domain?.domainType}
-        </Space>
+        </Box>
       )}
 
       {editDomainType && (
