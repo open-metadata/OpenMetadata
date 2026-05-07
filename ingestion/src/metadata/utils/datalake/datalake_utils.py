@@ -334,10 +334,11 @@ class GenericDataFrameColumnParser:
         """
         data_type = None  # default to string
         try:
-            if data_frame[column_name].dtypes.name == "object" and len(data_frame[column_name].dropna()) > 0:
+            col_series = data_frame[column_name]
+            col_non_null = col_series.dropna()
+            if col_series.dtypes.name == "object" and len(col_non_null) > 0:
                 try:
-                    # Safely evaluate the input string
-                    df_row_val_list = data_frame[column_name].dropna().values[:1000]
+                    df_row_val_list = col_non_null.values[:1000]
                     parsed_object_datatype_list = []
                     for df_row_val in df_row_val_list:
                         try:

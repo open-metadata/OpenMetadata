@@ -895,9 +895,7 @@ class TestGetChildrenWithParsedDicts:
 class TestSingleObjectJsonFileIngestion:
     """End-to-end column parsing for single-object JSON files.
 
-    Drives the full production path:
-      file bytes → _read_json_object → DataFrame.from_records → _get_columns → Column objects
-
+    Reads fixture files with json.loads → DataFrame.from_records → _get_columns → Column objects.
     A single top-level JSON object is wrapped into a 1-row DataFrame. Every top-level key
     becomes a column whose value is the Python object returned by json.loads — typically a
     dict, list, or None. All columns must be typed correctly and children extracted without
