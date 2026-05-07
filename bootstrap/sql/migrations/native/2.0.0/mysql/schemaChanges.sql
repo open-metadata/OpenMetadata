@@ -160,6 +160,8 @@ ALTER TABLE workflow_instance_state_time_series
 ALTER TABLE workflow_instance_state_time_series
     ADD INDEX idx_workflow_instance_state_schedule_run_id (scheduleRunId);
 
--- Update entityLink generated column to read from global_entityList[0] instead of global_relatedEntity
+-- Update entityLink generated column to support both old (global_relatedEntity) and new (global_entityList[0]) formats
 ALTER TABLE workflow_instance_time_series
-MODIFY COLUMN entityLink TEXT GENERATED ALWAYS AS (json ->> '$.variables.global_entityList[0]');
+MODIFY COLUMN entityLink TEXT GENERATED ALWAYS AS (
+    COALESCE(json ->> '$.variables.global_entityList[0]', json ->> '$.variables.global_relatedEntity')
+);
