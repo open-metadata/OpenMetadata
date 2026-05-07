@@ -113,7 +113,7 @@ class DistributedReindexFinalizer {
     }
     SearchIndexJob.EntityTypeStats stats = entityStats.get(entityType);
     if (stats == null) {
-      return true;
+      return false;
     }
     return stats.getFailedRecords() == 0
         && stats.getSuccessRecords() + stats.getFailedRecords() >= stats.getTotalRecords();

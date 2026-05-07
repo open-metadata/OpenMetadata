@@ -181,7 +181,9 @@ public record ReindexingConfiguration(
 
   /** Check if this is a subset (smart) reindexing */
   public boolean isSmartReindexing() {
-    return entities != null && !entities.contains("all") && entities.size() < 20;
+    return entities != null
+        && !entities.contains(SearchIndexEntityTypes.ALL)
+        && entities.size() < 20;
   }
 
   /** Creates a builder for more flexible configuration creation */

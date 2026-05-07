@@ -332,7 +332,7 @@ class DistributedIndexingStrategyTest {
   }
 
   @Test
-  void finalizeAllEntityReindexSkipsPromotedEntitiesAndUsesPerEntitySuccess() throws Exception {
+  void finalizeAllEntityReindexSkipsPromotedEntitiesAndFailsMissingEntityStats() throws Exception {
     DistributedSearchIndexExecutor executor = mock(DistributedSearchIndexExecutor.class);
     EntityCompletionTracker tracker = mock(EntityCompletionTracker.class);
     RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
@@ -396,7 +396,7 @@ class DistributedIndexingStrategyTest {
           contextCaptor.getAllValues().get(i).getEntityType(), successCaptor.getAllValues().get(i));
     }
 
-    assertEquals(Boolean.TRUE, outcomes.get("user"));
+    assertEquals(Boolean.FALSE, outcomes.get("user"));
     assertEquals(Boolean.FALSE, outcomes.get("dashboard"));
   }
 
