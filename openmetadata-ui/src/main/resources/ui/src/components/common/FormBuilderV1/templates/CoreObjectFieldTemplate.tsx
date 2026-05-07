@@ -61,7 +61,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
 
   const propertiesContent = (
     <>
-      <div className="tw:flex tw:flex-col tw:gap-4">
+      <div className="tw:flex tw:flex-col tw:gap-6">
         {!isRoot && schema.additionalProperties && (
           <div className="tw:flex tw:items-center tw:justify-between">
             <Typography
@@ -83,20 +83,26 @@ export const CoreObjectFieldTemplate: FunctionComponent<
           </div>
         )}
         {normalProperties.map((element) => (
-          <div key={element.name}>{element.content}</div>
+          <div
+            className={`tw:rounded-xl tw:bg-utility-gray-blue-50 ${
+              isRoot && 'tw:p-4'
+            }`}
+            key={element.name}>
+            {element.content}
+          </div>
         ))}
       </div>
 
       {advancedProperties.length > 0 && (
         <div className="tw:my-3">
-          <Accordion className="tw:ring-0 tw:divide-y-0 tw:rounded-lg tw:border tw:border-secondary">
+          <Accordion className="tw:ring-0 tw:divide-y-0 tw:rounded-lg">
             <AccordionItem id={`${idSchema.$id}-advanced`}>
-              <AccordionHeader className="tw:py-3 tw:px-3 tw:text-md tw:font-medium tw:text-secondary tw:bg-secondary">
+              <AccordionHeader className="tw:py-3 tw:px-3 tw:text-md tw:font-medium tw:text-secondary tw:bg-utility-gray-blue-50">
                 {title
                   ? `${title} ${t('label.advanced-config')}`
                   : t('label.advanced-config')}
               </AccordionHeader>
-              <AccordionPanel className="tw:flex tw:flex-col tw:bg-secondary tw:gap-4 tw:border-t-0">
+              <AccordionPanel className="tw:flex tw:flex-col tw:bg-utility-gray-blue-50 tw:gap-4 tw:border-t-0">
                 {advancedProperties.map((element) => (
                   <div key={element.name}>{element.content}</div>
                 ))}
@@ -110,7 +116,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
 
   if (!isRoot && title) {
     return (
-      <div className="tw:flex tw:flex-col tw:gap-4 tw:rounded-xl tw:p-4 tw:bg-secondary tw:bg-secondary">
+      <div className="tw:flex tw:flex-col tw:gap-4 tw:rounded-xl tw:bg-utility-gray-blue-50">
         <div className="tw:flex tw:flex-col tw:gap-0.5">
           <Typography
             as="label"

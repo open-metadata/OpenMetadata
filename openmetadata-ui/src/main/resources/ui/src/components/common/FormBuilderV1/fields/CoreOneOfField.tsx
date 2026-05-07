@@ -173,7 +173,7 @@ const CoreOneOfField = (props: FieldProps) => {
                 `tw:flex-1 tw:min-w-[140px] tw:rounded-xl tw:border tw:px-4 tw:py-3 tw:transition-colors ${
                   renderProps.isSelected
                     ? 'tw:border-primary'
-                    : 'tw:border-secondary tw:bg-primary hover:tw:border-brand-300'
+                    : 'tw:border-secondary hover:tw:border-brand-300'
                 }`
               }
               key={index}

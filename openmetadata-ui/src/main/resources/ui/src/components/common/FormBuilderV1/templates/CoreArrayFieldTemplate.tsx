@@ -24,7 +24,7 @@ export const CoreArrayFieldTemplate: FunctionComponent<
 
   return (
     <Fragment>
-      <div className="tw:flex tw:items-center tw:justify-between tw:bg-secondary">
+      <div className="tw:flex tw:items-center tw:justify-between tw:bg-utility-gray-blue-50">
         <label className="tw:text-sm tw:font-medium tw:text-primary">
           {title}
         </label>

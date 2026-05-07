@@ -41,28 +41,30 @@ export const CoreWrapIfAdditionalTemplate: FunctionComponent<
   }
 
   return (
-    <div className="tw:flex tw:w-full tw:items-center tw:gap-2  tw:bg-secondary">
-      <div className="tw:w-2/5 tw:shrink-0">
-        <Input
-          id={`${id}-key`}
-          label={t('label.key')}
-          placeholder={t('label.key')}
-          value={keyValue}
-          onBlur={() => onKeyChange(keyValue)}
-          onChange={setKeyValue}
-        />
+    <div className="tw:rounded-xl tw:bg-utility-gray-blue-50">
+      <div className="tw:flex tw:w-full tw:items-end tw:gap-2">
+        <div className="tw:w-2/5 tw:shrink-0">
+          <Input
+            id={`${id}-key`}
+            label={t('label.key')}
+            placeholder={t('label.key')}
+            value={keyValue}
+            onBlur={() => onKeyChange(keyValue)}
+            onChange={setKeyValue}
+          />
+        </div>
+        <div className="tw:flex-1">{children}</div>
+        <Button
+          aria-label={t('label.remove')}
+          className="tw:shrink-0"
+          color="secondary"
+          isDisabled={disabled || readonly}
+          size="sm"
+          type="button"
+          onClick={onDropPropertyClick(label)}>
+          <Trash01 data-icon size={14} />
+        </Button>
       </div>
-      <div className="tw:flex-1">{children}</div>
-      <Button
-        aria-label={t('label.remove')}
-        className="tw:mb-0.5 tw:shrink-0"
-        color="secondary"
-        isDisabled={disabled || readonly}
-        size="sm"
-        type="button"
-        onClick={onDropPropertyClick(label)}>
-        <Trash01 data-icon size={14} />
-      </Button>
     </div>
   );
 };

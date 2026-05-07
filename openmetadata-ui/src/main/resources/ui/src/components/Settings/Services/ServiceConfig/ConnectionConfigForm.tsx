@@ -173,7 +173,7 @@ const ConnectionConfigForm = ({
       )}
       {shouldShowIPAlert && (
         <Alert
-          className="tw:mt-2"
+          className="tw:mt-2 tw:rounded-lg"
           data-testid="ip-address"
           description={
             <Transi18next

@@ -62,23 +62,21 @@ const CoreInputWidget = ({
   };
 
   return (
-    <div className="tw:rounded-xl tw:bg-secondary tw:p-4">
-      <Input
-        autoFocus={autofocus}
-        hint={getWidgetHint({ rawErrors, schema, options })}
-        id={id}
-        isDisabled={disabled || readonly}
-        isInvalid={!!rawErrors?.length}
-        isRequired={required}
-        label={getWidgetLabel({ hideLabel, label })}
-        placeholder={placeholder}
-        type={inputType}
-        value={value ?? ''}
-        onBlur={() => onBlur(id, value)}
-        onChange={handleChange}
-        onFocus={() => onFocus(id, value)}
-      />
-    </div>
+    <Input
+      autoFocus={autofocus}
+      hint={getWidgetHint({ rawErrors, schema, options })}
+      id={id}
+      isDisabled={disabled || readonly}
+      isInvalid={!!rawErrors?.length}
+      isRequired={required}
+      label={getWidgetLabel({ hideLabel, label })}
+      placeholder={placeholder}
+      type={inputType}
+      value={value ?? ''}
+      onBlur={() => onBlur(id, value)}
+      onChange={handleChange}
+      onFocus={() => onFocus(id, value)}
+    />
   );
 };
 
