@@ -1893,4 +1893,121 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
                   "Owner should match the user set on the classification");
             });
   }
+
+  @Test
+  void test_bulkAddTagToAssets_withDryRun_true_doNotAddTag(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Classification classification = createClassification(ns);
+
+    CreateTag createTag = new CreateTag();
+    createTag.setName(ns.shortPrefix("dry_run_tag"));
+    createTag.setClassification(classification.getFullyQualifiedName());
+    createTag.setDescription("Tag for dry run test");
+    Tag tag = createEntity(createTag);
+
+    org.openmetadata.schema.entity.services.DatabaseService dbService =
+        createDatabaseService(ns, "dry_run_add_svc");
+    org.openmetadata.schema.entity.data.Database database =
+        createDatabase(ns, dbService.getFullyQualifiedName());
+    org.openmetadata.schema.entity.data.DatabaseSchema schema =
+        createDatabaseSchema(ns, database.getFullyQualifiedName());
+
+    org.openmetadata.schema.api.data.CreateTable createTable =
+        new org.openmetadata.schema.api.data.CreateTable();
+    createTable.setName(ns.shortPrefix("dry_run_add_table"));
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("test_col")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.STRING)));
+
+    org.openmetadata.schema.entity.data.Table table =
+        client.tables().create(createTable);
+
+    org.openmetadata.schema.api.AddTagToAssetsRequest request =
+        new org.openmetadata.schema.api.AddTagToAssetsRequest();
+    request.setDryRun(true);
+    request.setAssets(
+        List.of(
+            new org.openmetadata.schema.type.EntityReference()
+                .withId(table.getId())
+                .withType("table")));
+
+    client.getHttpClient().put("/v1/tags/" + tag.getId() + "/assets/add", request, Object.class);
+
+    org.openmetadata.schema.entity.data.Table tableAfterDryRun =
+        client.tables().get(table.getId().toString(), "tags");
+    assertTrue(
+        tableAfterDryRun.getTags() == null || tableAfterDryRun.getTags().isEmpty(),
+        "Tag should not be added when dry_run is true");
+  }
+
+  @Test
+  void test_bulkRemoveTagFromAssets_withDryRun_true_doNotRemoveTag(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Classification classification = createClassification(ns);
+
+    CreateTag createTag = new CreateTag();
+    createTag.setName(ns.shortPrefix("dry_run_remove_tag"));
+    createTag.setClassification(classification.getFullyQualifiedName());
+    createTag.setDescription("Tag for dry run remove test");
+    Tag tag = createEntity(createTag);
+
+    org.openmetadata.schema.entity.services.DatabaseService dbService =
+        createDatabaseService(ns, "dry_run_remove_svc");
+    org.openmetadata.schema.entity.data.Database database =
+        createDatabase(ns, dbService.getFullyQualifiedName());
+    org.openmetadata.schema.entity.data.DatabaseSchema schema =
+        createDatabaseSchema(ns, database.getFullyQualifiedName());
+
+    org.openmetadata.schema.api.data.CreateTable createTable =
+        new org.openmetadata.schema.api.data.CreateTable();
+    createTable.setName(ns.shortPrefix("dry_run_remove_table"));
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("test_col")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.STRING)));
+
+    org.openmetadata.schema.entity.data.Table table =
+        client.tables().create(createTable);
+
+    org.openmetadata.schema.type.TagLabel tagLabel =
+        new org.openmetadata.schema.type.TagLabel()
+            .withTagFQN(tag.getFullyQualifiedName())
+            .withSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL);
+
+    table.setTags(List.of(tagLabel));
+    org.openmetadata.schema.entity.data.Table tableWithTag =
+        client.tables().update(table.getId().toString(), table);
+    assertTrue(
+        tableWithTag.getTags() != null && !tableWithTag.getTags().isEmpty(),
+        "Tag should be added before dry run remove");
+
+    org.openmetadata.schema.api.AddTagToAssetsRequest removeRequest =
+        new org.openmetadata.schema.api.AddTagToAssetsRequest();
+    removeRequest.setDryRun(true);
+    removeRequest.setAssets(
+        List.of(
+            new org.openmetadata.schema.type.EntityReference()
+                .withId(table.getId())
+                .withType("table")));
+
+    client
+        .getHttpClient()
+        .put("/v1/tags/" + tag.getId() + "/assets/remove", removeRequest, Object.class);
+
+    org.openmetadata.schema.entity.data.Table tableAfterDryRunRemove =
+        client.tables().get(table.getId().toString(), "tags");
+    assertTrue(
+        tableAfterDryRunRemove.getTags() != null && !tableAfterDryRunRemove.getTags().isEmpty(),
+        "Tag should still exist when dry_run is true for remove operation");
+    assertTrue(
+        tableAfterDryRunRemove.getTags().stream()
+            .anyMatch(t -> t.getTagFQN().equals(tag.getFullyQualifiedName())),
+        "Original tag should still be present after dry run remove");
+  }
 }
