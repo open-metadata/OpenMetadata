@@ -2392,6 +2392,7 @@
     "bot-email-confirmation": "{{email}} สำหรับบอท {{botName}}",
     "bulk-edit-entity-help": "แก้ไขหลาย {{entity}} พร้อมกันโดยใช้ CSV",
     "bulk-import-completed": "นำเข้าจำนวนมากเสร็จสมบูรณ์",
+    "cache-service-not-configured-message": "Configure a Cache Service such as Redis or ElastiCache and make sure it is reachable to enable Cache Warmup.",
     "can-not-add-widget": "ไม่สามารถเพิ่มวิดเจ็ตในส่วนนี้ได้เนื่องจากข้อจำกัดขนาด",
     "can-you-add-a-description": "คุณสามารถเพิ่มคำอธิบายได้ไหม?",
     "cannot-delete-relation-type-in-use": "ไม่สามารถลบได้: ใช้อยู่ใน {{count}} ความสัมพันธ์ของคำศัพท์ กรุณาลบความสัมพันธ์เหล่านี้ก่อน",

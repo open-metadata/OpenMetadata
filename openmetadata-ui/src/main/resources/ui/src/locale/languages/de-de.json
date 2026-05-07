@@ -2392,6 +2392,7 @@
     "bot-email-confirmation": "{{email}} für den {{botName}}-Bot",
     "bulk-edit-entity-help": "Mehrere {{entity}} gleichzeitig mit CSV bearbeiten",
     "bulk-import-completed": "Massenimport Abgeschlossen",
+    "cache-service-not-configured-message": "Configure a Cache Service such as Redis or ElastiCache and make sure it is reachable to enable Cache Warmup.",
     "can-not-add-widget": "Das Widget kann aufgrund von Größenbeschränkungen nicht zu diesem Abschnitt hinzugefügt werden.",
     "can-you-add-a-description": "Können Sie eine Beschreibung hinzufügen?",
     "cannot-delete-relation-type-in-use": "Löschen nicht möglich: wird von {{count}} Begriffsbeziehung(en) verwendet. Entfernen Sie zuerst diese Beziehungen.",

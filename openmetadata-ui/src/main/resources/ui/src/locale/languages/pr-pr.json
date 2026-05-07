@@ -2392,6 +2392,7 @@
     "bot-email-confirmation": "{{email}} برای ربات {{botName}}",
     "bulk-edit-entity-help": "چندین {{entity}} را به‌طور هم‌زمان با استفاده از CSV ویرایش کنید",
     "bulk-import-completed": "واردات دسته‌ای تکمیل شد",
+    "cache-service-not-configured-message": "Configure a Cache Service such as Redis or ElastiCache and make sure it is reachable to enable Cache Warmup.",
     "can-not-add-widget": "به دلیل محدودیت‌های اندازه، نمی‌توان ویجت را به این بخش اضافه کرد.",
     "can-you-add-a-description": "آیا می‌توانید توضیحی اضافه کنید؟",
     "cannot-delete-relation-type-in-use": "امکان حذف نیست: توسط {{count}} رابطه اصطلاح استفاده می‌شود. ابتدا این روابط را حذف کنید.",

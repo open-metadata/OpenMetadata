@@ -2392,6 +2392,7 @@
     "bot-email-confirmation": "{{email}} для бота {{botName}}",
     "bulk-edit-entity-help": "Редактировать несколько {{entity}} одновременно с помощью CSV",
     "bulk-import-completed": "Массовый импорт завершён",
+    "cache-service-not-configured-message": "Configure a Cache Service such as Redis or ElastiCache and make sure it is reachable to enable Cache Warmup.",
     "can-not-add-widget": "Невозможно добавить виджет в этот раздел из-за ограничений по размеру.",
     "can-you-add-a-description": "Можете добавить описание?",
     "cannot-delete-relation-type-in-use": "Невозможно удалить: используется в {{count}} связях терминов. Сначала удалите эти связи.",
