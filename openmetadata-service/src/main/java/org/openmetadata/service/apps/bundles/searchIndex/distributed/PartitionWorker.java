@@ -37,12 +37,14 @@ import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
+import org.openmetadata.service.cache.EntityCacheBypass;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntityTimeSeriesSource;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 /**
  * Worker that processes a single partition of entities for search indexing.
@@ -55,7 +57,7 @@ public class PartitionWorker {
   private static final long MAX_CURSOR_INITIALIZATION_OFFSET = (long) Integer.MAX_VALUE + 1L;
 
   /** Time series entity types that need special handling */
-  private static final Set<String> TIME_SERIES_ENTITIES =
+  static final Set<String> TIME_SERIES_ENTITIES =
       Set.of(
           ReportData.ReportDataType.ENTITY_REPORT_DATA.value(),
           ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA.value(),
@@ -146,6 +148,19 @@ public class PartitionWorker {
    * @return Result containing success and failure counts
    */
   public PartitionResult processPartition(SearchIndexPartition partition) {
+    // Reindex worker threads opt out of the Redis-backed entity cache. Cache hit rate during a
+    // bulk reindex is ~0 (every entity read exactly once) and the write-through tax is ~2-3M
+    // Redis ops per 580k-entity reindex; on an unhealthy Redis the indexer crawls at ~0.6 r/s
+    // because every relationship lookup pays a 300ms timeout. Bypassing for the duration of
+    // the partition keeps the reindex independent of cache health and removes the unwanted
+    // write-through pollution. Other code paths (UI requests, etc.) on other threads keep
+    // using the cache normally.
+    try (EntityCacheBypass.Handle ignored = EntityCacheBypass.skip()) {
+      return processPartitionInternal(partition);
+    }
+  }
+
+  private PartitionResult processPartitionInternal(SearchIndexPartition partition) {
     String entityType = partition.getEntityType();
     long rangeStart = partition.getRangeStart();
     long rangeEnd = partition.getRangeEnd();
@@ -188,7 +203,7 @@ public class PartitionWorker {
 
       // Initialize keyset cursor for efficient pagination (avoids OFFSET degradation)
       long cursorInitStart = System.currentTimeMillis();
-      String keysetCursor = initializeKeysetCursor(entityType, rangeStart);
+      String keysetCursor = initializeKeysetCursor(partition, rangeStart);
       LOG.debug(
           "initializeKeysetCursor for {} offset={} took {}ms",
           entityType,
@@ -229,7 +244,7 @@ public class PartitionWorker {
 
           // If keyset cursor exhausted, recompute or stop
           if (keysetCursor == null && currentOffset < rangeEnd) {
-            keysetCursor = initializeKeysetCursor(entityType, currentOffset);
+            keysetCursor = initializeKeysetCursor(partition, currentOffset);
             if (keysetCursor == null) {
               LOG.debug(
                   "{} partition {} data exhausted at offset {} (rangeEnd: {}), "
@@ -286,7 +301,7 @@ public class PartitionWorker {
 
           // Recompute keyset cursor after failure
           if (currentOffset < rangeEnd) {
-            keysetCursor = initializeKeysetCursor(entityType, currentOffset);
+            keysetCursor = initializeKeysetCursor(partition, currentOffset);
             if (keysetCursor == null) {
               break;
             }
@@ -491,15 +506,16 @@ public class PartitionWorker {
     ResultList<?> resultList = readEntitiesKeyset(entityType, keysetCursor, batchSize);
     long readDurationNanos = System.nanoTime() - readStartNanos;
 
-    if (resultList == null || resultList.getData() == null || resultList.getData().isEmpty()) {
-      LOG.debug("{} read={}ms returned empty", entityType, readDurationNanos / 1_000_000L);
-      return new BatchResult(0, 0, 0, null);
-    }
-
-    String nextCursor = resultList.getPaging() != null ? resultList.getPaging().getAfter() : null;
-    int readSuccessCount = listOrEmpty(resultList.getData()).size();
-    int readErrorCount = listOrEmpty(resultList.getErrors()).size();
-    int warningsCount = resultList.getWarningsCount() != null ? resultList.getWarningsCount() : 0;
+    int readSuccessCount = resultList != null ? listOrEmpty(resultList.getData()).size() : 0;
+    int readErrorCount = resultList != null ? listOrEmpty(resultList.getErrors()).size() : 0;
+    int warningsCount =
+        (resultList != null && resultList.getWarningsCount() != null)
+            ? resultList.getWarningsCount()
+            : 0;
+    String nextCursor =
+        (resultList != null && resultList.getPaging() != null)
+            ? resultList.getPaging().getAfter()
+            : null;
 
     if (statsTracker != null) {
       // Reader timing = wall-clock time of the keyset DB read (listAfter + setFieldsInBulk
@@ -508,28 +524,16 @@ public class PartitionWorker {
           readSuccessCount, readErrorCount, warningsCount, readDurationNanos);
     }
 
-    if (failureRecorder != null && readErrorCount > 0) {
-      for (EntityError entityError : listOrEmpty(resultList.getErrors())) {
-        Object rawEntity = entityError.getEntity();
-        String entityId = null;
-        if (rawEntity instanceof EntityInterface) {
-          UUID id = ((EntityInterface) rawEntity).getId();
-          if (id != null) {
-            entityId = id.toString();
-          }
-        } else if (rawEntity != null) {
-          entityId = rawEntity.toString();
-        }
-        if (entityId == null) {
-          LOG.warn(
-              "Skipping reader failure record for entityType={}: entityId is null, message={}",
-              entityType,
-              entityError.getMessage());
-          continue;
-        }
-        failureRecorder.recordReaderEntityFailure(
-            entityType, entityId, null, entityError.getMessage());
-      }
+    recordReaderFailures(entityType, resultList, readErrorCount);
+
+    if (readSuccessCount == 0) {
+      LOG.debug(
+          "{} read={}ms returned no indexable rows (warnings={}, errors={})",
+          entityType,
+          readDurationNanos / 1_000_000L,
+          warningsCount,
+          readErrorCount);
+      return new BatchResult(0, readErrorCount, warningsCount, nextCursor);
     }
 
     Map<String, Object> contextData = createContextData(entityType, statsTracker);
@@ -558,6 +562,44 @@ public class PartitionWorker {
   }
 
   /**
+   * Persist per-entity reader failures so that downstream tooling (e.g. the failures dashboard)
+   * can show which specific records the reader could not hydrate. Runs whether or not the batch
+   * has any successful rows — losing failure diagnostics for "all-error" batches would defeat
+   * the point of the recorder.
+   */
+  private void recordReaderFailures(
+      String entityType, ResultList<?> resultList, int readErrorCount) {
+    if (failureRecorder == null || readErrorCount == 0 || resultList == null) {
+      return;
+    }
+    for (EntityError entityError : listOrEmpty(resultList.getErrors())) {
+      Object rawEntity = entityError.getEntity();
+      String entityId = null;
+      if (rawEntity instanceof EntityInterface) {
+        UUID id = ((EntityInterface) rawEntity).getId();
+        if (id != null) {
+          entityId = id.toString();
+        }
+      } else if (rawEntity != null) {
+        entityId = rawEntity.toString();
+      }
+      if (entityId == null) {
+        // Time-series readers (EntityTimeSeriesRepository) build EntityError without an id —
+        // they only have access to the JSON row, not the entity reference. Per-entity recording
+        // requires an id, so log at DEBUG (not WARN) to avoid spamming logs for every error in
+        // large time-series batches.
+        LOG.debug(
+            "No entityId on reader failure for entityType={} — skipping per-entity record. message={}",
+            entityType,
+            entityError.getMessage());
+        continue;
+      }
+      failureRecorder.recordReaderEntityFailure(
+          entityType, entityId, null, entityError.getMessage());
+    }
+  }
+
+  /**
    * Read entities from the database.
    *
    * @param entityType The entity type
@@ -568,7 +610,12 @@ public class PartitionWorker {
   private ResultList<?> readEntitiesKeyset(String entityType, String keysetCursor, int limit)
       throws SearchIndexException {
 
-    List<String> fields = TIME_SERIES_ENTITIES.contains(entityType) ? List.of() : List.of("*");
+    // Selective fields, not "*". Asking for "*" runs every registered fieldFetcher in
+    // setFieldsInBulk — including expensive ones like fetchAndSetOwns on Team/User where every
+    // owned entity becomes an Entity.getEntityReferenceById round-trip — and the index class then
+    // strips most of those out via getExcludedFields anyway. Mirror what EntityReader does on the
+    // single-server pipeline (PR #27723) so both paths request the same minimal set.
+    List<String> fields = ReindexingUtil.getSearchIndexFields(entityType);
 
     if (!TIME_SERIES_ENTITIES.contains(entityType)) {
       PaginatedEntitiesSource source = new PaginatedEntitiesSource(entityType, limit, fields, 0);
@@ -592,26 +639,36 @@ public class PartitionWorker {
     }
   }
 
-  private String initializeKeysetCursor(String entityType, long offset) {
+  private String initializeKeysetCursor(SearchIndexPartition partition, long offset) {
     if (offset <= 0) {
       return null;
     }
-    if (!TIME_SERIES_ENTITIES.contains(entityType)) {
-      int cursorOffset = toCursorOffset(entityType, offset);
-      ListFilter filter = new ListFilter(Include.ALL);
-      String cursor =
-          Entity.getEntityRepository(entityType).getCursorAtOffset(filter, cursorOffset);
-      if (cursor == null) {
-        LOG.debug(
-            "getCursorAtOffset returned null for {} at offset {} (cursorOffset={})",
-            entityType,
-            offset,
-            cursorOffset);
-      }
-      return cursor;
-    } else {
+    String entityType = partition.getEntityType();
+    if (TIME_SERIES_ENTITIES.contains(entityType)) {
       return RestUtil.encodeCursor(String.valueOf(offset));
     }
+    // Fast path: coordinator precomputed boundary cursors for every partition's
+    // rangeStart at job initialization (single keyset walk per entity type, O(N) total).
+    // Only the partition's first call lands on a known rangeStart value; mid-partition
+    // recomputes (after batch failure) won't hit this path and fall through to the
+    // OFFSET-based fallback below. Cache lookup is scoped by jobId to avoid stale hits
+    // from a previous job that ran on the same server.
+    String precomputed =
+        coordinator.getPartitionStartCursor(partition.getJobId(), entityType, offset);
+    if (precomputed != null) {
+      return precomputed;
+    }
+    int cursorOffset = toCursorOffset(entityType, offset);
+    ListFilter filter = new ListFilter(Include.ALL);
+    String cursor = Entity.getEntityRepository(entityType).getCursorAtOffset(filter, cursorOffset);
+    if (cursor == null) {
+      LOG.debug(
+          "getCursorAtOffset returned null for {} at offset {} (cursorOffset={})",
+          entityType,
+          offset,
+          cursorOffset);
+    }
+    return cursor;
   }
 
   private int toCursorOffset(String entityType, long offset) {
