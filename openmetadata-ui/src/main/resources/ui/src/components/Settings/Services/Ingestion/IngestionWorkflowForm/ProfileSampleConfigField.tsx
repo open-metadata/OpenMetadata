@@ -21,6 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
 import { Plus, Trash01 } from '@untitledui/icons';
+import { Form, Switch } from 'antd';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -57,13 +58,17 @@ const ProfileSampleConfigField = (props: FieldProps<ProfileSampleConfig>) => {
   const { t } = useTranslation();
 
   const sampleConfigType =
-    formData?.sampleConfigType ?? SampleConfigType.Static;
-  const config: ICSamplingConfig = formData?.config ?? {};
+    formData?.sampleConfigType ?? SampleConfigType.Dynamic;
+  const config: ICSamplingConfig = formData?.config ?? {
+    smartSampling: true,
+  };
 
   const handleConfigTypeChange = useCallback(
     (type: string | number | null) => {
       const newConfig: ICSamplingConfig =
-        type === SampleConfigType.Dynamic ? { thresholds: [] } : {};
+        type === SampleConfigType.Dynamic
+          ? { smartSampling: true, thresholds: [] }
+          : {};
       onChange({
         sampleConfigType: type as SampleConfigType,
         config: newConfig,
@@ -90,14 +95,14 @@ const ProfileSampleConfigField = (props: FieldProps<ProfileSampleConfig>) => {
     ) => {
       const thresholds = [...(config.thresholds ?? [])];
       thresholds[index] = { ...thresholds[index], [field]: value };
-      onChange({ sampleConfigType, config: { thresholds } });
+      onChange({ sampleConfigType, config: { ...config, thresholds } });
     },
     [sampleConfigType, config, onChange]
   );
 
   const handleAddThreshold = useCallback(() => {
     const thresholds = [...(config.thresholds ?? []), { ...DEFAULT_THRESHOLD }];
-    onChange({ sampleConfigType, config: { thresholds } });
+    onChange({ sampleConfigType, config: { ...config, thresholds } });
   }, [sampleConfigType, config, onChange]);
 
   const handleRemoveThreshold = useCallback(
@@ -105,7 +110,7 @@ const ProfileSampleConfigField = (props: FieldProps<ProfileSampleConfig>) => {
       const thresholds = (config.thresholds ?? []).filter(
         (_, i) => i !== index
       );
-      onChange({ sampleConfigType, config: { thresholds } });
+      onChange({ sampleConfigType, config: { ...config, thresholds } });
     },
     [sampleConfigType, config, onChange]
   );
@@ -205,13 +210,33 @@ const ProfileSampleConfigField = (props: FieldProps<ProfileSampleConfig>) => {
 
       {sampleConfigType === SampleConfigType.Dynamic && (
         <div className="m-t-sm">
-          <Typography
-            className="m-b-xs tw:block"
-            size="text-sm"
-            weight="medium">
-            {t('label.threshold-plural')}
-          </Typography>
-          {(config.thresholds ?? []).map((threshold, index) => (
+          <Form.Item className="m-t-md" colon={false}>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={config.smartSampling ?? true}
+                data-testid="smart-sampling-toggle"
+                onChange={(checked) =>
+                  onChange({
+                    sampleConfigType,
+                    config: { ...config, smartSampling: checked },
+                  })
+                }
+              />
+              <label>{t('label.smart-sampling')}</label>
+              <Typography className="tw:text-tertiary" size="text-sm">
+                ({t('message.smart-sampling-hint')})
+              </Typography>
+            </div>
+          </Form.Item>
+          {!(config.smartSampling ?? true) && (
+            <>
+              <Typography
+                className="m-b-xs m-t-sm tw:block"
+                size="text-sm"
+                weight="medium">
+                {t('label.threshold-plural')}
+              </Typography>
+              {(config.thresholds ?? []).map((threshold, index) => (
             <Card className="m-b-sm" key={index} size="sm">
               <Card.Header
                 extra={
@@ -331,6 +356,8 @@ const ProfileSampleConfigField = (props: FieldProps<ProfileSampleConfig>) => {
             onClick={handleAddThreshold}>
             {t('label.add-entity', { entity: t('label.threshold') })}
           </Button>
+            </>
+          )}
         </div>
       )}
     </div>
