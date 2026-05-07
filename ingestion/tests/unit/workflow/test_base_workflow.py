@@ -262,7 +262,14 @@ class TestWorkflowExecuteTeardown:
             mock_print_status.assert_called_once()
             mock_stop.assert_called_once()
 
-    def test_stop_still_runs_when_close_steps_raises(self):
+    def test_pipeline_status_is_persisted_when_close_steps_raises(self):
+        """
+        Even on a catastrophic close_steps() failure, the pipeline status must
+        still be persisted to the server and stop() must still run. This
+        preserves the pre-existing "status is always sent" invariant; the
+        flushed counts may be missing in this edge case but a status record is
+        better than none.
+        """
         workflow = SimpleWorkflow(config=config)
 
         with (
@@ -271,10 +278,17 @@ class TestWorkflowExecuteTeardown:
                 "close_steps",
                 side_effect=RuntimeError("flush-boom"),
             ) as mock_close_steps,
+            patch.object(
+                workflow,
+                "set_ingestion_pipeline_status",
+                wraps=workflow.set_ingestion_pipeline_status,
+            ) as mock_set_ingestion_pipeline_status,
+            patch.object(workflow, "print_status", wraps=workflow.print_status) as mock_print_status,
             patch.object(workflow, "stop", wraps=workflow.stop) as mock_stop,
         ):
-            with pytest.raises(RuntimeError, match="flush-boom"):
-                workflow.execute()
+            workflow.execute()
 
             mock_close_steps.assert_called_once()
+            mock_set_ingestion_pipeline_status.assert_called_once()
+            mock_print_status.assert_called_once()
             mock_stop.assert_called_once()
