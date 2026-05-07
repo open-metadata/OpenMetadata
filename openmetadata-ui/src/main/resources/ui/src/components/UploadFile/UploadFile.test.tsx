@@ -34,7 +34,14 @@ describe('UploadFile Component', () => {
     onCSVUploaded: jest.fn(),
   };
 
+  let originalFileReader: typeof FileReader;
+
+  beforeEach(() => {
+    originalFileReader = global.FileReader;
+  });
+
   afterEach(() => {
+    global.FileReader = originalFileReader;
     jest.clearAllMocks();
   });
 
@@ -74,7 +81,6 @@ describe('UploadFile Component', () => {
 
   it('should call onCSVUploaded when file is uploaded successfully', async () => {
     const mockOnCSVUploaded = jest.fn();
-    const originalFileReader = global.FileReader;
     const readAsText = jest.fn(function (this: FileReader) {
       this.onload?.({ target: this } as ProgressEvent<FileReader>);
     });
@@ -104,8 +110,6 @@ describe('UploadFile Component', () => {
     });
 
     expect(readAsText).toHaveBeenCalledWith(file, 'utf-8');
-
-    global.FileReader = originalFileReader;
   });
 
   it('should handle file upload error', async () => {
@@ -121,7 +125,6 @@ describe('UploadFile Component', () => {
     });
 
     // Mock FileReader to throw an error
-    const originalFileReader = global.FileReader;
     global.FileReader = jest.fn().mockImplementation(() => ({
       readAsText: jest.fn(() => {
         throw new Error('File read error');
@@ -138,15 +141,11 @@ describe('UploadFile Component', () => {
     await waitFor(() => {
       expect(showErrorToast).toHaveBeenCalled();
     });
-
-    // Restore original FileReader
-    global.FileReader = originalFileReader;
   });
 
   it('should show error toast when onCSVUploaded rejects', async () => {
     const error = new Error('Upload failed');
     const mockOnCSVUploaded = jest.fn().mockRejectedValue(error);
-    const originalFileReader = global.FileReader;
     const readAsText = jest.fn(function (this: FileReader) {
       this.onload?.({ target: this } as ProgressEvent<FileReader>);
     });
@@ -176,8 +175,6 @@ describe('UploadFile Component', () => {
     });
 
     expect(readAsText).toHaveBeenCalledWith(file, 'utf-8');
-
-    global.FileReader = originalFileReader;
   });
 
   it('should call beforeUpload when provided', () => {

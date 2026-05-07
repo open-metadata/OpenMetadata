@@ -5682,7 +5682,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       assertTrue(
           reExportedCsv.contains(unicodeDescription), "Re-exported CSV should retain Unicode text");
     } catch (Exception e) {
-      fail("Unicode import/export round-trip failed: " + e.getMessage());
+      fail("Unicode import/export round-trip failed", e);
     }
   }
 

@@ -397,8 +397,15 @@ public class ColumnResource {
           String schemaName,
       @Parameter(description = "Filter by domain ID") @QueryParam("domainId") String domainId) {
 
-    return repository.exportUniqueColumnsCSV(
-        securityContext, columnName, entityTypes, serviceName, databaseName, schemaName, domainId);
+    return CsvUtil.withUtf8Bom(
+        repository.exportUniqueColumnsCSV(
+            securityContext,
+            columnName,
+            entityTypes,
+            serviceName,
+            databaseName,
+            schemaName,
+            domainId));
   }
 
   @POST
