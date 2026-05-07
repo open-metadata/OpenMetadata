@@ -35,6 +35,7 @@ from metadata.ingestion.connections.session import create_and_bind_thread_safe_s
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.ssl_manager import get_ssl_connection
@@ -84,12 +85,12 @@ class BigQuerySampler(SQASampler):
 
         self.session_factory = create_and_bind_thread_safe_session(self.connection)
 
-    def set_tablesample(self, selectable: SqaTable):
+    def set_tablesample(self, static: StaticSamplingConfig | None, selectable: SqaTable):
         """Set the TABLESAMPLE clause for BigQuery
         Args:
+            static (StaticSamplingConfig | None): sampling configuration
             selectable (Table): Table object
         """
-        static = self.sample_config.get_static_config()
         if (
             static
             and static.profileSampleType == ProfileSampleType.PERCENTAGE
@@ -99,7 +100,7 @@ class BigQuerySampler(SQASampler):
 
         return selectable
 
-    def _base_sample_query(self, column: Optional[Column], label=None):  # noqa: UP045
+    def _base_sample_query(self, selectable, column: Column | None, label=None):
         """Base query for sampling
 
         Args:
@@ -124,17 +125,17 @@ class BigQuerySampler(SQASampler):
                 column._set_parent(self.raw_dataset.__table__)
                 # pylint: enable=protected-access
 
-        return super()._base_sample_query(column, label=label)
+        return super()._base_sample_query(selectable, column, label=label)
 
-    def get_sample_query(self, *, column=None) -> Query:
+    def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> Query:
         """get query for sample data"""
+        selectable = self.set_tablesample(static, self.raw_dataset.__table__)  # type: ignore
         # TABLESAMPLE SYSTEM is not supported for views
-        static = self.sample_config.get_static_config()
         if (
             static
             and static.profileSampleType == ProfileSampleType.PERCENTAGE
             and self.raw_dataset_type != TableType.View
         ):
-            return self._base_sample_query(column).cte(f"{self.get_sampler_table_name()}_sample")
+            return self._base_sample_query(selectable, column).cte(f"{self.get_sampler_table_name()}_sample")  # type: ignore
 
-        return super().get_sample_query(column=column)
+        return super().get_sample_query(static, column=column)
