@@ -145,7 +145,7 @@ const isVisible = async (locator: Locator) =>
 
 const expectIncidentTableRowsToContain = async (page: Page, text: string) => {
   const rows = page.locator(
-    '[data-testid="test-case-incident-manager-table"] tbody tr'
+    '.ant-table-tbody tr:not(.ant-table-measure-row):not(.ant-table-placeholder)'
   );
   const rowCount = await rows.count();
 
