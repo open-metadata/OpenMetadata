@@ -410,6 +410,129 @@ class GoogleEmbeddingClientTest {
     assertTrue(ex.getMessage().contains("no values array"));
   }
 
+  @Test
+  void testRequestUrlContainsApiKeyAsQueryParam() {
+    String response = "{\"embedding\":{\"values\":[0.1]}}";
+    StubHttpClient httpClient = new StubHttpClient(response, 200);
+
+    GoogleEmbeddingClient client =
+        new GoogleEmbeddingClient(
+            httpClient,
+            "my-secret-key",
+            "text-embedding-004",
+            1,
+            "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
+
+    client.embed("hi");
+
+    assertEquals(1, httpClient.getCapturedRequests().size());
+    HttpRequest request = httpClient.getCapturedRequests().get(0);
+    String url = request.uri().toString();
+    assertTrue(url.endsWith("text-embedding-004:embedContent?key=my-secret-key"), url);
+  }
+
+  @Test
+  void testRequestHasNoAuthorizationHeader() {
+    String response = "{\"embedding\":{\"values\":[0.1]}}";
+    StubHttpClient httpClient = new StubHttpClient(response, 200);
+
+    GoogleEmbeddingClient client =
+        new GoogleEmbeddingClient(
+            httpClient,
+            "my-secret-key",
+            "text-embedding-004",
+            1,
+            "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
+
+    client.embed("hi");
+
+    HttpRequest request = httpClient.getCapturedRequests().get(0);
+    assertTrue(request.headers().firstValue("Authorization").isEmpty());
+    assertTrue(request.headers().firstValue("api-key").isEmpty());
+    assertEquals("application/json", request.headers().firstValue("Content-Type").orElse(null));
+  }
+
+  @Test
+  void testRequestBodyShape() throws Exception {
+    String response = "{\"embedding\":{\"values\":[0.1]}}";
+    StubHttpClient httpClient = new StubHttpClient(response, 200);
+
+    GoogleEmbeddingClient client =
+        new GoogleEmbeddingClient(
+            httpClient,
+            "my-secret-key",
+            "text-embedding-004",
+            1,
+            "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
+
+    client.embed("the quick brown fox");
+
+    HttpRequest request = httpClient.getCapturedRequests().get(0);
+    String body = extractBody(request);
+    com.fasterxml.jackson.databind.JsonNode parsed =
+        new com.fasterxml.jackson.databind.ObjectMapper().readTree(body);
+    assertEquals("models/text-embedding-004", parsed.get("model").asText());
+    assertEquals(
+        "the quick brown fox", parsed.get("content").get("parts").get(0).get("text").asText());
+  }
+
+  @Test
+  void testApiKeyIsUrlEncoded() {
+    String response = "{\"embedding\":{\"values\":[0.1]}}";
+    StubHttpClient httpClient = new StubHttpClient(response, 200);
+
+    GoogleEmbeddingClient client =
+        new GoogleEmbeddingClient(
+            httpClient,
+            "key with spaces&chars",
+            "text-embedding-004",
+            1,
+            "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent");
+
+    client.embed("hi");
+
+    HttpRequest request = httpClient.getCapturedRequests().get(0);
+    String url = request.uri().toString();
+    assertTrue(url.contains("key=key+with+spaces%26chars"), url);
+  }
+
+  private static String extractBody(HttpRequest request) {
+    java.util.concurrent.atomic.AtomicReference<String> captured =
+        new java.util.concurrent.atomic.AtomicReference<>();
+    request
+        .bodyPublisher()
+        .ifPresent(
+            publisher -> {
+              java.util.concurrent.Flow.Subscriber<java.nio.ByteBuffer> subscriber =
+                  new java.util.concurrent.Flow.Subscriber<>() {
+                    private final java.io.ByteArrayOutputStream out =
+                        new java.io.ByteArrayOutputStream();
+
+                    @Override
+                    public void onSubscribe(java.util.concurrent.Flow.Subscription subscription) {
+                      subscription.request(Long.MAX_VALUE);
+                    }
+
+                    @Override
+                    public void onNext(java.nio.ByteBuffer item) {
+                      byte[] arr = new byte[item.remaining()];
+                      item.get(arr);
+                      out.write(arr, 0, arr.length);
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable) {}
+
+                    @Override
+                    public void onComplete() {
+                      captured.set(out.toString(java.nio.charset.StandardCharsets.UTF_8));
+                    }
+                  };
+              publisher.subscribe(subscriber);
+            });
+    return captured.get();
+  }
+
   private ElasticSearchConfiguration buildConfig(String apiKey, String modelId, int dimension) {
     Google googleCfg =
         new Google()
