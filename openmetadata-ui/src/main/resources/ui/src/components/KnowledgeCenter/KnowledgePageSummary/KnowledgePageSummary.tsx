@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Divider, Row, Typography } from 'antd';
+import { isEmpty } from 'lodash';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import SummaryTagsDescription from '../../../components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import CommonEntitySummaryInfo from '../../../components/Explore/EntitySummaryPanel/CommonEntitySummaryInfo/CommonEntitySummaryInfo';
@@ -20,11 +21,10 @@ import {
   PageType,
   QuickLink,
 } from '../../../interface/knowledge-center.interface';
-import { isEmpty } from 'lodash';
 
-import SummaryPanelSkeleton from '../../../components/common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import SummaryPanelSkeleton from '../../../components/common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityUtils';
 import i18n, { t } from '../../../utils/i18next/LocalUtil';
 import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';

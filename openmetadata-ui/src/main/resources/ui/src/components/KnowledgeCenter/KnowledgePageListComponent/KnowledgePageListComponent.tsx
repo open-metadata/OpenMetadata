@@ -21,29 +21,8 @@ import {
   Space,
   Typography,
 } from 'antd';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../../components/common/Loader/Loader';
-import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
-import { CREATE_PAGE_HASH, PAGE_SIZE_MEDIUM } from '../../../constants/constants';
-import { KNOWLEDGE_CENTER_DOC_LINK } from '../../../constants/docs.constant';
-import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
-import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
-import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
-import { Paging } from '../../../generated/type/paging';
-import LimitWrapper from '../../../hoc/LimitWrapper';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useElementInView } from '../../../hooks/useElementInView';
-import {
-  CreateKnowledgePage,
-  KnowledgeCenterPageProps,
-  KnowledgeCenterPageRef,
-  KnowledgePage,
-  PageType,
-} from '../../../interface/knowledge-center.interface';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
 import {
   forwardRef,
@@ -56,6 +35,30 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../../components/common/Loader/Loader';
+import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
+import {
+  CREATE_PAGE_HASH,
+  PAGE_SIZE_MEDIUM,
+} from '../../../constants/constants';
+import { KNOWLEDGE_CENTER_DOC_LINK } from '../../../constants/docs.constant';
+import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
+import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { Paging } from '../../../generated/type/paging';
+import LimitWrapper from '../../../hoc/LimitWrapper';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useElementInView } from '../../../hooks/useElementInView';
+import {
+  CreateKnowledgePage,
+  KnowledgeCenterPageProps,
+  KnowledgeCenterPageRef,
+  KnowledgePage,
+  PageType,
+} from '../../../interface/knowledge-center.interface';
 import {
   followKnowledgePage,
   getListKnowledgePages,

@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { CSSProperties, ReactNode, useMemo } from 'react';
 import {
   CENTER_PANEL_DEFAULT_WIDTH,
   CENTER_PANEL_PADDING_HORIZONTAL,
   CENTER_PANEL_PADDING_VERTICAL,
   CENTER_PANEL_PANEL_MARGIN,
 } from '../../../../constants/KnowledgeCenter.constant';
-import { CSSProperties, ReactNode, useMemo } from 'react';
 
 interface SizeAwareElementProps {
   isLeftPanelCollapsed: boolean;

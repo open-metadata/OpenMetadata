@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getKnowledgePageByFqn } from '../rest/knowledgeCenterAPI';
 import { EntityUnion } from '../components/Explore/ExplorePage.interface';
 import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { ServiceCategoryPlural } from '../enums/service.enum';
@@ -33,6 +32,7 @@ import { getDataProductByName } from '../rest/dataProductAPI';
 import { getDomainByName } from '../rest/domainAPI';
 import { getGlossariesByName, getGlossaryTermByFQN } from '../rest/glossaryAPI';
 import { getIngestionPipelineByFqn } from '../rest/ingestionPipelineAPI';
+import { getKnowledgePageByFqn } from '../rest/knowledgeCenterAPI';
 import { getKPIByName } from '../rest/KpiAPI';
 import { getTypeByFQN } from '../rest/metadataTypeAPI';
 import { getMetricByFqn } from '../rest/metricsAPI';

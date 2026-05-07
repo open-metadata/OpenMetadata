@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 import { DataNode } from 'antd/lib/tree';
-import { ROUTES } from '../constants/constants';
-import { EntityTabs } from '../enums/entity.enum';
 import { cloneDeep, get, isEmpty } from 'lodash';
 import {
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_SUB_TAB,
   PLACEHOLDER_ROUTE_TAB,
   PLACEHOLDER_ROUTE_VERSION,
+  ROUTES,
 } from '../constants/constants';
+import { EntityTabs } from '../enums/entity.enum';
 import {
   KnowledgePage,
   KnowledgePageHierarchyResponse,
@@ -32,7 +32,9 @@ import {
 } from '../interface/knowledge-center.interface';
 
 import { Space } from 'antd';
+import { Link } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
+import { ReactComponent as IconArticle } from '../assets/svg/ic-articles.svg';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   GLOSSARY_TERMS_WIDGET,
@@ -41,12 +43,9 @@ import {
 import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../hooks/useApplicationStore';
 import { RecentlyViewedData } from '../Models';
-import { Link } from 'react-router-dom';
 import { arraySorterByKey } from './CommonUtils';
 import Fqn from './Fqn';
-import { t } from './i18next/LocalUtil';
-import { ReactComponent as IconArticle } from '../assets/svg/ic-articles.svg';
-import i18n from './i18next/LocalUtil';
+import i18n, { t } from './i18next/LocalUtil';
 
 export const setRecentlyViewedData = (
   recentData: RecentlyViewedQuickLinks['data']

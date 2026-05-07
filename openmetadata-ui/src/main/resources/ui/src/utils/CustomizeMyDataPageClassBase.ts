@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import KnowledgeCenterWidget from '../components/KnowledgeCenter/KnowledgeCenterWidget/KnowledgeCenterWidget';
-import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { FC } from 'react';
 import ActivityFeedImg from '../assets/img/activity-feed-widget.png';
 import CuratedAssetsImg from '../assets/img/curated-assets.png';
@@ -27,6 +25,7 @@ import MyTaskImg from '../assets/img/my-task-widget.png';
 import TotalAssetsMediumImg from '../assets/img/total-assets-medium.png';
 import TotalAssetsImg from '../assets/img/total-assets-widget.png';
 import KnowledgeCenterWidgetImg from '../assets/img/widgets/knowledge-center-widget.png';
+import KnowledgeCenterWidget from '../components/KnowledgeCenter/KnowledgeCenterWidget/KnowledgeCenterWidget';
 import { MyFeedWidget } from '../components/MyData/FeedWidget/FeedWidget.component';
 import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.component';
 import FollowingWidget from '../components/MyData/RightSidebar/FollowingWidget';
@@ -41,6 +40,7 @@ import {
   LandingPageWidgetKeys,
   WidgetWidths,
 } from '../enums/CustomizablePage.enum';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import {
   WidgetCommonProps,
   WidgetConfig,

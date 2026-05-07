@@ -15,6 +15,8 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEqual, isNil, isUndefined } from 'lodash';
 
+import { FC, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import DataAssetAsyncSelectList from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
@@ -22,23 +24,21 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
-import { FC, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import {
+  CreateKnowledgePage,
+  KnowledgePage,
+  QuickLink,
+} from '../../../interface/knowledge-center.interface';
 import {
   getKnowledgePageByFqn,
   patchKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields } from '../../../utils/formUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTagsWithoutTier } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import {
-  CreateKnowledgePage,
-  KnowledgePage,
-  QuickLink,
-} from '../../../interface/knowledge-center.interface';
-import i18n from '../../../utils/i18next/LocalUtil';
 
 export interface QuickLinkFormModalFormData
   extends Pick<CreateKnowledgePage, 'description' | 'displayName'> {

@@ -13,8 +13,8 @@
 import { Button, Modal, Skeleton, Tree, Typography } from 'antd';
 import { DataNode } from 'antd/es/tree';
 import { AntTreeNodeProps, DirectoryTreeProps, TreeProps } from 'antd/lib/tree';
-import { ReactComponent as KnowledgeCenterIcon } from '../../../assets/svg/ic-knowledge-page.svg';
 import { AxiosError } from 'axios';
+import { ReactComponent as KnowledgeCenterIcon } from '../../../assets/svg/ic-knowledge-page.svg';
 import { CREATE_PAGE_HASH, ROUTES } from '../../../constants/constants';
 import {
   CreateKnowledgePage,
@@ -48,11 +48,15 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 import { PlusOutlined } from '@ant-design/icons';
+import classNames from 'classnames';
+import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { compare } from 'fast-json-patch';
+import { isUndefined, uniq } from 'lodash';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as DragIcon } from '../../../assets/svg/drag.svg';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import classNames from 'classnames';
 import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import CreateErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/CreateErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -66,15 +70,11 @@ import {
 } from '../../../constants/KnowledgeCenter.constant';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
-import { compare } from 'fast-json-patch';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
-import { isUndefined, uniq } from 'lodash';
-import { useTranslation } from 'react-i18next';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';

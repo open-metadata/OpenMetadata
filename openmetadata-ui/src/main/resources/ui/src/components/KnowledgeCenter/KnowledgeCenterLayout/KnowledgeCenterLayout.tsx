@@ -12,11 +12,11 @@
  */
 import { Card, Typography } from 'antd';
 import classNames from 'classnames';
-import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
-import '../../../components/common/ResizablePanels/resizable-panels.less';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import '../../../components/common/ResizablePanels/resizable-panels.less';
 import './knowledge-center-layout.less';
 
 interface KnowledgeCenterLayoutProps {

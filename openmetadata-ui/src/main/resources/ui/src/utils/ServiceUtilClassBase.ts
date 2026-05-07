@@ -12,8 +12,6 @@
  */
 
 import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
-import { PageType } from '../interface/knowledge-center.interface';
-import { KnowledgePageSearchSource } from '../interface/search.interface';
 import { get, isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
 import GlossaryIcon from '../assets/svg/book.svg';
@@ -60,6 +58,8 @@ import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ServiceType } from '../generated/entity/services/serviceType';
+import { PageType } from '../interface/knowledge-center.interface';
+import { KnowledgePageSearchSource } from '../interface/search.interface';
 import {
   ConfigData,
   ExtraInfoType,

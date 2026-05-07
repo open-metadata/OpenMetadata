@@ -11,10 +11,6 @@
  *  limitations under the License.
  */
 import { Operation } from 'fast-json-patch';
-import {
-  getKnowledgePageByFqn,
-  patchKnowledgePage,
-} from '../../rest/knowledgeCenterAPI';
 import { MapPatchAPIResponse } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from '../../enums/entity.enum';
@@ -57,6 +53,10 @@ import {
   patchGlossaries,
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
+import {
+  getKnowledgePageByFqn,
+  patchKnowledgePage,
+} from '../../rest/knowledgeCenterAPI';
 import { getMetricByFqn, patchMetric } from '../../rest/metricsAPI';
 import { getMlModelByFQN, patchMlModelDetails } from '../../rest/mlModelAPI';
 import { getPipelineByFqn, patchPipelineDetails } from '../../rest/pipelineAPI';

@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
-import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
 import { Operation } from 'fast-json-patch';
+import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
 import { EntityReference } from '../generated/entity/type';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
-import { PagingResponse } from '../Models';
-import APIClient from '../rest/index';
 import {
   CreateKnowledgePage,
   KnowledgePage,
@@ -26,6 +24,8 @@ import {
   PageHierarchy,
   PageType,
 } from '../interface/knowledge-center.interface';
+import { PagingResponse } from '../Models';
+import APIClient from '../rest/index';
 
 export interface KnowledgePageHierarchyParams {
   parent?: string;

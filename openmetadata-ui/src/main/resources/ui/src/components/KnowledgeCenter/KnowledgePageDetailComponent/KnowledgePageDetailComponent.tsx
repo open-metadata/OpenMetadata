@@ -12,6 +12,18 @@
  */
 import { Tabs } from 'antd';
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
+import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
+import {
+  FC,
+  KeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -24,7 +36,11 @@ import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component'
 import { GenericProvider } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
-import { CREATE_PAGE_HASH, LONG_DELAY, SHORT_DELAY } from '../../../constants/constants';
+import {
+  CREATE_PAGE_HASH,
+  LONG_DELAY,
+  SHORT_DELAY,
+} from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import {
@@ -39,8 +55,10 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { compare } from 'fast-json-patch';
-import { CreateThread, ThreadType } from '../../../generated/api/feed/createThread';
+import {
+  CreateThread,
+  ThreadType,
+} from '../../../generated/api/feed/createThread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -52,18 +70,7 @@ import {
   KnowledgePage,
   RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
-import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
 import { EntityTags } from '../../../Models';
-import {
-  FC,
-  KeyboardEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { postThread } from '../../../rest/feedsAPI';
 import {
   followKnowledgePage,

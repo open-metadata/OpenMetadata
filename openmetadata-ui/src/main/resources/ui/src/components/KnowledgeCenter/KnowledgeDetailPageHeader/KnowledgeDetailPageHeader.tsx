@@ -23,6 +23,10 @@ import {
   Typography,
 } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
+import classNames from 'classnames';
+import { isEmpty, isUndefined, map, toString, uniqBy, uniqueId } from 'lodash';
+import { FC, useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ConversationIcon } from '../../../assets/svg/ic-conversation.svg';
 import { ReactComponent as IconSaved } from '../../../assets/svg/ic-saved.svg';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/ic-share.svg';
@@ -30,7 +34,6 @@ import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-fi
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-star.svg';
 import { ReactComponent as IconUnSaved } from '../../../assets/svg/ic-unsaved.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
-import classNames from 'classnames';
 import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
@@ -53,9 +56,6 @@ import {
   KnowledgePage,
   RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
-import { isEmpty, isUndefined, map, toString, uniqBy, uniqueId } from 'lodash';
-import { FC, useCallback, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import deleteWidgetClassBase from '../../../utils/DeleteWidget/DeleteWidgetClassBase';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityUtils';

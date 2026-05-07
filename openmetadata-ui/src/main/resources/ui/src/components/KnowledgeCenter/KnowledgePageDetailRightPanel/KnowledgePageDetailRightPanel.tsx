@@ -12,6 +12,7 @@
  */
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import { FC, useCallback, useMemo } from 'react';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { DomainLabelV2 } from '../../../components/DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
@@ -26,7 +27,6 @@ import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { EntityTags } from '../../../Models';
-import { FC, useCallback, useMemo } from 'react';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';
 import './knowledge-page.less';

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { Classification } from '../../../generated/entity/classification/classification';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -48,6 +47,7 @@ import { SecurityService } from '../../../generated/entity/services/securityServ
 import { StorageService } from '../../../generated/entity/services/storageService';
 import { Team } from '../../../generated/entity/teams/team';
 import { User } from '../../../generated/entity/teams/user';
+import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 

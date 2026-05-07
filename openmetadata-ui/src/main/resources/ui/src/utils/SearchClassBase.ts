@@ -12,7 +12,6 @@
  */
 import { SearchOutlined } from '@ant-design/icons';
 import { QuickLink } from 'generated/api/data/createPage';
-import { PageType } from '../interface/knowledge-center.interface';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
@@ -79,6 +78,7 @@ import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { TestSuite } from '../generated/tests/testCase';
+import { PageType } from '../interface/knowledge-center.interface';
 import {
   KnowledgePageSearchSource,
   SearchSourceAlias,
