@@ -154,6 +154,7 @@ public class TableRepository extends EntityRepository<Table> {
   public static final String TABLE_COLUMN_EXTENSION = "table.column";
   public static final String TABLE_EXTENSION = "table.table";
   public static final String CUSTOM_METRICS_EXTENSION = "customMetrics.";
+  public static final String COLUMN_EXTENSION_JSON_SCHEMA = "columnExtension";
   public static final String TABLE_PROFILER_CONFIG = "tableProfilerConfig";
   private static final ReadPrefetchKey PREFETCH_DEFAULT_FIELDS =
       ReadPrefetchKey.TABLE_DEFAULT_FIELDS;
@@ -2910,8 +2911,26 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     if (fieldsParam != null && fieldsParam.contains("extension")) {
+      List<ExtensionRecord> allColumnExtensions =
+          daoCollection
+              .entityExtensionDAO()
+              .getExtensionsByJsonSchema(table.getId(), COLUMN_EXTENSION_JSON_SCHEMA);
+      Map<String, Object> extensionByColumnHash = new HashMap<>();
+      for (ExtensionRecord record : allColumnExtensions) {
+        try {
+          extensionByColumnHash.put(
+              record.extensionName(), JsonUtils.readValue(record.extensionJson(), Object.class));
+        } catch (Exception e) {
+          LOG.warn(
+              "Failed to deserialize column extension for table {}: {}",
+              table.getId(),
+              e.getMessage());
+        }
+      }
       for (Column column : paginatedColumns) {
-        column.setExtension(getColumnExtension(table.getId(), column.getFullyQualifiedName()));
+        column.setExtension(
+            extensionByColumnHash.get(
+                FullyQualifiedName.buildHash(column.getFullyQualifiedName())));
       }
     }
 
@@ -3242,8 +3261,21 @@ public class TableRepository extends EntityRepository<Table> {
 
     Fields fields = getFields(fieldsParam);
     if (fields.contains("customMetrics") || fields.contains("*")) {
+      List<ExtensionRecord> allColumnMetricRecords =
+          daoCollection
+              .entityExtensionDAO()
+              .getExtensions(table.getId(), CUSTOM_METRICS_EXTENSION + TABLE_COLUMN_EXTENSION);
+      Map<String, List<CustomMetric>> metricsByColumn = new HashMap<>();
+      for (ExtensionRecord record : allColumnMetricRecords) {
+        CustomMetric metric = JsonUtils.readValue(record.extensionJson(), CustomMetric.class);
+        if (metric != null && metric.getColumnName() != null) {
+          metricsByColumn
+              .computeIfAbsent(metric.getColumnName(), k -> new ArrayList<>())
+              .add(metric);
+        }
+      }
       for (Column column : paginatedResults) {
-        column.setCustomMetrics(getCustomMetrics(table, column.getName()));
+        column.setCustomMetrics(metricsByColumn.getOrDefault(column.getName(), new ArrayList<>()));
       }
     }
 
