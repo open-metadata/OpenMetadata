@@ -15,12 +15,14 @@ import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { get, isEmpty, isUndefined, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
@@ -463,12 +465,16 @@ export const DataAssetsHeader = ({
     () => ({
       editDomainPermission: permissions.EditAll && !dataAsset.deleted,
       editOwnerPermission:
-        (permissions.EditAll || permissions.EditOwners) && !dataAsset.deleted,
-      editTierPermission:
-        (permissions.EditAll || permissions.EditTier) && !dataAsset.deleted,
-      editCertificationPermission:
-        (permissions.EditAll || permissions.EditCertification) &&
+        getPrioritizedEditPermission(permissions, Operation.EditOwners) &&
         !dataAsset.deleted,
+      editTierPermission:
+        getPrioritizedEditPermission(permissions, Operation.EditTier) &&
+        !dataAsset.deleted,
+      editCertificationPermission:
+        getPrioritizedEditPermission(
+          permissions,
+          Operation.EditCertification
+        ) && !dataAsset.deleted,
     }),
     [permissions, dataAsset]
   );
