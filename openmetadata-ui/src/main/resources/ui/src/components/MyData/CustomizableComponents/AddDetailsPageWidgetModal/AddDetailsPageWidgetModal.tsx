@@ -23,6 +23,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { getWidgetWidthLabelFromKey } from '../../../../utils/CustomizableLandingPageUtils';
+import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { WidgetSizeInfo } from '../AddWidgetModal/AddWidgetModal.interface';
 import AddWidgetTabContent from '../AddWidgetModal/AddWidgetTabContent';
@@ -63,6 +64,9 @@ function AddDetailsPageWidgetModal({
   const tabItems: TabsProps['items'] = useMemo(
     () =>
       sortBy(widgetsList, 'name')?.map((widget) => {
+        const scaleFactor =
+          maxGridSizeSupport /
+          customizeMyDataPageClassBase.landingPageMaxGridSize;
         const widgetSizeOptions: Array<WidgetSizeInfo> =
           widget.data.gridSizes.map((size: GridSizes) => ({
             label: (
@@ -70,7 +74,10 @@ function AddDetailsPageWidgetModal({
                 {getWidgetWidthLabelFromKey(toString(size))}
               </span>
             ),
-            value: WidgetWidths[size],
+            value: Math.min(
+              maxGridSizeSupport,
+              Math.max(1, Math.round(WidgetWidths[size] * scaleFactor))
+            ),
           }));
 
         return {

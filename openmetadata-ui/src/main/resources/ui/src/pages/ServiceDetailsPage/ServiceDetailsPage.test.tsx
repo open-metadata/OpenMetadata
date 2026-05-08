@@ -38,8 +38,7 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { getApplicationList } from '../../rest/applicationAPI';
-import { getDashboards, getDataModels } from '../../rest/dashboardAPI';
-import { getDatabases } from '../../rest/databaseAPI';
+import { getDataModels } from '../../rest/dashboardAPI';
 import { getPipelineServiceHostIp } from '../../rest/ingestionPipelineAPI';
 import {
   addServiceFollower,
@@ -48,12 +47,10 @@ import {
   removeServiceFollower,
   restoreService,
 } from '../../rest/serviceAPI';
-import { getTopics } from '../../rest/topicsAPI';
 import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
-import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { getCountLabel, shouldTestConnection } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -221,6 +218,10 @@ jest.mock('../../rest/applicationAPI', () => ({
 jest.mock('../../rest/searchAPI', () => ({
   searchQuery: jest.fn().mockImplementation(() =>
     Promise.resolve({
+      hits: {
+        total: { value: 0 },
+        hits: [],
+      },
       paging: {
         total: 0,
       },
@@ -250,6 +251,9 @@ jest.mock('../../hooks/useApplicationStore', () => ({
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+  useParams: jest.fn().mockReturnValue({
+    serviceCategory: 'databaseServices',
+  }),
   useLocation: () => ({
     pathname: '/mock-path',
     search: '',
@@ -397,13 +401,34 @@ jest.mock('../../components/ServiceInsights/ServiceInsightsTab', () =>
     ))
 );
 
-jest.mock('./ServiceMainTabContent', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="service-main-tab-content">ServiceMainTabContent</div>
-    ))
+jest.mock('../../hooks/useCustomPages', () => ({
+  useCustomPages: jest.fn().mockReturnValue({
+    customizedPage: null,
+    isLoading: false,
+  }),
+}));
+
+jest.mock(
+  '../../components/Customization/GenericProvider/GenericProvider',
+  () => ({
+    GenericProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => (
+        <div data-testid="generic-provider">{children}</div>
+      )),
+    useGenericContext: jest.fn().mockReturnValue({
+      type: 'databaseService',
+    }),
+  })
 );
+
+jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
+  GenericTab: jest
+    .fn()
+    .mockImplementation(({ type }) => (
+      <div data-testid="generic-tab">Generic Tab - {type}</div>
+    )),
+}));
 
 jest.mock(
   '../../components/Dashboard/DataModel/DataModels/DataModelsTable',
@@ -485,6 +510,7 @@ jest.mock('../../utils/ServiceUtils', () => ({
   getResourceEntityFromServiceCategory: jest
     .fn()
     .mockReturnValue('databaseService'),
+  getSearchIndexForService: jest.fn().mockReturnValue('database_search_index'),
   getServiceDisplayNameQueryFilter: jest.fn().mockReturnValue(''),
   getServiceRouteFromServiceType: jest.fn().mockReturnValue('database'),
   shouldTestConnection: jest.fn().mockReturnValue(true),
@@ -559,6 +585,10 @@ jest.mock('../../utils/PermissionsUtils', () => ({
 jest.mock('../../utils/StringsUtils', () => ({
   escapeESReservedCharacters: jest.fn().mockImplementation((text) => text),
   getEncodedFqn: jest.fn().mockImplementation((text) => text),
+}));
+
+jest.mock('../../utils/DatabaseSchemaDetailsUtils', () => ({
+  buildSchemaQueryFilter: jest.fn().mockReturnValue(''),
 }));
 
 const mockSetFilters = jest.fn();
@@ -845,93 +875,6 @@ describe('ServiceDetailsPage', () => {
           new Error('Restore failed'),
           'message.restore-entities-error'
         );
-      });
-    });
-  });
-
-  describe('Data Fetching', () => {
-    it('should fetch databases for database service', async () => {
-      (getDatabases as jest.Mock).mockResolvedValue({
-        data: [{ id: 'db1', name: 'Database 1' }],
-        paging: { total: 1 },
-      });
-
-      await renderComponent();
-
-      await waitFor(() => {
-        expect(getDatabases).toHaveBeenCalled();
-      });
-    });
-
-    it('should include usageSummary in database fields when ViewUsage is allowed', async () => {
-      (getPrioritizedViewPermission as jest.Mock).mockReturnValue(true);
-      (getDatabases as jest.Mock).mockResolvedValue({
-        data: [{ id: 'db1', name: 'Database 1' }],
-        paging: { total: 1 },
-      });
-
-      await renderComponent();
-
-      await waitFor(() => {
-        expect(getDatabases).toHaveBeenCalled();
-      });
-
-      const fields = (getDatabases as jest.Mock).mock.calls[0][1];
-
-      expect(fields).toContain('usageSummary');
-    });
-
-    it('should exclude usageSummary from database fields when ViewUsage is denied', async () => {
-      (getPrioritizedViewPermission as jest.Mock).mockReturnValue(false);
-      (getDatabases as jest.Mock).mockResolvedValue({
-        data: [{ id: 'db1', name: 'Database 1' }],
-        paging: { total: 1 },
-      });
-
-      await renderComponent();
-
-      await waitFor(() => {
-        expect(getDatabases).toHaveBeenCalled();
-      });
-
-      const fields = (getDatabases as jest.Mock).mock.calls[0][1];
-
-      expect(fields).not.toContain('usageSummary');
-    });
-
-    it('should fetch topics for messaging service', async () => {
-      (getTopics as jest.Mock).mockResolvedValue({
-        data: [{ id: 'topic1', name: 'Topic 1' }],
-        paging: { total: 1 },
-      });
-
-      (useRequiredParams as jest.Mock).mockReturnValue({
-        serviceCategory: ServiceCategory.MESSAGING_SERVICES,
-        tab: EntityTabs.INSIGHTS,
-      });
-
-      await renderComponent();
-
-      await waitFor(() => {
-        expect(getTopics).toHaveBeenCalled();
-      });
-    });
-
-    it('should fetch dashboards for dashboard service', async () => {
-      (getDashboards as jest.Mock).mockResolvedValue({
-        data: [{ id: 'dashboard1', name: 'Dashboard 1' }],
-        paging: { total: 1 },
-      });
-
-      (useRequiredParams as jest.Mock).mockReturnValue({
-        serviceCategory: ServiceCategory.DASHBOARD_SERVICES,
-        tab: EntityTabs.INSIGHTS,
-      });
-
-      await renderComponent();
-
-      await waitFor(() => {
-        expect(getDashboards).toHaveBeenCalled();
       });
     });
   });

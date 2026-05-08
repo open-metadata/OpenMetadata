@@ -42,6 +42,7 @@ import metricDetailsClassBase from '../MetricEntityUtils/MetricDetailsClassBase'
 import mlModelClassBase from '../MlModel/MlModelClassBase';
 import pipelineClassBase from '../PipelineClassBase';
 import searchIndexClassBase from '../SearchIndexDetailsClassBase';
+import serviceDetailsClassBase from '../ServiceDetailsPage/ServiceDetailsClassBase';
 import spreadsheetClassBase from '../SpreadsheetClassBase';
 import storedProcedureClassBase from '../StoredProcedureClassBase';
 import tableClassBase from '../TableClassBase';
@@ -178,6 +179,8 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
       return spreadsheetClassBase.getSpreadsheetDetailPageTabsIds();
     case PageType.Worksheet:
       return worksheetClassBase.getWorksheetDetailPageTabsIds();
+    case PageType.Service:
+      return serviceDetailsClassBase.getServiceDetailPageTabsIds();
     default:
       return [
         {
@@ -244,6 +247,8 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
       return spreadsheetClassBase.getDefaultLayout(tab);
     case PageType.Worksheet:
       return worksheetClassBase.getDefaultLayout(tab);
+    case PageType.Service:
+      return serviceDetailsClassBase.getDefaultLayout(tab);
     default:
       return [];
   }
@@ -327,6 +332,8 @@ export const getCustomizableWidgetByPage = (
       return spreadsheetClassBase.getCommonWidgetList();
     case PageType.Worksheet:
       return worksheetClassBase.getCommonWidgetList();
+    case PageType.Service:
+      return serviceDetailsClassBase.getCommonWidgetList();
     case PageType.LandingPage:
     default:
       return [];
@@ -381,6 +388,8 @@ export const getDummyDataByPage = (pageType: PageType) => {
       return spreadsheetClassBase.getDummyData();
     case PageType.Worksheet:
       return worksheetClassBase.getDummyData();
+    case PageType.Service:
+      return serviceDetailsClassBase.getDummyData() as EntityUnion;
     case PageType.LandingPage:
     default:
       return {} as EntityUnion;
@@ -442,6 +451,8 @@ export const getWidgetsFromKey = (
       return spreadsheetClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.Worksheet:
       return worksheetClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Service:
+      return serviceDetailsClassBase.getWidgetsFromKey(widgetConfig);
     default:
       return null;
   }
@@ -501,6 +512,8 @@ export const getWidgetHeight = (pageType: PageType, widgetName: string) => {
       return spreadsheetClassBase.getWidgetHeight(widgetName);
     case PageType.Worksheet:
       return worksheetClassBase.getWidgetHeight(widgetName);
+    case PageType.Service:
+      return serviceDetailsClassBase.getWidgetHeight(widgetName);
     default:
       return 0;
   }

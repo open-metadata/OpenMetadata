@@ -90,7 +90,18 @@ export type CustomizeEntityType =
   | EntityType.DIRECTORY
   | EntityType.FILE
   | EntityType.SPREADSHEET
-  | EntityType.WORKSHEET;
+  | EntityType.WORKSHEET
+  | EntityType.DATABASE_SERVICE
+  | EntityType.MESSAGING_SERVICE
+  | EntityType.DASHBOARD_SERVICE
+  | EntityType.PIPELINE_SERVICE
+  | EntityType.MLMODEL_SERVICE
+  | EntityType.METADATA_SERVICE
+  | EntityType.STORAGE_SERVICE
+  | EntityType.SEARCH_SERVICE
+  | EntityType.API_SERVICE
+  | EntityType.DRIVE_SERVICE
+  | EntityType.SECURITY_SERVICE;
 
 export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.TABLE]: PageType.Table,
@@ -117,4 +128,15 @@ export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.FILE]: PageType.File,
   [EntityType.SPREADSHEET]: PageType.Spreadsheet,
   [EntityType.WORKSHEET]: PageType.Worksheet,
+  [EntityType.DATABASE_SERVICE]: PageType.Service,
+  [EntityType.MESSAGING_SERVICE]: PageType.Service,
+  [EntityType.DASHBOARD_SERVICE]: PageType.Service,
+  [EntityType.PIPELINE_SERVICE]: PageType.Service,
+  [EntityType.MLMODEL_SERVICE]: PageType.Service,
+  [EntityType.METADATA_SERVICE]: PageType.Service,
+  [EntityType.STORAGE_SERVICE]: PageType.Service,
+  [EntityType.SEARCH_SERVICE]: PageType.Service,
+  [EntityType.API_SERVICE]: PageType.Service,
+  [EntityType.DRIVE_SERVICE]: PageType.Service,
+  [EntityType.SECURITY_SERVICE]: PageType.Service,
 };

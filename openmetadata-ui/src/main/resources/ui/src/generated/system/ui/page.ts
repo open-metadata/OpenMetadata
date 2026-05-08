@@ -132,6 +132,7 @@ export enum PageType {
     MlModel = "MlModel",
     Pipeline = "Pipeline",
     SearchIndex = "SearchIndex",
+    Service = "Service",
     Spreadsheet = "Spreadsheet",
     StoredProcedure = "StoredProcedure",
     Table = "Table",

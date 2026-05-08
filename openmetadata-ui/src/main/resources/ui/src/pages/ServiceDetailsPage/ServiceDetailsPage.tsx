@@ -37,6 +37,8 @@ import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestConnection from '../../components/common/TestConnection/TestConnection';
+import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
+import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import DataModelTable from '../../components/Dashboard/DataModel/DataModels/DataModelsTable';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -55,6 +57,7 @@ import {
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
+import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME } from '../../constants/ServiceInsightsTab.constants';
 import {
@@ -78,39 +81,30 @@ import { SearchIndex } from '../../enums/search.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { AgentType, App } from '../../generated/entity/applications/app';
 import { Tag } from '../../generated/entity/classification/tag';
-import { Directory } from '../../generated/entity/data/directory';
 import { File } from '../../generated/entity/data/file';
 import { Spreadsheet } from '../../generated/entity/data/spreadsheet';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { DashboardConnection } from '../../generated/entity/services/dashboardService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
+import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
-import { getApiCollections } from '../../rest/apiCollectionsAPI';
 import { getApplicationList } from '../../rest/applicationAPI';
-import {
-  getDashboards,
-  getDataModels,
-  ListDataModelParams,
-} from '../../rest/dashboardAPI';
-import { getDatabases } from '../../rest/databaseAPI';
+import { getDataModels, ListDataModelParams } from '../../rest/dashboardAPI';
 import { getDriveAssets } from '../../rest/driveAPI';
 import {
   getIngestionPipelines,
   getPipelineServiceHostIp,
 } from '../../rest/ingestionPipelineAPI';
-import { getMlModels } from '../../rest/mlModelAPI';
-import { getPipelines } from '../../rest/pipelineAPI';
 import { searchQuery } from '../../rest/searchAPI';
-import { getSearchIndexes } from '../../rest/SearchIndexAPI';
 import {
   addServiceFollower,
   getServiceByFQN,
@@ -118,13 +112,13 @@ import {
   removeServiceFollower,
   restoreService,
 } from '../../rest/serviceAPI';
-import { getContainers } from '../../rest/storageAPI';
-import { getTopics } from '../../rest/topicsAPI';
 import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
+import { getDetailsTabWithNewLabel } from '../../utils/CustomizePage/CustomizePageUtils';
+import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import {
   getCurrentMillis,
@@ -141,10 +135,7 @@ import {
   PluginEntityDetailsContext,
   TabContribution,
 } from '../../utils/ExtensionPointTypes';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
   getServiceDetailsPath,
@@ -156,6 +147,7 @@ import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
+  getSearchIndexForService,
   getServiceDisplayNameQueryFilter,
   getServiceRouteFromServiceType,
   shouldTestConnection,
@@ -168,8 +160,6 @@ import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-details-page.less';
-import { ServicePageData } from './ServiceDetailsPage.interface';
-import ServiceMainTabContent from './ServiceMainTabContent';
 
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -185,6 +175,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     tab: string;
   }>();
   const { fqn: decodedServiceFQN } = useFqn();
+  const { customizedPage } = useCustomPages(PageType.Service);
   const { isMetadataService, isSecurityService } = useMemo(
     () => ({
       isMetadataService: serviceCategory === ServiceCategory.METADATA_SERVICES,
@@ -244,13 +235,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     handlePagingChange: handleIngestionPagingChange,
   } = ingestionPagingInfo;
 
-  const {
-    paging,
-    pageSize,
-    currentPage,
-    handlePageChange,
-    handlePagingChange,
-  } = pagingInfo;
+  const { paging: _paging, handlePageChange, handlePagingChange } = pagingInfo;
 
   const {
     paging: filesPaging,
@@ -269,13 +254,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [serviceDetails, setServiceDetails] = useState<ServicesType>(
     {} as ServicesType
   );
-  const [data, setData] = useState<Array<ServicePageData>>([]);
   const [files, setFiles] = useState<Array<File>>([]);
   const [spreadsheets, setSpreadsheets] = useState<Array<Spreadsheet>>([]);
   const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
   const [isIngestionPipelineLoading, setIsIngestionPipelineLoading] =
     useState(false);
-  const [isServiceLoading, setIsServiceLoading] = useState(true);
   const [isFilesLoading, setIsFilesLoading] = useState(true);
   const [isSpreadsheetsLoading, setIsSpreadsheetsLoading] = useState(true);
   const [dataModelPaging, setDataModelPaging] = useState<Paging>(pagingObject);
@@ -300,7 +283,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const { showDeletedTables: showDeleted } = tableFilters;
 
   const isInitialLoadRef = useRef(true);
-  const isInitialPaginationLoadRef = useRef(true);
+  const [serviceEntityCount, setServiceEntityCount] = useState<number>(0);
 
   const { isFollowing, followers = [] } = useMemo(
     () => ({
@@ -354,6 +337,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const activeTab = useMemo(() => {
     if (tab) {
+      const countLabel = getCountLabel(serviceCategory).toLowerCase();
+      if (tab === countLabel) {
+        return EntityTabs.DETAILS;
+      }
+
       return tab;
     }
     if (isMetadataService) {
@@ -366,6 +354,20 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
     return EntityTabs.INSIGHTS;
   }, [tab, serviceCategory, isMetadataService, isSecurityService]);
+
+  useEffect(() => {
+    const countLabel = getCountLabel(serviceCategory).toLowerCase();
+    if (tab === countLabel && tab !== EntityTabs.DETAILS) {
+      navigate(
+        getServiceDetailsPath(
+          decodedServiceFQN,
+          serviceCategory,
+          EntityTabs.DETAILS
+        ),
+        { replace: true }
+      );
+    }
+  }, [tab, serviceCategory, decodedServiceFQN, navigate]);
 
   const handleSearchChange = useCallback(
     (searchValue: string) => {
@@ -410,11 +412,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
     return shouldTestConnection(serviceCategory);
   }, [serviceCategory]);
 
-  const {
-    version: currentVersion,
-    deleted,
-    id: serviceId,
-  } = useMemo(() => serviceDetails, [serviceDetails]);
+  const { version: currentVersion, id: serviceId } = useMemo(
+    () => serviceDetails,
+    [serviceDetails]
+  );
 
   const fetchServicePermission = useCallback(async () => {
     setIsLoading(true);
@@ -444,7 +445,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         if (isAgentTab) {
           subTab = ServiceAgentSubTabs.METADATA;
         }
-        if (key === getCountLabel(serviceCategory).toLowerCase()) {
+        if (key === EntityTabs.DETAILS) {
           handlePageChange(INITIAL_PAGING_VALUE, {
             cursorType: null,
             cursorValue: undefined,
@@ -669,66 +670,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [showDeleted]
   );
 
-  const fetchDatabases = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      const databaseUsagePermission = getPrioritizedViewPermission(
-        permissions.database,
-        PermissionOperation.ViewUsage
-      );
-      const { data, paging: resPaging } = await getDatabases(
-        decodedServiceFQN,
-        databaseUsagePermission
-          ? `${TabSpecificField.USAGE_SUMMARY},${commonTableFields}`
-          : commonTableFields,
-        paging,
-        include
-      );
-
-      setData(data);
-      handlePagingChange(resPaging);
-    },
-    [decodedServiceFQN, include, permissions.database]
-  );
-
-  const fetchTopics = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      const { data, paging: resPaging } = await getTopics(
-        decodedServiceFQN,
-        commonTableFields,
-        paging,
-        include
-      );
-      setData(data);
-      handlePagingChange(resPaging);
-    },
-    [decodedServiceFQN, include]
-  );
-
-  const fetchDashboards = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      const dashboardUsagePermission = getPrioritizedViewPermission(
-        permissions.dashboard,
-        PermissionOperation.ViewUsage
-      );
-      const { data, paging: resPaging } = await getDashboards(
-        decodedServiceFQN,
-        dashboardUsagePermission
-          ? `${commonTableFields},${TabSpecificField.USAGE_SUMMARY}`
-          : commonTableFields,
-        paging,
-        include
-      );
-      setData(data);
-      handlePagingChange(resPaging);
-    },
-    [decodedServiceFQN, include, permissions.dashboard]
-  );
-
   // Fetch Data Model count to show it in tab label
   const fetchDashboardsDataModel = useCallback(
     async (params?: ListDataModelParams) => {
       try {
-        setIsServiceLoading(true);
         const { paging: resPaging } = await getDataModels({
           service: decodedServiceFQN,
           fields: `${commonTableFields}, ${TabSpecificField.FOLLOWERS}`,
@@ -744,100 +689,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [decodedServiceFQN, include]
   );
 
-  const fetchPipeLines = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      const pipelineUsagePermission = getPrioritizedViewPermission(
-        permissions.pipeline,
-        PermissionOperation.ViewUsage
-      );
-      const { data, paging: resPaging } = await getPipelines(
-        decodedServiceFQN,
-        pipelineUsagePermission
-          ? `${commonTableFields},${TabSpecificField.STATE},${TabSpecificField.USAGE_SUMMARY}`
-          : `${commonTableFields},${TabSpecificField.STATE}`,
-        paging,
-        include
-      );
-      setData(data);
-      handlePagingChange(resPaging);
-    },
-    [decodedServiceFQN, include, permissions.pipeline]
-  );
-
-  const fetchMlModal = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      const { data, paging: resPaging } = await getMlModels(
-        decodedServiceFQN,
-        commonTableFields,
-        paging,
-        include
-      );
-      setData(data);
-      handlePagingChange(resPaging);
-    },
-    [decodedServiceFQN, include]
-  );
-
-  const fetchContainers = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      const response = await getContainers({
-        service: decodedServiceFQN,
-        fields: commonTableFields,
-        paging,
-        root: true,
-        include,
-      });
-
-      setData(response.data);
-      handlePagingChange(response.paging);
-    },
-    [decodedServiceFQN, include]
-  );
-
-  const fetchSearchIndexes = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      const response = await getSearchIndexes({
-        service: decodedServiceFQN,
-        fields: commonTableFields,
-        paging,
-        root: true,
-        include,
-      });
-
-      setData(response.data);
-      handlePagingChange(response.paging);
-    },
-    [decodedServiceFQN, include]
-  );
-  const fetchCollections = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      const response = await getApiCollections({
-        service: decodedServiceFQN,
-        fields: commonTableFields,
-        paging,
-        include,
-      });
-
-      setData(response.data);
-      handlePagingChange(response.paging);
-    },
-    [decodedServiceFQN, include]
-  );
-  const fetchDirectories = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      const response = await getDriveAssets<Directory>(EntityType.DIRECTORY, {
-        service: decodedServiceFQN,
-        fields: commonTableFields,
-        root: true,
-        paging,
-        include,
-      });
-
-      setData(response.data);
-      handlePagingChange(response.paging);
-    },
-    [decodedServiceFQN, include]
-  );
   const fetchFiles = useCallback(
     async (paging?: PagingWithoutTotal) => {
       try {
@@ -884,83 +735,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
       }
     },
     [decodedServiceFQN, include]
-  );
-
-  const getOtherDetails = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      try {
-        setIsServiceLoading(true);
-        const pagingParams = { ...paging, limit: pageSize };
-        switch (serviceCategory) {
-          case ServiceCategory.DATABASE_SERVICES: {
-            await fetchDatabases(pagingParams);
-
-            break;
-          }
-          case ServiceCategory.MESSAGING_SERVICES: {
-            await fetchTopics(pagingParams);
-
-            break;
-          }
-          case ServiceCategory.DASHBOARD_SERVICES: {
-            await fetchDashboards(pagingParams);
-
-            break;
-          }
-          case ServiceCategory.PIPELINE_SERVICES: {
-            await fetchPipeLines(pagingParams);
-
-            break;
-          }
-          case ServiceCategory.ML_MODEL_SERVICES: {
-            await fetchMlModal(pagingParams);
-
-            break;
-          }
-          case ServiceCategory.STORAGE_SERVICES: {
-            await fetchContainers(pagingParams);
-
-            break;
-          }
-          case ServiceCategory.SEARCH_SERVICES: {
-            await fetchSearchIndexes(pagingParams);
-
-            break;
-          }
-          case ServiceCategory.API_SERVICES: {
-            await fetchCollections(pagingParams);
-
-            break;
-          }
-          case ServiceCategory.DRIVE_SERVICES: {
-            await fetchDirectories(pagingParams);
-
-            break;
-          }
-          default:
-            break;
-        }
-      } catch {
-        setData([]);
-        handlePagingChange(pagingObject);
-      } finally {
-        setIsServiceLoading(false);
-      }
-    },
-    [
-      tab,
-      serviceCategory,
-      fetchDatabases,
-      fetchTopics,
-      fetchDashboards,
-      fetchPipeLines,
-      fetchMlModal,
-      fetchContainers,
-      fetchSearchIndexes,
-      fetchCollections,
-      fetchDirectories,
-      pageSize,
-    ]
   );
 
   const fetchServiceDetails = useCallback(async () => {
@@ -1396,39 +1170,37 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }, [isWorkflowStatusLoading, workflowStatesData?.mainInstanceState.status]);
 
   useEffect(() => {
-    if (
-      !searchValue &&
-      isInitialPaginationLoadRef.current &&
-      activeTab !== getCountLabel(serviceCategory).toLowerCase()
-    ) {
-      getOtherDetails({ limit: pageSize });
-      isInitialPaginationLoadRef.current = false;
-    }
-  }, [searchValue, activeTab, serviceCategory, pageSize, getOtherDetails]);
-
-  useEffect(() => {
-    if (
-      searchValue ||
-      activeTab !== getCountLabel(serviceCategory).toLowerCase()
-    ) {
+    if (isMetadataService || isSecurityService) {
       return;
     }
-    const { cursorType, cursorValue } = pagingInfo?.pagingCursor ?? {};
-    getOtherDetails({
-      limit: pageSize,
-      ...(cursorType && { [cursorType]: cursorValue }),
-    });
-    if (isInitialPaginationLoadRef.current) {
-      isInitialPaginationLoadRef.current = false;
-    }
+    const fetchEntityCount = async () => {
+      try {
+        const res = await searchQuery({
+          pageNumber: 1,
+          pageSize: 0,
+          searchIndex: getSearchIndexForService(serviceCategory),
+          query: '',
+          queryFilter: buildSchemaQueryFilter(
+            'service.fullyQualifiedName.keyword',
+            decodedServiceFQN,
+            searchValue ? toString(searchValue) : undefined
+          ),
+          includeDeleted: showDeleted,
+          trackTotalHits: true,
+        });
+        setServiceEntityCount(res.hits.total.value);
+      } catch {
+        // count fetch is best-effort
+      }
+    };
+    fetchEntityCount();
   }, [
-    showDeleted,
-    deleted,
-    pageSize,
-    searchValue,
-    pagingInfo?.pagingCursor,
-    activeTab,
     serviceCategory,
+    decodedServiceFQN,
+    isMetadataService,
+    isSecurityService,
+    showDeleted,
+    searchValue,
   ]);
 
   useEffect(() => {
@@ -1753,27 +1525,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
         },
         {
           name: getCountLabel(serviceCategory),
-          key: getCountLabel(serviceCategory).toLowerCase(),
-          count: paging.total,
-          children: (
-            <ServiceMainTabContent
-              currentPage={currentPage}
-              data={data}
-              isServiceLoading={isServiceLoading}
-              paging={paging}
-              pagingInfo={pagingInfo}
-              saveUpdatedServiceData={saveUpdatedServiceData}
-              serviceDetails={serviceDetails}
-              serviceName={serviceCategory}
-              servicePermission={servicePermission}
-              setFilters={setFilters}
-              setIsServiceLoading={setIsServiceLoading}
-              showDeleted={showDeleted}
-              onDataProductUpdate={handleDataProductUpdate}
-              onDescriptionUpdate={handleDescriptionUpdate}
-              onShowDeletedChange={handleShowDeleted}
-            />
-          ),
+          key: EntityTabs.DETAILS,
+          count: serviceEntityCount,
+          children: <GenericTab type={PageType.Service} />,
         }
       );
     }
@@ -1872,7 +1626,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     // Merge core tabs and plugin tabs
     const allTabs = [...tabs, ...pluginTabs];
 
-    return allTabs
+    const mappedTabs = allTabs
       .filter((tab) => !tab.isHidden)
       .map((tab) => ({
         label: (
@@ -1886,20 +1640,21 @@ const ServiceDetailsPage: FunctionComponent = () => {
         key: tab.key,
         children: tab.children,
       }));
+
+    return getDetailsTabWithNewLabel(
+      mappedTabs,
+      customizedPage?.tabs,
+      EntityTabs.DETAILS
+    );
   }, [
     currentUser,
-    currentPage,
     serviceDetails,
     isAdminUser,
     serviceCategory,
-    paging,
     servicePermission,
     handleDescriptionUpdate,
     showDeleted,
     handleShowDeleted,
-    data,
-    isServiceLoading,
-    getOtherDetails,
     saveUpdatedServiceData,
     dataModelPaging,
     ingestionPaging,
@@ -1928,6 +1683,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     extensionRegistry,
     decodedServiceFQN,
     isOpenMetadataService,
+    customizedPage,
   ]);
   const servicePermissionWithTrigger = useMemo(
     () => ({
@@ -1994,15 +1750,22 @@ const ServiceDetailsPage: FunctionComponent = () => {
             />
           </Col>
 
-          <Col className="entity-details-page-tabs" span={24}>
-            <Tabs
-              activeKey={activeTab}
-              className="tabs-new"
-              data-testid="tabs"
-              items={tabs}
-              onChange={activeTabHandler}
-            />
-          </Col>
+          <GenericProvider<ServicesType>
+            customizedPage={customizedPage}
+            data={serviceDetails}
+            permissions={servicePermission}
+            type={entityType as CustomizeEntityType}
+            onUpdate={saveUpdatedServiceData}>
+            <Col className="entity-details-page-tabs" span={24}>
+              <Tabs
+                activeKey={activeTab}
+                className="tabs-new"
+                data-testid="tabs"
+                items={tabs}
+                onChange={activeTabHandler}
+              />
+            </Col>
+          </GenericProvider>
         </Row>
       )}
     </PageLayoutV1>
