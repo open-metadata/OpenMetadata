@@ -104,26 +104,28 @@ class SamplerProcessor(Processor):
     def _run(self, record: ProfilerSourceAndEntity) -> Either[SamplerResponse]:
         """Fetch the sample data and pass it down the pipeline"""
         entity = record.entity
+        entity_fqn = entity.fullyQualifiedName.root if entity.fullyQualifiedName else type(entity).__name__
         adapter = adapter_for(entity)
         if adapter is None:
             return Either(
                 left=StackTraceError(
-                    name=entity.fullyQualifiedName.root,
+                    name=entity_fqn,
                     error=f"Unsupported entity type {type(entity).__name__} for sampling",
                     stackTrace=traceback.format_exc(),
-                )
+                ),
+                right=None,
             )
         if not adapter.get_columns(entity):
             logger.warning(
                 "Skipping sampler for %s '%s': no columns found",
                 type(entity).__name__,
-                entity.fullyQualifiedName.root,
+                entity_fqn,
             )
-            return Either()
-        return self._run_for_entity(entity, record, adapter)
+            return Either(left=None, right=None)
+        return self._run_for_entity(entity, entity_fqn, record, adapter)
 
     def _run_for_entity(
-        self, entity, record: ProfilerSourceAndEntity, adapter: EntityAdapter
+        self, entity: object, entity_fqn: str, record: ProfilerSourceAndEntity, adapter: EntityAdapter
     ) -> Either[SamplerResponse]:
         try:
             sampler_kwargs = adapter.build_sampler_kwargs(
@@ -136,14 +138,15 @@ class SamplerProcessor(Processor):
             if sampler_kwargs is None:
                 return Either(
                     left=StackTraceError(
-                        name=entity.fullyQualifiedName.root,
+                        name=entity_fqn,
                         error=(
-                            f"Could not build sampler context for [{entity.fullyQualifiedName.root}]. "
+                            f"Could not build sampler context for [{entity_fqn}]. "
                             f"The search index may not be available or the entity has not been indexed yet. "
                             f"Please ensure the Elasticsearch index is properly configured and try reindexing."
                         ),
                         stackTrace=traceback.format_exc(),
-                    )
+                    ),
+                    right=None,
                 )
             sampler_interface: SamplerInterface = self.sampler_class.create(**sampler_kwargs)
             sample_data = SampleData(
@@ -163,10 +166,11 @@ class SamplerProcessor(Processor):
         except Exception as exc:
             return Either(
                 left=StackTraceError(
-                    name=entity.fullyQualifiedName.root,
-                    error=f"Unexpected exception processing entity {entity.fullyQualifiedName.root}: {exc}",
+                    name=entity_fqn,
+                    error=f"Unexpected exception processing entity {entity_fqn}: {exc}",
                     stackTrace=traceback.format_exc(),
-                )
+                ),
+                right=None,
             )
 
     @classmethod

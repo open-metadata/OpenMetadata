@@ -445,33 +445,34 @@ ClassifiableEntityType = Union[Table, Container, Topic]
 
 **Location:** `ingestion/src/metadata/sampler/entity_adapters.py`
 
-This is the single source of truth for all per-entity-type knowledge. Adding a new entity means adding one adapter class and two registry entries here — no other ingestion files need to change.
+This is the single source of truth for all per-entity-type knowledge. Adding a new entity means adding one adapter class decorated with `@register_adapter` — no manual dict wiring and no other ingestion files need to change.
 
 ```python
 from typing import ClassVar
 
-from metadata.generated.schema.entity.data.topic import Topic  # Your new entity
-from metadata.generated.schema.metadataIngestion.messagingServiceAutoClassificationPipeline import (
-    MessagingServiceAutoClassificationPipeline,
+from metadata.generated.schema.entity.data.your_entity import YourEntity
+from metadata.generated.schema.metadataIngestion.yourServiceAutoClassificationPipeline import (
+    YourServiceAutoClassificationPipeline,
 )
 
-class TopicAdapter(EntityAdapter):
-    pipeline_config_class = MessagingServiceAutoClassificationPipeline
-    service_type = ServiceType.Messaging
-    patch_fields: ClassVar[list[str]] = ["tags", "messageSchema"]
+@register_adapter(entity=YourEntity, pipeline=YourServiceAutoClassificationPipeline)
+class YourEntityAdapter(EntityAdapter):
+    pipeline_config_class = YourServiceAutoClassificationPipeline
+    service_type = ServiceType.YourServiceType
+    patch_fields: ClassVar[list[str]] = ["tags", "<field-that-holds-columns>"]
 
-    def get_columns(self, entity: Topic) -> list[Column] | None:
-        return entity.messageSchema.schemaFields if entity.messageSchema else None
+    def get_columns(self, entity: YourEntity) -> list[Column] | None:
+        # Return the list of columns/fields on the entity, or None if unavailable
+        return entity.your_column_field
 
-    def set_columns(self, entity: Topic, columns) -> None:
-        if entity.messageSchema:
-            entity.messageSchema.schemaFields = columns
+    def set_columns(self, entity: YourEntity, columns) -> None:
+        entity.your_column_field = columns
 
     def build_sampler_kwargs(
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        entity: Topic,
+        entity: YourEntity,
         profiler_config,
         source_config,
     ) -> dict | None:
@@ -479,20 +480,17 @@ class TopicAdapter(EntityAdapter):
             "service_connection_config": deepcopy(config.source.serviceConnection.root.config),
             "ometa_client": metadata,
             "entity": entity,
+            # schema_entity, database_entity, and table_config are Database-specific;
+            # pass None for non-database entities.
             "schema_entity": None,
             "database_entity": None,
             "table_config": None,
             "default_sample_config": SampleConfig(),
             "default_sample_data_count": source_config.sampleDataCount,
         }
-
-
-# Instantiate once, register in both dicts at the bottom of the file:
-_TOPIC_ADAPTER = TopicAdapter()
-
-_BY_ENTITY[Topic] = _TOPIC_ADAPTER
-_BY_PIPELINE[MessagingServiceAutoClassificationPipeline] = _TOPIC_ADAPTER
 ```
+
+The `@register_adapter` decorator instantiates the adapter once and wires it into both the entity-type and pipeline-config lookup tables automatically.
 
 **What this buys you:** `sampler/processor.py`, `pii/base_processor.py`, `ometa/mixins/patch_mixin.py`, and `ingestion/sink/metadata_rest.py` (column tag path) all pick up the new entity automatically — zero changes required in those files. The only sink change needed is registering a `_ingest_entity_sample_data` handler (step 3.7).
 

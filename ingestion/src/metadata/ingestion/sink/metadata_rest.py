@@ -813,17 +813,12 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 )
 
         if record.column_tags:
-            patched = self.metadata.patch_column_tags(table=entity, column_tags=record.column_tags)
+            patched = self.metadata.patch_column_tags(entity=entity, column_tags=record.column_tags)
+            entity_fqn = entity.fullyQualifiedName.root if entity.fullyQualifiedName else type(entity).__name__
             if patched:
-                logger.debug(
-                    "Successfully patched tags for %s",
-                    entity.fullyQualifiedName.root,
-                )
+                logger.debug("Successfully patched tags for %s", entity_fqn)
             else:
-                self.status.warning(
-                    key=entity.fullyQualifiedName.root,
-                    reason="Error patching tags for entity",
-                )
+                self.status.warning(key=entity_fqn, reason="Error patching tags for entity")
 
         return Either(right=record.entity)
 

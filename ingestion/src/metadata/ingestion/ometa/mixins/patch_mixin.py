@@ -458,7 +458,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
     def _prepare_destination_for_column_tags(
         self,
-        table: ClassifiableEntityType,
+        entity: ClassifiableEntityType,
         instance: ClassifiableEntityType,
         column_tags: List[ColumnTag],  # noqa: UP006
         operation: PatchOperation,
@@ -468,55 +468,57 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         if columns is None:
             logger.warning(
                 "Entity %s has no columns, skipping column tag patch",
-                table.fullyQualifiedName.root,
+                entity.fullyQualifiedName.root if entity.fullyQualifiedName else type(entity).__name__,
             )
             return None
-        adapter.set_columns(table, columns)
-        destination = table.model_copy(deep=True)
+        adapter.set_columns(entity, columns)
+        destination = entity.model_copy(deep=True)
         for column_tag in column_tags or []:
-            update_column_tags(adapter.get_columns(destination), column_tag, operation)
+            dest_columns = adapter.get_columns(destination)
+            if dest_columns is not None:
+                update_column_tags(dest_columns, column_tag, operation)
         return destination
 
     def patch_column_tags(
         self,
-        table: ClassifiableEntityType,
+        entity: ClassifiableEntityType,
         column_tags: List[ColumnTag],  # noqa: UP006
         operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,  # noqa: UP007
     ) -> Optional[T]:  # noqa: UP045
         """Given an Entity ID, JSON PATCH the tag of the column
 
         Args
-            table: Classifiable entity (Table or Container) to update
+            entity: Classifiable entity (Table, Container, …) to update
             column_tags: List of ColumnTag to add or remove
             operation: Patch Operation to add or remove
         Returns
             Updated Entity
         """
 
-        adapter = adapter_for(table)
+        adapter = adapter_for(entity)
         if adapter is None:
             logger.warning(
                 "Unsupported entity type for column tag patching: %s",
-                type(table).__name__,
+                type(entity).__name__,
             )
             return None
 
-        entity_type = type(table)
-        instance = self._fetch_entity_if_exists(entity=entity_type, entity_id=table.id, fields=adapter.patch_fields)
+        entity_type = type(entity)
+        instance = self._fetch_entity_if_exists(entity=entity_type, entity_id=entity.id, fields=adapter.patch_fields)
 
         if not instance:
             return None
 
-        destination = self._prepare_destination_for_column_tags(table, instance, column_tags, operation, adapter)
+        destination = self._prepare_destination_for_column_tags(entity, instance, column_tags, operation, adapter)
 
         if destination is None:
             return None
 
-        patched_entity = self.patch(entity=entity_type, source=table, destination=destination)
+        patched_entity = self.patch(entity=entity_type, source=entity, destination=destination)
         if patched_entity is None:
             logger.debug(
                 "Empty PATCH result. Either everything is up to date or the column names are not in [%s]",
-                table.fullyQualifiedName.root,
+                entity.fullyQualifiedName.root if entity.fullyQualifiedName else type(entity).__name__,
             )
 
         return patched_entity
@@ -531,7 +533,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
     ) -> Optional[T]:  # noqa: UP045
         """Will be deprecated in 1.3"""
         return self.patch_column_tags(
-            table=table,
+            entity=table,
             column_tags=[ColumnTag(column_fqn=column_fqn, tag_label=tag_label)],
             operation=operation,
         )

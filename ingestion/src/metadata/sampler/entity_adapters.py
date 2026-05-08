@@ -20,10 +20,9 @@ across isinstance checks:
   - how to build the kwargs for SamplerInterface.create()
 
 Adding a new classifiable entity type (e.g. DashboardDataModel) means:
-  1. Add a new adapter subclass here
-  2. Register it in _BY_ENTITY and _BY_PIPELINE
-  3. Extend ClassifiableEntityType in pii/types.py
-  4. Extend the isinstance tuple in workflow/classification.py
+  1. Add a new adapter subclass here, decorated with @register_adapter(entity=..., pipeline=...)
+  2. Extend ClassifiableEntityType in pii/types.py
+  3. Extend the isinstance tuple in workflow/classification.py
 No other files need to change.
 """
 
@@ -31,7 +30,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, TypeVar
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Column, Table
@@ -47,10 +46,30 @@ from metadata.sampler.config_utils import build_database_service_conn_config
 from metadata.sampler.models import SampleConfig
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from metadata.generated.schema.metadataIngestion.workflow import (
         OpenMetadataWorkflowConfig,
     )
     from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+
+_A = TypeVar("_A", bound="EntityAdapter")
+
+_BY_ENTITY: dict[type, EntityAdapter] = {}
+_BY_PIPELINE: dict[type, EntityAdapter] = {}
+
+
+def register_adapter(*, entity: type, pipeline: type) -> Callable[[type[_A]], type[_A]]:
+    """Class decorator that registers an EntityAdapter subclass in both lookup dicts."""
+
+    def decorator(cls: type[_A]) -> type[_A]:
+        instance = cls()
+        _BY_ENTITY[entity] = instance
+        _BY_PIPELINE[pipeline] = instance
+        return cls
+
+    return decorator
 
 
 class EntityAdapter(ABC):
@@ -62,14 +81,14 @@ class EntityAdapter(ABC):
 
     pipeline_config_class: type
     service_type: ServiceType
-    patch_fields: list[str]
+    patch_fields: ClassVar[list[str]]
 
     @abstractmethod
-    def get_columns(self, entity) -> list[Column] | None:
+    def get_columns(self, entity: object) -> list[Column] | None:
         """Return the entity's columns, or None if unavailable."""
 
     @abstractmethod
-    def set_columns(self, entity, columns) -> None:
+    def set_columns(self, entity: object, columns: list[Column]) -> None:
         """Set the entity's column list in-place."""
 
     @abstractmethod
@@ -77,13 +96,14 @@ class EntityAdapter(ABC):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        entity,
-        profiler_config,
-        source_config,
+        entity: object,
+        profiler_config: object,
+        source_config: object,
     ) -> dict | None:
         """Return kwargs for SamplerInterface.create(), or None on unrecoverable error."""
 
 
+@register_adapter(entity=Table, pipeline=DatabaseServiceAutoClassificationPipeline)
 class TableAdapter(EntityAdapter):
     pipeline_config_class = DatabaseServiceAutoClassificationPipeline
     service_type = ServiceType.Database
@@ -92,16 +112,16 @@ class TableAdapter(EntityAdapter):
     def get_columns(self, entity: Table) -> list[Column] | None:
         return entity.columns
 
-    def set_columns(self, entity: Table, columns) -> None:
+    def set_columns(self, entity: Table, columns: list[Column]) -> None:  # type: ignore[override]
         entity.columns = columns
 
     def build_sampler_kwargs(
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        entity: Table,
-        profiler_config,
-        source_config,
+        entity: Table,  # type: ignore[override]
+        profiler_config: object,
+        source_config: object,
     ) -> dict | None:
         from metadata.utils.profiler_utils import get_context_entities  # noqa: PLC0415
 
@@ -120,6 +140,7 @@ class TableAdapter(EntityAdapter):
         }
 
 
+@register_adapter(entity=Container, pipeline=StorageServiceAutoClassificationPipeline)
 class ContainerAdapter(EntityAdapter):
     pipeline_config_class = StorageServiceAutoClassificationPipeline
     service_type = ServiceType.Storage
@@ -128,7 +149,7 @@ class ContainerAdapter(EntityAdapter):
     def get_columns(self, entity: Container) -> list[Column] | None:
         return entity.dataModel.columns if entity.dataModel else None
 
-    def set_columns(self, entity: Container, columns) -> None:
+    def set_columns(self, entity: Container, columns: list[Column]) -> None:  # type: ignore[override]
         if entity.dataModel:
             entity.dataModel.columns = columns
 
@@ -136,10 +157,12 @@ class ContainerAdapter(EntityAdapter):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        entity: Container,
-        profiler_config,
-        source_config,
+        entity: Container,  # type: ignore[override]
+        profiler_config: object,
+        source_config: object,
     ) -> dict | None:
+        if config.source.serviceConnection is None or config.source.serviceConnection.root is None:
+            return None
         return {
             "service_connection_config": deepcopy(config.source.serviceConnection.root.config),
             "ometa_client": metadata,
@@ -152,25 +175,11 @@ class ContainerAdapter(EntityAdapter):
         }
 
 
-_TABLE_ADAPTER = TableAdapter()
-_CONTAINER_ADAPTER = ContainerAdapter()
-
-_BY_ENTITY: dict[type, EntityAdapter] = {
-    Table: _TABLE_ADAPTER,
-    Container: _CONTAINER_ADAPTER,
-}
-
-_BY_PIPELINE: dict[type, EntityAdapter] = {
-    DatabaseServiceAutoClassificationPipeline: _TABLE_ADAPTER,
-    StorageServiceAutoClassificationPipeline: _CONTAINER_ADAPTER,
-}
-
-
-def adapter_for(entity) -> EntityAdapter | None:
+def adapter_for(entity: object) -> EntityAdapter | None:
     """Look up the adapter for a classifiable entity instance."""
     return _BY_ENTITY.get(type(entity))
 
 
-def adapter_for_pipeline(pipeline_config) -> EntityAdapter | None:
+def adapter_for_pipeline(pipeline_config: object) -> EntityAdapter | None:
     """Look up the adapter for a pipeline config instance."""
     return _BY_PIPELINE.get(type(pipeline_config))
