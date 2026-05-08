@@ -250,6 +250,11 @@
               "description": "API key from Google AI Studio for authenticating with the Generative Language API.",
               "type": "string"
             },
+            "modelId": {
+              "description": "Gemini chat model identifier for query transformation (e.g., gemini-2.5-flash, gemini-1.5-flash).",
+              "type": "string",
+              "default": "gemini-2.5-flash"
+            },
             "embeddingModelId": {
               "description": "Gemini embedding model identifier (e.g., gemini-embedding-001, text-embedding-004).",
               "type": "string",
