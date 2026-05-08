@@ -103,6 +103,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.RestoreEntityResponse;
 import org.openmetadata.service.util.ValidatorUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
@@ -771,6 +772,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public Response restoreEntity(UriInfo uriInfo, SecurityContext securityContext, UUID id) {
+    return restoreEntity(uriInfo, securityContext, id, false);
+  }
+
+  public Response restoreEntity(
+      UriInfo uriInfo, SecurityContext securityContext, UUID id, boolean async) {
+    if (async) {
+      return restoreEntityAsync(uriInfo, securityContext, id);
+    }
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
@@ -783,6 +792,53 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         Entity.getEntityTypeFromObject(response.getEntity()),
         response.getEntity().getId());
     return response.toResponse();
+  }
+
+  /**
+   * Async restore variant. Returns 202 Accepted with a job ID and runs the restore on the
+   * shared async executor. The caller can subscribe to
+   * {@link org.openmetadata.service.socket.WebSocketManager#RESTORE_ENTITY_CHANNEL} to be
+   * notified when the restore completes or fails. Used to avoid proxy / ALB idle timeouts on
+   * large hierarchies (issue #4003).
+   */
+  public Response restoreEntityAsync(UriInfo uriInfo, SecurityContext securityContext, UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    String jobId = UUID.randomUUID().toString();
+    String userName = securityContext.getUserPrincipal().getName();
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        RequestLatencyContext.wrapWithContext(
+            () -> {
+              try {
+                PutResponse<T> response = repository.restoreEntity(userName, id);
+                if (response == null) {
+                  WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
+                      jobId, securityContext, id.toString(), "Entity is not in deleted state");
+                  return;
+                }
+                repository.restoreFromSearch(response.getEntity());
+                addHref(uriInfo, response.getEntity());
+                LOG.info(
+                    "[AsyncRestore] Restored {}:{} (jobId={})",
+                    Entity.getEntityTypeFromObject(response.getEntity()),
+                    response.getEntity().getId(),
+                    jobId);
+                WebsocketNotificationHandler.sendRestoreOperationCompleteNotification(
+                    jobId, securityContext, response.getEntity());
+              } catch (Exception e) {
+                LOG.error("[AsyncRestore] Failed to restore {}:{}", entityType, id, e);
+                WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
+                    jobId,
+                    securityContext,
+                    id.toString(),
+                    e.getMessage() == null ? e.toString() : e.getMessage());
+              }
+            }));
+    RestoreEntityResponse response =
+        new RestoreEntityResponse(jobId, "Restore initiated successfully.");
+    return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
   public Response exportCsvInternalAsync(

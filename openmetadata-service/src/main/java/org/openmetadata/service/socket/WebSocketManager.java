@@ -36,6 +36,7 @@ public class WebSocketManager {
   public static final String BULK_ASSETS_CHANNEL = "bulkAssetsChannel";
 
   public static final String DELETE_ENTITY_CHANNEL = "deleteEntityChannel";
+  public static final String RESTORE_ENTITY_CHANNEL = "restoreEntityChannel";
   public static final String MOVE_GLOSSARY_TERM_CHANNEL = "moveGlossaryTermChannel";
   public static final String RDF_INDEX_JOB_BROADCAST_CHANNEL = "rdfIndexJobStatus";
   public static final String CHART_DATA_STREAM_CHANNEL = "chartDataStream";

@@ -381,6 +381,40 @@ public class WebsocketNotificationHandler {
     }
   }
 
+  public static void sendRestoreOperationCompleteNotification(
+      String jobId, SecurityContext securityContext, EntityInterface entity) {
+    RestoreEntityMessage message =
+        new RestoreEntityMessage(jobId, "COMPLETED", entity.getName(), null);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    LOG.info(
+        "[AsyncRestore] Restore operation completed - jobId: {}, userId: {}, entity: {}",
+        jobId,
+        userId,
+        entity.getName());
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.RESTORE_ENTITY_CHANNEL, jsonMessage);
+    }
+  }
+
+  public static void sendRestoreOperationFailedNotification(
+      String jobId, SecurityContext securityContext, String entityName, String error) {
+    RestoreEntityMessage message = new RestoreEntityMessage(jobId, "FAILED", entityName, error);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    LOG.error(
+        "[AsyncRestore] Restore operation failed - jobId: {}, userId: {}, entity: {}, error: {}",
+        jobId,
+        userId,
+        entityName,
+        error);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.RESTORE_ENTITY_CHANNEL, jsonMessage);
+    }
+  }
+
   public static void sendMoveOperationCompleteNotification(
       String jobId, SecurityContext securityContext, EntityInterface entity) {
     MoveGlossaryTermMessage message =

@@ -5538,16 +5538,125 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   protected void restoreChildren(UUID id, String updatedBy) {
-    // Restore deleted children entities
     List<CollectionDAO.EntityRelationshipRecord> records =
         daoCollection.relationshipDAO().findTo(id, entityType, Relationship.CONTAINS.ordinal());
-    if (!records.isEmpty()) {
-      // Recursively restore all contained entities
-      for (CollectionDAO.EntityRelationshipRecord record : records) {
-        LOG.info("Recursively restoring {} {}", record.getType(), record.getId());
-        Entity.restoreEntity(updatedBy, record.getType(), record.getId());
+    if (records.isEmpty()) {
+      return;
+    }
+    Map<String, List<UUID>> idsByType = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipRecord record : records) {
+      idsByType.computeIfAbsent(record.getType(), k -> new ArrayList<>()).add(record.getId());
+    }
+    for (var entry : idsByType.entrySet()) {
+      EntityRepository<?> repo = Entity.getEntityRepository(entry.getKey());
+      repo.bulkRestoreSubtree(entry.getValue(), updatedBy);
+    }
+  }
+
+  /**
+   * Bulk-restore a set of soft-deleted entities of this repository's type along with their entire
+   * subtree of CONTAINS-related descendants. Replaces the per-entity recursive path that was
+   * O(descendants) HTTP-request-bound work with a per-level batched walk that uses the existing
+   * deferred-store bulk update infrastructure.
+   *
+   * <p>For a database with N descendants, the previous implementation issued ~N find calls,
+   * ~N updates and ~N search index writes, all serialized inside one HTTP request. This path
+   * does one batched DB load, one batched DB write and one batched change-event insert per
+   * level, and relies on {@link #restoreFromSearch(EntityInterface)} at the top-level to
+   * cascade the deleted flag flip across child indexes in a single ES update_by_query.
+   *
+   * <p>Subclasses that link non-CONTAINS related entities (e.g., charts attached to dashboards
+   * via HAS) should override {@link #restoreChildren(UUID, String)} or implement the
+   * {@link #restoreAdditionalChildren(UUID, String)} hook.
+   */
+  @Transaction
+  public final void bulkRestoreSubtree(List<UUID> ids, String updatedBy) {
+    if (ids == null || ids.isEmpty()) {
+      return;
+    }
+    List<T> deletedEntities;
+    try (var ignored = phase("bulkRestoreLoad")) {
+      deletedEntities = find(ids, DELETED);
+    }
+    if (deletedEntities.isEmpty()) {
+      return;
+    }
+
+    for (T entity : deletedEntities) {
+      restoreChildren(entity.getId(), updatedBy);
+    }
+
+    long now = System.currentTimeMillis();
+    List<EntityUpdater> updaters = new ArrayList<>(deletedEntities.size());
+    try (var ignored = phase("bulkRestoreUpdaters")) {
+      for (T original : deletedEntities) {
+        T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
+        updated.setUpdatedBy(updatedBy);
+        updated.setUpdatedAt(now);
+        EntityUpdater updater = getUpdater(original, updated, Operation.PUT, null);
+        updater.updateWithDeferredStore();
+        updaters.add(updater);
       }
     }
+
+    List<EntityUpdater> changed =
+        updaters.stream().filter(u -> u.isVersionChanged() || u.isEntityChanged()).toList();
+    if (changed.isEmpty()) {
+      runRestoreAdditionalChildren(deletedEntities, updatedBy);
+      return;
+    }
+
+    try (var ignored = phase("bulkRestoreVersionHistory")) {
+      List<UUID> historyIds = new ArrayList<>();
+      List<String> historyExtensions = new ArrayList<>();
+      List<String> historyJsons = new ArrayList<>();
+      for (EntityUpdater u : changed) {
+        if (u.isVersionChanged()) {
+          historyIds.add(u.getOriginal().getId());
+          historyExtensions.add(
+              EntityUtil.getVersionExtension(entityType, u.getOriginal().getVersion()));
+          historyJsons.add(JsonUtils.pojoToJson(u.getOriginal()));
+        }
+      }
+      if (!historyIds.isEmpty()) {
+        daoCollection
+            .entityExtensionDAO()
+            .insertMany(historyIds, historyExtensions, entityType, historyJsons);
+      }
+    }
+
+    List<T> changedEntities = changed.stream().map(EntityUpdater::getUpdated).toList();
+    try (var ignored = phase("bulkRestoreUpdateMany")) {
+      updateMany(changedEntities);
+    }
+    try (var ignored = phase("bulkRestoreInvalidate")) {
+      invalidateMany(changedEntities);
+    }
+    try (var ignored = phase("bulkRestoreChangeEvents")) {
+      List<String> changeEventJsons = new ArrayList<>();
+      for (EntityUpdater u : changed) {
+        buildChangeEventJsonForBulkOperation(u.getUpdated(), ENTITY_RESTORED, updatedBy)
+            .ifPresent(changeEventJsons::add);
+      }
+      insertChangeEventsBatch(changeEventJsons);
+    }
+
+    ListCountCache.invalidate(entityType);
+    runRestoreAdditionalChildren(deletedEntities, updatedBy);
+  }
+
+  private void runRestoreAdditionalChildren(List<T> entities, String updatedBy) {
+    for (T entity : entities) {
+      restoreAdditionalChildren(entity.getId(), updatedBy);
+    }
+  }
+
+  /**
+   * Hook called once per restored entity for repositories that have non-CONTAINS related
+   * entities that need to be restored alongside the parent. Default: no-op.
+   */
+  protected void restoreAdditionalChildren(UUID id, String updatedBy) {
+    // No-op. Override in subclasses for HAS-style related-entity restore.
   }
 
   public final void addRelationship(

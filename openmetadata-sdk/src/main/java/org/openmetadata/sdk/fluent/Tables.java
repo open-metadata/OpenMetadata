@@ -312,6 +312,10 @@ public final class Tables {
     public TableDeleter delete() {
       return new TableDeleter(client, identifier);
     }
+
+    public TableRestorer restore() {
+      return new TableRestorer(client, identifier);
+    }
   }
 
   // ==================== Table Operations ====================
@@ -370,6 +374,55 @@ public final class Tables {
       if (recursive) params.put("recursive", "true");
       if (hardDelete) params.put("hardDelete", "true");
       client.tables().delete(id, params);
+    }
+  }
+
+  // ==================== Restorer ====================
+
+  /**
+   * Fluent restore builder. {@link #execute()} runs the synchronous restore and returns the
+   * restored {@link Table}. Switching to {@link #async()} returns an
+   * {@link AsyncTableRestorer} whose {@code execute()} triggers the server-side async path
+   * and returns an {@link org.openmetadata.sdk.models.AsyncJobResponse} with a job id (issue
+   * #4003).
+   */
+  public static class TableRestorer {
+    private final OpenMetadataClient client;
+    private final String id;
+
+    public TableRestorer(OpenMetadataClient client, String id) {
+      this.client = client;
+      this.id = id;
+    }
+
+    public AsyncTableRestorer async() {
+      return new AsyncTableRestorer(client, id);
+    }
+
+    public Table execute() {
+      try {
+        return client.tables().restore(id);
+      } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  public static class AsyncTableRestorer {
+    private final OpenMetadataClient client;
+    private final String id;
+
+    public AsyncTableRestorer(OpenMetadataClient client, String id) {
+      this.client = client;
+      this.id = id;
+    }
+
+    public org.openmetadata.sdk.models.AsyncJobResponse execute() {
+      try {
+        return client.tables().restoreServerAsync(id);
+      } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 
