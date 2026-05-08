@@ -156,6 +156,10 @@ test.describe('Task Entity API Tests', () => {
       category: 'DataAccess',
       type: 'DataAccessRequest',
       description: 'Request access to sensitive data',
+      payload: {
+        accessType: 'FullAccess',
+        reason: 'Playwright test access request',
+      },
     });
 
     await test.step('Create task', async () => {
@@ -276,7 +280,14 @@ test.describe('Task Entity API Tests', () => {
 
     const categories = [
       { category: 'Approval', type: 'GlossaryApproval' },
-      { category: 'DataAccess', type: 'DataAccessRequest' },
+      {
+        category: 'DataAccess',
+        type: 'DataAccessRequest',
+        payload: {
+          accessType: 'FullAccess',
+          reason: 'Playwright test access request',
+        },
+      },
       { category: 'MetadataUpdate', type: 'DescriptionUpdate' },
       { category: 'Incident', type: 'IncidentResolution' },
       { category: 'Review', type: 'DataQualityReview' },
@@ -284,8 +295,8 @@ test.describe('Task Entity API Tests', () => {
 
     const createdTasks: TaskClass[] = [];
 
-    for (const { category, type } of categories) {
-      const task = new TaskClass({ category, type });
+    for (const { category, type, ...rest } of categories) {
+      const task = new TaskClass({ category, type, ...rest });
       const response = await task.create(apiContext);
 
       expect(response.category).toBe(category);

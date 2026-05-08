@@ -237,7 +237,8 @@ class TableClassBase {
     _onClose: () => void,
     _entityFqn: string,
     _entityName: string,
-    _entityType: string
+    _entityType: string,
+    _onCreated?: () => void
   ): ReactNode {
     return null;
   }

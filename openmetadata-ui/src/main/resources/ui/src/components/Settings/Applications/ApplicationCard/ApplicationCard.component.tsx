@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { ExclamationCircleFilled } from '@ant-design/icons';
-import { Button, Card, Typography } from 'antd';
+import { Button, Card, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { kebabCase } from 'lodash';
 import { useTranslation } from 'react-i18next';
@@ -28,16 +28,22 @@ const ApplicationCard = ({
   onClick,
   appName,
   deleted = false,
+  disabled = false,
+  disabledReason,
   showDescription = true,
 }: ApplicationCardProps) => {
   const { t } = useTranslation();
+  const isUnavailable = deleted || disabled;
 
-  return (
+  const card = (
     <Card
       bordered={false}
       className={classNames(
         className,
-        'application-card card-body-border-none'
+        'application-card card-body-border-none',
+        {
+          'application-card-disabled': isUnavailable,
+        }
       )}
       data-testid={`${kebabCase(appName)}-card`}>
       <div className="d-flex items-center gap-3">
@@ -49,7 +55,7 @@ const ApplicationCard = ({
             <Typography.Title className="m-0" level={5}>
               {title}
             </Typography.Title>
-            {deleted && (
+            {isUnavailable && (
               <div
                 className="deleted-badge-button text-xss flex-center"
                 data-testid="deleted-badge">
@@ -75,6 +81,16 @@ const ApplicationCard = ({
       </div>
     </Card>
   );
+
+  if (disabledReason) {
+    return (
+      <Tooltip title={disabledReason}>
+        <div className="h-full">{card}</div>
+      </Tooltip>
+    );
+  }
+
+  return card;
 };
 
 export default ApplicationCard;
