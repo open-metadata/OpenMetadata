@@ -282,7 +282,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "opensearch": {VERSIONS["opensearch"]},
     "exasol": {
         "sqlalchemy_exasol>=6,<7",
-        "exasol-integration-test-docker-environment>=3.1.0,<4",
+        "exasol-integration-test-docker-environment>=6.0.0,<7",
     },
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
@@ -422,6 +422,8 @@ test_unit = {
     # TODO: Remove once no unit test requires testcontainers
     "testcontainers",
     VERSIONS["factory-boy"],
+    *plugins["exasol"],
+    *plugins["teradata"],
 }
 
 test = {
@@ -490,6 +492,8 @@ test = {
     VERSIONS["kafka-connect"],
     VERSIONS["factory-boy"],
     "locust~=2.32.0",
+    *plugins["exasol"],
+    *plugins["teradata"],
 }
 
 docs = {

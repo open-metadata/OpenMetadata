@@ -68,8 +68,7 @@ async function createAndResolveTask(
   }
 
   const taskData: Record<string, unknown> = {
-    about: entityFqn,
-    aboutType: entityType,
+    about: `<#E::${entityType}::${entityFqn}>`,
     type: taskType,
     category: 'MetadataUpdate',
     assignees: [assigneeFqn],
