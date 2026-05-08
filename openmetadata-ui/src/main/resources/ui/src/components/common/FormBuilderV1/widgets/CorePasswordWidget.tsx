@@ -71,7 +71,7 @@ const PasswordInputField = ({
   return (
     <AriaTextField
       autoFocus={autofocus}
-      className="tw:flex tw:w-full tw:flex-col tw:gap-1.5 tw:bg-utility-gray-blue-50 tw:p-4 tw:rounded-lg"
+      className="tw:flex tw:w-full tw:flex-col tw:gap-1.5 tw:bg-utility-gray-blue-50 tw:rounded-lg"
       id={id}
       isDisabled={disabled || readonly}
       isInvalid={isInvalid}

@@ -135,7 +135,7 @@ const CoreOneOfField = (props: FieldProps) => {
   const fieldLabel = label ?? schema.title ?? startCase(name);
 
   return (
-    <div className="tw:flex tw:flex-col tw:gap-4">
+    <div className="tw:flex tw:flex-col tw:gap-6">
       {!hideLabel && fieldLabel && (
         <div className="tw:flex tw:items-center tw:gap-0.5">
           <Typography
@@ -173,7 +173,7 @@ const CoreOneOfField = (props: FieldProps) => {
           return (
             <RadioButton
               className={(renderProps) =>
-                `tw:flex-1 tw:min-w-[140px] tw:rounded-xl tw:border tw:px-4 tw:py-3 tw:transition-colors ${
+                `tw:flex-1 tw:min-w-[140px] tw:bg-white tw:rounded-xl tw:border tw:px-4 tw:py-3 tw:transition-colors ${
                   renderProps.isSelected
                     ? 'tw:border-primary'
                     : 'tw:border-secondary hover:tw:border-brand-300'
