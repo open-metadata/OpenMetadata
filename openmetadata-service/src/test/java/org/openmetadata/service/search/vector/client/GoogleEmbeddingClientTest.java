@@ -494,52 +494,69 @@ class GoogleEmbeddingClientTest {
     assertTrue(url.contains("key=key+with+spaces%26chars"), url);
   }
 
+  @Test
+  void testEndpointWithExistingQueryStringUsesAmpersand() {
+    String response = "{\"embedding\":{\"values\":[0.1]}}";
+    StubHttpClient httpClient = new StubHttpClient(response, 200);
+
+    GoogleEmbeddingClient client =
+        new GoogleEmbeddingClient(
+            httpClient,
+            "my-key",
+            "text-embedding-004",
+            1,
+            "https://proxy.example.com/embed?alt=json");
+
+    client.embed("hi");
+
+    HttpRequest request = httpClient.getCapturedRequests().get(0);
+    String url = request.uri().toString();
+    assertEquals("https://proxy.example.com/embed?alt=json&key=my-key", url);
+  }
+
   private static String extractBody(HttpRequest request) {
-    java.util.concurrent.atomic.AtomicReference<String> captured =
-        new java.util.concurrent.atomic.AtomicReference<>();
-    java.util.concurrent.atomic.AtomicReference<Throwable> failure =
-        new java.util.concurrent.atomic.AtomicReference<>();
-    request
-        .bodyPublisher()
-        .ifPresent(
-            publisher -> {
-              java.util.concurrent.Flow.Subscriber<java.nio.ByteBuffer> subscriber =
-                  new java.util.concurrent.Flow.Subscriber<>() {
-                    private final java.io.ByteArrayOutputStream out =
-                        new java.io.ByteArrayOutputStream();
+    java.net.http.HttpRequest.BodyPublisher publisher =
+        request
+            .bodyPublisher()
+            .orElseThrow(() -> new IllegalStateException("Request had no body publisher"));
+    java.util.concurrent.CompletableFuture<String> future =
+        new java.util.concurrent.CompletableFuture<>();
+    publisher.subscribe(
+        new java.util.concurrent.Flow.Subscriber<>() {
+          private final java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
 
-                    @Override
-                    public void onSubscribe(java.util.concurrent.Flow.Subscription subscription) {
-                      subscription.request(Long.MAX_VALUE);
-                    }
+          @Override
+          public void onSubscribe(java.util.concurrent.Flow.Subscription subscription) {
+            subscription.request(Long.MAX_VALUE);
+          }
 
-                    @Override
-                    public void onNext(java.nio.ByteBuffer item) {
-                      byte[] arr = new byte[item.remaining()];
-                      item.get(arr);
-                      out.write(arr, 0, arr.length);
-                    }
+          @Override
+          public void onNext(java.nio.ByteBuffer item) {
+            byte[] arr = new byte[item.remaining()];
+            item.get(arr);
+            out.write(arr, 0, arr.length);
+          }
 
-                    @Override
-                    public void onError(Throwable throwable) {
-                      failure.set(throwable);
-                    }
+          @Override
+          public void onError(Throwable throwable) {
+            future.completeExceptionally(throwable);
+          }
 
-                    @Override
-                    public void onComplete() {
-                      captured.set(out.toString(java.nio.charset.StandardCharsets.UTF_8));
-                    }
-                  };
-              publisher.subscribe(subscriber);
-            });
-    if (failure.get() != null) {
-      throw new RuntimeException("Body publisher failed", failure.get());
+          @Override
+          public void onComplete() {
+            future.complete(out.toString(java.nio.charset.StandardCharsets.UTF_8));
+          }
+        });
+    try {
+      return future.get(5, java.util.concurrent.TimeUnit.SECONDS);
+    } catch (java.util.concurrent.ExecutionException e) {
+      throw new RuntimeException("Body publisher failed", e.getCause());
+    } catch (java.util.concurrent.TimeoutException e) {
+      throw new RuntimeException("Body publisher timed out after 5s", e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException("Body publisher interrupted", e);
     }
-    String body = captured.get();
-    if (body == null) {
-      throw new IllegalStateException("Request had no body publisher");
-    }
-    return body;
   }
 
   private ElasticSearchConfiguration buildConfig(String apiKey, String modelId, int dimension) {

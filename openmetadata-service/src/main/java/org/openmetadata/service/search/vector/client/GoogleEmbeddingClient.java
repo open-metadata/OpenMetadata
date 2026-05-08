@@ -137,8 +137,11 @@ public final class GoogleEmbeddingClient extends EmbeddingClient {
   }
 
   private HttpRequest buildRequest(String body) {
+    // Google's Generative Language API requires the API key as a `key=` query parameter;
+    // it does not accept Bearer/Authorization headers for AI Studio keys.
     String encodedKey = URLEncoder.encode(apiKey, StandardCharsets.UTF_8);
-    String url = endpoint + "?key=" + encodedKey;
+    String separator = endpoint.contains("?") ? "&" : "?";
+    String url = endpoint + separator + "key=" + encodedKey;
     return HttpRequest.newBuilder()
         .uri(URI.create(url))
         .header("Content-Type", "application/json")
@@ -185,7 +188,8 @@ public final class GoogleEmbeddingClient extends EmbeddingClient {
       if (error != null && error.has("message")) {
         return error.get("message").asText();
       }
-    } catch (Exception ignored) {
+    } catch (Exception e) {
+      LOG.trace("Could not parse Google error envelope: {}", e.getMessage());
     }
     return responseBody;
   }
