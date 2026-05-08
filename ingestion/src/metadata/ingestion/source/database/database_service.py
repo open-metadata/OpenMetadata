@@ -14,12 +14,14 @@ Base class for ingesting database services
 
 import traceback
 from abc import ABC, abstractmethod
+from functools import cached_property
 from typing import Any, Iterable, List, Optional, Set, Tuple  # noqa: UP035
 
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import Inspector
 from typing_extensions import Annotated  # noqa: UP035
 
+from metadata.domain.tags import TagCanonicalizer, TagRegistry
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -160,6 +162,7 @@ class DatabaseServiceTopology(ServiceTopology):
             "mark_schemas_as_deleted",
             "mark_tables_as_deleted",
             "mark_stored_procedures_as_deleted",
+            "clear_database_tag_scope",
         ],
         threads=True,
     )
@@ -186,6 +189,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 nullable=True,
             ),
         ],
+        post_process=["clear_schema_tag_scope"],
     )
     stored_procedure: Annotated[TopologyNode, Field(description="Stored Procedure Node")] = TopologyNode(
         producer="get_stored_procedures",
@@ -223,6 +227,16 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
     topology = DatabaseServiceTopology()
     context = TopologyContextManager(topology)
+
+    @cached_property
+    def tags_registry(self) -> TagRegistry:
+        """Per-Source registry tracking tag/classification ingestion state."""
+        return TagRegistry(metadata=self.metadata)
+
+    @cached_property
+    def tag_canonicalizer(self) -> TagCanonicalizer:
+        """Per-Source canonicalizer for case-corrected tag/classification names."""
+        return TagCanonicalizer(metadata=self.metadata)
 
     @property
     def name(self) -> str:
@@ -810,6 +824,33 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
         Get the life cycle data of the table
         """
+
+    def clear_schema_tag_scope(self):
+        """Drop tag-registry state for the current schema scope."""
+        schema_name = self.context.get().database_schema
+        if schema_name:
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
+                schema_name=schema_name,
+            )
+            self.tags_registry.clear_scope(schema_fqn)
+        yield from ()
+
+    def clear_database_tag_scope(self):
+        """Drop tag-registry state for the current database scope."""
+        database_name = self.context.get().database
+        if database_name:
+            database_fqn = fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.get().database_service,
+                database_name=database_name,
+            )
+            self.tags_registry.clear_scope(database_fqn)
+        yield from ()
 
     def yield_external_table_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         """
