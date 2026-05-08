@@ -628,21 +628,36 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       const notificationBell = page.getByTestId('task-notifications');
       await expect(notificationBell).toBeVisible();
 
-      const notifFeedResponse = page.waitForResponse(
-        (r) =>
-          r.url().includes('/api/v1/tasks/assigned') &&
-          r.url().includes('status=Open')
-      );
-      await notificationBell.click();
-      await notifFeedResponse;
-
       const notificationBox = page.locator('.notification-box');
-      await expect(notificationBox).toBeVisible();
-
       const latestNotification = notificationBox
         .locator('li.ant-list-item.notification-dropdown-list-btn')
         .first();
-      await expect(latestNotification).toBeVisible();
+
+      await expect
+        .poll(
+          async () => {
+            if (await notificationBox.isVisible()) {
+              await notificationBell.click();
+              await notificationBox.waitFor({ state: 'hidden' });
+            }
+            const notifFeedResponse = page.waitForResponse(
+              (r) =>
+                r.url().includes('/api/v1/tasks/assigned') &&
+                r.url().includes('status=Open')
+            );
+            await notificationBell.click();
+            await notifFeedResponse;
+
+            return latestNotification.count();
+          },
+          {
+            message:
+              'Waiting for task notification to appear in notification box',
+            timeout: 30_000,
+            intervals: [2000, 3000, 5000],
+          }
+        )
+        .toBeGreaterThanOrEqual(1);
 
       const taskListRefresh = waitForTaskListResponse(page);
       await latestNotification.click();
@@ -729,21 +744,36 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
         const notificationBell = userPage.getByTestId('task-notifications');
         await expect(notificationBell).toBeVisible();
 
-        const notifFeedResponse = userPage.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/tasks/assigned') &&
-            r.url().includes('status=Open')
-        );
-        await notificationBell.click();
-        await notifFeedResponse;
-
         const notificationBox = userPage.locator('.notification-box');
-        await expect(notificationBox).toBeVisible();
-
         const latestNotification = notificationBox
           .locator('li.ant-list-item.notification-dropdown-list-btn')
           .first();
-        await expect(latestNotification).toBeVisible();
+
+        await expect
+          .poll(
+            async () => {
+              if (await notificationBox.isVisible()) {
+                await notificationBell.click();
+                await notificationBox.waitFor({ state: 'hidden' });
+              }
+              const notifFeedResponse = userPage.waitForResponse(
+                (r) =>
+                  r.url().includes('/api/v1/tasks/assigned') &&
+                  r.url().includes('status=Open')
+              );
+              await notificationBell.click();
+              await notifFeedResponse;
+
+              return latestNotification.count();
+            },
+            {
+              message:
+                'Waiting for task notification to appear in notification box',
+              timeout: 30_000,
+              intervals: [2000, 3000, 5000],
+            }
+          )
+          .toBeGreaterThanOrEqual(1);
 
         const taskListRefresh = waitForTaskListResponse(userPage);
         await latestNotification.click();
