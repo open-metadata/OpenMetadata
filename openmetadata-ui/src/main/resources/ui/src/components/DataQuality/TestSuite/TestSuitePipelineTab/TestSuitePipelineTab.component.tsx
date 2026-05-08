@@ -92,21 +92,6 @@ interface PipelineTableRow extends IngestionPipeline {
   runStatus?: StepSummary;
 }
 
-const COLUMN_WIDTH_CLASS_MAP = {
-  actions: 'tw:w-60',
-  count: 'tw:w-44',
-  name: 'tw:w-72',
-  recentRuns: 'tw:w-44',
-  schedule: 'tw:w-44',
-  status: 'tw:w-28',
-  testCases: 'tw:w-36',
-} as const;
-
-const getColumnClassName = (columnId: keyof typeof COLUMN_WIDTH_CLASS_MAP) =>
-  ['tw:[vertical-align:middle]', COLUMN_WIDTH_CLASS_MAP[columnId]]
-    .filter(Boolean)
-    .join(' ');
-
 const TestSuitePipelineTab = ({
   testSuite,
   isLogicalTestSuite = false,
@@ -501,13 +486,7 @@ const TestSuitePipelineTab = ({
                 { id: 'actions', name: t('label.action-plural') },
               ]}>
               {(column) => (
-                <Table.Head
-                  className={getColumnClassName(
-                    column.id as keyof typeof COLUMN_WIDTH_CLASS_MAP
-                  )}
-                  id={column.id}
-                  key={column.id}
-                  label={column.name}>
+                <Table.Head id={column.id} key={column.id} label={column.name}>
                   {column.headerContent}
                 </Table.Head>
               )}
@@ -527,17 +506,17 @@ const TestSuitePipelineTab = ({
                     data-row-key={record.fullyQualifiedName}
                     id={record.id}
                     key={record.id}>
-                    <Table.Cell className={getColumnClassName('name')}>
+                    <Table.Cell className="tw:align-middle tw:w-72">
                       {renderNameField()(record.name, record)}
                     </Table.Cell>
 
-                    <Table.Cell className={getColumnClassName('testCases')}>
+                    <Table.Cell className="tw:align-middle tw:w-36">
                       <span data-testid={`test-case-count-${record.name}`}>
                         {testCasesCount}
                       </span>
                     </Table.Cell>
 
-                    <Table.Cell className={getColumnClassName('count')}>
+                    <Table.Cell className="tw:align-middle tw:w-44">
                       {isIngestionRunsLoading ? (
                         <Skeleton.Input active size="small" />
                       ) : (
@@ -548,11 +527,11 @@ const TestSuitePipelineTab = ({
                       )}
                     </Table.Cell>
 
-                    <Table.Cell className={getColumnClassName('schedule')}>
+                    <Table.Cell className="tw:align-middle tw:w-44">
                       {renderScheduleField(record.name, record)}
                     </Table.Cell>
 
-                    <Table.Cell className={getColumnClassName('recentRuns')}>
+                    <Table.Cell className="tw:align-middle tw:w-44">
                       <IngestionRecentRuns
                         appRuns={recentRunStatuses[record.name]}
                         classNames="align-middle"
@@ -566,11 +545,11 @@ const TestSuitePipelineTab = ({
                       />
                     </Table.Cell>
 
-                    <Table.Cell className={getColumnClassName('status')}>
+                    <Table.Cell className="tw:align-middle tw:w-28">
                       {renderStatusField(record.name, record)}
                     </Table.Cell>
 
-                    <Table.Cell className={getColumnClassName('actions')}>
+                    <Table.Cell className="tw:align-middle tw:w-60">
                       {isFetchingStatus ? (
                         <ButtonSkeleton size="default" />
                       ) : isPlatformDisabled ? (
