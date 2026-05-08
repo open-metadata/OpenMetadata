@@ -14,7 +14,7 @@
   <properties>
     <dropwizard.swagger.version>4.0.5-1</dropwizard.swagger.version>
     <awssdk.version>2.30.19</awssdk.version>
-    <azure-identity.version>1.14.0</azure-identity.version>
+    <azure-identity.version>1.15.2</azure-identity.version>
     <azure-kv.version>4.10.0</azure-kv.version>
     <azure-identity-extensions.version>1.0.0</azure-identity-extensions.version>
     <expiring.map.version>0.5.11</expiring.map.version>
