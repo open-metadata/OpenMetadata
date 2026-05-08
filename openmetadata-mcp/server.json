@@ -1,0 +1,24 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.open-metadata/openmetadata-mcp",
+  "title": "OpenMetadata",
+  "description": "Query metadata, lineage, glossary, data quality, and governance information from your OpenMetadata instance. Supports search, entity discovery, lineage traversal, glossary management, and test case creation through OAuth 2.0 authenticated MCP tools.",
+  "version": "1.1.0",
+  "repository": {
+    "url": "https://github.com/open-metadata/OpenMetadata",
+    "source": "github",
+    "subfolder": "openmetadata-mcp"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://{openmetadata_host}/mcp",
+      "variables": {
+        "openmetadata_host": {
+          "description": "Hostname of your OpenMetadata deployment (e.g. metadata.example.com). The MCP endpoint is mounted at /mcp and uses OAuth 2.0 with PKCE for authentication via your OpenMetadata SSO provider or Basic Auth.",
+          "isRequired": true
+        }
+      }
+    }
+  ]
+}
