@@ -44,7 +44,8 @@ def normalize(value: Any) -> str:
         return ""
 
     if isinstance(value, list):
-        return ", ".join(normalize(item) for item in value if normalize(item))
+        parts = [normalize(item) for item in value]
+        return ", ".join(part for part in parts if part)
 
     return re.sub(r"\s+", " ", str(value)).strip()
 
@@ -224,8 +225,12 @@ def code_rows(report_file: str, report: dict[str, Any]) -> Iterable[dict[str, st
 def report_rows(report_path: str) -> Iterable[dict[str, str]]:
     report_file = f"{os.path.basename(report_path)}.pdf"
 
-    with open(report_path, encoding="utf-8") as file:
-        report = json.load(file)
+    try:
+        with open(report_path, encoding="utf-8") as file:
+            report = json.load(file)
+    except (json.JSONDecodeError, OSError) as exc:
+        print(f"WARNING: Skipping {report_path}: {exc}")
+        return
 
     reports = report if isinstance(report, list) else [report]
     for item in reports:

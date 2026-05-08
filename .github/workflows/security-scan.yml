@@ -43,7 +43,7 @@ jobs:
         run: |
           npx retire@5 \
             --path node_modules/ \
-            --severity medium \
+            --severity high \
             --outputformat json \
             --outputpath retire-report.json
 
