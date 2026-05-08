@@ -308,32 +308,34 @@ const DimensionalityTab = () => {
                 entityText: selectedDimension || '',
               })}
             </p>
-            <Table aria-label={selectedDimension ?? ''}>
-              <Table.Header columns={dimensionTableColumns}>
-                {(col) => (
-                  <Table.Head
-                    id={col.id}
-                    key={col.id}
-                    label={col.label}
-                    tooltip={col.tooltip}
-                  />
-                )}
-              </Table.Header>
-              <Table.Body items={getLatestResultPerDimension}>
-                {(row) => (
-                  <Table.Row
-                    columns={dimensionTableColumns}
-                    id={row.key}
-                    key={row.key}>
-                    {(col) => (
-                      <Table.Cell key={col.id}>
-                        {renderCell(col, row)}
-                      </Table.Cell>
-                    )}
-                  </Table.Row>
-                )}
-              </Table.Body>
-            </Table>
+            <div className="tw:overflow-hidden tw:rounded-xl tw:shadow-xs tw:ring-1 tw:ring-secondary">
+              <Table aria-label={selectedDimension ?? ''}>
+                <Table.Header columns={dimensionTableColumns}>
+                  {(col) => (
+                    <Table.Head
+                      id={col.id}
+                      key={col.id}
+                      label={col.label}
+                      tooltip={col.tooltip}
+                    />
+                  )}
+                </Table.Header>
+                <Table.Body items={getLatestResultPerDimension}>
+                  {(row) => (
+                    <Table.Row
+                      columns={dimensionTableColumns}
+                      id={row.key}
+                      key={row.key}>
+                      {(col) => (
+                        <Table.Cell key={col.id}>
+                          {renderCell(col, row)}
+                        </Table.Cell>
+                      )}
+                    </Table.Row>
+                  )}
+                </Table.Body>
+              </Table>
+            </div>
           </div>
         </>
       )}
