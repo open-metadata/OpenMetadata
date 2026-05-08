@@ -67,6 +67,7 @@ public class RdfBatchProcessor {
     BooleanSupplier effectiveStopRequested = stopRequested != null ? stopRequested : () -> false;
     int successCount = 0;
     int failedCount = 0;
+    String lastError = null;
     List<EntityInterface> indexedEntities = new ArrayList<>();
 
     for (EntityInterface entity : entities) {
@@ -80,24 +81,61 @@ public class RdfBatchProcessor {
       } catch (Exception e) {
         LOG.error("Failed to index entity {} to RDF", entity.getId(), e);
         failedCount++;
+        lastError = describeError(entityType, entity.getId(), e);
       }
     }
 
+    int relationshipFailures = 0;
+    String relationshipError = null;
     if (!indexedEntities.isEmpty()) {
-      processBatchRelationships(entityType, indexedEntities);
+      RelationshipProcessingResult relResult =
+          processBatchRelationships(entityType, indexedEntities);
+      relationshipFailures += relResult.failureCount();
+      if (relResult.lastError() != null) {
+        relationshipError = relResult.lastError();
+      }
       if ("glossaryTerm".equals(entityType)) {
-        processGlossaryTermRelations(indexedEntities, effectiveStopRequested);
+        RelationshipProcessingResult glossResult =
+            processGlossaryTermRelations(indexedEntities, effectiveStopRequested);
+        relationshipFailures += glossResult.failureCount();
+        if (glossResult.lastError() != null) {
+          relationshipError = glossResult.lastError();
+        }
       }
     }
 
-    return new BatchProcessingResult(successCount, failedCount);
+    failedCount += relationshipFailures;
+    if (lastError == null && relationshipError != null) {
+      lastError = relationshipError;
+    }
+
+    return new BatchProcessingResult(successCount, failedCount, lastError);
   }
 
-  public void processBatchRelationships(
+  public record RelationshipProcessingResult(int failureCount, String lastError) {
+    static final RelationshipProcessingResult OK = new RelationshipProcessingResult(0, null);
+  }
+
+  private static String describeError(String entityType, UUID entityId, Throwable error) {
+    Throwable rootCause = error;
+    while (rootCause.getCause() != null && rootCause.getCause() != rootCause) {
+      rootCause = rootCause.getCause();
+    }
+    String message = rootCause.getMessage();
+    if (message == null || message.isBlank()) {
+      message = rootCause.getClass().getSimpleName();
+    }
+    return String.format("%s/%s: %s", entityType, entityId, message);
+  }
+
+  public RelationshipProcessingResult processBatchRelationships(
       String entityType, List<? extends EntityInterface> entities) {
     if (entities == null || entities.isEmpty()) {
-      return;
+      return RelationshipProcessingResult.OK;
     }
+
+    int failures = 0;
+    String lastError = null;
 
     try {
       List<String> entityIds =
@@ -124,7 +162,11 @@ public class RdfBatchProcessor {
         }
 
         if (rel.getRelation() == Relationship.UPSTREAM.ordinal() && rel.getJson() != null) {
-          processLineageRelationship(rel);
+          String error = processLineageRelationship(rel);
+          if (error != null) {
+            failures++;
+            lastError = error;
+          }
         } else {
           if ("glossaryTerm".equals(entityType)
               && rel.getRelation() == Relationship.RELATED_TO.ordinal()
@@ -141,18 +183,48 @@ public class RdfBatchProcessor {
         }
 
         if (rel.getJson() != null) {
-          processLineageRelationship(rel);
+          String error = processLineageRelationship(rel);
+          if (error != null) {
+            failures++;
+            lastError = error;
+          }
         } else {
           allRelationships.add(convertToEntityRelationship(rel));
         }
       }
 
       if (!allRelationships.isEmpty()) {
-        rdfRepository.bulkAddRelationships(allRelationships);
+        try {
+          rdfRepository.bulkAddRelationships(allRelationships);
+        } catch (Exception e) {
+          LOG.error(
+              "Failed to bulk add {} relationships for entity type {}",
+              allRelationships.size(),
+              entityType,
+              e);
+          failures += allRelationships.size();
+          lastError = describeBulkError(entityType, "bulkRelationships", e);
+        }
       }
     } catch (Exception e) {
       LOG.error("Failed to process batch relationships for entity type {}", entityType, e);
+      failures++;
+      lastError = describeBulkError(entityType, "batchRelationships", e);
     }
+
+    return new RelationshipProcessingResult(failures, lastError);
+  }
+
+  private static String describeBulkError(String entityType, String stage, Throwable error) {
+    Throwable rootCause = error;
+    while (rootCause.getCause() != null && rootCause.getCause() != rootCause) {
+      rootCause = rootCause.getCause();
+    }
+    String message = rootCause.getMessage();
+    if (message == null || message.isBlank()) {
+      message = rootCause.getClass().getSimpleName();
+    }
+    return String.format("%s/%s: %s", entityType, stage, message);
   }
 
   public org.openmetadata.schema.type.EntityRelationship convertToEntityRelationship(
@@ -172,24 +244,52 @@ public class RdfBatchProcessor {
         || EXCLUDED_RELATIONSHIP_TYPES.contains(rel.getRelation());
   }
 
-  void processLineageRelationship(EntityRelationshipObject rel) {
+  String processLineageRelationship(EntityRelationshipObject rel) {
+    UUID fromId;
+    UUID toId;
+    LineageDetails lineageDetails;
     try {
-      UUID fromId = UUID.fromString(rel.getFromId());
-      UUID toId = UUID.fromString(rel.getToId());
-      LineageDetails lineageDetails = JsonUtils.readValue(rel.getJson(), LineageDetails.class);
-      rdfRepository.addLineageWithDetails(
-          rel.getFromEntity(), fromId, rel.getToEntity(), toId, lineageDetails);
-    } catch (Exception e) {
-      LOG.debug("Failed to parse lineage details, falling back to basic relationship", e);
+      fromId = UUID.fromString(rel.getFromId());
+      toId = UUID.fromString(rel.getToId());
+      lineageDetails = JsonUtils.readValue(rel.getJson(), LineageDetails.class);
+    } catch (Exception parseError) {
+      LOG.debug("Failed to parse lineage details, falling back to basic relationship", parseError);
       try {
         rdfRepository.addRelationship(convertToEntityRelationship(rel));
+        return null;
       } catch (Exception ex) {
-        LOG.debug("Failed to add basic lineage relationship", ex);
+        LOG.error(
+            "Failed to add basic lineage relationship for {}->{}",
+            rel.getFromId(),
+            rel.getToId(),
+            ex);
+        return describeLineageError(rel, ex);
       }
+    }
+
+    try {
+      rdfRepository.addLineageWithDetails(
+          rel.getFromEntity(), fromId, rel.getToEntity(), toId, lineageDetails);
+      return null;
+    } catch (Exception e) {
+      LOG.error("Failed to add lineage with details for {}->{}", rel.getFromId(), rel.getToId(), e);
+      return describeLineageError(rel, e);
     }
   }
 
-  void processGlossaryTermRelations(
+  private static String describeLineageError(EntityRelationshipObject rel, Throwable error) {
+    Throwable rootCause = error;
+    while (rootCause.getCause() != null && rootCause.getCause() != rootCause) {
+      rootCause = rootCause.getCause();
+    }
+    String message = rootCause.getMessage();
+    if (message == null || message.isBlank()) {
+      message = rootCause.getClass().getSimpleName();
+    }
+    return String.format("lineage %s->%s: %s", rel.getFromId(), rel.getToId(), message);
+  }
+
+  RelationshipProcessingResult processGlossaryTermRelations(
       List<? extends EntityInterface> entities, BooleanSupplier stopRequested) {
     List<RdfRepository.GlossaryTermRelationData> relations = new ArrayList<>();
 
@@ -221,10 +321,23 @@ public class RdfBatchProcessor {
       }
     }
 
-    if (!relations.isEmpty()) {
+    if (relations.isEmpty()) {
+      return RelationshipProcessingResult.OK;
+    }
+
+    try {
       rdfRepository.bulkAddGlossaryTermRelations(relations);
+      return RelationshipProcessingResult.OK;
+    } catch (Exception e) {
+      LOG.error("Failed to bulk add {} glossary term relations", relations.size(), e);
+      return new RelationshipProcessingResult(
+          relations.size(), describeBulkError("glossaryTerm", "glossaryRelations", e));
     }
   }
 
-  public record BatchProcessingResult(int successCount, int failedCount) {}
+  public record BatchProcessingResult(int successCount, int failedCount, String lastError) {
+    public BatchProcessingResult(int successCount, int failedCount) {
+      this(successCount, failedCount, null);
+    }
+  }
 }
