@@ -13,7 +13,9 @@
 Airflow source to extract metadata from OM UI
 """
 
-import traceback  # noqa: I001
+import json  # noqa: I001
+import traceback
+import zlib
 from collections import Counter, defaultdict
 from datetime import datetime
 from enum import Enum
@@ -472,6 +474,22 @@ class AirflowSource(PipelineServiceSource):
                 )
             )
 
+    def _resolve_dag_data(self, raw_data: Optional[Any], dag_id: str, timestamp_column) -> Optional[Any]:  # noqa: UP045
+        if raw_data is not None:
+            return raw_data
+        if not hasattr(SerializedDagModel, "_data_compressed"):
+            return None
+        compressed = (
+            self.session.query(SerializedDagModel._data_compressed)  # pylint: disable=protected-access
+            .filter(SerializedDagModel.dag_id == dag_id)
+            .order_by(timestamp_column.desc())
+            .limit(1)
+            .scalar()
+        )
+        if compressed is None:
+            return None
+        return json.loads(zlib.decompress(compressed))
+
     def get_pipelines_list(self) -> Iterable[AirflowDagDetails]:
         """
         List all DAGs from the metadata db.
@@ -582,11 +600,18 @@ class AirflowSource(PipelineServiceSource):
                         # If we can't query is_paused, assume the pipeline is active
                         pipeline_state = PipelineState.Active.value
 
-                    data = serialized_dag[1]["dag"]
+                    raw_data = self._resolve_dag_data(serialized_dag[1], serialized_dag[0], timestamp_column)
+                    if raw_data is None:
+                        logger.warning(f"No serialized data available for dag {serialized_dag[0]}, skipping")
+                        continue
+                    data = raw_data.get("dag")
+                    if data is None:
+                        logger.warning(f"Missing 'dag' key in serialized data for dag {serialized_dag[0]}, skipping")
+                        continue
                     dag = AirflowDagDetails(
                         dag_id=serialized_dag[0],
                         fileloc=serialized_dag[2],
-                        data=AirflowDag.model_validate(serialized_dag[1]),
+                        data=AirflowDag.model_validate(raw_data),
                         max_active_runs=data.get("max_active_runs", None),
                         description=data.get("_description", None),
                         start_date=data.get("start_date", None),
