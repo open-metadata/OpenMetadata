@@ -37,6 +37,13 @@ FIELD_NAMES = [
     "reason",
 ]
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+SARIF_LEVEL_SEVERITY = {"error": "high", "warning": "medium", "note": "low"}
+FINDING_KEY = "_finding_key"
+MERGE_FIELD_LABELS = {
+    "introduced_through": "paths",
+    "location": "locations",
+    "manifest": "manifests",
+}
 
 
 def normalize(value: Any) -> str:
@@ -53,6 +60,16 @@ def normalize(value: Any) -> str:
 def severity_label(value: Any) -> str:
     severity = normalize(value).lower()
     return severity.capitalize() if severity else ""
+
+
+def code_severity_label(result: dict[str, Any]) -> str:
+    properties = dict_value(result.get("properties"))
+    severity = first_value(properties.get("severity"))
+    if severity:
+        return severity_label(severity)
+
+    level = normalize(result.get("level")).lower()
+    return severity_label(SARIF_LEVEL_SEVERITY.get(level, level))
 
 
 def first_value(*values: Any) -> str:
@@ -92,6 +109,37 @@ def cwe_value(vulnerability: dict[str, Any]) -> str:
     )
 
 
+def vulnerability_id(vulnerability: dict[str, Any]) -> str:
+    identifiers = dict_value(vulnerability.get("identifiers"))
+    return first_value(
+        vulnerability.get("id"),
+        vulnerability.get("issueId"),
+        vulnerability.get("snykId"),
+        identifiers.get("SNYK"),
+        identifiers.get("CVE"),
+    )
+
+
+def dependency_finding_key(
+    report_file: str, vulnerability: dict[str, Any], row: dict[str, str]
+) -> str:
+    issue_id = vulnerability_id(vulnerability)
+    if issue_id:
+        return f"dependency|{report_file}|{issue_id}"
+
+    return "|".join(
+        [
+            "dependency",
+            report_file,
+            row["severity"],
+            row["package_manager"],
+            row["module"],
+            row["vulnerability"],
+            row["cwe"],
+        ]
+    )
+
+
 def dependency_rows(
     report_file: str, report: dict[str, Any]
 ) -> Iterable[dict[str, str]]:
@@ -108,7 +156,7 @@ def dependency_rows(
         if not isinstance(vulnerability, dict):
             continue
 
-        yield {
+        row = {
             "severity": severity_label(vulnerability.get("severity")),
             "report_file": report_file,
             "module": first_value(
@@ -138,6 +186,9 @@ def dependency_rows(
                 vulnerability.get("message"),
             ),
         }
+        row[FINDING_KEY] = dependency_finding_key(report_file, vulnerability, row)
+
+        yield row
 
 
 def code_rule_lookup(run: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -200,14 +251,19 @@ def code_rows(report_file: str, report: dict[str, Any]) -> Iterable[dict[str, st
             rule = rules.get(rule_id, {})
             message = dict_value(result.get("message"))
             short_description = dict_value(rule.get("shortDescription"))
+            location = code_location(result)
 
             yield {
-                "severity": severity_label(
-                    first_value(
-                        dict_value(result.get("properties")).get("severity"),
-                        result.get("level"),
-                    )
+                FINDING_KEY: "|".join(
+                    [
+                        "code",
+                        report_file,
+                        rule_id,
+                        location,
+                        normalize(message.get("text")),
+                    ]
                 ),
+                "severity": code_severity_label(result),
                 "report_file": report_file,
                 "module": rule_id,
                 "package_manager": "snyk-code",
@@ -215,7 +271,7 @@ def code_rows(report_file: str, report: dict[str, Any]) -> Iterable[dict[str, st
                     short_description.get("text"), result.get("ruleId")
                 ),
                 "cwe": code_cwe(result, rule),
-                "location": code_location(result),
+                "location": location,
                 "manifest": "",
                 "introduced_through": "",
                 "reason": first_value(message.get("text"), result.get("message")),
@@ -250,20 +306,65 @@ def sort_key(row: dict[str, str]) -> tuple[int, str, str, str]:
     )
 
 
+def append_unique(values: list[str], value: str) -> None:
+    if value and value not in values:
+        values.append(value)
+
+
+def compact_values(values: list[str], label: str) -> str:
+    if not values:
+        return ""
+
+    if len(values) == 1:
+        return values[0]
+
+    return f"{values[0]} (+{len(values) - 1} more {label})"
+
+
+def aggregate_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    findings: dict[str, dict[str, Any]] = {}
+
+    for row in rows:
+        key = row.get(FINDING_KEY) or "|".join(row.get(field, "") for field in FIELD_NAMES)
+        if key not in findings:
+            findings[key] = {
+                "row": {field: row.get(field, "") for field in FIELD_NAMES},
+                "merged_values": {field: [] for field in MERGE_FIELD_LABELS},
+            }
+
+        finding = findings[key]
+        output_row = finding["row"]
+        for field in FIELD_NAMES:
+            if field in MERGE_FIELD_LABELS:
+                append_unique(finding["merged_values"][field], row.get(field, ""))
+            elif not output_row.get(field) and row.get(field):
+                output_row[field] = row[field]
+
+    output_rows = []
+    for finding in findings.values():
+        output_row = finding["row"]
+        for field, label in MERGE_FIELD_LABELS.items():
+            output_row[field] = compact_values(finding["merged_values"][field], label)
+        output_rows.append(output_row)
+
+    return output_rows
+
+
 def generate_csv(input_folder: str, output_file: str) -> None:
     rows = []
     for report_path in sorted(glob.glob(os.path.join(input_folder, "*.json"))):
         rows.extend(report_rows(report_path))
 
+    output_rows = aggregate_rows(rows)
     output_folder = os.path.dirname(output_file)
     if output_folder:
         os.makedirs(output_folder, exist_ok=True)
     with open(output_file, "w", encoding="utf-8", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=FIELD_NAMES)
         writer.writeheader()
-        writer.writerows(sorted(rows, key=sort_key))
+        writer.writerows(sorted(output_rows, key=sort_key))
 
-    print(f"Generated {output_file} with {len(rows)} findings.")
+    print(f"Generated {output_file} with {len(output_rows)} findings.")
 
 
 def parse_args() -> argparse.Namespace:
