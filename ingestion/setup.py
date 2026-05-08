@@ -423,6 +423,8 @@ test_unit = {
     # TODO: Remove once no unit test requires testcontainers
     "testcontainers",
     VERSIONS["factory-boy"],
+    *plugins["exasol"],
+    *plugins["teradata"],
 }
 
 test = {
@@ -491,6 +493,8 @@ test = {
     VERSIONS["kafka-connect"],
     VERSIONS["factory-boy"],
     "locust~=2.32.0",
+    *plugins["exasol"],
+    *plugins["teradata"],
 }
 
 docs = {
