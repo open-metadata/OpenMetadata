@@ -330,7 +330,8 @@ class GoogleEmbeddingClientTest {
             .withApiKey("test-key")
             .withEmbeddingModelId("text-embedding-004")
             .withEmbeddingDimension(768)
-            .withEndpoint("https://proxy.example.com/v1/embed/");
+            .withEndpoint(
+                "https://proxy.example.com/v1beta/models/text-embedding-004:embedContent/");
 
     NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
     nlsCfg.setGoogle(googleCfg);
@@ -342,6 +343,26 @@ class GoogleEmbeddingClientTest {
     assertNotNull(client);
     assertEquals("text-embedding-004", client.getModelId());
     assertEquals(768, client.getDimension());
+  }
+
+  @Test
+  void testCustomEndpointWithoutEmbedContentThrows() {
+    Google googleCfg =
+        new Google()
+            .withApiKey("test-key")
+            .withEmbeddingModelId("text-embedding-004")
+            .withEmbeddingDimension(768)
+            .withEndpoint("https://proxy.example.com/v1beta/models/");
+
+    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
+    nlsCfg.setGoogle(googleCfg);
+
+    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
+    config.setNaturalLanguageSearch(nlsCfg);
+
+    IllegalArgumentException ex =
+        assertThrows(IllegalArgumentException.class, () -> new GoogleEmbeddingClient(config));
+    assertTrue(ex.getMessage().contains(":embedContent"));
   }
 
   @Test

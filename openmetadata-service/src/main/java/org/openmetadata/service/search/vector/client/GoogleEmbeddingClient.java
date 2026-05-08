@@ -93,7 +93,16 @@ public final class GoogleEmbeddingClient extends EmbeddingClient {
   private String resolveEndpoint(Google config) {
     String configured = config.getEndpoint();
     if (configured != null && !configured.isBlank()) {
-      return configured.replaceAll("/+$", "");
+      String normalizedEndpoint = configured.replaceAll("/+$", "");
+      if (!normalizedEndpoint.contains(":embedContent")) {
+        throw new IllegalArgumentException(
+            "Invalid google.endpoint configuration. Expected a full Google embedding endpoint "
+                + "URL containing ':embedContent', for example "
+                + "'https://generativelanguage.googleapis.com/v1beta/models/"
+                + config.getEmbeddingModelId()
+                + ":embedContent'.");
+      }
+      return normalizedEndpoint;
     }
     return DEFAULT_BASE_URL + config.getEmbeddingModelId() + ":embedContent";
   }
