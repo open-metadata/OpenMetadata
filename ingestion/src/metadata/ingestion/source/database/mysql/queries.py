@@ -11,6 +11,7 @@
 """
 SQL Queries used during ingestion
 """
+
 import textwrap
 
 MYSQL_SQL_STATEMENT = textwrap.dedent(
@@ -33,7 +34,7 @@ WHERE command_type = 'Query'
     {filters}
 ORDER BY event_time desc
 LIMIT {result_limit};
-"""
+"""  # noqa: W291
 )
 
 
@@ -56,7 +57,7 @@ WHERE start_time between '{start_time}' and '{end_time}'
     {filters}
 ORDER BY start_time desc
 LIMIT {result_limit};
-"""
+"""  # noqa: W291
 )
 
 MYSQL_TEST_GET_QUERIES = textwrap.dedent(
@@ -81,4 +82,4 @@ MYSQL_GET_ROUTINES = """
 FROM information_schema.ROUTINES
 WHERE ROUTINE_TYPE IN ('PROCEDURE', 'FUNCTION')
 AND ROUTINE_SCHEMA = '{schema_name}';
-"""
+"""  # noqa: W291

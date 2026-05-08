@@ -109,13 +109,14 @@
         window.dataLayer = window.dataLayer || [];
         window.dataLayer.push({
           'gtm.start': new Date().getTime(),
-          event: 'gtm.js'
+          event: 'gtm.js',
         });
 
         const gtmScript = document.createElement('script');
         gtmScript.async = true;
         gtmScript.setAttribute('nonce', '${cspNonce}');
-        gtmScript.src = 'https://www.googletagmanager.com/gtm.js?id=GTM-554C968W';
+        gtmScript.src =
+          'https://www.googletagmanager.com/gtm.js?id=GTM-554C968W';
         document.head.appendChild(gtmScript);
       }
     </script>

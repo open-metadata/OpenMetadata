@@ -14,7 +14,6 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-
 from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
     SQATestSuiteInterface,
 )
@@ -29,7 +28,5 @@ class UnityCatalogTestSuiteInterface(SQATestSuiteInterface):
         super().__init__(*args, **kwargs)
 
     def create_session(self):
-        self.session = create_and_bind_session(
-            databricks_get_connection(self.service_connection_config)
-        )
+        self.session = create_and_bind_session(databricks_get_connection(self.service_connection_config))
         self.set_catalog(self.session)

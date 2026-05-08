@@ -815,5 +815,73 @@ class AbstractLineageGraphBuilderTest {
         java.util.function.Function<T, String> fqnExtractor) {
       return super.sortEntitiesByDepthThenName(entities, depthExtractor, fqnExtractor);
     }
+
+    public void cacheResultForTest(SearchLineageRequest request, SearchLineageResult result) {
+      super.cacheResult(request, result);
+    }
+
+    public java.util.Optional<SearchLineageResult> checkCacheForTest(SearchLineageRequest request) {
+      return super.checkCache(request);
+    }
+  }
+
+  @Test
+  void invalidateLineageCacheForFqnDropsEntryKeyedByThatFqn() {
+    SearchLineageRequest request =
+        new SearchLineageRequest().withFqn("svc.db.target").withUpstreamDepth(3);
+    SearchLineageResult result = new SearchLineageResult().withNodes(new HashMap<>());
+
+    builder.cacheResultForTest(request, result);
+    assertTrue(builder.checkCacheForTest(request).isPresent(), "Precondition: entry cached");
+
+    builder.invalidateLineageCacheForFqn("svc.db.target");
+
+    assertFalse(
+        builder.checkCacheForTest(request).isPresent(),
+        "Entry whose root FQN matches must be evicted");
+  }
+
+  @Test
+  void invalidateLineageCacheForFqnDropsEntryWhereFqnAppearsInNodes() {
+    SearchLineageRequest request =
+        new SearchLineageRequest().withFqn("svc.db.root").withUpstreamDepth(3);
+    SearchLineageResult result = new SearchLineageResult().withNodes(new HashMap<>());
+    result.getNodes().put("svc.db.target", new NodeInformation().withNodeDepth(1));
+
+    builder.cacheResultForTest(request, result);
+
+    builder.invalidateLineageCacheForFqn("svc.db.target");
+
+    assertFalse(
+        builder.checkCacheForTest(request).isPresent(),
+        "Entry containing the FQN in its nodes must be evicted");
+  }
+
+  @Test
+  void invalidateLineageCacheForFqnLeavesUnrelatedEntriesAlone() {
+    SearchLineageRequest request =
+        new SearchLineageRequest().withFqn("svc.db.kept").withUpstreamDepth(3);
+    SearchLineageResult result = new SearchLineageResult().withNodes(new HashMap<>());
+    result.getNodes().put("svc.db.kept", new NodeInformation().withNodeDepth(0));
+
+    builder.cacheResultForTest(request, result);
+
+    builder.invalidateLineageCacheForFqn("svc.db.unrelated");
+
+    assertTrue(
+        builder.checkCacheForTest(request).isPresent(),
+        "Unrelated cache entry must survive FQN-targeted invalidation");
+  }
+
+  @Test
+  void invalidateLineageCacheForFqnIgnoresNullOrBlank() {
+    SearchLineageRequest request =
+        new SearchLineageRequest().withFqn("svc.db.kept").withUpstreamDepth(3);
+    builder.cacheResultForTest(request, new SearchLineageResult().withNodes(new HashMap<>()));
+
+    builder.invalidateLineageCacheForFqn(null);
+    builder.invalidateLineageCacheForFqn("");
+
+    assertTrue(builder.checkCacheForTest(request).isPresent());
   }
 }

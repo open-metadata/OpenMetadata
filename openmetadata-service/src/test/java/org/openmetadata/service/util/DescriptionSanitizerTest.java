@@ -210,4 +210,66 @@ class DescriptionSanitizerTest {
     assertTrue(result.contains("<#E::table::clean.fqn>"));
     assertFalse(result.contains("<script"));
   }
+
+  @Test
+  void entityMentionAttributesOnAnchorArePreserved() {
+    String input =
+        "<p><a data-type=\"hashtag\" data-id=\"abc123\" data-label=\"Article\""
+            + " href=\"https://open-metadata.example.org/tags/KnowledgeCenter\""
+            + " data-entitytype=\"tag\" data-fqn=\"KnowledgeCenter.Article\">"
+            + "<#E::tag::KnowledgeCenter.Article|[#Article](https://open-metadata.example.org/tags/KnowledgeCenter)>"
+            + "</a></p>";
+    String result = DescriptionSanitizer.sanitize(input);
+
+    assertTrue(result.contains("data-type=\"hashtag\""));
+    assertTrue(result.contains("data-label=\"Article\""));
+    assertTrue(result.contains("data-fqn=\"KnowledgeCenter.Article\""));
+    assertTrue(result.contains("data-entitytype=\"tag\""));
+    assertTrue(
+        result.contains(
+            "<#E::tag::KnowledgeCenter.Article|[#Article](https://open-metadata.example.org/tags/KnowledgeCenter)>"));
+  }
+
+  @Test
+  void fileAttachmentDivAttributesArePreserved() {
+    String input =
+        "<p></p><div data-type=\"file-attachment\""
+            + " data-url=\"https://example.com/image.png\""
+            + " data-filename=\"image.png\""
+            + " data-mimetype=\"image\""
+            + " data-uploading=\"false\""
+            + " data-upload-progress=\"0\""
+            + " data-is-image=\"true\""
+            + " data-filesize=\"1024\""
+            + " data-alt=\"test image\""
+            + " data-callouttype=\"info\"></div><p></p>";
+    String result = DescriptionSanitizer.sanitize(input);
+
+    assertTrue(result.contains("data-type=\"file-attachment\""));
+    assertTrue(result.contains("data-url=\"https://example.com/image.png\""));
+    assertTrue(result.contains("data-filename=\"image.png\""));
+    assertTrue(result.contains("data-mimetype=\"image\""));
+    assertTrue(result.contains("data-uploading=\"false\""));
+    assertTrue(result.contains("data-upload-progress=\"0\""));
+    assertTrue(result.contains("data-is-image=\"true\""));
+    assertTrue(result.contains("data-filesize=\"1024\""));
+    assertTrue(result.contains("data-alt=\"test image\""));
+    assertTrue(result.contains("data-callouttype=\"info\""));
+  }
+
+  @Test
+  void entityMentionAttributesOnAnchorArePreservedForMention() {
+    String input =
+        "<a data-type=\"mention\" data-id=\"u1\" data-label=\"admin\""
+            + " href=\"https://open-metadata.example.org/users/admin\""
+            + " data-entitytype=\"user\" data-fqn=\"admin\">"
+            + "<#E::user::admin|[@admin](https://open-metadata.example.org/users/admin)>"
+            + "</a>";
+    String result = DescriptionSanitizer.sanitize(input);
+
+    assertTrue(result.contains("data-type=\"mention\""));
+    assertTrue(result.contains("data-label=\"admin\""));
+    assertTrue(result.contains("data-fqn=\"admin\""));
+    assertTrue(result.contains("data-entitytype=\"user\""));
+  }
 }

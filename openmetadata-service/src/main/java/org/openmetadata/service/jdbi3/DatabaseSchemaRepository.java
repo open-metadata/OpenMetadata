@@ -983,6 +983,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       // Get entityType and fullyQualifiedName if provided
       String entityType = csvRecord.size() > 12 ? csvRecord.get(12) : TABLE;
       String entityFQN = csvRecord.size() > 13 ? csvRecord.get(13) : null;
+      rowEntityType = entityType;
 
       if (TABLE.equals(entityType)) {
         createTableEntity(printer, csvRecord, entityFQN);

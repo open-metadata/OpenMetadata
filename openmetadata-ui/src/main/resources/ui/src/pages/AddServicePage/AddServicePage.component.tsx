@@ -27,7 +27,6 @@ import IngestionStepper from '../../components/Settings/Services/Ingestion/Inges
 import ConnectionConfigForm from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm';
 import FiltersConfigForm from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm';
 import { AUTO_PILOT_APP_NAME } from '../../constants/Applications.constant';
-import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_DEFAULT_ERROR_MAP,
@@ -40,19 +39,14 @@ import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/CommonUtils';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
-import {
-  getAddServicePath,
-  getServiceDetailsPath,
-  getSettingPath,
-} from '../../utils/RouterUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getAddServiceEntityBreadcrumb,
   getEntityTypeFromServiceCategory,
-  getServiceRouteFromServiceType,
   getServiceType,
 } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -112,16 +106,13 @@ const AddServicePage = () => {
       ...prev,
       serviceType: '',
     }));
-    navigate(getAddServicePath(category));
+    navigate(connectionsRouterClassBase.getAddServicePath(category));
   };
 
   // Select service
   const handleSelectServiceCancel = () => {
     navigate(
-      getSettingPath(
-        GlobalSettingsMenuCategory.SERVICES,
-        getServiceRouteFromServiceType(serviceCategory)
-      )
+      connectionsRouterClassBase.getSettingsServicesPath(serviceCategory)
     );
   };
 
@@ -216,7 +207,12 @@ const AddServicePage = () => {
       });
     } finally {
       setSaveServiceState('initial');
-      navigate(getServiceDetailsPath(configData.name, serviceCategory));
+      navigate(
+        connectionsRouterClassBase.getServiceDetailsPath(
+          serviceCategory,
+          configData.name
+        )
+      );
     }
   };
 

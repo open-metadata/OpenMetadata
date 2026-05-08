@@ -1,0 +1,73 @@
+{
+  "$id": "https://open-metadata.org/schema/type/dataAccessRequestPayload.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DataAccessRequestPayload",
+  "description": "Payload for Data Access Request tasks.",
+  "javaType": "org.openmetadata.schema.type.DataAccessRequestPayload",
+  "type": "object",
+  "definitions": {
+    "accessType": {
+      "javaType": "org.openmetadata.schema.type.DataAccessType",
+      "description": "Scope of access being requested against the target entity.",
+      "type": "string",
+      "enum": ["FullAccess", "ColumnLevel", "Masked"],
+      "javaEnums": [
+        {"name": "FullAccess"},
+        {"name": "ColumnLevel"},
+        {"name": "Masked"}
+      ]
+    },
+    "requestedAccess": {
+      "javaType": "org.openmetadata.schema.type.DataAccessPermission",
+      "description": "Permission level for the requested access.",
+      "type": "string",
+      "enum": ["Read", "Write", "Admin"],
+      "javaEnums": [
+        {"name": "Read"},
+        {"name": "Write"},
+        {"name": "Admin"}
+      ],
+      "default": "Read"
+    }
+  },
+  "properties": {
+    "accessType": {
+      "description": "Scope of access being requested. FullAccess grants access to all columns, ColumnLevel restricts to the columns listed in 'columns', Masked grants access to masked or anonymized data.",
+      "$ref": "#/definitions/accessType"
+    },
+    "requestedAccess": {
+      "description": "Permission level for the access (Read, Write, Admin). Defaults to Read.",
+      "$ref": "#/definitions/requestedAccess"
+    },
+    "columns": {
+      "description": "Fully qualified column names included in the request when accessType is ColumnLevel.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "duration": {
+      "description": "Requested duration for access (ISO 8601).",
+      "$ref": "basic.json#/definitions/duration"
+    },
+    "reason": {
+      "description": "Business justification for the request.",
+      "type": "string"
+    },
+    "assets": {
+      "description": "List of assets being requested access to.",
+      "$ref": "entityReferenceList.json"
+    },
+    "ticketId": {
+      "description": "External ticket ID (JIRA, ServiceNow) if required.",
+      "type": "string"
+    },
+    "expirationDate": {
+      "description": "When the access should expire.",
+      "$ref": "basic.json#/definitions/timestamp"
+    }
+  },
+  "required": ["accessType", "reason"],
+  "additionalProperties": false
+}

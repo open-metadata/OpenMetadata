@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { ADMONITION_TYPES } from './BlockEditor.constants';
+
 export const UrlEntityCharRegEx = /[#.%;?/\\]/g;
 export const EMAIL_REG_EX = /^\S+@\S+\.\S+$/;
 
@@ -19,6 +21,17 @@ export const EMAIL_REG_EX = /^\S+@\S+\.\S+$/;
  * spaces, periods, single quotes, ampersands, and parentheses, with support for Unicode characters.
  */
 export const ENTITY_NAME_REGEX = /^((?!::).)*$/;
+
+/**
+ * Custom property name validation:
+ * - Must start with an alphanumeric character
+ * - Allowed characters: alphanumeric, _ - . % # @ ! , ; = | ' + ? ` space ( ) [ ] { }
+ * - Disallowed: " * & < > : ^ $ \ / ~
+ *   ( / and ~ are reserved by JSON Pointer / RFC 6901 — interpolating them
+ *   into JSON Patch paths corrupts the path. )
+ */
+export const CUSTOM_PROPERTY_NAME_REGEX =
+  /^[A-Za-z0-9][A-Za-z0-9 _\-.,;%#@!'(){}[\]|=+?`]*$/;
 
 /**
  * Matches any string that does NOT contain the following:
@@ -73,3 +86,10 @@ export const LOCALE_CODE_REGEX = /^[a-z]{2}(-[A-Z]{2})?$/;
 // Filenames restricted to alphanumeric, hyphens, underscores, and dots for security
 export const IMAGE_URL_PATTERN =
   /^(https?:\/\/.+|\/[^\s]+|data:image\/.+)|^[\w\-.]+\.(png|jpg|jpeg|gif|svg|webp|bmp|ico)$/i;
+
+export const SECTION_BLOCK_REGEX = /\$\$section\n([\s\S]*?)\n\$\$/g;
+
+export const ADMONITION_BLOCK_REGEX = new RegExp(
+  `^\\$\\$(${ADMONITION_TYPES.join('|')})\\n([\\s\\S]*?)\\n\\$\\$`,
+  'gm'
+);

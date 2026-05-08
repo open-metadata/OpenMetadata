@@ -1,6 +1,7 @@
 """
 Unit tests for SDK configuration functionality
 """
+
 import os
 import unittest
 from unittest.mock import patch
@@ -14,9 +15,7 @@ class TestOpenMetadataConfig(unittest.TestCase):
 
     def test_config_creation(self):
         """Test basic config creation"""
-        config = OpenMetadataConfig(
-            server_url="http://localhost:8585/api", jwt_token="test-token"
-        )
+        config = OpenMetadataConfig(server_url="http://localhost:8585/api", jwt_token="test-token")
         self.assertEqual(config.server_url, "http://localhost:8585/api")
         self.assertEqual(config.jwt_token, "test-token")
         self.assertFalse(config.verify_ssl)
@@ -24,16 +23,12 @@ class TestOpenMetadataConfig(unittest.TestCase):
 
     def test_config_strips_trailing_slash(self):
         """Test that server URL strips trailing slash"""
-        config = OpenMetadataConfig(
-            server_url="http://localhost:8585/api/", jwt_token="test-token"
-        )
+        config = OpenMetadataConfig(server_url="http://localhost:8585/api/", jwt_token="test-token")
         self.assertEqual(config.server_url, "http://localhost:8585/api")
 
     def test_config_api_key_alias(self):
         """Test that api_key works as alias for jwt_token"""
-        config = OpenMetadataConfig(
-            server_url="http://localhost:8585/api", api_key="test-key"
-        )
+        config = OpenMetadataConfig(server_url="http://localhost:8585/api", api_key="test-key")
         self.assertEqual(config.jwt_token, "test-key")
         self.assertEqual(config.api_key, "test-key")
 
@@ -184,22 +179,16 @@ class TestConfigureFunction(unittest.TestCase):
     @patch("metadata.sdk.OpenMetadata.initialize")
     def test_configure_with_config_object(self, mock_initialize):
         """Test configure with OpenMetadataConfig object"""
-        config = OpenMetadataConfig(
-            server_url="http://localhost:8585/api", jwt_token="config-token"
-        )
+        config = OpenMetadataConfig(server_url="http://localhost:8585/api", jwt_token="config-token")
         configure(config)
         mock_initialize.assert_called_once_with(config)
 
     def test_configure_rejects_mixed_config_and_kwargs(self):
         """Test configure raises error when both config and kwargs provided"""
-        config = OpenMetadataConfig(
-            server_url="http://localhost:8585/api", jwt_token="token"
-        )
+        config = OpenMetadataConfig(server_url="http://localhost:8585/api", jwt_token="token")
         with self.assertRaises(TypeError) as context:
             configure(config, host="http://other:8585/api")
-        self.assertIn(
-            "Pass either a config object or keyword arguments", str(context.exception)
-        )
+        self.assertIn("Pass either a config object or keyword arguments", str(context.exception))
 
 
 if __name__ == "__main__":

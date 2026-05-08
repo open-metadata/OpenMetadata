@@ -32,9 +32,7 @@ def run_profiler(
 ):
     search_cache.clear()
     config = deepcopy(ingestion_config)
-    config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
-        "excludes": ["information_schema"]
-    }
+    config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {"excludes": ["information_schema"]}
     run_workflow(MetadataWorkflow, config)
     run_workflow(ProfilerWorkflow, profiler_config)
 
@@ -98,13 +96,9 @@ def test_profiler(
     run_profiler,
     metadata,
 ):
-    table = metadata.get_latest_table_profile(
-        table_fqn.format(service=db_service.fullyQualifiedName.root)
-    )
+    table = metadata.get_latest_table_profile(table_fqn.format(service=db_service.fullyQualifiedName.root))
     for name, expected_profile in expected_column_profiles.items():
-        actual_column_profile = next(
-            column for column in table.columns if column.name.root == name
-        ).profile
+        actual_column_profile = next(column for column in table.columns if column.name.root == name).profile
         # the timestamp always changes so we equalize them to avoid comparison
         actual_column_profile.timestamp = expected_profile.timestamp
         assert_equal_pydantic_objects(

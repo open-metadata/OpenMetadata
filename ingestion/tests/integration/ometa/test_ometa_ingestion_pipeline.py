@@ -68,14 +68,10 @@ class TestOMetaIngestionPipelineAPI:
             ]
         )
 
-        pipeline_status: PipelineStatus = workflow._new_pipeline_status(
-            PipelineState.success
-        )
+        pipeline_status: PipelineStatus = workflow._new_pipeline_status(PipelineState.success)
         pipeline_status.status = ingestion_status
 
-        metadata.create_or_update_pipeline_status(
-            ingestion_pipeline.fullyQualifiedName.root, pipeline_status
-        )
+        metadata.create_or_update_pipeline_status(ingestion_pipeline.fullyQualifiedName.root, pipeline_status)
 
         real_pipeline_status: PipelineStatus = metadata.get_pipeline_status(
             ingestion_pipeline.fullyQualifiedName.root, workflow.run_id
@@ -97,15 +93,11 @@ class TestOMetaIngestionPipelineAPI:
             ]
         )
 
-        pipeline_status: PipelineStatus = workflow._new_pipeline_status(
-            PipelineState.success
-        )
+        pipeline_status: PipelineStatus = workflow._new_pipeline_status(PipelineState.success)
         pipeline_status.status = too_long_status
 
         with pytest.raises(Exception) as exc:
-            metadata.create_or_update_pipeline_status(
-                ingestion_pipeline.fullyQualifiedName.root, pipeline_status
-            )
+            metadata.create_or_update_pipeline_status(ingestion_pipeline.fullyQualifiedName.root, pipeline_status)
 
         assert (
             "exceeds the maximum allowed" in str(exc.value)
@@ -128,16 +120,9 @@ class TestOMetaIngestionPipelineAPI:
             ]
         )
 
-        pipeline_status: PipelineStatus = workflow._new_pipeline_status(
-            PipelineState.success
-        )
+        pipeline_status: PipelineStatus = workflow._new_pipeline_status(PipelineState.success)
         pipeline_status.status = truncated_long_status
 
-        res = metadata.create_or_update_pipeline_status(
-            ingestion_pipeline.fullyQualifiedName.root, pipeline_status
-        )
+        res = metadata.create_or_update_pipeline_status(ingestion_pipeline.fullyQualifiedName.root, pipeline_status)
 
-        assert (
-            res["entityFullyQualifiedName"]
-            == ingestion_pipeline.fullyQualifiedName.root
-        )
+        assert res["entityFullyQualifiedName"] == ingestion_pipeline.fullyQualifiedName.root

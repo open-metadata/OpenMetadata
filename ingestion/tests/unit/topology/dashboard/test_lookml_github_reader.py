@@ -12,6 +12,7 @@
 """
 Test GitHub Reader
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.security.credentials.githubCredentials import (
@@ -52,9 +53,7 @@ class TestLookMLGitHubReader(TestCase):
         # Check file contents
         self.assertIn("explore: cats", contents)
 
-        view = self.parser.find_view(
-            view_name=ViewName("cats"), path=Includes(explore_file)
-        )
+        view = self.parser.find_view(view_name=ViewName("cats"), path=Includes(explore_file))
 
         # We can get views that are resolved even if the include does not contain `.lkml`
         self.assertIsNotNone(view)

@@ -28,6 +28,7 @@ import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.CreateThread;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -1064,9 +1065,12 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertNotNull(updated2.getReviewers());
     assertTrue(updated2.getReviewers().size() >= 2);
 
-    // Remove a reviewer
-    updated2.setReviewers(List.of(testUser2().getEntityReference()));
-    GlossaryTerm updated3 = patchEntity(updated2.getId().toString(), updated2);
+    // Remove a reviewer — re-fetch to pick up any async entityStatus change from the approval
+    // workflow so the patch diff contains only the reviewer removal, not an unintended status
+    // change
+    GlossaryTerm fresh2 = SdkClients.adminClient().glossaryTerms().get(updated2.getId().toString());
+    fresh2.setReviewers(List.of(testUser2().getEntityReference()));
+    GlossaryTerm updated3 = patchEntity(fresh2.getId().toString(), fresh2);
     assertNotNull(updated3.getReviewers());
     assertEquals(1, updated3.getReviewers().size());
   }
@@ -2268,14 +2272,16 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertNotNull(updated1.getReviewers());
     assertEquals(1, updated1.getReviewers().size());
 
-    updated1.setReviewers(
+    GlossaryTerm fresh1 = SdkClients.adminClient().glossaryTerms().get(updated1.getId().toString());
+    fresh1.setReviewers(
         List.of(testUser1().getEntityReference(), testUser2().getEntityReference()));
-    GlossaryTerm updated2 = patchEntity(updated1.getId().toString(), updated1);
+    GlossaryTerm updated2 = patchEntity(fresh1.getId().toString(), fresh1);
     assertNotNull(updated2.getReviewers());
     assertTrue(updated2.getReviewers().size() >= 2);
 
-    updated2.setReviewers(List.of(testUser2().getEntityReference()));
-    GlossaryTerm updated3 = patchEntity(updated2.getId().toString(), updated2);
+    GlossaryTerm fresh2 = SdkClients.adminClient().glossaryTerms().get(updated2.getId().toString());
+    fresh2.setReviewers(List.of(testUser2().getEntityReference()));
+    GlossaryTerm updated3 = patchEntity(fresh2.getId().toString(), fresh2);
     assertNotNull(updated3.getReviewers());
     assertEquals(1, updated3.getReviewers().size());
   }
@@ -3196,5 +3202,46 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             "/v1/glossaryTerms/name/" + fqn + "/assets",
             null,
             optionsBuilder.build());
+  }
+
+  @Test
+  void softDeletedReviewer_notReturnedInListEndpoint(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    String userName = ns.shortPrefix("reviewer_list");
+    User reviewer =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.openmetadata.org")
+                    .withDescription("Reviewer user for glossary soft-delete list test"));
+
+    CreateGlossaryTerm create =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_softdel_reviewer"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term for soft-delete reviewer list test")
+            .withReviewers(List.of(reviewer.getEntityReference()));
+    GlossaryTerm term = createEntity(create);
+
+    client.users().delete(reviewer.getId().toString());
+
+    ListParams params =
+        new ListParams()
+            .setFields("reviewers")
+            .withLimit(100)
+            .addFilter("glossary", glossary.getId().toString());
+    ListResponse<GlossaryTerm> list = listEntities(params);
+    GlossaryTerm listed =
+        list.getData().stream()
+            .filter(t -> t.getId().equals(term.getId()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("GlossaryTerm not found in list"));
+    assertTrue(
+        listed.getReviewers() == null || listed.getReviewers().isEmpty(),
+        "Soft-deleted reviewer must not appear in list endpoint");
   }
 }

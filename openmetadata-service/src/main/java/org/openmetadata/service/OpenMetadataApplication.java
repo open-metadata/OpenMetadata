@@ -137,6 +137,7 @@ import org.openmetadata.service.resources.filters.ETagRequestFilter;
 import org.openmetadata.service.resources.filters.ETagResponseFilter;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.resources.system.DiagnosticsResource;
+import org.openmetadata.service.resources.system.IndexResource;
 import org.openmetadata.service.search.SearchIndexRetryWorker;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
@@ -154,6 +155,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ContainerRequestFilterManager;
 import org.openmetadata.service.security.CspNonceHandler;
 import org.openmetadata.service.security.DelegatingContainerRequestFilter;
+import org.openmetadata.service.security.ImpersonationCleanupFilter;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
@@ -363,6 +365,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     EventPubSub.start();
 
     ApplicationHandler.initialize(catalogConfig);
+    IndexResource.initialize(catalogConfig);
     registerResources(catalogConfig, environment, jdbi);
 
     // Register Event Handler
@@ -371,6 +374,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Register ETag Filters for optimistic concurrency control
     environment.jersey().register(ETagRequestFilter.class);
     environment.jersey().register(ETagResponseFilter.class);
+
+    // Clears per-request ThreadLocals (inheritanceParentCache, ReadBundleContext,
+    // RequestEntityCache, impersonation context) after every response so state
+    // cannot leak across requests that share a Jetty worker thread.
+    environment.jersey().register(ImpersonationCleanupFilter.class);
 
     // Register User Activity Tracking
     registerUserActivityTracking(environment);
@@ -626,6 +634,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerHealthCheck(Environment environment) {
+    // Liveness probe target — pure process-aliveness, intentionally NOT coupled to
+    // any downstream system. See OpenMetadataServerHealthCheck for the design rationale.
     environment
         .healthChecks()
         .register("OpenMetadataServerHealthCheck", new OpenMetadataServerHealthCheck());

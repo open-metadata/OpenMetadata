@@ -268,6 +268,16 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public void updateIndexSettings(String indexName, String settingsJson) {
+    indexManager.updateIndexSettings(indexName, settingsJson);
+  }
+
+  @Override
+  public void forceMerge(String indexName, int maxNumSegments) {
+    indexManager.forceMerge(indexName, maxNumSegments);
+  }
+
+  @Override
   public Set<String> getIndicesByAlias(String aliasName) {
     return indexManager.getIndicesByAlias(aliasName);
   }
@@ -426,6 +436,14 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public void invalidateLineageCache(String fqn) {
+    if (lineageGraphBuilder == null) {
+      return;
+    }
+    lineageGraphBuilder.invalidateLineageCacheForFqn(fqn);
+  }
+
+  @Override
   public Response searchEntityRelationship(
       String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
       throws IOException {
@@ -453,9 +471,10 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
+  public Response searchByField(
+      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
       throws IOException {
-    return searchManager.searchByField(fieldName, fieldValue, index, deleted);
+    return searchManager.searchByField(fieldName, fieldValue, index, deleted, from, size);
   }
 
   @Override
@@ -751,6 +770,10 @@ public class ElasticSearchClient implements SearchClient {
                         org.apache.hc.core5.util.TimeValue.ofSeconds(
                             esConfig.getKeepAliveTimeoutSecs()));
               }
+
+              httpAsyncClientBuilder.evictExpiredConnections();
+              httpAsyncClientBuilder.evictIdleConnections(
+                  org.apache.hc.core5.util.TimeValue.ofSeconds(30));
 
               httpAsyncClientBuilder.useSystemProperties();
             });

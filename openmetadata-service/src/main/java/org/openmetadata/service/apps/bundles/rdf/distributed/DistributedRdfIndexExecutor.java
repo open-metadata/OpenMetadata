@@ -128,6 +128,7 @@ public class DistributedRdfIndexExecutor {
 
   public void joinJob(RdfIndexJob job, EventPublisherJob jobConfiguration)
       throws InterruptedException {
+    RdfRepository.getInstance().ensureStorageReady();
     currentJob = job;
     coordinatorOwnedJob = false;
     stopped.set(false);

@@ -75,6 +75,14 @@ public interface RdfStorageInterface {
   boolean testConnection();
 
   /**
+   * Verify the underlying storage is reachable and the configured dataset/graph is accessible,
+   * attempting to create it if missing. Implementations must throw if the storage cannot be
+   * brought to a ready state so callers can surface a clear error instead of silently producing
+   * partial results.
+   */
+  default void ensureStorageReady() {}
+
+  /**
    * Get storage type identifier
    */
   String getStorageType();

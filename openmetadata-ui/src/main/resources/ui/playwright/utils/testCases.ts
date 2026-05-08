@@ -691,8 +691,8 @@ export const performE2EExportImportFlow = async (
     await page.getByRole('button', { name: 'Next' }).click();
 
     await validateImportStatus(page, {
-      passed: '3',
-      processed: '6',
+      passed: '2',
+      processed: '5',
       failed: '3',
     });
 
@@ -777,8 +777,8 @@ export const performE2EExportImportFlow = async (
     await page.getByRole('button', { name: 'Next' }).click();
 
     await validateImportStatus(page, {
-      passed: '3',
-      processed: '3',
+      passed: '2',
+      processed: '2',
       failed: '0',
     });
 

@@ -441,6 +441,16 @@ public class LineageRepository {
         buildEntityLineageData(fromEntity, toEntity, lineageDetails).withToEntity(null);
     Pair<String, String> to = new ImmutablePair<>("_id", toEntity.getId().toString());
     searchClient.updateLineage(destinationIndexName, to, lineageData);
+    invalidateLineageCacheForEdge(fromEntity, toEntity);
+  }
+
+  private void invalidateLineageCacheForEdge(EntityReference from, EntityReference to) {
+    if (from != null) {
+      searchClient.invalidateLineageCache(from.getFullyQualifiedName());
+    }
+    if (to != null) {
+      searchClient.invalidateLineageCache(to.getFullyQualifiedName());
+    }
   }
 
   public static RelationshipRef buildEntityRefLineage(EntityReference entityRef) {
@@ -1255,9 +1265,25 @@ public class LineageRepository {
     for (CollectionDAO.EntityRelationshipObject obj : relations) {
       LineageDetails lineageDetails = JsonUtils.readValue(obj.getJson(), LineageDetails.class);
       deleteLineageFromSearch(
-          new EntityReference().withId(UUID.fromString(obj.getFromId())),
-          new EntityReference().withId(UUID.fromString(obj.getToId())),
+          resolveRefForCacheInvalidation(obj.getFromEntity(), obj.getFromId()),
+          resolveRefForCacheInvalidation(obj.getToEntity(), obj.getToId()),
           lineageDetails);
+    }
+  }
+
+  private EntityReference resolveRefForCacheInvalidation(String entityType, String id) {
+    EntityReference ref = new EntityReference().withId(UUID.fromString(id));
+    if (nullOrEmpty(entityType)) {
+      return ref;
+    }
+    try {
+      EntityReference resolved =
+          Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.ALL);
+      return ref.withType(entityType).withFullyQualifiedName(resolved.getFullyQualifiedName());
+    } catch (Exception e) {
+      LOG.debug(
+          "Could not resolve FQN for {}:{} during lineage cache invalidation", entityType, id);
+      return ref.withType(entityType);
     }
   }
 
@@ -1270,6 +1296,7 @@ public class LineageRepository {
           new ImmutablePair<>("upstreamLineage.docUniqueId.keyword", uniqueValue),
           new ImmutablePair<>(
               REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
+      invalidateLineageCacheForEdge(fromEntity, toEntity);
     } catch (Exception e) {
       SearchIndexRetryQueue.enqueue(
           fromEntity.getId() != null ? fromEntity.getId().toString() : null,

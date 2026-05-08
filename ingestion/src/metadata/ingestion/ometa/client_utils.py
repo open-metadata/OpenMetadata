@@ -11,8 +11,9 @@
 """
 OMeta client create helpers
 """
+
 import traceback
-from typing import List
+from typing import List  # noqa: UP035
 
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -40,16 +41,18 @@ def create_ometa_client(
     try:
         metadata = OpenMetadata[T, C](metadata_config)
         metadata.health_check()
-        return metadata
+        return metadata  # noqa: TRY300
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.warning(f"Wild error initialising the OMeta Client {exc}")
-        raise ValueError(exc)
+        raise ValueError(exc)  # noqa: B904
 
 
 def get_chart_entities_from_id(
-    chart_ids: List[str], metadata: OpenMetadata, service_name: str
-) -> List[FullyQualifiedEntityName]:
+    chart_ids: list[str],
+    metadata: OpenMetadata,
+    service_name: str,
+) -> List[FullyQualifiedEntityName]:  # noqa: UP006
     """
     Method to get the chart entity using get_by_name api
     """
@@ -58,9 +61,7 @@ def get_chart_entities_from_id(
     for chart_id in chart_ids:
         chart: Chart = metadata.get_by_name(
             entity=Chart,
-            fqn=fqn.build(
-                metadata, Chart, chart_name=str(chart_id), service_name=service_name
-            ),
+            fqn=fqn.build(metadata, Chart, chart_name=str(chart_id), service_name=service_name),
         )
         if chart:
             entities.append(chart.fullyQualifiedName)

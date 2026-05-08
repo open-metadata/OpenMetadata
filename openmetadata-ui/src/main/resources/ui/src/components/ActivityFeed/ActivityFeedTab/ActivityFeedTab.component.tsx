@@ -22,9 +22,16 @@ import {
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
@@ -37,6 +44,7 @@ import { ReactComponent as TaskListIcon } from '../../../assets/svg/task-ic.svg'
 import { ReactComponent as MyTaskIcon } from '../../../assets/svg/task.svg';
 import {
   COMMON_ICON_STYLES,
+  DEFAULT_DOMAIN_VALUE,
   ICON_DIMENSION,
   ICON_DIMENSION_USER_PAGE,
 } from '../../../constants/constants';
@@ -45,23 +53,19 @@ import { observerOptions } from '../../../constants/Mydata.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
-import {
-  Thread,
-  ThreadTaskStatus,
-  ThreadType,
-} from '../../../generated/entity/feed/thread';
+import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
+import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
+import { getTaskCounts, Task, TaskStatusGroup } from '../../../rest/tasksAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  ENTITY_LINK_SEPARATOR,
-  getEntityUserLink,
-} from '../../../utils/EntityUtils';
+import { getEntityUserLink } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
@@ -69,6 +73,7 @@ import Loader from '../../common/Loader/Loader';
 import { TaskTabNew } from '../../Entity/Task/TaskTab/TaskTabNew.component';
 import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedListV1New from '../ActivityFeedList/ActivityFeedListV1New.component';
+import TaskListV1 from '../ActivityFeedList/TaskListV1.component';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-tab.less';
@@ -97,9 +102,11 @@ export const ActivityFeedTab = ({
   urlFqn = '',
 }: ActivityFeedTabProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { isAdminUser } = useAuth();
+  const activeDomain = useDomainStore((state) => state.activeDomain);
   const { fqn: hookFqn } = useFqn();
   const fqn = hookFqn || urlFqn || '';
   const [elementRef, isInView] = useElementInView({
@@ -111,9 +118,7 @@ export const ActivityFeedTab = ({
     tab: EntityTabs;
     subTab: ActivityFeedTabs;
   }>();
-  const [taskFilter, setTaskFilter] = useState<ThreadTaskStatus>(
-    ThreadTaskStatus.Open
-  );
+  const [taskFilter, setTaskFilter] = useState<TaskStatusGroup>('open');
   const [isFullWidth, setIsFullWidth] = useState<boolean>(false);
   const [countData, setCountData] = useState<{
     loading: boolean;
@@ -123,14 +128,26 @@ export const ActivityFeedTab = ({
     data: FEED_COUNT_INITIAL_DATA,
   });
   const [isFirstLoad, setIsFirstLoad] = useState<boolean>(true);
+  const processedRefreshKeyRef = useRef<number | undefined>(undefined);
 
   const {
     selectedThread,
     setActiveThread,
     entityThread,
     getFeedData,
+    getTaskData,
     loading,
     entityPaging,
+    tasks,
+    selectedTask,
+    setActiveTask,
+    activityEvents,
+    isActivityLoading,
+    fetchEntityActivity,
+    fetchUserActivity,
+    userId,
+    selectedActivity,
+    setActiveActivity,
   } = useActivityFeedProvider();
 
   const isUserEntity = useMemo(
@@ -139,12 +156,8 @@ export const ActivityFeedTab = ({
   );
 
   const entityTypeTask = useMemo(
-    () =>
-      selectedThread?.about?.split(ENTITY_LINK_SEPARATOR)?.[1] as Exclude<
-        EntityType,
-        EntityType.TABLE
-      >,
-    [selectedThread]
+    () => (selectedTask?.about?.type as EntityType) ?? EntityType.TABLE,
+    [selectedTask]
   );
 
   const isTaskActiveTab = useMemo(
@@ -174,6 +187,7 @@ export const ActivityFeedTab = ({
       { replace: true }
     );
     setActiveThread();
+    setActiveTask();
     setIsFullWidth(false);
   };
 
@@ -219,74 +233,165 @@ export const ActivityFeedTab = ({
 
   const fetchFeedsCount = async () => {
     setCountData((prev) => ({ ...prev, loading: true }));
-    if (isUserEntity) {
-      try {
+    try {
+      const domain =
+        activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
+      const isCurrentUserProfile =
+        isUserEntity &&
+        Boolean(fqn) &&
+        [currentUser?.name, currentUser?.fullyQualifiedName].includes(fqn);
+      const taskCountParams = isUserEntity
+        ? isCurrentUserProfile
+          ? { view: 'visible' as const, domain }
+          : { assignee: fqn, domain }
+        : { aboutEntity: fqn, view: 'entity' as const, domain };
+
+      const taskCounts = await getTaskCounts(taskCountParams);
+
+      if (isUserEntity) {
+        // Also get feed counts for conversations and mentions
         const res = await getFeedCount(getEntityUserLink(fqn));
         setCountData((prev) => ({
           ...prev,
           data: {
             conversationCount: res[0].conversationCount ?? 0,
-            totalTasksCount: res[0].totalTaskCount,
-            openTaskCount: res[0].openTaskCount ?? 0,
-            closedTaskCount: res[0].closedTaskCount ?? 0,
-            totalCount: res[0].conversationCount ?? 0 + res[0].totalTaskCount,
+            totalTasksCount: taskCounts.total,
+            openTaskCount: taskCounts.open ?? 0,
+            closedTaskCount: taskCounts.completed ?? 0,
+            totalCount:
+              (res[0].conversationCount ?? 0) + (taskCounts.total ?? 0),
             mentionCount: res[0].mentionCount ?? 0,
           },
         }));
-      } catch (err) {
-        showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
+      } else {
+        // For non-user entities, get conversation counts and combine with task counts
+        await getFeedCounts(entityType, fqn, domain, (feedData) => {
+          handleFeedCount({
+            ...feedData,
+            totalTasksCount: taskCounts.total,
+            openTaskCount: taskCounts.open ?? 0,
+            closedTaskCount: taskCounts.completed ?? 0,
+          });
+        });
       }
-    } else {
-      await getFeedCounts(entityType, fqn, handleFeedCount);
+    } catch (err) {
+      showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
     }
     setCountData((prev) => ({ ...prev, loading: false }));
   };
 
-  const getThreadType = useCallback((activeTab?: ActivityFeedTabs) => {
-    if (activeTab === ActivityFeedTabs.TASKS) {
-      return ThreadType.Task;
-    } else if (activeTab === ActivityFeedTabs.ALL) {
-      return ThreadType.Conversation;
-    } else {
-      return;
-    }
-  }, []);
-
-  const { feedFilter, threadType } = useMemo(() => {
+  const { feedFilter, feedThreadType } = useMemo(() => {
     const currentFilter =
       isAdminUser &&
-      currentUser?.name === fqn &&
+      [currentUser?.name, currentUser?.fullyQualifiedName].includes(fqn) &&
       activeTab !== ActivityFeedTabs.TASKS
         ? FeedFilter.ALL
         : FeedFilter.OWNER_OR_FOLLOWS;
     const filter = isUserEntity ? currentFilter : undefined;
 
     return {
-      threadType: getThreadType(activeTab),
+      feedThreadType:
+        activeTab === ActivityFeedTabs.ALL
+          ? ThreadType.Conversation
+          : undefined,
       feedFilter: activeTab === 'mentions' ? FeedFilter.MENTIONS : filter,
     };
-  }, [activeTab, isUserEntity, currentUser]);
+  }, [activeTab, isAdminUser, currentUser, fqn, isUserEntity]);
 
   const handleFeedFetchFromFeedList = useCallback(
     (after?: string) => {
       setIsFirstLoad(false);
-      getFeedData(feedFilter, after, threadType, entityType, fqn, taskFilter);
+      if (isTaskActiveTab) {
+        getTaskData(feedFilter, after, entityType, fqn, taskFilter);
+      } else {
+        getFeedData(
+          feedFilter,
+          after,
+          feedThreadType,
+          entityType,
+          fqn,
+          taskFilter
+        );
+      }
     },
-    [threadType, feedFilter, entityType, fqn, taskFilter, getFeedData]
+    [
+      isTaskActiveTab,
+      feedFilter,
+      entityType,
+      fqn,
+      taskFilter,
+      getFeedData,
+      getTaskData,
+      feedThreadType,
+    ]
   );
 
   useEffect(() => {
     if (fqn) {
-      getFeedData(
-        feedFilter,
-        undefined,
-        threadType,
-        entityType,
-        fqn,
-        taskFilter
-      );
+      if (isTaskActiveTab) {
+        getTaskData(feedFilter, undefined, entityType, fqn, taskFilter);
+      } else {
+        getFeedData(
+          feedFilter,
+          undefined,
+          feedThreadType,
+          entityType,
+          fqn,
+          taskFilter
+        );
+      }
     }
-  }, [feedFilter, threadType, fqn]);
+  }, [
+    feedFilter,
+    feedThreadType,
+    fqn,
+    activeDomain,
+    entityType,
+    taskFilter,
+    getFeedData,
+    getTaskData,
+    isTaskActiveTab,
+  ]);
+
+  useEffect(() => {
+    if (fqn && entityType && !isUserEntity) {
+      fetchEntityActivity(entityType, fqn, { days: 30, limit: 50 });
+    } else if (isUserEntity && userId) {
+      fetchUserActivity(userId, { days: 30, limit: 50 });
+    }
+  }, [
+    fqn,
+    entityType,
+    isUserEntity,
+    userId,
+    fetchEntityActivity,
+    fetchUserActivity,
+  ]);
+
+  useEffect(() => {
+    const refreshKey = (location.state as { tasksRefreshKey?: number } | null)
+      ?.tasksRefreshKey;
+    if (
+      refreshKey !== undefined &&
+      refreshKey !== processedRefreshKeyRef.current &&
+      fqn &&
+      isTaskActiveTab
+    ) {
+      processedRefreshKeyRef.current = refreshKey;
+      getTaskData(feedFilter, undefined, entityType, fqn, taskFilter);
+      navigate('.', { replace: true, state: {} });
+    }
+  }, [
+    entityType,
+    feedFilter,
+    fqn,
+    getTaskData,
+    isTaskActiveTab,
+    location.key,
+    location.state,
+    navigate,
+    taskFilter,
+  ]);
 
   useEffect(() => {
     if (feedCount) {
@@ -294,7 +399,23 @@ export const ActivityFeedTab = ({
     } else {
       fetchFeedsCount();
     }
-  }, [feedCount]);
+  }, [feedCount, activeDomain]);
+
+  useEffect(() => {
+    if (activityEvents && activityEvents.length > 0) {
+      setCountData((prev) => {
+        const activityCount = activityEvents.length;
+        const newData = {
+          ...prev.data,
+          conversationCount: activityCount,
+          totalCount: activityCount + (prev.data.totalTasksCount ?? 0),
+        };
+        onUpdateFeedCount?.(newData);
+
+        return { ...prev, data: newData };
+      });
+    }
+  }, [activityEvents, onUpdateFeedCount]);
 
   const handleFeedClick = useCallback(
     (feed: Thread) => {
@@ -308,6 +429,28 @@ export const ActivityFeedTab = ({
     [setActiveThread, isTaskActiveTab, isMentionTabSelected, selectedThread]
   );
 
+  const handleTaskClick = useCallback(
+    (task: Task) => {
+      if (!task && isTaskActiveTab) {
+        setIsFullWidth(false);
+      }
+      if (selectedTask?.id !== task?.id) {
+        setActiveTask(task);
+      }
+    },
+    [setActiveTask, isTaskActiveTab, selectedTask]
+  );
+
+  const handleActivityClick = useCallback(
+    (activity: ActivityEvent) => {
+      if (selectedActivity?.id !== activity?.id) {
+        setActiveActivity(activity);
+        setActiveThread(undefined);
+      }
+    },
+    [setActiveActivity, setActiveThread, selectedActivity]
+  );
+
   useEffect(() => {
     if (fqn && isInView && entityPaging.after && !loading) {
       handleFeedFetchFromFeedList(entityPaging.after);
@@ -319,9 +462,9 @@ export const ActivityFeedTab = ({
     [loading]
   );
 
-  const handleUpdateTaskFilter = (filter: ThreadTaskStatus) => {
+  const handleUpdateTaskFilter = (filter: TaskStatusGroup) => {
     setTaskFilter(filter);
-    getFeedData(feedFilter, undefined, threadType, entityType, fqn, filter);
+    getTaskData(feedFilter, undefined, entityType, fqn, filter);
   };
 
   const handleAfterTaskClose = () => {
@@ -331,16 +474,16 @@ export const ActivityFeedTab = ({
   const taskFilterOptions = useMemo(
     () => [
       {
-        key: ThreadTaskStatus.Open,
+        key: 'open',
         label: (
           <div
             className={classNames(
               'flex items-center justify-between px-4 py-2 gap-2',
-              { active: taskFilter === ThreadTaskStatus.Open }
+              { active: taskFilter === 'open' }
             )}
             data-testid="open-tasks">
             <div className="flex items-center space-x-2">
-              {taskFilter === ThreadTaskStatus.Open ? (
+              {taskFilter === 'open' ? (
                 <TaskOpenIcon
                   className="m-r-xs"
                   {...ICON_DIMENSION_USER_PAGE}
@@ -350,14 +493,14 @@ export const ActivityFeedTab = ({
               )}
               <span
                 className={classNames('task-tab-filter-item', {
-                  selected: taskFilter === ThreadTaskStatus.Open,
+                  selected: taskFilter === 'open',
                 })}>
                 {t('label.open')}
               </span>
             </div>
             <span
               className={classNames('task-count-container d-flex flex-center', {
-                active: taskFilter === ThreadTaskStatus.Open,
+                active: taskFilter === 'open',
               })}>
               <span className="task-count-text">
                 {countData?.data?.openTaskCount}
@@ -366,21 +509,21 @@ export const ActivityFeedTab = ({
           </div>
         ),
         onClick: () => {
-          handleUpdateTaskFilter(ThreadTaskStatus.Open);
-          setActiveThread();
+          handleUpdateTaskFilter('open');
+          setActiveTask();
         },
       },
       {
-        key: ThreadTaskStatus.Closed,
+        key: 'closed',
         label: (
           <div
             className={classNames(
               'flex items-center justify-between px-4 py-2 gap-2',
-              { active: taskFilter === ThreadTaskStatus.Closed }
+              { active: taskFilter === 'closed' }
             )}
             data-testid="closed-tasks">
             <div className="flex items-center space-x-2">
-              {taskFilter === ThreadTaskStatus.Closed ? (
+              {taskFilter === 'closed' ? (
                 <TaskCloseIconBlue
                   className="m-r-xs"
                   {...ICON_DIMENSION_USER_PAGE}
@@ -393,14 +536,14 @@ export const ActivityFeedTab = ({
               )}
               <span
                 className={classNames('task-tab-filter-item', {
-                  selected: taskFilter === ThreadTaskStatus.Closed,
+                  selected: taskFilter === 'closed',
                 })}>
                 {t('label.closed')}
               </span>
             </div>
             <span
               className={classNames('task-count-container d-flex flex-center', {
-                active: taskFilter === ThreadTaskStatus.Closed,
+                active: taskFilter === 'closed',
               })}>
               <span className="task-count-text">
                 {countData?.data?.closedTaskCount}
@@ -409,12 +552,12 @@ export const ActivityFeedTab = ({
           </div>
         ),
         onClick: () => {
-          handleUpdateTaskFilter(ThreadTaskStatus.Closed);
-          setActiveThread();
+          handleUpdateTaskFilter('closed');
+          setActiveTask();
         },
       },
     ],
-    [taskFilter, handleUpdateTaskFilter, setActiveThread, countData]
+    [taskFilter, handleUpdateTaskFilter, setActiveTask, countData]
   );
 
   const TaskToggle = useCallback(() => {
@@ -451,11 +594,38 @@ export const ActivityFeedTab = ({
     setIsFullWidth(isFullWidth);
   };
 
-  const getRightPanelContent = (selectedThread: Thread) => {
-    if (
-      activeTab !== ActivityFeedTabs.TASKS &&
-      selectedThread?.type !== ThreadType.Task
-    ) {
+  const getRightPanelContent = () => {
+    if ((isTaskActiveTab || isMentionTabSelected) && selectedTask) {
+      return (
+        <div id="task-panel">
+          {entityType === EntityType.TABLE ? (
+            <TaskTabNew
+              columns={columns}
+              entityType={EntityType.TABLE}
+              handlePanelResize={handlePanelResize}
+              isForFeedTab={isForFeedTab}
+              owners={owners}
+              task={selectedTask}
+              onAfterClose={handleAfterTaskClose}
+              onUpdateEntityDetails={onUpdateEntityDetails}
+            />
+          ) : (
+            <TaskTabNew
+              entityType={isUserEntity ? entityTypeTask : entityType}
+              handlePanelResize={handlePanelResize}
+              hasGlossaryReviewer={hasGlossaryReviewer}
+              isForFeedTab={isForFeedTab}
+              owners={owners}
+              task={selectedTask}
+              onAfterClose={handleAfterTaskClose}
+              onUpdateEntityDetails={onUpdateEntityDetails}
+            />
+          )}
+        </div>
+      );
+    }
+
+    if (selectedThread) {
       return (
         <div id="feed-panel">
           <FeedPanelBodyV1New
@@ -477,33 +647,29 @@ export const ActivityFeedTab = ({
       );
     }
 
-    return (
-      <div id="task-panel">
-        {entityType === EntityType.TABLE ? (
-          <TaskTabNew
-            columns={columns}
-            entityType={EntityType.TABLE}
+    if (selectedActivity) {
+      return (
+        <div id="activity-panel">
+          <FeedPanelBodyV1New
+            isOpenInDrawer
+            showActivityFeedEditor
+            showThread
+            activity={selectedActivity}
+            componentsVisibility={{
+              showThreadIcon: true,
+              showRepliesContainer: true,
+            }}
             handlePanelResize={handlePanelResize}
-            isForFeedTab={isForFeedTab}
-            owners={owners}
-            taskThread={selectedThread}
+            hidePopover={false}
+            isFullWidth={isFullWidth}
             onAfterClose={handleAfterTaskClose}
             onUpdateEntityDetails={onUpdateEntityDetails}
           />
-        ) : (
-          <TaskTabNew
-            entityType={isUserEntity ? entityTypeTask : entityType}
-            handlePanelResize={handlePanelResize}
-            hasGlossaryReviewer={hasGlossaryReviewer}
-            isForFeedTab={isForFeedTab}
-            owners={owners}
-            taskThread={selectedThread}
-            onAfterClose={handleAfterTaskClose}
-            onUpdateEntityDetails={onUpdateEntityDetails}
-          />
-        )}
-      </div>
-    );
+        </div>
+      );
+    }
+
+    return null;
   };
 
   const getRightPanelPlaceholder = useMemo(() => {
@@ -552,7 +718,7 @@ export const ActivityFeedTab = ({
                   <span>
                     {!isUserEntity &&
                       getCountBadge(
-                        countData?.data?.conversationCount,
+                        activityEvents?.length ?? 0,
                         '',
                         activeTab === ActivityFeedTabs.ALL
                       )}
@@ -606,7 +772,7 @@ export const ActivityFeedTab = ({
               disabled={isMentionTabSelected}
               menu={{
                 items: taskFilterOptions,
-                selectedKeys: [...taskFilter],
+                selectedKeys: [taskFilter],
               }}
               overlayClassName="task-tab-custom-dropdown"
               trigger={['click']}>
@@ -615,38 +781,70 @@ export const ActivityFeedTab = ({
                   'cursor-pointer': !isMentionTabSelected,
                   disabled: isMentionTabSelected,
                 })}
-                data-testid="user-profile-page-task-filter-icon"
-                icon={<FilterIcon height={16} />}
-              />
+                data-testid="user-profile-page-task-filter-icon">
+                <Space align="center" size={4}>
+                  <FilterIcon height={16} style={{ verticalAlign: 'middle' }} />
+                  <span
+                    className="text-xs font-medium"
+                    style={{ lineHeight: 1 }}>
+                    {taskFilter === 'open'
+                      ? `${t('label.open')} (${
+                          countData?.data?.openTaskCount ?? 0
+                        })`
+                      : `${t('label.closed')} (${
+                          countData?.data?.closedTaskCount ?? 0
+                        })`}
+                  </span>
+                </Space>
+              </Button>
             </Dropdown>
             {TaskToggle()}
           </div>
         )}
-        <ActivityFeedListV1New
-          hidePopover
-          activeFeedId={selectedThread?.id}
-          componentsVisibility={componentsVisibility}
-          emptyPlaceholderText={placeholderText}
-          feedList={entityThread}
-          handlePanelResize={handlePanelResize}
-          isForFeedTab={false}
-          isFullWidth={isFullWidth}
-          isLoading={isFirstLoad && loading}
-          selectedThread={selectedThread}
-          showThread={false}
-          onAfterClose={handleAfterTaskClose}
-          onFeedClick={handleFeedClick}
-        />
-        {!isFirstLoad && loader}
-        {!isEmpty(entityThread) && !loading && (
-          <div
-            className="w-full"
-            data-testid="observer-element"
-            id="observer-element"
-            ref={elementRef as RefObject<HTMLDivElement>}
-            style={{ height: '2px' }}
+        {isTaskActiveTab || isMentionTabSelected ? (
+          <TaskListV1
+            activeFeedId={selectedTask?.id}
+            emptyPlaceholderText={placeholderText}
+            handlePanelResize={handlePanelResize}
+            isFullWidth={isFullWidth}
+            isLoading={isFirstLoad && loading}
+            selectedTask={selectedTask}
+            taskList={tasks}
+            onAfterClose={handleAfterTaskClose}
+            onTaskClick={handleTaskClick}
+          />
+        ) : (
+          <ActivityFeedListV1New
+            hidePopover
+            activeFeedId={selectedThread?.id}
+            activityList={activityEvents}
+            componentsVisibility={componentsVisibility}
+            emptyPlaceholderText={placeholderText}
+            feedList={entityThread}
+            handlePanelResize={handlePanelResize}
+            isForFeedTab={false}
+            isFullWidth={isFullWidth}
+            isLoading={(isFirstLoad && loading) || (isActivityLoading ?? false)}
+            selectedThread={selectedThread}
+            showThread={false}
+            onActivityClick={handleActivityClick}
+            onAfterClose={handleAfterTaskClose}
+            onFeedClick={handleFeedClick}
           />
         )}
+        {!isFirstLoad && loader}
+        {!isEmpty(
+          isTaskActiveTab || isMentionTabSelected ? tasks : entityThread
+        ) &&
+          !loading && (
+            <div
+              className="w-full"
+              data-testid="observer-element"
+              id="observer-element"
+              ref={elementRef as RefObject<HTMLDivElement>}
+              style={{ height: '2px' }}
+            />
+          )}
       </div>
 
       {layoutType === ActivityFeedLayoutType.THREE_PANEL && (
@@ -660,8 +858,8 @@ export const ActivityFeedTab = ({
             layoutType === ActivityFeedLayoutType.THREE_PANEL,
         })}>
         {loader}
-        {selectedThread && !loading
-          ? getRightPanelContent(selectedThread)
+        {(selectedThread || selectedTask || selectedActivity) && !loading
+          ? getRightPanelContent()
           : !loading && (
               <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">
                 <ErrorPlaceHolderNew

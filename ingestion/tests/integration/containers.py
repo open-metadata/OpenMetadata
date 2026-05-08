@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Common containers for integration tests"""
+
 from dataclasses import asdict, dataclass
 from typing import Optional
 
@@ -30,7 +31,7 @@ class MySqlContainerConfigs:
     dbname: str = "db"
     port: int = 3306
     container_name: str = "test-db"
-    exposed_port: Optional[int] = None
+    exposed_port: Optional[int] = None  # noqa: UP045
 
     def with_exposed_port(self, container):
         self.exposed_port = container.get_exposed_port(self.port)
@@ -43,8 +44,8 @@ class MinioContainerConfigs:
     access_key: str = "minio"
     secret_key: str = "password"
     port: int = 9000
-    container_name: Optional[str] = None
-    exposed_port: Optional[int] = None
+    container_name: Optional[str] = None  # noqa: UP045
+    exposed_port: Optional[int] = None  # noqa: UP045
 
     def with_exposed_port(self, container):
         self.exposed_port = container.get_exposed_port(self.port)
@@ -61,11 +62,7 @@ def get_docker_network(name: str):
 
 def get_mysql_container(mysql_config: MySqlContainerConfigs):
     container = MySqlContainer(
-        **{
-            k: v
-            for k, v in asdict(mysql_config).items()
-            if k not in ["exposed_port", "container_name"]
-        }
+        **{k: v for k, v in asdict(mysql_config).items() if k not in ["exposed_port", "container_name"]}
     )
     container.with_name(mysql_config.container_name)
 
@@ -74,11 +71,7 @@ def get_mysql_container(mysql_config: MySqlContainerConfigs):
 
 def get_minio_container(minio_config: MinioContainerConfigs):
     container = MinioContainer(
-        **{
-            k: v
-            for k, v in asdict(minio_config).items()
-            if k not in ["exposed_port", "container_name"]
-        }
+        **{k: v for k, v in asdict(minio_config).items() if k not in ["exposed_port", "container_name"]}
     )
     container.with_name(minio_config.container_name)
 

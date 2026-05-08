@@ -30,9 +30,7 @@ class OMetaTopicMixin:
 
     client: REST
 
-    def ingest_topic_sample_data(
-        self, topic: Topic, sample_data: TopicSampleData
-    ) -> TopicSampleData:
+    def ingest_topic_sample_data(self, topic: Topic, sample_data: TopicSampleData) -> TopicSampleData:
         """
         PUT sample data for a topic
 

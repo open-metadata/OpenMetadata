@@ -32,6 +32,15 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
   }
 
   @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(TaggableIndex.super.getRequiredReindexFields());
+    fields.add("testSuite");
+    fields.add("testSuites");
+    fields.add("testDefinition");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
+  @Override
   public void removeNonIndexableFields(Map<String, Object> esDoc) {
     TaggableIndex.super.removeNonIndexableFields(esDoc);
     List<Map<String, Object>> testSuites = (List<Map<String, Object>>) esDoc.get("testSuites");

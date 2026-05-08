@@ -15,7 +15,6 @@ import { Alert, Badge, Button, Dropdown, Tooltip } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import i18next from 'i18next';
 import { startCase, upperCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -58,7 +57,8 @@ import {
   prepareFeedLink,
 } from '../../../utils/FeedUtils';
 import { languageSelectOptions } from '../../../utils/i18next/i18nextUtil';
-import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
+import i18n from '../../../utils/i18next/LocalUtil';
+import localUtilClassBase from '../../../utils/i18next/LocalUtilClassBase';
 import { getHelpDropdownItems } from '../../../utils/NavbarUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -90,7 +90,7 @@ const MarketplaceNavBar = () => {
   const [activeTab, setActiveTab] = useState<string>('Task');
   const { appVersion: version, setAppVersion } = useApplicationStore();
   const {
-    preferences: { isSidebarCollapsed, language },
+    preferences: { isSidebarCollapsed },
     setPreference,
   } = useCurrentUserPreferences();
 
@@ -363,11 +363,15 @@ const MarketplaceNavBar = () => {
     fetchOMVersion();
   }, []);
 
-  const handleLanguageChange = useCallback(({ key }: MenuInfo) => {
-    i18next.changeLanguage(key);
-    setPreference({ language: key as SupportedLocales });
+  const handleLanguageChange = useCallback(async ({ key }: MenuInfo) => {
+    await localUtilClassBase.loadLocales(key);
+    await i18n.changeLanguage(key);
     navigate(0);
   }, []);
+
+  const currentLanguage = i18n.language
+    ? upperCase(i18n.language.split('-')[0])
+    : '';
 
   return (
     <>
@@ -420,8 +424,7 @@ const MarketplaceNavBar = () => {
                 className="flex-center gap-2 p-x-xs font-medium"
                 data-testid="language-selector-button"
                 type="text">
-                {language ? upperCase(language.split('-')[0]) : ''}{' '}
-                <DropDownIcon width={12} />
+                {currentLanguage} <DropDownIcon width={12} />
               </Button>
             </Dropdown>
             <Dropdown

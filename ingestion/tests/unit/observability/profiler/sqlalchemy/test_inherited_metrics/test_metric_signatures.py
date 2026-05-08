@@ -15,7 +15,7 @@ parent's _compute_sqa_fn. A signature mismatch would cause a runtime TypeError
 when the parent's fn() calls _compute_sqa_fn with arguments the child doesn't expect.
 """
 
-from typing import List, Tuple, Type
+from typing import List, Tuple, Type  # noqa: UP035
 from unittest.mock import MagicMock
 
 import pytest
@@ -42,7 +42,7 @@ from metadata.profiler.source.database.single_store.metrics.window.third_quartil
     SingleStoreThirdQuartile,
 )
 
-CHILD_PARENT_PAIRS: List[Tuple[Type, Type]] = [
+CHILD_PARENT_PAIRS: List[Tuple[Type, Type]] = [  # noqa: UP006
     (MariaDBFirstQuartile, FirstQuartile),
     (MariaDBMedian, Median),
     (MariaDBThirdQuartile, ThirdQuartile),

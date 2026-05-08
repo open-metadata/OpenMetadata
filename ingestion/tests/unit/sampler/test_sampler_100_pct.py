@@ -15,14 +15,15 @@ Verifies that the get_dataset() short-circuit at 100% correctly
 respects the randomizedSample flag. Only an explicit True enables
 randomization; None and False both skip randomization.
 """
+
 from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.samplingConfig import SampleConfigType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.models import (
     ProfileSampleConfig,
-    ProfileSampleConfigType,
     SampleConfig,
-    StaticSamplingConfig,
 )
 
 
@@ -40,7 +41,7 @@ class TestSQASampler100Pct:
             sampler = SQASampler()
             sampler.sample_config = SampleConfig(
                 profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    sampleConfigType=SampleConfigType.STATIC,
                     config=StaticSamplingConfig(
                         profileSample=100,
                         profileSampleType=ProfileSampleType.PERCENTAGE,
@@ -51,9 +52,7 @@ class TestSQASampler100Pct:
             sampler.sample_query = None
             sampler.partition_details = None
             sampler._table = MagicMock(name="raw_table")
-            sampler.get_sample_query = MagicMock(
-                name="get_sample_query", return_value=MagicMock(name="sample_cte")
-            )
+            sampler.get_sample_query = MagicMock(name="get_sample_query", return_value=MagicMock(name="sample_cte"))
             return sampler
 
     def test_100_pct_randomized_true_delegates_to_sample_query(self):
@@ -92,7 +91,7 @@ class TestDatalakeSampler100Pct:
             sampler = DatalakeSampler()
             sampler.sample_config = SampleConfig(
                 profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    sampleConfigType=SampleConfigType.STATIC,
                     config=StaticSamplingConfig(
                         profileSample=100,
                         profileSampleType=ProfileSampleType.PERCENTAGE,

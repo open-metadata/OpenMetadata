@@ -56,14 +56,15 @@ export const createAnnouncementViaApi = async (
   message: string,
   description: string
 ) => {
-  const startTime = Math.floor(Date.now() / 1000);
-  const endTime = startTime + 86400;
-  const response = await apiContext.post('/api/v1/feed', {
+  const startTime = Date.now();
+  const endTime = startTime + 86400 * 1000;
+  const response = await apiContext.post('/api/v1/announcements', {
     data: {
-      message,
-      about: entityLink,
-      type: 'Announcement',
-      announcementDetails: { description, startTime, endTime },
+      displayName: message,
+      description,
+      entityLink,
+      startTime,
+      endTime,
     },
   });
   expect(response.ok()).toBeTruthy();
@@ -73,7 +74,7 @@ export const createAnnouncementViaApi = async (
 
 export const deleteAnnouncementViaApi = async (
   apiContext: APIRequestContext,
-  threadId: string
+  announcementId: string
 ) => {
-  await apiContext.delete(`/api/v1/feed/${threadId}`);
+  await apiContext.delete(`/api/v1/announcements/${announcementId}`);
 };

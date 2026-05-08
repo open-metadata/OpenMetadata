@@ -53,6 +53,8 @@ import { Tag } from '../../../../generated/entity/classification/tag';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
+import { Response as BulkResponse } from '../../../../generated/type/bulkOperationResult';
+import { EntityReference } from '../../../../generated/type/entityReference';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { Aggregations } from '../../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../../pages/ExplorePage/ExplorePage.interface';
@@ -74,6 +76,7 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
 import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
+import { getDomainDryRunImpacts } from '../../../../utils/Domain/DomainDryRunUtils';
 import {
   getEntityName,
   getEntityReferenceFromEntity,
@@ -97,6 +100,7 @@ import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/M
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
+import DomainAssetDryRunModal from '../../../DataAssets/DomainAssetDryRunModal/DomainAssetDryRunModal.component';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../../Explore/ExploreQuickFilters';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
@@ -189,6 +193,10 @@ const AssetsTabs = forwardRef(
     const [confirmationBodyText, setConfirmationBodyText] =
       useState<ReactNode>('');
     const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+    const [removeDryRunWarnings, setRemoveDryRunWarnings] =
+      useState<BulkResponse[]>();
+    const [pendingRemoveEntities, setPendingRemoveEntities] =
+      useState<EntityReference[]>();
 
     const entityTypeString = getEntityTypeString(type);
 
@@ -515,6 +523,7 @@ const AssetsTabs = forwardRef(
         }
 
         setAssetRemoving(true);
+        let dryRunImpactDetected = false;
 
         try {
           const entities = [...(assetsData?.values() ?? [])].map((item) => {
@@ -523,6 +532,22 @@ const AssetsTabs = forwardRef(
               (item as EntityDetailUnion).entityType
             );
           });
+
+          if (type === AssetsOfEntity.DOMAIN) {
+            const dryRunResult = await removeAssetsFromDomain(
+              activeEntity.fullyQualifiedName ?? '',
+              entities,
+              { dryRun: true }
+            );
+            const impacts = getDomainDryRunImpacts(dryRunResult);
+            if (impacts.length > 0) {
+              setRemoveDryRunWarnings(impacts);
+              setPendingRemoveEntities(entities);
+              dryRunImpactDetected = true;
+
+              return;
+            }
+          }
 
           switch (type) {
             case AssetsOfEntity.DATA_PRODUCT:
@@ -576,17 +601,52 @@ const AssetsTabs = forwardRef(
           showErrorToast(err as AxiosError);
         } finally {
           setShowDeleteModal(false);
-          onRemoveAsset?.();
+          setShowBulkDeleteModal(false);
           setAssetRemoving(false);
-          hideNotification();
-          setSelectedItems(new Map()); // Reset selected items
-          if (type === AssetsOfEntity.DATA_PRODUCT) {
-            fetchOutputPorts();
+          if (!dryRunImpactDetected) {
+            onRemoveAsset?.();
+            hideNotification();
+            setSelectedItems(new Map()); // Reset selected items
+            if (type === AssetsOfEntity.DATA_PRODUCT) {
+              fetchOutputPorts();
+            }
           }
         }
       },
       [type, activeEntity, entityFqn, fetchOutputPorts]
     );
+
+    const confirmDomainAssetRemove = useCallback(async () => {
+      if (!activeEntity || !pendingRemoveEntities) {
+        return;
+      }
+      setAssetRemoving(true);
+      try {
+        await removeAssetsFromDomain(
+          activeEntity.fullyQualifiedName ?? '',
+          pendingRemoveEntities
+        );
+        setRemoveDryRunWarnings(undefined);
+        setPendingRemoveEntities(undefined);
+        await new Promise((resolve) => {
+          setTimeout(() => {
+            resolve('');
+          }, ES_UPDATE_DELAY);
+        });
+        onRemoveAsset?.();
+        hideNotification();
+        setSelectedItems(new Map());
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setAssetRemoving(false);
+      }
+    }, [activeEntity, pendingRemoveEntities, onRemoveAsset]);
+
+    const cancelDomainAssetRemove = useCallback(() => {
+      setRemoveDryRunWarnings(undefined);
+      setPendingRemoveEntities(undefined);
+    }, []);
 
     const deleteSelectedItems = useCallback(() => {
       if (selectedItems) {
@@ -1061,6 +1121,17 @@ const AssetsTabs = forwardRef(
             visible={showBulkDeleteModal}
             onCancel={() => setShowBulkDeleteModal(false)}
             onConfirm={confirmBulkDelete}
+          />
+
+          <DomainAssetDryRunModal
+            confirmText={t('label.remove-anyway')}
+            header={t('label.confirm-asset-remove')}
+            isLoading={assetRemoving}
+            visible={removeDryRunWarnings !== undefined}
+            warnings={removeDryRunWarnings ?? []}
+            warningsTestId="remove-dry-run-warnings"
+            onCancel={cancelDomainAssetRemove}
+            onConfirm={confirmDomainAssetRemove}
           />
         </div>
         {!isLoading && permissions?.EditAll && totalAssetCount > 0 && (

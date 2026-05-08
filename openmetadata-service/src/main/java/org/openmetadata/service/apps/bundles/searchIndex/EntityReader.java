@@ -3,6 +3,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 import static org.openmetadata.service.Entity.QUERY_COST_RECORD;
 import static org.openmetadata.service.Entity.TEST_CASE_RESOLUTION_STATUS;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSearchIndexFields;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -236,6 +237,25 @@ public class EntityReader implements AutoCloseable {
       KeysetBatchReader batchReader,
       Phaser phaser,
       BatchCallback callback) {
+    // Bypass the Redis-backed entity cache on the reader thread for the same reasons as the
+    // distributed PartitionWorker: bulk reindex never re-reads entities, every relationship
+    // lookup pays a cache round-trip we don't need, and an unhealthy Redis turns each lookup
+    // into a 300ms timeout. See {@link org.openmetadata.service.cache.EntityCacheBypass}.
+    try (org.openmetadata.service.cache.EntityCacheBypass.Handle ignored =
+        org.openmetadata.service.cache.EntityCacheBypass.skip()) {
+      readKeysetBatchesInternal(
+          entityType, recordLimit, batchSize, startCursor, batchReader, phaser, callback);
+    }
+  }
+
+  private void readKeysetBatchesInternal(
+      String entityType,
+      int recordLimit,
+      int batchSize,
+      String startCursor,
+      KeysetBatchReader batchReader,
+      Phaser phaser,
+      BatchCallback callback) {
     try {
       String keysetCursor = startCursor;
       int processed = 0;
@@ -323,10 +343,8 @@ public class EntityReader implements AutoCloseable {
   }
 
   static List<String> getSearchIndexFields(String entityType) {
-    if (TIME_SERIES_ENTITIES.contains(entityType)) {
-      return List.of();
-    }
-    return List.of("*");
+    return org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSearchIndexFields(
+        entityType);
   }
 
   static int calculateNumberOfReaders(int totalEntityRecords, int batchSize) {

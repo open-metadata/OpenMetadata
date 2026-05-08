@@ -11,11 +11,12 @@
 """
 Mixin class with common Life Cycle logic.
 """
+
 import traceback
 from collections import defaultdict
 from datetime import datetime
 from functools import lru_cache
-from typing import Dict, Iterable, List, Optional, Type
+from typing import Dict, Iterable, List, Optional, Type  # noqa: UP035
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import text
@@ -50,7 +51,7 @@ class LifeCycleQueryByTable(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     table_name: str = Field(..., alias="TABLE_NAME")
-    created_at: Optional[datetime] = Field(None, alias="CREATED_AT")
+    created_at: Optional[datetime] = Field(None, alias="CREATED_AT")  # noqa: UP045
 
 
 class LifeCycleQueryMixin:
@@ -64,12 +65,10 @@ class LifeCycleQueryMixin:
     engine: Engine
     metadata: OpenMetadata
 
-    @lru_cache(
+    @lru_cache(  # noqa: B019
         maxsize=1
     )  # Limit the caching to 1 since we will maintain 1 dictionary for each db and schema
-    def life_cycle_query_dict(
-        self, query: str
-    ) -> Dict[str, List[LifeCycleQueryByTable]]:
+    def life_cycle_query_dict(self, query: str) -> Dict[str, List[LifeCycleQueryByTable]]:  # noqa: UP006
         """
         Cache the queries ran for the life cycle.
         We will run this for each different schema and db name.
@@ -81,9 +80,7 @@ class LifeCycleQueryMixin:
 
         for row in results:
             try:
-                life_cycle_by_table = LifeCycleQueryByTable.model_validate(
-                    row._asdict()
-                )
+                life_cycle_by_table = LifeCycleQueryByTable.model_validate(row._asdict())
                 queries_dict[life_cycle_by_table.table_name] = life_cycle_by_table
             except Exception as exc:
                 self.status.failed(
@@ -96,9 +93,7 @@ class LifeCycleQueryMixin:
 
         return queries_dict
 
-    def get_life_cycle_data(
-        self, entity: Type[Entity], entity_name: str, entity_fqn: str, query: str
-    ):
+    def get_life_cycle_data(self, entity: Type[Entity], entity_name: str, entity_fqn: str, query: str):  # noqa: UP006
         """
         Get the life cycle data
         """
@@ -106,23 +101,13 @@ class LifeCycleQueryMixin:
             life_cycle_data = self.life_cycle_query_dict(query=query).get(entity_name)
             if life_cycle_data:
                 if life_cycle_data.created_at:
-                    timestamp_value = datetime_to_timestamp(
-                        life_cycle_data.created_at, milliseconds=True
-                    )
+                    timestamp_value = datetime_to_timestamp(life_cycle_data.created_at, milliseconds=True)
                 else:
-                    timestamp_value = datetime_to_timestamp(
-                        datetime.min, milliseconds=True
-                    )  # Using minimum date
+                    timestamp_value = datetime_to_timestamp(datetime.min, milliseconds=True)  # Using minimum date
 
-                life_cycle = LifeCycle(
-                    created=AccessDetails(timestamp=Timestamp(timestamp_value))
-                )
+                life_cycle = LifeCycle(created=AccessDetails(timestamp=Timestamp(timestamp_value)))
 
-                yield Either(
-                    right=OMetaLifeCycleData(
-                        entity=entity, entity_fqn=entity_fqn, life_cycle=life_cycle
-                    )
-                )
+                yield Either(right=OMetaLifeCycleData(entity=entity, entity_fqn=entity_fqn, life_cycle=life_cycle))
         except Exception as exc:
             yield Either(
                 left=StackTraceError(

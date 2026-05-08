@@ -54,6 +54,7 @@ import org.openmetadata.sdk.network.RequestOptions;
 public class FeedResourceIT {
 
   private static final String ADMIN_USER = "admin";
+  private static final String TEST_USER = "test";
 
   private static final ObjectMapper MAPPER =
       new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -427,17 +428,15 @@ public class FeedResourceIT {
             .withType(ThreadType.Announcement)
             .withAnnouncementDetails(announcementDetails);
 
-    Thread announcement = createThread(createThread);
+    assertThrows(
+        Exception.class,
+        () -> createThread(createThread),
+        "Feed announcements should be rejected in favor of /v1/announcements");
 
-    assertNotNull(announcement);
-    assertNotNull(announcement.getAnnouncement());
-    assertEquals("Test announcement", announcement.getAnnouncement().getDescription());
-
-    ThreadList announcements = listAnnouncements();
-    assertNotNull(announcements);
-    assertTrue(announcements.getData().size() > 0);
-
-    deleteThread(announcement.getId());
+    assertThrows(
+        Exception.class,
+        this::listAnnouncements,
+        "Feed announcement listing should be rejected in favor of /v1/announcements");
   }
 
   @Test
@@ -665,6 +664,209 @@ public class FeedResourceIT {
   }
 
   @Test
+  void list_tasksWithAssignedToFilter_returnsAssignedTasks(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns);
+    String about = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    User admin = SdkClients.adminClient().users().getByName(ADMIN_USER);
+    EntityReference adminAssignee = admin.getEntityReference();
+
+    CreateTaskDetails taskDetails =
+        new CreateTaskDetails()
+            .withType(TaskType.RequestDescription)
+            .withAssignees(List.of(adminAssignee))
+            .withOldValue("old description")
+            .withSuggestion("new description");
+
+    Thread taskThread =
+        createThread(
+            new CreateThread()
+                .withMessage("Task assigned to admin")
+                .withAbout(about)
+                .withType(ThreadType.Task)
+                .withTaskDetails(taskDetails));
+
+    try {
+      ThreadList assignedTasks = listTasksByUserFilter(admin.getId(), "ASSIGNED_TO");
+
+      assertNotNull(assignedTasks);
+      assertNotNull(assignedTasks.getData());
+      assertTrue(
+          assignedTasks.getData().stream()
+              .anyMatch(
+                  thread ->
+                      thread.getTask() != null
+                          && taskThread.getTask() != null
+                          && thread.getTask().getId().equals(taskThread.getTask().getId())),
+          "ASSIGNED_TO filter should return task assigned to the target user");
+    } finally {
+      deleteThread(taskThread.getId());
+    }
+  }
+
+  @Test
+  void list_tasksWithOwnerOrFollowsFilter_returnsCreatedTasks(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns);
+    String about = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    User admin = SdkClients.adminClient().users().getByName(ADMIN_USER);
+    User testUser = SdkClients.adminClient().users().getByName(TEST_USER);
+    EntityReference testUserAssignee = testUser.getEntityReference();
+
+    CreateTaskDetails taskDetails =
+        new CreateTaskDetails()
+            .withType(TaskType.RequestDescription)
+            .withAssignees(List.of(testUserAssignee))
+            .withOldValue("old description")
+            .withSuggestion("new description");
+
+    Thread taskThread =
+        createThread(
+            new CreateThread()
+                .withMessage("Task created by admin")
+                .withAbout(about)
+                .withType(ThreadType.Task)
+                .withTaskDetails(taskDetails));
+
+    try {
+      ThreadList ownerOrFollowsTasks = listTasksByUserFilter(admin.getId(), "OWNER_OR_FOLLOWS");
+
+      assertNotNull(ownerOrFollowsTasks);
+      assertNotNull(ownerOrFollowsTasks.getData());
+      assertTrue(
+          ownerOrFollowsTasks.getData().stream()
+              .anyMatch(
+                  thread ->
+                      thread.getTask() != null
+                          && taskThread.getTask() != null
+                          && thread.getTask().getId().equals(taskThread.getTask().getId())),
+          "OWNER_OR_FOLLOWS filter should return tasks created by the target user");
+    } finally {
+      deleteThread(taskThread.getId());
+    }
+  }
+
+  @Test
+  void list_tasksWithMentionsFilter_returnsTasksRelevantToUser(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns);
+    String about = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    User admin = SdkClients.adminClient().users().getByName(ADMIN_USER);
+    User testUser = SdkClients.adminClient().users().getByName(TEST_USER);
+    EntityReference testUserAssignee = testUser.getEntityReference();
+    EntityReference adminAssignee = admin.getEntityReference();
+
+    CreateTaskDetails taskDetailsForTestUser =
+        new CreateTaskDetails()
+            .withType(TaskType.RequestDescription)
+            .withAssignees(List.of(testUserAssignee))
+            .withOldValue("old description")
+            .withSuggestion("new description");
+
+    CreateTaskDetails unrelatedTaskDetails =
+        new CreateTaskDetails()
+            .withType(TaskType.RequestDescription)
+            .withAssignees(List.of(adminAssignee))
+            .withOldValue("old description")
+            .withSuggestion("new description");
+
+    Thread relevantTask =
+        createThread(
+            new CreateThread()
+                .withMessage("Task relevant to test user")
+                .withAbout(about)
+                .withType(ThreadType.Task)
+                .withTaskDetails(taskDetailsForTestUser));
+
+    Thread unrelatedTask =
+        createThread(
+            new CreateThread()
+                .withMessage("Task unrelated to test user")
+                .withAbout(about)
+                .withType(ThreadType.Task)
+                .withTaskDetails(unrelatedTaskDetails));
+
+    try {
+      ThreadList mentionsTasks = listTasksByUserFilter(testUser.getId(), "MENTIONS");
+
+      assertNotNull(mentionsTasks);
+      assertNotNull(mentionsTasks.getData());
+      assertTrue(
+          threadListContainsTask(mentionsTasks, relevantTask),
+          "MENTIONS filter should return tasks relevant to the target user");
+      assertFalse(
+          threadListContainsTask(mentionsTasks, unrelatedTask),
+          "MENTIONS filter should not return unrelated tasks");
+    } finally {
+      deleteThread(relevantTask.getId());
+      deleteThread(unrelatedTask.getId());
+    }
+  }
+
+  @Test
+  void list_tasksWithTaskStatusFilter_returnsOpenOrClosedTasks(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns);
+    String about =
+        String.format(
+            "<#E::table::%s::columns::%s::description>", table.getFullyQualifiedName(), "id");
+
+    User admin = SdkClients.adminClient().users().getByName(ADMIN_USER);
+    EntityReference adminAssignee = admin.getEntityReference();
+
+    CreateTaskDetails taskDetails =
+        new CreateTaskDetails()
+            .withType(TaskType.RequestDescription)
+            .withAssignees(List.of(adminAssignee))
+            .withOldValue("old description")
+            .withSuggestion("new description");
+
+    Thread openTask =
+        createThread(
+            new CreateThread()
+                .withMessage("Open task for status filter")
+                .withAbout(about)
+                .withType(ThreadType.Task)
+                .withTaskDetails(taskDetails));
+
+    Thread closedTask =
+        createThread(
+            new CreateThread()
+                .withMessage("Closed task for status filter")
+                .withAbout(about)
+                .withType(ThreadType.Task)
+                .withTaskDetails(taskDetails));
+
+    closeTask(closedTask.getTask().getId(), new CloseTask().withComment("closing task"));
+
+    try {
+      ThreadList openTasks = listTasksByUserFilter(admin.getId(), "ASSIGNED_TO", TaskStatus.Open);
+      ThreadList closedTasks =
+          listTasksByUserFilter(admin.getId(), "ASSIGNED_TO", TaskStatus.Closed);
+
+      assertNotNull(openTasks);
+      assertNotNull(openTasks.getData());
+      assertTrue(
+          threadListContainsTask(openTasks, openTask),
+          "Open task filter should include open tasks");
+      assertFalse(
+          threadListContainsTask(openTasks, closedTask),
+          "Open task filter should not include closed tasks");
+
+      assertNotNull(closedTasks);
+      assertNotNull(closedTasks.getData());
+      assertTrue(
+          threadListContainsTask(closedTasks, closedTask),
+          "Closed task filter should include closed tasks");
+      assertFalse(
+          threadListContainsTask(closedTasks, openTask),
+          "Closed task filter should not include open tasks");
+    } finally {
+      deleteThread(openTask.getId());
+      deleteThread(closedTask.getId());
+    }
+  }
+
+  @Test
   void list_threadsWithMentionsFilter(TestNamespace ns) throws Exception {
     Table table = createTestTable(ns);
     String about = String.format("<#E::table::%s>", table.getFullyQualifiedName());
@@ -866,18 +1068,10 @@ public class FeedResourceIT {
             .withType(ThreadType.Announcement)
             .withAnnouncementDetails(announcementDetails);
 
-    Thread thread = createThread(createThread);
-    String originalJson = MAPPER.writeValueAsString(thread);
-
-    AnnouncementDetails updatedDetails = createAnnouncementDetails("Updated announcement", 6, 7);
-    thread.withAnnouncement(updatedDetails);
-
-    Thread patchedThread = patchThread(thread.getId(), originalJson, thread);
-
-    assertNotNull(patchedThread);
-    assertEquals("Updated announcement", patchedThread.getAnnouncement().getDescription());
-
-    deleteThread(thread.getId());
+    assertThrows(
+        Exception.class,
+        () -> createThread(createThread),
+        "Feed announcement patch path is no longer supported");
   }
 
   @Test
@@ -893,8 +1087,6 @@ public class FeedResourceIT {
             .withAbout(about)
             .withType(ThreadType.Announcement)
             .withAnnouncementDetails(announcementDetails1);
-    Thread thread1 = createThread(createThread1);
-
     AnnouncementDetails announcementDetails2 =
         createAnnouncementDetails("Second announcement", 57, 59);
     CreateThread createThread2 =
@@ -903,19 +1095,14 @@ public class FeedResourceIT {
             .withAbout(about)
             .withType(ThreadType.Announcement)
             .withAnnouncementDetails(announcementDetails2);
-    Thread thread2 = createThread(createThread2);
-
-    String originalJson = MAPPER.writeValueAsString(thread2);
-
-    thread2.withAnnouncement(thread1.getAnnouncement());
-
     assertThrows(
         Exception.class,
-        () -> patchThread(thread2.getId(), originalJson, thread2),
-        "Patching announcement with overlapping time should fail");
-
-    deleteThread(thread1.getId());
-    deleteThread(thread2.getId());
+        () -> createThread(createThread1),
+        "Legacy feed announcement writes should be rejected");
+    assertThrows(
+        Exception.class,
+        () -> createThread(createThread2),
+        "Legacy feed announcement writes should be rejected");
   }
 
   @Test
@@ -1326,6 +1513,39 @@ public class FeedResourceIT {
             .getHttpClient()
             .executeForString(HttpMethod.GET, "/v1/feed", null, options);
     return MAPPER.readValue(response, ThreadList.class);
+  }
+
+  private ThreadList listTasksByUserFilter(UUID userId, String filterType) throws Exception {
+    return listTasksByUserFilter(userId, filterType, null);
+  }
+
+  private ThreadList listTasksByUserFilter(UUID userId, String filterType, TaskStatus taskStatus)
+      throws Exception {
+    RequestOptions.Builder optionsBuilder =
+        RequestOptions.builder()
+            .queryParam("type", ThreadType.Task.toString())
+            .queryParam("userId", userId.toString())
+            .queryParam("filterType", filterType)
+            .queryParam("limit", "100");
+    if (taskStatus != null) {
+      optionsBuilder.queryParam("taskStatus", taskStatus.value());
+    }
+    RequestOptions options = optionsBuilder.build();
+
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/feed", null, options);
+    return MAPPER.readValue(response, ThreadList.class);
+  }
+
+  private boolean threadListContainsTask(ThreadList threadList, Thread taskThread) {
+    return threadList.getData().stream()
+        .anyMatch(
+            thread ->
+                thread.getTask() != null
+                    && taskThread.getTask() != null
+                    && thread.getTask().getId().equals(taskThread.getTask().getId()));
   }
 
   private ThreadList listAnnouncements() throws Exception {
