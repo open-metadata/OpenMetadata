@@ -133,6 +133,9 @@ public final class GoogleEmbeddingClient extends EmbeddingClient {
     ArrayNode parts = content.putArray("parts");
     ObjectNode part = parts.addObject();
     part.put("text", text);
+    // Pin the response vector size to the configured dimension. Required for `gemini-embedding-001`
+    // (defaults to 3072 otherwise); supported and silently truncating for `text-embedding-004`.
+    payload.put("outputDimensionality", dimension);
     return MAPPER.writeValueAsString(payload);
   }
 

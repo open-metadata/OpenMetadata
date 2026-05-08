@@ -465,7 +465,7 @@ class GoogleEmbeddingClientTest {
 
     GoogleEmbeddingClient client =
         new GoogleEmbeddingClient(
-            httpClient, "my-secret-key", "text-embedding-004", 1, EMBED_ENDPOINT);
+            httpClient, "my-secret-key", "gemini-embedding-001", 768, EMBED_ENDPOINT);
 
     client.embed("the quick brown fox");
 
@@ -473,9 +473,10 @@ class GoogleEmbeddingClientTest {
     String body = extractBody(request);
     com.fasterxml.jackson.databind.JsonNode parsed =
         new com.fasterxml.jackson.databind.ObjectMapper().readTree(body);
-    assertEquals("models/text-embedding-004", parsed.get("model").asText());
+    assertEquals("models/gemini-embedding-001", parsed.get("model").asText());
     assertEquals(
         "the quick brown fox", parsed.get("content").get("parts").get(0).get("text").asText());
+    assertEquals(768, parsed.get("outputDimensionality").asInt());
   }
 
   @Test

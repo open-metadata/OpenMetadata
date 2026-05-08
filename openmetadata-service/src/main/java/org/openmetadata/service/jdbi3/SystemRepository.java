@@ -766,8 +766,19 @@ public class SystemRepository {
               nlpConfig.getOpenai().getEmbeddingDimension(),
               deploymentInfo);
         }
+        case "google" -> {
+          String googleEndpoint =
+              nullOrEmpty(nlpConfig.getGoogle().getEndpoint())
+                  ? "generativelanguage.googleapis.com"
+                  : nlpConfig.getGoogle().getEndpoint();
+          yield String.format(
+              "Google configuration: endpoint: %s, embeddingModelId: %s, embeddingDimension: %s",
+              googleEndpoint,
+              nlpConfig.getGoogle().getEmbeddingModelId(),
+              nlpConfig.getGoogle().getEmbeddingDimension());
+        }
         default -> String.format(
-            "Unknown provider '%s'. Supported providers: djl, bedrock, openai", provider);
+            "Unknown provider '%s'. Supported providers: djl, bedrock, openai, google", provider);
       };
     } catch (Exception e) {
       LOG.error("Error getting embedding configuration", e);

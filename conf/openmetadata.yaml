@@ -517,8 +517,8 @@ elasticsearch:
       embeddingDimension: ${OPENAI_EMBEDDING_DIMENSION:-1536}
     google:
       apiKey: ${GOOGLE_API_KEY:-""}  # API key from Google AI Studio
-      embeddingModelId: ${GOOGLE_EMBEDDING_MODEL_ID:-"text-embedding-004"}
-      embeddingDimension: ${GOOGLE_EMBEDDING_DIMENSION:-768}
+      embeddingModelId: ${GOOGLE_EMBEDDING_MODEL_ID:-"gemini-embedding-001"}
+      embeddingDimension: ${GOOGLE_EMBEDDING_DIMENSION:-768}  # Sent as outputDimensionality. gemini-embedding-001 supports 768/1536/3072; text-embedding-004 supports 768.
       endpoint: ${GOOGLE_API_ENDPOINT:-""}  # Optional override; full :embedContent URL. Leave empty to use the default Generative Language API endpoint.
     djl:
       embeddingModel: ${DJL_EMBEDDING_MODEL:-"ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2"}
