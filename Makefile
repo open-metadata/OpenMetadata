@@ -39,7 +39,7 @@ yarn_start_e2e_ui:  ## Run the e2e tests locally in UI mode with Yarn
 .PHONY: yarn_start_e2e_codegen
 yarn_start_e2e_codegen:  ## generate playwright code
 	cd openmetadata-ui/src/main/resources/ui && yarn playwright:codegen
-	
+
 .PHONY: py_antlr
 py_antlr:  ## Generate the Python code for parsing FQNs
 	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
@@ -120,18 +120,13 @@ snyk-report:  ## Uses Snyk CLI to run a security scan of the different pieces of
 	$(MAKE) snyk-airflow-apis-report
 	$(MAKE) snyk-server-report
 	$(MAKE) snyk-ui-report
-	$(MAKE) export-snyk-one-line-findings
 	$(MAKE)	export-snyk-pdf-report
-
-.PHONY: export-snyk-one-line-findings
-export-snyk-one-line-findings:  ## export one-line findings from security-report JSON files to CSV
-	python scripts/snyk_one_line_findings.py
 
 .PHONY: export-snyk-pdf-report
 export-snyk-pdf-report:  ## export json file from security-report/ to HTML
 	@echo "Reading all results"
 	npm install snyk-to-html -g
-	find security-report -maxdepth 1 -type f -name '*.json' -exec sh -c 'for file do snyk-to-html -i "$$file" -o "$$file.html"; done' sh {} +
+	ls security-report | xargs -I % snyk-to-html -i security-report/% -o security-report/%.html
 	pip install pdfkit
 	pip install PyPDF2
 	python scripts/html_to_pdf.py
@@ -259,21 +254,21 @@ ui-checkstyle-core-components:
 	cd openmetadata-ui-core-components/src/main/resources/ui && yarn install --frozen-lockfile && yarn lint:fix && yarn pretty
 
 # Fix linting and formatting errors in changed files in src folder
-# Changed files are detected based on the current branch against main branch. 
+# Changed files are detected based on the current branch against main branch.
 # So make sure to run this after rebasing to main to get the correct list of changed files.
 .PHONY: ui-checkstyle-src-changed
 ui-checkstyle-src-changed:
 	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:changed
 
 # Fix linting and formatting errors in changed playwright test files
-# Changed files are detected based on the current branch against main branch. 
+# Changed files are detected based on the current branch against main branch.
 # So make sure to run this after rebasing to main to get the correct list of changed files.
 .PHONY: ui-checkstyle-playwright-changed
 ui-checkstyle-playwright-changed:
 	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:playwright:changed
 
 # Fix linting and formatting errors in changed core components files
-# Changed files are detected based on the current branch against main branch. 
+# Changed files are detected based on the current branch against main branch.
 # So make sure to run this after rebasing to main to get the correct list of changed files.
 .PHONY: ui-checkstyle-core-components-changed
 ui-checkstyle-core-components-changed:
