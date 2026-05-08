@@ -15,7 +15,7 @@ Base class for ingesting database services
 import traceback
 from abc import ABC, abstractmethod
 from functools import cached_property
-from typing import Any, Iterable, List, Optional, Set, Tuple  # noqa: UP035
+from typing import Any, Iterable, List, Optional, Set, Tuple, cast  # noqa: UP035
 
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import Inspector
@@ -827,27 +827,33 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
     def clear_schema_tag_scope(self):
         """Drop tag-registry state for the current schema scope."""
-        schema_name = self.context.get().database_schema
+        schema_name = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
         if schema_name:
-            schema_fqn = fqn.build(
-                self.metadata,
-                entity_type=DatabaseSchema,
-                service_name=self.context.get().database_service,
-                database_name=self.context.get().database,
-                schema_name=schema_name,
+            schema_fqn = cast(
+                "str",
+                fqn.build(
+                    self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                    schema_name=schema_name,
+                ),
             )
             self.tags_registry.clear_scope(schema_fqn)
         yield from ()
 
     def clear_database_tag_scope(self):
         """Drop tag-registry state for the current database scope."""
-        database_name = self.context.get().database
+        database_name = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
         if database_name:
-            database_fqn = fqn.build(
-                self.metadata,
-                entity_type=Database,
-                service_name=self.context.get().database_service,
-                database_name=database_name,
+            database_fqn = cast(
+                "str",
+                fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    database_name=database_name,
+                ),
             )
             self.tags_registry.clear_scope(database_fqn)
         yield from ()

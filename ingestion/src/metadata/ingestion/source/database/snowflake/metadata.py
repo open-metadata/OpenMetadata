@@ -15,7 +15,7 @@ Snowflake source module
 import json  # noqa: I001
 import traceback
 from datetime import datetime
-from typing import Iterable, List, Optional, Tuple  # noqa: UP035
+from typing import Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
 import sqlalchemy.types as sqltypes
 import sqlparse
@@ -547,12 +547,15 @@ class SnowflakeSource(
                     logger.debug(traceback.format_exc())
                     logger.error(f"Failed to fetch tags due to [{inner_exc}]")
 
-            schema_fqn = fqn.build(
-                self.metadata,
-                entity_type=DatabaseSchema,
-                service_name=self.context.get().database_service,
-                database_name=self.context.get().database,
-                schema_name=schema_name,
+            schema_fqn = cast(
+                "str",
+                fqn.build(
+                    self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=schema_name,
+                ),
             )
             for res in result:
                 row = list(res)
@@ -566,7 +569,7 @@ class SnowflakeSource(
                     )
                     continue
 
-                entity_fqn = fqn._build(self.context.get().database_service, *fqn_elements)
+                entity_fqn = fqn._build(self.context.get().database_service, *fqn_elements)  # pyright: ignore[reportAttributeAccessIssue]
                 try:
                     classification = self.tag_canonicalizer.classification(row[0], SNOWFLAKE_CLASSIFICATION_DESCRIPTION)
                     tag = self.tag_canonicalizer.tag(classification.name, row[1], SNOWFLAKE_TAG_DESCRIPTION)
@@ -585,6 +588,7 @@ class SnowflakeSource(
                         left=StackTraceError(
                             name=f"{row[0]}.{row[1]}",
                             error=f"Tag canonicalization failed for {row[0]}.{row[1]}: {exc}",
+                            stackTrace=traceback.format_exc(),
                         )
                     )
 
@@ -613,25 +617,29 @@ class SnowflakeSource(
                             left=StackTraceError(
                                 name=f"{tag_info['tag_name']}.{tag_info['tag_value']}",
                                 error=f"Tag canonicalization failed for {tag_info['tag_name']}.{tag_info['tag_value']}: {exc}",
+                                stackTrace=traceback.format_exc(),
                             )
                         )
             yield from (Either(right=record) for record in self.tags_registry.drain())
 
-    def yield_database_tag(self, database_entity: str) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_database_tag(self, database_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """Yield database-level tags for the topology."""
         if not self.source_config.includeTags:
             return
 
-        if database_entity not in self.database_tags_map:
+        if database_name not in self.database_tags_map:
             return
 
-        database_fqn = fqn.build(
-            self.metadata,
-            entity_type=Database,
-            service_name=self.context.get().database_service,
-            database_name=database_entity,
+        database_fqn = cast(
+            "str",
+            fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=database_name,
+            ),
         )
-        for tag_info in self.database_tags_map[database_entity]:
+        for tag_info in self.database_tags_map[database_name]:
             try:
                 classification = self.tag_canonicalizer.classification(
                     tag_info["tag_name"], SNOWFLAKE_CLASSIFICATION_DESCRIPTION
@@ -652,8 +660,10 @@ class SnowflakeSource(
                     left=StackTraceError(
                         name=f"{tag_info['tag_name']}.{tag_info['tag_value']}",
                         error=f"Tag canonicalization failed for {tag_info['tag_name']}.{tag_info['tag_value']}: {exc}",
+                        stackTrace=traceback.format_exc(),
                     )
                 )
+        yield from (Either(right=record) for record in self.tags_registry.drain())
 
     def _get_table_names_and_types(
         self, schema_name: str, table_type: TableType = TableType.Regular
@@ -1091,11 +1101,14 @@ class SnowflakeSource(
 
     def get_database_tag_labels(self, database_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """Return tags for the database entity from registry."""
-        database_fqn = fqn.build(
-            self.metadata,
-            entity_type=Database,
-            service_name=self.context.get().database_service,
-            database_name=database_name,
+        database_fqn = cast(
+            "str",
+            fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=database_name,
+            ),
         )
         return self.tags_registry.labels_for(database_fqn) or None
 
@@ -1106,14 +1119,17 @@ class SnowflakeSource(
         — those have separate semantic meaning at their own level. Direct
         lookup is sufficient.
         """
-        col_fqn = fqn.build(
-            self.metadata,
-            entity_type=Column,
-            service_name=self.context.get().database_service,
-            database_name=self.context.get().database,
-            schema_name=self.context.get().database_schema,
-            table_name=table_name,
-            column_name=column["name"],
+        col_fqn = cast(
+            "str",
+            fqn.build(
+                self.metadata,
+                entity_type=Column,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+                table_name=table_name,
+                column_name=column["name"],
+            ),
         )
         return self.tags_registry.labels_for(col_fqn) or None
 
@@ -1123,18 +1139,24 @@ class SnowflakeSource(
         1. Snowflake schema-level tags
         2. Inherited database-level tags (only if no tag with same classification exists)
         """
-        schema_fqn = fqn.build(
-            self.metadata,
-            entity_type=DatabaseSchema,
-            service_name=self.context.get().database_service,
-            database_name=self.context.get().database,
-            schema_name=schema_name,
+        schema_fqn = cast(
+            "str",
+            fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                schema_name=schema_name,
+            ),
         )
-        database_fqn = fqn.build(
-            self.metadata,
-            entity_type=Database,
-            service_name=self.context.get().database_service,
-            database_name=self.context.get().database,
+        database_fqn = cast(
+            "str",
+            fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+            ),
         )
 
         schema_tags = self.tags_registry.labels_for(schema_fqn)
@@ -1156,27 +1178,36 @@ class SnowflakeSource(
 
         Tag values at lower levels take precedence over inherited values.
         """
-        table_fqn = fqn.build(
-            self.metadata,
-            entity_type=Table,
-            service_name=self.context.get().database_service,
-            database_name=self.context.get().database,
-            schema_name=self.context.get().database_schema,
-            table_name=table_name,
-            skip_es_search=True,
+        table_fqn = cast(
+            "str",
+            fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+                table_name=table_name,
+                skip_es_search=True,
+            ),
         )
-        schema_fqn = fqn.build(
-            self.metadata,
-            entity_type=DatabaseSchema,
-            service_name=self.context.get().database_service,
-            database_name=self.context.get().database,
-            schema_name=self.context.get().database_schema,
+        schema_fqn = cast(
+            "str",
+            fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+            ),
         )
-        database_fqn = fqn.build(
-            self.metadata,
-            entity_type=Database,
-            service_name=self.context.get().database_service,
-            database_name=self.context.get().database,
+        database_fqn = cast(
+            "str",
+            fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+            ),
         )
 
         table_tags = self.tags_registry.labels_for(table_fqn)

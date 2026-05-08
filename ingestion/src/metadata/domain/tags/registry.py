@@ -109,8 +109,8 @@ class TagRegistry:
         entity_fqn: str,
         classification_name: str,
         tag_name: str,
-        classification_description: str | None = None,
-        tag_description: str | None = None,
+        classification_description: str | None,
+        tag_description: str | None,
         label_type: LabelType = LabelType.Automated,
         state: State = State.Suggested,
     ) -> None:
@@ -167,6 +167,9 @@ class TagRegistry:
 
         Subsequent ``attach`` calls for this scope will raise.
         """
+        with self._run_state_lock:
+            self._cleared_scopes.add(scope_fqn)
+
         prefix = scope_fqn + fqn.FQN_SEPARATOR
 
         with self._scope_state_lock:
@@ -175,9 +178,6 @@ class TagRegistry:
             self._labels_by_entity = kept
         if dropped:
             logger.debug("TagRegistry: cleared scope %s (%d entity labels dropped)", scope_fqn, dropped)
-
-        with self._run_state_lock:
-            self._cleared_scopes.add(scope_fqn)
 
     def is_known(self, tag_fqn: str) -> bool:
         """Return True if the tag FQN has been recorded (case-sensitive match)."""
@@ -242,11 +242,11 @@ class TagRegistry:
             fqn=None,
             classification_request=CreateClassificationRequest(  # pyright: ignore[reportCallIssue]
                 name=EntityName(classification_name),
-                description=Markdown(classification_description) if classification_description else None,
+                description=Markdown(classification_description or ""),
             ),
             tag_request=CreateTagRequest(  # pyright: ignore[reportCallIssue]
                 classification=FullyQualifiedEntityName(classification_name),
                 name=EntityName(tag_name),
-                description=Markdown(tag_description) if tag_description else None,
+                description=Markdown(tag_description or ""),
             ),
         )
