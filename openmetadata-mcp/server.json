@@ -9,7 +9,7 @@
     "source": "github",
     "subfolder": "openmetadata-mcp"
   },
-  "websiteUrl": "https://docs.open-metadata.org/v1.12.x/how-to-guides/mcp",
+  "websiteUrl": "https://docs.open-metadata.org/how-to-guides/mcp",
   "remotes": [
     {
       "type": "streamable-http",
