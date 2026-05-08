@@ -56,6 +56,8 @@ const normalizeLayout = (l: WidgetConfig[]) =>
     }))
     .sort((a, b) => a.y - b.y);
 
+const ANNOUNCEMENT_TYPES = [EntityType.DOMAIN, EntityType.DATA_PRODUCT];
+
 const DataMarketplacePage = () => {
   const { selectedPersona } = useApplicationStore();
 
@@ -143,7 +145,7 @@ const DataMarketplacePage = () => {
       <div className="marketplace-grid-wrapper" dir="ltr">
         <div className="p-x-box">
           <AnnouncementsWidgetV2
-            type={[EntityType.DOMAIN, EntityType.DATA_PRODUCT]}
+            type={ANNOUNCEMENT_TYPES}
             widgetKey="announcements"
           />
         </div>

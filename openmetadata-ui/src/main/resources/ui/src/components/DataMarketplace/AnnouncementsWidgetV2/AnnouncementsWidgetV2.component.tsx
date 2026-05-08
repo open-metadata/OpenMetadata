@@ -22,10 +22,6 @@ import {
   AnnouncementEntity,
   getActiveAnnouncements,
 } from '../../../rest/announcementsAPI';
-
-type AnnouncementsWidgetV2Props = WidgetCommonProps & {
-  type?: EntityType[];
-};
 import {
   getEntityFQN,
   getEntityType,
@@ -33,6 +29,10 @@ import {
 } from '../../../utils/FeedUtils';
 import Loader from '../../common/Loader/Loader';
 import AnnouncementItemV2 from './AnnouncementItemV2.component';
+
+type AnnouncementsWidgetV2Props = WidgetCommonProps & {
+  type?: EntityType[];
+};
 
 const DISPLAY_COUNT = 4;
 
