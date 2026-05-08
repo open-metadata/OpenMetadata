@@ -14,7 +14,7 @@ import { Select, Skeleton, Table } from '@openmetadata/ui-core-components';
 import { format } from 'date-fns';
 import { isEmpty, split, toLower } from 'lodash';
 import { DateRangeObject } from 'Models';
-import { useEffect, useMemo, useState, type ComponentType } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
@@ -44,11 +44,6 @@ import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import DimensionalityHeatmap from './DimensionalityHeatmap/DimensionalityHeatmap.component';
 import { DimensionResultWithTimestamp } from './DimensionalityHeatmap/DimensionalityHeatmap.interface';
-
-const TransComponent = Trans as ComponentType<{
-  i18nKey: string;
-  components: Record<number, JSX.Element>;
-}>;
 
 const DimensionalityTab = () => {
   const { t } = useTranslation();
@@ -192,46 +187,51 @@ const DimensionalityTab = () => {
     [t]
   );
 
-  const renderCell = (
-    col: { id: string },
-    row: (typeof getLatestResultPerDimension)[number]
-  ) => {
-    switch (col.id) {
-      case 'status':
-        return row.result?.testCaseStatus ? (
-          <StatusBadge
-            dataTestId="status-badge"
-            label={TEST_CASE_STATUS_LABELS[row.result.testCaseStatus]}
-            status={toLower(row.result.testCaseStatus) as StatusType}
-          />
-        ) : (
-          <span className="tw:text-sm">--</span>
-        );
-      case 'impactScore':
-        return (
-          <span className="tw:text-sm">{row.result?.impactScore ?? '--'}</span>
-        );
-      case 'dimensionValue':
-        return (
-          <Link
-            className="tw:text-text-brand-secondary"
-            to={getTestCaseDimensionsDetailPagePath(
-              testCase?.fullyQualifiedName || '',
-              row.result.dimensionKey || ''
-            )}>
-            {row.dimensionValue}
-          </Link>
-        );
-      case 'lastRun':
-        return row.result?.timestamp ? (
-          <DateTimeDisplay timestamp={row.result.timestamp} />
-        ) : (
-          <span className="tw:text-sm">--</span>
-        );
-      default:
-        return null;
-    }
-  };
+  const renderCell = useCallback(
+    (
+      col: { id: string },
+      row: (typeof getLatestResultPerDimension)[number]
+    ) => {
+      switch (col.id) {
+        case 'status':
+          return row.result?.testCaseStatus ? (
+            <StatusBadge
+              dataTestId="status-badge"
+              label={TEST_CASE_STATUS_LABELS[row.result.testCaseStatus]}
+              status={toLower(row.result.testCaseStatus) as StatusType}
+            />
+          ) : (
+            <span className="tw:text-sm">--</span>
+          );
+        case 'impactScore':
+          return (
+            <span className="tw:text-sm">
+              {row.result?.impactScore ?? '--'}
+            </span>
+          );
+        case 'dimensionValue':
+          return (
+            <Link
+              className="tw:text-text-brand-secondary"
+              to={getTestCaseDimensionsDetailPagePath(
+                testCase?.fullyQualifiedName || '',
+                row.result.dimensionKey || ''
+              )}>
+              {row.dimensionValue}
+            </Link>
+          );
+        case 'lastRun':
+          return row.result?.timestamp ? (
+            <DateTimeDisplay timestamp={row.result.timestamp} />
+          ) : (
+            <span className="tw:text-sm">--</span>
+          );
+        default:
+          return null;
+      }
+    },
+    [testCase?.fullyQualifiedName]
+  );
 
   const noDataPlaceholder = useMemo(() => {
     if (isLoading) {
@@ -245,7 +245,7 @@ const DimensionalityTab = () => {
 
     return (
       <NoDataPlaceholderNew size={SIZE.LARGE}>
-        <TransComponent
+        <Trans
           components={{
             0: <span className="tw:text-sm" />,
             1: <span className="tw:text-sm" />,
