@@ -251,12 +251,13 @@ export interface Google {
      */
     apiKey?: string;
     /**
-     * Dimension of the embedding vector. Must match the model's native output dimension (e.g.,
-     * 768 for text-embedding-004).
+     * Dimension of the embedding vector, sent to Google as `outputDimensionality`. For
+     * `gemini-embedding-001` valid values are 768, 1536, or 3072. For `text-embedding-004` use
+     * 768.
      */
     embeddingDimension?: number;
     /**
-     * Gemini embedding model identifier (e.g., text-embedding-004, gemini-embedding-001).
+     * Gemini embedding model identifier (e.g., gemini-embedding-001, text-embedding-004).
      */
     embeddingModelId?: string;
     /**
