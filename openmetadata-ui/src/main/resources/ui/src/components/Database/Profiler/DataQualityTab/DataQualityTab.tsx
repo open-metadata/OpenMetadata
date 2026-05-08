@@ -714,6 +714,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           'test-case-table-container': true,
           'custom-card-with-table':
             !isUndefined(tableHeader) || removeTableBorder,
+          'tw:overflow-hidden tw:rounded-xl tw:shadow-xs tw:ring-1 tw:ring-secondary':
+            isUndefined(tableHeader) && !removeTableBorder,
         })}>
         <Table
           aria-label={t('label.test-case-plural')}
