@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -22,6 +24,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -110,6 +113,72 @@ public class AlertsRuleEvaluatorResourceIT {
     assertTrue(
         evaluateExpression("matchAnyEntityFqn({'" + testSuiteFqn + "'})", evaluationContext));
     assertFalse(evaluateExpression("matchAnyEntityFqn({'nonExistentFqn'})", evaluationContext));
+  }
+
+  /**
+   * Regression: matchAnyEntityFqn must compare FQNs literally, not as Java regex. FQNs in
+   * OpenMetadata can contain characters that are regex metacharacters (e.g. test suites named like
+   * "[TML] Fraud Mart Test Suite"). Customer-reported via openmetadata-collate#4019.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "[TML] Fraud Mart Test Suite",
+        "service.db.schema.name+plus",
+        "service.db.schema.name?question",
+        "service.db.schema.name|pipe",
+        "service.db.schema.name*star",
+        "service.db.schema.[bracketed].table",
+      })
+  void test_matchAnyEntityFqn_treatsRegexMetacharsAsLiteral(String fqn) {
+    Table table = new Table().withName("t").withFullyQualifiedName(fqn);
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TABLE);
+    changeEvent.setEntity(table);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    // Single-element list: matching FQN returns true.
+    assertTrue(evaluateExpression("matchAnyEntityFqn({'" + fqn + "'})", evaluationContext));
+    // Multi-element list with the matching FQN at the tail: ensures SpEL passes the full
+    // comma-separated list and the matcher iterates past the first element.
+    assertTrue(
+        evaluateExpression(
+            "matchAnyEntityFqn({'irrelevant.first', '" + fqn + "', 'irrelevant.last'})",
+            evaluationContext));
+    // Multi-element list without the matching FQN: returns false (no false positives).
+    assertFalse(
+        evaluateExpression(
+            "matchAnyEntityFqn({'unrelated.first', 'unrelated.second'})", evaluationContext));
+  }
+
+  @Test
+  void test_matchAnyEntityFqn_testSuiteFallback_treatsInputAsLiteral() {
+    String testSuiteFqn = "[TML] Fraud Mart Test Suite";
+    TestSuite testSuite = new TestSuite().withFullyQualifiedName(testSuiteFqn);
+    TestCase testCase =
+        new TestCase()
+            .withName("tc")
+            .withFullyQualifiedName("table.tc")
+            .withTestSuites(List.of(testSuite));
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TEST_CASE);
+    changeEvent.setEntity(testCase);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertTrue(
+        evaluateExpression("matchAnyEntityFqn({'" + testSuiteFqn + "'})", evaluationContext));
+    assertFalse(evaluateExpression("matchAnyEntityFqn({'unrelated.fqn'})", evaluationContext));
   }
 
   @Test

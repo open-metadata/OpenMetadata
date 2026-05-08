@@ -127,12 +127,14 @@ public class AlertsRuleEvaluator {
 
   @Function(
       name = "matchAnyEntityFqn",
-      input = "List of comma separated entityName",
+      input = "List of comma separated fully qualified entity names",
       description =
-          "Returns true if the change event entity being accessed has following entityName from the List.",
-      examples = {"matchAnyEntityFqn({'FQN1', 'FQN2'})"},
+          "Returns true if the change event entity's fully qualified name equals any of the listed FQNs.",
+      examples = {
+        "matchAnyEntityFqn({'service.database.schema.table1', 'service.database.schema.table2'})"
+      },
       paramInputType = ALL_INDEX_ELASTIC_SEARCH)
-  public boolean matchAnyEntityFqn(List<String> entityNames) {
+  public boolean matchAnyEntityFqn(List<String> entityFqns) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
@@ -143,12 +145,8 @@ public class AlertsRuleEvaluator {
     }
 
     EntityInterface entity = getEntity(changeEvent);
-    for (String name : entityNames) {
-      Pattern pattern = Pattern.compile(name);
-      Matcher matcher = pattern.matcher(entity.getFullyQualifiedName());
-      if (matcher.find()) {
-        return true;
-      }
+    if (entityFqns.contains(entity.getFullyQualifiedName())) {
+      return true;
     }
 
     if (changeEvent.getEntityType().equals(TEST_CASE)) {
@@ -156,7 +154,7 @@ public class AlertsRuleEvaluator {
       // check if the match happens on the test suite FQN
       TestCase testCase = ((TestCase) entity);
       Optional<List<TestSuite>> testSuites = Optional.ofNullable(testCase.getTestSuites());
-      return testSuites.filter(suites -> testSuiteMatcher(suites, entityNames)).isPresent();
+      return testSuites.filter(suites -> testSuiteMatcher(suites, entityFqns)).isPresent();
     }
 
     return false;
@@ -600,16 +598,15 @@ public class AlertsRuleEvaluator {
     }
   }
 
-  private boolean testSuiteMatcher(List<TestSuite> testSuites, List<String> entityNames) {
+  private boolean testSuiteMatcher(List<TestSuite> testSuites, List<String> entityFqns) {
     for (TestSuite testSuite : testSuites) {
-      for (String name : entityNames) {
-        Pattern pattern = Pattern.compile(name);
-        Matcher matcherTestSuiteFQN = pattern.matcher(testSuite.getFullyQualifiedName());
-        if (matcherTestSuiteFQN.find()) return true;
-        if (!nullOrEmpty(testSuite.getDomains())) {
-          for (EntityReference domain : testSuite.getDomains()) {
-            Matcher matcherDomainFQN = pattern.matcher(domain.getFullyQualifiedName());
-            if (matcherDomainFQN.find()) return true;
+      if (entityFqns.contains(testSuite.getFullyQualifiedName())) {
+        return true;
+      }
+      if (!nullOrEmpty(testSuite.getDomains())) {
+        for (EntityReference domain : testSuite.getDomains()) {
+          if (entityFqns.contains(domain.getFullyQualifiedName())) {
+            return true;
           }
         }
       }
