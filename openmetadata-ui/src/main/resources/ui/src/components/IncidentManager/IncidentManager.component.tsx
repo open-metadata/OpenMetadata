@@ -616,12 +616,7 @@ const IncidentManager = ({
     () => (
       <div className="tw:p-4">
         {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton
-            className="tw:mb-2"
-            height={40}
-            key={i}
-            width="100%"
-          />
+          <Skeleton className="tw:mb-2" height={40} key={i} width="100%" />
         ))}
       </div>
     ),
