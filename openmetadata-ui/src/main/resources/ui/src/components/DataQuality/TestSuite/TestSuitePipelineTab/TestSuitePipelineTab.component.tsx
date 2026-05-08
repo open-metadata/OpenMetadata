@@ -442,7 +442,7 @@ const TestSuitePipelineTab = ({
   }
 
   return (
-    <Row className="m-t-md" gutter={[16, 16]}>
+    <Row className="m-l-0 m-r-0 m-t-md m-b-md" gutter={[16, 16]}>
       {dataSource.length > 0 && (
         <Col className="d-flex justify-end" span={24}>
           <Button
