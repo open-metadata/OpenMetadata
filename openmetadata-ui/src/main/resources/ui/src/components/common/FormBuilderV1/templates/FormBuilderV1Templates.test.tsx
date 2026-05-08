@@ -18,12 +18,14 @@ import {
   FieldTemplateProps,
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
+  WrapIfAdditionalTemplateProps,
 } from '@rjsf/utils';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { CoreArrayFieldTemplate } from './CoreArrayFieldTemplate';
 import { CoreFieldErrorTemplate } from './CoreFieldErrorTemplate';
 import { CoreFieldTemplate } from './CoreFieldTemplate';
 import { CoreObjectFieldTemplate } from './CoreObjectFieldTemplate';
+import { CoreWrapIfAdditionalTemplate } from './CoreWrapIfAdditionalTemplate';
 
 const wrapIfAdditionalRegistry = {
   templates: {
@@ -99,6 +101,34 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </button>
       )
     ),
+    Input: jest.fn(
+      ({
+        id,
+        label,
+        placeholder,
+        value,
+        onBlur,
+        onChange,
+      }: {
+        id?: string;
+        label?: string;
+        placeholder?: string;
+        value?: string;
+        onBlur?: () => void;
+        onChange?: (v: string) => void;
+      }) => (
+        <div>
+          {label && <label htmlFor={id}>{label}</label>}
+          <input
+            id={id}
+            placeholder={placeholder}
+            value={value}
+            onBlur={onBlur}
+            onChange={(e) => onChange?.(e.target.value)}
+          />
+        </div>
+      )
+    ),
     Typography: jest.fn(
       ({
         children,
@@ -116,6 +146,11 @@ jest.mock('@untitledui/icons', () => ({
   ChevronDown: () => <span aria-hidden="true">chevron-down-icon</span>,
   Plus: () => <span>plus-icon</span>,
   Trash01: () => <span>trash-icon</span>,
+}));
+
+jest.mock('@rjsf/utils', () => ({
+  ...jest.requireActual('@rjsf/utils'),
+  ADDITIONAL_PROPERTY_FLAG: '__additional_property',
 }));
 
 jest.mock('react-i18next', () => ({
@@ -292,6 +327,63 @@ describe('FormBuilderV1 templates', () => {
 
     expect(screen.queryByText('advanced property')).not.toBeInTheDocument();
     expect(advancedConfigToggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('renders wrap-if-additional as plain children when not an additional property', () => {
+    render(
+      <CoreWrapIfAdditionalTemplate
+        {...({
+          id: 'field-id',
+          label: 'myKey',
+          schema: {},
+          disabled: false,
+          readonly: false,
+          onKeyChange: jest.fn(),
+          onDropPropertyClick: jest.fn(() => jest.fn()),
+          registry: {} as WrapIfAdditionalTemplateProps['registry'],
+        } as unknown as WrapIfAdditionalTemplateProps)}>
+        <div>plain child</div>
+      </CoreWrapIfAdditionalTemplate>
+    );
+
+    expect(screen.getByText('plain child')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('label.key')).not.toBeInTheDocument();
+  });
+
+  it('renders wrap-if-additional key input and calls handlers for additional properties', () => {
+    const onKeyChange = jest.fn();
+    const onDropIndexFn = jest.fn();
+    const onDropPropertyClick = jest.fn(() => onDropIndexFn);
+
+    render(
+      <CoreWrapIfAdditionalTemplate
+        {...({
+          id: 'field-id',
+          label: 'myKey',
+          schema: { __additional_property: true },
+          disabled: false,
+          readonly: false,
+          onKeyChange,
+          onDropPropertyClick,
+          registry: {} as WrapIfAdditionalTemplateProps['registry'],
+        } as unknown as WrapIfAdditionalTemplateProps)}>
+        <div>value child</div>
+      </CoreWrapIfAdditionalTemplate>
+    );
+
+    expect(screen.getByText('value child')).toBeInTheDocument();
+
+    const keyInput = screen.getByDisplayValue('myKey');
+
+    fireEvent.change(keyInput, { target: { value: 'newKey' } });
+    fireEvent.blur(keyInput);
+
+    expect(onKeyChange).toHaveBeenCalledWith('newKey');
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.remove' }));
+
+    expect(onDropPropertyClick).toHaveBeenCalledWith('myKey');
+    expect(onDropIndexFn).toHaveBeenCalled();
   });
 
   it('renders de-duplicated field errors only when errors exist', () => {
