@@ -1,0 +1,2 @@
+-- OpenMetadata 1.12.8 schema changes
+-- No DDL changes in this release. Domain backfill for tasks is handled in Java migration.
