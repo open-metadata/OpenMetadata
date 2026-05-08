@@ -1354,6 +1354,7 @@
     "my-data": "我的資料",
     "my-task": "我的任務",
     "my-task-plural": "我的任務",
+    "n-a": "N/A",
     "n-days-ago": "{{count}} 天前",
     "n-hours-ago": "{{count}} 小時前",
     "n-minutes-ago": "{{count}} 分鐘前",

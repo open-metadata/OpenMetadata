@@ -1354,6 +1354,7 @@
     "my-data": "بياناتي",
     "my-task": "مهمتي",
     "my-task-plural": "مهامي",
+    "n-a": "N/A",
     "n-days-ago": "قبل {{count}} أيام",
     "n-hours-ago": "قبل {{count}} ساعات",
     "n-minutes-ago": "قبل {{count}} دقيقة",

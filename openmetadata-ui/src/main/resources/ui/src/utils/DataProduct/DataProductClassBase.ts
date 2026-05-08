@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import {
   DESCRIPTION_WIDGET,
@@ -237,6 +238,21 @@ class DataProductClassBase {
       default:
         return 1;
     }
+  }
+
+  public getShowRequestDataAccess(): boolean {
+    return false;
+  }
+
+  public getRequestDataAccessDrawer(
+    _isOpen: boolean,
+    _onClose: () => void,
+    _entityFqn: string,
+    _entityName: string,
+    _entityType: string,
+    _onCreated?: () => void
+  ): ReactNode {
+    return null;
   }
 
   public getDummyData(): DataProduct {

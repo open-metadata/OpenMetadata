@@ -1354,6 +1354,7 @@
     "my-data": "Meine Daten",
     "my-task": "Meine Aufgabe",
     "my-task-plural": "Meine Aufgaben",
+    "n-a": "N/A",
     "n-days-ago": "vor {{count}} Tagen",
     "n-hours-ago": "vor {{count}} Stunden",
     "n-minutes-ago": "vor {{count}} Minuten",
