@@ -105,7 +105,7 @@ class SimpleReindexTriggerUIIT {
     Tab tab = EXPLORE_TAB_PER_KIND.get(kind);
     LOG.info("Asserting Explore[{}] count == {} for prefix '{}'", tab, expected, namePrefix);
 
-    ExplorePage explore = ExplorePage.open(ui, tab).search(namePrefix);
+    ExplorePage explore = ExplorePage.openWithSearch(ui, namePrefix);
     int actual = explore.countForTab(tab);
     assertThat(actual).as("Explore count for %s", kind).isEqualTo(expected);
   }

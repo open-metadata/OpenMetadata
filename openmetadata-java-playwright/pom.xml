@@ -102,6 +102,7 @@
       <artifactId>openmetadata-integration-tests</artifactId>
       <version>${project.version}</version>
       <type>test-jar</type>
+      <classifier>tests</classifier>
       <scope>test</scope>
     </dependency>
     <!-- Forces -am to build openmetadata-dist (which produces the tar.gz the docker image needs).

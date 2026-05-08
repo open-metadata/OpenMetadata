@@ -3,17 +3,19 @@ package org.openmetadata.jpw.ui.pages;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.LoadState;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import org.openmetadata.jpw.ui.UiSession;
 
 /**
  * Page object for {@code /explore/<tab>} — the entity discovery surface.
  *
- * <p>Use {@link #open(UiSession, Tab)} to navigate; chain {@link #search(String)} and
- * read results via {@link #firstResultByName(String)}.
+ * <p>Use {@link #open(UiSession, Tab)} to land on a specific entity tab without a search,
+ * or {@link #openWithSearch(UiSession, String)} to navigate directly to a filtered view.
+ * Read results via {@link #firstResultByName(String)} or {@link #countForTab(Tab)}.
  */
 public final class ExplorePage extends PageObject {
 
-  private static final String SEARCH_PLACEHOLDER = "Search";
   private static final String EXPLORE_PATH_PREFIX = "/explore/";
   private static final String TESTID_FILTER_COUNT = "filter-count";
 
@@ -29,10 +31,23 @@ public final class ExplorePage extends PageObject {
     return instance;
   }
 
-  public ExplorePage search(final String query) {
-    page.getByPlaceholder(SEARCH_PLACEHOLDER).first().fill(query);
-    page.keyboard().press("Enter");
-    return this;
+  /**
+   * Opens Explore filtered by the given search query. Navigates directly to
+   * {@code /explore/?search=<encoded-query>}; we deliberately do not type into the
+   * navbar's {@code searchBox} because OM binds it to a React-controlled value, so
+   * subsequent {@code fill()} on a fresh page picks up the previous query from app state
+   * instead of replacing it.
+   */
+  public static ExplorePage openWithSearch(final UiSession ui, final String query) {
+    final Page page = ui.newPage();
+    page.navigate(ui.uiUrl(EXPLORE_PATH_PREFIX + "?search=" + urlEncode(query)));
+    final ExplorePage instance = new ExplorePage(page, ui);
+    instance.waitForLoaded();
+    return instance;
+  }
+
+  private static String urlEncode(final String s) {
+    return URLEncoder.encode(s, StandardCharsets.UTF_8);
   }
 
   public Locator firstResultByName(final String name) {
