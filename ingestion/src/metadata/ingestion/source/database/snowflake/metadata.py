@@ -391,7 +391,7 @@ class SnowflakeSource(
             yield row[1]
 
     def get_database_names(self) -> Iterable[str]:
-        configured_db = self.config.serviceConnection.root.config.database
+        configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
         if configured_db:
             self.set_inspector(configured_db)
             self.set_session_query_tag()

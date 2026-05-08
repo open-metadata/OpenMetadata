@@ -202,8 +202,9 @@ class DistributedIndexingStrategyTest {
     when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(serverStatsDao);
     when(serverStatsDao.getAggregatedStats(jobId.toString()))
         .thenReturn(
+            // 9 counts + 4 timing (reader/process/sink/vector) + 2 partitions
             new CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats(
-                18, 1, 1, 15, 2, 14, 3, 5, 1, 2, 1));
+                18, 1, 1, 15, 2, 14, 3, 5, 1, 0, 0, 0, 0, 2, 1));
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);

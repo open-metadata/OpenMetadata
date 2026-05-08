@@ -28,7 +28,7 @@ import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
-import { getContainerByName } from '../../../rest/storageAPI';
+import { getContainerAncestors } from '../../../rest/storageAPI';
 import { ExtraInfoLink } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -175,9 +175,9 @@ jest.mock('../../Tag/TagsV1/TagsV1.component', () =>
 );
 
 jest.mock('../../../rest/storageAPI', () => ({
-  getContainerByName: jest
+  getContainerAncestors: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ name: 'test' })),
+    .mockImplementation(() => Promise.resolve([])),
 }));
 
 let mockIsAlertSupported = false;
@@ -257,26 +257,77 @@ describe('ExtraInfoLink component', () => {
 });
 
 describe('DataAssetsHeader component', () => {
-  it('should call getContainerByName API on Page load for container assets', () => {
-    const mockGetContainerByName = getContainerByName as jest.Mock;
+  it('should call getContainerAncestors API on Page load for container assets', () => {
+    const mockGetContainerAncestors = getContainerAncestors as jest.Mock;
     render(<DataAssetsHeader {...mockProps} />);
 
-    expect(mockGetContainerByName).toHaveBeenCalledWith('fullyQualifiedName', {
-      fields: 'parent',
-    });
+    // The breadcrumb resolution is now a single batched server call against
+    // the container's own FQN. The server returns the full ancestor chain.
+    expect(mockGetContainerAncestors).toHaveBeenCalledWith(
+      mockProps.dataAsset.fullyQualifiedName
+    );
     expect(getDataQualityLineage).not.toHaveBeenCalled();
   });
 
-  it('should not call getContainerByName API if parent is undefined', () => {
-    const mockGetContainerByName = getContainerByName as jest.Mock;
+  it('should not call getContainerAncestors API when the container FQN is missing', () => {
+    const mockGetContainerAncestors = getContainerAncestors as jest.Mock;
+    mockGetContainerAncestors.mockClear();
     render(
       <DataAssetsHeader
         {...mockProps}
-        dataAsset={{ ...mockProps.dataAsset, parent: undefined }}
+        dataAsset={{ ...mockProps.dataAsset, fullyQualifiedName: '' }}
       />
     );
 
-    expect(mockGetContainerByName).not.toHaveBeenCalled();
+    expect(mockGetContainerAncestors).not.toHaveBeenCalled();
+  });
+
+  it('should resolve the full ancestor chain in a single API call', async () => {
+    // Replaces the old recursive behaviour where each ancestor required its
+    // own getContainerByName request. We assert the breadcrumb resolution
+    // makes exactly one network call regardless of nesting depth.
+    const mockGetContainerAncestors = getContainerAncestors as jest.Mock;
+    mockGetContainerAncestors.mockClear();
+    mockGetContainerAncestors.mockResolvedValue([
+      {
+        id: 'root-id',
+        type: 'container',
+        name: 'root',
+        displayName: 'Root',
+        fullyQualifiedName: 's3.root',
+      },
+      {
+        id: 'mid-id',
+        type: 'container',
+        name: 'mid',
+        displayName: 'Mid',
+        fullyQualifiedName: 's3.root.mid',
+      },
+      {
+        id: 'leaf-parent-id',
+        type: 'container',
+        name: 'leaf_parent',
+        displayName: 'Leaf Parent',
+        fullyQualifiedName: 's3.root.mid.leaf_parent',
+      },
+    ]);
+
+    await act(async () => {
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{
+            ...mockProps.dataAsset,
+            fullyQualifiedName: 's3.root.mid.leaf_parent.leaf',
+          }}
+        />
+      );
+    });
+
+    expect(mockGetContainerAncestors).toHaveBeenCalledTimes(1);
+    expect(mockGetContainerAncestors).toHaveBeenCalledWith(
+      's3.root.mid.leaf_parent.leaf'
+    );
   });
 
   it('should render the Tier data if present', () => {

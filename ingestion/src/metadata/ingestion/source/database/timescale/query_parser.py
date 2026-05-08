@@ -80,7 +80,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             if self.config.sourceConfig.config.queryLogFilePath:
                 yield from super().yield_table_queries_from_logs()
             else:
-                database = self.config.serviceConnection.root.config.database
+                database = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
                 if database:
                     self.engine: Engine = get_connection(self.service_connection)
                     yield from self.process_table_query()
@@ -90,7 +90,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
                     for res in results:
                         row = list(res)
                         logger.info(f"Ingesting from database: {row[0]}")
-                        self.config.serviceConnection.root.config.database = row[0]
+                        self.config.serviceConnection.root.config.database = row[0]  # pyright: ignore[reportAttributeAccessIssue]
                         self.engine = get_connection(self.service_connection)
                         yield from self.process_table_query()
 

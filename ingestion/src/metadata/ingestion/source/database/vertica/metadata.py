@@ -290,7 +290,7 @@ class VerticaSource(CommonDbSourceService, MultiDBSource):
         yield from self._execute_database_query(VERTICA_LIST_DATABASES)
 
     def get_database_names(self) -> Iterable[str]:
-        configured_db = self.config.serviceConnection.root.config.database
+        configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
         if configured_db:
             self.set_inspector(database_name=configured_db)
             self.set_schema_description_map()

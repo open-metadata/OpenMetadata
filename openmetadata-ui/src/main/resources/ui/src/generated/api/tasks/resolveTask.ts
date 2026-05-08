@@ -48,5 +48,6 @@ export enum ResolutionType {
     Cancelled = "Cancelled",
     Completed = "Completed",
     Rejected = "Rejected",
+    Revoked = "Revoked",
     TimedOut = "TimedOut",
 }
