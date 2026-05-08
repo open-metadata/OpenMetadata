@@ -1,1 +1,0 @@
--- MCP tables are created in 1.13.0 migration. This file is intentionally empty.

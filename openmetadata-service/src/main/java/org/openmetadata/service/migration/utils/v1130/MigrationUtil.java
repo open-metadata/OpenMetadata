@@ -8,10 +8,13 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.PreparedBatch;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -25,6 +28,7 @@ public class MigrationUtil {
       "UPDATE event_subscription_entity SET json = :json::jsonb WHERE id = :id";
   private static final String OLD_FIELD = "owners.name.keyword";
   private static final String NEW_FIELD = "ownerName";
+  private static final String TABLE_COLUMN_ASSET_TYPE = "tableColumn";
 
   public static void updateOwnerChartFormulas() {
     DataInsightSystemChartRepository repository = new DataInsightSystemChartRepository();
@@ -310,5 +314,56 @@ public class MigrationUtil {
       }
     }
     return anyChanged;
+  }
+
+  /**
+   * Adds tableColumn (column) search settings configuration if it doesn't already exist. Moved
+   * from v200 to v1130 because column search was introduced in 1.13.0; the registration belongs
+   * with the version that introduced the entity.
+   *
+   * <p>Idempotent: each helper returns false when the entry is already present, and the DB write
+   * is skipped if neither addition was needed. Safe to call on every reprocessing pass.
+   */
+  public static void addTableColumnSearchSettings() {
+    try {
+      LOG.info("Adding tableColumn search settings configuration for column search support");
+
+      Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
+      if (searchSettings == null) {
+        LOG.warn(
+            "Search settings not found in database. "
+                + "Default settings will be loaded on next startup which includes tableColumn.");
+        return;
+      }
+
+      SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(searchSettings);
+      SearchSettings defaultSettings = SearchSettingsMergeUtil.loadSearchSettingsFromFile();
+      if (defaultSettings == null) {
+        LOG.error("Failed to load default search settings from file, skipping migration");
+        return;
+      }
+
+      boolean assetTypeAdded =
+          SearchSettingsMergeUtil.addMissingAssetTypeConfiguration(
+              currentSettings, defaultSettings, TABLE_COLUMN_ASSET_TYPE);
+      boolean allowedFieldsAdded =
+          SearchSettingsMergeUtil.addMissingAllowedFields(
+              currentSettings, defaultSettings, TABLE_COLUMN_ASSET_TYPE);
+
+      if (assetTypeAdded || allowedFieldsAdded) {
+        SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
+        LOG.info(
+            "Successfully added tableColumn search settings: "
+                + "assetTypeConfiguration={}, allowedFields={}",
+            assetTypeAdded,
+            allowedFieldsAdded);
+      } else {
+        LOG.info("tableColumn search settings already exist, no updates needed");
+      }
+    } catch (Exception e) {
+      // Non-fatal: column search settings can be re-saved later. Log and swallow
+      // so the migration step doesn't abort the rest of v1130's reprocessing.
+      LOG.error("Error adding tableColumn search settings", e);
+    }
   }
 }

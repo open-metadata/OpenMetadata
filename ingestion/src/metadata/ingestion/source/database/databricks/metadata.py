@@ -10,21 +10,21 @@
 #  limitations under the License.
 """Databricks legacy source module"""
 
+import json
 import re
 import traceback
 from copy import deepcopy
-from typing import Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple, Union  # noqa: UP035
 
 from pydantic import EmailStr
 from pydantic_core import PydanticCustomError
-from pyhive.sqlalchemy_hive import _type_map
 from sqlalchemy import exc, text, types, util
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql.sqltypes import String
-from sqlalchemy_databricks._dialect import DatabricksDialect
 
+from databricks.sqlalchemy.base import DatabricksDialect
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table, TableType
@@ -37,6 +37,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import Markdown
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -47,6 +48,13 @@ from metadata.ingestion.source.database.column_type_parser import create_sqlalch
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
+)
+from metadata.ingestion.source.database.databricks.models import (
+    ColumnDescriptions,
+    DescribeJsonPayload,
+    DescribeJsonType,
+    NestedDescriptions,
+    NestedFieldPath,
 )
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_DDL,
@@ -105,18 +113,130 @@ class MAP(String):
     __visit_name__ = "MAP"
 
 
-# overriding pyhive.sqlalchemy_hive._type_map
-# mapping struct, array & map to custom classed instead of sqltypes.String
-_type_map.update(
-    {
-        "struct": STRUCT,
-        "array": ARRAY,
-        "map": MAP,
-        "void": create_sqlalchemy_type("VOID"),
-        "interval": create_sqlalchemy_type("INTERVAL"),
-        "binary": create_sqlalchemy_type("BINARY"),
-    }
-)
+_type_map = {
+    "boolean": types.Boolean,
+    "tinyint": types.SmallInteger,
+    "smallint": types.SmallInteger,
+    "int": types.Integer,
+    "bigint": types.BigInteger,
+    "float": types.Float,
+    "double": types.Float,
+    "string": types.String,
+    "varchar": types.String,
+    "char": types.String,
+    "date": types.Date,
+    "timestamp": types.DateTime,
+    "decimal": types.Numeric,
+    "binary": create_sqlalchemy_type("BINARY"),
+    "struct": STRUCT,
+    "array": ARRAY,
+    "map": MAP,
+    "void": create_sqlalchemy_type("VOID"),
+    "interval": create_sqlalchemy_type("INTERVAL"),
+    "uniontype": types.String,
+}
+
+
+def _fetch_nested_descriptions_via_describe_json(
+    connection,
+    db_name: str | None,
+    schema: str | None,
+    table_name: str,
+) -> ColumnDescriptions:
+    """Run ``DESCRIBE TABLE EXTENDED <fqn> AS JSON`` and return a per-column
+    map of ``{field_path_tuple: comment}``.
+
+    ``DESCRIBE ... AS JSON`` is supported on Databricks Runtime 16.4+ and
+    returns a structured payload with ``columns[].type.fields[].comment`` on
+    nested struct fields — the only SQL path that exposes nested COMMENTs
+    (Spark's regular ``simpleString`` output strips them).
+
+    Returns an empty dict on any failure (older runtime, JSON parse error,
+    schema variation, or missing db/schema) so the caller cleanly degrades
+    to top-level-only descriptions.
+    """
+    if not db_name or not schema:
+        return {}
+    try:
+        result = connection.execute(
+            text(f"DESCRIBE TABLE EXTENDED `{db_name}`.`{schema}`.`{table_name}` AS JSON")
+        ).fetchone()
+        if not result or not result[0]:
+            return {}
+        payload = json.loads(result[0])
+    except Exception as err:  # pylint: disable=broad-except
+        logger.debug(f"DESCRIBE AS JSON unavailable or unparseable for {db_name}.{schema}.{table_name}: {err}")
+        return {}
+
+    return _build_column_descriptions_map(payload)
+
+
+def _build_column_descriptions_map(
+    payload: object,
+) -> ColumnDescriptions:
+    """From a DESCRIBE-AS-JSON payload, return ``{column_name: {path: comment}}``
+    for every top-level column whose type contains commented nested fields.
+
+    Accepts a raw JSON-decoded value (``object``) and validates it into a
+    ``DescribeJsonPayload``. On any validation failure (older runtime,
+    schema variation, malformed JSON) returns an empty dict so the caller
+    cleanly degrades to top-level-only descriptions."""
+    try:
+        validated = DescribeJsonPayload.model_validate(payload)
+    except Exception:  # pylint: disable=broad-except
+        return {}
+    result: ColumnDescriptions = {}
+    for col in validated.columns:
+        if not col.name:
+            continue
+        descriptions: NestedDescriptions = {}
+        _collect_nested_descriptions(col.type, [], descriptions)
+        if descriptions:
+            result[col.name] = descriptions
+    return result
+
+
+def _collect_nested_descriptions(
+    type_node: DescribeJsonType | None,
+    path: list[str],
+    descriptions: NestedDescriptions,
+) -> None:
+    """Walk a JSON ``type`` node, collecting comments from struct fields.
+
+    OM does not surface map values as named children, so map types are not
+    descended. Array wrappers do not add a path level — children of an
+    ``array<struct<...>>`` column are the struct's fields directly."""
+    if type_node is None or not type_node.name:
+        return
+    type_name = type_node.name.lower()
+    if type_name == "struct":
+        for field in type_node.fields or []:
+            if not field.name:
+                continue
+            field_path = path + [field.name]
+            if field.comment:
+                descriptions[tuple(field_path)] = field.comment
+            _collect_nested_descriptions(field.type, field_path, descriptions)
+    elif type_name == "array":
+        _collect_nested_descriptions(type_node.element_type, path, descriptions)
+
+
+def _apply_nested_descriptions(
+    column: "Column",
+    descriptions: NestedDescriptions,
+    path: NestedFieldPath,
+) -> None:
+    """Walk a parsed Column tree and assign descriptions from a path-keyed
+    map. Path matches struct-field-name nesting; arrays do not add a level
+    (children of an array column are the struct's fields)."""
+    if not column.children:
+        return
+    for child in column.children:
+        child_name = child.name.root if hasattr(child.name, "root") else str(child.name)
+        child_path = path + (child_name,)
+        if not child.description and child_path in descriptions:
+            child.description = Markdown(root=descriptions[child_path])
+        _apply_nested_descriptions(child, descriptions, child_path)
 
 
 # This method is from hive dialect originally but
@@ -172,7 +292,7 @@ def _get_column_rows(self, connection, table_name, schema, db_name):
 @reflection.cache
 def get_columns(self, connection, table_name, schema=None, **kw):
     """
-    This function overrides the sqlalchemy_databricks._dialect.DatabricksDialect.get_columns
+    This function overrides the DatabricksDialect.get_columns
     to add support for struct, array & map datatype
 
     Extract the Database Name from the keyword arguments parameter if it is present. This
@@ -181,6 +301,10 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     """
 
     rows = _get_column_rows(self, connection, table_name, schema, kw.get("db_name"))
+    # Lazily populated on the first struct / array<struct> column — most tables
+    # are primitives-only and shouldn't pay the AS JSON round-trip, and map
+    # values aren't surfaced as named children so they don't need it either.
+    nested_descriptions_by_column: ColumnDescriptions | None = None
     result = []
     for col_name, col_type, _comment in rows:
         # DESCRIBE TABLE EXTENDED emits real columns first, then '#'-prefixed
@@ -189,7 +313,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         # DescribeTableExec can emit markers not in any hardcoded whitelist, so
         # treat any '#'-prefixed row or row with empty col_type as end-of-columns.
         # ('# col_name' sub-header is filtered upstream in _get_column_rows.)
-        if col_name.startswith("#") or not col_type:
+        if not isinstance(col_name, str) or col_name.startswith("#") or not col_type:
             logger.debug(
                 f"End of columns for {schema}.{table_name}. Found end-of-columns marker: {col_name}. Stopping column extraction."
             )
@@ -235,6 +359,27 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                     }
                     col_info["system_data_type"] = sub_rows["data_type"]
                     col_info["is_complex"] = True
+                    # Map values aren't surfaced as named children, so map
+                    # columns can't carry nested descriptions even if the
+                    # AS JSON payload had them — gate the fetch to types
+                    # whose children we actually expose.
+                    supports_nested_descriptions = col_type == "struct" or (
+                        col_type == "array"
+                        and re.match(
+                            r"^array\s*<\s*struct\b",
+                            sub_rows.get("data_type", raw_col_type),
+                            re.IGNORECASE,
+                        )
+                        is not None
+                    )
+                    if supports_nested_descriptions:
+                        if nested_descriptions_by_column is None:
+                            nested_descriptions_by_column = _fetch_nested_descriptions_via_describe_json(
+                                connection, kw.get("db_name"), schema, table_name
+                            )
+                        nested_descriptions = nested_descriptions_by_column.get(col_name)
+                        if nested_descriptions:
+                            col_info["nested_descriptions"] = nested_descriptions
                 except (DatabaseError, KeyError) as err:
                     logger.error(
                         f"Failed to fetch complex-type details for column "
@@ -290,9 +435,14 @@ def get_view_names_reflection(self, schema=None, **kw):
     return []
 
 
-def get_view_names(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_view_names(  # pylint: disable=unused-argument
+    self: Any,
+    connection: Any,
+    schema: str | None = None,
+    only_materialized: bool = False,  # pyright: ignore[reportUnusedParameter]
+    only_temp: bool = False,  # pyright: ignore[reportUnusedParameter]
+    **kw: Any,
+) -> list[str]:
     if kw.get("db_name"):
         connection.execute(
             text(
@@ -337,7 +487,7 @@ def get_table_comment(  # pylint: disable=unused-argument
     )
     try:
         for result in list(cursor):
-            data = result.values()
+            data = tuple(result)
             if data[0] and data[0].strip() == "Comment":
                 return {"text": data[1] if data and data[1] else None}
     except Exception:
@@ -526,6 +676,13 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         except DatabaseError as soe:
             logger.debug(f"Failed to fetch catalogs due to: {soe}")
             self.is_older_version = True
+
+    def _process_complex_col_type(self, parsed_string: dict, column: dict) -> Column:
+        om_column = super()._process_complex_col_type(parsed_string, column)
+        nested_descriptions = column.get("nested_descriptions")
+        if nested_descriptions:
+            _apply_nested_descriptions(om_column, nested_descriptions, ())
+        return om_column
 
     @classmethod
     def create(
@@ -912,7 +1069,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 schema=schema_name,
             )
             for result in list(cursor):
-                data = result.values()
+                data = tuple(result)
                 if data[0] and data[0].strip() == "Comment":
                     description = data[1] if data and data[1] else None
                     return description
@@ -943,7 +1100,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 schema=schema_name,
             )
             for result in list(cursor):
-                data = result.values()
+                data = tuple(result)
                 if data[0] and data[0].strip() == "Comment":
                     description = data[1] if data and data[1] else None
                 elif data[0] and data[0].strip() == "Location":
