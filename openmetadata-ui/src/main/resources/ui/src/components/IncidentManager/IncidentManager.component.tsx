@@ -612,6 +612,22 @@ const IncidentManager = ({
     [isIncidentPage, t]
   );
 
+  const loadingSkeletons = useMemo(
+    () => (
+      <div className="tw:p-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton
+            className="tw:mb-2"
+            height={40}
+            key={i}
+            width="100%"
+          />
+        ))}
+      </div>
+    ),
+    []
+  );
+
   const renderRow = (record: TestCaseResolutionStatus) => {
     const ref = record.testCaseReference;
     const tableFqn = getPartialNameFromTableFQN(
@@ -818,16 +834,7 @@ const IncidentManager = ({
           items={testCaseListData.isLoading ? [] : testCaseListData.data}
           renderEmptyState={() =>
             testCaseListData.isLoading ? (
-              <div className="tw:p-4">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton
-                    className="tw:mb-2"
-                    height={40}
-                    key={i}
-                    width="100%"
-                  />
-                ))}
-              </div>
+              loadingSkeletons
             ) : (
               <FilterTablePlaceHolder
                 placeholderText={t('message.no-incident-found')}
