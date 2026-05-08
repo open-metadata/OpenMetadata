@@ -209,14 +209,14 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         fields.contains("usageSummary") ? dashboard.getUsageSummary() : null);
   }
 
-  // Override soft delete behavior to handle charts through HAS relation.
+  // Soft-delete chart links (HAS relation). The CONTAINS subtree is handled by the bulk
+  // path in EntityRepository.bulkSoftDeleteSubtree; chart handling is a per-dashboard
+  // concern and lives in the per-entity extension hook so it runs both for direct dashboard
+  // deletes and when dashboards are descendants of a larger soft-delete (e.g.,
+  // DashboardService cascade).
   @Transaction
   @Override
-  protected void deleteChildren(
-      UUID dashboardId, boolean recursive, boolean hardDelete, String updatedBy) {
-    super.deleteChildren(dashboardId, recursive, hardDelete, updatedBy);
-
-    // Load all charts linked to this dashboard
+  protected void softDeleteAdditionalChildren(UUID dashboardId, String updatedBy) {
     List<CollectionDAO.EntityRelationshipRecord> chartRecords =
         daoCollection
             .relationshipDAO()
@@ -225,7 +225,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       return;
     }
 
-    // Batch-load dashboard relationships for these charts
     List<CollectionDAO.EntityRelationshipObject> dashboardRelationships =
         daoCollection
             .relationshipDAO()
@@ -248,11 +247,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
                 Include.NON_DELETED)
             .stream()
             .map(Dashboard::getId)
-            .filter(id -> !id.equals(dashboardId)) // (excluding the current dashboard
+            .filter(id -> !id.equals(dashboardId))
             .collect(Collectors.toSet());
 
-    // For deletion: get charts whose linked dashboards (excluding the current dashboard)
-    // have no other non‑deleted dashboards.
+    // Soft-delete charts whose only remaining dashboard is the one being deleted.
     List<CollectionDAO.EntityRelationshipRecord> filteredChartRecordsToBeDeleted =
         new ArrayList<>();
 
@@ -274,16 +272,15 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       }
     }
 
-    deleteChildren(filteredChartRecordsToBeDeleted, hardDelete, updatedBy);
+    deleteChildren(filteredChartRecordsToBeDeleted, false, updatedBy);
   }
 
-  // Override restore behavior to handle charts through HAS relation.
+  // Restore chart links (HAS relation). The CONTAINS subtree is now restored by the bulk
+  // path in EntityRepository.bulkRestoreSubtree; chart handling is a per-dashboard concern
+  // and lives in the per-entity extension hook.
   @Transaction
   @Override
-  protected void restoreChildren(UUID dashboardId, String updatedBy) {
-    super.restoreChildren(dashboardId, updatedBy);
-
-    // Load all charts linked to this dashboard
+  protected void restoreAdditionalChildren(UUID dashboardId, String updatedBy) {
     List<CollectionDAO.EntityRelationshipRecord> chartRecords =
         daoCollection
             .relationshipDAO()
@@ -292,7 +289,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       return;
     }
 
-    // Batch-load dashboard relationships for these charts
     List<CollectionDAO.EntityRelationshipObject> dashboardRelationships =
         daoCollection
             .relationshipDAO()
@@ -315,11 +311,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
                 Include.DELETED)
             .stream()
             .map(Dashboard::getId)
-            .filter(id -> !id.equals(dashboardId)) // (excluding the current dashboard
+            .filter(id -> !id.equals(dashboardId))
             .collect(Collectors.toSet());
 
-    // For restore: get charts whose linked dashboards (excluding the current dashboard)
-    // are all non‑deleted.
     List<CollectionDAO.EntityRelationshipRecord> filteredChartRecordsToBeRestored =
         new ArrayList<>();
 

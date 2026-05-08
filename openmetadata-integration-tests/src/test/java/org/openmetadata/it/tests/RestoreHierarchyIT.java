@@ -77,6 +77,33 @@ public class RestoreHierarchyIT {
   }
 
   @Test
+  void recursiveSoftDelete_marksFullSubtreeDeletedInOnePassPerType(TestNamespace ns) {
+    Hierarchy h = createHierarchy(ns, "softdel");
+    Map<String, String> recursiveDelete = new HashMap<>();
+    recursiveDelete.put("recursive", "true");
+    SdkClients.adminClient().databases().delete(h.database.getId().toString(), recursiveDelete);
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    Database deletedDb =
+        client.databases().get(h.database.getId().toString(), "deleted", Include.ALL.value());
+    assertTrue(Boolean.TRUE.equals(deletedDb.getDeleted()));
+
+    for (DatabaseSchema schema : h.schemas) {
+      DatabaseSchema fetched =
+          client.databaseSchemas().get(schema.getId().toString(), "deleted", Include.ALL.value());
+      assertTrue(
+          Boolean.TRUE.equals(fetched.getDeleted()),
+          "schema " + schema.getName() + " was not soft-deleted via the bulk cascade");
+    }
+    for (Table table : h.tables) {
+      Table fetched = client.tables().get(table.getId().toString(), "deleted", Include.ALL.value());
+      assertTrue(
+          Boolean.TRUE.equals(fetched.getDeleted()),
+          "table " + table.getName() + " was not soft-deleted via the bulk cascade");
+    }
+  }
+
+  @Test
   void asyncRestore_returns202AndRestoresFullHierarchy(TestNamespace ns) {
     Hierarchy h = createHierarchy(ns, "async");
     softDeleteAndAssertCascade(h);
