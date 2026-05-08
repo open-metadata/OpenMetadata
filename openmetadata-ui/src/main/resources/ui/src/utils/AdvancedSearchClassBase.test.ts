@@ -67,6 +67,7 @@ describe('AdvancedSearchClassBase', () => {
       EntityFields.CERTIFICATION,
       EntityFields.TIER,
       'extension',
+      'description',
       'descriptionStatus',
       EntityFields.ENTITY_TYPE_KEYWORD,
       'descriptionSources.Suggested',

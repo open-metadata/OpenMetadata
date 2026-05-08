@@ -535,7 +535,9 @@ class DefaultRecreateHandlerTest {
     @DisplayName("Should promote partial data and record success when failed reindex has documents")
     void testFinalizeReindexPromotesPartialData() {
       AliasState aliasState = new AliasState();
-      aliasState.put("table_search_index", Set.of("table_search_index"));
+      // Canonical is a concrete index with no aliases (the realistic first-reindex shape; OS/ES
+      // forbid an alias and a concrete sharing the same name).
+      aliasState.put("table_search_index", Set.of());
       aliasState.put("table_search_index_rebuild_old", Set.of("stale"));
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
@@ -666,6 +668,62 @@ class DefaultRecreateHandlerTest {
       }
 
       verify(metrics).recordPromotionFailure("table");
+    }
+
+    @Test
+    @DisplayName(
+        "Should not delete-by-alias-name when canonical is currently an alias on a previous staged")
+    void testFinalizeReindexSkipsDeleteWhenCanonicalIsAlias() {
+      // After the first reindex, the canonical name (table_search_index) is an alias on the
+      // previous staged index, not a concrete one. OpenSearch's listIndicesByPrefix returns the
+      // alias name as one of its result keys; without the guard, finalizeReindex would attempt
+      // deleteIndexWithBackoff(canonicalIndex), fail with "matches an alias" and burn ~31s of
+      // exponential backoff per entity. The guard must drop the alias name from oldIndicesToDelete
+      // BEFORE the delete branch fires.
+      AliasState aliasState = new AliasState();
+      aliasState.put(
+          "table_search_index_rebuild_old",
+          new HashSet<>(Set.of("table_search_index", "table", "all")));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+      // Simulate the OpenSearch behavior where listIndicesByPrefix surfaces the alias name itself
+      // among its result keys (the key in our AliasState mock is what listIndicesByPrefix returns).
+      aliasState.put("table_search_index", Set.of());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .activeIndex("table_search_index_rebuild_old")
+                .stagedIndex("table_search_index_rebuild_new")
+                .existingAliases(new HashSet<>(Set.of("table_search_index", "table", "all")))
+                .canonicalAliases("table")
+                .parentAliases(new HashSet<>(Set.of("all")))
+                .build();
+
+        new DefaultRecreateHandler().finalizeReindex(context, true);
+      }
+
+      verify(client, never()).deleteIndexWithBackoff("table_search_index");
+      assertTrue(
+          aliasState.deletedIndices.contains("table_search_index_rebuild_old"),
+          "Old concrete rebuild must still be cleaned up by the swap path");
+      Set<String> stagedAliases = aliasState.indexAliases.get("table_search_index_rebuild_new");
+      assertTrue(
+          stagedAliases.contains("table_search_index"),
+          () -> "Canonical alias must end up on staged after promotion; got " + stagedAliases);
+      assertTrue(
+          stagedAliases.contains("table"),
+          () -> "Short alias must end up on staged after promotion; got " + stagedAliases);
+      assertTrue(
+          stagedAliases.contains("all"),
+          () -> "Parent alias must end up on staged after promotion; got " + stagedAliases);
     }
   }
 
