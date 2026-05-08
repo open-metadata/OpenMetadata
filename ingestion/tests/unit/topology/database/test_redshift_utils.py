@@ -321,9 +321,7 @@ class TestRedshiftIntervalParsing(unittest.TestCase):
 
     def test_interval_with_fields_and_precision_uses_keyword_arguments(self):
         """interval <fields>(N) must route both precision and fields through kwargs."""
-        args, kwargs = _get_args_and_kwargs(
-            "6", "interval day to second", "interval day to second(6)"
-        )
+        args, kwargs = _get_args_and_kwargs("6", "interval day to second", "interval day to second(6)")
 
         self.assertEqual(args, ())
         self.assertEqual(kwargs, {"precision": 6, "fields": "day to second"})
