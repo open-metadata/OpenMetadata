@@ -73,9 +73,7 @@ export const addAssigneeFromPopoverWidget = async (data: {
   const taskTabEditAssigneesButton = page.getByTestId('edit-assignees').last();
 
   if (testCaseName) {
-    const incidentRow = page
-      .getByRole('row', { name: new RegExp(testCaseName, 'i') })
-      .first();
+    const incidentRow = page.getByTestId(`test-case-${testCaseName}`).first();
     const editOwnerButton = incidentRow.getByTestId('edit-owner');
 
     if (await editOwnerButton.isVisible().catch(() => false)) {
@@ -184,7 +182,7 @@ export const assignIncident = async (data: {
     .poll(
       async () => {
         const incidentRow = page
-          .getByRole('row', { name: new RegExp(testCaseName, 'i') })
+          .getByTestId(`test-case-${testCaseName}`)
           .first();
         const incidentLink = page
           .getByRole('link', { name: testCaseName })

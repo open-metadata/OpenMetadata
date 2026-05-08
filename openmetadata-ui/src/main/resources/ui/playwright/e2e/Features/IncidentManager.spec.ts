@@ -145,7 +145,7 @@ const isVisible = async (locator: Locator) =>
 
 const expectIncidentTableRowsToContain = async (page: Page, text: string) => {
   const rows = page.locator(
-    '.ant-table-tbody tr:not(.ant-table-measure-row):not(.ant-table-placeholder)'
+    '[data-testid="test-case-incident-manager-table"] tbody tr'
   );
   const rowCount = await rows.count();
 
@@ -182,7 +182,7 @@ const openIncidentReassignModal = async (page: Page, testCaseName?: string) => {
     .last();
   const incidentListRowAction = testCaseName
     ? page
-        .locator('.ant-table-tbody tr')
+        .locator('[data-testid="test-case-incident-manager-table"] tbody tr')
         .filter({ hasText: testCaseName })
         .first()
         .locator('button')
