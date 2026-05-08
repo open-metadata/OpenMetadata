@@ -68,7 +68,7 @@ const DUMMY_ANNOUNCEMENTS: AnnouncementEntity[] = [
 
 const AnnouncementsWidgetV2 = ({
   isEditView,
-  type = [EntityType.DOMAIN, EntityType.DATA_PRODUCT],
+  type,
 }: AnnouncementsWidgetV2Props) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -88,7 +88,7 @@ const AnnouncementsWidgetV2 = ({
       const filtered = (res.data ?? []).filter((announcement) => {
         const entityType = getEntityType(announcement.entityLink ?? '');
 
-        return type.includes(entityType as EntityType);
+        return type ? type.includes(entityType as EntityType) : true;
       });
       setAnnouncements(filtered);
     } catch {

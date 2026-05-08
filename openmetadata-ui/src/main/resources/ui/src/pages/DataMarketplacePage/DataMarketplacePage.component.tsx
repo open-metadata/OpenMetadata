@@ -142,7 +142,10 @@ const DataMarketplacePage = () => {
       </div>
       <div className="marketplace-grid-wrapper" dir="ltr">
         <div className="p-x-box">
-          <AnnouncementsWidgetV2 widgetKey="announcements" />
+          <AnnouncementsWidgetV2
+            type={[EntityType.DOMAIN, EntityType.DATA_PRODUCT]}
+            widgetKey="announcements"
+          />
         </div>
         <ReactGridLayout
           className="grid-container p-x-box"
