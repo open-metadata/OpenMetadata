@@ -20,13 +20,11 @@ import FailedTestCaseSampleData from './FailedTestCaseSampleData.component';
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  Link: jest
-    .fn()
-    .mockImplementation(({ children, to, ...rest }) => (
-      <a data-to={typeof to === 'string' ? to : JSON.stringify(to)} {...rest}>
-        {children}
-      </a>
-    )),
+  Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (
+    <a data-to={typeof to === 'string' ? to : JSON.stringify(to)} {...rest}>
+      {children}
+    </a>
+  )),
   useParams: jest.fn().mockReturnValue({}),
 }));
 

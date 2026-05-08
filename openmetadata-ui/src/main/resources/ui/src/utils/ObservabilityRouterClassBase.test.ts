@@ -145,10 +145,7 @@ describe('ObservabilityRouterClassBase', () => {
 
     it('should pass through an explicit tab', () => {
       expect(
-        router.getTestCaseDetailPagePath(
-          'table.col',
-          TestCasePageTabs.ISSUES
-        )
+        router.getTestCaseDetailPagePath('table.col', TestCasePageTabs.ISSUES)
       ).toBe(`/test-case/table.col/${TestCasePageTabs.ISSUES}`);
     });
   });
@@ -161,9 +158,9 @@ describe('ObservabilityRouterClassBase', () => {
     });
 
     it('should include tab segment when tab is provided', () => {
-      expect(router.getTestCaseVersionPath('table.col', '0.2', 'incidents')).toBe(
-        '/test-case/table.col/versions/0.2/incidents'
-      );
+      expect(
+        router.getTestCaseVersionPath('table.col', '0.2', 'incidents')
+      ).toBe('/test-case/table.col/versions/0.2/incidents');
     });
   });
 

@@ -861,7 +861,8 @@ const DataQualityDashboard = ({
                   incidentStatusType={TestCaseResolutionStatusTypes.New}
                   name="open-incident"
                   redirectPath={{
-                    pathname: observabilityRouterClassBase.getIncidentManagerPath(),
+                    pathname:
+                      observabilityRouterClassBase.getIncidentManagerPath(),
                     search: QueryString.stringify({
                       testCaseResolutionStatusType:
                         TestCaseResolutionStatusTypes.New,
@@ -878,7 +879,8 @@ const DataQualityDashboard = ({
                   incidentStatusType={TestCaseResolutionStatusTypes.Resolved}
                   name="resolved-incident"
                   redirectPath={{
-                    pathname: observabilityRouterClassBase.getIncidentManagerPath(),
+                    pathname:
+                      observabilityRouterClassBase.getIncidentManagerPath(),
                     search: QueryString.stringify({
                       testCaseResolutionStatusType:
                         TestCaseResolutionStatusTypes.Resolved,

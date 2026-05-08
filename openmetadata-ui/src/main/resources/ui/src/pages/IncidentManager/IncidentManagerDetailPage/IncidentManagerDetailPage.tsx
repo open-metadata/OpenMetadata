@@ -485,7 +485,9 @@ const IncidentManagerDetailPage = ({
                   <ManageButton
                     isRecursiveDelete
                     afterDeleteAction={() =>
-                      navigate(observabilityRouterClassBase.getIncidentManagerPath())
+                      navigate(
+                        observabilityRouterClassBase.getIncidentManagerPath()
+                      )
                     }
                     allowSoftDelete={false}
                     canDelete={hasDeletePermission}

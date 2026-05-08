@@ -128,7 +128,11 @@ const AddToBundleSuiteModal: React.FC<AddToBundleSuiteModalProps> = ({
         (opt) => opt.value === selectedSuiteId
       );
       if (selectedSuite?.suite.fullyQualifiedName) {
-        navigate(observabilityRouterClassBase.getTestSuitePath(selectedSuite.suite.fullyQualifiedName));
+        navigate(
+          observabilityRouterClassBase.getTestSuitePath(
+            selectedSuite.suite.fullyQualifiedName
+          )
+        );
       }
 
       onAddedToExisting();

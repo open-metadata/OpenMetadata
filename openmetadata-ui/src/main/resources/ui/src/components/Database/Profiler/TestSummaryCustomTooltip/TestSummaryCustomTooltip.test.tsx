@@ -79,13 +79,11 @@ jest.mock('../../../../utils/TasksUtils', () => ({
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  Link: jest
-    .fn()
-    .mockImplementation(({ children, to, ...rest }) => (
-      <a data-to={typeof to === 'string' ? to : JSON.stringify(to)} {...rest}>
-        {children}
-      </a>
-    )),
+  Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (
+    <a data-to={typeof to === 'string' ? to : JSON.stringify(to)} {...rest}>
+      {children}
+    </a>
+  )),
 }));
 
 jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({

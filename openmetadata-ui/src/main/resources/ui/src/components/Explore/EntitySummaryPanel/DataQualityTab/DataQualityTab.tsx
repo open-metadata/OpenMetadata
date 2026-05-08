@@ -222,7 +222,9 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
             <Link
               className="test-case-name"
               data-testid={`test-case-${testCaseName}`}
-              to={observabilityRouterClassBase.getTestCaseDetailPagePath(testCase.fullyQualifiedName ?? '')}>
+              to={observabilityRouterClassBase.getTestCaseDetailPagePath(
+                testCase.fullyQualifiedName ?? ''
+              )}>
               {testCaseName}
             </Link>
           </div>

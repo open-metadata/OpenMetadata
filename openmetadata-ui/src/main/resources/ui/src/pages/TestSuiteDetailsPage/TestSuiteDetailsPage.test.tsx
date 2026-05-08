@@ -646,8 +646,7 @@ describe('TestSuiteDetailsPage component', () => {
         });
 
         const fqn = mockTestSuite.fullyQualifiedName;
-        const expectedUrl =
-          observabilityRouterClassBase.getTestSuitePath(fqn);
+        const expectedUrl = observabilityRouterClassBase.getTestSuitePath(fqn);
 
         const lastCallProps =
           mockDataQualityTab.mock.calls[

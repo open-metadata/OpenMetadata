@@ -206,13 +206,11 @@ jest.mock('../common/AsyncSelect/AsyncSelect', () => ({
 }));
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  Link: jest
-    .fn()
-    .mockImplementation(({ children, to, ...rest }) => (
-      <a data-to={typeof to === 'string' ? to : JSON.stringify(to)} {...rest}>
-        {children}
-      </a>
-    )),
+  Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (
+    <a data-to={typeof to === 'string' ? to : JSON.stringify(to)} {...rest}>
+      {children}
+    </a>
+  )),
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
@@ -842,9 +840,7 @@ describe('IncidentManagerPage', () => {
   describe('observabilityRouterClassBase migration', () => {
     it('test case name link should use observabilityRouterClassBase.getTestCaseDetailPagePath', async () => {
       const fqn = 'svc.db.schema.table.test_case_1';
-      const {
-        getTestCaseDetailPagePath,
-      } = require('../../utils/RouterUtils');
+      const { getTestCaseDetailPagePath } = require('../../utils/RouterUtils');
       (getTestCaseDetailPagePath as jest.Mock).mockClear();
 
       (getListTestCaseIncidentStatusFromSearch as jest.Mock).mockResolvedValue({

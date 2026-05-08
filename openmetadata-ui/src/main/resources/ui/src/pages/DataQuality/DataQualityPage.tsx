@@ -62,7 +62,11 @@ const DataQualityPage = () => {
 
   const handleBundleSuiteSuccess = (testSuite: TestSuite) => {
     if (testSuite.fullyQualifiedName) {
-      navigate(observabilityRouterClassBase.getTestSuitePath(testSuite.fullyQualifiedName));
+      navigate(
+        observabilityRouterClassBase.getTestSuitePath(
+          testSuite.fullyQualifiedName
+        )
+      );
     }
   };
 
@@ -119,7 +123,11 @@ const DataQualityPage = () => {
 
   const handleFormSubmit = (testCase: TestCase) => {
     if (testCase.fullyQualifiedName) {
-      navigate(observabilityRouterClassBase.getTestCaseDetailPagePath(testCase.fullyQualifiedName));
+      navigate(
+        observabilityRouterClassBase.getTestCaseDetailPagePath(
+          testCase.fullyQualifiedName
+        )
+      );
     }
   };
 

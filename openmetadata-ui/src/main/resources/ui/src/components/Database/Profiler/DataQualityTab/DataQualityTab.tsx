@@ -371,7 +371,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     setBundleSuiteFormInitialCases([]);
     setSelectedKeys(new Set<string>());
     if (testSuite.fullyQualifiedName) {
-      navigate(observabilityRouterClassBase.getTestSuitePath(testSuite.fullyQualifiedName));
+      navigate(
+        observabilityRouterClassBase.getTestSuitePath(
+          testSuite.fullyQualifiedName
+        )
+      );
     }
   };
 
@@ -580,9 +584,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               className="break-word"
               state={{ breadcrumbData }}
               to={{
-                pathname: observabilityRouterClassBase.getTestCaseDetailPagePath(
-                  record.fullyQualifiedName ?? ''
-                ),
+                pathname:
+                  observabilityRouterClassBase.getTestCaseDetailPagePath(
+                    record.fullyQualifiedName ?? ''
+                  ),
               }}>
               {getEntityName(record)}
             </Link>
