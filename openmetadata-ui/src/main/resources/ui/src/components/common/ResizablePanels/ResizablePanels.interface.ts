@@ -12,7 +12,6 @@
  */
 export interface ResizablePanelsProps {
   className?: string;
-  hideBgGrey?: boolean;
   orientation?: 'vertical' | 'horizontal';
   firstPanel: PanelProps;
   secondPanel: PanelProps;

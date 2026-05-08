@@ -13,6 +13,7 @@
 
 import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
 import { useEffect, useMemo, useState } from 'react';
@@ -338,7 +339,10 @@ const AddServicePage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className={classNames('content-height-with-resizable-panel', {
+        'tw:!bg-transparent':
+          connectionsRouterClassBase.isEmbeddedMode(),
+      })}
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,
@@ -347,7 +351,6 @@ const AddServicePage = () => {
         cardClassName: 'max-width-md m-x-auto',
         allowScroll: true,
       }}
-      hideBgGrey={connectionsRouterClassBase.isEmbeddedMode()}
       hideSecondPanel={hideSecondPanel}
       pageTitle={t('label.add-entity', { entity: t('label.service') })}
       secondPanel={{

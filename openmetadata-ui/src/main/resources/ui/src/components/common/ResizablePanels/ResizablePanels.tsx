@@ -22,7 +22,6 @@ import { ResizablePanelsProps } from './ResizablePanels.interface';
 
 const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   className,
-  hideBgGrey = false,
   orientation = 'vertical',
   firstPanel,
   secondPanel,
@@ -47,9 +46,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
     <>
       {pageTitle && <DocumentTitle title={pageTitle} />}
       <ReflexContainer
-        className={classNames(className, 'resizable-panels-layout', {
-          'bg-grey': !hideBgGrey,
-        })}
+        className={classNames(className, 'resizable-panels-layout', 'bg-grey')}
         orientation={orientation}>
         <ReflexElement
           className={classNames(firstPanel.className, 'resizable-first-panel', {
