@@ -217,6 +217,10 @@
               </includes>
               <systemPropertyVariables>
                 <skip.embedded.bootstrap>true</skip.embedded.bootstrap>
+                <!-- Video recording on by default while the suite is young — captures
+                     each run to target/playwright-videos/ for triage. Disable per-run with
+                     -DPW_VIDEO=false. -->
+                <PW_VIDEO>true</PW_VIDEO>
                 <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                 <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
                 <junit.jupiter.execution.parallel.mode.default>concurrent</junit.jupiter.execution.parallel.mode.default>
