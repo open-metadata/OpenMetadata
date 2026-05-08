@@ -889,7 +889,8 @@ class TestGetChildrenWithParsedDicts:
         nodes = {"model.Project.my_model": {"name": "my_model", "unique_id": "x", "description": "test"}}
         col = pd.Series([nodes])
         children = GenericDataFrameColumnParser.get_children(col)
-        assert len(children) > 0
+        assert len(children) == 1
+        assert children[0]["name"] == "model.Project.my_model"
 
 
 class TestSingleObjectJsonFileIngestion:
@@ -937,7 +938,7 @@ class TestSingleObjectJsonFileIngestion:
 
     def test_empty_dict_columns_have_no_children(self):
         cols = self._parsed_columns("dbt_manifest.json")
-        for name in ("metrics", "groups", "disabled"):
+        for name in ("metrics", "groups", "disabled", "group_map", "saved_queries", "semantic_models", "unit_tests"):
             children = cols[name].children
             assert not children, f"column '{name}' should have no children"
 

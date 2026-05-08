@@ -384,10 +384,10 @@ class GenericDataFrameColumnParser:
                         f"ValueError/SyntaxError while parsing column '{column_name}' datatype: {exc}. "
                         f"Falling back to string."
                     )
-                    data_type = "string"
+                    data_type = "str"
 
             data_type = cls._data_formats.get(
-                data_type or data_frame[column_name].dtypes.name,
+                data_type or col_series.dtypes.name,
             )
             if not data_type:
                 logger.debug(f"unknown data type {data_frame[column_name].dtypes.name}. resolving to string.")
@@ -475,8 +475,18 @@ class GenericDataFrameColumnParser:
                     parsed = json.loads(value)
                     if isinstance(parsed, dict):
                         dict_values.append(parsed)
-                except (TypeError, json.JSONDecodeError):
-                    pass
+                    else:
+                        logger.debug(
+                            "Skipping non-object JSON value while extracting column children: "
+                            f"parsed type is {type(parsed).__name__}"
+                        )
+                except (TypeError, json.JSONDecodeError) as exc:
+                    logger.debug(f"Skipping unparseable string value while extracting column children: {exc}")
+            else:
+                logger.debug(
+                    "Skipping non-string, non-dict value while extracting column children: "
+                    f"type is {type(value).__name__}"
+                )
 
         if not dict_values:
             return []
