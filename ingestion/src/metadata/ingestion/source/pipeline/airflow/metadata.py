@@ -27,7 +27,7 @@ from airflow.models.dag import DagModel
 from airflow.models.serialized_dag import SerializedDagModel
 from airflow.serialization.serialized_objects import SerializedDAG
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import and_, column, func, inspect, join
+from sqlalchemy import and_, column, func, inspect, join, literal
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -474,21 +474,24 @@ class AirflowSource(PipelineServiceSource):
                 )
             )
 
-    def _resolve_dag_data(self, raw_data: Optional[Any], dag_id: str, timestamp_column) -> Optional[Any]:  # noqa: UP045
+    def _resolve_dag_data(
+        self,
+        raw_data: Optional[Any],  # noqa: UP045
+        dag_id: str,
+        compressed_data: Optional[bytes],  # noqa: UP045
+    ) -> Optional[Any]:  # noqa: UP045
         if raw_data is not None:
             return raw_data
-        if not hasattr(SerializedDagModel, "_data_compressed"):
+        if compressed_data is None:
             return None
-        compressed = (
-            self.session.query(SerializedDagModel._data_compressed)  # pylint: disable=protected-access
-            .filter(SerializedDagModel.dag_id == dag_id)
-            .order_by(timestamp_column.desc())
-            .limit(1)
-            .scalar()
-        )
-        if compressed is None:
+        try:
+            return json.loads(zlib.decompress(compressed_data))
+        except zlib.error as exc:
+            logger.warning(
+                f"Failed to decompress serialized DAG data for '{dag_id}'. "
+                f"Ensure COMPRESS_SERIALIZED_DAGS uses zlib compression (the Airflow default): {exc}"
+            )
             return None
-        return json.loads(zlib.decompress(compressed))
 
     def get_pipelines_list(self) -> Iterable[AirflowDagDetails]:
         """
@@ -522,15 +525,22 @@ class AirflowSource(PipelineServiceSource):
             .subquery()
         )
 
+        compressed_col: Any = (
+            SerializedDagModel._data_compressed  # pylint: disable=protected-access
+            if hasattr(SerializedDagModel, "_data_compressed")
+            else literal(None)
+        )
+
         # In Airflow 3.x, fileloc is not available on SerializedDagModel
         # We need to get it from DagModel instead
         if hasattr(SerializedDagModel, "fileloc"):
             # Airflow 2.x: fileloc is on SerializedDagModel
             # Use tuple IN clause to get only the latest version of each DAG
-            session_query = self.session.query(
+            session_query = self.session.query(  # pyright: ignore[reportCallIssue]
                 SerializedDagModel.dag_id,
                 json_data_column,
                 SerializedDagModel.fileloc,
+                compressed_col,
             ).join(
                 latest_dag_subquery,
                 and_(
@@ -541,10 +551,11 @@ class AirflowSource(PipelineServiceSource):
         else:
             # Airflow 3.x: fileloc is only on DagModel, we need to join
             session_query = (
-                self.session.query(
+                self.session.query(  # pyright: ignore[reportCallIssue]
                     SerializedDagModel.dag_id,
                     json_data_column,
                     DagModel.fileloc,
+                    compressed_col,
                 )
                 .join(
                     latest_dag_subquery,
@@ -600,7 +611,7 @@ class AirflowSource(PipelineServiceSource):
                         # If we can't query is_paused, assume the pipeline is active
                         pipeline_state = PipelineState.Active.value
 
-                    raw_data = self._resolve_dag_data(serialized_dag[1], serialized_dag[0], timestamp_column)
+                    raw_data = self._resolve_dag_data(serialized_dag[1], serialized_dag[0], serialized_dag[3])
                     if raw_data is None:
                         logger.warning(f"No serialized data available for dag {serialized_dag[0]}, skipping")
                         continue
