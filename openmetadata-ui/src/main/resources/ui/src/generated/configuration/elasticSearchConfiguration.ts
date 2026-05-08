@@ -269,6 +269,11 @@ export interface Google {
      * automatically.
      */
     endpoint?: string;
+    /**
+     * Gemini chat model identifier for query transformation (e.g., gemini-2.5-flash,
+     * gemini-1.5-flash).
+     */
+    modelId?: string;
 }
 
 /**
