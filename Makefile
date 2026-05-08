@@ -120,13 +120,18 @@ snyk-report:  ## Uses Snyk CLI to run a security scan of the different pieces of
 	$(MAKE) snyk-airflow-apis-report
 	$(MAKE) snyk-server-report
 	$(MAKE) snyk-ui-report
+	$(MAKE) export-snyk-one-line-findings
 	$(MAKE)	export-snyk-pdf-report
+
+.PHONY: export-snyk-one-line-findings
+export-snyk-one-line-findings:  ## export one-line findings from security-report JSON files to CSV
+	python scripts/snyk_one_line_findings.py
 
 .PHONY: export-snyk-pdf-report
 export-snyk-pdf-report:  ## export json file from security-report/ to HTML
 	@echo "Reading all results"
 	npm install snyk-to-html -g
-	ls security-report | xargs -I % snyk-to-html -i security-report/% -o security-report/%.html
+	find security-report -maxdepth 1 -type f -name '*.json' -exec sh -c 'for file do snyk-to-html -i "$$file" -o "$$file.html"; done' sh {} +
 	pip install pdfkit
 	pip install PyPDF2
 	python scripts/html_to_pdf.py
