@@ -13571,6 +13571,21 @@ public interface CollectionDAO {
     int cancelPendingPartitions(@Bind("jobId") String jobId);
 
     @SqlUpdate(
+        "UPDATE rdf_index_partition SET status = 'CANCELLED', "
+            + "lastError = 'Stopped by user', completedAt = :now, lastUpdateAt = :now "
+            + "WHERE jobId = :jobId AND status IN ('PENDING','PROCESSING')")
+    int cancelInFlightPartitions(@Bind("jobId") String jobId, @Bind("now") long now);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM rdf_index_partition "
+            + "WHERE jobId = :jobId AND status = 'PROCESSING' AND assignedServer = :serverId")
+    int countInFlightPartitionsForServer(
+        @Bind("jobId") String jobId, @Bind("serverId") String serverId);
+
+    @SqlQuery("SELECT COUNT(*) FROM rdf_index_partition WHERE jobId = :jobId AND status = :status")
+    int countPartitionsByStatus(@Bind("jobId") String jobId, @Bind("status") String status);
+
+    @SqlUpdate(
         "UPDATE rdf_index_partition SET status = :status, assignedServer = NULL, claimedAt = NULL, "
             + "lastError = :reason, lastUpdateAt = :updatedAt, completedAt = :completedAt "
             + "WHERE jobId = :jobId AND status = 'PROCESSING' AND assignedServer = :serverId")
@@ -13627,6 +13642,12 @@ public interface CollectionDAO {
         "SELECT DISTINCT assignedServer FROM rdf_index_partition "
             + "WHERE jobId = :jobId AND assignedServer IS NOT NULL")
     List<String> getAssignedServers(@Bind("jobId") String jobId);
+
+    @SqlQuery(
+        "SELECT lastError FROM rdf_index_partition "
+            + "WHERE jobId = :jobId AND lastError IS NOT NULL "
+            + "ORDER BY lastUpdateAt DESC LIMIT :limit")
+    List<String> findRecentPartitionErrors(@Bind("jobId") String jobId, @Bind("limit") int limit);
 
     @SqlUpdate("DELETE FROM rdf_index_partition")
     void deleteAll();

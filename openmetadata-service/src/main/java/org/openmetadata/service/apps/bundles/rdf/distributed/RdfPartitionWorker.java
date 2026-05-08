@@ -26,6 +26,7 @@ import org.openmetadata.service.apps.bundles.rdf.RdfBatchProcessor;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 @Slf4j
 public class RdfPartitionWorker {
@@ -50,9 +51,10 @@ public class RdfPartitionWorker {
     long processedCount = partition.getProcessedCount();
     long successCount = partition.getSuccessCount();
     long failedCount = partition.getFailedCount();
+    String lastError = null;
 
     try {
-      String keysetCursor = initializeKeysetCursor(entityType, currentOffset);
+      String keysetCursor = initializeKeysetCursor(partition, entityType, currentOffset);
       while (currentOffset < partition.getRangeEnd()
           && !stopped.get()
           && !Thread.currentThread().isInterrupted()) {
@@ -73,6 +75,9 @@ public class RdfPartitionWorker {
         successCount += batchResult.successCount();
         failedCount += batchResult.failedCount() + readerErrors;
         currentOffset += batchProcessed;
+        if (batchResult.lastError() != null) {
+          lastError = batchResult.lastError();
+        }
 
         if (processedCount % PROGRESS_UPDATE_INTERVAL < batchProcessed) {
           coordinator.updatePartitionProgress(
@@ -86,7 +91,7 @@ public class RdfPartitionWorker {
 
         keysetCursor = resultList.getPaging() != null ? resultList.getPaging().getAfter() : null;
         if (keysetCursor == null && currentOffset < partition.getRangeEnd()) {
-          keysetCursor = initializeKeysetCursor(entityType, currentOffset);
+          keysetCursor = initializeKeysetCursor(partition, entityType, currentOffset);
           if (keysetCursor == null) {
             break;
           }
@@ -94,12 +99,12 @@ public class RdfPartitionWorker {
       }
 
       if (stopped.get() || Thread.currentThread().isInterrupted()) {
-        return new PartitionResult(processedCount, successCount, failedCount, true, null);
+        return new PartitionResult(processedCount, successCount, failedCount, true, lastError);
       }
 
       coordinator.completePartition(
-          partition.getId(), currentOffset, processedCount, successCount, failedCount);
-      return new PartitionResult(processedCount, successCount, failedCount, false, null);
+          partition.getId(), currentOffset, processedCount, successCount, failedCount, lastError);
+      return new PartitionResult(processedCount, successCount, failedCount, false, lastError);
     } catch (Exception e) {
       LOG.error("Failed to process RDF partition {}", partition.getId(), e);
       coordinator.failPartition(
@@ -119,14 +124,20 @@ public class RdfPartitionWorker {
 
   private ResultList<? extends EntityInterface> readEntitiesKeyset(
       String entityType, String keysetCursor, int limit) throws SearchIndexException {
-    PaginatedEntitiesSource source =
-        new PaginatedEntitiesSource(entityType, limit, List.of("*"), 0);
+    List<String> fields = ReindexingUtil.getSearchIndexFields(entityType);
+    PaginatedEntitiesSource source = new PaginatedEntitiesSource(entityType, limit, fields, 0);
     return source.readNextKeyset(keysetCursor);
   }
 
-  private String initializeKeysetCursor(String entityType, long offset) {
+  private String initializeKeysetCursor(
+      RdfIndexPartition partition, String entityType, long offset) {
     if (offset <= 0) {
       return null;
+    }
+    String precomputed =
+        coordinator.getPartitionStartCursor(partition.getJobId(), entityType, offset);
+    if (precomputed != null) {
+      return precomputed;
     }
     int cursorOffset = toCursorOffset(entityType, offset);
     return Entity.getEntityRepository(entityType)
