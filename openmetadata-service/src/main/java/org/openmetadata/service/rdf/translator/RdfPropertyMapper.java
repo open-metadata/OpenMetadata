@@ -103,6 +103,13 @@ public class RdfPropertyMapper {
   // Fields that are handled separately with typed predicates (not via JSON-LD context)
   private static final Set<String> TYPED_RELATION_FIELDS = Set.of("relatedTerms");
 
+  // Fields where the array contains EntityReferences and is also handled by the
+  // mapped path (om:hasOwner, om:hasFollower, etc.). The unmapped path used to also
+  // emit them as JSON-string literals, which created redundant noise — skip those
+  // here so we don't duplicate the entity-reference triples.
+  private static final Set<String> ENTITY_REFERENCE_ARRAY_FIELDS =
+      Set.of("owners", "followers", "reviewers", "voters", "experts", "domains", "dataProducts");
+
   private void processContextMappings(
       Map<String, Object> contextMap, JsonNode entityJson, Resource entityResource, Model model) {
     // Iterate through all fields in the entity JSON
@@ -141,6 +148,13 @@ public class RdfPropertyMapper {
       String fieldName, JsonNode fieldValue, Object mapping, Resource entityResource, Model model) {
     if (fieldValue == null || fieldValue.isNull() || fieldValue.isMissingNode()) {
       return;
+    }
+
+    // PROV-O attribution: emit prov:wasAttributedTo for each owner in addition to
+    // the standard om:owners triples. Lets external SPARQL clients query attribution
+    // using the W3C PROV-O vocabulary instead of OpenMetadata-specific predicates.
+    if ("owners".equals(fieldName) && fieldValue.isArray()) {
+      addProvAttribution(entityResource, fieldValue, model);
     }
 
     // Check if this is a lineage property that needs special handling
@@ -194,6 +208,28 @@ public class RdfPropertyMapper {
 
   private void processUnmappedField(
       String fieldName, JsonNode fieldValue, Resource entityResource, Model model) {
+    // PROV-O attribution mirror — fires here too because not every entity context
+    // declares the owners field, in which case it falls through to the unmapped path
+    // and bypasses processFieldMapping.
+    if ("owners".equals(fieldName) && fieldValue.isArray()) {
+      addProvAttribution(entityResource, fieldValue, model);
+    }
+
+    // Skip arrays that are handled cleanly by the mapped path as entity references —
+    // dumping them again here as a JSON-string literal duplicates the data and adds
+    // empty-array noise when the field is unset. The mapped path emits the proper
+    // om:hasOwner / om:hasFollower / etc. triples per element.
+    if (ENTITY_REFERENCE_ARRAY_FIELDS.contains(fieldName) && fieldValue.isArray()) {
+      return;
+    }
+
+    // Skip empty arrays / objects — emitting "[]" or "{}" string literals creates
+    // noise without providing useful information.
+    if ((fieldValue.isArray() && fieldValue.isEmpty())
+        || (fieldValue.isObject() && fieldValue.isEmpty())) {
+      return;
+    }
+
     // Create property in om: namespace
     String propertyUri = OM_NS + fieldName;
     Property property = model.createProperty(propertyUri);
@@ -225,6 +261,17 @@ public class RdfPropertyMapper {
       addNumericProperty(resource, property, value, model);
     } else if (value.isBoolean()) {
       resource.addProperty(property, model.createTypedLiteral(value.asBoolean()));
+    }
+  }
+
+  private void addProvAttribution(Resource entityResource, JsonNode owners, Model model) {
+    Property attributedTo = model.createProperty(PROV_NS, "wasAttributedTo");
+    for (JsonNode owner : owners) {
+      if (owner.isObject() && owner.has("id") && owner.has("type")) {
+        String ownerUri =
+            baseUri + "entity/" + owner.get("type").asText() + "/" + owner.get("id").asText();
+        entityResource.addProperty(attributedTo, model.createResource(ownerUri));
+      }
     }
   }
 
@@ -981,6 +1028,16 @@ public class RdfPropertyMapper {
       resource.addProperty(
           model.createProperty(DCT_NS, "modified"),
           model.createTypedLiteral(entity.getUpdatedAt().toString(), XSDDatatype.XSDdateTime));
+    }
+
+    // PROV-O soft-delete: when the entity is marked deleted, expose its updatedAt
+    // as the invalidation timestamp so timeline-aware queries can filter on it.
+    if (Boolean.TRUE.equals(entity.getDeleted()) && entity.getUpdatedAt() != null) {
+      resource.addProperty(
+          model.createProperty(PROV_NS, "invalidatedAtTime"),
+          model.createTypedLiteral(
+              java.time.Instant.ofEpochMilli(entity.getUpdatedAt()).toString(),
+              XSDDatatype.XSDdateTime));
     }
 
     // Add version
