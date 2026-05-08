@@ -2,13 +2,14 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.open-metadata/openmetadata-mcp",
   "title": "OpenMetadata",
-  "description": "Query metadata, lineage, glossary, data quality, and governance information from your OpenMetadata instance. Supports search, entity discovery, lineage traversal, glossary management, and test case creation through OAuth 2.0 authenticated MCP tools.",
+  "description": "Governed context and business semantics from OpenMetadata for AI assistants and agents.",
   "version": "1.1.0",
   "repository": {
     "url": "https://github.com/open-metadata/OpenMetadata",
     "source": "github",
     "subfolder": "openmetadata-mcp"
   },
+  "websiteUrl": "https://docs.open-metadata.org/v1.12.x/how-to-guides/mcp",
   "remotes": [
     {
       "type": "streamable-http",
