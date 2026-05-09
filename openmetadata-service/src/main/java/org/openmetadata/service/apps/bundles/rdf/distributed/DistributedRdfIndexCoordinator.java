@@ -533,15 +533,38 @@ public class DistributedRdfIndexCoordinator {
             .rdfIndexPartitionDAO()
             .countPartitionsByStatus(id, PartitionStatus.CANCELLED.name());
 
+    // A partition can finish COMPLETED but still carry a non-null lastError —
+    // e.g. a relationship/lineage bulk write that failed without incrementing
+    // the entity-level failedCount or marking the partition FAILED. Treat that
+    // as an error signal too, otherwise the job appears clean despite real
+    // Fuseki write failures.
+    boolean hasPartitionLastError =
+        !collectionDAO.rdfIndexPartitionDAO().findRecentPartitionErrors(id, 1).isEmpty();
+
     IndexJobStatus terminal;
     if (job.getStatus() == IndexJobStatus.STOPPING) {
       terminal = IndexJobStatus.STOPPED;
-    } else if (failed > 0 || cancelled > 0 || job.getFailedRecords() > 0) {
+    } else if (failed > 0 || cancelled > 0 || job.getFailedRecords() > 0 || hasPartitionLastError) {
       terminal = IndexJobStatus.COMPLETED_WITH_ERRORS;
     } else {
       terminal = IndexJobStatus.COMPLETED;
     }
-    updateJobStatus(jobId, terminal, job.getErrorMessage());
+
+    String errorMessage = job.getErrorMessage();
+    if (terminal == IndexJobStatus.COMPLETED_WITH_ERRORS
+        && (errorMessage == null || errorMessage.isBlank())
+        && hasPartitionLastError) {
+      // Surface a representative error so the run record isn't blank when the
+      // only signal was a partition lastError.
+      java.util.List<String> samples =
+          collectionDAO.rdfIndexPartitionDAO().findRecentPartitionErrors(id, MAX_ERROR_SAMPLES);
+      errorMessage = "Partition errors: " + String.join(" | ", samples);
+      if (errorMessage.length() > MAX_ERROR_MESSAGE_LENGTH) {
+        errorMessage = errorMessage.substring(0, MAX_ERROR_MESSAGE_LENGTH) + "...";
+      }
+    }
+
+    updateJobStatus(jobId, terminal, errorMessage);
     partitionStartCursors.remove(jobId);
     LOG.info(
         "RDF job {} reached terminal state {} (success={}, failed={})",

@@ -450,13 +450,19 @@ public class RdfIndexApp extends AbstractNativeApplication {
       RdfBatchProcessor.BatchProcessingResult result =
           batchProcessor.processEntities(entityType, entities, () -> stopped);
 
+      // failedRecords stays an entity-level stat (relationship failures are
+      // per-edge, not per-record). But for surfacing failures on the run
+      // record we want either kind of failure to count, so use hasAnyFailure().
       StepStats currentStats =
           new StepStats()
               .withSuccessRecords(result.successCount())
               .withFailedRecords(result.failedCount());
       updateEntityStats(entityType, currentStats);
-      if (result.failedCount() > 0 && result.lastError() != null) {
-        recordIndexingFailure(entityType, result.failedCount(), result.lastError());
+      if (result.hasAnyFailure() && result.lastError() != null) {
+        recordIndexingFailure(
+            entityType,
+            result.failedCount() + result.relationshipFailureCount(),
+            result.lastError());
       }
       sendUpdates(jobExecutionContext, false);
 

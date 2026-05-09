@@ -2213,6 +2213,13 @@ public class RdfRepository {
    * Map a reverse-direction predicate (PROV-O) to its forward-direction OpenMetadata
    * equivalent so the canonicalized edge in {@link #parseEntityGraphEdgesFromResults}
    * carries a predicate that matches its (from, to) orientation.
+   *
+   * <p>Both `prov:wasDerivedFrom` and `prov:wasInfluencedBy` are reverse-direction
+   * causation predicates: in `B wasDerivedFrom A` / `B wasInfluencedBy A`, A is
+   * the source and B is the effect. After we flip subject/object so the edge
+   * reads source→target, the canonical forward predicate is `om:UPSTREAM` in
+   * both cases. (OM does not store a separate `om:DOWNSTREAM` URI — downstream
+   * is derived by reading the same UPSTREAM edge from the other side.)
    */
   private String forwardEquivalentPredicate(String reversePredicateUri) {
     String localName = extractUriLocalName(reversePredicateUri);
@@ -2221,8 +2228,7 @@ public class RdfRepository {
     }
     String normalized = localName.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
     return switch (normalized) {
-      case "wasderivedfrom" -> "https://open-metadata.org/ontology/UPSTREAM";
-      case "wasinfluencedby" -> "https://open-metadata.org/ontology/DOWNSTREAM";
+      case "wasderivedfrom", "wasinfluencedby" -> "https://open-metadata.org/ontology/UPSTREAM";
       default -> reversePredicateUri;
     };
   }
