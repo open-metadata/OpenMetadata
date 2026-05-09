@@ -1364,11 +1364,20 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   public BulkOperationResult bulkRemoveGlossaryToAssets(
       UUID glossaryTermId, AddGlossaryToAssetsRequest request) {
+    boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
+
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
 
     BulkOperationResult result =
-        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(dryRun);
     List<BulkResponse> success = new ArrayList<>();
+
+    if (dryRun || nullOrEmpty(request.getAssets())) {
+      // Nothing to Validate
+      return result
+          .withStatus(ApiStatus.SUCCESS)
+          .withSuccessRequest(List.of(new BulkResponse().withMessage("Nothing to Validate.")));
+    }
 
     // Validation for entityReferences
     EntityUtil.populateEntityReferences(request.getAssets());
