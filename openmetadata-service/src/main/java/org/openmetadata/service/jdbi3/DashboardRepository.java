@@ -335,10 +335,14 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       }
     }
 
-    for (CollectionDAO.EntityRelationshipRecord record : filteredChartRecordsToBeRestored) {
-      LOG.info("Recursively restoring {} {}", record.getType(), record.getId());
-      Entity.restoreEntity(updatedBy, record.getType(), record.getId());
+    if (filteredChartRecordsToBeRestored.isEmpty()) {
+      return;
     }
+    List<UUID> chartIds =
+        filteredChartRecordsToBeRestored.stream()
+            .map(CollectionDAO.EntityRelationshipRecord::getId)
+            .toList();
+    Entity.getEntityRepository(CHART).bulkRestoreSubtree(chartIds, updatedBy);
   }
 
   @Override

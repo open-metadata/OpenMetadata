@@ -805,6 +805,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    // Cheap pre-check so we return 404 synchronously instead of 202 + delayed WebSocket
+    // FAILED for an entity that doesn't exist or isn't soft-deleted. Avoids spinning up
+    // an executor task for a request that can't succeed.
+    repository.find(id, Include.DELETED);
     String jobId = UUID.randomUUID().toString();
     String userName = securityContext.getUserPrincipal().getName();
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
