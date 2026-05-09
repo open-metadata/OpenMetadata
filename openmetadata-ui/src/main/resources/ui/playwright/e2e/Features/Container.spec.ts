@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { DataType } from '../../../src/generated/entity/data/table';
 import { CONTAINER_CHILDREN } from '../../constant/contianer';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import {
@@ -27,7 +28,6 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
-
 // Grant clipboard permissions for copy link tests
 test.use({
   contextOptions: {
@@ -176,7 +176,7 @@ test.describe('Container entity specific tests ', () => {
     nestedContainer.entity.dataModel.columns = [
       {
         name: structColName,
-        dataType: 'STRUCT',
+        dataType: DataType.Struct,
         dataTypeDisplay: 'struct',
         description: 'A struct column with nested fields.',
         tags: [],
@@ -184,7 +184,7 @@ test.describe('Container entity specific tests ', () => {
         children: [
           {
             name: nestedFieldName,
-            dataType: 'VARCHAR',
+            dataType: DataType.Varchar,
             dataLength: 100,
             dataTypeDisplay: 'varchar',
             description: 'A nested field inside the struct.',

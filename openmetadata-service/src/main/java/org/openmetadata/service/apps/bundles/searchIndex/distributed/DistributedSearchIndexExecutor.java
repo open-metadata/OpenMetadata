@@ -1102,8 +1102,10 @@ public class DistributedSearchIndexExecutor {
     // Set up per-entity promotion callback if recreating indices
     if (recreateIndex && recreateContext != null) {
       this.recreateIndexHandler = Entity.getSearchRepository().createReindexHandler();
-      // Wire job configuration so applyLiveServingSettings can revert bulk-build overrides
-      // (refresh=-1, replicas=0, async translog) before the per-entity alias swap.
+      // Wire jobData into the handler so applyLiveServingSettings can revert bulk-build
+      // overrides (refresh_interval=-1, replicas=0, async translog) before the per-entity
+      // alias swap. Without this, buildRevertJson returns null and the bulk overrides
+      // silently become the live settings.
       if (recreateIndexHandler instanceof DefaultRecreateHandler defaultHandler
           && currentJob != null
           && currentJob.getJobConfiguration() != null) {
