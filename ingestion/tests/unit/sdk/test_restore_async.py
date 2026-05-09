@@ -95,3 +95,13 @@ def test_async_job_response_from_response_passes_through_existing():
 def test_async_job_response_from_response_rejects_unknown_type():
     with pytest.raises(TypeError):
         AsyncJobResponse.from_response("not a dict")
+
+
+def test_async_job_response_from_response_rejects_missing_job_id():
+    with pytest.raises(ValueError, match="non-empty jobId"):
+        AsyncJobResponse.from_response({"message": "no id here"})
+
+
+def test_async_job_response_from_response_rejects_empty_job_id():
+    with pytest.raises(ValueError, match="non-empty jobId"):
+        AsyncJobResponse.from_response({"jobId": "", "message": "blank"})

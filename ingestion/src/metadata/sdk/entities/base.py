@@ -78,10 +78,12 @@ class AsyncJobResponse:
         if isinstance(payload, AsyncJobResponse):
             return payload
         if isinstance(payload, dict):
-            return cls(
-                job_id=str(payload.get("jobId", "")),
-                message=payload.get("message"),
-            )
+            job_id = payload.get("jobId")
+            if not job_id:
+                raise ValueError(
+                    f"Async response is missing a non-empty jobId: {payload!r}"
+                )
+            return cls(job_id=str(job_id), message=payload.get("message"))
         raise TypeError(f"Cannot coerce {type(payload).__name__} into AsyncJobResponse")
 
 

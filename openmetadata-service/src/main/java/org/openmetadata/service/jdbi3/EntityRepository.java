@@ -4116,6 +4116,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE, null);
         updater.update();
         changeType = ENTITY_SOFT_DELETED;
+        // Run the same hook the bulk path runs — keeps direct-entity soft delete in sync
+        // with bulkSoftDeleteSubtree for repos that link non-CONTAINS entities (e.g.,
+        // dashboard charts).
+        softDeleteAdditionalChildren(original.getId(), deletedBy);
       } else {
         cleanup(updated);
         changeType = ENTITY_DELETED;
@@ -5546,6 +5550,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       updater.update();
       // Restore moves the row from deleted=true to deleted=false, changing the listing total.
       ListCountCache.invalidate(entityType);
+      // Run the same hook the bulk path runs — keeps direct-entity restore in sync with
+      // bulkRestoreSubtree for repos that link non-CONTAINS entities (e.g., dashboard charts).
+      restoreAdditionalChildren(id, updatedBy);
       return new PutResponse<>(Status.OK, updated, ENTITY_RESTORED);
     } catch (EntityNotFoundException e) {
       LOG.info("Entity is not in deleted state {} {}", entityType, id);
@@ -5592,71 +5599,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (ids == null || ids.isEmpty()) {
       return;
     }
-    List<T> deletedEntities;
-    try (var ignored = phase("bulkRestoreLoad")) {
-      deletedEntities = find(ids, DELETED);
-    }
+    List<T> deletedEntities = loadForBulk(ids, DELETED, "bulkRestoreLoad");
     if (deletedEntities.isEmpty()) {
       return;
     }
+    dispatchToContainedChildren(
+        deletedEntities,
+        "bulkRestoreFindChildren",
+        (childRepo, childIds) -> childRepo.bulkRestoreSubtree(childIds, updatedBy));
 
-    bulkRestoreContainedChildren(deletedEntities, updatedBy);
-
-    long now = System.currentTimeMillis();
-    List<EntityUpdater> updaters = new ArrayList<>(deletedEntities.size());
-    try (var ignored = phase("bulkRestoreUpdaters")) {
-      for (T original : deletedEntities) {
-        T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
-        updated.setUpdatedBy(updatedBy);
-        updated.setUpdatedAt(now);
-        EntityUpdater updater = getUpdater(original, updated, Operation.PUT, null);
-        updater.updateWithDeferredStore();
-        updaters.add(updater);
-      }
-    }
-
-    List<EntityUpdater> changed =
-        updaters.stream().filter(u -> u.isVersionChanged() || u.isEntityChanged()).toList();
+    List<EntityUpdater> updaters =
+        buildBulkUpdaters(deletedEntities, updatedBy, Operation.PUT, "bulkRestoreUpdaters", null);
+    List<EntityUpdater> changed = filterChanged(updaters);
     if (changed.isEmpty()) {
       runRestoreAdditionalChildren(deletedEntities, updatedBy);
       return;
     }
-
-    try (var ignored = phase("bulkRestoreVersionHistory")) {
-      List<UUID> historyIds = new ArrayList<>();
-      List<String> historyExtensions = new ArrayList<>();
-      List<String> historyJsons = new ArrayList<>();
-      for (EntityUpdater u : changed) {
-        if (u.isVersionChanged()) {
-          historyIds.add(u.getOriginal().getId());
-          historyExtensions.add(
-              EntityUtil.getVersionExtension(entityType, u.getOriginal().getVersion()));
-          historyJsons.add(JsonUtils.pojoToJson(u.getOriginal()));
-        }
-      }
-      if (!historyIds.isEmpty()) {
-        daoCollection
-            .entityExtensionDAO()
-            .insertMany(historyIds, historyExtensions, entityType, historyJsons);
-      }
-    }
-
-    List<T> changedEntities = changed.stream().map(EntityUpdater::getUpdated).toList();
-    try (var ignored = phase("bulkRestoreUpdateMany")) {
-      updateMany(changedEntities);
-    }
-    try (var ignored = phase("bulkRestoreInvalidate")) {
-      invalidateMany(changedEntities);
-    }
-    try (var ignored = phase("bulkRestoreChangeEvents")) {
-      List<String> changeEventJsons = new ArrayList<>();
-      for (EntityUpdater u : changed) {
-        buildChangeEventJsonForBulkOperation(u.getUpdated(), ENTITY_RESTORED, updatedBy)
-            .ifPresent(changeEventJsons::add);
-      }
-      insertChangeEventsBatch(changeEventJsons);
-    }
-
+    persistBulkUpdaters(changed, ENTITY_RESTORED, updatedBy, "bulkRestore");
     ListCountCache.invalidate(entityType);
     runRestoreAdditionalChildren(deletedEntities, updatedBy);
   }
@@ -5669,17 +5628,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /**
    * Find all CONTAINS children for every entity in {@code parents} with one batched query, then
-   * dispatch grouped child IDs to each child type's {@link #bulkRestoreSubtree(List, String)}.
-   * Replaces the per-parent {@code findTo} round-trip that used to fire once per descendant —
-   * for a 12k-table database that's 12k DB hits collapsed into one per tree level.
+   * apply {@code dispatcher} to each (childRepo, childIds) group. Replaces the per-parent
+   * {@code findTo} round-trip that used to fire once per descendant — for a 12k-table database
+   * that's 12k DB hits collapsed into one per tree level. Shared between bulk restore and bulk
+   * soft-delete; the only thing that varies is the terminal call on the child repo.
    */
-  private void bulkRestoreContainedChildren(List<T> parents, String updatedBy) {
+  private void dispatchToContainedChildren(
+      List<T> parents, String phaseName, BiConsumer<EntityRepository<?>, List<UUID>> dispatcher) {
     List<String> parentIds = new ArrayList<>(parents.size());
     for (T parent : parents) {
       parentIds.add(parent.getId().toString());
     }
     List<CollectionDAO.EntityRelationshipObject> relationships;
-    try (var ignored = phase("bulkRestoreFindChildren")) {
+    try (var ignored = phase(phaseName)) {
       relationships =
           daoCollection
               .relationshipDAO()
@@ -5699,7 +5660,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     for (var entry : idsByChildType.entrySet()) {
       EntityRepository<?> repo = Entity.getEntityRepository(entry.getKey());
-      repo.bulkRestoreSubtree(entry.getValue(), updatedBy);
+      dispatcher.accept(repo, entry.getValue());
     }
   }
 
@@ -5742,10 +5703,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       return;
     }
-    List<T> entities;
-    try (var ignored = phase("bulkSoftDeleteLoad")) {
-      entities = find(ids, NON_DELETED);
-    }
+    List<T> entities = loadForBulk(ids, NON_DELETED, "bulkSoftDeleteLoad");
     if (entities.isEmpty()) {
       return;
     }
@@ -5754,30 +5712,99 @@ public abstract class EntityRepository<T extends EntityInterface> {
       preDelete(entity, updatedBy);
     }
 
-    bulkSoftDeleteContainedChildren(entities, updatedBy);
+    dispatchToContainedChildren(
+        entities,
+        "bulkSoftDeleteFindChildren",
+        (childRepo, childIds) -> childRepo.bulkSoftDeleteSubtree(childIds, updatedBy));
 
-    long now = System.currentTimeMillis();
-    List<EntityUpdater> updaters = new ArrayList<>(entities.size());
-    try (var ignored = phase("bulkSoftDeleteUpdaters")) {
-      for (T original : entities) {
-        T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
-        updated.setUpdatedBy(updatedBy);
-        updated.setUpdatedAt(now);
-        updated.setDeleted(true);
-        EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE, null);
-        updater.updateWithDeferredStore();
-        updaters.add(updater);
-      }
-    }
-
-    List<EntityUpdater> changed =
-        updaters.stream().filter(u -> u.isVersionChanged() || u.isEntityChanged()).toList();
+    List<EntityUpdater> updaters =
+        buildBulkUpdaters(
+            entities,
+            updatedBy,
+            Operation.SOFT_DELETE,
+            "bulkSoftDeleteUpdaters",
+            e -> e.setDeleted(true));
+    List<EntityUpdater> changed = filterChanged(updaters);
     if (changed.isEmpty()) {
       runSoftDeleteAdditionalChildren(entities, updatedBy);
       return;
     }
+    persistBulkUpdaters(changed, ENTITY_SOFT_DELETED, updatedBy, "bulkSoftDelete");
+    ListCountCache.invalidate(entityType);
+    runSoftDeleteAdditionalChildren(entities, updatedBy);
+  }
 
-    try (var ignored = phase("bulkSoftDeleteVersionHistory")) {
+  private void runSoftDeleteAdditionalChildren(List<T> entities, String updatedBy) {
+    for (T entity : entities) {
+      softDeleteAdditionalChildren(entity.getId(), updatedBy);
+    }
+  }
+
+  /**
+   * Hook called once per soft-deleted entity for repositories that have non-CONTAINS related
+   * entities that need to be soft-deleted alongside the parent (e.g., charts attached to
+   * dashboards via HAS). Default: no-op.
+   */
+  protected void softDeleteAdditionalChildren(UUID id, String updatedBy) {
+    // No-op. Override in subclasses for HAS-style related-entity soft delete.
+  }
+
+  // ---- Shared phase helpers used by bulkRestoreSubtree / bulkSoftDeleteSubtree ----
+
+  private List<T> loadForBulk(List<UUID> ids, Include include, String phaseName) {
+    try (var ignored = phase(phaseName)) {
+      return find(ids, include);
+    }
+  }
+
+  private List<EntityUpdater> buildBulkUpdaters(
+      List<T> originals,
+      String updatedBy,
+      Operation op,
+      String phaseName,
+      java.util.function.Consumer<T> mutator) {
+    long now = System.currentTimeMillis();
+    List<EntityUpdater> updaters = new ArrayList<>(originals.size());
+    try (var ignored = phase(phaseName)) {
+      for (T original : originals) {
+        T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
+        updated.setUpdatedBy(updatedBy);
+        updated.setUpdatedAt(now);
+        if (mutator != null) {
+          mutator.accept(updated);
+        }
+        EntityUpdater updater = getUpdater(original, updated, op, null);
+        updater.updateWithDeferredStore();
+        updaters.add(updater);
+      }
+    }
+    return updaters;
+  }
+
+  private List<EntityUpdater> filterChanged(List<EntityUpdater> updaters) {
+    return updaters.stream().filter(u -> u.isVersionChanged() || u.isEntityChanged()).toList();
+  }
+
+  /**
+   * Apply a batch of {@link EntityUpdater}s already in deferred-store state: write version
+   * history, persist entity rows, invalidate caches, emit change events. {@code phasePrefix}
+   * is used to tag latency phases (e.g. {@code "bulkRestore"} → {@code "bulkRestoreVersionHistory"}).
+   */
+  private void persistBulkUpdaters(
+      List<EntityUpdater> changed, EventType eventType, String userName, String phasePrefix) {
+    writeBulkVersionHistory(changed, phasePrefix);
+    List<T> changedEntities = changed.stream().map(EntityUpdater::getUpdated).toList();
+    try (var ignored = phase(phasePrefix + "UpdateMany")) {
+      updateMany(changedEntities);
+    }
+    try (var ignored = phase(phasePrefix + "Invalidate")) {
+      invalidateMany(changedEntities);
+    }
+    writeBulkChangeEvents(changed, eventType, userName, phasePrefix + "ChangeEvents");
+  }
+
+  private void writeBulkVersionHistory(List<EntityUpdater> changed, String phasePrefix) {
+    try (var ignored = phase(phasePrefix + "VersionHistory")) {
       List<UUID> historyIds = new ArrayList<>();
       List<String> historyExtensions = new ArrayList<>();
       List<String> historyJsons = new ArrayList<>();
@@ -5795,75 +5822,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .insertMany(historyIds, historyExtensions, entityType, historyJsons);
       }
     }
+  }
 
-    List<T> changedEntities = changed.stream().map(EntityUpdater::getUpdated).toList();
-    try (var ignored = phase("bulkSoftDeleteUpdateMany")) {
-      updateMany(changedEntities);
-    }
-    try (var ignored = phase("bulkSoftDeleteInvalidate")) {
-      invalidateMany(changedEntities);
-    }
-    try (var ignored = phase("bulkSoftDeleteChangeEvents")) {
+  private void writeBulkChangeEvents(
+      List<EntityUpdater> changed, EventType eventType, String userName, String phaseName) {
+    try (var ignored = phase(phaseName)) {
       List<String> changeEventJsons = new ArrayList<>();
       for (EntityUpdater u : changed) {
-        buildChangeEventJsonForBulkOperation(u.getUpdated(), ENTITY_SOFT_DELETED, updatedBy)
+        buildChangeEventJsonForBulkOperation(u.getUpdated(), eventType, userName)
             .ifPresent(changeEventJsons::add);
       }
       insertChangeEventsBatch(changeEventJsons);
     }
-
-    ListCountCache.invalidate(entityType);
-    runSoftDeleteAdditionalChildren(entities, updatedBy);
-  }
-
-  /**
-   * Mirror of {@link #bulkRestoreContainedChildren(List, String)} for soft delete: one
-   * batched {@code findToBatchAllTypes} per tree level, then dispatch grouped child IDs to
-   * each child type's {@link #bulkSoftDeleteSubtree(List, String)}.
-   */
-  private void bulkSoftDeleteContainedChildren(List<T> parents, String updatedBy) {
-    List<String> parentIds = new ArrayList<>(parents.size());
-    for (T parent : parents) {
-      parentIds.add(parent.getId().toString());
-    }
-    List<CollectionDAO.EntityRelationshipObject> relationships;
-    try (var ignored = phase("bulkSoftDeleteFindChildren")) {
-      relationships =
-          daoCollection
-              .relationshipDAO()
-              .findToBatchAllTypes(parentIds, Relationship.CONTAINS.ordinal(), ALL);
-    }
-    if (relationships.isEmpty()) {
-      return;
-    }
-    Map<String, List<UUID>> idsByChildType = new HashMap<>();
-    for (var rel : relationships) {
-      if (!entityType.equals(rel.getFromEntity())) {
-        continue;
-      }
-      idsByChildType
-          .computeIfAbsent(rel.getToEntity(), k -> new ArrayList<>())
-          .add(UUID.fromString(rel.getToId()));
-    }
-    for (var entry : idsByChildType.entrySet()) {
-      EntityRepository<?> repo = Entity.getEntityRepository(entry.getKey());
-      repo.bulkSoftDeleteSubtree(entry.getValue(), updatedBy);
-    }
-  }
-
-  private void runSoftDeleteAdditionalChildren(List<T> entities, String updatedBy) {
-    for (T entity : entities) {
-      softDeleteAdditionalChildren(entity.getId(), updatedBy);
-    }
-  }
-
-  /**
-   * Hook called once per soft-deleted entity for repositories that have non-CONTAINS related
-   * entities that need to be soft-deleted alongside the parent (e.g., charts attached to
-   * dashboards via HAS). Default: no-op.
-   */
-  protected void softDeleteAdditionalChildren(UUID id, String updatedBy) {
-    // No-op. Override in subclasses for HAS-style related-entity soft delete.
   }
 
   public final void addRelationship(

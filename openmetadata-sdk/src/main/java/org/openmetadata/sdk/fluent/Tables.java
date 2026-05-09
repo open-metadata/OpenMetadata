@@ -400,11 +400,7 @@ public final class Tables {
     }
 
     public Table execute() {
-      try {
-        return client.tables().restore(id);
-      } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
-        throw new RuntimeException(e);
-      }
+      return client.tables().restore(id);
     }
   }
 
@@ -418,11 +414,7 @@ public final class Tables {
     }
 
     public org.openmetadata.sdk.models.AsyncJobResponse execute() {
-      try {
-        return client.tables().restoreServerAsync(id);
-      } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
-        throw new RuntimeException(e);
-      }
+      return client.tables().restoreServerAsync(id);
     }
   }
 

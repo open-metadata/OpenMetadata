@@ -808,6 +808,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     String jobId = UUID.randomUUID().toString();
     String userName = securityContext.getUserPrincipal().getName();
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    // Intentionally don't capture uriInfo in the lambda — JAX-RS may invalidate it once the
+    // 202 response is sent. The WebSocket notification only needs name/status, not HREFs.
     executorService.submit(
         RequestLatencyContext.wrapWithContext(
             () -> {
@@ -819,7 +821,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                   return;
                 }
                 repository.restoreFromSearch(response.getEntity());
-                addHref(uriInfo, response.getEntity());
                 LOG.info(
                     "[AsyncRestore] Restored {}:{} (jobId={})",
                     Entity.getEntityTypeFromObject(response.getEntity()),

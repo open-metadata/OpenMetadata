@@ -43,12 +43,24 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
- * Unit tests for the iterative bulk restore path introduced for issue #4003. Verifies that
- * {@link EntityRepository#restoreChildren(UUID, String)} groups children by entity type and
- * dispatches a single {@link EntityRepository#bulkRestoreSubtree(List, String)} call per type
- * (instead of N recursive {@code Entity.restoreEntity} calls), and that the bulk path skips
- * empty inputs and invokes the {@code restoreAdditionalChildren} extension hook once per
- * restored entity.
+ * Unit tests for the iterative bulk restore + bulk soft-delete paths introduced for
+ * issue #4003. Verifies the dispatch shape that's testable without spinning up the full
+ * bulk write path:
+ *
+ * <ul>
+ *   <li>{@link EntityRepository#restoreChildren(UUID, String)} groups CONTAINS children by
+ *       entity type and dispatches a single {@link EntityRepository#bulkRestoreSubtree(List,
+ *       String)} call per type (instead of N recursive {@code Entity.restoreEntity} calls).
+ *   <li>{@link EntityRepository#deleteChildren(List, boolean, String)} with
+ *       {@code hardDelete=false} dispatches one {@link EntityRepository#bulkSoftDeleteSubtree(
+ *       List, String)} call per type.
+ *   <li>Both bulk methods bail out cleanly on null / empty inputs and on no-deleted-found.
+ *   <li>Both bulk methods issue a single batched {@code findToBatchAllTypes} per tree level
+ *       (replacing the per-parent {@code findTo} round-trip).
+ * </ul>
+ *
+ * The full bulk DB-write path (version history, updateMany, change events) is exercised in
+ * {@code RestoreHierarchyIT}, which runs against a real Docker stack.
  */
 class EntityRepositoryRestoreTest {
 

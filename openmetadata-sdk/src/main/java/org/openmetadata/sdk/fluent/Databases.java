@@ -306,11 +306,7 @@ public final class Databases {
     }
 
     public Database execute() {
-      try {
-        return client.databases().restore(id);
-      } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
-        throw new RuntimeException(e);
-      }
+      return client.databases().restore(id);
     }
   }
 
@@ -324,11 +320,7 @@ public final class Databases {
     }
 
     public org.openmetadata.sdk.models.AsyncJobResponse execute() {
-      try {
-        return client.databases().restoreServerAsync(id);
-      } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
-        throw new RuntimeException(e);
-      }
+      return client.databases().restoreServerAsync(id);
     }
   }
 
