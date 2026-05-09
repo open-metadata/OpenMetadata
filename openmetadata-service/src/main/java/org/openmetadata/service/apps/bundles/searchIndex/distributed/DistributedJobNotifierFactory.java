@@ -54,7 +54,7 @@ public class DistributedJobNotifierFactory {
     }
 
     LOG.info(
-        "Redis not configured - using database polling for distributed job notifications (30s discovery delay)");
+        "Redis not configured - using database polling for distributed job notifications (2s discovery interval)");
     return new PollingJobNotifier(collectionDAO, serverId);
   }
 

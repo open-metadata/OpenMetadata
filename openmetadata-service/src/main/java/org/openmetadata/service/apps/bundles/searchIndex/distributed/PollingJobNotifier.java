@@ -31,17 +31,18 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
  * <p>Uses adaptive polling intervals:
  *
  * <ul>
- *   <li>30 seconds when idle (no active jobs)
+ *   <li>2 seconds when idle (no active jobs)
  *   <li>1 second when actively participating in a job
  * </ul>
  *
- * <p>This minimizes database overhead while still providing reasonable job discovery latency.
+ * <p>This keeps discovery inside the staged partition release window so additional servers can join
+ * before one coordinator claims all available work.
  */
 @Slf4j
 public class PollingJobNotifier implements DistributedJobNotifier {
 
-  /** Poll interval when no job is running (30 seconds) */
-  private static final long IDLE_POLL_INTERVAL_MS = 30_000;
+  /** Poll interval when no job is running (2 seconds) */
+  private static final long IDLE_POLL_INTERVAL_MS = 2_000;
 
   /** Poll interval when actively participating (1 second) */
   private static final long ACTIVE_POLL_INTERVAL_MS = 1_000;

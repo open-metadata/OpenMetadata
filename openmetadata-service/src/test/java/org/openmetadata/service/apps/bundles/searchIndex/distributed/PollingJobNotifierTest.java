@@ -73,7 +73,7 @@ class PollingJobNotifierTest {
     assertEquals(jobId, callbackJob.get());
     assertTrue(getKnownJobs(notifier).contains(jobId));
 
-    setLastPollTime(notifier, System.currentTimeMillis() - 31_000L);
+    setLastPollTime(notifier, System.currentTimeMillis() - 2_500L);
     invokePoll(notifier);
 
     assertTrue(getKnownJobs(notifier).isEmpty());

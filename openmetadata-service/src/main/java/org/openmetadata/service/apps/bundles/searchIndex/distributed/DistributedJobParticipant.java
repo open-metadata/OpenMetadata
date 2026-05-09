@@ -44,7 +44,7 @@ import org.openmetadata.service.search.SearchRepository;
  *
  * <ul>
  *   <li>When Redis is configured: Uses Redis Pub/Sub for instant notification
- *   <li>When Redis is not available: Falls back to database polling (30s interval)
+ *   <li>When Redis is not available: Falls back to database polling
  * </ul>
  */
 @Slf4j
@@ -190,7 +190,16 @@ public class DistributedJobParticipant implements Managed {
       // Check if there are pending partitions we can help with
       long pendingCount = coordinator.getPartitions(job.getId(), PartitionStatus.PENDING).size();
       if (pendingCount == 0) {
-        LOG.debug("No pending partitions to process for job {}", job.getId());
+        long processingCount =
+            coordinator.getPartitions(job.getId(), PartitionStatus.PROCESSING).size();
+        long completedCount =
+            coordinator.getPartitions(job.getId(), PartitionStatus.COMPLETED).size();
+        LOG.info(
+            "Discovered distributed job {} on server {}, but no pending partitions remain (processing={}, completed={}); not joining",
+            job.getId(),
+            serverId,
+            processingCount,
+            completedCount);
         return;
       }
 
