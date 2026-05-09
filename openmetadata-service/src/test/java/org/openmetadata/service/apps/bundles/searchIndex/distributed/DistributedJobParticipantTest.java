@@ -1004,6 +1004,38 @@ class DistributedJobParticipantTest {
   }
 
   @Test
+  void testProcessJobPartitionsSkipsJobWithoutStagedIndexMapping() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    EventPublisherJob config = new EventPublisherJob();
+    config.setEntities(Set.of("table"));
+
+    SearchIndexJob runningJob =
+        SearchIndexJob.builder()
+            .id(jobId)
+            .status(IndexJobStatus.RUNNING)
+            .jobConfiguration(config)
+            .build();
+
+    participant =
+        new DistributedJobParticipant(
+            collectionDAO, searchRepository, "test-server-1", testNotifier);
+    setParticipantRunning(true);
+
+    try (MockedConstruction<IndexingFailureRecorder> failureConstruction =
+            mockConstruction(IndexingFailureRecorder.class);
+        MockedConstruction<PartitionWorker> workerConstruction =
+            mockConstruction(PartitionWorker.class)) {
+
+      invokeParticipantMethod(
+          "processJobPartitions", new Class<?>[] {SearchIndexJob.class}, runningJob);
+
+      verify(searchRepository, never()).createBulkSink(anyInt(), anyInt(), anyLong());
+      assertTrue(failureConstruction.constructed().isEmpty());
+      assertTrue(workerConstruction.constructed().isEmpty());
+    }
+  }
+
+  @Test
   void testProcessJobPartitionsUsesDefaultBulkSinkSettingsAndHandlesInterruptedWait()
       throws Exception {
     UUID jobId = UUID.randomUUID();

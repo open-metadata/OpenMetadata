@@ -306,6 +306,12 @@ public class DistributedJobParticipant implements Managed {
     DistributedJobStatsAggregator statsAggregator = null;
     AppRunRecordContext appCtx = null;
     try {
+      Optional<ReindexContext> stagedIndexContext = buildStagedIndexContext(job);
+      if (stagedIndexContext.isEmpty()) {
+        return;
+      }
+      ReindexContext reindexContext = stagedIndexContext.orElseThrow();
+
       appCtx = resolveAppRunRecordContext();
       if (appCtx != null) {
         restoreAppRunRecordToRunning(appCtx.appId(), appCtx.startTime());
@@ -342,18 +348,6 @@ public class DistributedJobParticipant implements Managed {
               ? job.getJobConfiguration().getBatchSize()
               : 100;
 
-      if (job.getStagedIndexMapping() == null || job.getStagedIndexMapping().isEmpty()) {
-        throw new IllegalStateException(
-            "Distributed reindex job has no staged index mapping: " + job.getId());
-      }
-      ReindexContext stagedIndexContext =
-          ReindexContext.fromStagedIndexMapping(job.getStagedIndexMapping());
-      LOG.info(
-          "Participant using staged index mapping from job {}: {}",
-          job.getId(),
-          job.getStagedIndexMapping());
-
-      // Set up failure callback on bulk sink to record sink failures
       final IndexingFailureRecorder recorder = failureRecorder;
       bulkSink.setFailureCallback(
           (entityType, entityId, entityFqn, errorMessage, stage) -> {
@@ -367,8 +361,7 @@ public class DistributedJobParticipant implements Managed {
           });
 
       PartitionWorker worker =
-          new PartitionWorker(
-              coordinator, bulkSink, batchSize, stagedIndexContext, failureRecorder);
+          new PartitionWorker(coordinator, bulkSink, batchSize, reindexContext, failureRecorder);
 
       int partitionsProcessed = 0;
       long totalReaderSuccess = 0;
@@ -480,6 +473,21 @@ public class DistributedJobParticipant implements Managed {
         }
       }
     }
+  }
+
+  private Optional<ReindexContext> buildStagedIndexContext(SearchIndexJob job) {
+    if (job.getStagedIndexMapping() == null || job.getStagedIndexMapping().isEmpty()) {
+      LOG.warn(
+          "Skipping distributed reindex job {} on server {} because staged index mapping is missing",
+          job.getId(),
+          serverId);
+      return Optional.empty();
+    }
+    LOG.info(
+        "Participant using staged index mapping from job {}: {}",
+        job.getId(),
+        job.getStagedIndexMapping());
+    return Optional.of(ReindexContext.fromStagedIndexMapping(job.getStagedIndexMapping()));
   }
 
   /** Check if currently participating in a job. */
