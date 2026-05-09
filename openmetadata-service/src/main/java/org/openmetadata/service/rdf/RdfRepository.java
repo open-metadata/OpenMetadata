@@ -547,16 +547,21 @@ public class RdfRepository {
         String detailsUri =
             config.getBaseUri().toString() + "lineageDetails/" + fromId + "/" + toId;
         // Cleanup before re-insert: remove the lineage edge (both directions),
-        // any LineageDetails subtree (deterministic URI prefix covers the details
-        // resource and its child columnLineage resources), the parent's
-        // hasLineageDetails link, and any prov:generated reference to this details.
+        // any LineageDetails subtree for THIS specific (fromId, toId) edge — never
+        // touch the source entity's hasLineageDetails links to OTHER downstream
+        // entities — and any prov:generated reference to this details resource.
+        // The hasLineageDetails delete is pinned to <fromUri> hasLineageDetails
+        // <detailsUri> so reindexing one edge doesn't strip the source's other
+        // downstream lineage links. The detailsUri-prefixed delete cleans up the
+        // LineageDetails resource itself plus its child columnLineage resources
+        // (deterministic URI prefix).
         String deleteQuery =
             String.format(
                 "DELETE WHERE { GRAPH <%s> { <%s> <https://open-metadata.org/ontology/UPSTREAM> <%s> . } };"
                     + " DELETE WHERE { GRAPH <%s> { <%s> <http://www.w3.org/ns/prov#wasDerivedFrom> <%s> . } };"
-                    + " DELETE WHERE { GRAPH <%s> { <%s> <https://open-metadata.org/ontology/hasLineageDetails> ?d } };"
+                    + " DELETE WHERE { GRAPH <%s> { <%s> <https://open-metadata.org/ontology/hasLineageDetails> <%s> . } };"
                     + " DELETE { GRAPH <%s> { ?s ?p ?o } } WHERE { GRAPH <%s> { ?s ?p ?o . FILTER(STRSTARTS(STR(?s), \"%s\")) } };"
-                    + " DELETE { GRAPH <%s> { ?act <http://www.w3.org/ns/prov#generated> ?d } } WHERE { GRAPH <%s> { ?act <http://www.w3.org/ns/prov#generated> ?d . FILTER(STRSTARTS(STR(?d), \"%s\")) } }",
+                    + " DELETE { GRAPH <%s> { ?act <http://www.w3.org/ns/prov#generated> <%s> } } WHERE { GRAPH <%s> { ?act <http://www.w3.org/ns/prov#generated> <%s> } }",
                 KNOWLEDGE_GRAPH,
                 fromUri,
                 toUri,
@@ -565,10 +570,12 @@ public class RdfRepository {
                 fromUri,
                 KNOWLEDGE_GRAPH,
                 fromUri,
+                detailsUri,
                 KNOWLEDGE_GRAPH,
                 KNOWLEDGE_GRAPH,
                 detailsUri,
                 KNOWLEDGE_GRAPH,
+                detailsUri,
                 KNOWLEDGE_GRAPH,
                 detailsUri);
 
@@ -1771,9 +1778,15 @@ public class RdfRepository {
 
         String fromUri = subjectUri;
         String toUri = objectUri;
+        String canonicalPredicate = predicate;
         if (isReverseDirectionPredicate(predicate)) {
           fromUri = objectUri;
           toUri = subjectUri;
+          // Predicate must travel with the canonicalized direction; otherwise the
+          // EdgeInfo would carry e.g. <upstream> prov:wasDerivedFrom <downstream>,
+          // which is the wrong direction by PROV-O semantics. Substitute the
+          // forward-direction equivalent.
+          canonicalPredicate = forwardEquivalentPredicate(predicate);
         }
 
         String edgeKey = fromUri + "|" + relationType + "|" + toUri;
@@ -1781,7 +1794,7 @@ public class RdfRepository {
           continue;
         }
 
-        EdgeInfo edge = new EdgeInfo(fromUri, toUri, relationType, predicate);
+        EdgeInfo edge = new EdgeInfo(fromUri, toUri, relationType, canonicalPredicate);
         edges.add(edge);
         discoveredNodes.add(subjectUri);
         discoveredNodes.add(objectUri);
@@ -2153,6 +2166,24 @@ public class RdfRepository {
     }
     String normalized = localName.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
     return normalized.equals("wasderivedfrom") || normalized.equals("wasinfluencedby");
+  }
+
+  /**
+   * Map a reverse-direction predicate (PROV-O) to its forward-direction OpenMetadata
+   * equivalent so the canonicalized edge in {@link #parseEntityGraphEdgesFromResults}
+   * carries a predicate that matches its (from, to) orientation.
+   */
+  private String forwardEquivalentPredicate(String reversePredicateUri) {
+    String localName = extractUriLocalName(reversePredicateUri);
+    if (localName == null) {
+      return reversePredicateUri;
+    }
+    String normalized = localName.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
+    return switch (normalized) {
+      case "wasderivedfrom" -> "https://open-metadata.org/ontology/UPSTREAM";
+      case "wasinfluencedby" -> "https://open-metadata.org/ontology/DOWNSTREAM";
+      default -> reversePredicateUri;
+    };
   }
 
   private String normalizeEntityTypeFilter(String entityType) {

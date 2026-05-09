@@ -103,10 +103,12 @@ public class RdfPropertyMapper {
   // Fields that are handled separately with typed predicates (not via JSON-LD context)
   private static final Set<String> TYPED_RELATION_FIELDS = Set.of("relatedTerms");
 
-  // Fields where the array contains EntityReferences and is also handled by the
-  // mapped path (om:hasOwner, om:hasFollower, etc.). The unmapped path used to also
-  // emit them as JSON-string literals, which created redundant noise — skip those
-  // here so we don't duplicate the entity-reference triples.
+  // Fields where the array contains EntityReferences. When the field also has a
+  // JSON-LD context mapping the mapped path emits clean `om:<predicate> <ref>`
+  // triples and the unmapped path's JSON-string literal would be redundant noise.
+  // For fields without a context mapping the unmapped path is the ONLY path, so we
+  // can't simply skip — we expand each array element as an entity reference using
+  // an `om:<fieldName>` predicate so the data isn't lost.
   private static final Set<String> ENTITY_REFERENCE_ARRAY_FIELDS =
       Set.of("owners", "followers", "reviewers", "voters", "experts", "domains", "dataProducts");
 
@@ -215,11 +217,17 @@ public class RdfPropertyMapper {
       addProvAttribution(entityResource, fieldValue, model);
     }
 
-    // Skip arrays that are handled cleanly by the mapped path as entity references —
-    // dumping them again here as a JSON-string literal duplicates the data and adds
-    // empty-array noise when the field is unset. The mapped path emits the proper
-    // om:hasOwner / om:hasFollower / etc. triples per element.
+    // EntityReference arrays: don't dump the raw JSON as a literal. If the array is
+    // empty there's nothing to emit. Otherwise expand each element through
+    // addEntityReference so the data still lands as proper `om:<fieldName> <ref>`
+    // triples even when no JSON-LD context maps the field. For fields the mapped
+    // path also handles (e.g. owners), this is a no-op because the same triples
+    // were already added — Jena's Model dedupes identical triples.
     if (ENTITY_REFERENCE_ARRAY_FIELDS.contains(fieldName) && fieldValue.isArray()) {
+      if (fieldValue.isEmpty()) {
+        return;
+      }
+      addEntityReference(entityResource, OM_NS + fieldName, fieldValue, model);
       return;
     }
 
@@ -1023,11 +1031,14 @@ public class RdfPropertyMapper {
   }
 
   private void addStandardProperties(EntityInterface entity, Resource resource, Model model) {
-    // Add timestamps
+    // Add timestamps. updatedAt is epoch millis on the entity; convert to an
+    // ISO-8601 instant before tagging it as xsd:dateTime so the lexical form is
+    // valid (a long literal would be a malformed xsd:dateTime).
     if (entity.getUpdatedAt() != null) {
+      String iso = java.time.Instant.ofEpochMilli(entity.getUpdatedAt()).toString();
       resource.addProperty(
           model.createProperty(DCT_NS, "modified"),
-          model.createTypedLiteral(entity.getUpdatedAt().toString(), XSDDatatype.XSDdateTime));
+          model.createTypedLiteral(iso, XSDDatatype.XSDdateTime));
     }
 
     // PROV-O soft-delete: when the entity is marked deleted, expose its updatedAt

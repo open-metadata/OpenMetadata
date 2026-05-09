@@ -368,17 +368,21 @@ public class RdfIndexApp extends AbstractNativeApplication {
     boolean failedOutright =
         jobStatus
             == org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus.FAILED;
+    // The coordinator marks a job COMPLETED_WITH_ERRORS when any partition is
+    // FAILED or CANCELLED, which can happen even with failedRecords == 0 (e.g.
+    // user-initiated stop that cancels in-flight partitions before any record
+    // failures accrue). Surface that case too so the run record reflects
+    // partition-level outcomes, not just record-level ones.
     boolean completedWithErrors =
         jobStatus
-                == org.openmetadata
-                    .service
-                    .apps
-                    .bundles
-                    .searchIndex
-                    .distributed
-                    .IndexJobStatus
-                    .COMPLETED_WITH_ERRORS
-            && latestJob.getFailedRecords() > 0;
+            == org.openmetadata
+                .service
+                .apps
+                .bundles
+                .searchIndex
+                .distributed
+                .IndexJobStatus
+                .COMPLETED_WITH_ERRORS;
 
     if (!failedOutright && !completedWithErrors) {
       return;
@@ -387,8 +391,10 @@ public class RdfIndexApp extends AbstractNativeApplication {
     String message = latestJob.getErrorMessage();
     if (message == null || message.isBlank()) {
       message =
-          String.format(
-              "RDF index job completed with %d failed record(s)", latestJob.getFailedRecords());
+          latestJob.getFailedRecords() > 0
+              ? String.format(
+                  "RDF index job completed with %d failed record(s)", latestJob.getFailedRecords())
+              : "RDF index job completed with errors at the partition level";
     }
     LOG.error("RDF index job {} terminated with errors: {}", latestJob.getId(), message);
     jobData.setFailure(

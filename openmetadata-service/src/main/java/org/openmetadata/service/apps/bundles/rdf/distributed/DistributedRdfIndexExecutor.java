@@ -260,9 +260,14 @@ public class DistributedRdfIndexExecutor {
       } finally {
         activePartitions.remove(partition.getId());
       }
-      if (completionTracker != null && result != null) {
-        boolean failed = result.errorMessage() != null && !result.stopped();
-        completionTracker.recordPartitionComplete(partition.getEntityType(), failed);
+      if (completionTracker != null && result != null && !result.stopped()) {
+        // failedCount is authoritative: it includes readerErrors and per-entity
+        // failures both with and without a captured lastError. Driving the
+        // tracker off `errorMessage != null` alone would treat partitions whose
+        // failures came from `ResultList.getErrors()` (no lastError set) as
+        // success and prematurely promote the entity.
+        completionTracker.recordPartitionComplete(
+            partition.getEntityType(), result.failedCount() > 0);
       }
     }
   }
