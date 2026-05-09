@@ -1611,6 +1611,34 @@ public class RdfRepository {
     }
   }
 
+  /**
+   * Re-orient lineage relation labels relative to the focal node. The raw stored
+   * relation `(A, B, upstream)` means "A is upstream of B" — but in a graph view
+   * centered on focal F, an edge {@code F → X} means X is *downstream* of F, not
+   * upstream. Without this re-orientation, every outgoing lineage edge from the
+   * focal would carry the misleading "Upstream" label even though it really
+   * represents downstream flow.
+   *
+   * <p>Returns the input relation untouched for non-lineage relations and for
+   * edges that don't touch the focal (e.g. multi-hop neighbours).
+   */
+  private String relativeRelationLabel(EdgeInfo edge, String focalUri) {
+    if (focalUri == null || edge.relation == null) {
+      return edge.relation;
+    }
+    String rel = edge.relation.toLowerCase(Locale.ROOT);
+    boolean focalIsSource = focalUri.equals(edge.fromUri);
+    boolean focalIsTarget = focalUri.equals(edge.toUri);
+    if (!focalIsSource && !focalIsTarget) {
+      return edge.relation;
+    }
+    return switch (rel) {
+      case "upstream" -> focalIsSource ? "downstream" : "upstream";
+      case "downstream" -> focalIsSource ? "upstream" : "downstream";
+      default -> edge.relation;
+    };
+  }
+
   private String formatRelationshipLabel(String relationship) {
     return switch (relationship.toLowerCase()) {
       case "contains" -> "Contains";
@@ -2100,8 +2128,13 @@ public class RdfRepository {
           JsonUtils.getObjectMapper().createObjectNode();
       graphEdge.put("from", edge.fromUri);
       graphEdge.put("to", edge.toUri);
-      graphEdge.put("label", formatRelationshipLabel(edge.relation));
-      graphEdge.put("relationType", edge.relation);
+      // Label edges relative to the focal node so the user sees the right semantics:
+      //   focal → X (focal is upstream of X)  → "Downstream"
+      //   X → focal (X is upstream of focal)  → "Upstream"
+      // Edges that don't touch the focal keep the raw relation label.
+      String displayRelation = relativeRelationLabel(edge, rootUri);
+      graphEdge.put("label", formatRelationshipLabel(displayRelation));
+      graphEdge.put("relationType", displayRelation);
       graphEdge.put("arrows", "to");
       graphEdges.add(graphEdge);
     }
