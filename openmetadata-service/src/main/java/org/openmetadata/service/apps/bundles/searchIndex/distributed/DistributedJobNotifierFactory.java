@@ -14,7 +14,6 @@
 package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
@@ -30,14 +29,11 @@ public class DistributedJobNotifierFactory {
   /**
    * Create a DistributedJobNotifier.
    *
-   * @param cacheConfig The cache configuration
    * @param collectionDAO The DAO for database access
    * @param serverId The current server's ID
    * @return The notifier implementation
    */
-  public static DistributedJobNotifier create(
-      CacheConfig cacheConfig, CollectionDAO collectionDAO, String serverId) {
-
+  public static DistributedJobNotifier create(CollectionDAO collectionDAO, String serverId) {
     LOG.info(
         "Using database polling for distributed search indexing job discovery (2s discovery interval)");
     return new PollingJobNotifier(collectionDAO, serverId);

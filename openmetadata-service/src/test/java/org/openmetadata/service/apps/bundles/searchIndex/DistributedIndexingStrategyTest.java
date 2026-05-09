@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -301,6 +302,54 @@ class DistributedIndexingStrategyTest {
   }
 
   @Test
+  void updateStatsFromDistributedJobUsesAggregatedServerStatsWhenOnlySinkFailures()
+      throws Exception {
+    CollectionDAO.SearchIndexServerStatsDAO serverStatsDao =
+        mock(CollectionDAO.SearchIndexServerStatsDAO.class);
+    UUID jobId = UUID.fromString("00000000-0000-0000-0000-000000000023");
+    Stats stats = createBaseStats("table", 10);
+    SearchIndexJob distributedJob =
+        SearchIndexJob.builder()
+            .id(jobId)
+            .totalRecords(10)
+            .successRecords(8)
+            .failedRecords(2)
+            .entityStats(
+                Map.of(
+                    "table",
+                    SearchIndexJob.EntityTypeStats.builder()
+                        .entityType("table")
+                        .totalRecords(10)
+                        .successRecords(0)
+                        .failedRecords(10)
+                        .build()))
+            .build();
+
+    when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(serverStatsDao);
+    when(serverStatsDao.getAggregatedStats(jobId.toString()))
+        .thenReturn(
+            new CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats(
+                10, 0, 0, 0, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 1));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+
+      invokePrivate(
+          "updateStatsFromDistributedJob",
+          new Class<?>[] {Stats.class, SearchIndexJob.class, StepStats.class},
+          stats,
+          distributedJob,
+          new StepStats().withSuccessRecords(8).withFailedRecords(2));
+    }
+
+    assertEquals(0, stats.getJobStats().getSuccessRecords());
+    assertEquals(10, stats.getJobStats().getFailedRecords());
+    assertEquals(10, stats.getSinkStats().getTotalRecords());
+    assertEquals(0, stats.getSinkStats().getSuccessRecords());
+    assertEquals(10, stats.getSinkStats().getFailedRecords());
+  }
+
+  @Test
   void statusHelpersReportStoppedIncompleteAndCompleteJobs() throws Exception {
     Stats complete = createBaseStats("table", 10);
     complete.getJobStats().setTotalRecords(10);
@@ -329,6 +378,39 @@ class DistributedIndexingStrategyTest {
     assertEquals(
         ExecutionResult.Status.STOPPED,
         invokePrivate("determineStatus", new Class<?>[] {Stats.class}, complete));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void finalizeAllEntityReindexPromotesZeroRecordEntityFromInitializedStats() throws Exception {
+    DistributedSearchIndexExecutor executor = mock(DistributedSearchIndexExecutor.class);
+    EntityCompletionTracker tracker = mock(EntityCompletionTracker.class);
+    RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    ReindexContext stagedIndexContext = stagedContext("user");
+
+    when(tracker.getPromotedEntities()).thenReturn(Set.of());
+    when(executor.getEntityTracker()).thenReturn(tracker);
+    when(executor.getJobWithFreshStats())
+        .thenReturn(SearchIndexJob.builder().entityStats(Map.of()).build());
+    setField("distributedExecutor", executor);
+    ((AtomicReference<Stats>) getField("currentStats")).set(createBaseStats("user", 0));
+
+    boolean result =
+        (Boolean)
+            invokePrivate(
+                "finalizeAllEntityReindex",
+                new Class<?>[] {RecreateIndexHandler.class, ReindexContext.class, boolean.class},
+                indexPromotionHandler,
+                stagedIndexContext,
+                true);
+
+    assertTrue(result);
+    ArgumentCaptor<EntityReindexContext> contextCaptor =
+        ArgumentCaptor.forClass(EntityReindexContext.class);
+    ArgumentCaptor<Boolean> successCaptor = ArgumentCaptor.forClass(Boolean.class);
+    verify(indexPromotionHandler).finalizeReindex(contextCaptor.capture(), successCaptor.capture());
+    assertEquals("user", contextCaptor.getValue().getEntityType());
+    assertEquals(Boolean.TRUE, successCaptor.getValue());
   }
 
   @Test

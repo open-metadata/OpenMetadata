@@ -64,7 +64,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
-import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchClusterMetrics;
@@ -146,9 +145,7 @@ class DistributedJobParticipantTest {
 
   @Test
   void testStartAndStop() {
-    participant =
-        new DistributedJobParticipant(
-            collectionDAO, searchRepository, "test-server-1", (CacheConfig) null);
+    participant = new DistributedJobParticipant(collectionDAO, searchRepository, "test-server-1");
 
     // Initially not participating
     assertFalse(participant.isParticipating());
@@ -166,9 +163,7 @@ class DistributedJobParticipantTest {
 
   @Test
   void testMultipleStartCallsAreIdempotent() {
-    participant =
-        new DistributedJobParticipant(
-            collectionDAO, searchRepository, "test-server-1", (CacheConfig) null);
+    participant = new DistributedJobParticipant(collectionDAO, searchRepository, "test-server-1");
 
     participant.start();
     participant.start(); // Second call should be no-op
@@ -182,9 +177,7 @@ class DistributedJobParticipantTest {
 
   @Test
   void testMultipleStopCallsAreIdempotent() {
-    participant =
-        new DistributedJobParticipant(
-            collectionDAO, searchRepository, "test-server-1", (CacheConfig) null);
+    participant = new DistributedJobParticipant(collectionDAO, searchRepository, "test-server-1");
 
     participant.start();
     participant.stop();
@@ -207,9 +200,7 @@ class DistributedJobParticipantTest {
             DistributedSearchIndexCoordinator.class,
             (mock, context) -> when(mock.getRecentJobs(any(), anyInt())).thenReturn(List.of()))) {
 
-      participant =
-          new DistributedJobParticipant(
-              collectionDAO, searchRepository, "test-server-1", (CacheConfig) null);
+      participant = new DistributedJobParticipant(collectionDAO, searchRepository, "test-server-1");
       participant.start();
 
       // Wait a bit for the scheduler to run at least once

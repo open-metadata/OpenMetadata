@@ -89,7 +89,6 @@ import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdent
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.audit.AuditLogEventPublisher;
 import org.openmetadata.service.audit.AuditLogRepository;
-import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
@@ -397,7 +396,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
                 jdbi.onDemand(CollectionDAO.class), Entity.getSearchRepository()));
 
     // Register Distributed Job Participant for distributed search indexing
-    registerDistributedJobParticipant(environment, jdbi, catalogConfig.getCacheConfig());
+    registerDistributedJobParticipant(environment, jdbi);
     registerDistributedRdfJobParticipant(environment, jdbi);
 
     // Register Event publishers
@@ -1132,15 +1131,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  protected void registerDistributedJobParticipant(
-      Environment environment, Jdbi jdbi, CacheConfig cacheConfig) {
+  protected void registerDistributedJobParticipant(Environment environment, Jdbi jdbi) {
     try {
       CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
       SearchRepository searchRepository = Entity.getSearchRepository();
       String serverId = ServerIdentityResolver.getInstance().getServerId();
 
       DistributedJobParticipant participant =
-          new DistributedJobParticipant(collectionDAO, searchRepository, serverId, cacheConfig);
+          new DistributedJobParticipant(collectionDAO, searchRepository, serverId);
       environment.lifecycle().manage(participant);
 
       LOG.info(

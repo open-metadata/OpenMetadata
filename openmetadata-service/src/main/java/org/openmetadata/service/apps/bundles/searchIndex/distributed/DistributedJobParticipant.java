@@ -25,7 +25,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
-import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.ReindexContext;
@@ -69,15 +68,12 @@ public class DistributedJobParticipant implements Managed {
   private volatile Thread participantThread;
 
   public DistributedJobParticipant(
-      CollectionDAO collectionDAO,
-      SearchRepository searchRepository,
-      String serverId,
-      CacheConfig cacheConfig) {
+      CollectionDAO collectionDAO, SearchRepository searchRepository, String serverId) {
     this(
         collectionDAO,
         searchRepository,
         serverId,
-        DistributedJobNotifierFactory.create(cacheConfig, collectionDAO, serverId));
+        DistributedJobNotifierFactory.create(collectionDAO, serverId));
   }
 
   /**

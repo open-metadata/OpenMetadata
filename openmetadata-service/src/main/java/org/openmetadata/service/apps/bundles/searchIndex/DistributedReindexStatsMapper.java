@@ -75,7 +75,7 @@ class DistributedReindexStatsMapper {
       SearchIndexJob distributedJob,
       CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats aggregatedStats,
       StepStats actualSinkStats) {
-    if (aggregatedStats != null && aggregatedStats.sinkSuccess() > 0) {
+    if (hasAggregatedStageRecords(aggregatedStats)) {
       return new StatsSource(
           "serverStatsTable",
           aggregatedStats.sinkSuccess(),
@@ -89,6 +89,20 @@ class DistributedReindexStatsMapper {
     }
     return new StatsSource(
         "partition-based", distributedJob.getSuccessRecords(), distributedJob.getFailedRecords());
+  }
+
+  private boolean hasAggregatedStageRecords(
+      CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats aggregatedStats) {
+    return aggregatedStats != null
+        && (aggregatedStats.readerSuccess() > 0
+            || aggregatedStats.readerFailed() > 0
+            || aggregatedStats.readerWarnings() > 0
+            || aggregatedStats.processSuccess() > 0
+            || aggregatedStats.processFailed() > 0
+            || aggregatedStats.sinkSuccess() > 0
+            || aggregatedStats.sinkFailed() > 0
+            || aggregatedStats.vectorSuccess() > 0
+            || aggregatedStats.vectorFailed() > 0);
   }
 
   private void updateJobStats(Stats stats, StatsSource source) {

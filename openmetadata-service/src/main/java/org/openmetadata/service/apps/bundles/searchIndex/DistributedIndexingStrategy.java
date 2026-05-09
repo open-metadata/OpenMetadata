@@ -318,13 +318,54 @@ public class DistributedIndexingStrategy {
   }
 
   private Map<String, SearchIndexJob.EntityTypeStats> getFinalEntityStats() {
+    Map<String, SearchIndexJob.EntityTypeStats> finalEntityStats = new HashMap<>();
     if (distributedExecutor == null) {
-      return Collections.emptyMap();
+      mergeInitializedEntityStats(finalEntityStats);
+      return finalEntityStats;
     }
     SearchIndexJob finalJob = distributedExecutor.getJobWithFreshStats();
-    return finalJob != null && finalJob.getEntityStats() != null
-        ? finalJob.getEntityStats()
-        : Collections.emptyMap();
+    if (finalJob != null && finalJob.getEntityStats() != null) {
+      finalEntityStats.putAll(finalJob.getEntityStats());
+    }
+    mergeInitializedEntityStats(finalEntityStats);
+    return finalEntityStats;
+  }
+
+  private void mergeInitializedEntityStats(
+      Map<String, SearchIndexJob.EntityTypeStats> finalEntityStats) {
+    Stats stats = currentStats.get();
+    if (stats == null
+        || stats.getEntityStats() == null
+        || stats.getEntityStats().getAdditionalProperties() == null) {
+      return;
+    }
+
+    stats
+        .getEntityStats()
+        .getAdditionalProperties()
+        .forEach(
+            (entityType, stepStats) ->
+                finalEntityStats.computeIfAbsent(
+                    entityType, key -> toEntityTypeStats(key, stepStats)));
+  }
+
+  private SearchIndexJob.EntityTypeStats toEntityTypeStats(String entityType, StepStats stepStats) {
+    long success = stepStats != null ? statValue(stepStats.getSuccessRecords()) : 0L;
+    long failed = stepStats != null ? statValue(stepStats.getFailedRecords()) : 0L;
+    return SearchIndexJob.EntityTypeStats.builder()
+        .entityType(entityType)
+        .totalRecords(stepStats != null ? statValue(stepStats.getTotalRecords()) : 0L)
+        .processedRecords(success + failed)
+        .successRecords(success)
+        .failedRecords(failed)
+        .totalPartitions(0)
+        .completedPartitions(0)
+        .failedPartitions(0)
+        .build();
+  }
+
+  private long statValue(Number value) {
+    return value != null ? value.longValue() : 0L;
   }
 
   public Optional<Stats> getStats() {
