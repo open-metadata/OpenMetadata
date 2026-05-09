@@ -227,10 +227,8 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
     topology = DatabaseServiceTopology()
     context = TopologyContextManager(topology)
 
-    # ``vars(self).setdefault(...)`` is an atomic check-and-set under the GIL
-    # (Python 3.14 Thread Safety Guarantees). Two parallel workers may build
-    # candidates concurrently, but only one wins publication and is returned
-    # to all callers — safe because both candidates are empty at that point.
+    # ``vars(self).setdefault(...)`` for thread-safe lazy init.
+    # See: https://docs.python.org/3/library/threadsafety.html
     @property
     def tags_registry(self) -> TagRegistry:
         """Per-Source registry tracking tag/classification ingestion state."""

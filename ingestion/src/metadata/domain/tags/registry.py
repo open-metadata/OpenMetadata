@@ -77,30 +77,27 @@ class TagRegistry:
         self._tag_label_cache: dict[_TagLabelKey, TagLabel] = {}
         self._pending: list[OMetaTagAndClassification] = []
         self._cleared_scopes: set[str] = set()
-
         self._labels_by_entity: dict[str, list[TagLabel]] = {}
 
-        self._run_state_lock = threading.RLock()
-        self._scope_state_lock = threading.Lock()
+        self._lock = threading.Lock()
 
-    def _intern_tag_label(
+    def _intern_tag_label_locked(
         self, *, classification_name: str, tag_name: str, label_type: LabelType, state: State
     ) -> TagLabel:
-        """Return the shared ``TagLabel`` for the given key. Treat as immutable."""
+        """Return the shared ``TagLabel`` for the given key. Caller must hold ``self._lock``."""
         key = _TagLabelKey(classification_name, tag_name, label_type, state)
-        with self._run_state_lock:
-            cached = self._tag_label_cache.get(key)
-            if cached is not None:
-                return cached
-            tag_fqn = cast("str", fqn.build(None, Tag, classification_name=classification_name, tag_name=tag_name))
-            cached = TagLabel(  # pyright: ignore[reportCallIssue]
-                tagFQN=TagFQN(tag_fqn),
-                labelType=label_type,
-                state=state,
-                source=TagSource.Classification,
-            )
-            self._tag_label_cache[key] = cached
+        cached = self._tag_label_cache.get(key)
+        if cached is not None:
             return cached
+        tag_fqn = cast("str", fqn.build(None, Tag, classification_name=classification_name, tag_name=tag_name))
+        cached = TagLabel(  # pyright: ignore[reportCallIssue]
+            tagFQN=TagFQN(tag_fqn),
+            labelType=label_type,
+            state=state,
+            source=TagSource.Classification,
+        )
+        self._tag_label_cache[key] = cached
+        return cached
 
     def attach(
         self,
@@ -119,21 +116,19 @@ class TagRegistry:
             logger.debug("TagRegistry: skipping empty tag for classification %s", classification_name)
             return
 
-        tag_label = self._intern_tag_label(
-            classification_name=classification_name,
-            tag_name=tag_name,
-            label_type=label_type,
-            state=state,
-        )
-
-        with self._scope_state_lock:
+        with self._lock:
             if scope_fqn in self._cleared_scopes:
                 raise ScopeAlreadyClearedError(
                     f"Tag attach called for cleared scope '{scope_fqn!r}' for entity '{entity_fqn!r}'"
                 )
+            tag_label = self._intern_tag_label_locked(
+                classification_name=classification_name,
+                tag_name=tag_name,
+                label_type=label_type,
+                state=state,
+            )
             self._labels_by_entity.setdefault(entity_fqn, []).append(tag_label)
 
-        with self._run_state_lock:
             tag_fqn = model_str(tag_label.tagFQN)
             if tag_fqn not in self._known_tag_fqns:
                 self._known_tag_fqns.add(tag_fqn)
@@ -148,12 +143,12 @@ class TagRegistry:
 
     def labels_for(self, entity_fqn: str) -> list[TagLabel]:
         """Return tag labels attached to ``entity_fqn`` (idempotent; returns a copy)."""
-        with self._scope_state_lock:
+        with self._lock:
             return list(self._labels_by_entity.get(entity_fqn, []))
 
     def drain(self) -> Iterable[OMetaTagAndClassification]:
         """Yield all queued create payloads and clear the queue."""
-        with self._run_state_lock:
+        with self._lock:
             pending, self._pending = self._pending, []
 
         if pending:
@@ -167,7 +162,7 @@ class TagRegistry:
         """
         prefix = scope_fqn + fqn.FQN_SEPARATOR
 
-        with self._scope_state_lock:
+        with self._lock:
             self._cleared_scopes.add(scope_fqn)
             kept = {k: v for k, v in self._labels_by_entity.items() if k != scope_fqn and not k.startswith(prefix)}
             dropped = len(self._labels_by_entity) - len(kept)
@@ -177,7 +172,7 @@ class TagRegistry:
 
     def is_known(self, tag_fqn: str) -> bool:
         """Return True if the tag FQN has been recorded (case-sensitive match)."""
-        with self._run_state_lock:
+        with self._lock:
             return tag_fqn in self._known_tag_fqns
 
     def ensure_known(self, tag_fqn: str) -> bool:
@@ -201,29 +196,21 @@ class TagRegistry:
             )
             return False
 
-        with self._run_state_lock:
+        with self._lock:
             self._known_tag_fqns.add(tag_fqn)
         return True
 
     def stats(self) -> dict[str, int]:
         """Return current state counts for instrumentation."""
-        with self._run_state_lock:
-            run_state = {
+        with self._lock:
+            return {
                 "known_tag_fqns": len(self._known_tag_fqns),
                 "tag_label_cache": len(self._tag_label_cache),
                 "pending": len(self._pending),
                 "cleared_scopes": len(self._cleared_scopes),
+                "live_entities": len(self._labels_by_entity),
+                "live_labels": sum(len(v) for v in self._labels_by_entity.values()),
             }
-
-        with self._scope_state_lock:
-            live_entities = len(self._labels_by_entity)
-            live_labels = sum(len(v) for v in self._labels_by_entity.values())
-
-        return {
-            **run_state,
-            "live_entities": live_entities,
-            "live_labels": live_labels,
-        }
 
     @staticmethod
     def _build_pending_record(
