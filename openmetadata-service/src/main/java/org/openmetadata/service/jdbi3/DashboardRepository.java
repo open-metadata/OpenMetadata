@@ -209,6 +209,21 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         fields.contains("usageSummary") ? dashboard.getUsageSummary() : null);
   }
 
+  // Hard-delete cascade for chart HAS-links. The bulk path doesn't apply to hard delete
+  // (cleanup() removes rows directly), so this override re-creates the previous chart
+  // hard-delete behavior. Soft delete is handled by softDeleteAdditionalChildren so that
+  // it also runs when a dashboard is a descendant of a larger soft-delete cascade.
+  @Transaction
+  @Override
+  protected void deleteChildren(
+      UUID dashboardId, boolean recursive, boolean hardDelete, String updatedBy) {
+    super.deleteChildren(dashboardId, recursive, hardDelete, updatedBy);
+    if (!hardDelete) {
+      return;
+    }
+    cascadeChartCleanup(dashboardId, updatedBy, true);
+  }
+
   // Soft-delete chart links (HAS relation). The CONTAINS subtree is handled by the bulk
   // path in EntityRepository.bulkSoftDeleteSubtree; chart handling is a per-dashboard
   // concern and lives in the per-entity extension hook so it runs both for direct dashboard
@@ -217,6 +232,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Transaction
   @Override
   protected void softDeleteAdditionalChildren(UUID dashboardId, String updatedBy) {
+    cascadeChartCleanup(dashboardId, updatedBy, false);
+  }
+
+  private void cascadeChartCleanup(UUID dashboardId, String updatedBy, boolean hardDelete) {
     List<CollectionDAO.EntityRelationshipRecord> chartRecords =
         daoCollection
             .relationshipDAO()
@@ -272,7 +291,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       }
     }
 
-    deleteChildren(filteredChartRecordsToBeDeleted, false, updatedBy);
+    deleteChildren(filteredChartRecordsToBeDeleted, hardDelete, updatedBy);
   }
 
   // Restore chart links (HAS relation). The CONTAINS subtree is now restored by the bulk
@@ -335,14 +354,14 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       }
     }
 
-    if (filteredChartRecordsToBeRestored.isEmpty()) {
-      return;
+    // Per-chart restore preserves the full chart restoreEntity flow (setFieldsInternal,
+    // setInheritedFields, lifecycle hooks, ES restore-from-search). Charts are typically
+    // few per dashboard, so the loop isn't a hot path; the bulkRestoreSubtree shortcut
+    // skipped chart-specific setup that the test in DashboardResourceIT relies on.
+    for (CollectionDAO.EntityRelationshipRecord record : filteredChartRecordsToBeRestored) {
+      LOG.info("Recursively restoring {} {}", record.getType(), record.getId());
+      Entity.restoreEntity(updatedBy, record.getType(), record.getId());
     }
-    List<UUID> chartIds =
-        filteredChartRecordsToBeRestored.stream()
-            .map(CollectionDAO.EntityRelationshipRecord::getId)
-            .toList();
-    Entity.getEntityRepository(CHART).bulkRestoreSubtree(chartIds, updatedBy);
   }
 
   @Override

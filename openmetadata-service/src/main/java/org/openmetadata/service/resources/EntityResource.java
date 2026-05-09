@@ -807,8 +807,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     // Cheap pre-check so we return 404 synchronously instead of 202 + delayed WebSocket
     // FAILED for an entity that doesn't exist or isn't soft-deleted. Avoids spinning up
-    // an executor task for a request that can't succeed.
-    repository.find(id, Include.DELETED);
+    // an executor task for a request that can't succeed. Capturing the entity now also
+    // gives us a meaningful name for any later FAILED notification.
+    T preCheck = repository.find(id, Include.DELETED);
+    String entityName = preCheck.getName() != null ? preCheck.getName() : id.toString();
     String jobId = UUID.randomUUID().toString();
     String userName = securityContext.getUserPrincipal().getName();
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
@@ -821,7 +823,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 PutResponse<T> response = repository.restoreEntity(userName, id);
                 if (response == null) {
                   WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
-                      jobId, securityContext, id.toString(), "Entity is not in deleted state");
+                      jobId, securityContext, entityName, "Entity is not in deleted state");
                   return;
                 }
                 repository.restoreFromSearch(response.getEntity());
@@ -837,7 +839,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
                     jobId,
                     securityContext,
-                    id.toString(),
+                    entityName,
                     e.getMessage() == null ? e.toString() : e.getMessage());
               }
             }));
