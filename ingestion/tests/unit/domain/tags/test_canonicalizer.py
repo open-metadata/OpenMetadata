@@ -22,7 +22,7 @@ from metadata.generated.schema.type.basic import ProviderType
 @pytest.fixture(autouse=True)
 def _no_retry_sleep(monkeypatch: pytest.MonkeyPatch) -> None:
     """Skip tenacity's between-retry sleeps so retry-tests run instantly."""
-    monkeypatch.setattr("tenacity.nap.time.sleep", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr("time.sleep", lambda *_args, **_kwargs: None)
 
 
 @pytest.fixture
