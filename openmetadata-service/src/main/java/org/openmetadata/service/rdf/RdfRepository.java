@@ -385,6 +385,14 @@ public class RdfRepository {
         detailsResource.addProperty(
             model.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "type"),
             model.createResource("https://open-metadata.org/ontology/LineageDetails"));
+        // detailsResource is the Activity instance for this lineage edge — it
+        // carries Activity-shaped predicates (prov:startedAtTime, endedAtTime,
+        // used, hadPlan, wasGeneratedBy, wasAssociatedWith). Type it as
+        // prov:Activity so PROV-O reasoners and federated SPARQL clients treat
+        // it as one without having to learn the OM-specific type.
+        detailsResource.addProperty(
+            model.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "type"),
+            model.createResource("http://www.w3.org/ns/prov#Activity"));
 
         if (lineageDetails.getSqlQuery() != null && !lineageDetails.getSqlQuery().isEmpty()) {
           detailsResource.addProperty(

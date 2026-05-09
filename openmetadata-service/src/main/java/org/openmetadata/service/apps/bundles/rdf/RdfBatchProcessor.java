@@ -104,12 +104,17 @@ public class RdfBatchProcessor {
       }
     }
 
-    failedCount += relationshipFailures;
+    // Relationship failures are tracked separately from entity write failures.
+    // failedCount becomes "failedRecords" in the index stats, where a record is
+    // an entity row — folding relationship failures (which are per-edge, not
+    // per-entity) into it would inflate failedRecords beyond the totalRecords
+    // entity count and make stats nonsensical. Surface relationship errors only
+    // through lastError when no entity-level failure already provided one.
     if (lastError == null && relationshipError != null) {
       lastError = relationshipError;
     }
 
-    return new BatchProcessingResult(successCount, failedCount, lastError);
+    return new BatchProcessingResult(successCount, failedCount, relationshipFailures, lastError);
   }
 
   public record RelationshipProcessingResult(int failureCount, String lastError) {
@@ -329,9 +334,27 @@ public class RdfBatchProcessor {
     }
   }
 
-  public record BatchProcessingResult(int successCount, int failedCount, String lastError) {
+  /**
+   * Outcome of processing a batch of entities.
+   *
+   * @param successCount entity-level write successes
+   * @param failedCount entity-level write failures (counts toward failedRecords stats)
+   * @param relationshipFailureCount per-edge relationship/lineage failures, kept
+   *     separate so they don't inflate the entity-level failedRecords stat
+   * @param lastError most recent failure message (entity or relationship)
+   */
+  public record BatchProcessingResult(
+      int successCount, int failedCount, int relationshipFailureCount, String lastError) {
     public BatchProcessingResult(int successCount, int failedCount) {
-      this(successCount, failedCount, null);
+      this(successCount, failedCount, 0, null);
+    }
+
+    public BatchProcessingResult(int successCount, int failedCount, String lastError) {
+      this(successCount, failedCount, 0, lastError);
+    }
+
+    public boolean hasAnyFailure() {
+      return failedCount > 0 || relationshipFailureCount > 0;
     }
   }
 }

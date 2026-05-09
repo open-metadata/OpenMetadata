@@ -261,13 +261,13 @@ public class DistributedRdfIndexExecutor {
         activePartitions.remove(partition.getId());
       }
       if (completionTracker != null && result != null && !result.stopped()) {
-        // failedCount is authoritative: it includes readerErrors and per-entity
-        // failures both with and without a captured lastError. Driving the
-        // tracker off `errorMessage != null` alone would treat partitions whose
-        // failures came from `ResultList.getErrors()` (no lastError set) as
-        // success and prematurely promote the entity.
+        // hasAnyFailure() captures BOTH entity-level failures (failedCount,
+        // including readerErrors) AND per-edge relationship failures
+        // (relationshipFailureCount). Using only failedCount would let an
+        // entity be promoted to "success" even when its lineage / ownership /
+        // tag triples failed to write — premature promotion.
         completionTracker.recordPartitionComplete(
-            partition.getEntityType(), result.failedCount() > 0);
+            partition.getEntityType(), result.hasAnyFailure());
       }
     }
   }
