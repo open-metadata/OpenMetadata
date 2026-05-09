@@ -193,13 +193,11 @@ class EntityRepositoryRestoreTest {
   void bulkRestoreSubtree_noDeletedEntitiesFound_isNoOp() {
     CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
     UUID id = UUID.randomUUID();
-    when(pipelineDAO.findEntitiesByIds(anyList(), eq(org.openmetadata.schema.type.Include.DELETED)))
-        .thenReturn(List.of());
+    when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of());
 
     repo.bulkRestoreSubtree(List.of(id), "user");
 
-    verify(pipelineDAO, atLeastOnce())
-        .findEntitiesByIds(anyList(), eq(org.openmetadata.schema.type.Include.DELETED));
+    verify(pipelineDAO, atLeastOnce()).findEntitiesByIds(anyList(), eq(Include.ALL));
     assertEquals(0, repo.restoreAdditionalChildrenCalls);
   }
 
@@ -208,9 +206,11 @@ class EntityRepositoryRestoreTest {
     CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
     UUID a = UUID.randomUUID();
     UUID b = UUID.randomUUID();
-    Pipeline pa = new Pipeline().withId(a).withName("a").withFullyQualifiedName("svc.a");
-    Pipeline pb = new Pipeline().withId(b).withName("b").withFullyQualifiedName("svc.b");
-    when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.DELETED))).thenReturn(List.of(pa, pb));
+    Pipeline pa =
+        new Pipeline().withId(a).withName("a").withFullyQualifiedName("svc.a").withDeleted(true);
+    Pipeline pb =
+        new Pipeline().withId(b).withName("b").withFullyQualifiedName("svc.b").withDeleted(true);
+    when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of(pa, pb));
     when(relationshipDAO.findToBatchAllTypes(
             anyList(), eq(Relationship.CONTAINS.ordinal()), eq(Include.ALL)))
         .thenReturn(List.of());
@@ -277,7 +277,7 @@ class EntityRepositoryRestoreTest {
     repo.bulkSoftDeleteSubtree(null, "user");
     repo.bulkSoftDeleteSubtree(List.of(), "user");
 
-    verify(pipelineDAO, never()).findEntitiesByIds(anyList(), eq(Include.NON_DELETED));
+    verify(pipelineDAO, never()).findEntitiesByIds(anyList(), eq(Include.ALL));
     assertEquals(0, repo.softDeleteAdditionalChildrenCalls);
   }
 
@@ -288,8 +288,7 @@ class EntityRepositoryRestoreTest {
     UUID b = UUID.randomUUID();
     Pipeline pa = new Pipeline().withId(a).withName("a").withFullyQualifiedName("svc.a");
     Pipeline pb = new Pipeline().withId(b).withName("b").withFullyQualifiedName("svc.b");
-    when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.NON_DELETED)))
-        .thenReturn(List.of(pa, pb));
+    when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of(pa, pb));
     when(relationshipDAO.findToBatchAllTypes(
             anyList(), eq(Relationship.CONTAINS.ordinal()), eq(Include.ALL)))
         .thenReturn(List.of());

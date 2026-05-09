@@ -5599,15 +5599,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (ids == null || ids.isEmpty()) {
       return;
     }
-    List<T> deletedEntities = loadForBulk(ids, DELETED, "bulkRestoreLoad");
-    if (deletedEntities.isEmpty()) {
+    // Load with ALL — we still need to walk children when the parents at this level are
+    // already restored (or never deleted), in case deeper descendants are deleted and
+    // must be flipped. Matches the previous recursive path that always called
+    // restoreChildren before checking the parent's deleted state.
+    List<T> entities = loadForBulk(ids, ALL, "bulkRestoreLoad");
+    if (entities.isEmpty()) {
       return;
     }
     dispatchToContainedChildren(
-        deletedEntities,
+        entities,
         "bulkRestoreFindChildren",
         (childRepo, childIds) -> childRepo.bulkRestoreSubtree(childIds, updatedBy));
 
+    List<T> deletedEntities =
+        entities.stream().filter(e -> Boolean.TRUE.equals(e.getDeleted())).toList();
+    if (deletedEntities.isEmpty()) {
+      return;
+    }
     List<EntityUpdater> updaters =
         buildBulkUpdaters(deletedEntities, updatedBy, Operation.PUT, "bulkRestoreUpdaters", null);
     List<EntityUpdater> changed = filterChanged(updaters);
@@ -5703,20 +5712,29 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       return;
     }
-    List<T> entities = loadForBulk(ids, NON_DELETED, "bulkSoftDeleteLoad");
-    if (entities.isEmpty()) {
+    // Load with ALL so we still walk children even when this level's parents are already
+    // soft-deleted — a descendant may have been restored independently and needs to be
+    // re-deleted as part of the parent's cascade. Matches the previous per-entity flow
+    // where deleteChildren ran before the parent's deleted state mattered.
+    List<T> allEntities = loadForBulk(ids, ALL, "bulkSoftDeleteLoad");
+    if (allEntities.isEmpty()) {
       return;
     }
+    List<T> entities =
+        allEntities.stream().filter(e -> !Boolean.TRUE.equals(e.getDeleted())).toList();
     for (T entity : entities) {
       checkSystemEntityDeletion(entity);
       preDelete(entity, updatedBy);
     }
 
     dispatchToContainedChildren(
-        entities,
+        allEntities,
         "bulkSoftDeleteFindChildren",
         (childRepo, childIds) -> childRepo.bulkSoftDeleteSubtree(childIds, updatedBy));
 
+    if (entities.isEmpty()) {
+      return;
+    }
     List<EntityUpdater> updaters =
         buildBulkUpdaters(
             entities,

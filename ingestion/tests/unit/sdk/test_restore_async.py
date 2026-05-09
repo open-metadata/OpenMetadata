@@ -28,10 +28,21 @@ def mock_client():
     return client
 
 
+def _table_payload(table_id: str) -> dict:
+    """Minimum dict shape that pydantic_core accepts as a Table."""
+    return {
+        "id": table_id,
+        "name": "t",
+        "fullyQualifiedName": "service.db.schema.t",
+        "deleted": False,
+        "columns": [],
+    }
+
+
 def test_restore_sync_calls_put_without_async_param(mock_client):
     table_id = "b67eac63-9e43-41f5-afb9-387c85df1d8b"
     rest_client = mock_client.client
-    rest_client.put.return_value = {"id": table_id, "name": "t", "deleted": False}
+    rest_client.put.return_value = _table_payload(table_id)
 
     Tables.restore(table_id)
 
@@ -59,7 +70,7 @@ def test_restore_async_appends_async_query_param(mock_client):
 def test_fluent_restore_request_sync_returns_entity(mock_client):
     table_id = "b67eac63-9e43-41f5-afb9-387c85df1d8b"
     rest_client = mock_client.client
-    rest_client.put.return_value = {"id": table_id, "name": "t", "deleted": False}
+    rest_client.put.return_value = _table_payload(table_id)
 
     op = Tables.restore_request(table_id)
     assert isinstance(op, RestoreOperation)
