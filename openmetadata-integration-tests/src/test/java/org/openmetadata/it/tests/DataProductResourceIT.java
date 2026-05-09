@@ -2993,4 +2993,87 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         listed.getOwners() == null || listed.getOwners().isEmpty(),
         "Soft-deleted owner must not appear in list endpoint");
   }
+
+  // ===================================================================
+  // BULK REMOVE ASSETS — dryRun behavior (issue #27954)
+  // ===================================================================
+
+  @Test
+  void test_bulkRemoveAssets_dryRunTrue_doesNotDetach(TestNamespace ns) throws Exception {
+    Domain domain = createTestDomain(ns, "dr_true_domain");
+    DataProduct dataProduct = createDataProductInDomain(ns, domain, "dr_true");
+    Table table = createTestTable(ns, "dr_true_tbl", domain);
+
+    addTableToDataProduct(dataProduct, table);
+
+    BulkAssets dryRunRemove =
+        new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(true);
+    String removePath =
+        "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/remove";
+    BulkOperationResult result =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, removePath, dryRunRemove, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertTrue(result.getDryRun(), "Result must propagate dryRun=true");
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    Table refreshed =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts");
+    assertNotNull(refreshed.getDataProducts(), "dataProducts field must be populated");
+    assertTrue(
+        refreshed.getDataProducts().stream().anyMatch(d -> dataProduct.getId().equals(d.getId())),
+        "Table must still be attached to the data product after dryRun=true remove");
+  }
+
+  @Test
+  void test_bulkRemoveAssets_dryRunFalse_detaches(TestNamespace ns) throws Exception {
+    Domain domain = createTestDomain(ns, "dr_false_domain");
+    DataProduct dataProduct = createDataProductInDomain(ns, domain, "dr_false");
+    Table table = createTestTable(ns, "dr_false_tbl", domain);
+
+    addTableToDataProduct(dataProduct, table);
+
+    BulkAssets realRemove =
+        new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(false);
+    String removePath =
+        "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/remove";
+    BulkOperationResult result =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, removePath, realRemove, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertFalse(Boolean.TRUE.equals(result.getDryRun()));
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    Table refreshed =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts");
+    assertTrue(
+        refreshed.getDataProducts() == null
+            || refreshed.getDataProducts().stream()
+                .noneMatch(d -> dataProduct.getId().equals(d.getId())),
+        "Table should no longer be attached to the data product when dryRun=false");
+  }
+
+  private DataProduct createDataProductInDomain(TestNamespace ns, Domain domain, String suffix) {
+    return SdkClients.adminClient()
+        .dataProducts()
+        .create(
+            new CreateDataProduct()
+                .withName(ns.prefix("br_dp_" + suffix))
+                .withDomains(List.of(domain.getFullyQualifiedName()))
+                .withDescription("Data product for bulk remove dryRun test"));
+  }
+
+  private void addTableToDataProduct(DataProduct dataProduct, Table table) throws Exception {
+    BulkAssets addRequest =
+        new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(false);
+    String addPath = "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add";
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, addPath, addRequest, BulkOperationResult.class);
+  }
 }

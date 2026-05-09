@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -22,6 +23,7 @@ import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.CreateTaskDetails;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
@@ -29,6 +31,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.CreateThread;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -36,14 +39,18 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.ThreadType;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -3243,5 +3250,119 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertTrue(
         listed.getReviewers() == null || listed.getReviewers().isEmpty(),
         "Soft-deleted reviewer must not appear in list endpoint");
+  }
+
+  // ===================================================================
+  // BULK REMOVE GLOSSARY FROM ASSETS — dryRun behavior (issue #27954)
+  // ===================================================================
+
+  @Test
+  void test_bulkRemoveGlossaryFromAssets_dryRunTrue_doesNotRemove(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = createGlossaryTermForBulk(ns, "dr_true");
+    Table table = createTableTaggedWithTerm(ns, term, "dr_true");
+
+    AddGlossaryToAssetsRequest dryRunRemove =
+        new AddGlossaryToAssetsRequest()
+            .withDryRun(true)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/glossaryTerms/" + term.getId() + "/assets/remove";
+    BulkOperationResult result =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.PUT, path, dryRunRemove, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertTrue(result.getDryRun(), "Result must propagate dryRun=true");
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    Awaitility.await("Glossary tag must remain on table after dryRun=true remove")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(15))
+        .during(Duration.ofSeconds(5))
+        .until(() -> tableHasTag(client, table.getId(), term.getFullyQualifiedName()));
+  }
+
+  @Test
+  void test_bulkRemoveGlossaryFromAssets_dryRunFalse_removes(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = createGlossaryTermForBulk(ns, "dr_false");
+    Table table = createTableTaggedWithTerm(ns, term, "dr_false");
+
+    AddGlossaryToAssetsRequest realRemove =
+        new AddGlossaryToAssetsRequest()
+            .withDryRun(false)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/glossaryTerms/" + term.getId() + "/assets/remove";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, realRemove, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertFalse(Boolean.TRUE.equals(result.getDryRun()));
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    assertFalse(
+        tableHasTag(client, table.getId(), term.getFullyQualifiedName()),
+        "Glossary tag should be removed from table when dryRun=false");
+  }
+
+  private GlossaryTerm createGlossaryTermForBulk(TestNamespace ns, String suffix) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("br_g_" + suffix))
+                    .withDescription("Glossary for bulk remove dryRun test"));
+    return client
+        .glossaryTerms()
+        .create(
+            new CreateGlossaryTerm()
+                .withName(ns.shortPrefix("br_term_" + suffix))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("Term for bulk remove dryRun test"));
+  }
+
+  private Table createTableTaggedWithTerm(TestNamespace ns, GlossaryTerm term, String suffix) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create()
+            .name(ns.shortPrefix("br_db_" + suffix))
+            .in(service.getFullyQualifiedName())
+            .execute();
+    DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, database.getFullyQualifiedName());
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName(ns.shortPrefix("br_tbl_" + suffix))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)));
+    Table table = client.tables().create(createTable);
+
+    TagLabel termLabel =
+        new TagLabel()
+            .withTagFQN(term.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    Table fetched = client.tables().get(table.getId().toString(), "tags");
+    fetched.setTags(List.of(termLabel));
+    Table tagged = client.tables().update(table.getId().toString(), fetched);
+    assertTrue(
+        tableHasTag(client, table.getId(), term.getFullyQualifiedName()),
+        "Patched table should already have the glossary term applied");
+    return tagged;
+  }
+
+  private boolean tableHasTag(OpenMetadataClient client, UUID tableId, String tagFqn) {
+    Table refreshed = client.tables().get(tableId.toString(), "tags");
+    return refreshed.getTags() != null
+        && refreshed.getTags().stream().anyMatch(t -> tagFqn.equals(t.getTagFQN()));
   }
 }

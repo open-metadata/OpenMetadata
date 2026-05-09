@@ -1458,4 +1458,70 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
           "Team policies count should match");
     }
   }
+
+  // ===================================================================
+  // BULK REMOVE ASSETS — dryRun behavior (issue #27954)
+  // ===================================================================
+
+  @Test
+  void test_bulkRemoveAssets_dryRunTrue_doesNotDetachUser(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team team = createTeam(ns, "dr_true");
+    User user = createTestUser(ns, "dr_true_user");
+
+    BulkAssets addRequest =
+        new BulkAssets().withAssets(List.of(user.getEntityReference())).withDryRun(false);
+    bulkAddAssetsWithResult(client, team.getName(), addRequest);
+
+    BulkAssets dryRunRemove =
+        new BulkAssets().withAssets(List.of(user.getEntityReference())).withDryRun(true);
+    BulkOperationResult result = bulkRemoveAssetsWithResult(client, team.getName(), dryRunRemove);
+
+    assertNotNull(result);
+    assertTrue(result.getDryRun(), "Result must propagate dryRun=true");
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    User refreshed = client.users().get(user.getId().toString(), "teams");
+    assertNotNull(refreshed.getTeams(), "User teams field must be populated");
+    assertTrue(
+        refreshed.getTeams().stream().anyMatch(t -> team.getId().equals(t.getId())),
+        "User must still belong to the team after dryRun=true remove");
+  }
+
+  @Test
+  void test_bulkRemoveAssets_dryRunFalse_detachesUser(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team team = createTeam(ns, "dr_false");
+    User user = createTestUser(ns, "dr_false_user");
+
+    BulkAssets addRequest =
+        new BulkAssets().withAssets(List.of(user.getEntityReference())).withDryRun(false);
+    bulkAddAssetsWithResult(client, team.getName(), addRequest);
+
+    BulkAssets realRemove =
+        new BulkAssets().withAssets(List.of(user.getEntityReference())).withDryRun(false);
+    BulkOperationResult result = bulkRemoveAssetsWithResult(client, team.getName(), realRemove);
+
+    assertNotNull(result);
+    assertFalse(Boolean.TRUE.equals(result.getDryRun()));
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    User refreshed = client.users().get(user.getId().toString(), "teams");
+    assertTrue(
+        refreshed.getTeams() == null
+            || refreshed.getTeams().stream().noneMatch(t -> team.getId().equals(t.getId())),
+        "User should no longer belong to the team when dryRun=false");
+  }
+
+  private Team createTeam(TestNamespace ns, String suffix) {
+    return SdkClients.adminClient()
+        .teams()
+        .create(
+            new CreateTeam()
+                .withName(ns.prefix("br_team_" + suffix))
+                .withTeamType(TeamType.GROUP)
+                .withProfile(PROFILE)
+                .withDescription("Team for bulk remove dryRun test"));
+  }
 }
