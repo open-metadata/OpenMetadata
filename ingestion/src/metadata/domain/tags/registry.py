@@ -119,12 +119,6 @@ class TagRegistry:
             logger.debug("TagRegistry: skipping empty tag for classification %s", classification_name)
             return
 
-        with self._run_state_lock:
-            if scope_fqn in self._cleared_scopes:
-                raise ScopeAlreadyClearedError(
-                    f"Tag attach called for cleared scope '{scope_fqn!r}' for entity '{entity_fqn!r}'"
-                )
-
         tag_label = self._intern_tag_label(
             classification_name=classification_name,
             tag_name=tag_name,
@@ -133,6 +127,10 @@ class TagRegistry:
         )
 
         with self._scope_state_lock:
+            if scope_fqn in self._cleared_scopes:
+                raise ScopeAlreadyClearedError(
+                    f"Tag attach called for cleared scope '{scope_fqn!r}' for entity '{entity_fqn!r}'"
+                )
             self._labels_by_entity.setdefault(entity_fqn, []).append(tag_label)
 
         with self._run_state_lock:
@@ -167,12 +165,10 @@ class TagRegistry:
 
         Subsequent ``attach`` calls for this scope will raise.
         """
-        with self._run_state_lock:
-            self._cleared_scopes.add(scope_fqn)
-
         prefix = scope_fqn + fqn.FQN_SEPARATOR
 
         with self._scope_state_lock:
+            self._cleared_scopes.add(scope_fqn)
             kept = {k: v for k, v in self._labels_by_entity.items() if k != scope_fqn and not k.startswith(prefix)}
             dropped = len(self._labels_by_entity) - len(kept)
             self._labels_by_entity = kept

@@ -589,7 +589,8 @@ class SnowflakeSource(
                             name=f"{row[0]}.{row[1]}",
                             error=f"Tag canonicalization failed for {row[0]}.{row[1]}: {exc}",
                             stackTrace=traceback.format_exc(),
-                        )
+                        ),
+                        right=None,
                     )
 
             # Yield schema-level tags
@@ -618,9 +619,10 @@ class SnowflakeSource(
                                 name=f"{tag_info['tag_name']}.{tag_info['tag_value']}",
                                 error=f"Tag canonicalization failed for {tag_info['tag_name']}.{tag_info['tag_value']}: {exc}",
                                 stackTrace=traceback.format_exc(),
-                            )
+                            ),
+                            right=None,
                         )
-            yield from (Either(right=record) for record in self.tags_registry.drain())
+            yield from (Either(left=None, right=record) for record in self.tags_registry.drain())
 
     def yield_database_tag(self, database_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """Yield database-level tags for the topology."""
@@ -661,9 +663,10 @@ class SnowflakeSource(
                         name=f"{tag_info['tag_name']}.{tag_info['tag_value']}",
                         error=f"Tag canonicalization failed for {tag_info['tag_name']}.{tag_info['tag_value']}: {exc}",
                         stackTrace=traceback.format_exc(),
-                    )
+                    ),
+                    right=None,
                 )
-        yield from (Either(right=record) for record in self.tags_registry.drain())
+        yield from (Either(left=None, right=record) for record in self.tags_registry.drain())
 
     def _get_table_names_and_types(
         self, schema_name: str, table_type: TableType = TableType.Regular

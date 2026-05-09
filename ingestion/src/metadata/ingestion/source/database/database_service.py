@@ -14,7 +14,6 @@ Base class for ingesting database services
 
 import traceback
 from abc import ABC, abstractmethod
-from functools import cached_property
 from typing import Any, Iterable, List, Optional, Set, Tuple, cast  # noqa: UP035
 
 from pydantic import BaseModel, Field
@@ -228,15 +227,27 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
     topology = DatabaseServiceTopology()
     context = TopologyContextManager(topology)
 
-    @cached_property
+    # ``vars(self).setdefault(...)`` is an atomic check-and-set under the GIL
+    # (Python 3.14 Thread Safety Guarantees). Two parallel workers may build
+    # candidates concurrently, but only one wins publication and is returned
+    # to all callers — safe because both candidates are empty at that point.
+    @property
     def tags_registry(self) -> TagRegistry:
         """Per-Source registry tracking tag/classification ingestion state."""
-        return TagRegistry(metadata=self.metadata)
+        instance_dict = vars(self)
+        cached = instance_dict.get("tags_registry")
+        if cached is not None:
+            return cached
+        return instance_dict.setdefault("tags_registry", TagRegistry(metadata=self.metadata))
 
-    @cached_property
+    @property
     def tag_canonicalizer(self) -> TagCanonicalizer:
         """Per-Source canonicalizer for case-corrected tag/classification names."""
-        return TagCanonicalizer(metadata=self.metadata)
+        instance_dict = vars(self)
+        cached = instance_dict.get("tag_canonicalizer")
+        if cached is not None:
+            return cached
+        return instance_dict.setdefault("tag_canonicalizer", TagCanonicalizer(metadata=self.metadata))
 
     @property
     def name(self) -> str:
