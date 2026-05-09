@@ -13,12 +13,9 @@
 
 package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import io.micrometer.core.instrument.Timer;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,6 +36,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.CompositeProgressListener;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.EntityReindexContextMapper;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
@@ -1125,35 +1123,20 @@ public class DistributedSearchIndexExecutor {
       return;
     }
 
-    Optional<String> stagedIndexOpt = stagedIndexContext.getStagedIndex(entityType);
-    if (stagedIndexOpt.isEmpty()) {
+    EntityReindexContext entityContext =
+        EntityReindexContextMapper.fromStagedContext(stagedIndexContext, entityType);
+    if (entityContext.getStagedIndex() == null) {
       LOG.debug("No staged index for entity '{}', skipping promotion", entityType);
       return;
     }
 
     try {
-      String canonicalIndex = stagedIndexContext.getCanonicalIndex(entityType).orElse(null);
-      String originalIndex = stagedIndexContext.getOriginalIndex(entityType).orElse(null);
-
       LOG.debug(
           "Promoting entity '{}': success={}, canonicalIndex={}, stagedIndex={}",
           entityType,
           success,
-          canonicalIndex,
-          stagedIndexOpt.get());
-
-      EntityReindexContext entityContext =
-          EntityReindexContext.builder()
-              .entityType(entityType)
-              .originalIndex(originalIndex)
-              .canonicalIndex(canonicalIndex)
-              .activeIndex(originalIndex)
-              .stagedIndex(stagedIndexOpt.get())
-              .canonicalAliases(stagedIndexContext.getCanonicalAlias(entityType).orElse(null))
-              .existingAliases(stagedIndexContext.getExistingAliases(entityType))
-              .parentAliases(
-                  new HashSet<>(listOrEmpty(stagedIndexContext.getParentAliases(entityType))))
-              .build();
+          entityContext.getCanonicalIndex(),
+          entityContext.getStagedIndex());
 
       if (indexPromotionHandler instanceof DefaultRecreateHandler defaultHandler) {
         LOG.info("Promoting index for entity '{}' (success={})", entityType, success);

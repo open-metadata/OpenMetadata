@@ -13,15 +13,12 @@
 
 package org.openmetadata.service.apps.bundles.searchIndex;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.SearchIndexJob;
-import org.openmetadata.service.search.EntityReindexContext;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
 
@@ -120,19 +117,7 @@ class DistributedReindexFinalizer {
   }
 
   private void finalizeEntityReindex(String entityType, boolean success) {
-    EntityReindexContext entityReindexContext =
-        EntityReindexContext.builder()
-            .entityType(entityType)
-            .originalIndex(stagedIndexContext.getOriginalIndex(entityType).orElse(null))
-            .canonicalIndex(stagedIndexContext.getCanonicalIndex(entityType).orElse(null))
-            .activeIndex(stagedIndexContext.getOriginalIndex(entityType).orElse(null))
-            .stagedIndex(stagedIndexContext.getStagedIndex(entityType).orElse(null))
-            .canonicalAliases(stagedIndexContext.getCanonicalAlias(entityType).orElse(null))
-            .existingAliases(stagedIndexContext.getExistingAliases(entityType))
-            .parentAliases(
-                new HashSet<>(listOrEmpty(stagedIndexContext.getParentAliases(entityType))))
-            .build();
-
-    indexPromotionHandler.finalizeReindex(entityReindexContext, success);
+    indexPromotionHandler.finalizeReindex(
+        EntityReindexContextMapper.fromStagedContext(stagedIndexContext, entityType), success);
   }
 }
