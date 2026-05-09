@@ -355,6 +355,17 @@ export const LINEAGE_DROPDOWN_ITEMS = [
   },
 ];
 
+export const KNOWLEDGE_PAGE_DROPDOWN_ITEMS = [
+  {
+    label: t('label.owner-plural'),
+    key: EntityFields.OWNERS,
+  },
+  {
+    label: t('label.tag'),
+    key: EntityFields.TAG,
+  },
+];
+
 export const getLineageDropdownItems = (includeGlossaryTerms = false) =>
   includeGlossaryTerms
     ? [
