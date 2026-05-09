@@ -239,22 +239,6 @@ public class LineageRepository {
               .withPipeline(null);
       insertLineage(fromService, toService, serviceLineageDetails);
     }
-    addPipelineServiceEdges(fromService, toService, entityLineageDetails, childRelationExists);
-  }
-
-  private void addPipelineServiceEdges(
-      EntityReference fromService,
-      EntityReference toService,
-      LineageDetails entityLineageDetails,
-      boolean childRelationExists) {
-    EntityReference pipelineService = getPipelineService(entityLineageDetails);
-    if (pipelineService == null) {
-      return;
-    }
-    insertServiceEdgeIfDistinct(
-        fromService, pipelineService, entityLineageDetails, childRelationExists);
-    insertServiceEdgeIfDistinct(
-        pipelineService, toService, entityLineageDetails, childRelationExists);
   }
 
   private EntityReference getPipelineService(LineageDetails entityLineageDetails) {
@@ -268,21 +252,6 @@ public class LineageRepository {
     EntityInterface pipelineEntity =
         Entity.getEntity(pipelineRef.getType(), pipelineRef.getId(), FIELD_SERVICE, Include.ALL);
     return pipelineEntity.getService();
-  }
-
-  private void insertServiceEdgeIfDistinct(
-      EntityReference fromService,
-      EntityReference toService,
-      LineageDetails entityLineageDetails,
-      boolean childRelationExists) {
-    if (fromService.getId().equals(toService.getId())) {
-      return;
-    }
-    LineageDetails serviceDetails =
-        getOrCreateLineageDetails(
-                fromService.getId(), toService.getId(), entityLineageDetails, childRelationExists)
-            .withPipeline(null);
-    insertLineage(fromService, toService, serviceDetails);
   }
 
   private void addDomainLineage(

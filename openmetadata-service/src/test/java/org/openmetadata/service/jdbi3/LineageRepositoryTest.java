@@ -658,19 +658,15 @@ class LineageRepositoryTest {
         "Updating an existing service-level edge must not inherit pipeline annotation from entity lineage");
   }
 
-  /**
-   * Bug #2: When entity lineage has a pipeline whose service is distinct from fromService and
-   * toService, three service-level edges must be created: fromService→toService,
-   * fromService→pipelineService, and pipelineService→toService.
-   */
+  /** Service-level lineage should stay direct even when entity lineage has a pipeline annotation. */
   @Test
-  void testPipelineServiceEdges_WithDistinctPipelineService_CreatesBothEdges() throws Exception {
+  void testServiceLineage_WithDistinctPipelineService_CreatesOnlyDirectServiceEdge()
+      throws Exception {
     UUID fromEntityId = UUID.randomUUID();
     UUID toEntityId = UUID.randomUUID();
     UUID fromServiceId = UUID.randomUUID();
     UUID toServiceId = UUID.randomUUID();
     UUID pipelineId = UUID.randomUUID();
-    UUID pipelineServiceId = UUID.randomUUID();
     String entityType = "table";
 
     EntityReference fromRef = new EntityReference().withId(fromEntityId).withType(entityType);
@@ -680,8 +676,6 @@ class LineageRepositoryTest {
         new EntityReference().withId(fromServiceId).withType("databaseService");
     EntityReference toServiceRef =
         new EntityReference().withId(toServiceId).withType("messagingService");
-    EntityReference pipelineServiceRef =
-        new EntityReference().withId(pipelineServiceId).withType("pipelineService");
 
     LineageDetails entityDetails =
         new LineageDetails().withPipeline(pipelineRef).withCreatedBy("testUser");
@@ -693,9 +687,6 @@ class LineageRepositoryTest {
     EntityInterface toEntityMock = mock(EntityInterface.class);
     when(toEntityMock.getService()).thenReturn(toServiceRef);
     when(toEntityMock.getEntityReference()).thenReturn(toRef);
-
-    EntityInterface pipelineEntityMock = mock(EntityInterface.class);
-    when(pipelineEntityMock.getService()).thenReturn(pipelineServiceRef);
 
     CollectionDAO freshDao = mock(CollectionDAO.class);
     CollectionDAO.EntityRelationshipDAO relDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
@@ -711,10 +702,6 @@ class LineageRepositoryTest {
     mockedEntity
         .when(() -> Entity.getEntity(eq(entityType), eq(toEntityId), any(), any()))
         .thenReturn(toEntityMock);
-    mockedEntity.when(() -> Entity.entityHasField("pipeline", "service")).thenReturn(true);
-    mockedEntity
-        .when(() -> Entity.getEntity(eq("pipeline"), eq(pipelineId), any(), any()))
-        .thenReturn(pipelineEntityMock);
 
     ArgumentCaptor<UUID> fromCaptor = ArgumentCaptor.forClass(UUID.class);
     ArgumentCaptor<UUID> toCaptor = ArgumentCaptor.forClass(UUID.class);
@@ -730,7 +717,7 @@ class LineageRepositoryTest {
     buildExtendedLineage.setAccessible(true);
     buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
 
-    verify(relDAO, times(3))
+    verify(relDAO, times(1))
         .insert(fromCaptor.capture(), toCaptor.capture(), any(), any(), anyInt(), any());
 
     List<UUID> insertedFromIds = fromCaptor.getAllValues();
@@ -739,12 +726,6 @@ class LineageRepositoryTest {
     assertTrue(
         edgePairExists(insertedFromIds, insertedToIds, fromServiceId, toServiceId),
         "fromService→toService edge must be created");
-    assertTrue(
-        edgePairExists(insertedFromIds, insertedToIds, fromServiceId, pipelineServiceId),
-        "fromService→pipelineService edge must be created");
-    assertTrue(
-        edgePairExists(insertedFromIds, insertedToIds, pipelineServiceId, toServiceId),
-        "pipelineService→toService edge must be created");
   }
 
   /**

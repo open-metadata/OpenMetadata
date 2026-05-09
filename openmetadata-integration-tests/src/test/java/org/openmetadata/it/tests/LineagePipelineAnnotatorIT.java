@@ -46,8 +46,8 @@ import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
  * <ul>
  *   <li>Bug #1: Service nodes (databaseService, messagingService, pipelineService) appeared in
  *       entity-level lineage views, making graphs noisy.
- *   <li>Bug #2: The pipeline service had no service-level edges, so the "By Service" view was
- *       empty.
+ *   <li>Bug #2: Service-level lineage should connect source and target services directly without
+ *       routing through the pipeline service.
  * </ul>
  *
  * <p>Topology: {@code table → topic} (annotated with {@code pipeline})
@@ -132,38 +132,44 @@ public class LineagePipelineAnnotatorIT {
   }
 
   @Test
-  void serviceLineage_PipelineServiceConnectedToBothServices() throws Exception {
+  void serviceLineage_PipelineServiceNotEntangledWithDataServices() throws Exception {
     JsonNode nodes =
         searchLineageNodes(pipelineService.getFullyQualifiedName(), "pipelineService", 1, 1);
 
     assertNotNull(nodes, "nodes should not be null for pipeline service lineage");
-    assertTrue(
+    assertFalse(
         nodes.has(dbService.getFullyQualifiedName()),
-        "DatabaseService should appear in pipeline service lineage");
-    assertTrue(
+        "DatabaseService should not appear in pipeline service lineage");
+    assertFalse(
         nodes.has(messagingService.getFullyQualifiedName()),
-        "MessagingService should appear in pipeline service lineage");
+        "MessagingService should not appear in pipeline service lineage");
   }
 
   @Test
-  void serviceLineage_DatabaseServiceHasPipelineServiceDownstream() throws Exception {
+  void serviceLineage_DatabaseServiceHasMessagingServiceDownstream() throws Exception {
     JsonNode nodes = searchLineageNodes(dbService.getFullyQualifiedName(), "databaseService", 0, 1);
 
     assertNotNull(nodes);
     assertTrue(
+        nodes.has(messagingService.getFullyQualifiedName()),
+        "MessagingService should appear as downstream of database service");
+    assertFalse(
         nodes.has(pipelineService.getFullyQualifiedName()),
-        "PipelineService should appear as downstream of database service");
+        "PipelineService should not appear as downstream of database service");
   }
 
   @Test
-  void serviceLineage_MessagingServiceHasPipelineServiceUpstream() throws Exception {
+  void serviceLineage_MessagingServiceHasDatabaseServiceUpstream() throws Exception {
     JsonNode nodes =
         searchLineageNodes(messagingService.getFullyQualifiedName(), "messagingService", 1, 0);
 
     assertNotNull(nodes);
     assertTrue(
+        nodes.has(dbService.getFullyQualifiedName()),
+        "DatabaseService should appear as upstream of messaging service");
+    assertFalse(
         nodes.has(pipelineService.getFullyQualifiedName()),
-        "PipelineService should appear as upstream of messaging service");
+        "PipelineService should not appear as upstream of messaging service");
   }
 
   // --- Helpers ---
@@ -255,11 +261,9 @@ public class LineagePipelineAnnotatorIT {
                   client
                       .lineage()
                       .searchLineage(
-                          pipelineService.getFullyQualifiedName(), "pipelineService", 1, 1, false);
+                          dbService.getFullyQualifiedName(), "databaseService", 0, 1, false);
               JsonNode nodes = MAPPER.readTree(result).get("nodes");
-              return nodes != null
-                  && nodes.has(dbService.getFullyQualifiedName())
-                  && nodes.has(messagingService.getFullyQualifiedName());
+              return nodes != null && nodes.has(messagingService.getFullyQualifiedName());
             });
   }
 
