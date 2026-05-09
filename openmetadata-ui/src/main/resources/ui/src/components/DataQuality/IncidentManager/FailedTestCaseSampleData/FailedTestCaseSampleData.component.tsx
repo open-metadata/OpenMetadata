@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Table } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
+import { Table, Typography } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -204,9 +204,9 @@ const FailedTestCaseSampleData = ({
   return (
     <div className="w-full">
       <Space className="m-b-md justify-between w-full">
-        <Typography.Text className="right-panel-label">
+        <Typography className="right-panel-label" size="text-sm">
           {t('label.sample-data')}
-        </Typography.Text>
+        </Typography>
         <div className="d-flex gap-4">
           {testCaseData?.inspectionQuery && !isVersionPage && (
             <Link
@@ -291,24 +291,27 @@ const FailedTestCaseSampleData = ({
                           'tw:min-w-52.5': !isDiffCol,
                         })}>
                         {isDiffCol ? (
-                          <span
-                            className={classNames('tw:font-medium', {
+                          <Typography
+                            className={classNames({
                               'tw:text-success-primary':
                                 diffType === DIFF_TYPE_VALUES.ADD,
                               'tw:text-gray-500':
                                 diffType === DIFF_TYPE_VALUES.NOT_EQUAL,
                               'tw:text-error-primary':
                                 diffType === DIFF_TYPE_VALUES.REMOVE,
-                            })}>
+                            })}
+                            size="text-sm"
+                            weight="medium">
                             {record[col.id] as string}
-                          </span>
+                          </Typography>
                         ) : (
-                          <span
+                          <Typography
                             className={
                               isFailedCol ? 'tw:text-error-primary' : undefined
-                            }>
+                            }
+                            size="text-sm">
                             <RowData data={record[col.id] as SampleDataType} />
-                          </span>
+                          </Typography>
                         )}
                       </Table.Cell>
                     );
