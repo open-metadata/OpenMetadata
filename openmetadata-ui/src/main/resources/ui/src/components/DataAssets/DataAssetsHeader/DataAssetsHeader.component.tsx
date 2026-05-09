@@ -55,6 +55,7 @@ import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useDataAccessRequest } from '../../../hooks/useDataAccessRequest';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
   AnnouncementEntity,
@@ -160,6 +161,10 @@ export const DataAssetsHeader = ({
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
   const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
+  const { isDarDisabled, refetch: refetchExistingDar } = useDataAccessRequest({
+    entityFqn: dataAsset.fullyQualifiedName,
+    enabled: entityType === EntityType.TABLE,
+  });
 
   const fetchDataContract = async (entityId: string) => {
     try {
@@ -334,21 +339,14 @@ export const DataAssetsHeader = ({
     }
   };
 
-  const fetchContainerAncestors = async (containerFqn: string) => {
-    // Always reset state at the top so a navigation to a container without an FQN
-    // (or to one whose ancestor fetch fails) doesn't keep painting the previous
-    // container's breadcrumbs. Without this reset, switching between containers
-    // could leave stale ancestors visible after either an early return or an error.
-    setParentContainers([]);
-    if (isEmpty(containerFqn)) {
+  const fetchContainerAncestors = async (fqn: string) => {
+    if (isEmpty(fqn)) {
       return;
     }
     setIsBreadcrumbLoading(true);
     try {
-      // Single batched server call replaces what used to be one
-      // getContainerByName per ancestor level.
-      const ancestors = await getContainerAncestors(containerFqn);
-      setParentContainers(ancestors ?? []);
+      const ancestors = await getContainerAncestors(fqn);
+      setParentContainers(ancestors);
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
     } finally {
@@ -364,7 +362,7 @@ export const DataAssetsHeader = ({
     if (entityType === EntityType.CONTAINER && !isCustomizedView) {
       fetchContainerAncestors(dataAsset.fullyQualifiedName ?? '');
     }
-  }, [dataAsset.fullyQualifiedName, entityType, isTourPage, isCustomizedView]);
+  }, [dataAsset.fullyQualifiedName, isTourPage, isCustomizedView]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(
     () =>
@@ -581,24 +579,38 @@ export const DataAssetsHeader = ({
     permissions.Trigger,
   ]);
 
+  const isOwner = useMemo(
+    () => dataAsset.owners?.some((o) => o.id === USER_ID) ?? false,
+    [dataAsset.owners, USER_ID]
+  );
+
   const requestDataAccessButton = useMemo(() => {
     if (
       !tableClassBase.getShowRequestDataAccess() ||
       SERVICE_TYPES.includes(entityType) ||
-      deleted
+      entityType !== EntityType.TABLE ||
+      deleted ||
+      isOwner
     ) {
       return null;
     }
 
+    const tooltipTitle = isDarDisabled
+      ? t('message.data-access-request-already-exists')
+      : undefined;
+
     return (
-      <Button
-        className="source-url-button font-semibold"
-        data-testid="request-data-access-button"
-        onClick={() => setIsRequestDataAccessOpen(true)}>
-        {t('label.request-data-access')}
-      </Button>
+      <Tooltip title={tooltipTitle}>
+        <Button
+          className="source-url-button font-semibold"
+          data-testid="request-data-access-button"
+          disabled={isDarDisabled}
+          onClick={() => setIsRequestDataAccessOpen(true)}>
+          {t('label.request-data-access')}
+        </Button>
+      </Tooltip>
     );
-  }, [entityType, deleted]);
+  }, [entityType, deleted, isOwner, isDarDisabled, t]);
 
   useEffect(() => {
     if (dataAsset.id) {
@@ -916,7 +928,8 @@ export const DataAssetsHeader = ({
         () => setIsRequestDataAccessOpen(false),
         dataAsset.fullyQualifiedName ?? '',
         getEntityName(dataAsset),
-        entityType
+        entityType,
+        refetchExistingDar
       )}
     </>
   );
