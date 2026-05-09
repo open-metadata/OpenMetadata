@@ -49,7 +49,7 @@ public class RdfPollingJobNotifier {
 
   private ScheduledExecutorService scheduler;
   private Consumer<UUID> jobStartedCallback;
-  private volatile long lastPollTime = 0;
+  private volatile java.util.concurrent.ScheduledFuture<?> pollTask;
 
   public RdfPollingJobNotifier(CollectionDAO collectionDAO, String serverId) {
     this.collectionDAO = collectionDAO;
@@ -66,8 +66,7 @@ public class RdfPollingJobNotifier {
             Thread.ofPlatform()
                 .name("rdf-job-notifier-" + serverId.substring(0, Math.min(8, serverId.length())))
                 .factory());
-    scheduler.scheduleWithFixedDelay(
-        this::pollForJobs, 0, ACTIVE_POLL_INTERVAL_MS, TimeUnit.MILLISECONDS);
+    schedulePoll(IDLE_POLL_INTERVAL_MS);
     LOG.info(
         "RdfPollingJobNotifier started on server {} (idle: {}s, active: {}s)",
         serverId,
@@ -109,21 +108,33 @@ public class RdfPollingJobNotifier {
     return running.get();
   }
 
+  /**
+   * Toggle the active poll cadence. Reschedules the poll task at the new interval
+   * instead of relying on a soft throttle inside {@link #pollForJobs}, so the thread
+   * doesn't wake every second while idle.
+   */
   public void setParticipating(boolean isParticipating) {
-    this.participating.set(isParticipating);
+    boolean changed = participating.compareAndSet(!isParticipating, isParticipating);
+    if (changed && running.get()) {
+      schedulePoll(isParticipating ? ACTIVE_POLL_INTERVAL_MS : IDLE_POLL_INTERVAL_MS);
+    }
+  }
+
+  private synchronized void schedulePoll(long intervalMs) {
+    if (scheduler == null || scheduler.isShutdown()) {
+      return;
+    }
+    if (pollTask != null) {
+      pollTask.cancel(false);
+    }
+    pollTask =
+        scheduler.scheduleWithFixedDelay(this::pollForJobs, 0, intervalMs, TimeUnit.MILLISECONDS);
   }
 
   private void pollForJobs() {
     if (!running.get()) {
       return;
     }
-    long now = System.currentTimeMillis();
-    long interval = participating.get() ? ACTIVE_POLL_INTERVAL_MS : IDLE_POLL_INTERVAL_MS;
-    if (now - lastPollTime < interval) {
-      return;
-    }
-    lastPollTime = now;
-
     try {
       List<String> runningJobIds = collectionDAO.rdfIndexJobDAO().getRunningJobIds();
       if (runningJobIds.isEmpty()) {

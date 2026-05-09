@@ -81,7 +81,7 @@ public class RdfBatchProcessor {
       } catch (Exception e) {
         LOG.error("Failed to index entity {} to RDF", entity.getId(), e);
         failedCount++;
-        lastError = describeError(entityType, entity.getId(), e);
+        lastError = describeEntityError(entityType, entity.getId(), e);
       }
     }
 
@@ -116,7 +116,13 @@ public class RdfBatchProcessor {
     static final RelationshipProcessingResult OK = new RelationshipProcessingResult(0, null);
   }
 
-  private static String describeError(String entityType, UUID entityId, Throwable error) {
+  /**
+   * Format a single failure with a context-specific prefix using the root cause's
+   * message (or class name when the message is blank). Used by the per-entity,
+   * bulk-relationship, and lineage-relationship error paths to keep their output
+   * format consistent.
+   */
+  private static String describeError(String prefix, Throwable error) {
     Throwable rootCause = error;
     while (rootCause.getCause() != null && rootCause.getCause() != rootCause) {
       rootCause = rootCause.getCause();
@@ -125,7 +131,11 @@ public class RdfBatchProcessor {
     if (message == null || message.isBlank()) {
       message = rootCause.getClass().getSimpleName();
     }
-    return String.format("%s/%s: %s", entityType, entityId, message);
+    return prefix + ": " + message;
+  }
+
+  private static String describeEntityError(String entityType, UUID entityId, Throwable error) {
+    return describeError(entityType + "/" + entityId, error);
   }
 
   public RelationshipProcessingResult processBatchRelationships(
@@ -216,15 +226,7 @@ public class RdfBatchProcessor {
   }
 
   private static String describeBulkError(String entityType, String stage, Throwable error) {
-    Throwable rootCause = error;
-    while (rootCause.getCause() != null && rootCause.getCause() != rootCause) {
-      rootCause = rootCause.getCause();
-    }
-    String message = rootCause.getMessage();
-    if (message == null || message.isBlank()) {
-      message = rootCause.getClass().getSimpleName();
-    }
-    return String.format("%s/%s: %s", entityType, stage, message);
+    return describeError(entityType + "/" + stage, error);
   }
 
   public org.openmetadata.schema.type.EntityRelationship convertToEntityRelationship(
@@ -278,15 +280,7 @@ public class RdfBatchProcessor {
   }
 
   private static String describeLineageError(EntityRelationshipObject rel, Throwable error) {
-    Throwable rootCause = error;
-    while (rootCause.getCause() != null && rootCause.getCause() != rootCause) {
-      rootCause = rootCause.getCause();
-    }
-    String message = rootCause.getMessage();
-    if (message == null || message.isBlank()) {
-      message = rootCause.getClass().getSimpleName();
-    }
-    return String.format("lineage %s->%s: %s", rel.getFromId(), rel.getToId(), message);
+    return describeError("lineage " + rel.getFromId() + "->" + rel.getToId(), error);
   }
 
   RelationshipProcessingResult processGlossaryTermRelations(

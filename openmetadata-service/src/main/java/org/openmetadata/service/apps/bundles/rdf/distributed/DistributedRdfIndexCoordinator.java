@@ -297,12 +297,16 @@ public class DistributedRdfIndexCoordinator {
     long currentOffset = 0;
     int targetIdx = 0;
     long nextTarget = sortedTargets.get(targetIdx);
+    T lastSeenEntity = null;
 
     while (targetIdx < sortedTargets.size()) {
       long need = nextTarget - currentOffset;
       if (need <= 0) {
-        if (!afterName.isEmpty()) {
-          result.put(nextTarget, encodeBoundaryCursor(afterName, afterId));
+        // Defensive: we walked past this target without recording it. Reuse the last
+        // entity we saw and run it through the same cursor encoder as the regular
+        // path, so quoted-name entities don't end up with a different cursor format.
+        if (lastSeenEntity != null) {
+          result.put(nextTarget, RestUtil.encodeCursor(repo.getCursorValue(lastSeenEntity)));
         }
         targetIdx++;
         nextTarget = (targetIdx < sortedTargets.size()) ? sortedTargets.get(targetIdx) : -1;
@@ -314,6 +318,7 @@ public class DistributedRdfIndexCoordinator {
         break;
       }
       T lastEntity = repo.getEntityClass().cast(deserializeLast(repo, batch));
+      lastSeenEntity = lastEntity;
       currentOffset += batch.size();
       afterName = FullyQualifiedName.unquoteName(lastEntity.getName());
       afterId = lastEntity.getId() == null ? "" : lastEntity.getId().toString();
@@ -332,13 +337,6 @@ public class DistributedRdfIndexCoordinator {
   private <T extends EntityInterface> Object deserializeLast(
       EntityRepository<T> repo, List<String> batch) {
     return JsonUtils.readValue(batch.get(batch.size() - 1), repo.getEntityClass());
-  }
-
-  private static String encodeBoundaryCursor(String name, String id) {
-    Map<String, String> cursorMap = new HashMap<>();
-    cursorMap.put("name", name);
-    cursorMap.put("id", id);
-    return RestUtil.encodeCursor(JsonUtils.pojoToJson(cursorMap));
   }
 
   public RdfIndexPartition claimNextPartition(UUID jobId) {
@@ -622,6 +620,26 @@ public class DistributedRdfIndexCoordinator {
       reclaimStalePartitions(job.getId());
       refreshAggregatedJob(job.getId());
     }
+    evictStaleCursorCacheEntries();
+  }
+
+  /**
+   * Drop precomputed-cursor cache entries for jobs that no longer exist in the DB
+   * or are already terminal. Without this a server that crashed mid-job before
+   * {@link #refreshAggregatedJob} could mark the job terminal would leak the cache
+   * entry until the process restarts.
+   */
+  private void evictStaleCursorCacheEntries() {
+    if (partitionStartCursors.isEmpty()) {
+      return;
+    }
+    partitionStartCursors
+        .keySet()
+        .removeIf(
+            cachedJobId -> {
+              RdfIndexJob job = getJob(cachedJobId).orElse(null);
+              return job == null || job.isTerminal();
+            });
   }
 
   private RdfIndexJob refreshAggregatedJob(UUID jobId) {
