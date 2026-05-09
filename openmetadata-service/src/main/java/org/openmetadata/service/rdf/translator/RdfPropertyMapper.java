@@ -546,9 +546,22 @@ public class RdfPropertyMapper {
     }
     String tagFqn = tagLabel.get("tagFQN").asText();
     String source = tagLabel.has("source") ? tagLabel.get("source").asText() : "Classification";
+    boolean isGlossary = "Glossary".equalsIgnoreCase(source);
     Resource tagResource = resolveTagResource(tagFqn, source, tagLabel, model);
-    tagResource.addProperty(RDF.type, model.createResource(OM_NS + "Tag"));
+
+    // Mirror addTagLabel's typing so SPARQL queries can find certification
+    // targets the same way they find any other tag/glossary term — by source
+    // (glossaryTerm vs tag), with skos:Concept on glossary-backed targets and
+    // om:Tag on classification-backed ones.
+    if (isGlossary) {
+      tagResource.addProperty(RDF.type, createTypeResource("glossaryTerm", model));
+      tagResource.addProperty(RDF.type, model.createResource(SKOS.getURI() + "Concept"));
+    } else {
+      tagResource.addProperty(RDF.type, createTypeResource("tag", model));
+      tagResource.addProperty(RDF.type, model.createResource(OM_NS + "Tag"));
+    }
     tagResource.addProperty(model.createProperty(OM_NS, "tagFQN"), tagFqn);
+    tagResource.addProperty(model.createProperty(OM_NS, "tagSource"), source);
     if (tagLabel.has("name")) {
       tagResource.addProperty(RDFS.label, tagLabel.get("name").asText());
     }

@@ -1823,6 +1823,15 @@ public class RdfRepository {
           // which is the wrong direction by PROV-O semantics. Substitute the
           // forward-direction equivalent.
           canonicalPredicate = forwardEquivalentPredicate(predicate);
+          // Re-derive relationType from the canonical predicate so it matches
+          // the new (from, to) orientation. Otherwise prov:wasInfluencedBy gives
+          // relationType=downstream + predicate=om:UPSTREAM, which is internally
+          // inconsistent and would also miss dedup against an existing UPSTREAM
+          // edge written with the same subject/object.
+          relationType = extractEntityRelationType(canonicalPredicate);
+          if (relationType == null || relationType.isBlank()) {
+            continue;
+          }
         }
 
         String edgeKey = fromUri + "|" + relationType + "|" + toUri;
