@@ -185,10 +185,8 @@ public class DistributedRdfIndexExecutor {
       worker.stop();
     }
 
-    if (workerExecutor != null && !workerExecutor.isShutdown()) {
-      workerExecutor.shutdownNow();
-    }
-
+    // cleanupLocalExecution -> shutdownWorkerExecutor calls shutdownNow exactly
+    // once; don't shut it down again here or callers will see two invocations.
     cleanupLocalExecution();
   }
 
