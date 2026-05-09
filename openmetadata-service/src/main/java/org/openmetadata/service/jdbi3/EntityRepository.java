@@ -4204,8 +4204,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .collect(
                   Collectors.groupingBy(
                       EntityRelationshipRecord::getType,
-                      Collectors.mapping(
-                          EntityRelationshipRecord::getId, Collectors.toList())));
+                      Collectors.mapping(EntityRelationshipRecord::getId, Collectors.toList())));
       for (var entry : idsByType.entrySet()) {
         EntityRepository<?> repo = Entity.getEntityRepository(entry.getKey());
         repo.bulkSoftDeleteSubtree(entry.getValue(), updatedBy);

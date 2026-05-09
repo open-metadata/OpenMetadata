@@ -483,9 +483,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
             job = Table.restore_request(table_id).with_async().execute()
         """
 
-        return RestoreOperation(
-            entity_cls=cls, entity_id=cls._stringify_identifier(entity_id)
-        )
+        return RestoreOperation(entity_cls=cls, entity_id=cls._stringify_identifier(entity_id))
 
     @classmethod
     def update_custom_properties(cls, identifier: UuidLike):

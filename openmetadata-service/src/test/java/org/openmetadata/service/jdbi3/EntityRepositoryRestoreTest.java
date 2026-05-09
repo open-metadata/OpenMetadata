@@ -198,8 +198,7 @@ class EntityRepositoryRestoreTest {
     UUID b = UUID.randomUUID();
     Pipeline pa = new Pipeline().withId(a).withName("a").withFullyQualifiedName("svc.a");
     Pipeline pb = new Pipeline().withId(b).withName("b").withFullyQualifiedName("svc.b");
-    when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.DELETED)))
-        .thenReturn(List.of(pa, pb));
+    when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.DELETED))).thenReturn(List.of(pa, pb));
     when(relationshipDAO.findToBatchAllTypes(
             anyList(), eq(Relationship.CONTAINS.ordinal()), eq(Include.ALL)))
         .thenReturn(List.of());
