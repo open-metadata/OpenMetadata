@@ -96,7 +96,7 @@ class RdfTagsTierCertificationIT {
         tagUri.startsWith(ENTITY_TAG_URI_PREFIX),
         "hasTag must resolve to entity/tag/{uuid}; got: " + tagUri);
     assertFalse(
-        tagUri.startsWith(SYNTHETIC_TAG_URI_PREFIX) && !tagUri.startsWith(ENTITY_URI_PREFIX),
+        tagUri.startsWith(SYNTHETIC_TAG_URI_PREFIX),
         "hasTag must not use the synthetic tag/FQN URI; got: " + tagUri);
   }
 

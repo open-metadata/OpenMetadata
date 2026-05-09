@@ -21,6 +21,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.RdfUtils;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Maps all entity properties to RDF triples based on context definitions
@@ -314,7 +315,7 @@ public class RdfPropertyMapper {
       resource.addProperty(property, refResource);
 
       // Also add type information for the reference
-      refResource.addProperty(RDF.type, model.createResource(getRdfType(refType)));
+      refResource.addProperty(RDF.type, createTypeResource(refType, model));
 
       // Add basic properties of the reference
       if (value.has("name")) {
@@ -347,11 +348,11 @@ public class RdfPropertyMapper {
     resource.addProperty(property, tagResource);
 
     if (isGlossary) {
-      tagResource.addProperty(RDF.type, model.createResource(getRdfType("glossaryTerm")));
+      tagResource.addProperty(RDF.type, createTypeResource("glossaryTerm", model));
       tagResource.addProperty(RDF.type, model.createResource(SKOS.getURI() + "Concept"));
       resource.addProperty(model.createProperty(OM_NS, "hasGlossaryTerm"), tagResource);
     } else {
-      tagResource.addProperty(RDF.type, model.createResource(getRdfType("tag")));
+      tagResource.addProperty(RDF.type, createTypeResource("tag", model));
       tagResource.addProperty(RDF.type, model.createResource(OM_NS + "Tag"));
       if (tagFqn.startsWith(TIER_CLASSIFICATION_PREFIX)) {
         resource.addProperty(model.createProperty(OM_NS, "hasTier"), tagResource);
@@ -391,7 +392,7 @@ public class RdfPropertyMapper {
     UUID id =
         "Glossary".equalsIgnoreCase(source)
             ? resolveGlossaryTermId(tagFqn, tagLabel)
-            : resolveClassificationTagId(tagFqn);
+            : resolveClassificationTagId(tagFqn, tagLabel);
     String entityType = "Glossary".equalsIgnoreCase(source) ? "glossaryTerm" : "tag";
     if (id != null) {
       return model.createResource(baseUri + "entity/" + entityType + "/" + id);
@@ -399,7 +400,23 @@ public class RdfPropertyMapper {
     return model.createResource(baseUri + "tag/" + tagFqn.replace(".", "/"));
   }
 
-  private UUID resolveClassificationTagId(String tagFqn) {
+  private String extractCertificationLevel(String tagFqn) {
+    if (tagFqn == null || tagFqn.isBlank()) {
+      return null;
+    }
+    try {
+      String[] parts = FullyQualifiedName.split(tagFqn);
+      if (parts.length < 2) {
+        return null;
+      }
+      return FullyQualifiedName.unquoteName(parts[parts.length - 1]);
+    } catch (Exception e) {
+      LOG.debug("Could not extract certification level from FQN {}", tagFqn);
+      return null;
+    }
+  }
+
+  private UUID resolveClassificationTagId(String tagFqn, JsonNode tagLabel) {
     if (tagFqn == null || tagFqn.isEmpty()) {
       return null;
     }
@@ -408,6 +425,12 @@ public class RdfPropertyMapper {
       return cached;
     }
     try {
+      UUID resolvedId = tryResolveUuidFromHref(tagLabel);
+      if (resolvedId != null) {
+        classificationTagIdCache.put(tagFqn, resolvedId);
+        return resolvedId;
+      }
+
       Tag tag = Entity.getEntityByName(Entity.TAG, tagFqn, "", Include.NON_DELETED, false);
       UUID id = tag != null ? tag.getId() : null;
       if (id != null) {
@@ -430,7 +453,7 @@ public class RdfPropertyMapper {
     }
 
     try {
-      UUID resolvedTermId = tryResolveGlossaryTermIdFromHref(tagLabel);
+      UUID resolvedTermId = tryResolveUuidFromHref(tagLabel);
       if (resolvedTermId != null) {
         glossaryTermIdCache.put(termFqn, resolvedTermId);
         return resolvedTermId;
@@ -449,7 +472,7 @@ public class RdfPropertyMapper {
     }
   }
 
-  private UUID tryResolveGlossaryTermIdFromHref(JsonNode tagLabel) {
+  private UUID tryResolveUuidFromHref(JsonNode tagLabel) {
     if (tagLabel == null || !tagLabel.has("href")) {
       return null;
     }
@@ -507,10 +530,11 @@ public class RdfPropertyMapper {
   }
 
   /**
-   * Converts AssetCertification into a real RDF link. Emits {@code asset om:hasCertification
-   * tag/Certification/Bronze}, plus the certification level as the human-readable name and the
-   * applied/expiry timestamps as typed literals — instead of dumping the whole JSON as a string
-   * literal under {@code om:certification}.
+   * Converts AssetCertification into a real RDF link. Emits {@code asset om:hasCertification} to
+   * the resolved tag resource (canonical {@code entity/tag/{uuid}} when the tag can be looked up,
+   * falling back to a synthetic {@code tag/{fqn}} URI only if lookup fails), plus the
+   * certification level (last FQN segment) and the applied/expiry timestamps as typed literals —
+   * instead of dumping the whole JSON as a string literal under {@code om:certification}.
    */
   private void addCertification(JsonNode certification, Resource entityResource, Model model) {
     if (certification == null || certification.isNull() || !certification.has("tagLabel")) {
@@ -530,10 +554,9 @@ public class RdfPropertyMapper {
     }
 
     entityResource.addProperty(model.createProperty(OM_NS, "hasCertification"), tagResource);
-    if (tagFqn.startsWith("Certification.")) {
-      entityResource.addProperty(
-          model.createProperty(OM_NS, "certificationLevel"),
-          tagFqn.substring("Certification.".length()));
+    String level = extractCertificationLevel(tagFqn);
+    if (level != null) {
+      entityResource.addProperty(model.createProperty(OM_NS, "certificationLevel"), level);
     }
     if (certification.has("appliedDate") && certification.get("appliedDate").isNumber()) {
       entityResource.addProperty(
@@ -787,7 +810,7 @@ public class RdfPropertyMapper {
         relatedEntityResource = model.createResource(relatedEntityUri);
 
         // Add type to the related entity
-        relatedEntityResource.addProperty(RDF.type, model.createResource(getRdfType(entityType)));
+        relatedEntityResource.addProperty(RDF.type, createTypeResource(entityType, model));
 
         // Add name if available
         if (relatedEntityNode.has("name")) {
@@ -885,7 +908,7 @@ public class RdfPropertyMapper {
           model.createProperty(PROV_NS, "wasGeneratedBy"), pipelineResource);
 
       // Add pipeline type
-      pipelineResource.addProperty(RDF.type, model.createResource(getRdfType(pipelineType)));
+      pipelineResource.addProperty(RDF.type, createTypeResource(pipelineType, model));
     }
 
     // Add column lineage
@@ -984,8 +1007,7 @@ public class RdfPropertyMapper {
           entityResource.addProperty(hasLineageNode, nodeResource);
 
           // Add type to the node
-          nodeResource.addProperty(
-              RDF.type, model.createResource(getRdfType(node.get("type").asText())));
+          nodeResource.addProperty(RDF.type, createTypeResource(node.get("type").asText(), model));
 
           // Add name if available
           if (node.has("name")) {
@@ -1164,5 +1186,24 @@ public class RdfPropertyMapper {
 
   private String getRdfType(String entityType) {
     return RdfUtils.getRdfType(entityType);
+  }
+
+  private Resource createTypeResource(String entityType, Model model) {
+    String curieOrUri = getRdfType(entityType);
+    if (curieOrUri == null || curieOrUri.isEmpty()) {
+      return model.createResource();
+    }
+    if (curieOrUri.startsWith("http://") || curieOrUri.startsWith("https://")) {
+      return model.createResource(curieOrUri);
+    }
+    int separatorIndex = curieOrUri.indexOf(':');
+    if (separatorIndex <= 0 || separatorIndex == curieOrUri.length() - 1) {
+      return model.createResource(curieOrUri);
+    }
+    String namespace = getNamespace(curieOrUri.substring(0, separatorIndex));
+    if (namespace == null) {
+      return model.createResource(curieOrUri);
+    }
+    return model.createResource(namespace + curieOrUri.substring(separatorIndex + 1));
   }
 }
