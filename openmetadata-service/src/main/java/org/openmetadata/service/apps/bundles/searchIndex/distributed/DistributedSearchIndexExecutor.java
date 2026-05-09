@@ -193,8 +193,8 @@ public class DistributedSearchIndexExecutor {
   }
 
   /**
-   * Set the job notifier for alerting other servers when a job starts. When set, other servers in
-   * the cluster will be notified via Redis Pub/Sub (if available) or discovered via polling.
+   * Set the job notifier for alerting other servers when a job starts. Servers discover the job
+   * through database polling.
    *
    * @param notifier The job notifier
    */

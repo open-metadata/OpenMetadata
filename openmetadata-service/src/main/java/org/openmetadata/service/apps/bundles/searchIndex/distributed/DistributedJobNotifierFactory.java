@@ -18,10 +18,7 @@ import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
- * Factory for creating the appropriate DistributedJobNotifier based on configuration.
- *
- * <p>Uses Redis Pub/Sub when Redis is configured and available, otherwise falls back to database
- * polling.
+ * Factory for creating the DistributedJobNotifier used by search indexing.
  */
 @Slf4j
 public class DistributedJobNotifierFactory {
@@ -31,42 +28,18 @@ public class DistributedJobNotifierFactory {
   }
 
   /**
-   * Create a DistributedJobNotifier based on the current configuration.
+   * Create a DistributedJobNotifier.
    *
-   * @param cacheConfig The cache configuration (contains Redis settings)
+   * @param cacheConfig The cache configuration
    * @param collectionDAO The DAO for database access
    * @param serverId The current server's ID
-   * @return The appropriate notifier implementation
+   * @return The notifier implementation
    */
   public static DistributedJobNotifier create(
       CacheConfig cacheConfig, CollectionDAO collectionDAO, String serverId) {
 
-    if (cacheConfig != null && cacheConfig.provider == CacheConfig.Provider.redis) {
-      // Redis is configured - try to use Redis Pub/Sub
-      if (isRedisConfigValid(cacheConfig)) {
-        LOG.info(
-            "Redis is configured - using Redis Pub/Sub for distributed job notifications (instant discovery)");
-        return new RedisJobNotifier(cacheConfig, serverId);
-      } else {
-        LOG.warn(
-            "Redis is configured but URL is missing - falling back to database polling for job notifications");
-      }
-    }
-
     LOG.info(
-        "Redis not configured - using database polling for distributed job notifications (2s discovery interval)");
+        "Using database polling for distributed search indexing job discovery (2s discovery interval)");
     return new PollingJobNotifier(collectionDAO, serverId);
-  }
-
-  /**
-   * Check if Redis configuration is valid and complete.
-   *
-   * @param cacheConfig The cache configuration
-   * @return true if Redis can be used
-   */
-  private static boolean isRedisConfigValid(CacheConfig cacheConfig) {
-    return cacheConfig.redis != null
-        && cacheConfig.redis.url != null
-        && !cacheConfig.redis.url.isEmpty();
   }
 }

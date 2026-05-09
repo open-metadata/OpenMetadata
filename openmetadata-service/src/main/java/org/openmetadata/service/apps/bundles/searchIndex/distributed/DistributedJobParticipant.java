@@ -40,12 +40,7 @@ import org.openmetadata.service.search.SearchRepository;
  * service runs on all servers and allows non-triggering servers to discover and participate in
  * active jobs.
  *
- * <p>Job discovery is handled by a {@link DistributedJobNotifier}:
- *
- * <ul>
- *   <li>When Redis is configured: Uses Redis Pub/Sub for instant notification
- *   <li>When Redis is not available: Falls back to database polling
- * </ul>
+ * <p>Job discovery is handled by a {@link DistributedJobNotifier} backed by database polling.
  */
 @Slf4j
 public class DistributedJobParticipant implements Managed {
@@ -112,7 +107,7 @@ public class DistributedJobParticipant implements Managed {
       // Register callback to receive job start notifications
       notifier.onJobStarted(this::onJobDiscovered);
 
-      // Start the notifier (Redis subscription or polling)
+      // Start the notifier
       notifier.start();
 
       // Start orphan job monitor to detect jobs left behind by crashed coordinators

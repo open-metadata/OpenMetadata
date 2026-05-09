@@ -14,7 +14,7 @@ class DistributedJobNotifierFactoryTest {
   private final CollectionDAO collectionDAO = mock(CollectionDAO.class);
 
   @Test
-  void createUsesRedisNotifierWhenRedisConfigIsComplete() {
+  void createUsesPollingNotifierWhenRedisConfigIsComplete() {
     CacheConfig cacheConfig = new CacheConfig();
     cacheConfig.provider = CacheConfig.Provider.redis;
     cacheConfig.redis.url = "redis://cache:6379";
@@ -22,11 +22,11 @@ class DistributedJobNotifierFactoryTest {
     DistributedJobNotifier notifier =
         DistributedJobNotifierFactory.create(cacheConfig, collectionDAO, "server-1");
 
-    assertInstanceOf(RedisJobNotifier.class, notifier);
+    assertInstanceOf(PollingJobNotifier.class, notifier);
   }
 
   @Test
-  void createFallsBackToPollingWhenRedisConfigIsMissingOrInvalid() {
+  void createUsesPollingNotifierWhenRedisConfigIsMissingOrInvalid() {
     CacheConfig missingUrlConfig = new CacheConfig();
     missingUrlConfig.provider = CacheConfig.Provider.redis;
 

@@ -1143,13 +1143,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           new DistributedJobParticipant(collectionDAO, searchRepository, serverId, cacheConfig);
       environment.lifecycle().manage(participant);
 
-      String notifierType =
-          (cacheConfig != null && cacheConfig.provider == CacheConfig.Provider.redis)
-              ? "Redis Pub/Sub"
-              : "database polling";
       LOG.info(
-          "Registered DistributedJobParticipant for distributed search indexing using {}",
-          notifierType);
+          "Registered DistributedJobParticipant for distributed search indexing using database polling");
     } catch (Exception e) {
       LOG.warn("Failed to register DistributedJobParticipant", e);
     }
