@@ -144,6 +144,18 @@ jest.mock('../../hoc/LimitWrapper', () => {
     .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
 });
 
+jest.mock(
+  '../../components/common/DeferredWidget/DeferredWidget.component',
+  () => ({
+    __esModule: true,
+    default: jest
+      .fn()
+      .mockImplementation(({ children }: { children: React.ReactNode }) => (
+        <>{children}</>
+      )),
+  })
+);
+
 jest.mock('../DataInsightPage/DataInsightProvider', async () => {
   return jest.fn().mockImplementation(({ children }) => <>{children}</>);
 });

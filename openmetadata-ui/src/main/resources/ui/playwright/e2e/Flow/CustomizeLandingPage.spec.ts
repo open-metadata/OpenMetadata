@@ -213,10 +213,13 @@ test.describe(
           adminPage.getByTestId('KnowledgePanel.KPI')
         ).not.toBeVisible();
 
-        // Check if newly added widgets are present on the landing page
-        await expect(
-          adminPage.getByTestId('KnowledgePanel.Following')
-        ).toBeVisible();
+        // DeferredWidget only mounts widgets once they enter the viewport — scroll the
+        // newly-added widget into view before asserting visibility.
+        const followingWidget = adminPage.getByTestId(
+          'KnowledgePanel.Following'
+        );
+        await followingWidget.scrollIntoViewIfNeeded();
+        await expect(followingWidget).toBeVisible();
       });
 
       await test.step('Resetting the layout flow should work properly', async () => {
@@ -298,6 +301,15 @@ test.describe(
           await redirectToHomePage(adminPage, false);
           await removeLandingBanner(adminPage);
           await waitForAllLoadersToDisappear(adminPage).catch(() => undefined);
+
+          // DeferredWidget only mounts widgets once they enter the viewport — scroll each
+          // into view so the assertion checks the mounted widget rather than the placeholder.
+          await adminPage
+            .getByTestId('KnowledgePanel.MyData')
+            .scrollIntoViewIfNeeded();
+          await adminPage
+            .getByTestId('KnowledgePanel.Following')
+            .scrollIntoViewIfNeeded();
 
           await expect
             .poll(
