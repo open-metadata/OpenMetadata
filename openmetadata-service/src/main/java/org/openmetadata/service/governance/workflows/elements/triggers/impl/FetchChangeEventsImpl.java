@@ -173,17 +173,15 @@ public class FetchChangeEventsImpl implements JavaDelegate {
       execution.setVariable(updatedByVar, "governance-bot");
     }
     execution.setVariable(CARDINALITY_VARIABLE, entityList.size());
-    // singleExecution mode uses loopCardinality=1 with inputDataItem — when the collection is
-    // empty Flowable falls back to cardinality=1 and accesses entityList.get(0) → crash.
     execution.setVariable(HAS_FINISHED_VARIABLE, records.isEmpty() || entityList.isEmpty());
     execution.setVariable(ENTITY_LIST_VARIABLE, entityList);
 
-    // When parallelism > 1, split into sub-batches so PeriodicBatchEntityTrigger can dispatch
-    // them as parallel MultiInstance CallActivities. The split happens here (single-threaded)
-    // so dedup and offset state never race with parallel workers.
-    if (parallelism > 1) {
-      execution.setVariable(BATCHES_VARIABLE, splitIntoBatches(entityList, batchSize));
-    }
+    // Always produce BATCHES_VARIABLE so the MultiInstance CallActivity has a uniform input.
+    // Sequential workflows (parallelism=1) receive single-entity batches; parallel workflows
+    // receive multi-entity batches. The split runs here (single-threaded) so dedup and offset
+    // state never race with parallel workers.
+    int batchGroupSize = parallelism > 1 ? batchSize : 1;
+    execution.setVariable(BATCHES_VARIABLE, splitIntoBatches(entityList, batchGroupSize));
   }
 
   // Visible for testing.

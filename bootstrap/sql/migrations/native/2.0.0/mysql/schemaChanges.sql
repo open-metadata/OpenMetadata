@@ -160,8 +160,14 @@ ALTER TABLE workflow_instance_state_time_series
 ALTER TABLE workflow_instance_state_time_series
     ADD INDEX idx_workflow_instance_state_schedule_run_id (scheduleRunId);
 
--- Update entityLink generated column to support both old (global_relatedEntity) and new (global_entityList[0]) formats
+-- Rewrite entityLink: event-based/no-op instances (no scheduleRunId) store entityList[0];
+-- batch instances (scheduleRunId present) store NULL — query them by scheduleRunId instead.
 ALTER TABLE workflow_instance_time_series
 MODIFY COLUMN entityLink TEXT GENERATED ALWAYS AS (
-    COALESCE(json ->> '$.variables.global_entityList[0]', json ->> '$.variables.global_relatedEntity')
+    CASE WHEN json ->> '$.scheduleRunId' IS NULL
+    THEN COALESCE(
+        json ->> '$.variables.global_entityList[0]',
+        json ->> '$.variables.global_relatedEntity'
+    )
+    ELSE NULL END
 );

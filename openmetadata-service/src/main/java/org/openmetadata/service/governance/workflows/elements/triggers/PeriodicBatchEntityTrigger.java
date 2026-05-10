@@ -3,7 +3,6 @@ package org.openmetadata.service.governance.workflows.elements.triggers;
 import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_SCHEDULE_RUN_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
@@ -170,50 +169,23 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     scheduleRunIdParameter.setTarget(
         getNamespacedVariableName(GLOBAL_NAMESPACE, WORKFLOW_SCHEDULE_RUN_ID_VARIABLE));
 
-    List<IOParameter> inParameters;
-    if (singleExecution) {
-      IOParameter relatedEntityParameter = new IOParameter();
-      relatedEntityParameter.setSource(RELATED_ENTITY_VARIABLE);
-      relatedEntityParameter.setTarget(
-          getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
+    // FetchChangeEventsImpl always produces BATCHES_VARIABLE: single-entity batches for
+    // sequential workflows, multi-entity batches for parallel ones. Both paths use the
+    // same MultiInstance setup — entityList is the per-iteration variable in all cases.
+    MultiInstanceLoopCharacteristics multiInstance =
+        new MultiInstanceLoopCharacteristicsBuilder()
+            .inputDataItem(FetchChangeEventsImpl.BATCHES_VARIABLE)
+            .elementVariable(ENTITY_LIST_VARIABLE)
+            .build();
+    workflowTrigger.setLoopCharacteristics(multiInstance);
 
-      MultiInstanceLoopCharacteristics multiInstance =
-          new MultiInstanceLoopCharacteristicsBuilder()
-              .loopCardinality("1")
-              .inputDataItem(ENTITY_LIST_VARIABLE)
-              .elementVariable(RELATED_ENTITY_VARIABLE)
-              .build();
-      workflowTrigger.setLoopCharacteristics(multiInstance);
-
-      inParameters =
-          List.of(
-              relatedEntityParameter,
-              entityListParameter,
-              updatedByParameter,
-              scheduleRunIdParameter);
-    } else {
-      // Parallel batch mode: FetchChangeEventsImpl produces a "batches" list of sub-lists,
-      // one per BATCH_PARALLELISM slot. MultiInstance iterates over that collection, running
-      // BATCH_PARALLELISM CallActivities concurrently. Each instance receives one sub-batch
-      // as its entityList via the elementVariable → IOParameter mapping below.
-      // All dedup and offset logic stays in the single-threaded fetch step, so there are
-      // no races on processedFqns or the offset cursor across parallel instances.
-      MultiInstanceLoopCharacteristics multiInstance =
-          new MultiInstanceLoopCharacteristicsBuilder()
-              .inputDataItem(FetchChangeEventsImpl.BATCHES_VARIABLE)
-              .elementVariable(ENTITY_LIST_VARIABLE)
-              .build();
-      // sequential=false means all instances run in parallel via Flowable's job executor,
-      // which already manages its own thread pool. We don't create additional thread pools
-      // here to avoid the thread-count explosion seen in early SearchIndexingApplication designs.
+    if (!singleExecution) {
       multiInstance.setSequential(false);
-      workflowTrigger.setLoopCharacteristics(multiInstance);
-      // Release the engine thread between parallel instances so other workflows and API
-      // requests are not blocked during the batch processing window.
       workflowTrigger.setAsynchronousLeave(true);
-
-      inParameters = List.of(entityListParameter, updatedByParameter, scheduleRunIdParameter);
     }
+
+    List<IOParameter> inParameters =
+        List.of(entityListParameter, updatedByParameter, scheduleRunIdParameter);
 
     workflowTrigger.setInParameters(inParameters);
     workflowTrigger.setOutParameters(List.of(outputParameter));
@@ -257,17 +229,13 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
       serviceTask.getFieldExtensions().add(searchFilterExpr);
     }
 
-    if (!singleExecution) {
-      // Tell FetchChangeEventsImpl to fetch BATCH_PARALLELISM * batchSize records and split
-      // them into sub-batches. Not injected for singleExecution mode because that path uses
-      // per-entity MultiInstance (one entity per CallActivity) and has no concept of sub-batches.
-      FieldExtension parallelismExpr =
-          new FieldExtensionBuilder()
-              .fieldName("parallelismExpr")
-              .fieldValue(String.valueOf(BATCH_PARALLELISM))
-              .build();
-      serviceTask.getFieldExtensions().add(parallelismExpr);
-    }
+    int parallelism = singleExecution ? 1 : BATCH_PARALLELISM;
+    FieldExtension parallelismExpr =
+        new FieldExtensionBuilder()
+            .fieldName("parallelismExpr")
+            .fieldValue(String.valueOf(parallelism))
+            .build();
+    serviceTask.getFieldExtensions().add(parallelismExpr);
 
     serviceTask.setAsynchronousLeave(true);
 
