@@ -146,6 +146,19 @@ public final class CacheKeys {
     return ns + ":lineage:graph:{" + rootId.toString() + "}:*";
   }
 
+  /**
+   * Negative cache marker — present means "we looked, this entity doesn't exist." Short TTL so
+   * a freshly-created entity isn't shadowed for long. Invalidated on entity create via the
+   * {@link Invalidatable} registry.
+   */
+  public String notFoundById(String type, java.util.UUID id) {
+    return ns + ":nx:" + type + ":id:" + id.toString();
+  }
+
+  public String notFoundByName(String type, String fqn) {
+    return ns + ":nx:" + type + ":fqn:" + FullyQualifiedName.buildHash(fqn);
+  }
+
   public String childrenPage(
       String type, String parentFqn, String version, int limit, int offset, String includeTag) {
     String fqnHash = FullyQualifiedName.buildHash(parentFqn);

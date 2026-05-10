@@ -12,11 +12,14 @@
  */
 package org.openmetadata.service.cache;
 
+import com.google.common.util.concurrent.Striped;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.locks.Lock;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.search.SearchRequest;
 
@@ -37,11 +40,17 @@ public final class CachedSearchLayer {
   private final CacheProvider cache;
   private final String keyPrefix;
   private final int ttlSeconds;
+  // Per-cache-key lock stripe for single-flight load. 100 concurrent users hitting the same
+  // uncached search query collapse to one ES call: the first thread wins the lock, populates
+  // the cache, the rest re-check on lock acquire and read the populated entry. Stripe count
+  // shares the bundle setting since both cache layers see similar concurrency profiles.
+  private final Striped<Lock> loadLocks;
 
   public CachedSearchLayer(CacheProvider cache, CacheKeys keys, CacheConfig config) {
     this.cache = cache;
     this.keyPrefix = keys.search();
     this.ttlSeconds = config.searchTtlSeconds;
+    this.loadLocks = Striped.lazyWeakLock(Math.max(16, config.bundleLoadLockStripes));
   }
 
   public boolean enabled() {
@@ -75,6 +84,85 @@ public final class CachedSearchLayer {
       }
       return Optional.empty();
     }
+  }
+
+  /**
+   * Single-flight load: cache lookup first; on miss, take a per-key stripe lock, recheck the
+   * cache (a concurrent waiter may have populated it), and only run the supplier if still cold.
+   * The supplier is the actual ES call — under load we want exactly one of these per cache key,
+   * not N (where N = concurrent users hitting the same query).
+   *
+   * <p>Cache-disabled fallback: degrades to {@code supplier.get()} with no locking. Same
+   * behavior as if this layer didn't exist.
+   *
+   * <p>The supplier returns the JSON body of the upstream search response. We cache the JSON
+   * (not the deserialized object) so {@link #get} can return it directly to the JAX-RS layer
+   * via {@code Response.ok(json, MediaType.APPLICATION_JSON_TYPE)}.
+   */
+  public String loadOrCompute(
+      SearchRequest request, String principalName, Supplier<String> supplier) {
+    if (!enabled()) {
+      return supplier.get();
+    }
+    String key;
+    try {
+      key = buildKey(request, principalName);
+    } catch (Exception e) {
+      LOG.debug("Search cache key build failed; falling through to compute", e);
+      return supplier.get();
+    }
+    Optional<String> first = safeGet(key);
+    if (first.isPresent()) {
+      recordHit();
+      return first.get();
+    }
+    Lock lock = loadLocks.get(key);
+    lock.lock();
+    try {
+      Optional<String> recheck = safeGet(key);
+      if (recheck.isPresent()) {
+        recordHit();
+        return recheck.get();
+      }
+      recordMiss();
+      String fresh = supplier.get();
+      safePut(key, fresh);
+      return fresh;
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  private Optional<String> safeGet(String key) {
+    try {
+      return cache.get(key);
+    } catch (Exception e) {
+      LOG.debug("Search cache get failed (treated as miss) key={}", key, e);
+      return Optional.empty();
+    }
+  }
+
+  private void safePut(String key, String value) {
+    if (value == null) return;
+    try {
+      cache.set(key, value, Duration.ofSeconds(ttlSeconds));
+      CacheMetrics m = CacheMetrics.getInstance();
+      if (m != null) m.recordLayerWrite("search");
+    } catch (Exception e) {
+      LOG.debug("Search cache put failed key={}", key, e);
+      CacheMetrics m = CacheMetrics.getInstance();
+      if (m != null) m.recordError();
+    }
+  }
+
+  private static void recordHit() {
+    CacheMetrics m = CacheMetrics.getInstance();
+    if (m != null) m.recordLayerHit("search");
+  }
+
+  private static void recordMiss() {
+    CacheMetrics m = CacheMetrics.getInstance();
+    if (m != null) m.recordLayerMiss("search");
   }
 
   public void put(SearchRequest request, String principalName, String responseJson) {

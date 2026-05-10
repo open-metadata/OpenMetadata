@@ -962,6 +962,98 @@ public class SystemResource {
     return Response.ok(stats).build();
   }
 
+  @GET
+  @Path("/cache/keys")
+  @Operation(
+      operationId = "scanCacheKeys",
+      summary = "SCAN keys matching a pattern (admin)",
+      description =
+          "Issues a Redis SCAN with the given glob-style pattern (e.g.,"
+              + " 'om:prod:e:table:*'). Bounded by the count parameter to keep the cluster"
+              + " responsive — never use this for unbounded enumeration. Returns -1 count if"
+              + " the cache provider doesn't support SCAN (Noop).",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Match count"),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public Response scanCacheKeys(
+      @Context SecurityContext securityContext,
+      @jakarta.ws.rs.QueryParam("pattern") String pattern) {
+    authorizer.authorizeAdmin(securityContext);
+    if (pattern == null || pattern.isBlank()) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(Map.of("error", "pattern query param required"))
+          .build();
+    }
+    long count = CacheBundle.getCacheProvider().scanCount(pattern);
+    return Response.ok(Map.of("pattern", pattern, "count", count)).build();
+  }
+
+  @POST
+  @Path("/cache/invalidate")
+  @Operation(
+      operationId = "invalidateCacheByPattern",
+      summary = "Invalidate cache keys matching a pattern (admin)",
+      description =
+          "Issues a Redis SCAN+UNLINK against the supplied pattern. Use sparingly and with a"
+              + " precise pattern; broad globs (e.g., 'om:prod:*') block the cluster on a"
+              + " large keyspace. Returns the number of keys deleted, or 0 if the provider"
+              + " doesn't support pattern deletion (Noop).",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Number of keys deleted"),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public Response invalidateCacheByPattern(
+      @Context SecurityContext securityContext,
+      @jakarta.ws.rs.QueryParam("pattern") String pattern) {
+    authorizer.authorizeAdmin(securityContext);
+    if (pattern == null || pattern.isBlank()) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(Map.of("error", "pattern query param required"))
+          .build();
+    }
+    long deleted = CacheBundle.getCacheProvider().scanDelete(pattern);
+    return Response.ok(Map.of("pattern", pattern, "deleted", deleted)).build();
+  }
+
+  @POST
+  @Path("/cache/invalidate/entity")
+  @Operation(
+      operationId = "invalidateCacheForEntity",
+      summary = "Invalidate every cache layer for a single entity (admin)",
+      description =
+          "Fans an invalidation out to every registered Invalidatable cache layer (lineage,"
+              + " not-found, future layers). Use type+id, or type+fqn, or both. Effective on"
+              + " all pods via the existing pub-sub channel.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Invalidated"),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public Response invalidateCacheForEntity(
+      @Context SecurityContext securityContext,
+      @jakarta.ws.rs.QueryParam("type") String type,
+      @jakarta.ws.rs.QueryParam("id") String idStr,
+      @jakarta.ws.rs.QueryParam("fqn") String fqn) {
+    authorizer.authorizeAdmin(securityContext);
+    if (type == null || type.isBlank() || (idStr == null && (fqn == null || fqn.isBlank()))) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(Map.of("error", "type and one of (id, fqn) are required"))
+          .build();
+    }
+    java.util.UUID id = null;
+    if (idStr != null && !idStr.isBlank()) {
+      try {
+        id = java.util.UUID.fromString(idStr);
+      } catch (IllegalArgumentException e) {
+        return Response.status(Response.Status.BAD_REQUEST)
+            .entity(Map.of("error", "id is not a valid UUID"))
+            .build();
+      }
+    }
+    CacheBundle.invalidateEntity(type, id, fqn);
+    return Response.ok(Map.of("invalidated", true, "type", type)).build();
+  }
+
   private void validateGlossaryTermRelationSettingsUpdate(Settings newSettings) {
     Settings currentSettings =
         systemRepository.getConfigWithKey(GLOSSARY_TERM_RELATION_SETTINGS.value());

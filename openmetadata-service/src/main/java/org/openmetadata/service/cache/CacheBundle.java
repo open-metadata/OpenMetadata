@@ -23,6 +23,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
   private static ChildrenPageCache childrenPageCache;
   private static CachedSearchLayer cachedSearchLayer;
   private static CachedLineage cachedLineage;
+  private static NotFoundCache notFoundCache;
   private static CacheInvalidationPubSub cacheInvalidationPubSub;
   private static CacheConfig cacheConfig;
   // Registry of cache layers that implement Invalidatable. Both the pub-sub handler (remote pod
@@ -82,11 +83,13 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
       childrenPageCache = new ChildrenPageCache(cacheProvider, keys, cacheConfig);
       cachedSearchLayer = new CachedSearchLayer(cacheProvider, keys, cacheConfig);
       cachedLineage = new CachedLineage(cacheProvider, keys, cacheConfig);
+      notFoundCache = new NotFoundCache(cacheProvider, keys, cacheConfig);
       // Register all id-keyed cache layers that participate in entity-write invalidation.
       // Layers with type/fqn-keyed semantics (CachedReadBundle, AncestorsCache, etc.) keep
       // their existing wiring for now — see .context/cache-improvements-design.md P1.3 for
       // the full audit and the planned migration of those layers to the registry.
       registerInvalidatable(cachedLineage);
+      registerInvalidatable(notFoundCache);
       cacheInvalidationPubSub = new CacheInvalidationPubSub(cacheConfig);
       cacheInvalidationPubSub.setHandler(
           msg -> {
@@ -182,6 +185,10 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
 
   public static CachedLineage getCachedLineage() {
     return cachedLineage;
+  }
+
+  public static NotFoundCache getNotFoundCache() {
+    return notFoundCache;
   }
 
   /**

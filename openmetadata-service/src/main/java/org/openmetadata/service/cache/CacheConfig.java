@@ -32,6 +32,17 @@ public class CacheConfig {
   // the read path falls through to LineageRepository.computeLineage as if no cache existed.
   public int lineageTtlSeconds = 60;
 
+  // Threshold (ms) above which a cache read is logged as slow. A healthy local Redis returns
+  // in <2ms; production Redis under load runs ~5ms; sustained reads >50ms typically mean
+  // network glitch, Redis pressure, or a hot key. Set to 0 to disable slow-read logging.
+  public int slowReadThresholdMs = 50;
+
+  // Negative cache TTL (seconds). When an entity isn't found, we cache that fact for this
+  // long so repeated lookups of stale FQNs / typo'd IDs don't hammer the DB. Short window
+  // because entities CAN be created at any time — we don't want to cache absence for too
+  // long. Invalidated on entity create. Set to 0 to disable.
+  public int notFoundTtlSeconds = 30;
+
   // Listing total-row counts. Short TTL because counts are best-effort: a freshly created
   // entity may not show up in paging.total for up to listCountTtlSeconds, but the list
   // itself is always live. Keeps repeated /containers, /tables, /dashboards listings

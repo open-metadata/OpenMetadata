@@ -221,6 +221,22 @@ public class RedisCacheProvider implements CacheProvider {
     }
   }
 
+  /**
+   * Bump the slow-read counter and emit a WARN log when a read exceeds the configured threshold.
+   * Called from {@code finally} blocks of the read primitives so it fires on success and on the
+   * timeout path. {@code thresholdMs <= 0} disables the check entirely. Bounded by the existing
+   * Redis command timeout (default 300ms) so we can't log indefinitely.
+   */
+  private void checkSlowRead(CacheMetrics m, String key, long startNanos) {
+    int thresholdMs = config != null ? config.slowReadThresholdMs : 0;
+    if (thresholdMs <= 0) return;
+    long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
+    if (elapsedMs >= thresholdMs) {
+      if (m != null) m.recordSlowRead();
+      LOG.warn("cache: slow read key={} duration={}ms threshold={}ms", key, elapsedMs, thresholdMs);
+    }
+  }
+
   private static void stopWriteTimer(CacheMetrics m, Timer.Sample sample) {
     if (m != null && sample != null) {
       m.recordWriteTime(sample);
@@ -233,6 +249,7 @@ public class RedisCacheProvider implements CacheProvider {
 
     CacheMetrics m = metrics();
     Timer.Sample sample = startReadTimer(m);
+    long startNanos = System.nanoTime();
     try {
       String value = syncCommands.get(key);
       if (m != null) {
@@ -248,6 +265,7 @@ public class RedisCacheProvider implements CacheProvider {
       return Optional.empty();
     } finally {
       stopReadTimer(m, sample);
+      checkSlowRead(m, key, startNanos);
     }
   }
 
@@ -319,6 +337,7 @@ public class RedisCacheProvider implements CacheProvider {
 
     CacheMetrics m = metrics();
     Timer.Sample sample = startReadTimer(m);
+    long startNanos = System.nanoTime();
     try {
       String value = syncCommands.hget(key, field);
       if (m != null) {
@@ -334,6 +353,7 @@ public class RedisCacheProvider implements CacheProvider {
       return Optional.empty();
     } finally {
       stopReadTimer(m, sample);
+      checkSlowRead(m, key, startNanos);
     }
   }
 

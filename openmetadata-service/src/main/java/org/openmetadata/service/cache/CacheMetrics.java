@@ -21,6 +21,10 @@ public class CacheMetrics {
   private final Counter cacheEvictions;
   private final Counter cacheErrors;
   private final Counter cacheWrites;
+  // Reads that exceeded the slow-read threshold (default 50ms). Watch in dashboards as a
+  // leading indicator of Redis pressure or network glitches — a sustained nonzero rate here
+  // means cache GETs are no longer "free" and the cache is hurting tail latency.
+  private final Counter cacheSlowReads;
 
   private final Timer cacheReadLatency;
   private final Timer cacheWriteLatency;
@@ -74,6 +78,12 @@ public class CacheMetrics {
     this.cacheWrites =
         Counter.builder("cache.writes")
             .description("Number of cache writes")
+            .tag("cache", "redis")
+            .register(meterRegistry);
+
+    this.cacheSlowReads =
+        Counter.builder("cache.reads.slow")
+            .description("Number of cache reads exceeding the slow-read threshold")
             .tag("cache", "redis")
             .register(meterRegistry);
 
@@ -161,6 +171,13 @@ public class CacheMetrics {
   public void recordWrite() {
     if (cacheWrites != null) {
       cacheWrites.increment();
+    }
+  }
+
+  /** Record a read that exceeded the configured slow-read threshold. */
+  public void recordSlowRead() {
+    if (cacheSlowReads != null) {
+      cacheSlowReads.increment();
     }
   }
 
@@ -308,6 +325,7 @@ public class CacheMetrics {
     snap.put("evictions", cacheEvictions != null ? (long) cacheEvictions.count() : 0L);
     snap.put("errors", cacheErrors != null ? (long) cacheErrors.count() : 0L);
     snap.put("writes", cacheWrites != null ? (long) cacheWrites.count() : 0L);
+    snap.put("slowReads", cacheSlowReads != null ? (long) cacheSlowReads.count() : 0L);
     snap.put("size", cacheSize.get());
     Map<String, Object> warmup = new LinkedHashMap<>();
     warmup.put("entities", warmupEntities.get());
