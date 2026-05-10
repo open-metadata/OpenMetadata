@@ -58,7 +58,10 @@ class CachedSearchLayerIT {
   @Test
   void sameQueryHitsCacheOnSecondCall() {
     OpenMetadataClient client = SdkClients.adminClient();
-    String query = "*";
+    // Use a unique-per-test query string so we always start cold. A literal "*" collides
+    // with whatever queries the rest of the test session already issued and we'd see
+    // 0 writes / 3 hits instead of 1 write + 2 hits.
+    String query = "csliit_same_" + System.nanoTime();
     String index = "table_search_index";
     int size = 10;
 
