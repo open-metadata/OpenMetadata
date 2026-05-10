@@ -571,8 +571,12 @@ class SnowflakeSource(
 
                 entity_fqn = fqn._build(self.context.get().database_service, *fqn_elements)  # pyright: ignore[reportAttributeAccessIssue]
                 try:
-                    classification = self.tag_canonicalizer.classification(row[0], SNOWFLAKE_CLASSIFICATION_DESCRIPTION)
-                    tag = self.tag_canonicalizer.tag(classification.name, row[1], SNOWFLAKE_TAG_DESCRIPTION)
+                    classification = self.tag_canonicalizer.classification(
+                        row[0], default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION
+                    )
+                    tag = self.tag_canonicalizer.tag(
+                        classification.name, row[1], default_tag_description=SNOWFLAKE_TAG_DESCRIPTION
+                    )
 
                     self.tags_registry.attach(
                         scope_fqn=schema_fqn,
@@ -598,10 +602,12 @@ class SnowflakeSource(
                 for tag_info in self.schema_tags_map[schema_name]:
                     try:
                         classification = self.tag_canonicalizer.classification(
-                            tag_info["tag_name"], SNOWFLAKE_CLASSIFICATION_DESCRIPTION
+                            tag_info["tag_name"], default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION
                         )
                         tag = self.tag_canonicalizer.tag(
-                            classification.name, tag_info["tag_value"], SNOWFLAKE_TAG_DESCRIPTION
+                            classification.name,
+                            tag_info["tag_value"],
+                            default_tag_description=SNOWFLAKE_TAG_DESCRIPTION,
                         )
 
                         self.tags_registry.attach(
@@ -644,9 +650,11 @@ class SnowflakeSource(
         for tag_info in self.database_tags_map[database_name]:
             try:
                 classification = self.tag_canonicalizer.classification(
-                    tag_info["tag_name"], SNOWFLAKE_CLASSIFICATION_DESCRIPTION
+                    tag_info["tag_name"], default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION
                 )
-                tag = self.tag_canonicalizer.tag(classification.name, tag_info["tag_value"], SNOWFLAKE_TAG_DESCRIPTION)
+                tag = self.tag_canonicalizer.tag(
+                    classification.name, tag_info["tag_value"], default_tag_description=SNOWFLAKE_TAG_DESCRIPTION
+                )
 
                 self.tags_registry.attach(
                     scope_fqn=database_fqn,

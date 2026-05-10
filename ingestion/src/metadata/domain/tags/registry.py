@@ -106,8 +106,8 @@ class TagRegistry:
         entity_fqn: str,
         classification_name: str,
         tag_name: str,
-        classification_description: str | None,
-        tag_description: str | None,
+        classification_description: str,
+        tag_description: str,
         label_type: LabelType = LabelType.Automated,
         state: State = State.Suggested,
     ) -> None:
@@ -216,20 +216,20 @@ class TagRegistry:
     def _build_pending_record(
         *,
         classification_name: str,
-        classification_description: str | None,
+        classification_description: str,
         tag_name: str,
-        tag_description: str | None,
+        tag_description: str,
     ) -> OMetaTagAndClassification:
         """Compose the sink-bound create-payload for a classification + tag."""
         return OMetaTagAndClassification(
             fqn=None,
             classification_request=CreateClassificationRequest(  # pyright: ignore[reportCallIssue]
                 name=EntityName(classification_name),
-                description=Markdown(classification_description or ""),
+                description=Markdown(classification_description),
             ),
             tag_request=CreateTagRequest(  # pyright: ignore[reportCallIssue]
                 classification=FullyQualifiedEntityName(classification_name),
                 name=EntityName(tag_name),
-                description=Markdown(tag_description or ""),
+                description=Markdown(tag_description),
             ),
         )

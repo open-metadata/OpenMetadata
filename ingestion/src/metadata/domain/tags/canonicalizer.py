@@ -50,7 +50,7 @@ class Canonical(NamedTuple):
     """Canonical (name, description) pair returned from OpenMetadata."""
 
     name: str
-    description: str | None
+    description: str
 
 
 class TagCanonicalizer:
@@ -69,9 +69,15 @@ class TagCanonicalizer:
     def classification(
         self,
         name: str,
-        description: str | None = None,
+        default_description: str,
     ) -> Canonical:
-        """Return canonical classification name + description from OM, cached."""
+        """Return canonical classification name + description from OM, cached.
+
+        ``default_description`` is used to seed the Canonical when no
+        system-provider match exists in OM, and as a fallback when an
+        OM match has an empty description. An OM-side description wins
+        over the default whenever available.
+        """
         key = name.lower()
         with self._lock:
             cached = self._classification_cache.get(key)
@@ -79,12 +85,12 @@ class TagCanonicalizer:
             return cached
 
         results = self._es_search(Classification, name)
-        canonical = Canonical(name=name, description=description)
+        canonical = Canonical(name=name, description=default_description)
         for entity in results:
             if entity.provider == ProviderType.system and entity.name.root.lower() == key:
                 canonical = Canonical(
                     name=entity.name.root,
-                    description=entity.description.root if entity.description else description,
+                    description=entity.description.root if entity.description else default_description,
                 )
                 break
 
@@ -96,11 +102,14 @@ class TagCanonicalizer:
         self,
         classification_name: str,
         tag_name: str,
-        tag_description: str | None = None,
+        default_tag_description: str,
     ) -> Canonical:
         """Return canonical tag name + description from OM, cached.
 
         ``classification_name`` must already be canonical (call ``classification`` first).
+        ``default_tag_description`` is used to seed the Canonical when no
+        system-provider match exists in OM, and as a fallback when an
+        OM match has an empty description.
         """
         tag_fqn = cast(
             "str",
@@ -113,7 +122,7 @@ class TagCanonicalizer:
             return cached
 
         results = self._es_search(Tag, tag_fqn)
-        canonical = Canonical(name=tag_name, description=tag_description)
+        canonical = Canonical(name=tag_name, description=default_tag_description)
         for entity in results:
             if (
                 entity.provider == ProviderType.system
@@ -122,7 +131,7 @@ class TagCanonicalizer:
             ):
                 canonical = Canonical(
                     name=entity.name.root,
-                    description=entity.description.root if entity.description else tag_description,
+                    description=entity.description.root if entity.description else default_tag_description,
                 )
                 break
 

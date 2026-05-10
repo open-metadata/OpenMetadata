@@ -71,9 +71,9 @@ class TestClassification:
 
     def test_caches_per_case_insensitive_key(self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock):
         mock_metadata.es_search_from_fqn.return_value = [_system_classification("PII", "Canonical desc")]
-        canonicalizer.classification("pii")
-        canonicalizer.classification("PII")
-        canonicalizer.classification("Pii")
+        canonicalizer.classification("pii", "Source desc")
+        canonicalizer.classification("PII", "Source desc")
+        canonicalizer.classification("Pii", "Source desc")
         # Three case variants share the same case-insensitive cache key
         assert mock_metadata.es_search_from_fqn.call_count == 1
 
@@ -88,7 +88,7 @@ class TestClassification:
         self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock
     ):
         mock_metadata.es_search_from_fqn.return_value = []
-        canonicalizer.classification("Foo")
+        canonicalizer.classification("Foo", "Source desc")
         mock_metadata.es_search_from_fqn.assert_called_once_with(entity_type=Classification, fqn_search_string="Foo")
 
 
@@ -105,9 +105,9 @@ class TestTag:
 
     def test_caches_per_case_insensitive_key(self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock):
         mock_metadata.es_search_from_fqn.return_value = [_system_tag("PII", "Sensitive", "")]
-        canonicalizer.tag("PII", "sensitive")
-        canonicalizer.tag("PII", "SENSITIVE")
-        canonicalizer.tag("PII", "Sensitive")
+        canonicalizer.tag("PII", "sensitive", "Source desc")
+        canonicalizer.tag("PII", "SENSITIVE", "Source desc")
+        canonicalizer.tag("PII", "Sensitive", "Source desc")
         # Three case variants share the same case-insensitive cache key
         assert mock_metadata.es_search_from_fqn.call_count == 1
 

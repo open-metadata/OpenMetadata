@@ -661,8 +661,8 @@ class SnowflakeUnitTest(TestCase):
                 entity_fqn=table_fqn,
                 classification_name="ENV",
                 tag_name="production",
-                classification_description=None,
-                tag_description=None,
+                classification_description="env classification",
+                tag_description="production tag",
             )
 
             schema_labels = source.get_schema_tag_labels(schema_name="TEST_SCHEMA")
