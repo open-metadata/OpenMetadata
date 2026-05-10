@@ -121,10 +121,12 @@ export const getKnowledgePagePath = (
   tab?: string,
   subTab = 'all'
 ) => {
-  let path = tab ? ROUTES.KNOWLEDGE_PAGE_WITH_TAB : ROUTES.KNOWLEDGE_PAGE;
+  let path = tab
+    ? ROUTES.CONTEXT_CENTER_ARTICLE_DETAIL_WITH_TAB
+    : ROUTES.CONTEXT_CENTER_ARTICLE_DETAIL;
 
   if (tab === EntityTabs.ACTIVITY_FEED) {
-    path = ROUTES.KNOWLEDGE_PAGE_WITH_SUB_TAB;
+    path = ROUTES.CONTEXT_CENTER_ARTICLE_DETAIL_WITH_SUB_TAB;
     path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
   }
 
@@ -136,6 +138,8 @@ export const getKnowledgePagePath = (
 
   return path;
 };
+
+export const getContextCenterArticlePath = getKnowledgePagePath;
 
 export const getKnowledgeVersionsPath = (
   knowledgePageName: string,

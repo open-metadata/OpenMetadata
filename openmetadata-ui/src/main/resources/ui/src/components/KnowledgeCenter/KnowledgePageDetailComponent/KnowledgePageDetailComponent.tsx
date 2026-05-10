@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
@@ -99,11 +98,17 @@ import KnowledgePageDetailSkeleton from './KnowledgePageDetailSkeleton';
 interface KnowledgePageDetailComponentProps {
   onPageChange: (page: Partial<KnowledgeCenterPageProps>) => void;
   fetchKnowledgePageHierarchy?: (forceRefresh?: boolean) => Promise<void>;
+  isRightPanelOpen?: boolean;
+  onToggleRightPanel?: () => void;
+  getArticlePath?: (fqn: string, tab?: string) => string;
 }
 
 const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   onPageChange,
   fetchKnowledgePageHierarchy,
+  isRightPanelOpen = true,
+  onToggleRightPanel,
+  getArticlePath,
 }) => {
   const { t } = i18n;
   const { hash } = useCustomLocation();
@@ -526,7 +531,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      navigate(getKnowledgePagePath(fqn, activeKey));
+      navigate(
+        getArticlePath
+          ? getArticlePath(fqn, activeKey)
+          : getKnowledgePagePath(fqn, activeKey)
+      );
       setActiveTab(activeKey);
     }
   };
@@ -546,6 +555,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   const tabs = useMemo(() => {
     const items = [
       {
+        name: String(t('label.content')),
         label: <div data-testid="overview">{String(t('label.content'))}</div>,
         key: EntityTabs.OVERVIEW,
         children: (
@@ -574,6 +584,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         ),
       },
       {
+        name: String(t('label.activity-feed-and-task-plural')),
         label: (
           <TabsLabel
             count={feedCount.totalCount}
@@ -685,9 +696,18 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     };
   }, [isContentUnsaved, location.pathname]);
 
+  const activeTabContent = useMemo(
+    () => tabs?.find((t) => t?.key === activeTab)?.children ?? null,
+    [tabs, activeTab]
+  );
+
   const pageConfig = useMemo(() => {
     let rightPanel = null;
-    if (activeTab !== EntityTabs.ACTIVITY_FEED && knowledgePage) {
+    if (
+      isRightPanelOpen &&
+      activeTab !== EntityTabs.ACTIVITY_FEED &&
+      knowledgePage
+    ) {
       rightPanel = (
         <GenericProvider
           data={knowledgePage}
@@ -707,19 +727,34 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     }
 
     return {
-      data: knowledgePage,
-      header: <div className="m-b-box rounded-12">{getHeaderElement()}</div>,
-      rightPanel,
-      title: (knowledgePage?.displayName ?? '') || t('label.untitled'),
       activeTab,
+      data: knowledgePage,
+      handlers: {
+        contentChangeState,
+        onFollowChange: handleFollowChange,
+        onSave: handleSave,
+        onSetThreadLink: setThreadLink,
+        onToggleDelete: handleToggleDelete,
+        onVoteChange: handleVoteChange,
+      },
+      header: <div className="m-b-box rounded-12">{getHeaderElement()}</div>,
+      isRightPanelOpen,
+      onTabChange: handleTabChange,
+      onToggleRightPanel,
+      rightPanel,
+      tabs,
+      title: (knowledgePage?.displayName ?? '') || t('label.untitled'),
     };
   }, [
     knowledgePage,
     isLoading,
+    isRightPanelOpen,
+    onToggleRightPanel,
     permissions,
     contentChangeState,
     activeTab,
     tags,
+    tabs,
     getHeaderElement,
   ]);
 
@@ -749,12 +784,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   return (
     <>
-      <Tabs
-        activeKey={activeTab}
-        className="entity-details-page-tabs"
-        items={tabs}
-        onChange={handleTabChange}
-      />
+      {activeTabContent}
       {threadLink ? (
         <ActivityThreadPanel
           createThread={createThread}

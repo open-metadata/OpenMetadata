@@ -75,7 +75,9 @@
   "author": "OpenMetadata",
   "license": "Apache-2.0",
   "dependencies": {
-    "@material/material-color-utilities": "^0.3.0"
+    "@material/material-color-utilities": "^0.3.0",
+    "@untitledui/file-icons": "^0.0.9",
+    "motion": "^12.38.0"
   },
   "peerDependencies": {
     "@emotion/react": ">=11.0.0",

@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Cube01 } from '@untitledui/icons';
+import {
+  Archive,
+  BookOpen01,
+  Cube01,
+  LayoutGrid01,
+  Share07,
+} from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-observability/data-quality-rules.svg';
@@ -40,18 +46,43 @@ import { DataInsightTabs } from '../interface/data-insight.interface';
 import { createIconWithStroke } from '../utils/IconUtils';
 import { PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
 
-const DataProductIcon = createIconWithStroke(
-  Cube01 as React.ComponentType<{
-    size?: number;
-    strokeWidth?: number;
-    style?: React.CSSProperties;
-  }>,
-  1.2
+type UntitledIconType = React.ComponentType<{
+  size?: number;
+  strokeWidth?: number;
+  style?: React.CSSProperties;
+}>;
+
+const DataProductIcon = createIconWithStroke(Cube01 as UntitledIconType, 1.2);
+
+const ContextCenterDashboardIcon = createIconWithStroke(
+  LayoutGrid01 as UntitledIconType,
+  1.5
+);
+const ContextCenterArticlesIcon = createIconWithStroke(
+  BookOpen01 as UntitledIconType,
+  1.5
+);
+const ContextCenterDocumentsIcon = createIconWithStroke(
+  Cube01 as UntitledIconType,
+  1.5
+);
+const ContextCenterIntegrationsIcon = createIconWithStroke(
+  Share07 as UntitledIconType,
+  1.5
+);
+const ContextCenterArchiveIcon = createIconWithStroke(
+  Archive as UntitledIconType,
+  1.5
 );
 
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
   [ROUTES.ONTOLOGY_EXPLORER]: ROUTES.ONTOLOGY_EXPLORER,
+  [ROUTES.CONTEXT_CENTER_DASHBOARD]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_ARTICLES]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_DOCUMENTS]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_INTEGRATIONS]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_ARCHIVE]: ROUTES.CONTEXT_CENTER,
 };
 
 export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
@@ -203,11 +234,47 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     ],
   },
   {
-    key: ROUTES.KNOWLEDGE_CENTER,
-    title: 'label.knowledge-center',
-    redirect_url: ROUTES.KNOWLEDGE_CENTER,
+    key: ROUTES.CONTEXT_CENTER,
+    title: 'label.context-center',
     icon: KnowledgeCenterIcon,
-    dataTestId: `app-bar-item-${SidebarItem.KNOWLEDGE_CENTER}`,
+    dataTestId: `app-bar-item-${SidebarItem.CONTEXT_CENTER}`,
+    children: [
+      {
+        key: ROUTES.CONTEXT_CENTER_DASHBOARD,
+        title: 'label.dashboard',
+        redirect_url: ROUTES.CONTEXT_CENTER_DASHBOARD,
+        icon: ContextCenterDashboardIcon,
+        dataTestId: `app-bar-item-context-center-dashboard`,
+      },
+      {
+        key: ROUTES.CONTEXT_CENTER_ARTICLES,
+        title: 'label.article-plural',
+        redirect_url: ROUTES.CONTEXT_CENTER_ARTICLES,
+        icon: ContextCenterArticlesIcon,
+        dataTestId: `app-bar-item-context-center-articles`,
+      },
+      {
+        key: ROUTES.CONTEXT_CENTER_DOCUMENTS,
+        title: 'label.document-plural',
+        redirect_url: ROUTES.CONTEXT_CENTER_DOCUMENTS,
+        icon: ContextCenterDocumentsIcon,
+        dataTestId: `app-bar-item-context-center-documents`,
+      },
+      {
+        key: ROUTES.CONTEXT_CENTER_INTEGRATIONS,
+        title: 'label.integration-plural',
+        redirect_url: ROUTES.CONTEXT_CENTER_INTEGRATIONS,
+        icon: ContextCenterIntegrationsIcon,
+        dataTestId: `app-bar-item-context-center-integrations`,
+      },
+      {
+        key: ROUTES.CONTEXT_CENTER_ARCHIVE,
+        title: 'label.archive',
+        redirect_url: ROUTES.CONTEXT_CENTER_ARCHIVE,
+        icon: ContextCenterArchiveIcon,
+        dataTestId: `app-bar-item-context-center-archive`,
+      },
+    ],
   },
 ];
 

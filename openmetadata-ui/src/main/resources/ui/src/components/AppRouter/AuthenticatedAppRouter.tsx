@@ -309,6 +309,10 @@ const AddObservabilityPage = withSuspenseFallback(
   )
 );
 
+const ContextCenterRouter = withSuspenseFallback(
+  React.lazy(() => import('./ContextCenterRouter/ContextCenterRouter'))
+);
+
 const KnowledgeCenterPage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/KnowledgeCenterPage/KnowledgeCenterPage')
@@ -872,6 +876,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={<KnowledgeCenterFilterPage />}
         path={ROUTES.KNOWLEDGE_CENTER_FILTER}
+      />
+      <Route
+        element={<ContextCenterRouter />}
+        path={`${ROUTES.CONTEXT_CENTER}/*`}
       />
       <Route element={<Navigate to={ROUTES.NOT_FOUND} />} path="*" />
     </Routes>

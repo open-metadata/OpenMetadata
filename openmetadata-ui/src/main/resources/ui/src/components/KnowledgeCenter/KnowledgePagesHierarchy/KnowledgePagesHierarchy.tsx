@@ -103,6 +103,9 @@ interface KnowledgePagesHierarchyProps {
   isPageHeaderAvailable: boolean;
   activeKey?: DirectoryTreeProps['activeKey'];
   activePage?: KnowledgePage;
+  hideAddPageButton?: boolean;
+  getPagePath?: (fqn: string) => string;
+  homeRoute?: string;
   onPageDelete?: (id: string | string[]) => void;
   onLoading?: (isLoading: boolean) => void;
 }
@@ -115,6 +118,9 @@ const KnowledgePagesHierarchy = forwardRef<
     {
       activeKey,
       activePage,
+      hideAddPageButton,
+      getPagePath,
+      homeRoute,
       onPageDelete,
       onLoading,
       permissions,
@@ -351,12 +357,12 @@ const KnowledgePagesHierarchy = forwardRef<
             )
           );
 
-        // if the deleted page is the active page or parent of active page, navigate to knowledge center
+        // if the deleted page is the active page or parent of active page, navigate home
         if (
           activeKey === deletedPageData.fullyQualifiedName ||
           isActivePageParent
         ) {
-          navigate(ROUTES.KNOWLEDGE_CENTER);
+          navigate(homeRoute ?? ROUTES.KNOWLEDGE_CENTER);
         }
       },
       [knowledgePageHierarchy, onPageDelete, activeKey, activePage]
@@ -432,7 +438,9 @@ const KnowledgePagesHierarchy = forwardRef<
 
           // push to the newly created page
           navigate({
-            pathname: getKnowledgePagePath(response.fullyQualifiedName),
+            pathname: getPagePath
+              ? getPagePath(response.fullyQualifiedName)
+              : getKnowledgePagePath(response.fullyQualifiedName),
           });
         } catch (error) {
           showErrorToast(error as AxiosError);
@@ -453,7 +461,11 @@ const KnowledgePagesHierarchy = forwardRef<
             data-testid={`page-node-${node.title}`}>
             <Link
               className="anchor-no-underline"
-              to={getKnowledgePagePath(nodeKey)}>
+              to={
+                getPagePath
+                  ? getPagePath(nodeKey)
+                  : getKnowledgePagePath(nodeKey)
+              }>
               <div
                 className={classNames(
                   'knowledge-hierarchy-page-title-wrapper',
@@ -487,15 +499,17 @@ const KnowledgePagesHierarchy = forwardRef<
                   width={12}
                 />
               </Button>
-              <Button
-                className="knowledge-hierarchy-action-btn-item"
-                data-testid={`${node.title}-add-page-btn`}
-                disabled={!permissions.Create}
-                title="Quickly add a page inside"
-                type="text"
-                onClick={() => handleAddPage(node)}>
-                <PlusOutlined className="text-grey-muted" />
-              </Button>
+              {!hideAddPageButton && (
+                <Button
+                  className="knowledge-hierarchy-action-btn-item"
+                  data-testid={`${node.title}-add-page-btn`}
+                  disabled={!permissions.Create}
+                  title="Quickly add a page inside"
+                  type="text"
+                  onClick={() => handleAddPage(node)}>
+                  <PlusOutlined className="text-grey-muted" />
+                </Button>
+              )}
             </div>
           </div>
         );

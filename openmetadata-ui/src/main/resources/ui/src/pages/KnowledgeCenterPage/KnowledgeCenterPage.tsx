@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { DownOutlined } from '@ant-design/icons';
-import { Button, Dropdown, MenuProps, Space } from 'antd';
+import { Button, Dropdown, MenuProps, Space, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
@@ -258,6 +258,32 @@ const KnowledgeCenterPage = () => {
     fetchPermission();
   }, []);
 
+  const centerContent = useMemo(() => {
+    if (version) {
+      return renderVersionPage();
+    }
+    if (page.tabs && fqn) {
+      return (
+        <Tabs
+          activeKey={page.activeTab}
+          className="entity-details-page-tabs"
+          items={page.tabs as unknown as TabsProps['items']}
+          onChange={page.onTabChange}
+        />
+      );
+    }
+
+    return renderDetailOrListPage();
+  }, [
+    version,
+    page.tabs,
+    page.activeTab,
+    page.onTabChange,
+    fqn,
+    renderVersionPage,
+    renderDetailOrListPage,
+  ]);
+
   return (
     <PageLayoutV1 pageTitle={t('label.knowledge-center')}>
       {page.header}
@@ -277,7 +303,7 @@ const KnowledgeCenterPage = () => {
         leftSidebarTitle={leftSidebarTitle}
         pageTitle={page.title}
         rightSidebar={page.rightPanel}>
-        {version ? renderVersionPage() : renderDetailOrListPage()}
+        {centerContent}
       </KnowledgeCenterLayout>
       {addQuickLinkModalElement}
     </PageLayoutV1>

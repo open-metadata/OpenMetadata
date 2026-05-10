@@ -57,6 +57,10 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
     permissions: genericPermissions,
   } = useGenericContext<KnowledgePage>();
 
+  if (!entityRules) {
+    return <KnowledgePageDetailRightPanelSkeleton />;
+  }
+
   const handleDataProductsSave = useCallback(
     async (selectedDataProducts: DataProduct[]) => {
       try {
