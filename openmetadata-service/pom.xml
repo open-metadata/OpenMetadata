@@ -956,6 +956,31 @@
       <artifactId>apache-jena-libs</artifactId>
       <version>4.10.0</version>
       <type>pom</type>
+      <!--
+        CVE-2026-43869: jena-arq transitively pulls org.apache.thrift:libthrift, used only
+        for the optional RDF Thrift binary serialization format. OM never reads or writes
+        that format (no `org.apache.thrift` imports anywhere in the source tree, and no
+        references to RDF_THRIFT / ThriftConvert / RDFFormat.*THRIFT). Excluding the JAR
+        eliminates the vulnerable bytecode entirely.
+
+        Why exclude instead of pinning libthrift to 0.23.0:
+          - libthrift 0.23.0 (the CVE fix) was published 2026-05-08; no Jena release ships
+            it yet. Even Jena 6.0.0 (latest) and 5.6.0 still ship libthrift 0.22.0
+            (also vulnerable to CVE-2026-43869).
+          - Pinning to a libthrift version Jena has not validated against would force a
+            mismatched transitive onto code paths Jena tests with 0.22.0.
+          - Lucene/Solr (also in this dep tree) already excludes libthrift for the same
+            reason — confirmed in lucene-solr-grandparent's pom.
+
+        When Jena ships a release with libthrift ≥ 0.23.0, this exclusion can be removed
+        (or kept; either way is safe since OM does not use the feature).
+      -->
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.thrift</groupId>
+          <artifactId>libthrift</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     
     <!-- Apache Calcite for SQL parsing -->
