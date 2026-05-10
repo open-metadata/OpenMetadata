@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { useQuery } from '@tanstack/react-query';
 import { Col, Row, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -58,6 +57,7 @@ import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
+import { useLazyEntityExtension } from '../../hooks/useLazyEntityExtension';
 import { useSub } from '../../hooks/usePubSub';
 import { FeedCounts } from '../../interface/feed.interface';
 import { fetchTestCaseResultByTestSuiteId } from '../../rest/dataQualityDashboardAPI';
@@ -79,7 +79,6 @@ import {
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import {
-  customPropertiesFields,
   defaultFields,
   defaultFieldsWithColumns,
 } from '../../utils/DatasetDetailsUtils';
@@ -235,36 +234,18 @@ const TableDetailsPageV1: React.FC = () => {
     [tableFqn, viewUsagePermission]
   );
 
-  // Lazily fetch the `extension` field (custom properties payload) only when the user
-  // activates the Custom Properties tab. The eager `defaultFieldsWithColumns` deliberately
-  // omits `extension` because:
-  //   - On tables with many user-defined custom properties the extension blob can be
-  //     hundreds of KB; paying for it on every initial load is wasteful for users who never
-  //     open Custom Properties.
-  //   - The Custom Properties tab is the only consumer.
-  // Pattern used here is the P3.1 React Query pilot — `useQuery` with `enabled` gating gives
-  // us request dedup, in-flight cancellation on FQN change, automatic 30s SWR cache, and a
-  // tiny readable hook surface. Replicate this pattern for other lazy per-tab fetches.
-  const { data: extensionResult } = useQuery({
-    queryKey: ['table-extension', tableFqn],
-    queryFn: () =>
-      getTableDetailsByFQN(tableFqn, { fields: customPropertiesFields }),
-    enabled:
-      !isTourOpen &&
-      activeTab === EntityTabs.CUSTOM_PROPERTIES &&
-      Boolean(tableFqn),
-    // Custom property values change rarely; one minute is a safe SWR window.
-    staleTime: 60_000,
+  // Lazy custom-properties fetch — see {@link useLazyEntityExtension} for rationale and
+  // the P3.1 React Query pilot pattern. Eager `defaultFieldsWithColumns` deliberately omits
+  // `extension` because the blob can be hundreds of KB on tables with many user-defined
+  // properties and only the Custom Properties tab consumes it.
+  useLazyEntityExtension<Table>({
+    entityType: EntityType.TABLE,
+    fqn: tableFqn,
+    activeTab: isTourOpen ? undefined : activeTab,
+    fetcher: getTableDetailsByFQN,
+    onResolve: (extension) =>
+      setTableDetails((prev) => (prev ? { ...prev, extension } : prev)),
   });
-
-  useEffect(() => {
-    if (!extensionResult) {
-      return;
-    }
-    setTableDetails((prev) =>
-      prev ? { ...prev, extension: extensionResult.extension } : prev
-    );
-  }, [extensionResult]);
 
   const fetchDQUpstreamFailureCount = async () => {
     if (!tableClassBase.getAlertEnableStatus()) {

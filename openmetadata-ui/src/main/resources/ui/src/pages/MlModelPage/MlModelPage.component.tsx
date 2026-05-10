@@ -27,11 +27,17 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
+import { useLazyEntityExtension } from '../../hooks/useLazyEntityExtension';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import {
   addFollower,
   getMlModelByFQN,
@@ -57,7 +63,18 @@ const MlModelPage = () => {
   const { currentUser } = useApplicationStore();
   const navigate = useNavigate();
   const { entityFqn: mlModelFqn } = useFqn({ type: EntityType.MLMODEL });
+  const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const [mlModelDetail, setMlModelDetail] = useState<Mlmodel>({} as Mlmodel);
+
+  // Lazy custom-properties fetch — see {@link useLazyEntityExtension}.
+  useLazyEntityExtension<Mlmodel>({
+    entityType: EntityType.MLMODEL,
+    fqn: mlModelFqn,
+    activeTab,
+    fetcher: getMlModelByFQN,
+    onResolve: (extension) =>
+      setMlModelDetail((prev) => ({ ...prev, extension })),
+  });
   const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
   const USERId = currentUser?.id ?? '';
 

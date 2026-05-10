@@ -27,12 +27,18 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
+import { useLazyEntityExtension } from '../../hooks/useLazyEntityExtension';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import {
   addFollower,
   getDashboardByFqn,
@@ -64,10 +70,21 @@ const DashboardDetailsPage = () => {
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { entityFqn: dashboardFQN } = useFqn({ type: EntityType.DASHBOARD });
+  const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
 
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
     {} as Dashboard
   );
+
+  // Lazy custom-properties fetch — see {@link useLazyEntityExtension}.
+  useLazyEntityExtension<Dashboard>({
+    entityType: EntityType.DASHBOARD,
+    fqn: dashboardFQN,
+    activeTab,
+    fetcher: getDashboardByFqn,
+    onResolve: (extension) =>
+      setDashboardDetails((prev) => ({ ...prev, extension })),
+  });
   const [isLoading, setLoading] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
 

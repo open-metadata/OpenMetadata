@@ -45,6 +45,7 @@ import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
+import { useLazyEntityExtension } from '../../hooks/useLazyEntityExtension';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
   addFollower,
@@ -89,6 +90,16 @@ function SearchIndexDetailsPage() {
   const USERId = currentUser?.id ?? '';
   const [loading, setLoading] = useState<boolean>(true);
   const [searchIndexDetails, setSearchIndexDetails] = useState<SearchIndex>();
+
+  // Lazy custom-properties fetch — see {@link useLazyEntityExtension}.
+  useLazyEntityExtension<SearchIndex>({
+    entityType: EntityType.SEARCH_INDEX,
+    fqn: decodedSearchIndexFQN,
+    activeTab,
+    fetcher: getSearchIndexDetailsByFQN,
+    onResolve: (extension) =>
+      setSearchIndexDetails((prev) => (prev ? { ...prev, extension } : prev)),
+  });
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
