@@ -56,6 +56,7 @@ import { TagLabel } from '../../generated/type/tagLabel';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import { useDeferredTabData } from '../../hooks/useDeferredTabData';
 import { useFqn } from '../../hooks/useFqn';
 import { useSub } from '../../hooks/usePubSub';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -785,12 +786,22 @@ const TableDetailsPageV1: React.FC = () => {
     }
   }, [tableFqn, isTourOpen, isTourPage, viewBasicPermission]);
 
+  // P1.2: getTestCaseFailureCount drives the global red-alert badge in the page chrome,
+  // so it must run as soon as tableDetails resolves — deferring would mean the user could
+  // miss a critical "this dataset has failing tests" indicator on first paint.
   useEffect(() => {
     if (tableDetails) {
-      fetchQueryCount();
       getTestCaseFailureCount();
     }
   }, [tableDetails?.fullyQualifiedName]);
+
+  // P1.2: queryCount only drives the "Queries (N)" tab badge — most users never click that
+  // tab, so eagerly fetching it on every page load wasted a server round-trip per view.
+  // Defer until the user actually activates the Queries tab (or any of its column-scoped
+  // sub-tabs); the badge then populates on first activation.
+  useDeferredTabData(EntityTabs.TABLE_QUERIES, activeTab, fetchQueryCount, [
+    tableDetails?.fullyQualifiedName,
+  ]);
 
   useSub(
     'updateDetails',
