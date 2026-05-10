@@ -56,6 +56,17 @@
           <groupId>com.fasterxml.jackson.core</groupId>
           <artifactId>jackson-databind</artifactId>
         </exclusion>
+        <!-- jsonschema2pojo-core 1.3.x switched its internal Jackson to 3.x (tools.jackson.core).
+             Annotators are build-time only; exclude Jackson 3.x so the runtime classpath stays on 2.x
+             and avoids GHSA-2m67-wjpj-xhg9 / CVE-2026-29062 / GHSA-72hv-8253-57qq. -->
+        <exclusion>
+          <groupId>tools.jackson.core</groupId>
+          <artifactId>jackson-core</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>tools.jackson.core</groupId>
+          <artifactId>jackson-databind</artifactId>
+        </exclusion>
         <exclusion>
           <groupId>com.google.code.gson</groupId>
           <artifactId>gson</artifactId>

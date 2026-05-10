@@ -191,6 +191,12 @@
         <artifactId>angus-mail</artifactId>
         <version>${angus-mail.version}</version>
       </dependency>
+      <!-- CVE-2026-43869: apache-jena-libs:4.10.0 → jena-arq → libthrift:0.19.0. Pin to fixed version. -->
+      <dependency>
+        <groupId>org.apache.thrift</groupId>
+        <artifactId>libthrift</artifactId>
+        <version>0.23.0</version>
+      </dependency>
       <dependency>
         <groupId>org.antlr</groupId>
         <artifactId>antlr4-runtime</artifactId>
