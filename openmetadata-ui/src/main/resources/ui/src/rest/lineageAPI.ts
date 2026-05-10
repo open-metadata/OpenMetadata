@@ -25,6 +25,7 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { AddLineage } from '../generated/api/lineage/addLineage';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
+import { EntityReference } from '../generated/type/entityReference';
 import APIClient from './index';
 
 export const updateLineageEdge = async (edge: AddLineage) => {
@@ -204,6 +205,27 @@ export const exportLineageByEntityCountAsync = async (params: {
         type: undefined,
       },
     }
+  );
+
+  return response.data;
+};
+
+/**
+ * Batch-hydrate a set of lineage nodes (entityType + id pairs) into full entity objects in a
+ * single round-trip. Server replies with a map of entityType to a list of hydrated entities.
+ *
+ * Use this in place of N parallel `GET /:type/:id` calls when rendering a graph that needs
+ * fully-hydrated node detail (tags, owners, domains, etc.). Entities the caller cannot read
+ * are silently dropped from the response.
+ */
+export const hydrateLineageEntities = async (params: {
+  entities: { type: string; id: string }[];
+  fields?: string;
+  include?: 'all' | 'deleted' | 'non-deleted';
+}): Promise<Record<string, EntityReference[]>> => {
+  const response = await APIClient.post<Record<string, EntityReference[]>>(
+    `/lineage/hydrate`,
+    params
   );
 
   return response.data;

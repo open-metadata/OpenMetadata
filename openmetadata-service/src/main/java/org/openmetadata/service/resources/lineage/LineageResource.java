@@ -38,6 +38,7 @@ import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -50,23 +51,30 @@ import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
+import org.openmetadata.schema.api.lineage.HydrateLineageRequest;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -74,6 +82,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.CSVExportMessage;
 import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Path("/v1/lineage")
@@ -751,6 +760,91 @@ public class LineageResource {
             addLineage.getEdge().getToEntity().getName()));
     dao.addLineage(addLineage, securityContext.getUserPrincipal().getName());
     return Response.status(Status.OK).build();
+  }
+
+  @POST
+  @Path("/hydrate")
+  @Operation(
+      operationId = "hydrateLineageEntities",
+      summary = "Batch-hydrate lineage nodes into full entity objects",
+      description =
+          "Replaces N per-node entity GETs with a single round-trip. Accepts a list of "
+              + "(type, id) pairs; returns hydrated entities grouped by entityType. Each entity "
+              + "is authorized individually with VIEW_BASIC — entities the caller cannot read "
+              + "are silently dropped from the response (rather than failing the whole batch).",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Hydrated entities grouped by entityType",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "400", description = "Request body is missing or empty")
+      })
+  public Map<String, List<? extends EntityInterface>> hydrateLineageEntities(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid HydrateLineageRequest request) {
+    if (request == null || nullOrEmpty(request.getEntities())) {
+      throw new IllegalArgumentException("entities is required and non-empty");
+    }
+    Map<String, List<UUID>> idsByType = groupIdsByType(request.getEntities());
+    Include include = request.getInclude() == null ? Include.NON_DELETED : request.getInclude();
+    Map<String, List<? extends EntityInterface>> result = new LinkedHashMap<>(idsByType.size());
+    for (Map.Entry<String, List<UUID>> entry : idsByType.entrySet()) {
+      List<? extends EntityInterface> hydrated =
+          hydrateForType(
+              uriInfo,
+              securityContext,
+              entry.getKey(),
+              entry.getValue(),
+              request.getFields(),
+              include);
+      if (!hydrated.isEmpty()) {
+        result.put(entry.getKey(), hydrated);
+      }
+    }
+    return result;
+  }
+
+  private static Map<String, List<UUID>> groupIdsByType(List<EntityReference> refs) {
+    Map<String, List<UUID>> idsByType = new LinkedHashMap<>();
+    for (EntityReference ref : refs) {
+      if (ref.getType() == null || ref.getId() == null) {
+        throw new IllegalArgumentException("each entity must have non-null type and id");
+      }
+      idsByType.computeIfAbsent(ref.getType(), k -> new ArrayList<>()).add(ref.getId());
+    }
+    return idsByType;
+  }
+
+  private List<? extends EntityInterface> hydrateForType(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String entityType,
+      List<UUID> ids,
+      String fieldsParam,
+      Include include) {
+    EntityRepository<? extends EntityInterface> repo = Entity.getEntityRepository(entityType);
+    Fields fields = repo.getFields(fieldsParam);
+    List<UUID> authorizedIds = filterAuthorizedIds(securityContext, entityType, ids);
+    if (authorizedIds.isEmpty()) {
+      return List.of();
+    }
+    return repo.get(uriInfo, authorizedIds, fields, include);
+  }
+
+  private List<UUID> filterAuthorizedIds(
+      SecurityContext securityContext, String entityType, List<UUID> ids) {
+    List<UUID> authorized = new ArrayList<>(ids.size());
+    OperationContext op = new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    for (UUID id : ids) {
+      try {
+        authorizer.authorize(securityContext, op, new ResourceContext<>(entityType, id, null));
+        authorized.add(id);
+      } catch (AuthorizationException ignored) {
+        // Caller lacks VIEW_BASIC for this entity — drop silently from the batch.
+      }
+    }
+    return authorized;
   }
 
   @GET
