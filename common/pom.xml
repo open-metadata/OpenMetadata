@@ -46,64 +46,36 @@
       <version>${org.junit.jupiter.version}</version>
       <scope>test</scope>
     </dependency>
-    <!-- used for generating custom annotations in jsonschema2pojo-maven-plugin -->
+    <!--
+      jsonschema2pojo-core supplies the AbstractAnnotator base class for the custom
+      annotators in this module (PasswordAnnotator, MaskedAnnotator, DeprecatedAnnotator,
+      ExposedAnnotator, OpenMetadataAnnotator). Those annotators are invoked only by the
+      build-time jsonschema2pojo-maven-plugin (configured in openmetadata-spec/pom.xml via
+      <customAnnotator>); the plugin runs in its own classloader at code-gen time and adds
+      common.jar to its <dependencies> block, so the runtime classpath of any deployed
+      service never needs jsonschema2pojo-core or any of its transitives.
+
+      <optional>true</optional> keeps jsonschema2pojo-core on this module's compile
+      classpath (so the annotators compile) but stops Maven from propagating it — and all
+      of its transitive deps — to downstream consumers' runtime classpath. This includes:
+
+        - com.fasterxml.jackson.core:jackson-databind (Jackson 2.x)
+        - tools.jackson.core:jackson-core / jackson-databind (Jackson 3.x — affected by
+          GHSA-2m67-wjpj-xhg9, CVE-2026-29062, GHSA-72hv-8253-57qq; jsonschema2pojo-core
+          1.3.3 still pins jackson3.version=3.0.2, so upstream has no fix yet)
+        - gson, snakeyaml, commons-lang3, commons-lang (previously excluded one-by-one)
+
+      Replacing the previous explicit <exclusions> list (which only caught the deps known
+      at the time it was written) with <optional>true</optional> also future-proofs the
+      module against any new transitive dep that jsonschema2pojo-core picks up later —
+      no need to keep extending the exclusions list every time a CVE is reported on a
+      new jsonschema2pojo-core transitive.
+    -->
     <dependency>
       <groupId>org.jsonschema2pojo</groupId>
       <artifactId>jsonschema2pojo-core</artifactId>
       <version>${jsonschema2pojo.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>com.fasterxml.jackson.core</groupId>
-          <artifactId>jackson-databind</artifactId>
-        </exclusion>
-        <!--
-          GHSA-2m67-wjpj-xhg9 / CVE-2026-29062 / GHSA-72hv-8253-57qq:
-          jsonschema2pojo-core 1.3.x switched its internal Jackson to 3.x (groupId
-          tools.jackson.core). The annotator classes in this module (PasswordAnnotator,
-          MaskedAnnotator, etc.) extend org.jsonschema2pojo.AbstractAnnotator and are
-          invoked only by the build-time jsonschema2pojo-maven-plugin — never at runtime.
-          They use only com.fasterxml.jackson.databind.JsonNode (Jackson 2.x) and
-          com.sun.codemodel.*, so they don't need Jackson 3 even at code-gen time.
-
-          Excluding the Jackson 3 transitive prevents jackson-core-3.0.2.jar /
-          jackson-databind-3.0.2.jar from leaking into the runtime classpath of every
-          downstream module (the existing com.fasterxml.jackson.core exclusion above
-          only covered the legacy 2.x groupId; the new tools.jackson.core groupId
-          sailed straight past it).
-
-          Why exclude instead of bumping jsonschema2pojo to a fix release:
-            - The CVE fix line for Jackson 3.x is 3.1.0 / 3.1.1.
-            - jsonschema2pojo-core's latest (1.3.3) still pins jackson3.version=3.0.2
-              in its parent pom — upstream has not yet bumped to 3.1.x.
-            - Verified by mvn install -pl openmetadata-spec -am (which exercises the
-              jsonschema2pojo-maven-plugin with our annotators): build succeeds with the
-              exclusion in place.
-        -->
-        <exclusion>
-          <groupId>tools.jackson.core</groupId>
-          <artifactId>jackson-core</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>tools.jackson.core</groupId>
-          <artifactId>jackson-databind</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.google.code.gson</groupId>
-          <artifactId>gson</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.yaml</groupId>
-          <artifactId>snakeyaml</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.commons</groupId>
-          <artifactId>commons-lang3</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>commons-lang</groupId>
-          <artifactId>commons-lang</artifactId>
-        </exclusion>
-      </exclusions>
+      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
