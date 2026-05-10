@@ -37,6 +37,7 @@ import { withPageLayout } from '../../hoc/withPageLayout';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { useExploreCache } from '../../hooks/useExploreCache';
 import { useSearchStore } from '../../hooks/useSearchStore';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import {
@@ -301,46 +302,10 @@ const ExplorePageV1: FC<unknown> = () => {
     }
   }, [parsedSearch]);
 
-  const performFetch = async () => {
-    setIsLoading(true);
+  const { getCached, setCached } = useExploreCache();
 
-    try {
-      await fetchEntityData({
-        searchQueryParam,
-        tabsInfo,
-        updatedQuickFilters: getAdvancedSearchQuickFilters(),
-        queryFilter,
-        searchIndex,
-        showDeleted,
-        sortValue,
-        sortOrder,
-        page,
-        size,
-        isNLPRequestEnabled,
-        tab,
-        TABS_SEARCH_INDEXES,
-        EntityTypeSearchIndexMapping: EntityTypeSearchIndexMapping as Record<
-          EntityType,
-          ExploreSearchIndex
-        >,
-        setSearchHitCounts,
-        setSearchResults,
-        setUpdatedAggregations,
-        setShowIndexNotFoundAlert,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Effect for handling tour
-  useEffect(() => {
-    if (isTourOpen) {
-      setSearchHitCounts(MOCK_EXPLORE_PAGE_COUNT);
-    }
-  }, [isTourOpen]);
-
-  // Create a dependency string to trigger fetch only when dependencies actually change
+  // Create a dependency string to trigger fetch only when dependencies actually change. Also
+  // doubles as the SWR cache key for {@link useExploreCache}.
   const fetchDependencies = useMemo(() => {
     return JSON.stringify({
       quickFilter: parsedSearch.quickFilter,
@@ -364,6 +329,143 @@ const ExplorePageV1: FC<unknown> = () => {
     size,
     searchIndex,
   ]);
+
+  const performFetch = async () => {
+    // Tab-switch on Explore (Tables → Dashboards → …) re-runs the same shape of search-fetch
+    // with a different `searchIndex`. Within a session most users flip back and forth without
+    // changing the underlying query; keying a 30s SWR cache by the same dependency string the
+    // page already uses to detect "should I refetch?" lets the second visit render synchronously.
+    type CachedSearchState = {
+      searchResults: SearchResponse<ExploreSearchIndex> | undefined;
+      aggregations: Aggregations | undefined;
+      hitCounts: SearchHitCounts | undefined;
+      indexNotFound: boolean;
+    };
+    const cacheKey = fetchDependencies;
+    const cached = getCached<CachedSearchState>(cacheKey);
+
+    const updatedQuickFilters = getAdvancedSearchQuickFilters();
+
+    // Setters wrapped to also capture the latest values for the cache write at the end.
+    const captured: {
+      searchResults?: typeof searchResults;
+      aggregations?: Aggregations;
+      hitCounts?: SearchHitCounts;
+      indexNotFound?: boolean;
+    } = {};
+    const captureSetSearchResults: typeof setSearchResults = (value) => {
+      captured.searchResults =
+        typeof value === 'function' ? value(captured.searchResults) : value;
+      setSearchResults(value);
+    };
+    const captureSetUpdatedAggregations: typeof setUpdatedAggregations = (
+      value
+    ) => {
+      captured.aggregations =
+        typeof value === 'function' ? value(captured.aggregations) : value;
+      setUpdatedAggregations(value);
+    };
+    const captureSetSearchHitCounts: typeof setSearchHitCounts = (value) => {
+      captured.hitCounts =
+        typeof value === 'function' ? value(captured.hitCounts) : value;
+      setSearchHitCounts(value);
+    };
+    const captureSetShowIndexNotFoundAlert: typeof setShowIndexNotFoundAlert = (
+      value
+    ) => {
+      captured.indexNotFound =
+        typeof value === 'function'
+          ? value(captured.indexNotFound ?? false)
+          : value;
+      setShowIndexNotFoundAlert(value);
+    };
+
+    if (cached) {
+      // Synchronous render from cache, then silently revalidate. We do NOT toggle isLoading on a
+      // cache hit — the user sees no spinner.
+      setSearchResults(cached.data.searchResults);
+      setUpdatedAggregations(cached.data.aggregations);
+      setSearchHitCounts(cached.data.hitCounts);
+      setShowIndexNotFoundAlert(cached.data.indexNotFound);
+      setIsLoading(false);
+      // Background refresh — fire-and-forget. Errors fall through to the existing toast layer
+      // inside fetchEntityData, same as the foreground path.
+      void fetchEntityData({
+        searchQueryParam,
+        tabsInfo,
+        updatedQuickFilters,
+        queryFilter,
+        searchIndex,
+        showDeleted,
+        sortValue,
+        sortOrder,
+        page,
+        size,
+        isNLPRequestEnabled,
+        tab,
+        TABS_SEARCH_INDEXES,
+        EntityTypeSearchIndexMapping: EntityTypeSearchIndexMapping as Record<
+          EntityType,
+          ExploreSearchIndex
+        >,
+        setSearchHitCounts: captureSetSearchHitCounts,
+        setSearchResults: captureSetSearchResults,
+        setUpdatedAggregations: captureSetUpdatedAggregations,
+        setShowIndexNotFoundAlert: captureSetShowIndexNotFoundAlert,
+      }).then(() =>
+        setCached<CachedSearchState>(cacheKey, {
+          searchResults: captured.searchResults,
+          aggregations: captured.aggregations,
+          hitCounts: captured.hitCounts,
+          indexNotFound: captured.indexNotFound ?? false,
+        })
+      );
+
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await fetchEntityData({
+        searchQueryParam,
+        tabsInfo,
+        updatedQuickFilters,
+        queryFilter,
+        searchIndex,
+        showDeleted,
+        sortValue,
+        sortOrder,
+        page,
+        size,
+        isNLPRequestEnabled,
+        tab,
+        TABS_SEARCH_INDEXES,
+        EntityTypeSearchIndexMapping: EntityTypeSearchIndexMapping as Record<
+          EntityType,
+          ExploreSearchIndex
+        >,
+        setSearchHitCounts: captureSetSearchHitCounts,
+        setSearchResults: captureSetSearchResults,
+        setUpdatedAggregations: captureSetUpdatedAggregations,
+        setShowIndexNotFoundAlert: captureSetShowIndexNotFoundAlert,
+      });
+      setCached<CachedSearchState>(cacheKey, {
+        searchResults: captured.searchResults,
+        aggregations: captured.aggregations,
+        hitCounts: captured.hitCounts,
+        indexNotFound: captured.indexNotFound ?? false,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Effect for handling tour
+  useEffect(() => {
+    if (isTourOpen) {
+      setSearchHitCounts(MOCK_EXPLORE_PAGE_COUNT);
+    }
+  }, [isTourOpen]);
 
   useEffect(() => {
     if (!isTourOpen) {
