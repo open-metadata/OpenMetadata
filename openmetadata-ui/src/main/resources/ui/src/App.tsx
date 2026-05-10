@@ -11,15 +11,23 @@
  *  limitations under the License.
  */
 
+import { QueryClientProvider } from '@tanstack/react-query';
 import { FC } from 'react';
 import AppRouter from './components/AppRouter/AppRouter';
 import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
+import { queryClient } from './queryClient';
 
 const App: FC = () => {
+  // QueryClientProvider sits OUTSIDE AuthProvider so any query made during the auth flow
+  // (e.g. fetching feature flags before login) reuses the same cache. AuthProvider remounts
+  // on logout — wrapping QueryClient inside would discard the cache on every logout,
+  // which is the opposite of what we want here.
   return (
-    <AuthProvider childComponentType={AppRouter}>
-      <AppRouter />
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider childComponentType={AppRouter}>
+        <AppRouter />
+      </AuthProvider>
+    </QueryClientProvider>
   );
 };
 
