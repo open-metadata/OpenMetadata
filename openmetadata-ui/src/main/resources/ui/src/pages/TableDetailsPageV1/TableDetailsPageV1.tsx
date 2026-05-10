@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Col, Row, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -109,7 +110,7 @@ const TableDetailsPageV1: React.FC = () => {
     useTourProvider();
   const { currentUser } = useApplicationStore();
   const { setDqLineageData } = useTestCaseStore();
-  const [tableDetails, setTableDetails] = useState<Table>();
+  const queryClient = useQueryClient();
   const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -121,7 +122,6 @@ const TableDetailsPageV1: React.FC = () => {
 
   const [queryCount, setQueryCount] = useState(0);
 
-  const [loading, setLoading] = useState(!isTourOpen);
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
@@ -157,20 +157,6 @@ const TableDetailsPageV1: React.FC = () => {
     ) : undefined;
   }, [dqFailureCount, tableFqn]);
 
-  const extraDropdownContent = useMemo(
-    () =>
-      tableDetails
-        ? entityUtilClassBase.getManageExtraOptions(
-            EntityType.TABLE,
-            tableFqn,
-            tablePermissions,
-            tableDetails,
-            navigate
-          )
-        : [],
-    [tablePermissions, tableFqn, tableDetails]
-  );
-
   const { viewUsagePermission, viewTestCasePermission } = useMemo(
     () => ({
       viewUsagePermission: getPrioritizedViewPermission(
@@ -189,49 +175,144 @@ const TableDetailsPageV1: React.FC = () => {
     ]
   );
 
+  // Composed `fields=` value, derived from permissions. USAGE_SUMMARY / TESTSUITE are only
+  // appended when the caller can read them — drives both the queryKey identity and the
+  // queryFn payload, so changing permissions automatically invalidates the cache for the
+  // wrong-shape entry and refetches.
+  const tableQueryFields = useMemo(() => {
+    let fields: string = defaultFieldsWithColumns;
+    if (viewUsagePermission) {
+      fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+    }
+    if (viewTestCasePermission) {
+      fields += `,${TabSpecificField.TESTSUITE}`;
+    }
+
+    return fields;
+  }, [viewUsagePermission, viewTestCasePermission]);
+
+  // Stable React Query key. Includes the FQN and the fields string so that:
+  //   * navigating from one table to another swaps queryKey, picking up the new cache slot
+  //     (or refetching on miss);
+  //   * a permission change that mutates the fields string invalidates the existing entry
+  //     because the key shape is different.
+  const tableQueryKey = useMemo(
+    () => ['table-detail', tableFqn, tableQueryFields] as const,
+    [tableFqn, tableQueryFields]
+  );
+
+  // Permissions are loaded asynchronously by `fetchResourcePermission`. Until that resolves,
+  // `tablePermissions` is the sentinel `DEFAULT_ENTITY_PERMISSION` reference. We use that as
+  // a "permissions still loading" signal — gates both the query and the page-level loader so
+  // the page doesn't race the permission fetch.
+  const tablePermissionsLoaded = tablePermissions !== DEFAULT_ENTITY_PERMISSION;
+
+  // Main entity fetch — migrated from a hand-rolled `useState + useCallback + useEffect`
+  // pattern to React Query (P3.1). Replaces `fetchTableDetails` and the `[tableDetails,
+  // setTableDetails]` useState below. Existing call sites that did `setTableDetails(...)` or
+  // `fetchTableDetails()` continue to work via the wrapper functions defined below — the
+  // page state-shape contract is preserved.
+  const {
+    data: tableDetails,
+    isLoading: isTableLoading,
+    error: tableQueryError,
+    refetch: refetchTable,
+  } = useQuery({
+    queryKey: tableQueryKey,
+    queryFn: () => getTableDetailsByFQN(tableFqn, { fields: tableQueryFields }),
+    enabled:
+      !isTourOpen && !isTourPage && tablePermissionsLoaded && Boolean(tableFqn),
+  });
+
+  // Bridge: existing call sites do `setTableDetails((prev) => ({...prev, ...patch}))` or
+  // `setTableDetails(newTable)`. Both forms still work because we forward to
+  // `queryClient.setQueryData`, which accepts a plain value or an updater closure. Keeping
+  // this wrapper means the ~25 mutation call sites in this file (edit handlers, follow,
+  // vote, restore, certification, tier, …) need no changes.
+  const setTableDetails = useCallback(
+    (
+      next: Table | undefined | ((prev: Table | undefined) => Table | undefined)
+    ) => {
+      queryClient.setQueryData<Table | undefined>(tableQueryKey, (prev) =>
+        typeof next === 'function'
+          ? (next as (prev: Table | undefined) => Table | undefined)(prev)
+          : next
+      );
+    },
+    [queryClient, tableQueryKey]
+  );
+
+  // Bridge: `fetchTableDetails(showLoading?)` used to be a force-refetch helper. With React
+  // Query, the equivalent is `refetch()` — `isFetching` flips during the refetch but
+  // `isLoading` stays `false` after first success, which matches the old `showLoading=false`
+  // semantics naturally. The argument is now ignored.
+  const fetchTableDetails = useCallback(
+    () => refetchTable().then(() => undefined),
+    [refetchTable]
+  );
+
+  // Surface a loader while permissions are still loading too — otherwise the page briefly
+  // renders the "no data" placeholder before the query is even enabled.
+  const loading =
+    !isTourOpen && !isTourPage && (!tablePermissionsLoaded || isTableLoading);
+
+  // Forbidden navigation — used to live in fetchTableDetails' catch. React Query surfaces
+  // the same error via `error`; redirect on FORBIDDEN once.
+  useEffect(() => {
+    if (
+      tableQueryError &&
+      (tableQueryError as AxiosError)?.response?.status ===
+        ClientErrors.FORBIDDEN
+    ) {
+      navigate(ROUTES.FORBIDDEN, { replace: true });
+    }
+  }, [tableQueryError, navigate]);
+
+  // Recently-viewed bookkeeping — used to live in fetchTableDetails' success path. Now an
+  // effect on the freshly-resolved entity id.
+  useEffect(() => {
+    if (!tableDetails || isTourOpen || isTourPage) {
+      return;
+    }
+    addToRecentViewed({
+      displayName: getEntityName(tableDetails),
+      entityType: EntityType.TABLE,
+      fqn: tableDetails.fullyQualifiedName ?? '',
+      serviceType: tableDetails.serviceType,
+      timestamp: 0,
+      id: tableDetails.id,
+    });
+  }, [tableDetails?.id, isTourOpen, isTourPage]);
+
+  // Tour mode — prime the cache with mock data so consumers (which read from the cache via
+  // `tableDetails`) see the mock entity. Replaces a `setTableDetails(mock)` call from the
+  // legacy useEffect.
+  useEffect(() => {
+    if (isTourOpen || isTourPage) {
+      queryClient.setQueryData(
+        tableQueryKey,
+        mockDatasetData.tableDetails as unknown as Table
+      );
+    }
+  }, [isTourOpen, isTourPage, queryClient, tableQueryKey]);
+
   const isViewTableType = useMemo(
     () => tableDetails?.tableType === TableType.View,
     [tableDetails?.tableType]
   );
 
-  const fetchTableDetails = useCallback(
-    async (showLoading = true) => {
-      if (showLoading) {
-        setLoading(true);
-      }
-      try {
-        let fields = defaultFieldsWithColumns;
-        if (viewUsagePermission) {
-          fields += `,${TabSpecificField.USAGE_SUMMARY}`;
-        }
-        if (viewTestCasePermission) {
-          fields += `,${TabSpecificField.TESTSUITE}`;
-        }
-
-        const tableDetails = await getTableDetailsByFQN(tableFqn, { fields });
-
-        setTableDetails(tableDetails);
-        addToRecentViewed({
-          displayName: getEntityName(tableDetails),
-          entityType: EntityType.TABLE,
-          fqn: tableDetails.fullyQualifiedName ?? '',
-          serviceType: tableDetails.serviceType,
-          timestamp: 0,
-          id: tableDetails.id,
-        });
-      } catch (error) {
-        if (
-          (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
-        ) {
-          navigate(ROUTES.FORBIDDEN, { replace: true });
-        }
-      } finally {
-        if (showLoading) {
-          setLoading(false);
-        }
-      }
-    },
-    [tableFqn, viewUsagePermission]
+  const extraDropdownContent = useMemo(
+    () =>
+      tableDetails
+        ? entityUtilClassBase.getManageExtraOptions(
+            EntityType.TABLE,
+            tableFqn,
+            tablePermissions,
+            tableDetails,
+            navigate
+          )
+        : [],
+    [tablePermissions, tableFqn, tableDetails, navigate]
   );
 
   // Lazy custom-properties fetch — see {@link useLazyEntityExtension} for rationale and
@@ -366,8 +447,6 @@ const TableDetailsPageV1: React.FC = () => {
             entity: t('label.resource-permission-lowercase'),
           })
         );
-      } finally {
-        setLoading(false);
       }
     },
     [getEntityPermissionByFqn, setTablePermissions]
@@ -789,12 +868,12 @@ const TableDetailsPageV1: React.FC = () => {
     []
   );
 
+  // Tour-mode mock priming and the table fetch itself now both live with the React Query
+  // setup above. This effect remains to drive the *non-table* side-effect — `getEntityFeedCount`
+  // — that used to be co-located with the legacy fetch on FQN change. Kept gated on
+  // `viewBasicPermission` so we don't issue a feed-count fetch the user isn't allowed to see.
   useEffect(() => {
-    if (isTourOpen || isTourPage) {
-      setTableDetails(mockDatasetData.tableDetails as unknown as Table);
-    } else if (viewBasicPermission) {
-      setTableDetails(undefined);
-      fetchTableDetails();
+    if (!isTourOpen && !isTourPage && viewBasicPermission) {
       getEntityFeedCount();
     }
   }, [tableFqn, isTourOpen, isTourPage, viewBasicPermission]);
