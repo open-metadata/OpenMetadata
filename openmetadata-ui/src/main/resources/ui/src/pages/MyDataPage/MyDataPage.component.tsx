@@ -17,7 +17,6 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import Loader from '../../components/common/Loader/Loader';
 import { AdvanceSearchProvider } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
@@ -45,6 +44,7 @@ import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
+import MyDataPageSkeleton from './MyDataPageSkeleton.component';
 
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: React.ReactNode }
@@ -247,7 +247,7 @@ const MyDataPage = () => {
   useGridLayoutDirection(isLoading);
 
   if (isLoading) {
-    return <Loader fullScreen />;
+    return <MyDataPageSkeleton />;
   }
 
   if (showWelcomeScreen) {
