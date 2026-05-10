@@ -13,7 +13,7 @@
 
 import { get, isEmpty, isNil, isString, omit } from 'lodash';
 import Qs from 'qs';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { withAdvanceSearch } from '../../components/AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
@@ -330,6 +330,16 @@ const ExplorePageV1: FC<unknown> = () => {
     searchIndex,
   ]);
 
+  // Latest-key ref drives the stale-response guard below. The cache-hit path fires a
+  // background `fetchEntityData` that resolves asynchronously; if the user changes any of the
+  // search dependencies (tab, query, filters, page) before it resolves, the in-flight response
+  // is for the OLD query and must not overwrite the new state. We compare each setter callback
+  // against this ref at fire time and drop the write if it no longer matches.
+  const latestFetchDepsRef = useRef(fetchDependencies);
+  useEffect(() => {
+    latestFetchDepsRef.current = fetchDependencies;
+  }, [fetchDependencies]);
+
   const performFetch = async () => {
     // Tab-switch on Explore (Tables → Dashboards → …) re-runs the same shape of search-fetch
     // with a different `searchIndex`. Within a session most users flip back and forth without
@@ -346,14 +356,21 @@ const ExplorePageV1: FC<unknown> = () => {
 
     const updatedQuickFilters = getAdvancedSearchQuickFilters();
 
-    // Setters wrapped to also capture the latest values for the cache write at the end.
+    // Setters wrapped to (a) capture the resolved values for the eventual cache write and
+    // (b) drop the update entirely if the user has navigated to a different search since the
+    // request was issued. Without (b) a slow in-flight response can overwrite freshly-set
+    // state for a different searchIndex/filters, presenting stale data to the user.
     const captured: {
       searchResults?: typeof searchResults;
       aggregations?: Aggregations;
       hitCounts?: SearchHitCounts;
       indexNotFound?: boolean;
     } = {};
+    const isStale = () => latestFetchDepsRef.current !== cacheKey;
     const captureSetSearchResults: typeof setSearchResults = (value) => {
+      if (isStale()) {
+        return;
+      }
       captured.searchResults =
         typeof value === 'function' ? value(captured.searchResults) : value;
       setSearchResults(value);
@@ -361,11 +378,17 @@ const ExplorePageV1: FC<unknown> = () => {
     const captureSetUpdatedAggregations: typeof setUpdatedAggregations = (
       value
     ) => {
+      if (isStale()) {
+        return;
+      }
       captured.aggregations =
         typeof value === 'function' ? value(captured.aggregations) : value;
       setUpdatedAggregations(value);
     };
     const captureSetSearchHitCounts: typeof setSearchHitCounts = (value) => {
+      if (isStale()) {
+        return;
+      }
       captured.hitCounts =
         typeof value === 'function' ? value(captured.hitCounts) : value;
       setSearchHitCounts(value);
@@ -373,11 +396,30 @@ const ExplorePageV1: FC<unknown> = () => {
     const captureSetShowIndexNotFoundAlert: typeof setShowIndexNotFoundAlert = (
       value
     ) => {
+      if (isStale()) {
+        return;
+      }
       captured.indexNotFound =
         typeof value === 'function'
           ? value(captured.indexNotFound ?? false)
           : value;
       setShowIndexNotFoundAlert(value);
+    };
+
+    // Commit `captured` to the cache only if the fetch actually produced results AND the
+    // key is still current. Skipping when `searchResults` is undefined avoids overwriting a
+    // previously-good cache entry with empty data from an error path inside fetchEntityData
+    // (where some setters may not get called).
+    const commitCacheIfFresh = () => {
+      if (isStale() || captured.searchResults === undefined) {
+        return;
+      }
+      setCached<CachedSearchState>(cacheKey, {
+        searchResults: captured.searchResults,
+        aggregations: captured.aggregations,
+        hitCounts: captured.hitCounts,
+        indexNotFound: captured.indexNotFound ?? false,
+      });
     };
 
     if (cached) {
@@ -389,7 +431,8 @@ const ExplorePageV1: FC<unknown> = () => {
       setShowIndexNotFoundAlert(cached.data.indexNotFound);
       setIsLoading(false);
       // Background refresh — fire-and-forget. Errors fall through to the existing toast layer
-      // inside fetchEntityData, same as the foreground path.
+      // inside fetchEntityData, same as the foreground path. The captured setters above drop
+      // writes if the user has moved on by the time the response resolves.
       void fetchEntityData({
         searchQueryParam,
         tabsInfo,
@@ -412,14 +455,7 @@ const ExplorePageV1: FC<unknown> = () => {
         setSearchResults: captureSetSearchResults,
         setUpdatedAggregations: captureSetUpdatedAggregations,
         setShowIndexNotFoundAlert: captureSetShowIndexNotFoundAlert,
-      }).then(() =>
-        setCached<CachedSearchState>(cacheKey, {
-          searchResults: captured.searchResults,
-          aggregations: captured.aggregations,
-          hitCounts: captured.hitCounts,
-          indexNotFound: captured.indexNotFound ?? false,
-        })
-      );
+      }).then(commitCacheIfFresh);
 
       return;
     }
@@ -449,12 +485,7 @@ const ExplorePageV1: FC<unknown> = () => {
         setUpdatedAggregations: captureSetUpdatedAggregations,
         setShowIndexNotFoundAlert: captureSetShowIndexNotFoundAlert,
       });
-      setCached<CachedSearchState>(cacheKey, {
-        searchResults: captured.searchResults,
-        aggregations: captured.aggregations,
-        hitCounts: captured.hitCounts,
-        indexNotFound: captured.indexNotFound ?? false,
-      });
+      commitCacheIfFresh();
     } finally {
       setIsLoading(false);
     }

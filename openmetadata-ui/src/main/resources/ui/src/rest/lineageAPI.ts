@@ -25,7 +25,6 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { AddLineage } from '../generated/api/lineage/addLineage';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
-import { EntityReference } from '../generated/type/entityReference';
 import APIClient from './index';
 
 export const updateLineageEdge = async (edge: AddLineage) => {
@@ -217,13 +216,21 @@ export const exportLineageByEntityCountAsync = async (params: {
  * Use this in place of N parallel `GET /:type/:id` calls when rendering a graph that needs
  * fully-hydrated node detail (tags, owners, domains, etc.). Entities the caller cannot read
  * are silently dropped from the response.
+ *
+ * The response value type is intentionally `unknown[]` rather than a specific entity union
+ * because the server returns heterogeneous full entity objects (Table, Dashboard, Container,
+ * Pipeline, …) keyed by `entityType`. Callers should narrow per-type at the call-site — e.g.
+ * `result.table as Table[]` — once they know which key they're consuming. Typing the response
+ * as `EntityReference[]` would mislead consumers into thinking the payload is the lightweight
+ * reference DTO when it's actually the full hydrated entity with `columns`, `tableType`,
+ * relationship fields, etc.
  */
 export const hydrateLineageEntities = async (params: {
   entities: { type: string; id: string }[];
   fields?: string;
   include?: 'all' | 'deleted' | 'non-deleted';
-}): Promise<Record<string, EntityReference[]>> => {
-  const response = await APIClient.post<Record<string, EntityReference[]>>(
+}): Promise<Record<string, unknown[]>> => {
+  const response = await APIClient.post<Record<string, unknown[]>>(
     `/lineage/hydrate`,
     params
   );

@@ -225,7 +225,12 @@ public class OpenMetadataAssetServlet extends AssetServlet {
     // shared cache (CDN, corporate proxy) may serve a brotli body to a client that only sent
     // `Accept-Encoding: gzip` (or vice versa) because it doesn't know the negotiated encoding
     // is request-dependent.
-    resp.setHeader("Vary", "Accept-Encoding");
+    //
+    // Merge rather than overwrite — another filter (CORS, security headers) may have already
+    // set `Vary: Origin` or similar. Browsers and shared caches concatenate multiple Vary
+    // headers OR a single comma-separated value. We deliberately use the comma-separated
+    // form because it's the more conservative choice for older intermediaries.
+    appendVaryHeader(resp, "Accept-Encoding");
     String mimeType = req.getServletContext().getMimeType(requestUri);
 
     HttpServletRequestWrapper compressedReq =
@@ -255,6 +260,27 @@ public class OpenMetadataAssetServlet extends AssetServlet {
         };
 
     super.doGet(compressedReq, compressedResp);
+  }
+
+  /**
+   * Append a value to the {@code Vary} response header without clobbering any existing one.
+   *
+   * <p>Browsers and shared caches treat {@code Vary} as a comma-separated list (RFC 7231
+   * §7.1.4). Calling {@code setHeader} would discard a {@code Vary: Origin} that an upstream
+   * CORS filter may already have set; we instead merge.
+   */
+  private static void appendVaryHeader(HttpServletResponse resp, String value) {
+    String existing = resp.getHeader("Vary");
+    if (existing == null || existing.isEmpty()) {
+      resp.setHeader("Vary", value);
+      return;
+    }
+    // Case-insensitive containment check — `Vary` values are tokens, not URLs, so a simple
+    // contains is sufficient and avoids the cost of splitting + trimming.
+    if (existing.toLowerCase().contains(value.toLowerCase())) {
+      return;
+    }
+    resp.setHeader("Vary", existing + ", " + value);
   }
 
   /**

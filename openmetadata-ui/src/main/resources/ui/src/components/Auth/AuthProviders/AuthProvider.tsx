@@ -53,6 +53,7 @@ import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/se
 import { withDomainFilter } from '../../../hoc/withDomainFilter';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useExploreCache } from '../../../hooks/useExploreCache';
 import axiosClient from '../../../rest';
 import {
   fetchAuthenticationConfig,
@@ -217,6 +218,12 @@ export const AuthProvider = ({
 
     // Clear tokens properly during logout
     await clearOidcToken();
+
+    // Drop in-memory client-side caches keyed by the current principal so the next user that
+    // signs in within this SPA session cannot see the previous user's cached responses.
+    // The app navigates to /signin without a hard reload, so global Zustand stores would
+    // otherwise survive across users.
+    useExploreCache.getState().clearCache();
 
     setApplicationLoading(false);
 

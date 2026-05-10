@@ -202,7 +202,6 @@
     <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-http2</artifactId>
-      <version>${dropwizard.version}</version>
     </dependency>
     <dependency>
       <groupId>org.jdbi</groupId>

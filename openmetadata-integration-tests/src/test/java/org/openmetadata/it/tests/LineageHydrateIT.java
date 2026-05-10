@@ -48,8 +48,16 @@ import org.openmetadata.sdk.network.RequestOptions;
  * Integration tests for {@code POST /v1/lineage/hydrate} — the batch entity hydration endpoint.
  *
  * <p>Replaces N per-node entity GETs with one round-trip. Tests cover the happy paths (single
- * type, mixed types, fields propagation), the silent-drop authorization contract, and request
- * validation.
+ * type, mixed types, fields propagation), request validation, and the request-shape contract
+ * of the silent-drop authorization mode (non-existent ids do not fail the batch — the response
+ * omits them).
+ *
+ * <p>The full "permitted vs denied principal" silent-drop contract is enforced at the
+ * implementation level by {@code LineageResource.filterAuthorizedIds} (which calls
+ * {@code authorizer.getPermission} and keeps only ids whose {@code VIEW_BASIC} access is
+ * {@code ALLOW} or {@code CONDITIONAL_ALLOW}). End-to-end coverage with a restricted-permission
+ * principal is left as a follow-up — it requires bootstrapping a team / domain / policy stack
+ * that's heavier than this IT's scope.
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class LineageHydrateIT {
@@ -134,6 +142,36 @@ public class LineageHydrateIT {
     // With fields requested, the keys must be present (may be empty arrays).
     assertTrue(richTable.has("tags"), "fields=tags must include tags key");
     assertTrue(richTable.has("owners"), "fields=owners must include owners key");
+  }
+
+  @Test
+  void hydrateSilentlyDropsMissingIds() throws Exception {
+    // The endpoint's silent-drop contract: ids the batch cannot resolve (because they're
+    // unauthorized OR non-existent) are omitted from the response rather than failing the
+    // entire batch. This test exercises the shape using a non-existent UUID alongside a
+    // valid table — full per-principal authz coverage requires team/domain bootstrapping and
+    // is tracked as follow-up (see class JavaDoc).
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageHydrateIT");
+    Table table = createTable(client, namespace, "hydrate_silent_drop");
+
+    HydrateLineageRequest request =
+        new HydrateLineageRequest()
+            .withEntities(
+                List.of(
+                    new EntityReference().withType("table").withId(table.getId()),
+                    new EntityReference()
+                        .withType("table")
+                        .withId(java.util.UUID.randomUUID())));
+
+    JsonNode response = postHydrate(client, request);
+
+    // The batch returns 200 with the resolvable id, omitting the missing one — not 404 or
+    // empty.
+    assertTrue(response.has("table"), "response must include the resolvable table");
+    JsonNode tables = response.get("table");
+    assertEquals(1, tables.size(), "only the existing table should be returned");
+    assertEquals(table.getId().toString(), tables.get(0).get("id").asText());
   }
 
   @Test

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Card, Col, Row, Skeleton } from 'antd';
+import { useTranslation } from 'react-i18next';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import './my-data.less';
 
@@ -25,8 +26,13 @@ import './my-data.less';
  * real widget would, avoiding a layout shift on reveal.
  */
 export const MyDataPageSkeleton = () => {
+  const { t } = useTranslation();
+
   return (
-    <PageLayoutV1 className="p-b-lg" pageTitle="">
+    // Pass the actual page title so the browser tab / a11y landmark match the real page.
+    // An empty `pageTitle` would briefly clear the document title and break screen-reader
+    // announcements during the skeleton phase.
+    <PageLayoutV1 className="p-b-lg" pageTitle={t('label.my-data')}>
       <div className="grid-wrapper" dir="ltr">
         <div className="landing-page-skeleton-header">
           <Skeleton

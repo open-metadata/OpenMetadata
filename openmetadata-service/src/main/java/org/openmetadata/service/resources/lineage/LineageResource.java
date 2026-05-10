@@ -69,12 +69,14 @@ import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Permission;
+import org.openmetadata.schema.type.Permission.Access;
+import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -832,19 +834,41 @@ public class LineageResource {
     return repo.get(uriInfo, authorizedIds, fields, include);
   }
 
+  /**
+   * Filter the supplied ids to only those the principal can VIEW_BASIC. Uses the non-throwing
+   * {@link Authorizer#getPermission} so denied entities don't pay for an exception walk —
+   * material when the batch is large (up to 200) and the user has restricted access. The
+   * {@code authorize()} variant throws on deny, which would cost an exception construction per
+   * denied entity; for batches that skew denied, that's measurable overhead and the wrong
+   * idiom (exceptions for flow control).
+   */
   private List<UUID> filterAuthorizedIds(
       SecurityContext securityContext, String entityType, List<UUID> ids) {
+    String userName = securityContext.getUserPrincipal().getName();
     List<UUID> authorized = new ArrayList<>(ids.size());
-    OperationContext op = new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     for (UUID id : ids) {
-      try {
-        authorizer.authorize(securityContext, op, new ResourceContext<>(entityType, id, null));
+      ResourceContext<?> resourceContext = new ResourceContext<>(entityType, id, null);
+      ResourcePermission permission =
+          authorizer.getPermission(securityContext, userName, resourceContext);
+      if (isViewBasicAllowed(permission)) {
         authorized.add(id);
-      } catch (AuthorizationException ignored) {
-        // Caller lacks VIEW_BASIC for this entity — drop silently from the batch.
       }
     }
     return authorized;
+  }
+
+  /**
+   * Return {@code true} when the resolved permission set explicitly allows VIEW_BASIC on the
+   * resource (either unconditionally or conditionally — both let the caller read the entity).
+   */
+  private static boolean isViewBasicAllowed(ResourcePermission permission) {
+    for (Permission p : permission.getPermissions()) {
+      if (p.getOperation() == MetadataOperation.VIEW_BASIC) {
+        Access access = p.getAccess();
+        return access == Access.ALLOW || access == Access.CONDITIONAL_ALLOW;
+      }
+    }
+    return false;
   }
 
   @GET
