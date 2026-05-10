@@ -131,6 +131,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('Pipeline Alert', async ({ page }) => {
+  test.slow();
   const ALERT_NAME = generateAlertName();
 
   await test.step('Create alert', async () => {
@@ -256,6 +257,7 @@ test('Alert operations for a user with and without permissions', async ({
     process.env.PLAYWRIGHT_IS_OSS !== 'true',
     'Skipping in AUT environment'
   );
+  test.slow();
 
   const ALERT_NAME = generateAlertName();
   const { apiContext } = await getApiContext(page);
