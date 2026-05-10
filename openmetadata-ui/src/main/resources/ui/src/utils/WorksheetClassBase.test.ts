@@ -19,6 +19,7 @@ import {
   DESCRIPTION_WIDGET,
   GLOSSARY_TERMS_WIDGET,
   GridSizes,
+  KNOWLEDGE_ARTICLE_WIDGET,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { WORKSHEET_DUMMY_DATA } from '../constants/Worksheet.constant';
@@ -28,35 +29,6 @@ import { Worksheet } from '../generated/entity/data/worksheet';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import worksheetClassBase, { WorksheetClassBase } from './WorksheetClassBase';
 import { WorksheetDetailPageTabProps } from './WorksheetDetailsUtils';
-
-// Mock dependencies
-jest.mock('../constants/CustomizeWidgets.constants', () => ({
-  CUSTOM_PROPERTIES_WIDGET: {
-    fullyQualifiedName: 'customProperties',
-    name: 'Custom Properties',
-    data: { gridSizes: ['small', 'medium', 'large'] },
-  },
-  DATA_PRODUCTS_WIDGET: {
-    fullyQualifiedName: 'dataProducts',
-    name: 'Data Products',
-    data: { gridSizes: ['medium', 'large'] },
-  },
-  DESCRIPTION_WIDGET: {
-    fullyQualifiedName: 'description',
-    name: 'Description',
-    data: { gridSizes: ['small', 'medium', 'large'] },
-  },
-  GLOSSARY_TERMS_WIDGET: {
-    fullyQualifiedName: 'glossaryTerms',
-    name: 'Glossary Terms',
-    data: { gridSizes: ['medium', 'large'] },
-  },
-  TAGS_WIDGET: {
-    fullyQualifiedName: 'tags',
-    name: 'Tags',
-    data: { gridSizes: ['medium', 'large'] },
-  },
-}));
 
 jest.mock('../constants/Worksheet.constant', () => ({
   WORKSHEET_DUMMY_DATA: {
@@ -159,6 +131,7 @@ describe('WorksheetClassBase', () => {
         [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
         [DetailPageWidgetKeys.TAGS]: 2,
         [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
+        [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
         [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
       });
     });
@@ -272,7 +245,7 @@ describe('WorksheetClassBase', () => {
     it('should return default layout for SCHEMA tab', () => {
       const result = worksheetClass.getDefaultLayout(EntityTabs.SCHEMA);
 
-      expect(result).toHaveLength(5);
+      expect(result).toHaveLength(6);
 
       // Check left panel
       const leftPanel = result[0];
@@ -298,7 +271,7 @@ describe('WorksheetClassBase', () => {
     it('should return default layout for undefined tab', () => {
       const result = worksheetClass.getDefaultLayout(undefined);
 
-      expect(result).toHaveLength(5);
+      expect(result).toHaveLength(6);
       expect(result[0].i).toBe(DetailPageWidgetKeys.LEFT_PANEL);
     });
 
@@ -356,7 +329,7 @@ describe('WorksheetClassBase', () => {
     it('should return correct widget list', () => {
       const result = worksheetClass.getCommonWidgetList();
 
-      expect(result).toHaveLength(6);
+      expect(result).toHaveLength(7);
       expect(result[0]).toBe(DESCRIPTION_WIDGET);
       expect(result[1]).toEqual({
         fullyQualifiedName: DetailPageWidgetKeys.WORKSHEET_COLUMNS,
@@ -369,6 +342,7 @@ describe('WorksheetClassBase', () => {
       expect(result[3]).toBe(TAGS_WIDGET);
       expect(result[4]).toBe(GLOSSARY_TERMS_WIDGET);
       expect(result[5]).toBe(CUSTOM_PROPERTIES_WIDGET);
+      expect(result[6]).toBe(KNOWLEDGE_ARTICLE_WIDGET);
     });
 
     it('should include worksheet columns widget with correct configuration', () => {

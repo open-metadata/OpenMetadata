@@ -28,6 +28,7 @@ export enum TaskEntityStatus {
   Completed = 'Completed',
   Cancelled = 'Cancelled',
   Failed = 'Failed',
+  Revoked = 'Revoked',
 }
 
 // Task category enum - matches backend TaskCategory
@@ -184,8 +185,7 @@ export interface CreateTask {
   category: TaskCategory;
   type: TaskEntityType;
   priority?: TaskPriority;
-  about?: string; // FQN of the entity this task is about
-  aboutType?: string; // Type of the entity (e.g., "table", "dashboard")
+  about?: string; // Entity link of the asset, format: <#E::{entityType}::{fqn}>
   domain?: string;
   assignees?: string[]; // FQNs of users or teams
   reviewers?: string[]; // FQNs of users or teams

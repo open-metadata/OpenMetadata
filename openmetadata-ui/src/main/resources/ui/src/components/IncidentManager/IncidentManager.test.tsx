@@ -12,7 +12,7 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
-import { act } from 'react';
+import React, { act } from 'react';
 import { Table } from '../../generated/entity/data/table';
 import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';
 import '../../test/unit/mocks/mui.mock';
@@ -146,6 +146,62 @@ jest.mock('@openmetadata/ui-core-components', () => {
     );
   };
 
+  const TableMock = Object.assign(
+    ({
+      children,
+      'data-testid': testId,
+      'aria-label': ariaLabel,
+    }: {
+      children?: React.ReactNode;
+      'data-testid'?: string;
+      'aria-label'?: string;
+    }) => (
+      <table aria-label={ariaLabel} data-testid={testId}>
+        {children}
+      </table>
+    ),
+    {
+      Header: ({
+        columns,
+        children,
+      }: {
+        columns?: { id: string; label: string }[];
+        children: (col: { id: string; label: string }) => React.ReactNode;
+      }) => (
+        <thead>
+          <tr>
+            {columns?.map((col) => (
+              <th key={col.id}>{children(col)}</th>
+            ))}
+          </tr>
+        </thead>
+      ),
+      Head: ({ label }: { label?: string }) => <span>{label}</span>,
+      Body: ({
+        items,
+        children,
+        renderEmptyState,
+      }: {
+        items?: unknown[];
+        children: (item: unknown) => React.ReactNode;
+        renderEmptyState?: () => React.ReactNode;
+        dependencies?: unknown[];
+      }) => (
+        <tbody>
+          {!items || items.length === 0
+            ? renderEmptyState?.()
+            : items.map((item) => children(item))}
+        </tbody>
+      ),
+      Row: ({ children, id }: { children?: React.ReactNode; id?: string }) => (
+        <tr data-rowid={id}>{children}</tr>
+      ),
+      Cell: ({ children }: { children?: React.ReactNode }) => (
+        <td>{children}</td>
+      ),
+    }
+  );
+
   return {
     Dropdown: {
       Root: DropdownRoot,
@@ -169,6 +225,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       .mockImplementation(({ children, className }) => (
         <button className={className}>{children}</button>
       )),
+    Table: TableMock,
   };
 });
 

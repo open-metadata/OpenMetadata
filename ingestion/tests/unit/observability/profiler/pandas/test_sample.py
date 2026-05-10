@@ -29,6 +29,8 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
     DatalakeConnection,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.samplingConfig import SampleConfigType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
 )
@@ -37,9 +39,7 @@ from metadata.profiler.processor.core import Profiler
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.sampler.models import (
     ProfileSampleConfig,
-    ProfileSampleConfigType,
     SampleConfig,
-    StaticSamplingConfig,
 )
 from metadata.sampler.pandas.sampler import DatalakeSampler
 
@@ -179,7 +179,7 @@ class DatalakeSampleTest(TestCase):
                 entity=cls.table_entity,
                 sample_config=SampleConfig(
                     profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        sampleConfigType=SampleConfigType.STATIC,
                         config=StaticSamplingConfig(profileSample=50.0),
                     )
                 ),
@@ -220,7 +220,7 @@ class DatalakeSampleTest(TestCase):
                 entity=self.table_entity,
                 sample_config=SampleConfig(
                     profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        sampleConfigType=SampleConfigType.STATIC,
                         config=StaticSamplingConfig(profileSample=50.0),
                     )
                 ),
@@ -259,7 +259,7 @@ class DatalakeSampleTest(TestCase):
                 entity=self.table_entity,
                 sample_config=SampleConfig(
                     profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        sampleConfigType=SampleConfigType.STATIC,
                         config=StaticSamplingConfig(profileSample=50.0),
                     )
                 ),
@@ -345,7 +345,7 @@ class DatalakeSampleTest(TestCase):
                 entity=self.table_entity,
                 sample_config=SampleConfig(
                     profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        sampleConfigType=SampleConfigType.STATIC,
                         config=StaticSamplingConfig(profileSample=50.0),
                     )
                 ),
@@ -382,7 +382,7 @@ class DatalakeSampleTest(TestCase):
                 entity=self.table_entity,
                 default_sample_config=SampleConfig(
                     profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        sampleConfigType=SampleConfigType.STATIC,
                         config=StaticSamplingConfig(profileSample=50.0),
                     )
                 ),

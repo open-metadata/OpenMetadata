@@ -20,6 +20,7 @@ import { PAGE_SIZE } from '../constants/constants';
 import {
   DESCRIPTION_WIDGET,
   GridSizes,
+  KNOWLEDGE_ARTICLE_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { queryFilterToRemoveSomeClassification } from '../constants/Tag.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -206,6 +207,7 @@ class TagClassBase {
           gridSizes: ['large'] as GridSizes[],
         },
       },
+      KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }
 
