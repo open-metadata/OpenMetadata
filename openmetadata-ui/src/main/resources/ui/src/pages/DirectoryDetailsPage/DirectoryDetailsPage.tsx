@@ -31,11 +31,17 @@ import {
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { Directory } from '../../generated/entity/data/directory';
 import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
+import { useLazyEntityExtension } from '../../hooks/useLazyEntityExtension';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import {
   addDriveAssetFollower,
   getDriveAssetByFqn,
@@ -64,9 +70,22 @@ const DirectoryDetailsPage = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const { fqn: directoryFQN } = useFqn();
+  const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const [directoryDetails, setDirectoryDetails] = useState<Directory>(
     {} as Directory
   );
+
+  // Lazy custom-properties fetch — see {@link useLazyEntityExtension}.
+  // getDriveAssetByFqn has a different signature (entityType-keyed) so we adapt it.
+  useLazyEntityExtension<Directory>({
+    entityType: EntityType.DIRECTORY,
+    fqn: directoryFQN,
+    activeTab,
+    fetcher: (fqn, params) =>
+      getDriveAssetByFqn<Directory>(fqn, EntityType.DIRECTORY, params.fields),
+    onResolve: (extension) =>
+      setDirectoryDetails((prev) => ({ ...prev, extension })),
+  });
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState(false);
 
