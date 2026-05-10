@@ -174,14 +174,19 @@ const getLatestRunStartTime = async (page: Page) => {
   const response = await apiContext.get(
     `/api/v1/apps/name/${SEARCH_INDEX_APP_NAME}/runs/latest`
   );
+  const run = await getAppRunRecord(response);
 
-  if (!response.ok()) {
+  return run?.startTime;
+};
+
+const getAppRunRecord = async (response: Response) => {
+  if (!response.ok() || response.status() === 204) {
     return undefined;
   }
 
-  const run = (await response.json()) as AppRunRecordResponse;
+  const body = await response.text();
 
-  return run.startTime;
+  return body ? (JSON.parse(body) as AppRunRecordResponse) : undefined;
 };
 
 const waitForNewSuccessfulRun = async (
@@ -197,17 +202,15 @@ const waitForNewSuccessfulRun = async (
         const response = await apiContext.get(
           `/api/v1/apps/name/${SEARCH_INDEX_APP_NAME}/runs/latest`
         );
+        const run = await getAppRunRecord(response);
 
-        if (!response.ok()) {
+        if (run?.startTime === undefined) {
           return undefined;
         }
 
-        const run = (await response.json()) as AppRunRecordResponse;
-
         if (
-          run.startTime === undefined ||
-          (previousRunStartTime !== undefined &&
-            run.startTime <= previousRunStartTime)
+          previousRunStartTime !== undefined &&
+          run.startTime <= previousRunStartTime
         ) {
           return undefined;
         }
