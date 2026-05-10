@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ReactNode, useState } from 'react';
+import { ReactNode, useCallback, useState } from 'react';
 import { useInView } from 'react-intersection-observer';
 
 interface DeferredWidgetProps {
@@ -41,6 +41,15 @@ interface DeferredWidgetProps {
 
   /** Optional class on the wrapper div — for layout grids that style by selector. */
   className?: string;
+
+  /**
+   * Render children immediately, bypassing the IntersectionObserver wait. Use cases:
+   *  - Tests where {@code IntersectionObserver} is mocked and never fires
+   *    (the repo's Jest setup installs a no-op mock).
+   *  - Known-above-fold widgets where the observer round-trip is wasted work.
+   * Defaults to {@code false} (production lazy behaviour).
+   */
+  initialInView?: boolean;
 }
 
 /**
@@ -62,21 +71,34 @@ export const DeferredWidget = ({
   rootMargin = '200px 0px',
   threshold = 0,
   className,
+  initialInView = false,
 }: DeferredWidgetProps) => {
-  const [hasBeenVisible, setHasBeenVisible] = useState(false);
+  const [hasBeenVisible, setHasBeenVisible] = useState(initialInView);
 
-  const { ref, inView } = useInView({
+  // Drive the state update through useInView's `onChange` callback rather than reading
+  // `inView` and calling setState during render. setState-in-render works because of the
+  // `!hasBeenVisible` guard but it's a React anti-pattern that can trigger extra render
+  // passes and dev warnings.
+  const handleChange = useCallback((visible: boolean) => {
+    if (visible) {
+      setHasBeenVisible(true);
+    }
+  }, []);
+
+  const { ref } = useInView({
     rootMargin,
     threshold,
     // Fire only the first crossing into view — once revealed, the widget mounts and the
     // observer detaches. Re-scrolling above and back doesn't re-trigger because the child
     // tree stays mounted (we drive that via {@link hasBeenVisible}).
     triggerOnce: true,
+    // When IntersectionObserver is unavailable (SSR, very old browsers, some test
+    // environments) treat the wrapper as "in view" so children render eagerly rather than
+    // staying invisible forever. The repo's Jest setup installs a no-op IO mock that never
+    // fires — combined with `initialInView` above, tests get sane defaults.
+    fallbackInView: true,
+    onChange: handleChange,
   });
-
-  if (inView && !hasBeenVisible) {
-    setHasBeenVisible(true);
-  }
 
   return (
     <div className={className} ref={ref}>

@@ -91,12 +91,26 @@ function readEtagHeader(response: AxiosResponse): string | undefined {
   return typeof candidateUpper === 'string' ? candidateUpper : undefined;
 }
 
+// Marker we stamp on an AxiosInstance once we've installed our interceptor pair. Lets the
+// function be properly idempotent — re-invocation (HMR, test setup re-runs, callers that
+// accidentally re-init) is a no-op rather than stacking another interceptor pair plus another
+// `validateStatus` override on top of itself.
+const ETAG_INTERCEPTOR_INSTALLED = Symbol.for(
+  '@openmetadata/etag-interceptor-installed'
+);
+
 /**
- * Wire ETag handling into the axios client. Idempotent — calling twice is harmless because
- * each call uses a fresh interceptor pair (callers that re-init axios should clear the cache
- * via {@link clearEtagCache}).
+ * Wire ETag handling into the axios client. Idempotent — calling twice on the same client is
+ * a no-op (guarded via a symbol marker on the instance). Callers that re-init axios from
+ * scratch should also clear the cache via {@link clearEtagCache}.
  */
 export function attachEtagInterceptor(client: AxiosInstance): void {
+  const marker = client as unknown as Record<symbol, boolean>;
+  if (marker[ETAG_INTERCEPTOR_INSTALLED]) {
+    return;
+  }
+  marker[ETAG_INTERCEPTOR_INSTALLED] = true;
+
   // Treat 304 as a success status so axios delivers it through the response interceptor
   // instead of the error path. Without this, our 304-handling code would have to live in
   // the error interceptor and intercepts on every error path.
@@ -144,11 +158,17 @@ export function attachEtagInterceptor(client: AxiosInstance): void {
       if (entry) {
         touch(key, entry);
 
+        // Deep-clone the cached body before handing it back. Consumers (UI components,
+        // utilities, edit handlers) routinely mutate the entity object they receive — adding
+        // local UI state, normalising fields, stripping properties — and a shared reference
+        // would let those mutations leak back into the cache. The next 304 would then return
+        // the mutated copy and cross-page bugs become very hard to track. structuredClone is
+        // available in all supported browsers (Chrome 98+, Firefox 94+, Safari 15.4+).
         return {
           ...response,
           status: 200,
           statusText: 'OK (from ETag cache)',
-          data: entry.data,
+          data: structuredClone(entry.data),
         };
       }
 
