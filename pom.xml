@@ -191,25 +191,8 @@
         <artifactId>angus-mail</artifactId>
         <version>${angus-mail.version}</version>
       </dependency>
-      <!--
-        CVE-2026-43869: org.apache.jena:apache-jena-libs:4.10.0 → jena-arq transitively
-        pulls org.apache.thrift:libthrift:0.19.0 (vulnerable; fixed in 0.23.0).
-
-        Why pin and not bump-or-exclude:
-          - Bump apache-jena-libs: latest Jena (6.0.0) still ships libthrift 0.22.0
-            (also vulnerable). libthrift 0.23.0 was published 2026-05-08; Jena upstream
-            has not released a version with the fix yet.
-          - Exclude libthrift from apache-jena-libs: BREAKS the build. Even though OM
-            does not call RDF Thrift I/O, several Jena classes (e.g. ModelFactory,
-            PrefixMappingImpl) statically reference org.apache.thrift.TException at
-            class-init time. Removing libthrift causes NoClassDefFoundError on first
-            use of any Jena Model — verified by RdfInferenceConfigurationTest /
-            RdfPropertyMapperTest failing with `Could not initialize class
-            org.apache.jena.rdf.model.ModelFactory` and `org/apache/thrift/TException`.
-          - Pin libthrift to 0.23.0: forces the fixed version onto Jena's classpath.
-            libthrift maintains backwards-compatible binary protocol semantics, so
-            Jena's runtime usage continues to work. CI will validate.
-      -->
+      <!-- CVE-2026-43869: pin to 0.23.0. No Jena release ships the fix yet (6.0.0 still uses 0.22.0).
+           Excluding libthrift breaks RDF tests — Jena's ModelFactory statically references TException. -->
       <dependency>
         <groupId>org.apache.thrift</groupId>
         <artifactId>libthrift</artifactId>
