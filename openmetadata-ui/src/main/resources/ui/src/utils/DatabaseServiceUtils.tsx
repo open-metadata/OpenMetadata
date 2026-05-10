@@ -51,6 +51,7 @@ import microsoftFabricConnection from '../jsons/connectionSchemas/connections/da
 import mongoDBConnection from '../jsons/connectionSchemas/connections/database/mongoDBConnection.json';
 import mssqlConnection from '../jsons/connectionSchemas/connections/database/mssqlConnection.json';
 import mysqlConnection from '../jsons/connectionSchemas/connections/database/mysqlConnection.json';
+import odooConnection from '../jsons/connectionSchemas/connections/database/odooConnection.json';
 import oracleConnection from '../jsons/connectionSchemas/connections/database/oracleConnection.json';
 import pinotConnection from '../jsons/connectionSchemas/connections/database/pinotDBConnection.json';
 import postgresConnection from '../jsons/connectionSchemas/connections/database/postgresConnection.json';
@@ -318,6 +319,12 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 
     case DatabaseServiceType.Iomete: {
       schema = iometeConnection;
+
+      break;
+    }
+
+    case DatabaseServiceType.Odoo: {
+      schema = odooConnection;
 
       break;
     }
