@@ -110,6 +110,42 @@ public final class CacheKeys {
    * toggling the UI's "Deleted" switch would return a stale page from the other side until
    * the version stamp rotates.
    */
+  /**
+   * Prefix for cached {@code GET /api/v1/search/query} responses. Per-principal,
+   * per-(query+filters+pagination) entries hash-suffixed in {@link CachedSearchLayer}.
+   */
+  public String search() {
+    return ns + ":search";
+  }
+
+  /**
+   * Cached lineage graph keyed by the root entity. {@code upstreamDepth} and {@code
+   * downstreamDepth} are folded into the key so each variant is its own cache entry. Invalidation
+   * issues a SCAN + UNLINK for {@link #lineageGraphPattern} to drop every variant for that root
+   * at once.
+   *
+   * <p>The {@code rootId} is wrapped in Redis hash-tag braces so when we eventually run on Redis
+   * Cluster, all lineage variants for the same root land on the same slot — keeps SCAN+UNLINK
+   * efficient and avoids cross-slot pipeline rejection.
+   */
+  public String lineageGraph(
+      java.util.UUID rootId, int upstreamDepth, int downstreamDepth, boolean includeDeleted) {
+    return ns
+        + ":lineage:graph:{"
+        + rootId.toString()
+        + "}:up="
+        + upstreamDepth
+        + ":down="
+        + downstreamDepth
+        + ":incDel="
+        + includeDeleted;
+  }
+
+  /** SCAN/UNLINK pattern for {@link #lineageGraph} — matches every depth/include variant. */
+  public String lineageGraphPattern(java.util.UUID rootId) {
+    return ns + ":lineage:graph:{" + rootId.toString() + "}:*";
+  }
+
   public String childrenPage(
       String type, String parentFqn, String version, int limit, int offset, String includeTag) {
     String fqnHash = FullyQualifiedName.buildHash(parentFqn);

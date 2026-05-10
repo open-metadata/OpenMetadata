@@ -2898,6 +2898,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (cachedReadBundle != null) {
         cachedReadBundle.invalidate(entityType, row.id);
       }
+      var cachedLineage = CacheBundle.getCachedLineage();
+      if (cachedLineage != null) {
+        cachedLineage.invalidate(row.id);
+      }
       if (pubsub != null) {
         pubsub.publish(entityType, row.id, row.fqn, "rename-cascade");
       }
@@ -2954,6 +2958,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     var cachedReadBundle = CacheBundle.getCachedReadBundle();
     if (cachedReadBundle != null) {
       cachedReadBundle.invalidate(entityType, id);
+    }
+    var cachedLineage = CacheBundle.getCachedLineage();
+    if (cachedLineage != null) {
+      cachedLineage.invalidate(id);
     }
     var pubsub = CacheBundle.getCacheInvalidationPubSub();
     if (pubsub != null) {
@@ -3136,6 +3144,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       var cachedReadBundle = CacheBundle.getCachedReadBundle();
       if (cachedReadBundle != null) {
         cachedReadBundle.invalidate(entityType, entity.getId());
+      }
+
+      // Invalidate cached lineage rooted at this entity. Transitive changes (entity X is a node
+      // in someone else's cached graph) fall through to the 60s TTL — see CachedLineage doc.
+      var cachedLineage = CacheBundle.getCachedLineage();
+      if (cachedLineage != null) {
+        cachedLineage.invalidate(entity.getId());
       }
 
       // Invalidate tag caches
@@ -8594,6 +8609,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       var cachedReadBundle = CacheBundle.getCachedReadBundle();
       if (cachedReadBundle != null) {
         cachedReadBundle.invalidate(entityType, id);
+      }
+      var cachedLineage = CacheBundle.getCachedLineage();
+      if (cachedLineage != null) {
+        cachedLineage.invalidate(id);
       }
 
       // Synchronous repopulate: the write path holds the request thread until Redis is updated,

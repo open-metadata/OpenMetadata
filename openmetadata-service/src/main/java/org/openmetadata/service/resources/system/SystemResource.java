@@ -954,6 +954,11 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
 
     Map<String, Object> stats = CacheBundle.getCacheProvider().getStats();
+    org.openmetadata.service.cache.CacheMetrics metrics =
+        org.openmetadata.service.cache.CacheMetrics.getInstance();
+    if (metrics != null) {
+      stats.put("metrics", metrics.snapshot());
+    }
     return Response.ok(stats).build();
   }
 

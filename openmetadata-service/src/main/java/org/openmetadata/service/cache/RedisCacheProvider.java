@@ -562,6 +562,39 @@ public class RedisCacheProvider implements CacheProvider {
   }
 
   @Override
+  public long scanDelete(String pattern) {
+    if (!available || pattern == null || pattern.isEmpty()) {
+      return 0L;
+    }
+    long deleted = 0L;
+    try {
+      io.lettuce.core.ScanArgs args = io.lettuce.core.ScanArgs.Builder.matches(pattern).limit(500);
+      io.lettuce.core.KeyScanCursor<String> cursor = syncCommands.scan(args);
+      while (true) {
+        java.util.List<String> keys = cursor.getKeys();
+        if (!keys.isEmpty()) {
+          // UNLINK is async-delete on the Redis side — same effect as DEL but doesn't block the
+          // event loop on large value reclamation. Falls back to DEL on Redis < 4.0, which we do
+          // not target.
+          deleted += syncCommands.unlink(keys.toArray(new String[0]));
+          CacheMetrics m = metrics();
+          if (m != null) {
+            for (int i = 0; i < keys.size(); i++) m.recordEviction();
+          }
+        }
+        if (cursor.isFinished()) break;
+        cursor = syncCommands.scan(cursor, args);
+      }
+      return deleted;
+    } catch (Exception e) {
+      LOG.warn("scanDelete failed for pattern={}", pattern, e);
+      CacheMetrics m = metrics();
+      if (m != null) m.recordError();
+      return deleted;
+    }
+  }
+
+  @Override
   public void close() {
     try {
       if (healthChecker != null) {

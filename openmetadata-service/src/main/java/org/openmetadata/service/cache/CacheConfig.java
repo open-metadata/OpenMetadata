@@ -19,6 +19,19 @@ public class CacheConfig {
   public int relationshipTtlSeconds = 3600; // 1 hour
   public int tagTtlSeconds = 3600; // 1 hour
 
+  // /api/v1/search/query response cache. Short TTL because search hits ES which usually
+  // has its own request cache; 30s catches the typical "user types and re-searches the
+  // same thing within a minute" pattern without serving badly stale results after writes.
+  // Set to 0 to disable.
+  public int searchTtlSeconds = 30;
+
+  // /api/v1/lineage/* response cache. Hybrid TTL + direct-invalidation strategy: a 60s TTL
+  // backstops cases where a transitive change (an entity deep in the cached graph) wasn't
+  // explicitly invalidated. Direct edits (entity rename/delete, lineage edge add/remove)
+  // still invalidate the affected root cache entries immediately. Set to 0 to disable —
+  // the read path falls through to LineageRepository.computeLineage as if no cache existed.
+  public int lineageTtlSeconds = 60;
+
   // Listing total-row counts. Short TTL because counts are best-effort: a freshly created
   // entity may not show up in paging.total for up to listCountTtlSeconds, but the list
   // itself is always live. Keeps repeated /containers, /tables, /dashboards listings

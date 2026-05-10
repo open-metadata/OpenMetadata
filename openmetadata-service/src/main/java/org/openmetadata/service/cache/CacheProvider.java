@@ -56,6 +56,19 @@ public interface CacheProvider extends AutoCloseable {
     return -1L;
   }
 
+  /**
+   * SCAN keys matching {@code pattern} and UNLINK them in batches. Returns the number of keys
+   * deleted, or {@code 0} if the provider doesn't support pattern-based deletion (the default).
+   *
+   * <p>Like {@link #scanCount}, the wall time is O(n) over the keyspace, not over matches. Call
+   * it on bounded events (entity edits, lineage edge changes) — never in a hot loop. Always use
+   * a precise pattern (e.g. {@code "om:prod:lineage:graph:{abc}:*"}); avoid broad globs like
+   * {@code "om:prod:*"} which would block the cluster on a large keyspace.
+   */
+  default long scanDelete(String pattern) {
+    return 0L;
+  }
+
   @Override
   void close();
 }

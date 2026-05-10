@@ -55,15 +55,21 @@ public class CachedReadBundle {
       return null;
     }
     String key = keys.bundle(entityType, entityId);
+    String layerType = bundleType(entityType);
+    CacheMetrics m = CacheMetrics.getInstance();
     try {
       Optional<String> json = cache.get(key);
       if (json.isEmpty()) {
+        if (m != null) m.recordLayerMiss(layerType);
         return null;
       }
-      return JsonUtils.readValue(json.get(), Dto.class);
+      Dto dto = JsonUtils.readValue(json.get(), Dto.class);
+      if (m != null) m.recordLayerHit(layerType);
+      return dto;
     } catch (Exception e) {
       LOG.warn("Bad bundle cache entry, evicting: {} {}", entityType, entityId, e);
       cache.del(key);
+      if (m != null) m.recordError();
       return null;
     }
   }
@@ -76,9 +82,21 @@ public class CachedReadBundle {
     try {
       String json = JsonUtils.pojoToJson(dto);
       cache.set(key, json, Duration.ofSeconds(config.entityTtlSeconds));
+      CacheMetrics m = CacheMetrics.getInstance();
+      if (m != null) m.recordLayerWrite(bundleType(entityType));
     } catch (Exception e) {
       LOG.warn("Failed to cache read bundle: {} {}", entityType, entityId, e);
     }
+  }
+
+  /**
+   * Tag the bundle layer's per-type counters with a {@code bundle:<entityType>} prefix so they
+   * sort separately from the entity-cache counters in {@code /cache/stats}. Without the prefix a
+   * bundle hit on table and an entity hit on table would merge — operators couldn't tell which
+   * layer is doing the work.
+   */
+  private static String bundleType(String entityType) {
+    return "bundle:" + entityType;
   }
 
   public void invalidate(String entityType, UUID entityId) {

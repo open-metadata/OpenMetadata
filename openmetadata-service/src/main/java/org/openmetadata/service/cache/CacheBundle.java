@@ -21,8 +21,16 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
   private static CachedReadBundle cachedReadBundle;
   private static AncestorsCache ancestorsCache;
   private static ChildrenPageCache childrenPageCache;
+  private static CachedSearchLayer cachedSearchLayer;
+  private static CachedLineage cachedLineage;
   private static CacheInvalidationPubSub cacheInvalidationPubSub;
   private static CacheConfig cacheConfig;
+  // Registry of cache layers that implement Invalidatable. Both the pub-sub handler (remote pod
+  // writes) and CacheBundle.invalidateEntity (local mutations) iterate this list and fan out a
+  // single (type, id, fqn) tuple to every registered layer. New cache layers should call
+  // registerInvalidatable() in their owner — typically here in run(), right after construction.
+  private static final java.util.List<Invalidatable> INVALIDATABLES =
+      new java.util.concurrent.CopyOnWriteArrayList<>();
 
   public CacheBundle() {
     instance = this;
@@ -72,6 +80,13 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
       cachedReadBundle = new CachedReadBundle(cacheProvider, keys, cacheConfig);
       ancestorsCache = new AncestorsCache(cacheProvider, keys, cacheConfig);
       childrenPageCache = new ChildrenPageCache(cacheProvider, keys, cacheConfig);
+      cachedSearchLayer = new CachedSearchLayer(cacheProvider, keys, cacheConfig);
+      cachedLineage = new CachedLineage(cacheProvider, keys, cacheConfig);
+      // Register all id-keyed cache layers that participate in entity-write invalidation.
+      // Layers with type/fqn-keyed semantics (CachedReadBundle, AncestorsCache, etc.) keep
+      // their existing wiring for now — see .context/cache-improvements-design.md P1.3 for
+      // the full audit and the planned migration of those layers to the registry.
+      registerInvalidatable(cachedLineage);
       cacheInvalidationPubSub = new CacheInvalidationPubSub(cacheConfig);
       cacheInvalidationPubSub.setHandler(
           msg -> {
@@ -80,6 +95,16 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
                   msg.type(), msg.id(), msg.fqn());
               if (msg.id() != null && cachedReadBundle != null) {
                 cachedReadBundle.invalidate(msg.type(), msg.id());
+              }
+              // Fan invalidation out to every Invalidatable registered with the bundle. This is
+              // the path new cache layers should plug into — implement Invalidatable, call
+              // registerInvalidatable, and the remote-pod invalidation Just Works.
+              for (Invalidatable layer : INVALIDATABLES) {
+                try {
+                  layer.invalidate(msg.type(), msg.id(), msg.fqn());
+                } catch (Exception ex) {
+                  LOG.debug("Invalidatable {} failed for {}", layer, msg, ex);
+                }
               }
               // Container-only derived caches: ancestors keyed by descendant FQN, children-page
               // keyed by parent FQN. Other entity types don't have these caches today, so this
@@ -149,6 +174,42 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
 
   public static ChildrenPageCache getChildrenPageCache() {
     return childrenPageCache;
+  }
+
+  public static CachedSearchLayer getCachedSearchLayer() {
+    return cachedSearchLayer;
+  }
+
+  public static CachedLineage getCachedLineage() {
+    return cachedLineage;
+  }
+
+  /**
+   * Register an {@link Invalidatable} cache layer with the bundle. Both the pub-sub handler
+   * (remote pod writes) and {@link #invalidateEntity} (local mutations) iterate registered
+   * layers and call {@code invalidate(type, id, fqn)} on each. Idempotent — safe to call
+   * multiple times for the same instance.
+   */
+  public static void registerInvalidatable(Invalidatable layer) {
+    if (layer != null && !INVALIDATABLES.contains(layer)) {
+      INVALIDATABLES.add(layer);
+    }
+  }
+
+  /**
+   * Fan an entity-write invalidation out to every registered Invalidatable. Called from
+   * {@code EntityRepository.postUpdate / postDelete / restoreEntity} on the local pod; remote
+   * pods invoke the same fan-out via the pub-sub handler above. No-op if no layers are
+   * registered (cache disabled or none registered yet).
+   */
+  public static void invalidateEntity(String type, java.util.UUID id, String fqn) {
+    for (Invalidatable layer : INVALIDATABLES) {
+      try {
+        layer.invalidate(type, id, fqn);
+      } catch (Exception e) {
+        LOG.debug("Invalidatable {} failed for type={} id={} fqn={}", layer, type, id, fqn, e);
+      }
+    }
   }
 
   public static CacheInvalidationPubSub getCacheInvalidationPubSub() {

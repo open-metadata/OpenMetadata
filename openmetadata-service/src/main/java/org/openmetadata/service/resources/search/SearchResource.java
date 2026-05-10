@@ -254,7 +254,24 @@ public class SearchResource {
             .withSearchAfter(SearchUtils.searchAfter(searchAfter))
             .withExplain(explain)
             .withIncludeAggregations(includeAggregations);
-    return searchRepository.search(request, subjectContext);
+
+    // Auth-aware response cache (Item 1). Bots bypass — they do bulk indexing reads with
+    // cardinalities that would pollute the user-keyed cache.
+    org.openmetadata.service.cache.CachedSearchLayer searchCache =
+        org.openmetadata.service.cache.CacheBundle.getCachedSearchLayer();
+    String principal = subjectContext.user() != null ? subjectContext.user().getName() : null;
+    boolean cacheable = searchCache != null && searchCache.enabled() && !subjectContext.isBot();
+    if (cacheable) {
+      java.util.Optional<String> cached = searchCache.get(request, principal);
+      if (cached.isPresent()) {
+        return Response.ok(cached.get(), MediaType.APPLICATION_JSON_TYPE).build();
+      }
+    }
+    Response upstream = searchRepository.search(request, subjectContext);
+    if (cacheable && upstream.getStatus() == 200 && upstream.getEntity() instanceof String body) {
+      searchCache.put(request, principal, body);
+    }
+    return upstream;
   }
 
   @GET
