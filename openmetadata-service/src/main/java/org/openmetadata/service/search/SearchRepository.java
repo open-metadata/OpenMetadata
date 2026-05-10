@@ -142,6 +142,7 @@ import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.client.BedrockEmbeddingClient;
 import org.openmetadata.service.search.vector.client.DjlEmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.GoogleEmbeddingClient;
 import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -3232,6 +3233,13 @@ public class SearchRepository {
               "OpenAI configuration is required when using openai provider");
         }
         yield new OpenAIEmbeddingClient(esConfig);
+      }
+      case "google" -> {
+        if (config.getGoogle() == null) {
+          throw new IllegalStateException(
+              "Google configuration is required when using google provider");
+        }
+        yield new GoogleEmbeddingClient(esConfig);
       }
       case "djl" -> {
         if (config.getDjl() == null) {
