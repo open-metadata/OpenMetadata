@@ -202,6 +202,41 @@ export default defineConfig(({ mode }) => {
               if (id.includes('@untitledui/icons')) {
                 return 'vendor-untitled-icons';
               }
+              // Heavy tab-specific libraries split into named vendor chunks. Without these
+              // explicit rules Rollup's auto-chunking lumped reactflow, recharts, rjsf,
+              // react-grid-layout, and codemirror into a single ~8.87 MB grab-bag chunk
+              // (named after the first lazy entry to pull them in). Splitting them here
+              // gives each library its own cacheable chunk so the browser can fetch them
+              // in parallel and skip the ones a given page doesn't use.
+              // `reactflow` is a meta-package that re-exports from `@reactflow/*` sub-packages
+              // (core, background, controls, minimap, node-resizer, node-toolbar). The heavy
+              // code lives in @reactflow/core, so we need to match both prefixes — matching
+              // only `node_modules/reactflow` misses the bulk of the bytes.
+              if (
+                id.includes('node_modules/reactflow') ||
+                id.includes('node_modules/@reactflow')
+              ) {
+                return 'vendor-reactflow';
+              }
+              if (
+                id.includes('node_modules/recharts') ||
+                id.includes('node_modules/d3-')
+              ) {
+                return 'vendor-recharts';
+              }
+              if (id.includes('node_modules/react-grid-layout')) {
+                return 'vendor-grid-layout';
+              }
+              if (id.includes('node_modules/@rjsf')) {
+                return 'vendor-rjsf';
+              }
+              if (
+                id.includes('node_modules/codemirror') ||
+                id.includes('node_modules/@codemirror') ||
+                id.includes('node_modules/@uiw/react-codemirror')
+              ) {
+                return 'vendor-codemirror';
+              }
             }
           },
         },
