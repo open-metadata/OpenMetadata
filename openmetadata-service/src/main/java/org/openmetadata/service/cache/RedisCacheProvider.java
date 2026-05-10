@@ -601,50 +601,67 @@ public class RedisCacheProvider implements CacheProvider {
     Timer.Sample sample = startReadTimer(m);
     long startNanos = System.nanoTime();
     try {
+      // Auto-flush is a property of the SHARED connection. If we throw between
+      // setAutoFlushCommands(false) and the restoration call, every subsequent command issued
+      // by any caller against this connection silently buffers — a system-wide hang.
+      // Wrap the whole flow in a try/finally so restoration is unconditional, regardless of
+      // which step (queue, flush, await) throws.
       connection.setAutoFlushCommands(false);
-      java.util.List<io.lettuce.core.RedisFuture<String>> futures = new java.util.ArrayList<>(n);
-      for (String k : keys) {
-        futures.add(k == null ? null : asyncCommands.get(k));
-      }
-      connection.flushCommands();
       try {
+        java.util.List<io.lettuce.core.RedisFuture<String>> futures = new java.util.ArrayList<>(n);
+        for (String k : keys) {
+          futures.add(k == null ? null : asyncCommands.get(k));
+        }
+        connection.flushCommands();
         io.lettuce.core.LettuceFutures.awaitAll(
             java.time.Duration.ofMillis(Math.max(1000, config.redis.commandTimeoutMs * 2L)),
             futures.stream()
                 .filter(java.util.Objects::nonNull)
                 .toArray(io.lettuce.core.RedisFuture[]::new));
+        java.util.List<java.util.Optional<String>> out = new java.util.ArrayList<>(n);
+        int hits = 0;
+        int misses = 0;
+        for (io.lettuce.core.RedisFuture<String> f : futures) {
+          if (f == null) {
+            out.add(java.util.Optional.empty());
+            continue;
+          }
+          try {
+            String v = f.get();
+            out.add(java.util.Optional.ofNullable(v));
+            if (v != null) {
+              hits++;
+            } else {
+              misses++;
+            }
+          } catch (Exception inner) {
+            out.add(java.util.Optional.empty());
+            misses++;
+          }
+        }
+        if (m != null) {
+          for (int i = 0; i < hits; i++) {
+            m.recordHit();
+          }
+          for (int i = 0; i < misses; i++) {
+            m.recordMiss();
+          }
+        }
+        recordSuccess();
+        return out;
       } finally {
         connection.setAutoFlushCommands(true);
       }
-      java.util.List<java.util.Optional<String>> out = new java.util.ArrayList<>(n);
-      int hits = 0, misses = 0;
-      for (io.lettuce.core.RedisFuture<String> f : futures) {
-        if (f == null) {
-          out.add(java.util.Optional.empty());
-          continue;
-        }
-        try {
-          String v = f.get();
-          out.add(java.util.Optional.ofNullable(v));
-          if (v != null) hits++;
-          else misses++;
-        } catch (Exception inner) {
-          out.add(java.util.Optional.empty());
-          misses++;
-        }
-      }
-      if (m != null) {
-        for (int i = 0; i < hits; i++) m.recordHit();
-        for (int i = 0; i < misses; i++) m.recordMiss();
-      }
-      recordSuccess();
-      return out;
     } catch (Exception e) {
-      if (m != null) m.recordError();
+      if (m != null) {
+        m.recordError();
+      }
       recordFailure(e);
       LOG.error("Error in mget for {} keys", n, e);
       java.util.List<java.util.Optional<String>> out = new java.util.ArrayList<>(n);
-      for (int i = 0; i < n; i++) out.add(java.util.Optional.empty());
+      for (int i = 0; i < n; i++) {
+        out.add(java.util.Optional.empty());
+      }
       return out;
     } finally {
       stopReadTimer(m, sample);

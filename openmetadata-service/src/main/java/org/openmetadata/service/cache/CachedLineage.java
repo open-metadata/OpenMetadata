@@ -81,7 +81,13 @@ public final class CachedLineage implements Invalidatable {
       recordHit();
       return first.get();
     }
-    Lock lock = loadLocks.get(rootId);
+    // Lock on the FULL cache key, not the rootId. Different (depth, includeDeleted)
+    // combinations for the same root produce distinct cache slots and shouldn't serialize on
+    // each other — locking on rootId would cause concurrent `?upstreamDepth=1` and
+    // `?upstreamDepth=3` for the same entity to block each other for no good reason. Striped
+    // hashes the key into one of N locks; two genuinely-identical requests still single-flight,
+    // distinct requests run in parallel (modulo hash collisions, which are acceptable).
+    Lock lock = loadLocks.get(key);
     lock.lock();
     try {
       Optional<String> recheck = safeGet(key);

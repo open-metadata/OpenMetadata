@@ -40,6 +40,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
@@ -66,6 +67,7 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheMetrics;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -954,12 +956,42 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
 
     Map<String, Object> stats = CacheBundle.getCacheProvider().getStats();
-    org.openmetadata.service.cache.CacheMetrics metrics =
-        org.openmetadata.service.cache.CacheMetrics.getInstance();
+    CacheMetrics metrics = CacheMetrics.getInstance();
     if (metrics != null) {
       stats.put("metrics", metrics.snapshot());
     }
     return Response.ok(stats).build();
+  }
+
+  // Minimum literal prefix required on cache patterns before the first wildcard. Stops a
+  // careless or malicious admin from issuing `*` / `om:*` (broad scans/deletes that can
+  // block the Redis cluster on a large keyspace). Tuned to require at least `om:<env>:<layer>:`
+  // worth of literal context — i.e. ~6 characters before any wildcard.
+  private static final int CACHE_PATTERN_MIN_LITERAL_PREFIX = 6;
+
+  // Disallow patterns that are pure wildcards or have a tiny literal prefix. ReDoS-safe:
+  // single linear scan; no backtracking.
+  private static String validateCachePattern(String pattern) {
+    if (pattern == null || pattern.isBlank()) {
+      return "pattern query param required";
+    }
+    int firstWildcard = -1;
+    for (int i = 0; i < pattern.length(); i++) {
+      char c = pattern.charAt(i);
+      if (c == '*' || c == '?' || c == '[') {
+        firstWildcard = i;
+        break;
+      }
+    }
+    int literalPrefixLen = firstWildcard < 0 ? pattern.length() : firstWildcard;
+    if (literalPrefixLen < CACHE_PATTERN_MIN_LITERAL_PREFIX) {
+      return "pattern must have at least "
+          + CACHE_PATTERN_MIN_LITERAL_PREFIX
+          + " literal characters before any wildcard (got "
+          + literalPrefixLen
+          + ")";
+    }
+    return null;
   }
 
   @GET
@@ -977,13 +1009,11 @@ public class SystemResource {
         @ApiResponse(responseCode = "403", description = "Forbidden")
       })
   public Response scanCacheKeys(
-      @Context SecurityContext securityContext,
-      @jakarta.ws.rs.QueryParam("pattern") String pattern) {
+      @Context SecurityContext securityContext, @QueryParam("pattern") String pattern) {
     authorizer.authorizeAdmin(securityContext);
-    if (pattern == null || pattern.isBlank()) {
-      return Response.status(Response.Status.BAD_REQUEST)
-          .entity(Map.of("error", "pattern query param required"))
-          .build();
+    String invalid = validateCachePattern(pattern);
+    if (invalid != null) {
+      return Response.status(Response.Status.BAD_REQUEST).entity(Map.of("error", invalid)).build();
     }
     long count = CacheBundle.getCacheProvider().scanCount(pattern);
     return Response.ok(Map.of("pattern", pattern, "count", count)).build();
@@ -1004,13 +1034,11 @@ public class SystemResource {
         @ApiResponse(responseCode = "403", description = "Forbidden")
       })
   public Response invalidateCacheByPattern(
-      @Context SecurityContext securityContext,
-      @jakarta.ws.rs.QueryParam("pattern") String pattern) {
+      @Context SecurityContext securityContext, @QueryParam("pattern") String pattern) {
     authorizer.authorizeAdmin(securityContext);
-    if (pattern == null || pattern.isBlank()) {
-      return Response.status(Response.Status.BAD_REQUEST)
-          .entity(Map.of("error", "pattern query param required"))
-          .build();
+    String invalid = validateCachePattern(pattern);
+    if (invalid != null) {
+      return Response.status(Response.Status.BAD_REQUEST).entity(Map.of("error", invalid)).build();
     }
     long deleted = CacheBundle.getCacheProvider().scanDelete(pattern);
     return Response.ok(Map.of("pattern", pattern, "deleted", deleted)).build();
@@ -1031,26 +1059,35 @@ public class SystemResource {
       })
   public Response invalidateCacheForEntity(
       @Context SecurityContext securityContext,
-      @jakarta.ws.rs.QueryParam("type") String type,
-      @jakarta.ws.rs.QueryParam("id") String idStr,
-      @jakarta.ws.rs.QueryParam("fqn") String fqn) {
+      @QueryParam("type") String type,
+      @QueryParam("id") String idStr,
+      @QueryParam("fqn") String fqn) {
     authorizer.authorizeAdmin(securityContext);
     if (type == null || type.isBlank() || (idStr == null && (fqn == null || fqn.isBlank()))) {
       return Response.status(Response.Status.BAD_REQUEST)
           .entity(Map.of("error", "type and one of (id, fqn) are required"))
           .build();
     }
-    java.util.UUID id = null;
+    UUID id = null;
     if (idStr != null && !idStr.isBlank()) {
       try {
-        id = java.util.UUID.fromString(idStr);
+        id = UUID.fromString(idStr);
       } catch (IllegalArgumentException e) {
         return Response.status(Response.Status.BAD_REQUEST)
             .entity(Map.of("error", "id is not a valid UUID"))
             .build();
       }
     }
+    // Reach every cache layer that holds entries keyed by this entity:
+    //   1. INVALIDATABLES registry (lineage cache, not-found cache, future Redis-backed layers)
+    //      via CacheBundle.invalidateEntity.
+    //   2. Guava L1 caches (CACHE_WITH_ID, CACHE_WITH_NAME) — the hot path on every entity
+    //      GET; without explicit eviction here, an admin force-invalidate wouldn't actually
+    //      take effect on the originating pod's in-memory cache. The static
+    //      EntityRepository.invalidateCacheForEntity also propagates over the pub-sub channel
+    //      to other pods so multi-replica deploys all evict simultaneously.
     CacheBundle.invalidateEntity(type, id, fqn);
+    EntityRepository.invalidateCacheForEntity(type, id, fqn);
     return Response.ok(Map.of("invalidated", true, "type", type)).build();
   }
 

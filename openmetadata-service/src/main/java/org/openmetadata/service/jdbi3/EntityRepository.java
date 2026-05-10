@@ -1435,16 +1435,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final T find(UUID id, Include include, boolean fromCache) throws EntityNotFoundException {
+    // Negative cache fast-path (P2.4): a recent lookup that resolved to "not found" lets us
+    // throw a 404 without re-hitting Guava L1 or the DB. Checking BEFORE the fromCache branch
+    // because the default-cached entry point — `find(id, include)` — delegates here with
+    // fromCache=true, and the cache layer above doesn't filter by negative state. Only checked
+    // for include=NON_DELETED so DELETED/ALL lookups always go to the DB (their semantics
+    // change which rows are visible).
+    var notFoundCache = CacheBundle.getNotFoundCache();
+    if (include == NON_DELETED
+        && notFoundCache != null
+        && notFoundCache.isMarkedNotFoundById(entityType, id)) {
+      throw new EntityNotFoundException(entityNotFound(entityType, id));
+    }
     if (!fromCache) {
-      // Negative cache fast-path (P2.4): if a recent lookup of this id said "not there", we can
-      // throw immediately without re-hitting the DB. Only checked when include=NON_DELETED to
-      // keep semantics simple — DELETED/ALL lookups always go to the DB.
-      var notFoundCache = CacheBundle.getNotFoundCache();
-      if (include == NON_DELETED
-          && notFoundCache != null
-          && notFoundCache.isMarkedNotFoundById(entityType, id)) {
-        throw new EntityNotFoundException(entityNotFound(entityType, id));
-      }
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
       T entity;
       try (var ignored = phase("dbFindByIdNoCache")) {
@@ -1498,6 +1501,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       return entity;
     } catch (ExecutionException | UncheckedExecutionException e) {
+      // Guava loader couldn't resolve the id — typically because the DB returned null.
+      // Populate the negative cache so subsequent default-cached lookups for the same id
+      // short-circuit via the fast-path above instead of paying the loader cost again.
+      if (include == NON_DELETED && notFoundCache != null) {
+        notFoundCache.markNotFoundById(entityType, id);
+      }
       throw new EntityNotFoundException(entityNotFound(entityType, id));
     }
   }
@@ -2038,14 +2047,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final T findByName(String fqn, Include include, boolean fromCache) {
     fqn = quoteFqn ? quoteName(fqn) : fqn;
+    // Negative cache fast-path (P2.4) — see find(UUID,...) above for rationale. Check is hoisted
+    // OUTSIDE the `!fromCache` guard so the default cached entry point (`findByName(fqn, include)`
+    // → fromCache=true) benefits from it; otherwise the fast-path was unreachable for the most
+    // common caller.
+    var notFoundCache = CacheBundle.getNotFoundCache();
+    if (include == NON_DELETED
+        && notFoundCache != null
+        && notFoundCache.isMarkedNotFoundByName(entityType, fqn)) {
+      throw new EntityNotFoundException(entityNotFound(entityType, fqn));
+    }
     if (!fromCache) {
-      // Negative cache fast-path (P2.4) — see find(UUID,...) above for rationale.
-      var notFoundCache = CacheBundle.getNotFoundCache();
-      if (include == NON_DELETED
-          && notFoundCache != null
-          && notFoundCache.isMarkedNotFoundByName(entityType, fqn)) {
-        throw new EntityNotFoundException(entityNotFound(entityType, fqn));
-      }
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
       T entity;
       try (var ignored = phase("dbFindByNameNoCache")) {
@@ -2079,6 +2091,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       return entity;
     } catch (ExecutionException | UncheckedExecutionException e) {
+      // Guava loader couldn't resolve the fqn — populate the negative cache so subsequent
+      // default-cached lookups short-circuit instead of paying the loader cost again.
+      if (include == NON_DELETED && notFoundCache != null) {
+        notFoundCache.markNotFoundByName(entityType, fqn);
+      }
       throw new EntityNotFoundException(entityNotFound(entityType, fqn));
     }
   }

@@ -270,6 +270,12 @@ public class SearchResource {
     // Buffer the upstream response body once so the cache stores exactly what we return. The
     // single-flight wrapper holds the stripe lock around the supplier; we keep the supplier
     // tight to minimize lock-hold time.
+    //
+    // The supplier captures the Response object into `capturedResponse[0]` so a non-cacheable
+    // outcome (non-200 or non-String body) can be returned directly without a SECOND call to
+    // searchRepository.search() — the previous implementation re-called search() on the error
+    // path, doubling backend load for every error / non-200 response.
+    final Response[] capturedResponse = new Response[1];
     final java.io.IOException[] thrown = new java.io.IOException[1];
     String body =
         searchCache.loadOrCompute(
@@ -278,6 +284,7 @@ public class SearchResource {
             () -> {
               try {
                 Response upstream = searchRepository.search(request, subjectContext);
+                capturedResponse[0] = upstream;
                 if (upstream.getStatus() != 200) {
                   return null; // don't cache non-200; loadOrCompute treats null as "no cache write"
                 }
@@ -288,13 +295,23 @@ public class SearchResource {
                 return null;
               }
             });
-    if (thrown[0] != null) throw thrown[0];
-    if (body == null) {
-      // Upstream returned non-200 OR a non-String entity; bypass cache and return the live
-      // response so error semantics are preserved.
-      return searchRepository.search(request, subjectContext);
+    if (thrown[0] != null) {
+      throw thrown[0];
     }
-    return Response.ok(body, MediaType.APPLICATION_JSON_TYPE).build();
+    if (body != null) {
+      // Cache hit OR fresh write succeeded — return the cached/just-computed body.
+      return Response.ok(body, MediaType.APPLICATION_JSON_TYPE).build();
+    }
+    if (capturedResponse[0] != null) {
+      // The supplier ran for this caller and produced a non-cacheable response (non-200 or
+      // non-String entity). Return it directly — no second backend call.
+      return capturedResponse[0];
+    }
+    // Edge case: single-flight wait — another caller ran the supplier for our key and its
+    // response was non-cacheable, so the cache stayed empty and we received body=null. Fall
+    // through to a live call (this is rare and only affects the second+ caller of a query
+    // that's currently returning errors).
+    return searchRepository.search(request, subjectContext);
   }
 
   @GET

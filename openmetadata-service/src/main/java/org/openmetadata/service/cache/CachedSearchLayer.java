@@ -28,8 +28,11 @@ import org.openmetadata.schema.search.SearchRequest;
  * users with different ACLs do not see each other's filtered results. Cache key is
  * {@code om:<keyspace>:search:<sha256-hex>} where the SHA-256 input is the concatenation of every
  * field that affects the result set, plus the principal name. TTL is short
- * ({@link CacheConfig#searchTtlSeconds}, default 30s) — search is approximate and cache misses
- * after writes self-heal within the TTL window.
+ * ({@link CacheConfig#searchTtlSeconds}, default 2s) — short TTL is deliberate: search is the
+ * primary surface for create-then-search workflows in the UI (newly-tagged entities, just-added
+ * domains, newly-deleted assets). A 30s TTL caused IT regressions where users couldn't see
+ * their own writes for half a minute. 2s gives meaningful cache-hit ratio on rapid tab-toggle
+ * and back-button navigation while keeping post-write staleness imperceptible.
  *
  * <p>Distinct from {@link CachedReadBundle}: that cache stores entity bundles by id; this one
  * stores the entire ES/OS response body for a specific (query, principal) tuple. Search itself
