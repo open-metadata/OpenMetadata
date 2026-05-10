@@ -113,6 +113,14 @@ export const DATA_PRODUCTS_WIDGET: CommonWidgetType = {
   data: { gridSizes: ['small'] },
 };
 
+export const KNOWLEDGE_ARTICLE_WIDGET = {
+  fullyQualifiedName: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
+  name: i18n.t('label.knowledge-page-plural'),
+  data: {
+    gridSizes: ['large'] as GridSizes[],
+  },
+};
+
 export const DUMMY_TAGS_LIST = [
   {
     tagFQN: 'BusinessGlossary.Purchase',

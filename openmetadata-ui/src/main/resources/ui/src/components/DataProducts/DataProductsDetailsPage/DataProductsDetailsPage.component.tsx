@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Avatar } from '@openmetadata/ui-core-components';
+import {
+  Avatar,
+  Button as CoreButton,
+  Tooltip as CoreTooltip,
+} from '@openmetadata/ui-core-components';
 import { Button, Dropdown, Tabs, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
@@ -55,6 +59,7 @@ import { ContractExecutionStatus } from '../../../generated/type/contractExecuti
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useDataAccessRequest } from '../../../hooks/useDataAccessRequest';
 import { useFqn } from '../../../hooks/useFqn';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -173,6 +178,12 @@ const DataProductsDetailsPage = ({
   const [dataContract, setDataContract] = useState<DataContract>();
   const [inputPortsCount, setInputPortsCount] = useState(0);
   const [outputPortsCount, setOutputPortsCount] = useState(0);
+  const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
+  const { isDarDisabled } = useDataAccessRequest({
+    entityFqn: dataProduct.fullyQualifiedName,
+    enabled: dataProductClassBase.getShowRequestDataAccess(),
+    listenForEvents: true,
+  });
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -335,6 +346,11 @@ const DataProductsDetailsPage = ({
   const voteStatus = useMemo(
     () => getEntityVoteStatus(currentUser?.id ?? '', dataProduct.votes),
     [dataProduct.votes, currentUser?.id]
+  );
+
+  const isOwner = useMemo(
+    () => dataProduct.owners?.some((o) => o.id === currentUser?.id) ?? false,
+    [dataProduct.owners, currentUser?.id]
   );
 
   const handleVoteChange = useCallback(
@@ -759,6 +775,23 @@ const DataProductsDetailsPage = ({
           </div>
           <div>
             <div className="tw:flex tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
+              {!isVersionsView &&
+                !isOwner &&
+                dataProductClassBase.getShowRequestDataAccess() && (
+                  <CoreTooltip
+                    isDisabled={!isDarDisabled}
+                    title={t('message.data-access-request-already-exists')}>
+                    <CoreButton
+                      color="primary"
+                      data-testid="request-data-access-button"
+                      isDisabled={isDarDisabled}
+                      size="md"
+                      onClick={() => setIsRequestDataAccessOpen(true)}>
+                      {t('label.request-data-access')}
+                    </CoreButton>
+                  </CoreTooltip>
+                )}
+
               {!isVersionsView && dataProductPermission.Create && (
                 <Button
                   data-testid="data-product-details-add-button"
@@ -943,6 +976,14 @@ const DataProductsDetailsPage = ({
         open={isAnnouncementDrawerOpen}
         onClose={handleCloseAnnouncementDrawer}
       />
+
+      {dataProductClassBase.getRequestDataAccessDrawer(
+        isRequestDataAccessOpen,
+        () => setIsRequestDataAccessOpen(false),
+        dataProduct.fullyQualifiedName ?? '',
+        getEntityName(dataProduct),
+        EntityType.DATA_PRODUCT
+      )}
     </>
   );
 
