@@ -34,8 +34,7 @@ public class DistributedJobNotifierFactory {
    * @return The notifier implementation
    */
   public static DistributedJobNotifier create(CollectionDAO collectionDAO, String serverId) {
-    LOG.info(
-        "Using database polling for distributed search indexing job discovery (2s discovery interval)");
+    LOG.info("Using database polling for distributed search indexing job discovery");
     return new PollingJobNotifier(collectionDAO, serverId);
   }
 }

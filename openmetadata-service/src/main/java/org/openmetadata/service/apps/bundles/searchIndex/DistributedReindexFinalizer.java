@@ -45,20 +45,31 @@ class DistributedReindexFinalizer {
 
     Set<String> entitiesToFinalize = new HashSet<>(stagedIndexContext.getEntities());
     entitiesToFinalize.removeAll(promotedEntities);
-    promoteColumnIndexIfTableWasPromoted(promotedEntities, entityStats, entitiesToFinalize);
-    finalizeEntities(entitiesToFinalize, entityStats, finalSuccess);
+    Set<String> finalizedEntities = new HashSet<>(promotedEntities);
+
+    routeColumnFinalizationThroughTable(entitiesToFinalize);
+    promoteColumnIndexIfTableWasPromoted(
+        promotedEntities, entityStats, entitiesToFinalize, finalizedEntities);
+    finalizeEntities(entitiesToFinalize, entityStats, finalSuccess, finalizedEntities);
 
     return finalSuccess;
+  }
+
+  private void routeColumnFinalizationThroughTable(Set<String> entitiesToFinalize) {
+    if (entitiesToFinalize.contains(Entity.TABLE)) {
+      entitiesToFinalize.remove(Entity.TABLE_COLUMN);
+    }
   }
 
   private void promoteColumnIndexIfTableWasPromoted(
       Set<String> promotedEntities,
       Map<String, SearchIndexJob.EntityTypeStats> entityStats,
-      Set<String> entitiesToFinalize) {
+      Set<String> entitiesToFinalize,
+      Set<String> finalizedEntities) {
     if (promotedEntities.contains(Entity.TABLE)
         && !promotedEntities.contains(Entity.TABLE_COLUMN)) {
       boolean tableSuccess = computeEntitySuccess(Entity.TABLE, entityStats);
-      promoteColumnIndex(tableSuccess);
+      promoteColumnIndex(tableSuccess, finalizedEntities);
       entitiesToFinalize.remove(Entity.TABLE_COLUMN);
     }
   }
@@ -66,7 +77,8 @@ class DistributedReindexFinalizer {
   private void finalizeEntities(
       Set<String> entitiesToFinalize,
       Map<String, SearchIndexJob.EntityTypeStats> entityStats,
-      boolean finalSuccess) {
+      boolean finalSuccess,
+      Set<String> finalizedEntities) {
     LOG.debug("Entities to finalize={}", entitiesToFinalize);
     if (entitiesToFinalize.isEmpty()) {
       return;
@@ -74,6 +86,10 @@ class DistributedReindexFinalizer {
 
     LOG.info("Finalizing {} remaining entities", entitiesToFinalize.size());
     for (String entityType : entitiesToFinalize) {
+      if (!finalizedEntities.add(entityType)) {
+        LOG.debug("Skipping already finalized entity '{}'", entityType);
+        continue;
+      }
       try {
         boolean entitySuccess = computeEntitySuccess(entityType, entityStats);
         LOG.debug(
@@ -83,7 +99,7 @@ class DistributedReindexFinalizer {
             finalSuccess);
         finalizeEntityReindex(entityType, entitySuccess);
         if (Entity.TABLE.equals(entityType)) {
-          promoteColumnIndex(entitySuccess);
+          promoteColumnIndex(entitySuccess, finalizedEntities);
         }
       } catch (Exception ex) {
         LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
@@ -91,8 +107,12 @@ class DistributedReindexFinalizer {
     }
   }
 
-  private void promoteColumnIndex(boolean tableSuccess) {
+  private void promoteColumnIndex(boolean tableSuccess, Set<String> finalizedEntities) {
     if (stagedIndexContext.getStagedIndex(Entity.TABLE_COLUMN).isEmpty()) {
+      return;
+    }
+    if (!finalizedEntities.add(Entity.TABLE_COLUMN)) {
+      LOG.debug("Skipping already finalized column index");
       return;
     }
     try {
