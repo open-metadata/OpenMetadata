@@ -401,22 +401,33 @@ public class DistributedRdfIndexCoordinator {
       String lastError) {
     RdfIndexPartition partition = getPartition(partitionId);
     long now = System.currentTimeMillis();
-    collectionDAO
-        .rdfIndexPartitionDAO()
-        .update(
-            partitionId.toString(),
-            PartitionStatus.COMPLETED.name(),
-            cursor,
-            processedCount,
-            successCount,
-            failedCount,
-            partition.getAssignedServer(),
-            partition.getClaimedAt(),
-            partition.getStartedAt(),
-            now,
-            now,
-            lastError,
-            partition.getRetryCount());
+    int updated =
+        collectionDAO
+            .rdfIndexPartitionDAO()
+            .updateIfProcessing(
+                partitionId.toString(),
+                PartitionStatus.COMPLETED.name(),
+                cursor,
+                processedCount,
+                successCount,
+                failedCount,
+                partition.getAssignedServer(),
+                partition.getClaimedAt(),
+                partition.getStartedAt(),
+                now,
+                now,
+                lastError,
+                partition.getRetryCount());
+    if (updated == 0) {
+      // Stop or another participant already moved the row out of PROCESSING
+      // (typically to CANCELLED). Don't bump server stats and don't overwrite
+      // the authoritative status — the partition is done as far as this
+      // worker is concerned.
+      LOG.info(
+          "Skipping completion of RDF partition {} — no longer PROCESSING (status overridden by stop/reclaim)",
+          partitionId);
+      return;
+    }
     incrementServerStats(partition, processedCount, successCount, failedCount, 1, 0);
     refreshAggregatedJob(jobIdFrom(partition));
   }
@@ -430,22 +441,29 @@ public class DistributedRdfIndexCoordinator {
       String errorMessage) {
     RdfIndexPartition partition = getPartition(partitionId);
     long now = System.currentTimeMillis();
-    collectionDAO
-        .rdfIndexPartitionDAO()
-        .update(
-            partitionId.toString(),
-            PartitionStatus.FAILED.name(),
-            cursor,
-            processedCount,
-            successCount,
-            failedCount,
-            partition.getAssignedServer(),
-            partition.getClaimedAt(),
-            partition.getStartedAt(),
-            now,
-            now,
-            errorMessage,
-            partition.getRetryCount() + 1);
+    int updated =
+        collectionDAO
+            .rdfIndexPartitionDAO()
+            .updateIfProcessing(
+                partitionId.toString(),
+                PartitionStatus.FAILED.name(),
+                cursor,
+                processedCount,
+                successCount,
+                failedCount,
+                partition.getAssignedServer(),
+                partition.getClaimedAt(),
+                partition.getStartedAt(),
+                now,
+                now,
+                errorMessage,
+                partition.getRetryCount() + 1);
+    if (updated == 0) {
+      LOG.info(
+          "Skipping failure of RDF partition {} — no longer PROCESSING (status overridden by stop/reclaim)",
+          partitionId);
+      return;
+    }
     incrementServerStats(partition, processedCount, successCount, failedCount, 0, 1);
     refreshAggregatedJob(jobIdFrom(partition));
   }
@@ -712,9 +730,23 @@ public class DistributedRdfIndexCoordinator {
     IndexJobStatus status = existing.getStatus();
     String errorMessage = existing.getErrorMessage();
     if (aggregate.pendingPartitions() == 0 && aggregate.processingPartitions() == 0) {
+      // Partition lastError is an additional error signal alongside
+      // failedPartitions/failedRecords: a partition can finish COMPLETED but
+      // still carry a non-null lastError (e.g. relationship/lineage bulk write
+      // failures that don't bump failedRecords). Without this check the job
+      // could be promoted straight to COMPLETED here, and the later
+      // checkAndUpdateJobCompletion call would early-return because the job
+      // is already terminal — silently dropping the error signal.
+      boolean hasPartitionLastError =
+          !collectionDAO
+              .rdfIndexPartitionDAO()
+              .findRecentPartitionErrors(jobId.toString(), 1)
+              .isEmpty();
       if (status == IndexJobStatus.STOPPING) {
         status = IndexJobStatus.STOPPED;
-      } else if (aggregate.failedPartitions() > 0 || aggregate.failedRecords() > 0) {
+      } else if (aggregate.failedPartitions() > 0
+          || aggregate.failedRecords() > 0
+          || hasPartitionLastError) {
         status = IndexJobStatus.COMPLETED_WITH_ERRORS;
         if (errorMessage == null || errorMessage.isBlank()) {
           errorMessage = aggregatePartitionErrors(jobId, aggregate);

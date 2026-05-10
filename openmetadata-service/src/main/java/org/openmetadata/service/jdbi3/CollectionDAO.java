@@ -13604,6 +13604,36 @@ public interface CollectionDAO {
     @SqlQuery("SELECT COUNT(*) FROM rdf_index_partition WHERE jobId = :jobId AND status = :status")
     int countPartitionsByStatus(@Bind("jobId") String jobId, @Bind("status") String status);
 
+    /**
+     * Status-guarded variant of {@link #update}: only writes if the row is still
+     * PROCESSING. Workers use this on completion so that a concurrent Stop
+     * (which moves the row to CANCELLED) isn't overwritten back to
+     * COMPLETED/FAILED, which would make the Stop button look unreliable.
+     * Returns the number of rows updated (0 means the row was no longer
+     * PROCESSING and the caller should skip side effects like server-stat
+     * increments).
+     */
+    @SqlUpdate(
+        "UPDATE rdf_index_partition SET status = :status, processingCursor = :cursor, "
+            + "processedCount = :processedCount, successCount = :successCount, failedCount = :failedCount, "
+            + "assignedServer = :assignedServer, claimedAt = :claimedAt, startedAt = :startedAt, "
+            + "completedAt = :completedAt, lastUpdateAt = :lastUpdateAt, lastError = :lastError, "
+            + "retryCount = :retryCount WHERE id = :id AND status = 'PROCESSING'")
+    int updateIfProcessing(
+        @Bind("id") String id,
+        @Bind("status") String status,
+        @Bind("cursor") long cursor,
+        @Bind("processedCount") long processedCount,
+        @Bind("successCount") long successCount,
+        @Bind("failedCount") long failedCount,
+        @Bind("assignedServer") String assignedServer,
+        @Bind("claimedAt") Long claimedAt,
+        @Bind("startedAt") Long startedAt,
+        @Bind("completedAt") Long completedAt,
+        @Bind("lastUpdateAt") Long lastUpdateAt,
+        @Bind("lastError") String lastError,
+        @Bind("retryCount") int retryCount);
+
     @SqlUpdate(
         "UPDATE rdf_index_partition SET status = :status, assignedServer = NULL, claimedAt = NULL, "
             + "lastError = :reason, lastUpdateAt = :updatedAt, completedAt = :completedAt "
