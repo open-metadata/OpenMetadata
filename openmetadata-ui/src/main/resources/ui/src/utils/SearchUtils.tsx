@@ -26,6 +26,7 @@ import { ReactComponent as IconDatabase } from '../assets/svg/ic-database.svg';
 import { ReactComponent as IconDatabaseSchema } from '../assets/svg/ic-schema.svg';
 import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
+import { ReactComponent as KnowledgeCenterIconComponent } from '../assets/svg/knowledge-center.svg';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { ReactComponent as IconMlModal } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as IconPipeline } from '../assets/svg/pipeline-grey.svg';
@@ -163,6 +164,12 @@ export const getGroupLabel = (index: string) => {
     case SearchIndex.COLUMN:
       label = i18n.t('label.column-plural');
       GroupIcon = ColumnIcon;
+
+      break;
+
+    case SearchIndex.KNOWLEDGE_PAGE_INDEX:
+      label = i18n.t('label.knowledge-center');
+      GroupIcon = KnowledgeCenterIconComponent;
 
       break;
 

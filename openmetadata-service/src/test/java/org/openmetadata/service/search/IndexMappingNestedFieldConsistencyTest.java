@@ -69,6 +69,37 @@ class IndexMappingNestedFieldConsistencyTest {
   }
 
   @Test
+  void taggableIndexFieldsMustAppearTogether() {
+    List<String> violations = new ArrayList<>();
+    for (Map.Entry<String, JsonNode> entry : allMappings.entrySet()) {
+      String entity = entry.getKey();
+      JsonNode properties = getTopLevelProperties(entry.getValue());
+      assertNotNull(
+          properties,
+          "Index mapping for '" + entity + "' has no properties — mapping file may be malformed.");
+      boolean hasClassificationTags = properties.has("classificationTags");
+      boolean hasGlossaryTags = properties.has("glossaryTags");
+      if (hasClassificationTags != hasGlossaryTags) {
+        violations.add(
+            entity
+                + " (classificationTags="
+                + hasClassificationTags
+                + ", glossaryTags="
+                + hasGlossaryTags
+                + ")");
+      }
+    }
+    assertTrue(
+        violations.isEmpty(),
+        "Indexes whose backing index class implements TaggableIndex must define both "
+            + "'classificationTags' and 'glossaryTags' as top-level keyword fields. "
+            + "TaggableIndex.applyTagFields() writes both into every doc; if the mapping omits "
+            + "one, OpenSearch dynamic-maps it as text and aggregations/sorts/scripts on it fail "
+            + "at reindex time. Violations: "
+            + violations);
+  }
+
+  @Test
   void ownersFieldMustBeNestedInAllIndices() {
     List<String> violations = new ArrayList<>();
     for (Map.Entry<String, JsonNode> entry : allMappings.entrySet()) {

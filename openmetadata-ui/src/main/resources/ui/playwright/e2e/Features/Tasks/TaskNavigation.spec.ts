@@ -610,8 +610,8 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       try {
         const response = await apiContext.post('/api/v1/tasks', {
           data: {
-            about: entityFqn,
-            aboutType: 'table',
+            name: `Test Task - ${Date.now()}`,
+            about: `<#E::table::${entityFqn}>`,
             type: 'DescriptionUpdate',
             category: 'MetadataUpdate',
             assignees: [adminUser.responseData.name],
@@ -711,8 +711,8 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
         try {
           const response = await apiContext.post('/api/v1/tasks', {
             data: {
-              about: entityFqn,
-              aboutType: 'table',
+              name: `Test Task - ${Date.now()}`,
+              about: `<#E::table::${entityFqn}>`,
               type: 'DescriptionUpdate',
               category: 'MetadataUpdate',
               assignees: [otherUser.responseData.name],
