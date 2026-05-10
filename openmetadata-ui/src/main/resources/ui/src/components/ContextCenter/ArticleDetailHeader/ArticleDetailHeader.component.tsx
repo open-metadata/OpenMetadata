@@ -33,31 +33,31 @@ import {
   ThumbsUp,
   User03,
 } from '@untitledui/icons';
-import { DeleteType } from 'components/common/DeleteWidget/DeleteWidget.interface';
-import ManageButton from 'components/common/EntityPageInfos/ManageButton/ManageButton';
-import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
-import TabsLabel from 'components/common/TabsLabel/TabsLabel.component';
-import TitleBreadcrumb from 'components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { QueryVoteType } from 'components/Database/TableQueries/TableQueries.interface';
-import { ROUTES } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { EntityType } from 'enums/entity.enum';
-import { useCurrentUserPreferences } from 'hooks/currentUserStore/useCurrentUserStore';
-import { useApplicationStore } from 'hooks/useApplicationStore';
-import { useClipboard } from 'hooks/useClipBoard';
-import {
-  ContentChangeState,
-  RecentlyViewedQuickLinks,
-} from 'interface/knowledge-center.interface';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import deleteWidgetClassBase from 'utils/DeleteWidget/DeleteWidgetClassBase';
-import EntityLink from 'utils/EntityLink';
-import { getEntityName } from 'utils/EntityUtils';
-import { updateKnowledgeCenterRecentViewed } from 'utils/KnowledgePageUtils';
 import { ReactComponent as SidebarCollapsible } from '../../../assets/svg/ic-sidebar-collapsible.svg';
+import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
+import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
+import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
+import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
+import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
+import { ROUTES } from '../../../constants/constants';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useClipboard } from '../../../hooks/useClipBoard';
+import {
+  ContentChangeState,
+  RecentlyViewedQuickLinks,
+} from '../../../interface/knowledge-center.interface';
+import deleteWidgetClassBase from '../../../utils/DeleteWidget/DeleteWidgetClassBase';
+import EntityLink from '../../../utils/EntityLink';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
 
 const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({

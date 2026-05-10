@@ -35,16 +35,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import {
-  followKnowledgePage,
-  getListKnowledgePages,
-  postKnowledgePage,
-  unFollowKnowledgePage,
-  updateKnowledgePageVote,
-} from 'rest/knowledgeCenterAPI';
-import { Transi18next } from 'utils/i18next/LocalUtil';
-import { getKnowledgePagePath } from 'utils/KnowledgePageUtils';
-import { showErrorToast } from 'utils/ToastUtils';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -69,6 +59,16 @@ import {
   KnowledgePage,
   PageType,
 } from '../../../interface/knowledge-center.interface';
+import {
+  followKnowledgePage,
+  getListKnowledgePages,
+  postKnowledgePage,
+  unFollowKnowledgePage,
+  updateKnowledgePageVote,
+} from '../../../rest/knowledgeCenterAPI';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
+import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import KnowledgeCard from '../KnowledgeCard/KnowledgeCard';
 import KnowledgePageListRightPanel from '../KnowledgePageListRightPanel/KnowledgePageListRightPanel';
 import {

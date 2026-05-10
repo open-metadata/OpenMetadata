@@ -26,10 +26,10 @@ import {
   Share07,
   Trash01,
 } from '@untitledui/icons';
-import ErrorPlaceHolder from 'components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import {
   DocFile,
   DocFileType,

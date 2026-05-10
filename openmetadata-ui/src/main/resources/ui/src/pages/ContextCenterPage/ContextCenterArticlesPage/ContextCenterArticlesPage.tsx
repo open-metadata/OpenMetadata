@@ -14,45 +14,45 @@
 import { DownOutlined } from '@ant-design/icons';
 import { Button, Dropdown } from 'antd';
 import { AxiosError } from 'axios';
-import { withActivityFeed } from 'components/AppRouter/withActivityFeed';
-import ArticleDetailHeader from 'components/ContextCenter/ArticleDetailHeader/ArticleDetailHeader.component';
-import ContextCenterHeader from 'components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
-import KnowledgeCenterLayout from 'components/KnowledgeCenter/KnowledgeCenterLayout/KnowledgeCenterLayout';
-import KnowledgePageDetailComponent from 'components/KnowledgeCenter/KnowledgePageDetailComponent/KnowledgePageDetailComponent';
-import KnowledgePageListComponent from 'components/KnowledgeCenter/KnowledgePageListComponent/KnowledgePageListComponent';
-import KnowledgePagesHierarchy from 'components/KnowledgeCenter/KnowledgePagesHierarchy/KnowledgePagesHierarchy';
-import {
-    QuickLinkFormModal,
-    QuickLinkFormModalFormData
-} from 'components/KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
 import { CREATE_PAGE_HASH } from 'constants/constants';
-import { useLimitStore } from 'context/LimitsProvider/useLimitsStore';
-import { usePermissionProvider } from 'context/PermissionProvider/PermissionProvider';
-import {
-    OperationPermission,
-    ResourceEntity
-} from 'context/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { EntityTabs } from 'enums/entity.enum';
-import LimitWrapper from 'hoc/LimitWrapper';
-import { useApplicationStore } from 'hooks/useApplicationStore';
-import { useFqn } from 'hooks/useFqn';
-import {
-    ContentChangeState,
-    CreateKnowledgePage,
-    KnowledgeCenterPageProps,
-    KnowledgeCenterPageRef,
-    KnowledgePagesHierarchyRef,
-    PageType
-} from 'interface/knowledge-center.interface';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { postKnowledgePage } from 'rest/knowledgeCenterAPI';
-import { getContextCenterArticlePath } from 'utils/KnowledgePageUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
+import ArticleDetailHeader from '../../../components/ContextCenter/ArticleDetailHeader/ArticleDetailHeader.component';
+import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
+import KnowledgeCenterLayout from '../../../components/KnowledgeCenter/KnowledgeCenterLayout/KnowledgeCenterLayout';
+import KnowledgePageDetailComponent from '../../../components/KnowledgeCenter/KnowledgePageDetailComponent/KnowledgePageDetailComponent';
+import KnowledgePageListComponent from '../../../components/KnowledgeCenter/KnowledgePageListComponent/KnowledgePageListComponent';
+import KnowledgePagesHierarchy from '../../../components/KnowledgeCenter/KnowledgePagesHierarchy/KnowledgePagesHierarchy';
+import {
+  QuickLinkFormModal,
+  QuickLinkFormModalFormData,
+} from '../../../components/KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
 import { ROUTES } from '../../../constants/constants';
+import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityTabs } from '../../../enums/entity.enum';
+import LimitWrapper from '../../../hoc/LimitWrapper';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useFqn } from '../../../hooks/useFqn';
+import {
+  ContentChangeState,
+  CreateKnowledgePage,
+  KnowledgeCenterPageProps,
+  KnowledgeCenterPageRef,
+  KnowledgePagesHierarchyRef,
+  PageType,
+} from '../../../interface/knowledge-center.interface';
+import { postKnowledgePage } from '../../../rest/knowledgeCenterAPI';
+import { getContextCenterArticlePath } from '../../../utils/KnowledgePageUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 
 const ContextCenterArticlesPage = () => {
   const { t } = useTranslation();
@@ -248,8 +248,8 @@ const ContextCenterArticlesPage = () => {
           fqn && page.activeTab === EntityTabs.ACTIVITY_FEED
             ? null
             : isRightPanelOpen
-              ? page.rightPanel
-              : null
+            ? page.rightPanel
+            : null
         }>
         {fqn ? (
           <KnowledgePageDetailComponent
