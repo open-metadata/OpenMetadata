@@ -215,6 +215,23 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
     stored_procedure_source_state: Set = set()  # noqa: RUF012, UP006
     database_entity_source_state: Set = set()  # noqa: RUF012, UP006
     schema_entity_source_state: Set = set()  # noqa: RUF012, UP006
+    # Schemas whose table listing raised an exception during ingestion.
+    # mark_deleted_tables must skip these to avoid wiping tables that exist
+    # but were simply unreachable due to a transient connectivity failure.
+    schemas_with_table_listing_errors: Set = set()  # noqa: RUF012, UP006
+
+    def _record_schema_listing_error(self, schema_name: str) -> None:
+        """Record a schema whose table listing failed so mark_tables_as_deleted can skip it."""
+        schema_fqn = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.context.get().database_service,
+            database_name=self.context.get().database,
+            schema_name=schema_name,
+        )
+        if schema_fqn:
+            self.schemas_with_table_listing_errors.add(schema_fqn)
+
     # Big union of types we want to fetch dynamically
     service_connection: DatabaseConnection.model_fields["config"].annotation  # noqa: F821
 
@@ -707,6 +724,12 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
             schema_fqn_list = self._get_filtered_schema_names(return_fqn=True, add_to_status=False)
 
             for schema_fqn in schema_fqn_list:
+                if schema_fqn in self.schemas_with_table_listing_errors:
+                    logger.warning(
+                        f"Skipping mark-deleted for schema [{schema_fqn}]: "
+                        "table listing failed during ingestion — tables may still exist"
+                    )
+                    continue
                 yield from delete_entity_from_source(
                     metadata=self.metadata,
                     entity_type=Table,

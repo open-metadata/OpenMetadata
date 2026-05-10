@@ -242,7 +242,14 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         """
         schema_name = self.context.get().database_schema
 
-        for page in self._get_glue_tables():
+        try:
+            glue_pages = list(self._get_glue_tables())
+        except Exception as err:
+            logger.warning(f"Fetching tables names failed for schema {schema_name} due to - {err}")
+            logger.debug(traceback.format_exc())
+            self._record_schema_listing_error(schema_name)
+            return
+        for page in glue_pages:
             for table in page.TableList:
                 try:
                     table_name = table.Name

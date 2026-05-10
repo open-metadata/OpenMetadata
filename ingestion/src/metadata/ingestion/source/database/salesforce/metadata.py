@@ -195,6 +195,7 @@ class SalesforceSource(DatabaseServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+            self._record_schema_listing_error(schema_name)
 
     def get_table_description(self, table_name: str) -> Optional[str]:  # noqa: UP045
         """
