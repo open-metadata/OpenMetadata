@@ -179,7 +179,9 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
             .build();
     workflowTrigger.setLoopCharacteristics(multiInstance);
 
-    if (!singleExecution) {
+    if (singleExecution) {
+      multiInstance.setSequential(true);
+    } else {
       multiInstance.setSequential(false);
       workflowTrigger.setAsynchronousLeave(true);
     }

@@ -16,6 +16,7 @@ package org.openmetadata.service.governance.workflows.elements;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -78,7 +79,11 @@ class TriggerFactoryTest {
 
     MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
     assertNotNull(loopChars, "Loop characteristics should exist");
-    assertEquals("1", loopChars.getLoopCardinality(), "Cardinality should be 1 for batch mode");
+    assertEquals(
+        FetchChangeEventsImpl.BATCHES_VARIABLE,
+        loopChars.getInputDataItem(),
+        "Cardinality should be 1 for batch mode");
+    assertTrue(loopChars.isSequential(), "Batch mode should use sequential execution");
   }
 
   @Test
@@ -99,9 +104,10 @@ class TriggerFactoryTest {
     MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
     assertNotNull(loopChars, "Loop characteristics should exist");
     assertEquals(
-        "1",
-        loopChars.getLoopCardinality(),
+        FetchChangeEventsImpl.BATCHES_VARIABLE,
+        loopChars.getInputDataItem(),
         "Cardinality should be 1 for sink task regardless of batchMode config");
+    assertTrue(loopChars.isSequential(), "Sink task should use sequential execution");
   }
 
   @Test
@@ -163,9 +169,10 @@ class TriggerFactoryTest {
     MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
 
     assertEquals(
-        "1",
-        loopChars.getLoopCardinality(),
+        FetchChangeEventsImpl.BATCHES_VARIABLE,
+        loopChars.getInputDataItem(),
         "Cardinality should be 1 when any batch-capable node type is present");
+    assertTrue(loopChars.isSequential(), "Batch-capable node type should use sequential execution");
   }
 
   @Test
@@ -181,9 +188,10 @@ class TriggerFactoryTest {
     MultiInstanceLoopCharacteristics loopChars = callActivity.getLoopCharacteristics();
 
     assertEquals(
-        "1",
-        loopChars.getLoopCardinality(),
+        FetchChangeEventsImpl.BATCHES_VARIABLE,
+        loopChars.getInputDataItem(),
         "Cardinality should be 1 when a batch-capable node type is present");
+    assertTrue(loopChars.isSequential(), "Batch-capable node should use sequential execution");
   }
 
   private CallActivity findCallActivity(BpmnModel model) {

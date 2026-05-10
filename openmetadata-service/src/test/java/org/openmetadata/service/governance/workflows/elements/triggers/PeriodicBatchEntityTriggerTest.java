@@ -76,7 +76,10 @@ class PeriodicBatchEntityTriggerTest {
     assertNotNull(loopChars, "Loop characteristics should be set");
 
     assertEquals(
-        "1", loopChars.getLoopCardinality(), "In single execution mode, cardinality should be 1");
+        FetchChangeEventsImpl.BATCHES_VARIABLE,
+        loopChars.getInputDataItem(),
+        "In single execution mode, should iterate over batches collection");
+    assertTrue(loopChars.isSequential(), "In single execution mode, cardinality should be 1");
   }
 
   @Test
@@ -129,7 +132,7 @@ class PeriodicBatchEntityTriggerTest {
   }
 
   @Test
-  void testRelatedEntityParameterIsPassedToWorkflow() {
+  void testScheduleRunIdParameterIsPassedToWorkflow() {
     PeriodicBatchEntityTriggerDefinition triggerDef = createTriggerDefinition();
 
     PeriodicBatchEntityTrigger trigger =
@@ -143,15 +146,11 @@ class PeriodicBatchEntityTriggerTest {
     assertNotNull(callActivity);
 
     List<IOParameter> inParams = callActivity.getInParameters();
-    boolean hasRelatedEntityParam =
-        inParams.stream()
-            .anyMatch(
-                p ->
-                    "relatedEntity".equals(p.getSource())
-                        && p.getTarget().contains("relatedEntity"));
+    boolean hasScheduleRunIdParam =
+        inParams.stream().anyMatch(p -> p.getSource().contains("scheduleRunId"));
 
     assertTrue(
-        hasRelatedEntityParam, "relatedEntity should be passed as input parameter to workflow");
+        hasScheduleRunIdParam, "scheduleRunId should be passed as input parameter to workflow");
   }
 
   @Test
