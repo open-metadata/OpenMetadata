@@ -191,6 +191,21 @@
         <artifactId>angus-mail</artifactId>
         <version>${angus-mail.version}</version>
       </dependency>
+      <!-- GHSA-rwm7-x88c-3g2p / CVE-2026-42577: exclude the Linux native epoll binding from
+           azure-core-http-netty. The actual bug is in netty 4.2.x epoll; we ship 4.1.x. Removing
+           the .so JAR drops the flagged file from the dist; Netty falls back to Java NIO (the
+           same path used on macOS/Windows already). netty-transport-classes-epoll stays. -->
+      <dependency>
+        <groupId>com.azure</groupId>
+        <artifactId>azure-core-http-netty</artifactId>
+        <version>1.16.4</version>
+        <exclusions>
+          <exclusion>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-transport-native-epoll</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
       <!-- CVE-2026-43869: pin to 0.23.0. No Jena release ships the fix yet (6.0.0 still uses 0.22.0).
            Excluding libthrift breaks RDF tests — Jena's ModelFactory statically references TException. -->
       <dependency>
