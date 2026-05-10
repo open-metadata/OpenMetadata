@@ -125,7 +125,7 @@ public class DataCompletenessImpl implements JavaDelegate {
       for (QualityBand band : qualityBands) {
         List<String> bandEntities = entitiesByBand.getOrDefault(band.getName(), List.of());
         varHandler.setNodeVariable(band.getName() + "_" + ENTITY_LIST_VARIABLE, bandEntities);
-        varHandler.setNodeVariable(bandFlagVariable(band.getName()), !bandEntities.isEmpty());
+        varHandler.setNodeVariable(branchFlagVariable(band.getName()), !bandEntities.isEmpty());
       }
 
       // Priority band = highest minimumScore band that has entities
@@ -165,8 +165,8 @@ public class DataCompletenessImpl implements JavaDelegate {
     }
   }
 
-  public static String bandFlagVariable(String bandName) {
-    return "has_" + bandName + "_entities";
+  public static String branchFlagVariable(String branch) {
+    return "has_" + branch + "_entities";
   }
 
   private void storeFieldList(

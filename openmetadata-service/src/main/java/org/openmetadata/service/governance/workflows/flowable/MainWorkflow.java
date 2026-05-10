@@ -287,7 +287,8 @@ public class MainWorkflow {
     } else {
       // DataCompleteness band name (e.g., "gold", "silver")
       flagVariable =
-          getNamespacedVariableName(nodeName, DataCompletenessImpl.bandFlagVariable(edgeCondition));
+          getNamespacedVariableName(
+              nodeName, DataCompletenessImpl.branchFlagVariable(edgeCondition));
     }
     return String.format("${%s == true}", flagVariable);
   }
