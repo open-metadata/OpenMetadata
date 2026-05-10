@@ -97,12 +97,22 @@ public class RdfPropertyMapper {
       JsonNode entityJson,
       Resource entityResource,
       Model model) {
+    // Flatten all context maps in the array into one combined map BEFORE iterating
+    // entity fields, so each field gets resolved against the union of mappings
+    // exactly once. Without this, processContextMappings runs per-context-map and
+    // the same field can be emitted multiple times: e.g. `owners` is mapped in
+    // base.jsonld (→ om:hasOwner) but absent from `dataAsset-complete`, so the
+    // second pass falls through to processUnmappedField and emits an extra
+    // `om:owners` predicate alongside om:hasOwner — duplicate triples for the
+    // same logical relationship. Later contexts win on key conflicts (standard
+    // JSON-LD context-merge semantics).
+    Map<String, Object> mergedContext = new java.util.HashMap<>();
     for (Object contextItem : contextArray) {
       if (contextItem instanceof Map) {
-        processContextMappings(
-            (Map<String, Object>) contextItem, entityJson, entityResource, model);
+        mergedContext.putAll((Map<String, Object>) contextItem);
       }
     }
+    processContextMappings(mergedContext, entityJson, entityResource, model);
   }
 
   // Fields that are handled separately with typed predicates (not via JSON-LD context)
