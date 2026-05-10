@@ -19,11 +19,15 @@ public class CacheConfig {
   public int relationshipTtlSeconds = 3600; // 1 hour
   public int tagTtlSeconds = 3600; // 1 hour
 
-  // /api/v1/search/query response cache. Short TTL because search hits ES which usually
-  // has its own request cache; 30s catches the typical "user types and re-searches the
-  // same thing within a minute" pattern without serving badly stale results after writes.
-  // Set to 0 to disable.
-  public int searchTtlSeconds = 30;
+  // /api/v1/search/query response cache. Very short TTL because search results must
+  // reflect entity writes promptly: user creates X → searches for X → expects to find X.
+  // The integration suite caught this with a 30s TTL: tests that create an entity and
+  // wait for it in search timed out because the cache served the pre-create empty
+  // result for the full 30s. 2s caps that staleness while still catching the typical
+  // UI pattern where multiple components in the same render frame fire identical search
+  // queries (those happen within milliseconds, well inside any reasonable TTL). Set to
+  // 0 to disable.
+  public int searchTtlSeconds = 2;
 
   // /api/v1/lineage/* response cache. Hybrid TTL + direct-invalidation strategy: a 60s TTL
   // backstops cases where a transitive change (an entity deep in the cached graph) wasn't
