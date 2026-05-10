@@ -64,7 +64,10 @@ server:
       acceptorThreads: 1  # Admin endpoint needs minimal resources
       selectorThreads: 1
 
-  # Response compression disabled for maximum throughput
+  # Response compression for entity GETs / list endpoints — Dropwizard delegates to Jetty's
+  # GzipHandler. Default min size is ~256 bytes; below that the CPU cost outweighs the wire
+  # savings. Pre-compressed UI assets (.gz / .br produced at vite build time) are served by
+  # OpenMetadataAssetServlet's content negotiation, not by this handler.
   gzip:
     enabled: true
 

@@ -184,6 +184,70 @@ public class OpenMetadataAssetServletTest {
   }
 
   @Test
+  public void testServeCompressedSetsVaryHeader() throws Exception {
+    // Vary: Accept-Encoding tells shared caches the response body depends on this request
+    // header. Without it a CDN may serve a .br body to a client that asked only for gzip.
+    String path = "/test.js";
+    when(request.getRequestURI()).thenReturn(path);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getPathInfo()).thenReturn(path);
+    when(request.getServletPath()).thenReturn("");
+    when(request.getHeader("Accept-Encoding")).thenReturn("gzip, br");
+    when(request.getMethod()).thenReturn("GET");
+    when(request.getDateHeader(anyString())).thenReturn(-1L);
+    when(request.getHeader("If-None-Match")).thenReturn(null);
+    when(request.getHeader("If-Modified-Since")).thenReturn(null);
+    when(servletContext.getMimeType(anyString())).thenReturn("application/javascript");
+
+    servlet.doGet(request, response);
+
+    verify(response).setHeader("Vary", "Accept-Encoding");
+  }
+
+  @Test
+  public void testNonZeroQValueIsAccepted() throws Exception {
+    // The previous implementation matched the substring "q=0" anywhere in the entry, so
+    // "br;q=0.5" was incorrectly treated as "br disabled" and we'd fall back to gzip / raw.
+    // Verify that any positive q now serves brotli.
+    String path = "/test.js";
+    when(request.getRequestURI()).thenReturn(path);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getPathInfo()).thenReturn(path);
+    when(request.getServletPath()).thenReturn("");
+    when(request.getHeader("Accept-Encoding")).thenReturn("br;q=0.5, gzip;q=0.8");
+    when(request.getMethod()).thenReturn("GET");
+    when(request.getDateHeader(anyString())).thenReturn(-1L);
+    when(request.getHeader("If-None-Match")).thenReturn(null);
+    when(request.getHeader("If-Modified-Since")).thenReturn(null);
+    when(servletContext.getMimeType(anyString())).thenReturn("application/javascript");
+
+    servlet.doGet(request, response);
+
+    verify(response).setHeader("Content-Encoding", "br");
+  }
+
+  @Test
+  public void testZeroQValueExplicitlyDisablesEncoding() throws Exception {
+    // br;q=0 must be honored as "client refuses brotli" — fall back to gzip.
+    String path = "/test.js";
+    when(request.getRequestURI()).thenReturn(path);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getPathInfo()).thenReturn(path);
+    when(request.getServletPath()).thenReturn("");
+    when(request.getHeader("Accept-Encoding")).thenReturn("br;q=0, gzip");
+    when(request.getMethod()).thenReturn("GET");
+    when(request.getDateHeader(anyString())).thenReturn(-1L);
+    when(request.getHeader("If-None-Match")).thenReturn(null);
+    when(request.getHeader("If-Modified-Since")).thenReturn(null);
+    when(servletContext.getMimeType(anyString())).thenReturn("application/javascript");
+
+    servlet.doGet(request, response);
+
+    verify(response).setHeader("Content-Encoding", "gzip");
+    verify(response, never()).setHeader("Content-Encoding", "br");
+  }
+
+  @Test
   public void testSpaRouteWithDotSeparatedEntityFqn() {
     assertTrue(servlet.isSpaRoute("/table/service.db.schema.table"));
   }
