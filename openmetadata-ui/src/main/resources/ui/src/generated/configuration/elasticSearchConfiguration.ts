@@ -135,15 +135,22 @@ export interface NaturalLanguageSearch {
      */
     enabled?: boolean;
     /**
+     * NLQ filter extractor cache and prompt tuning.
+     */
+    filterExtractor?: FilterExtractor;
+    /**
+     * Hybrid search runtime tuning combining BM25 keyword and KNN semantic queries.
+     */
+    hybridSearch?: HybridSearch;
+    /**
      * Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)
      */
     keywordWeight?: number;
     /**
-     * Maximum number of concurrent embedding API requests. Controls the semaphore used to
-     * throttle calls to the embedding provider and prevent overwhelming HTTP/2 connection
-     * limits.
+     * Maximum number of concurrent embedding and NLQ provider requests. Controls the semaphore
+     * used to throttle calls to the providers and prevent overwhelming HTTP/2 connection limits.
      */
-    maxConcurrentEmbeddingRequests?: number;
+    maxConcurrentRequests?: number;
     /**
      * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
      * endpoints.
@@ -180,9 +187,21 @@ export interface Bedrock {
      */
     embeddingModelId?: string;
     /**
+     * Maximum tokens the Bedrock model is allowed to generate.
+     */
+    maxTokens?: number;
+    /**
      * Bedrock model identifier to use for query transformation
      */
     modelId?: string;
+    /**
+     * Sampling temperature for Bedrock requests.
+     */
+    temperature?: number;
+    /**
+     * Bedrock InvokeModel API call timeout in seconds.
+     */
+    timeoutSeconds?: number;
 }
 
 /**
@@ -239,6 +258,50 @@ export interface Djl {
 }
 
 /**
+ * NLQ filter extractor cache and prompt tuning.
+ */
+export interface FilterExtractor {
+    /**
+     * Cache TTL in minutes for NLQ filter extraction results.
+     */
+    cacheExpiryMinutes?: number;
+    /**
+     * Max number of entries in the NLQ filter extraction result cache.
+     */
+    cacheMaxSize?: number;
+    /**
+     * Max sample values shown per filter category in the system prompt.
+     */
+    maxSampleValues?: number;
+}
+
+/**
+ * Hybrid search runtime tuning combining BM25 keyword and KNN semantic queries.
+ */
+export interface HybridSearch {
+    /**
+     * Highlight fragment size (characters) for hybrid search hits.
+     */
+    fragmentSize?: number;
+    /**
+     * Maximum number of query terms forwarded to the shard-fair keyword sub-query.
+     */
+    maxQueryTerms?: number;
+    /**
+     * Pagination depth used by the hybrid query for RRF normalization.
+     */
+    paginationDepth?: number;
+    /**
+     * Name of the OpenSearch search pipeline used to normalize hybrid (BM25 + KNN) scores.
+     */
+    searchPipeline?: string;
+    /**
+     * Minimum score threshold for the semantic (KNN) sub-query results.
+     */
+    semanticScoreThreshold?: number;
+}
+
+/**
  * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
  * endpoints.
  */
@@ -269,9 +332,21 @@ export interface Openai {
      */
     endpoint?: string;
     /**
+     * Maximum tokens the OpenAI model is allowed to generate.
+     */
+    maxTokens?: number;
+    /**
      * OpenAI model identifier to use for query transformation (chat completions).
      */
     modelId?: string;
+    /**
+     * Sampling temperature for OpenAI requests.
+     */
+    temperature?: number;
+    /**
+     * OpenAI HTTP request and connect timeout in seconds.
+     */
+    timeoutSeconds?: number;
 }
 
 /**

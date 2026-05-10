@@ -12,43 +12,26 @@
  */
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from '@tiptap/react';
 import { Button, Tooltip } from 'antd';
-import { FC, useCallback, useEffect, useRef, useState } from 'react';
+import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../../assets/svg/icon-copy.svg';
+import { useClipboard } from '../../../../hooks/useClipBoard';
 
 const CodeBlockComponent: FC<NodeViewProps> = ({ node }) => {
   const { t } = useTranslation();
-  const [copied, setCopied] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
+  const { onCopyToClipBoard, hasCopied } = useClipboard('', 2000);
 
   const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(node.textContent);
-      setCopied(true);
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-      timerRef.current = setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // clipboard write failed silently
-    }
-  }, [node]);
+    await onCopyToClipBoard(node.textContent);
+  }, [node, onCopyToClipBoard]);
 
   return (
     <NodeViewWrapper as="pre" className="relative code-block">
       <NodeViewContent as="code" />
-      <span className="code-copy-button" data-copied={copied}>
+      <span className="code-copy-button" data-copied={hasCopied}>
         <Tooltip
-          open={copied || undefined}
-          title={copied ? t('label.copied') : t('label.copy')}>
+          open={hasCopied || undefined}
+          title={hasCopied ? t('label.copied') : t('label.copy')}>
           <Button
             data-testid="code-block-copy-icon"
             icon={<CopyIcon height={24} width={24} />}
