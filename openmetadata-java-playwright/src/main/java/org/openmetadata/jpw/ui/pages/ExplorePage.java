@@ -2,7 +2,9 @@ package org.openmetadata.jpw.ui.pages;
 
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
-import com.microsoft.playwright.options.LoadState;
+import com.microsoft.playwright.assertions.LocatorAssertions;
+import com.microsoft.playwright.assertions.PlaywrightAssertions;
+import com.microsoft.playwright.options.WaitForSelectorState;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import org.openmetadata.jpw.ui.UiSession;
@@ -18,6 +20,10 @@ public final class ExplorePage extends PageObject {
 
   private static final String EXPLORE_PATH_PREFIX = "/explore/";
   private static final String TESTID_FILTER_COUNT = "filter-count";
+  private static final String TESTID_EXPLORE_PAGE = "explore-page";
+  private static final String SEARCH_API_PATH = "/api/v1/search/query";
+  private static final double SEARCH_API_TIMEOUT_MS = 60_000;
+  private static final double COUNT_ASSERT_TIMEOUT_MS = 30_000;
 
   private ExplorePage(final Page page, final UiSession session) {
     super(page, session);
@@ -32,15 +38,29 @@ public final class ExplorePage extends PageObject {
   }
 
   /**
-   * Opens Explore filtered by the given search query. Navigates directly to
-   * {@code /explore/?search=<encoded-query>}; we deliberately do not type into the
-   * navbar's {@code searchBox} because OM binds it to a React-controlled value, so
-   * subsequent {@code fill()} on a fresh page picks up the previous query from app state
-   * instead of replacing it.
+   * Opens Explore on the given tab filtered by the search query. Two guarantees that
+   * make {@link #countForTab(Tab)} race-free:
+   *
+   * <ol>
+   *   <li>The URL includes the tab segment ({@code /explore/<tab>?search=...}). OM's
+   *       Explore filters tabs to those with hits OR matching the active
+   *       {@code searchCriteria}; including the tab in the URL ensures the tab itself is
+   *       always rendered, even before {@code searchHitCounts} arrive.
+   *   <li>We block until the {@code /api/v1/search/query} aggregation response arrives
+   *       so {@code searchHitCounts} has populated the per-tab count badges.
+   * </ol>
+   *
+   * <p>We deliberately do not type into the navbar's {@code searchBox} — OM binds it to
+   * React-controlled state that {@code fill()} can't reliably override across navigations.
    */
-  public static ExplorePage openWithSearch(final UiSession ui, final String query) {
+  public static ExplorePage openWithSearch(
+      final UiSession ui, final Tab tab, final String query) {
     final Page page = ui.newPage();
-    page.navigate(ui.uiUrl(EXPLORE_PATH_PREFIX + "?search=" + urlEncode(query)));
+    final String url = ui.uiUrl(EXPLORE_PATH_PREFIX + tab.path + "?search=" + urlEncode(query));
+    page.waitForResponse(
+        response -> response.url().contains(SEARCH_API_PATH) && response.status() == 200,
+        new Page.WaitForResponseOptions().setTimeout(SEARCH_API_TIMEOUT_MS),
+        () -> page.navigate(url));
     final ExplorePage instance = new ExplorePage(page, ui);
     instance.waitForLoaded();
     return instance;
@@ -72,6 +92,19 @@ public final class ExplorePage extends PageObject {
     return Integer.parseInt(text.trim());
   }
 
+  /**
+   * Web-first assertion that the tab's count badge eventually reads {@code expected}.
+   * Polls the badge until match or timeout — preferred over {@link #countForTab(Tab)} +
+   * an external equality check, which can race against the React render that follows the
+   * search aggregation response.
+   */
+  public void assertCountForTab(final Tab tab, final int expected) {
+    PlaywrightAssertions.assertThat(countBadgeForTab(tab))
+        .hasText(
+            String.valueOf(expected),
+            new LocatorAssertions.HasTextOptions().setTimeout(COUNT_ASSERT_TIMEOUT_MS));
+  }
+
   private static String tabTestId(final Tab tab) {
     // The OM UI computes the testid as `${lowercase(tabLabel)}-tab`. Tab labels match the
     // English plural form of the entity (Tables, Topics, etc.), so lowercased they line
@@ -92,7 +125,8 @@ public final class ExplorePage extends PageObject {
 
   @Override
   protected void waitForLoaded() {
-    page.waitForLoadState(LoadState.NETWORKIDLE);
+    byTestId(TESTID_EXPLORE_PAGE)
+        .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
   }
 
   /** Top-level entity tabs on the Explore page. Path matches the URL segment. */

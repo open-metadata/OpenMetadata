@@ -1,7 +1,5 @@
 package org.openmetadata.jpw.scenarios.search.reindex;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.time.Duration;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -105,8 +103,7 @@ class SimpleReindexTriggerUIIT {
     Tab tab = EXPLORE_TAB_PER_KIND.get(kind);
     LOG.info("Asserting Explore[{}] count == {} for prefix '{}'", tab, expected, namePrefix);
 
-    ExplorePage explore = ExplorePage.openWithSearch(ui, namePrefix);
-    int actual = explore.countForTab(tab);
-    assertThat(actual).as("Explore count for %s", kind).isEqualTo(expected);
+    ExplorePage explore = ExplorePage.openWithSearch(ui, tab, namePrefix);
+    explore.assertCountForTab(tab, expected);
   }
 }
