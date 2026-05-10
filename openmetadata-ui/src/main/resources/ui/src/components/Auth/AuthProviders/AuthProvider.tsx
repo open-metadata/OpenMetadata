@@ -54,6 +54,7 @@ import { withDomainFilter } from '../../../hoc/withDomainFilter';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import axiosClient from '../../../rest';
+import { clearEtagCache } from '../../../rest/etagInterceptor';
 import {
   fetchAuthenticationConfig,
   fetchAuthorizerConfig,
@@ -217,6 +218,10 @@ export const AuthProvider = ({
 
     // Clear tokens properly during logout
     await clearOidcToken();
+
+    // Drop the ETag interceptor's response cache so a freshly-authenticated user can't
+    // pick up another principal's cached body via If-None-Match → 304 mid-session.
+    clearEtagCache();
 
     setApplicationLoading(false);
 

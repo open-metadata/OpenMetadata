@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.filters;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
 import org.openmetadata.schema.EntityInterface;
@@ -23,23 +24,73 @@ import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.util.EntityETag;
 
 /**
- * JAX-RS filter that automatically adds ETag headers to GET responses
- * containing EntityInterface entities.
+ * JAX-RS filter that adds {@code ETag} + {@code Cache-Control} headers to entity GET responses
+ * and short-circuits to {@code 304 Not Modified} when the client's {@code If-None-Match} matches
+ * the computed ETag.
+ *
+ * <p>The 304 path saves the response body bytes on the wire and the client-side render cost on
+ * revisits — the server still computes the entity body (we'd need a cheap version-stamp lookup
+ * to truly skip the work, see design doc), but the network and client savings are immediate.
+ *
+ * <p>{@code Cache-Control: must-revalidate, private}: clients (browsers, our Axios interceptor)
+ * may keep the body but must revalidate via {@code If-None-Match} before reusing it; private
+ * keeps it out of any shared/proxy cache so per-user data doesn't leak.
  */
 @Provider
 public class ETagResponseFilter implements ContainerResponseFilter {
+
+  private static final String CACHE_CONTROL_VALUE = "must-revalidate, private";
 
   @Override
   public void filter(
       ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     try (var ignored = RequestLatencyContext.phase("etagGeneration")) {
-      if ("GET".equals(requestContext.getMethod())
-          && responseContext.getStatus() == Response.Status.OK.getStatusCode()
-          && responseContext.getEntity() instanceof EntityInterface entity) {
+      if (!"GET".equals(requestContext.getMethod())
+          || responseContext.getStatus() != Response.Status.OK.getStatusCode()
+          || !(responseContext.getEntity() instanceof EntityInterface entity)) {
+        return;
+      }
 
-        String etag = EntityETag.generateETag(entity);
-        responseContext.getHeaders().add("ETag", etag);
+      String etag = EntityETag.generateETag(entity);
+      if (etag == null) {
+        return;
+      }
+      responseContext.getHeaders().putSingle(HttpHeaders.ETAG, etag);
+      responseContext.getHeaders().putSingle(HttpHeaders.CACHE_CONTROL, CACHE_CONTROL_VALUE);
+
+      String ifNoneMatch = requestContext.getHeaderString(HttpHeaders.IF_NONE_MATCH);
+      if (ifNoneMatch == null) {
+        return;
+      }
+      if (matchesAny(ifNoneMatch, etag)) {
+        // RFC 7232: 304 must NOT include a message body. Drop the entity so the
+        // serializer emits an empty body. Headers (including ETag) are preserved.
+        responseContext.setStatus(Response.Status.NOT_MODIFIED.getStatusCode());
+        responseContext.setEntity(null);
       }
     }
+  }
+
+  /**
+   * RFC 7232 §3.2: {@code If-None-Match} can be {@code *} (match any), a single ETag, or a
+   * comma-separated list. Weak comparison is used — we treat {@code "abc"} and {@code W/"abc"}
+   * as matching, which is the spec's recommendation for cache-validation use.
+   */
+  private static boolean matchesAny(String ifNoneMatch, String currentEtag) {
+    String trimmed = ifNoneMatch.trim();
+    if ("*".equals(trimmed)) {
+      return true;
+    }
+    String currentBare = stripWeakPrefix(currentEtag);
+    for (String candidate : trimmed.split(",")) {
+      if (currentBare.equals(stripWeakPrefix(candidate.trim()))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static String stripWeakPrefix(String etag) {
+    return etag.startsWith("W/") ? etag.substring(2) : etag;
   }
 }
