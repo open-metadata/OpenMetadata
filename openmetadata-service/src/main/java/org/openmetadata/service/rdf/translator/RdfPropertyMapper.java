@@ -44,6 +44,7 @@ public class RdfPropertyMapper {
   private static final String FOAF_NS = "http://xmlns.com/foaf/0.1/";
   private static final String VOID_NS = "http://rdfs.org/ns/void#";
   private static final String CSVW_NS = "http://www.w3.org/ns/csvw#";
+  private static final String DPROD_NS = "https://ekgf.github.io/dprod/";
 
   // Properties that should be mapped to structured RDF instead of JSON literals
   private static final Set<String> STRUCTURED_PROPERTIES =
@@ -1154,6 +1155,7 @@ public class RdfPropertyMapper {
       case "skos" -> SKOS.getURI();
       case "void" -> VOID_NS;
       case "csvw" -> CSVW_NS;
+      case "dprod" -> DPROD_NS;
       default -> null;
     };
   }

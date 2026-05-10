@@ -459,12 +459,16 @@ public class RdfRepository {
           for (org.openmetadata.schema.type.ColumnLineage colLineage :
               lineageDetails.getColumnsLineage()) {
             // Deterministic URI per (lineage edge, target column) so re-indexing
-            // doesn't multiply column-lineage resources.
-            String colKey =
+            // doesn't multiply column-lineage resources. The index suffix is a
+            // tiebreaker so distinct toColumn values that normalize to the same
+            // string (e.g. `a-b` and `a_b` both → `a_b` after the
+            // [^A-Za-z0-9]→`_` replacement) don't collapse to one resource.
+            String safeName =
                 colLineage.getToColumn() != null
                     ? colLineage.getToColumn().replaceAll("[^A-Za-z0-9]", "_")
-                    : "idx" + colLineageIndex;
-            String colLineageUri = detailsUri + "/columnLineage/" + colKey;
+                    : "noTarget";
+            String colLineageUri =
+                detailsUri + "/columnLineage/" + safeName + "_" + colLineageIndex;
             Resource colLineageResource = model.createResource(colLineageUri);
             colLineageIndex++;
 
