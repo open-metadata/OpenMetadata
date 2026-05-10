@@ -851,9 +851,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         page.locator(`[data-testid="status-badge-${testCaseName}"]`)
       ).toContainText('Failed');
 
-      await page.click(
-        `[data-testid="${testCaseName}"] >> text=${testCaseName}`
-      );
+      await page.getByTestId(testCaseName).getByText(testCaseName).click();
       await expect(page.getByTestId('entity-page-header')).toBeVisible();
       await openIncidentTaskTab(page);
       await page.click('[data-testid="closed-task"]');

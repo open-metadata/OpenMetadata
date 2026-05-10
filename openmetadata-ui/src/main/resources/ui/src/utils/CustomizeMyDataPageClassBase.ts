@@ -24,6 +24,8 @@ import MyDataImg from '../assets/img/my-data-widget.png';
 import MyTaskImg from '../assets/img/my-task-widget.png';
 import TotalAssetsMediumImg from '../assets/img/total-assets-medium.png';
 import TotalAssetsImg from '../assets/img/total-assets-widget.png';
+import KnowledgeCenterWidgetImg from '../assets/img/widgets/knowledge-center-widget.png';
+import KnowledgeCenterWidget from '../components/KnowledgeCenter/KnowledgeCenterWidget/KnowledgeCenterWidget';
 import { MyFeedWidget } from '../components/MyData/FeedWidget/FeedWidget.component';
 import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.component';
 import FollowingWidget from '../components/MyData/RightSidebar/FollowingWidget';
@@ -38,6 +40,7 @@ import {
   LandingPageWidgetKeys,
   WidgetWidths,
 } from '../enums/CustomizablePage.enum';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import {
   WidgetCommonProps,
   WidgetConfig,
@@ -61,6 +64,7 @@ class CustomizeMyDataPageClassBase {
     curatedAssets: 3,
     myTask: 3,
     domains: 3,
+    knowledgeCenter: 3,
   };
 
   curatedAssetsWidgetDefaultValues: WidgetConfig = {
@@ -111,18 +115,26 @@ class CustomizeMyDataPageClassBase {
       static: false,
     },
     {
-      h: this.landingPageWidgetDefaultHeights.myData,
-      i: LandingPageWidgetKeys.MY_DATA,
+      h: this.landingPageWidgetDefaultHeights.knowledgeCenter,
+      i: LandingPageWidgetKeys.KNOWLEDGE_CENTER,
       w: 1,
       x: 2,
       y: 0,
       static: false,
     },
     {
+      h: this.landingPageWidgetDefaultHeights.myData,
+      i: LandingPageWidgetKeys.MY_DATA,
+      w: 1,
+      x: 0,
+      y: 1,
+      static: false,
+    },
+    {
       h: this.landingPageWidgetDefaultHeights.kpi,
       i: LandingPageWidgetKeys.KPI,
       w: 1,
-      x: 0,
+      x: 1,
       y: 1,
       static: false,
     },
@@ -130,7 +142,7 @@ class CustomizeMyDataPageClassBase {
       h: this.landingPageWidgetDefaultHeights.totalAssets,
       i: LandingPageWidgetKeys.TOTAL_DATA_ASSETS,
       w: 1,
-      x: 1,
+      x: 2,
       y: 1,
       static: false,
     },
@@ -138,8 +150,8 @@ class CustomizeMyDataPageClassBase {
       h: this.landingPageWidgetDefaultHeights.following,
       i: LandingPageWidgetKeys.FOLLOWING,
       w: 1,
-      x: 2,
-      y: 1,
+      x: 0,
+      y: 2,
       static: false,
     },
   ];
@@ -197,6 +209,9 @@ class CustomizeMyDataPageClassBase {
     if (widgetKey.startsWith(LandingPageWidgetKeys.DOMAINS)) {
       return DomainsWidget;
     }
+    if (widgetKey.startsWith(LandingPageWidgetKeys.KNOWLEDGE_CENTER)) {
+      return KnowledgeCenterWidget;
+    }
 
     return (() => null) as React.FC;
   }
@@ -241,6 +256,10 @@ class CustomizeMyDataPageClassBase {
       case LandingPageWidgetKeys.DOMAINS: {
         return DomainsImg;
       }
+      case LandingPageWidgetKeys.KNOWLEDGE_CENTER:
+      case DetailPageWidgetKeys.KNOWLEDGE_ARTICLE: {
+        return KnowledgeCenterWidgetImg;
+      }
       default: {
         return '';
       }
@@ -281,6 +300,9 @@ class CustomizeMyDataPageClassBase {
 
       case 'Domains':
         return this.landingPageWidgetDefaultHeights.domains;
+
+      case 'KnowledgeCenter':
+        return this.landingPageWidgetDefaultHeights.knowledgeCenter;
 
       default:
         return this.defaultWidgetHeight;
