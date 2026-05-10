@@ -14,8 +14,10 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
 import React, { act } from 'react';
 import { Table } from '../../generated/entity/data/table';
+import { TestCasePageTabs } from '../../pages/IncidentManager/IncidentManager.interface';
 import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';
 import '../../test/unit/mocks/mui.mock';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import IncidentManager from './IncidentManager.component';
 
 jest.mock('../common/NextPrevious/NextPrevious', () => {
@@ -261,7 +263,11 @@ jest.mock('../common/AsyncSelect/AsyncSelect', () => ({
 }));
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  Link: jest.fn().mockImplementation(() => <div>Link</div>),
+  Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (
+    <a data-to={typeof to === 'string' ? to : JSON.stringify(to)} {...rest}>
+      {children}
+    </a>
+  )),
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
@@ -885,6 +891,46 @@ describe('IncidentManagerPage', () => {
       });
 
       expect(mockHandlePageSizeChange).toHaveBeenCalledWith(25);
+    });
+  });
+
+  describe('observabilityRouterClassBase migration', () => {
+    it('test case name link should use observabilityRouterClassBase.getTestCaseDetailPagePath', async () => {
+      const fqn = 'svc.db.schema.table.test_case_1';
+      const { getTestCaseDetailPagePath } = require('../../utils/RouterUtils');
+      (getTestCaseDetailPagePath as jest.Mock).mockClear();
+
+      (getListTestCaseIncidentStatusFromSearch as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 'tcr-1',
+            testCaseReference: {
+              fullyQualifiedName: fqn,
+              name: 'test_case_1',
+            },
+            testCaseResolutionStatusType: 'New',
+          },
+        ],
+        paging: { total: 1 },
+      });
+
+      await act(async () => {
+        render(<IncidentManager />);
+      });
+
+      const link = await screen.findByTestId('test-case-test_case_1');
+
+      expect(link.tagName).toBe('A');
+      expect(link.getAttribute('data-to')).toBe(
+        observabilityRouterClassBase.getTestCaseDetailPagePath(
+          fqn,
+          TestCasePageTabs.TEST_CASE_RESULTS
+        )
+      );
+      expect(getTestCaseDetailPagePath).toHaveBeenCalledWith(
+        fqn,
+        TestCasePageTabs.TEST_CASE_RESULTS
+      );
     });
   });
 });

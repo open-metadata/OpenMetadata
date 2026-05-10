@@ -54,11 +54,8 @@ import {
 } from '../../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
-import {
-  getEntityDetailsPath,
-  getTestCaseDetailPagePath,
-  getTestSuitePath,
-} from '../../../../utils/RouterUtils';
+import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
@@ -374,7 +371,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     setBundleSuiteFormInitialCases([]);
     setSelectedKeys(new Set<string>());
     if (testSuite.fullyQualifiedName) {
-      navigate(getTestSuitePath(testSuite.fullyQualifiedName));
+      navigate(
+        observabilityRouterClassBase.getTestSuitePath(
+          testSuite.fullyQualifiedName
+        )
+      );
     }
   };
 
@@ -508,7 +509,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }
             )}>
             <Link
-              to={getTestCaseDetailPagePath(
+              to={observabilityRouterClassBase.getTestCaseDetailPagePath(
                 record.fullyQualifiedName ?? '',
                 TestCasePageTabs.DIMENSIONALITY
               )}>
@@ -583,9 +584,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               className="break-word"
               state={{ breadcrumbData }}
               to={{
-                pathname: getTestCaseDetailPagePath(
-                  record.fullyQualifiedName ?? ''
-                ),
+                pathname:
+                  observabilityRouterClassBase.getTestCaseDetailPagePath(
+                    record.fullyQualifiedName ?? ''
+                  ),
               }}>
               {getEntityName(record)}
             </Link>
