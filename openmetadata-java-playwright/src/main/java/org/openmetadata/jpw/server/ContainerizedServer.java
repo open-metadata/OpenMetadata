@@ -226,6 +226,10 @@ public final class ContainerizedServer implements AutoCloseable {
         .withEnv("discovery.type", "single-node")
         .withEnv("DISABLE_SECURITY_PLUGIN", "true")
         .withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true")
+        // OpenSearch defaults max_clause_count to 1024 — too low for OM's wider boolean
+        // queries (e.g. tag-rule resolution, multi-entity aggregations). 4096 matches
+        // Elasticsearch's modern default and OM's own dev docker-compose.
+        .withEnv("indices.query.bool.max_clause_count", "4096")
         .withEnv("OPENSEARCH_JAVA_OPTS", "-Xms1g -Xmx1g")
         .withStartupAttempts(3);
   }
