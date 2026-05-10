@@ -31,6 +31,7 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step  # noqa: TC001
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata  # noqa: TC001
+from metadata.pii.types import ClassifiableEntityType  # noqa: TC001
 from metadata.profiler.api.models import ProfilerProcessorConfig  # noqa: TC001
 from metadata.profiler.source.metadata import ProfilerSourceAndEntity  # noqa: TC001
 from metadata.sampler.entity_adapters import (
@@ -159,7 +160,7 @@ class SamplerProcessor(Processor):
             sampler_interface.close()
             return Either(
                 right=SamplerResponse(
-                    entity=entity,
+                    entity=cast("ClassifiableEntityType", entity),
                     sample_data=sample_data,
                 )
             )

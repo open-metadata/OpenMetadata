@@ -30,7 +30,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import TYPE_CHECKING, ClassVar, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Column, Table
@@ -54,10 +54,11 @@ if TYPE_CHECKING:
     from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
-_A = TypeVar("_A", bound="EntityAdapter")
+_A = TypeVar("_A", bound="EntityAdapter[Any]")
+E = TypeVar("E")
 
-_BY_ENTITY: dict[type, EntityAdapter] = {}
-_BY_PIPELINE: dict[type, EntityAdapter] = {}
+_BY_ENTITY: dict[type, EntityAdapter[Any]] = {}
+_BY_PIPELINE: dict[type, EntityAdapter[Any]] = {}
 
 
 def register_adapter(*, entity: type, pipeline: type) -> Callable[[type[_A]], type[_A]]:
@@ -72,7 +73,7 @@ def register_adapter(*, entity: type, pipeline: type) -> Callable[[type[_A]], ty
     return decorator
 
 
-class EntityAdapter(ABC):
+class EntityAdapter(ABC, Generic[E]):
     """Strategy for entity-type-specific behaviour in the classification pipeline.
 
     Adapters are stateless — all inputs are passed as arguments.
@@ -84,11 +85,11 @@ class EntityAdapter(ABC):
     patch_fields: ClassVar[list[str]]
 
     @abstractmethod
-    def get_columns(self, entity: object) -> list[Column] | None:
+    def get_columns(self, entity: E) -> list[Column] | None:
         """Return the entity's columns, or None if unavailable."""
 
     @abstractmethod
-    def set_columns(self, entity: object, columns: list[Column]) -> None:
+    def set_columns(self, entity: E, columns: list[Column]) -> None:
         """Set the entity's column list in-place."""
 
     @abstractmethod
@@ -96,15 +97,15 @@ class EntityAdapter(ABC):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        entity: object,
-        profiler_config: object,
-        source_config: object,
+        entity: E,
+        profiler_config: Any,
+        source_config: Any,
     ) -> dict | None:
         """Return kwargs for SamplerInterface.create(), or None on unrecoverable error."""
 
 
 @register_adapter(entity=Table, pipeline=DatabaseServiceAutoClassificationPipeline)
-class TableAdapter(EntityAdapter):
+class TableAdapter(EntityAdapter[Table]):
     pipeline_config_class = DatabaseServiceAutoClassificationPipeline
     service_type = ServiceType.Database
     patch_fields: ClassVar[list[str]] = ["tags", "columns"]
@@ -112,16 +113,16 @@ class TableAdapter(EntityAdapter):
     def get_columns(self, entity: Table) -> list[Column] | None:
         return entity.columns
 
-    def set_columns(self, entity: Table, columns: list[Column]) -> None:  # type: ignore[override]
+    def set_columns(self, entity: Table, columns: list[Column]) -> None:
         entity.columns = columns
 
     def build_sampler_kwargs(
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        entity: Table,  # type: ignore[override]
-        profiler_config: object,
-        source_config: object,
+        entity: Table,
+        profiler_config: Any,
+        source_config: Any,
     ) -> dict | None:
         from metadata.utils.profiler_utils import get_context_entities  # noqa: PLC0415
 
@@ -141,7 +142,7 @@ class TableAdapter(EntityAdapter):
 
 
 @register_adapter(entity=Container, pipeline=StorageServiceAutoClassificationPipeline)
-class ContainerAdapter(EntityAdapter):
+class ContainerAdapter(EntityAdapter[Container]):
     pipeline_config_class = StorageServiceAutoClassificationPipeline
     service_type = ServiceType.Storage
     patch_fields: ClassVar[list[str]] = ["tags", "dataModel"]
@@ -149,7 +150,7 @@ class ContainerAdapter(EntityAdapter):
     def get_columns(self, entity: Container) -> list[Column] | None:
         return entity.dataModel.columns if entity.dataModel else None
 
-    def set_columns(self, entity: Container, columns: list[Column]) -> None:  # type: ignore[override]
+    def set_columns(self, entity: Container, columns: list[Column]) -> None:
         if entity.dataModel:
             entity.dataModel.columns = columns
 
@@ -157,9 +158,9 @@ class ContainerAdapter(EntityAdapter):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        entity: Container,  # type: ignore[override]
-        profiler_config: object,
-        source_config: object,
+        entity: Container,
+        profiler_config: Any,
+        source_config: Any,
     ) -> dict | None:
         if config.source.serviceConnection is None or config.source.serviceConnection.root is None:
             return None

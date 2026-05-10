@@ -33,7 +33,7 @@ def build_database_service_conn_config(config: OpenMetadataWorkflowConfig, datab
 
     conn_config = service_conn.root.config
     if isinstance(conn_config, BigQueryConnection):
-        return copy_service_config(config, database.name.root)
+        return cast("DatabaseConnection", copy_service_config(config, database.name.root))
 
     config_copy = deepcopy(conn_config)  # type: ignore[arg-type]
     if hasattr(config_copy, "supportsDatabase"):
@@ -42,4 +42,4 @@ def build_database_service_conn_config(config: OpenMetadataWorkflowConfig, datab
         if hasattr(config_copy, "catalog"):
             config_copy.catalog = database.name.root  # type: ignore[union-attr]
 
-    return cast("DatabaseConnection", config_copy)
+    return cast("DatabaseConnection", config_copy)  # type: ignore[reportInvalidCast]

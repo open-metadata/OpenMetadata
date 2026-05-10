@@ -134,22 +134,24 @@ class Max(StaticMetric):
         with current maximum and returns the larger value.
         """
         import pandas as pd  # noqa: PLC0415
+        from pandas import Timestamp  # noqa: PLC0415
 
-        chunk_max = None
+        chunk_max: int | None = None
 
         if is_quantifiable(column.type):
-            chunk_max = df[column.name].max()
+            raw = df[column.name].max()
+            chunk_max = int(float(raw)) if not bool(pd.isnull(raw)) else None  # type: ignore[arg-type]
         elif is_date_time(column.type):
             if column.type in {DataType.DATETIME, DataType.DATE}:
                 max_val = pd.to_datetime(df[column.name]).max()
-                if not pd.isnull(max_val):
+                if isinstance(max_val, Timestamp) and not pd.isnull(max_val):
                     chunk_max = int(max_val.timestamp() * 1000)
             elif column.type == DataType.TIME:
                 max_val = pd.to_timedelta(df[column.name]).max()
                 if not pd.isnull(max_val):
                     chunk_max = max_val.seconds
 
-        if chunk_max is None or pd.isnull(chunk_max):
+        if chunk_max is None:
             return current_max
 
         if current_max is None:
