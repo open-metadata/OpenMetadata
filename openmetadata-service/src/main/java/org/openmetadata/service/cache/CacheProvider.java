@@ -69,6 +69,27 @@ public interface CacheProvider extends AutoCloseable {
     return 0L;
   }
 
+  /**
+   * Pipelined batch GET. Returns a list of {@code Optional<String>} aligned 1:1 with the input
+   * keys — entry {@code i} is the value for {@code keys[i]}, or {@link Optional#empty()} if the
+   * key was missing or read failed. One TCP round-trip on Redis Cluster-aware implementations
+   * via {@code MGET} (when keys hash to the same slot) or pipelined GETs (when they don't).
+   *
+   * <p>Default implementation does sequential GETs — correct semantics, no batching benefit.
+   * Override for true pipelined behavior. {@code null} keys in the input list yield empty
+   * results in the corresponding output position.
+   */
+  default java.util.List<java.util.Optional<String>> mget(java.util.List<String> keys) {
+    if (keys == null || keys.isEmpty()) {
+      return java.util.Collections.emptyList();
+    }
+    java.util.List<java.util.Optional<String>> out = new java.util.ArrayList<>(keys.size());
+    for (String k : keys) {
+      out.add(k == null ? java.util.Optional.empty() : get(k));
+    }
+    return out;
+  }
+
   @Override
   void close();
 }

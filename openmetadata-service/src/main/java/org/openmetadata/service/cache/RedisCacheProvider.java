@@ -581,6 +581,77 @@ public class RedisCacheProvider implements CacheProvider {
     }
   }
 
+  /**
+   * Pipelined batch GET. Issues all GETs without flushing, then flushes once and awaits all
+   * responses — single TCP round-trip when the underlying connection is healthy. Falls back
+   * to per-key empties on the error path so callers get a same-shape result either way.
+   *
+   * <p>Note: we use individual GETs in pipeline mode rather than {@code MGET} so that keys
+   * hashing to different slots in a Redis Cluster deployment work transparently. Real
+   * {@code MGET} requires same-slot keys (Redis Cluster restriction); the per-key pipeline
+   * approach has the same network cost (one round-trip) without the slot constraint.
+   */
+  @Override
+  public java.util.List<java.util.Optional<String>> mget(java.util.List<String> keys) {
+    if (!available || keys == null || keys.isEmpty()) {
+      return java.util.Collections.emptyList();
+    }
+    int n = keys.size();
+    CacheMetrics m = metrics();
+    Timer.Sample sample = startReadTimer(m);
+    long startNanos = System.nanoTime();
+    try {
+      connection.setAutoFlushCommands(false);
+      java.util.List<io.lettuce.core.RedisFuture<String>> futures = new java.util.ArrayList<>(n);
+      for (String k : keys) {
+        futures.add(k == null ? null : asyncCommands.get(k));
+      }
+      connection.flushCommands();
+      try {
+        io.lettuce.core.LettuceFutures.awaitAll(
+            java.time.Duration.ofMillis(Math.max(1000, config.redis.commandTimeoutMs * 2L)),
+            futures.stream()
+                .filter(java.util.Objects::nonNull)
+                .toArray(io.lettuce.core.RedisFuture[]::new));
+      } finally {
+        connection.setAutoFlushCommands(true);
+      }
+      java.util.List<java.util.Optional<String>> out = new java.util.ArrayList<>(n);
+      int hits = 0, misses = 0;
+      for (io.lettuce.core.RedisFuture<String> f : futures) {
+        if (f == null) {
+          out.add(java.util.Optional.empty());
+          continue;
+        }
+        try {
+          String v = f.get();
+          out.add(java.util.Optional.ofNullable(v));
+          if (v != null) hits++;
+          else misses++;
+        } catch (Exception inner) {
+          out.add(java.util.Optional.empty());
+          misses++;
+        }
+      }
+      if (m != null) {
+        for (int i = 0; i < hits; i++) m.recordHit();
+        for (int i = 0; i < misses; i++) m.recordMiss();
+      }
+      recordSuccess();
+      return out;
+    } catch (Exception e) {
+      if (m != null) m.recordError();
+      recordFailure(e);
+      LOG.error("Error in mget for {} keys", n, e);
+      java.util.List<java.util.Optional<String>> out = new java.util.ArrayList<>(n);
+      for (int i = 0; i < n; i++) out.add(java.util.Optional.empty());
+      return out;
+    } finally {
+      stopReadTimer(m, sample);
+      checkSlowRead(m, "mget(" + n + ")", startNanos);
+    }
+  }
+
   @Override
   public long scanDelete(String pattern) {
     if (!available || pattern == null || pattern.isEmpty()) {

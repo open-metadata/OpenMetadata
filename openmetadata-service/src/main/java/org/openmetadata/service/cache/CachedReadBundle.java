@@ -50,6 +50,54 @@ public class CachedReadBundle {
     public boolean certificationLoaded;
   }
 
+  /**
+   * Batch fetch — pipelined Redis GETs aligned 1:1 with the input ids. Useful for prefetch
+   * scenarios where a caller knows it's about to touch a list of entities and wants one
+   * round-trip instead of N. The returned list has {@code null} entries where the cache was
+   * cold OR where the cache itself is disabled (the layer falls back to single-entity gets
+   * via {@link CacheProvider#mget}'s default).
+   *
+   * <p>Caller-side use: pre-warming for a list-then-detail navigation pattern; UI prefetch
+   * on hover. The list endpoint hot path itself doesn't go through this layer (list responses
+   * are SQL-batched in {@link org.openmetadata.service.jdbi3.EntityRepository#setFieldsInBulk}),
+   * so this method is mostly a primitive for future paths to leverage.
+   */
+  public java.util.List<Dto> getBatch(String entityType, java.util.List<UUID> entityIds) {
+    if (entityIds == null || entityIds.isEmpty() || EntityCacheBypass.isSkipped()) {
+      return java.util.Collections.emptyList();
+    }
+    java.util.List<String> cacheKeys = new java.util.ArrayList<>(entityIds.size());
+    for (UUID id : entityIds) {
+      cacheKeys.add(id == null ? null : keys.bundle(entityType, id));
+    }
+    java.util.List<Optional<String>> raw = cache.mget(cacheKeys);
+    java.util.List<Dto> out = new java.util.ArrayList<>(entityIds.size());
+    String layerType = bundleType(entityType);
+    CacheMetrics m = CacheMetrics.getInstance();
+    for (int i = 0; i < entityIds.size(); i++) {
+      Optional<String> json = i < raw.size() ? raw.get(i) : Optional.empty();
+      if (json.isEmpty()) {
+        out.add(null);
+        if (m != null) m.recordLayerMiss(layerType);
+        continue;
+      }
+      try {
+        out.add(JsonUtils.readValue(json.get(), Dto.class));
+        if (m != null) m.recordLayerHit(layerType);
+      } catch (Exception e) {
+        // Bad cache entry — evict and treat as miss for this position.
+        try {
+          cache.del(cacheKeys.get(i));
+        } catch (Exception ignored) {
+          // best-effort
+        }
+        out.add(null);
+        if (m != null) m.recordError();
+      }
+    }
+    return out;
+  }
+
   public Dto get(String entityType, UUID entityId) {
     if (EntityCacheBypass.isSkipped()) {
       return null;
