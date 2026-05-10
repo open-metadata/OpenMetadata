@@ -149,7 +149,7 @@
           "default": 0.6
         },
         "embeddingProvider": {
-          "description": "The provider to use for generating vector embeddings (e.g., bedrock, openai).",
+          "description": "The provider to use for generating vector embeddings (e.g., bedrock, openai, google, djl).",
           "type": "string",
           "default": "bedrock"
         },
@@ -339,6 +339,37 @@
               "type": "integer",
               "minimum": 1,
               "default": 1000
+            }
+          },
+          "additionalProperties": false
+        },
+        "google": {
+          "description": "Google Gemini configuration for embedding generation via the Generative Language API.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.Google",
+          "properties": {
+            "apiKey": {
+              "description": "API key from Google AI Studio for authenticating with the Generative Language API.",
+              "type": "string"
+            },
+            "modelId": {
+              "description": "Gemini chat model identifier for query transformation (e.g., gemini-2.5-flash, gemini-1.5-flash).",
+              "type": "string",
+              "default": "gemini-2.5-flash"
+            },
+            "embeddingModelId": {
+              "description": "Gemini embedding model identifier (e.g., gemini-embedding-001, text-embedding-004).",
+              "type": "string",
+              "default": "gemini-embedding-001"
+            },
+            "embeddingDimension": {
+              "description": "Dimension of the embedding vector, sent to Google as `outputDimensionality`. For `gemini-embedding-001` valid values are 768, 1536, or 3072. For `text-embedding-004` use 768.",
+              "type": "integer",
+              "default": 768
+            },
+            "endpoint": {
+              "description": "Optional override for the full embedding endpoint URL. Must be the complete URL including the model and `:embedContent` action (e.g. `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent`), not just a base URL. Leave empty to use the default Generative Language API endpoint, which is constructed from `embeddingModelId`. The `key` query parameter is appended automatically.",
+              "type": "string"
             }
           },
           "additionalProperties": false
