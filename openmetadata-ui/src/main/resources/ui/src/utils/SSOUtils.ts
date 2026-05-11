@@ -1440,3 +1440,25 @@ export const hasLockoutRiskChange = (
 
   return changedFields.some((field) => lockoutRiskFields.has(field));
 };
+
+/**
+ * Returns true if Save must be gated behind a fresh Test Login. New configs
+ * always require it; existing configs require it only when a lockout-risk
+ * field changed. A successful Test Login (testLoginPassed) lifts the gate.
+ */
+export const requiresFreshTestLogin = (
+  hasExistingConfig: boolean,
+  savedData: FormData | undefined,
+  internalData: FormData | undefined,
+  provider: string | undefined,
+  testLoginPassed: boolean
+): boolean => {
+  if (testLoginPassed) {
+    return false;
+  }
+  if (!hasExistingConfig) {
+    return true;
+  }
+
+  return hasLockoutRiskChange(savedData, internalData, provider);
+};

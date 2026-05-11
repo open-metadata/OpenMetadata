@@ -37,6 +37,7 @@ import {
   validateSecurityConfiguration,
 } from '../../../rest/securityConfigAPI';
 import { getAuthConfig } from '../../../utils/AuthProvider.util';
+import { requiresFreshTestLogin } from '../../../utils/SSOUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import SSOConfigurationFormRJSF from './SSOConfigurationForm';
@@ -165,6 +166,10 @@ jest.mock('../../../utils/SSOUtils', () => {
     cleanupProviderSpecificFields: jest.fn(
       actual.cleanupProviderSpecificFields
     ),
+    // Default-bypass the lockout-risk save gate so existing tests that drive
+    // Save directly can still assert on validate/apply. Tests covering the
+    // gate itself flip this to `true` explicitly.
+    requiresFreshTestLogin: jest.fn(() => false),
   };
 });
 
@@ -321,6 +326,8 @@ const mockFetchAuthorizerConfig = fetchAuthorizerConfig as jest.MockedFunction<
 const mockGetAuthConfig = getAuthConfig as jest.MockedFunction<
   typeof getAuthConfig
 >;
+const mockRequiresFreshTestLogin =
+  requiresFreshTestLogin as jest.MockedFunction<typeof requiresFreshTestLogin>;
 
 const mockUseApplicationStore = useApplicationStore as jest.MockedFunction<
   typeof useApplicationStore
@@ -374,10 +381,12 @@ describe('SSOConfigurationForm', () => {
       writable: true,
     });
 
-    // Mock sessionStorage and localStorage
     Object.defineProperty(window, 'sessionStorage', {
       value: {
         clear: jest.fn(),
+        getItem: jest.fn(() => null),
+        setItem: jest.fn(),
+        removeItem: jest.fn(),
       },
       writable: true,
     });
@@ -385,6 +394,9 @@ describe('SSOConfigurationForm', () => {
     Object.defineProperty(window, 'localStorage', {
       value: {
         clear: jest.fn(),
+        getItem: jest.fn(() => null),
+        setItem: jest.fn(),
+        removeItem: jest.fn(),
       },
       writable: true,
     });
@@ -2065,17 +2077,14 @@ describe('SSOConfigurationForm', () => {
       mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
     });
 
-    it('should render OIDC callback URL display for Google provider', async () => {
+    it('should render OIDC email-claim status block for Google provider', async () => {
+      // The OIDC-specific UI block in the form (rendered when isOidcCallbackProvider)
+      // surfaces the email-claim status surface; this used to be the callback URL display.
       renderComponent({ selectedProvider: AuthProvider.Google });
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('oidc-callback-url-display')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId('email-claim-status')).toBeInTheDocument();
       });
-
-      expect(screen.getByTestId('oidc-callback-url')).toBeInTheDocument();
-      expect(screen.getByTestId('oidc-callback-url-copy')).toBeInTheDocument();
     });
 
     it('should render SAML ACS info banner with ACS URL and SP Entity ID', async () => {
@@ -2105,9 +2114,7 @@ describe('SSOConfigurationForm', () => {
       renderComponent({ selectedProvider: AuthProvider.Okta });
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('oidc-callback-url-display')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId('email-claim-status')).toBeInTheDocument();
       });
 
       expect(
@@ -2254,6 +2261,80 @@ describe('SSOConfigurationForm', () => {
       const docPanel = screen.getByTestId('sso-doc-panel');
 
       expect(docPanel).toBeInTheDocument();
+    });
+  });
+
+  describe('Lockout-risk Save Gate', () => {
+    beforeEach(() => {
+      mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
+    });
+
+    it('should block save with lockout toast when fresh Test Login is required', async () => {
+      mockRequiresFreshTestLogin.mockReturnValue(true);
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('Select Google'));
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('save-sso-configuration')
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('save-sso-configuration'));
+
+      await waitFor(() => {
+        expect(mockShowErrorToast).toHaveBeenCalledWith(
+          'message.test-login-required-before-save'
+        );
+      });
+
+      expect(mockValidateSecurityConfiguration).not.toHaveBeenCalled();
+      expect(mockApplySecurityConfiguration).not.toHaveBeenCalled();
+    });
+
+    it('should allow save when fresh Test Login is not required', async () => {
+      mockRequiresFreshTestLogin.mockReturnValue(false);
+      mockValidateSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse({
+          status: VALIDATION_STATUS.SUCCESS,
+          message: 'Validation successful',
+          results: [],
+        })
+      );
+      mockApplySecurityConfiguration.mockResolvedValue(
+        createAxiosResponse({} as SecurityConfiguration)
+      );
+      mockOnLogoutHandler.mockResolvedValue(undefined);
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('Select Google'));
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('save-sso-configuration')
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('save-sso-configuration'));
+
+      await waitFor(() => {
+        expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
+      });
+
+      expect(mockShowErrorToast).not.toHaveBeenCalledWith(
+        'message.test-login-required-before-save'
+      );
     });
   });
 });

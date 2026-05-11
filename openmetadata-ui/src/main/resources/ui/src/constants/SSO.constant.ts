@@ -796,6 +796,46 @@ export const VALIDATION_STATUS = {
   FAILED: 'failed',
 } as const;
 
+export interface OidcAuthConfiguration {
+  id?: string;
+  secret?: string;
+  discoveryUri?: string;
+  scope?: string;
+  callbackUrl?: string;
+  prompt?: string;
+  disablePkce?: boolean;
+  useNonce?: boolean;
+  clientAuthenticationMethod?: string;
+  // Schema stores maxAge as an integer, but form-payload paths emit a string;
+  // both shapes flow through this interface.
+  maxAge?: string | number;
+  customParams?: Record<string, string>;
+  [key: string]: unknown;
+}
+
+export interface SamlIdpConfiguration {
+  entityId?: string;
+  ssoLoginUrl?: string;
+  idpX509Certificate?: string;
+  nameId?: string;
+  [key: string]: unknown;
+}
+
+export interface SamlSpConfiguration {
+  entityId?: string;
+  acs?: string;
+  callback?: string;
+  [key: string]: unknown;
+}
+
+export interface SamlAuthConfiguration {
+  idp?: SamlIdpConfiguration;
+  sp?: SamlSpConfiguration;
+  [key: string]: unknown;
+}
+
+export type LdapAuthConfiguration = Record<string, unknown>;
+
 export interface AuthenticationConfiguration {
   provider: string;
   providerName: string;
@@ -810,9 +850,10 @@ export interface AuthenticationConfiguration {
   enableAutoRedirect?: boolean;
   clientType?: ClientType;
   secret?: string;
-  ldapConfiguration?: Record<string, unknown>;
-  samlConfiguration?: Record<string, unknown>;
-  oidcConfiguration?: Record<string, unknown>;
+  discoveryUri?: string;
+  ldapConfiguration?: LdapAuthConfiguration;
+  samlConfiguration?: SamlAuthConfiguration;
+  oidcConfiguration?: OidcAuthConfiguration;
 }
 
 export interface AuthorizerConfiguration {

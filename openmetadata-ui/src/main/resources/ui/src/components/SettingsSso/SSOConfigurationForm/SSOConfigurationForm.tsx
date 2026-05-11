@@ -86,7 +86,6 @@ import {
   getProviderDisplayName,
   getProviderIcon,
   hasFieldValidationErrors,
-  hasLockoutRiskChange,
   isValidNonBasicProvider,
   liftPublicOidcToConfidentialShape,
   parseSamlMetadataXml,
@@ -94,6 +93,7 @@ import {
   prepareOidcSubmitPayload,
   removeRequiredFields,
   removeSchemaFields,
+  requiresFreshTestLogin,
   resolveDiscoveryUri,
   updateLoadingState,
 } from '../../../utils/SSOUtils';
@@ -1198,15 +1198,18 @@ const SSOConfigurationFormRJSF = ({
         return;
       }
 
-      // Smart save gate: any lockout-risk field change requires a fresh
-      // Test Login. New configs always require it. Safe-only edits skip.
       const provider = internalData?.authenticationConfiguration?.provider as
         | string
         | undefined;
-      const isLockoutRiskEdit = hasExistingConfig
-        ? hasLockoutRiskChange(savedData, internalData, provider)
-        : true;
-      if (isLockoutRiskEdit && !testLoginPassed) {
+      if (
+        requiresFreshTestLogin(
+          hasExistingConfig,
+          savedData,
+          internalData,
+          provider,
+          testLoginPassed
+        )
+      ) {
         showErrorToast(t('message.test-login-required-before-save'));
         updateLoadingState(isModalSave, setIsLoading, false);
 
@@ -1410,14 +1413,10 @@ const SSOConfigurationFormRJSF = ({
                 <div
                   className="flex flex-center flex-column gap-1"
                   data-testid="file-upload-drop-zone">
-                  <div
-                    className="flex flex-shrink items-center justify-center bg-white border border-radius-xs"
-                    style={{ width: '40px', height: '40px' }}>
+                  <div className="flex flex-shrink items-center justify-center bg-white border border-radius-xs tw:w-10 tw:h-10">
                     <UploadCloud02 className="text-grey-600" size={20} />
                   </div>
-                  <div
-                    className="flex align-center flex-wrap gap-4 justify-center"
-                    style={{ maxWidth: '220px' }}>
+                  <div className="flex align-center flex-wrap gap-4 justify-center tw:max-w-[220px]">
                     <span className="font-medium">
                       {t('label.click-to')}{' '}
                       <span className="font-semibold sso-upload-link">
@@ -1565,12 +1564,10 @@ const SSOConfigurationFormRJSF = ({
                     </Button>
                     {currentProvider && (
                       <TestLoginButton
-                        formData={
-                          internalData?.authenticationConfiguration as never
-                        }
+                        formData={internalData?.authenticationConfiguration}
                         hasExistingConfig={hasExistingConfig}
                         isDisabled={isLoading}
-                        securityConfig={internalData as never}
+                        securityConfig={internalData}
                         triggerRef={testLoginTriggerRef}
                         onSuccess={handleTestLoginSuccess}
                       />
@@ -1685,12 +1682,10 @@ const SSOConfigurationFormRJSF = ({
                   </Button>
                   {currentProvider && (
                     <TestLoginButton
-                      formData={
-                        internalData?.authenticationConfiguration as never
-                      }
+                      formData={internalData?.authenticationConfiguration}
                       hasExistingConfig={hasExistingConfig}
                       isDisabled={isLoading}
-                      securityConfig={internalData as never}
+                      securityConfig={internalData}
                       triggerRef={testLoginTriggerRef}
                       onSuccess={handleTestLoginSuccess}
                     />

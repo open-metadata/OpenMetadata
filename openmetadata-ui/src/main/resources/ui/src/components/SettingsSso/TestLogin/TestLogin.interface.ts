@@ -34,43 +34,29 @@ export interface ClaimSelectorProps {
   onCancel: () => void;
 }
 
-export interface TestLoginFormData {
-  provider?: string;
-  discoveryUri?: string;
-  clientId?: string;
-  clientSecret?: string;
-  callbackUrl?: string;
-  scope?: string;
-  oidcConfiguration?: {
-    discoveryUri?: string;
-    id?: string;
-    secret?: string;
-    scope?: string;
-    callbackUrl?: string;
-    prompt?: string;
-    disablePkce?: boolean;
-    useNonce?: boolean;
-    clientAuthenticationMethod?: string;
-    maxAge?: string;
-    customParams?: Record<string, string>;
-  };
-  ldapConfiguration?: Record<string, unknown>;
-  samlConfiguration?: {
-    idp?: {
-      entityId?: string;
-      ssoLoginUrl?: string;
-      idpX509Certificate?: string;
-      nameId?: string;
-    };
-    sp?: {
-      entityId?: string;
-      acs?: string;
-      callback?: string;
-    };
-  };
+export const TEST_LOGIN_MESSAGE_TYPE = 'sso-test-login';
+
+export interface TestLoginPopupPayload {
+  type: typeof TEST_LOGIN_MESSAGE_TYPE;
+  success: boolean;
+  error?: string;
+  claims?: Record<string, ClaimValue>;
+  suggestedEmailClaim?: string | null;
+  derivedPrincipalDomain?: string | null;
+  suggestedAdminPrincipal?: string | null;
+  hasRefreshToken?: boolean;
 }
 
-export interface SecurityConfigForValidation {
-  authenticationConfiguration?: Record<string, unknown>;
-  authorizerConfiguration?: Record<string, unknown>;
-}
+export const isTestLoginPopupPayload = (
+  value: unknown
+): value is TestLoginPopupPayload => {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const candidate = value as Partial<TestLoginPopupPayload>;
+
+  return (
+    candidate.type === TEST_LOGIN_MESSAGE_TYPE &&
+    typeof candidate.success === 'boolean'
+  );
+};
