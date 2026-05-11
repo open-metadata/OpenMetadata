@@ -153,6 +153,22 @@ public final class PostgresAutoTuner implements AutoTuner {
         .orElse(null);
   }
 
+  @Override
+  public Map<String, String> currentSettingsForTable(final Handle handle, final String tableName) {
+    return handle
+        .createQuery(
+            "SELECT COALESCE(c.reloptions, ARRAY[]::text[]) AS opts "
+                + "FROM pg_class c "
+                + "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                + "WHERE c.relkind = 'r' "
+                + "  AND n.nspname = ANY (current_schemas(false)) "
+                + "  AND c.relname = :name")
+        .bind("name", tableName)
+        .map((rs, ctx) -> parseReloptions((String[]) rs.getArray("opts").getArray()))
+        .findOne()
+        .orElse(Map.of());
+  }
+
   List<ServerParamCheck> readServerParams(final Handle handle) {
     List<ServerParamCheck> checks = new ArrayList<>();
     Map<String, String> recommendations = recommendedServerParams();

@@ -181,12 +181,14 @@ public final class PostgresDiagnostic implements Diagnostic {
   }
 
   List<Finding> seqScanHeavy(final Handle handle) {
+    // Includes idx_scan=0 tables — those are the *worst* candidates for a missing index, not
+    // edge cases to filter out. NULLIF would silently drop them via NULL comparison.
     return handle
         .createQuery(
             "SELECT relname AS table_name, seq_scan, idx_scan "
                 + "FROM pg_stat_user_tables "
                 + "WHERE seq_scan > :min_seq "
-                + "  AND seq_scan::numeric / NULLIF(idx_scan, 0) > :ratio "
+                + "  AND (idx_scan = 0 OR seq_scan::numeric / idx_scan > :ratio) "
                 + "ORDER BY seq_scan DESC "
                 + "LIMIT 25")
         .bind("min_seq", SEQ_SCAN_MIN)

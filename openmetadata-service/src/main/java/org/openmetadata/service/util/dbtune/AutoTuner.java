@@ -12,6 +12,7 @@
  */
 package org.openmetadata.service.util.dbtune;
 
+import java.util.Map;
 import org.jdbi.v3.core.Handle;
 
 /**
@@ -29,6 +30,14 @@ public interface AutoTuner {
 
   /** Read stats + settings, then turn them into recommendations. Mixes I/O and pure logic. */
   DbTuneResult analyze(Handle handle);
+
+  /**
+   * Reads the current per-table reloption / table-option settings for an arbitrary table name —
+   * including tables that are not in the static tuning catalog. Returns an empty map if the table
+   * has no overrides set (inherits cluster defaults). The returned keys use the same casing the
+   * engine reports (lowercase autovacuum_* keys for Postgres, uppercase STATS_* keys for MySQL).
+   */
+  Map<String, String> currentSettingsForTable(Handle handle, String tableName);
 
   /**
    * Pure decision function. Given observed table stats, return the recommendation. Exposed

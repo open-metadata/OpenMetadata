@@ -137,6 +137,21 @@ public final class MysqlAutoTuner implements AutoTuner {
         .orElse(null);
   }
 
+  @Override
+  public Map<String, String> currentSettingsForTable(final Handle handle, final String tableName) {
+    return handle
+        .createQuery(
+            "SELECT COALESCE(CREATE_OPTIONS, '') AS create_opts "
+                + "FROM information_schema.TABLES "
+                + "WHERE TABLE_SCHEMA = DATABASE() "
+                + "  AND TABLE_NAME = :name")
+        .bind("name", tableName)
+        .mapTo(String.class)
+        .findOne()
+        .map(MysqlAutoTuner::parseCreateOptions)
+        .orElse(Map.of());
+  }
+
   List<ServerParamCheck> readServerParams(final Handle handle) {
     List<ServerParamCheck> checks = new ArrayList<>();
     Map<String, String> recommendations = recommendedServerParams();

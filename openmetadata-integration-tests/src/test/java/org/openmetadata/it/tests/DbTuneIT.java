@@ -118,13 +118,39 @@ class DbTuneIT {
     ConnectionType connType = currentConnectionType();
     TableRecommendation rec = recommendationForIsolatedTable(connType);
 
-    jdbi.useHandle(handle -> tuner.apply(handle, rec));
-
     String built = tuner.buildAlterStatement(rec);
     assertTrue(built.contains(ISOLATED_TABLE), "ALTER target table mismatch: " + built);
 
-    // Apply twice — second invocation must complete without throwing.
     jdbi.useHandle(handle -> tuner.apply(handle, rec));
+    Map<String, String> after =
+        jdbi.withHandle(handle -> tuner.currentSettingsForTable(handle, ISOLATED_TABLE));
+    assertSettingsPersisted(rec.recommendedSettings(), after);
+
+    // Apply a second time — must be idempotent (no exception, no value drift).
+    jdbi.useHandle(handle -> tuner.apply(handle, rec));
+    Map<String, String> afterSecond =
+        jdbi.withHandle(handle -> tuner.currentSettingsForTable(handle, ISOLATED_TABLE));
+    assertEquals(after, afterSecond, "Apply should be idempotent");
+  }
+
+  private void assertSettingsPersisted(
+      final Map<String, String> expected, final Map<String, String> actual) {
+    for (Map.Entry<String, String> e : expected.entrySet()) {
+      String key = e.getKey();
+      // Postgres lowercases reloption keys; MySQL uppercases STATS_*. Look up case-insensitively.
+      String got =
+          actual.entrySet().stream()
+              .filter(a -> a.getKey().equalsIgnoreCase(key))
+              .map(Map.Entry::getValue)
+              .findFirst()
+              .orElse(null);
+      assertNotNull(got, "Missing setting after apply: " + key + " (got " + actual + ")");
+      assertEquals(
+          Double.parseDouble(e.getValue()),
+          Double.parseDouble(got),
+          0.0,
+          "Setting " + key + " did not take effect: expected " + e.getValue() + ", got " + got);
+    }
   }
 
   @Test
