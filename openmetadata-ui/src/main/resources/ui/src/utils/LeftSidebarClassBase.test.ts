@@ -22,11 +22,6 @@ import leftSidebarClassBase, {
   LeftSidebarClassBase,
 } from './LeftSidebarClassBase';
 
-const MOCK_NESTED_KEYS = {
-  '/observability/alerts': '/observability/alerts',
-  '/data-access-request': '/data-access-request',
-};
-
 jest.mock('../constants/LeftSidebar.constants', () => ({
   SIDEBAR_LIST: [
     {
@@ -60,7 +55,6 @@ jest.mock('../constants/LeftSidebar.constants', () => ({
     },
   ],
   SIDEBAR_NESTED_KEYS: {
-    '/observability/alerts': '/observability/alerts',
     '/data-access-request': '/data-access-request',
   },
 }));
@@ -212,7 +206,7 @@ describe('LeftSidebarClassBase', () => {
         expect(custom.getSidebarNestedKeys()).toEqual({
           '/custom-route': '/custom-route',
         });
-        expect(instance.getSidebarNestedKeys()).toEqual(MOCK_NESTED_KEYS);
+        expect(instance.getSidebarNestedKeys()).toEqual(SIDEBAR_NESTED_KEYS);
       });
     });
 
