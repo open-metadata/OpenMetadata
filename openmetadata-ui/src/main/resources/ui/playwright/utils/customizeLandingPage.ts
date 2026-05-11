@@ -173,25 +173,12 @@ export const checkAllDefaultWidgets = async (page: Page) => {
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
   await expect(page.getByTestId('page-layout-v1')).toBeVisible();
-
-  // Widgets below the fold are wrapped in DeferredWidget — IntersectionObserver only mounts
-  // them once they enter the viewport. Scroll each into view so the test simulates a normal
-  // user scrolling to inspect the full layout, otherwise below-fold widgets stay placeholders
-  // and toBeVisible() fails on an element that never rendered.
-  const widgetIds = [
-    'KnowledgePanel.ActivityFeed',
-    'KnowledgePanel.Following',
-    'KnowledgePanel.DataAssets',
-    'KnowledgePanel.MyData',
-    'KnowledgePanel.KPI',
-    'KnowledgePanel.TotalAssets',
-  ];
-
-  for (const widgetId of widgetIds) {
-    const widget = page.getByTestId(widgetId);
-    await widget.scrollIntoViewIfNeeded();
-    await expect(widget).toBeVisible();
-  }
+  await expect(page.getByTestId('KnowledgePanel.ActivityFeed')).toBeVisible();
+  await expect(page.getByTestId('KnowledgePanel.Following')).toBeVisible();
+  await expect(page.getByTestId('KnowledgePanel.DataAssets')).toBeVisible();
+  await expect(page.getByTestId('KnowledgePanel.MyData')).toBeVisible();
+  await expect(page.getByTestId('KnowledgePanel.KPI')).toBeVisible();
+  await expect(page.getByTestId('KnowledgePanel.TotalAssets')).toBeVisible();
 };
 
 export const setUserDefaultPersona = async (

@@ -17,7 +17,6 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import DeferredWidget from '../../components/common/DeferredWidget/DeferredWidget.component';
 import Loader from '../../components/common/Loader/Loader';
 import { AdvanceSearchProvider } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
@@ -161,18 +160,11 @@ const MyDataPage = () => {
   const widgets = useMemo(
     () =>
       layout.map((widget) => (
-        // P1.3: defer below-fold widget mounting until the user actually scrolls them into
-        // view. Each widget runs its own data-fetch effect on mount; eagerly mounting them
-        // all on first paint pays for several below-fold network requests the user may
-        // never scroll to. The 200px root margin pre-loads widgets that are about to enter
-        // view so a normal scroll never reveals an empty placeholder.
         <div data-grid={widget} key={widget.i}>
-          <DeferredWidget>
-            {getWidgetFromKey({
-              widgetConfig: widget,
-              currentLayout: layout,
-            })}
-          </DeferredWidget>
+          {getWidgetFromKey({
+            widgetConfig: widget,
+            currentLayout: layout,
+          })}
         </div>
       )),
     [layout, isAnnouncementLoading, announcements]
