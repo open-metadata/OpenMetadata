@@ -249,55 +249,46 @@ in DB) reconciles for every entity type.
 
 ## Scenario 8 — Vector embeddings + column indexing
 
-### `VectorEmbeddingIndexingIT` (Tier A, gated)
-- **Path:** `org/openmetadata/it/tests/search/VectorEmbeddingIndexingIT.java`
-- **Gating:** `@EnabledIfSystemProperty(named = "vectorEmbedding", matches = "true")`.
-  Add `-DvectorEmbedding=true` to the nightly profile only.
-- **Setup:** enable vector embedding feature in `openmetadata-secure-test.yaml`
-  (or runtime config), seed 10 tables with 5 columns each.
-- **Assertions:**
-  - Each table doc has `embedding` field with declared dimension (e.g., 384).
-  - `columns[].embedding` is present and has the same dimension.
-  - kNN query against `embedding` returns the seeded table when given its own
-    vector ± noise.
-  - `JobStatsParser.vector.embedded` equals seeded count.
-- **Effort:** 1.5d (mostly figuring out kNN query syntax across OS/ES).
+### `VectorEmbeddingIndexingIT` (Tier A, gated) — DEFERRED
+- **Status:** deferred until a stub embedding service exists. Real
+  ElasticSearchConfiguration.naturalLanguageSearch requires an external
+  embedding provider (Bedrock / OpenAI / Cohere); none is available in CI.
+  Writing the test means first standing up a stub embedding server
+  (mirroring how `MockOidcServer` stubs the OIDC provider) — about 1.5d of
+  infra work on top of the test itself.
+- **Unblocker:** create `StubEmbeddingService` testcontainer that responds
+  to embedding requests with deterministic 384-dim vectors. Once landed,
+  add the gated IT + Collate mirror.
+- **Effort:** 3d total (1.5d stub + 1.5d test) — deferred to phase 7+.
 
 ---
 
 ## Scenario 9 — Multi-server distributed reindex + coordinator failover
 
-### 9a · `DistributedReindexCoordinationIT` (Tier D)
-- **Path:** `org/openmetadata/it/tests/search/distributed/DistributedReindexCoordinationIT.java`
-- **Goal:** 2 OM servers share the reindex workload via partitioning; total
-  work matches single-server result.
-- **Infra:** new `DistributedServer` helper that brings up 2 OM containers
-  behind a shared Postgres + OS via testcontainers `Network`. Already
-  partially proven by `DistributedAutoTuneReindexUIIT`.
-- **Assertions:** see #13 invariant; plus each server contributed
-  `processor.processed > 0` (proven via per-server stats endpoint, if
-  exposed, or via log scrape).
-
-### 9b · `DistributedCoordinatorFailoverIT` (Tier D)
-- **Path:** `.../distributed/DistributedCoordinatorFailoverIT.java`
-- **Goal:** kill the coordinator mid-run; the surviving server promotes and
-  the run still completes.
-- **Setup:** 2 OM containers, seed 5k tables.
-- **Steps:**
-  1. Trigger reindex; identify coordinator via app log or the
-     `/v1/system/apps/SearchIndexingApplication/status` endpoint.
-  2. Once `processor.processed > 500`, kill coordinator container.
-  3. Awaitility up to 60s for the surviving server to promote (election +
-     resume).
-  4. Run completes.
-- **Assertions:**
-  - Final run status is `SUCCESS`.
-  - `db_count == es_count`.
-  - Partition log shows the surviving node took over remaining partitions.
-- **Open question:** is there an explicit leader election, or does the app run
-  on one server with the other as a hot standby waiting on a DB lock? Behavior
-  of the test depends on this. Validate during helper build.
-- **Effort:** 3d (most of the infra work is `DistributedServer` helper).
+### 9a · `DistributedReindexCoordinationIT` (Tier D) — DEFERRED
+### 9b · `DistributedCoordinatorFailoverIT` (Tier D) — DEFERRED
+- **Status:** both deferred — multi-server scenarios need a new
+  `DistributedServer` testcontainer helper that boots ≥ 2 OM containers
+  sharing a Postgres + OpenSearch instance over a testcontainers
+  `Network`. Today's bootstrap only supports a single embedded OM JVM
+  (`TestSuiteBootstrap`) or a single containerized OM (`ContainerizedServer`).
+- **What's already proven:** `DistributedAutoTuneReindexUIIT` validates the
+  partition-claim mechanism within a single server, so the per-partition
+  correctness contract is covered. What's missing is **multi-node
+  partition reclaim** when a partition holder dies — that needs the new
+  infra.
+- **Unblocker:** build `DistributedServer.withReplicas(int n)` returning a
+  list of `ServerHandle`s, then write:
+  - **#9a:** trigger reindex on server A; assert per-server contribution via
+    server-scoped status endpoint (`/v1/apps/name/SearchIndexingApplication/status`
+    on each); assert total = sum.
+  - **#9b:** kill the container holding the most partitions mid-run; wait up to
+    `PARTITION_CLAIM_TIMEOUT_MS + 30s = 3.5min`; assert run finishes
+    successfully and reconciliation invariant holds.
+- **Reference findings:** `SEARCH_REINDEX_LOCK` via `SearchReindexLockDAO` is
+  DB-lock based; partitions are claimed with `FOR UPDATE SKIP LOCKED` and
+  reclaimable after 3 min of staleness (`PARTITION_CLAIM_TIMEOUT_MS`).
+- **Effort:** 4d total — 3d infra + 1d tests.
 
 ---
 

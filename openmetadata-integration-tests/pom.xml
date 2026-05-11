@@ -352,6 +352,7 @@
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -361,6 +362,7 @@
 
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                    <excludedGroups>scale</excludedGroups>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>
@@ -445,6 +447,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -540,6 +543,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -632,6 +636,7 @@
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -725,6 +730,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -816,6 +822,7 @@
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -961,6 +968,7 @@
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
@@ -1029,6 +1037,46 @@
                     <junit.jupiter.execution.parallel.mode.classes.default>same_thread</junit.jupiter.execution.parallel.mode.classes.default>
                     <junit.jupiter.execution.parallel.config.strategy>dynamic</junit.jupiter.execution.parallel.config.strategy>
                     <junit.jupiter.execution.parallel.config.dynamic.factor>0.5</junit.jupiter.execution.parallel.config.dynamic.factor>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- Scale + benchmark tests (@Tag("scale")). Excluded from PR runs by the
+         default failsafe config; nightly runs invoke `mvn verify -P scale-it`. -->
+    <profile>
+      <id>scale-it</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
+            <executions>
+              <execution>
+                <id>scale-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/tests/search/scale/*IT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                    <includedGroups>scale</includedGroups>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>
