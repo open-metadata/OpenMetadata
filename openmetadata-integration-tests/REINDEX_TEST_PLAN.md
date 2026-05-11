@@ -71,20 +71,14 @@ in DB) reconciles for every entity type.
     cohort.
 - **Effort:** 0.5d (extends existing `CollateFullReindexFromCleanStateIT`).
 
-### 1b · `ExploreCountAfterReindexUIIT` (Tier B, UI parity)
-- **Path:** `org/openmetadata/playwright/scenarios/search/reindex/ExploreCountAfterReindexUIIT.java`
-- **Goal:** prove the Explore badges read the post-swap alias, not the stale
-  index.
-- **Steps:**
-  1. Seed cohort, run reindex via SDK (backend setup — no UI).
-  2. `ExplorePage.open(ui)`; for each tab in {tables, topics, dashboards,
-     glossaryTerms}: assert badge text equals expected count from
-     `DbCountQuerier`.
-  3. Click each tab → first page of results must include at least one
-     fully-qualified name from the seeded set; total `hits.total.value` matches
-     badge.
-- **Assertions:** badge count == DB count == ES `docCount` for every tab.
-- **Effort:** 0.5d.
+### 1b · `ExploreCountAfterReindexUIIT` (Tier B, UI parity) — ALREADY COVERED
+- **Existing:** `SimpleReindexTriggerUIIT` already triggers a reindex via the
+  UI and asserts per-tab Explore counts (`assertCountForTab`) match the
+  seeded counts for every {tables, topics, dashboards, pipelines} tab. The
+  intent of #1b — "Explore badges read the post-swap alias" — is already
+  proven.
+- **Decision:** no new UIIT for #1b. Backend `ReindexAliasSwapIT` + existing
+  `SimpleReindexTriggerUIIT` together cover the contract.
 
 ---
 
@@ -108,13 +102,11 @@ in DB) reconciles for every entity type.
   - No probe sees zero docs.
 - **Effort:** 1d. Uses `EsOutageInjector` only as a stretch test.
 
-### 2b · `SearchAvailableDuringReindexUIIT` (existing, extend)
-- **Path:** `org/openmetadata/playwright/scenarios/search/reindex/SearchAvailableDuringReindexUIIT.java`
-- **Existing assertion:** Explore search works mid-reindex.
-- **Add:** capture the rendered list of FQNs at three points (before / mid /
-  after) and assert set equality and no duplicate cards rendered. Web-first
-  count assertion against `data-testid="explore-card-count"`.
-- **Effort:** 0.25d.
+### 2b · `SearchAvailableDuringReindexUIIT` (existing) — ALREADY COVERED
+- **Existing:** the test already probes during reindex and explicitly asserts
+  "duplicates indicate the alias swap exposed both old and new index"
+  (`SearchAvailableDuringReindexUIIT.java` lines 151, 167). No extension
+  needed beyond the backend `NoDuplicatesDuringReindexIT` already landed.
 
 ---
 

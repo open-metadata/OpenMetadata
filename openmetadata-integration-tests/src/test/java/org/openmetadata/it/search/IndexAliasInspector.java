@@ -27,6 +27,7 @@ public final class IndexAliasInspector {
 
   public IndexAliasInspector(final ServerHandle server) {
     this.client = new SearchClient(server);
+    ensureMappingLoaderInitialized();
   }
 
   /**
@@ -36,6 +37,23 @@ public final class IndexAliasInspector {
    */
   public Set<String> declaredEntityTypes() {
     return IndexMappingLoader.getInstance().getIndexMapping().keySet();
+  }
+
+  /**
+   * Embedded backend ITs already init the loader via TestSuiteBootstrap. UIITs run in
+   * a separate JVM from the OM service, so the test JVM's loader is uninitialized —
+   * lazily initialize it here so callers don't have to care which boot mode they're in.
+   */
+  private static void ensureMappingLoaderInitialized() {
+    try {
+      IndexMappingLoader.getInstance();
+    } catch (final IllegalStateException uninitialized) {
+      try {
+        IndexMappingLoader.init();
+      } catch (final java.io.IOException ioe) {
+        throw new IllegalStateException("Failed to lazily init IndexMappingLoader", ioe);
+      }
+    }
   }
 
   /** Alias name for the given entity type (e.g., {@code "table" -> "table_search_index"}). */
