@@ -55,7 +55,7 @@ jest.mock('../constants/LeftSidebar.constants', () => ({
     },
   ],
   SIDEBAR_NESTED_KEYS: {
-    '/data-access-request': '/data-access-request',
+    '/observability/alerts': '/observability/alerts',
   },
 }));
 
@@ -183,19 +183,13 @@ describe('LeftSidebarClassBase', () => {
         expect(instance.getSidebarNestedKeys()).toEqual(SIDEBAR_NESTED_KEYS);
       });
 
-      it('should include the DAR route so the sidebar highlights it as active', () => {
-        const keys = instance.getSidebarNestedKeys();
-
-        expect(keys).toHaveProperty('/data-access-request');
-      });
-
       it('should return the same reference on repeated calls', () => {
         expect(instance.getSidebarNestedKeys()).toBe(
           instance.getSidebarNestedKeys()
         );
       });
 
-      it('subclass can override getSidebarNestedKeys to inject custom active routes', () => {
+      it('should allow a subclass to override getSidebarNestedKeys with custom routes', () => {
         class CustomSidebar extends LeftSidebarClassBase {
           public getSidebarNestedKeys(): Record<string, string> {
             return { '/custom-route': '/custom-route' };
