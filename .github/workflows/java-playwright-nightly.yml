@@ -9,12 +9,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# Nightly run of the Java Playwright suite. Runs the same scenarios as the PR
-# workflow today; expands in Phase 3 to include the external-mode matrix
-# (ES+OS), distributed reindex coordination, and crash-recovery scenarios.
-# Tracks EPIC #3731, satisfies tickets #3767 / #3792.
+# Nightly run of the UI integration suite (*UIIT.java) — lives inside
+# openmetadata-integration-tests under the `ui-it` Maven profile. Expands in
+# Phase 3 to include the external-mode matrix (ES + OS), distributed reindex
+# coordination, and crash-recovery scenarios. Tracks EPIC #3731 / tickets
+# #3767, #3792.
 
-name: Java Playwright (Nightly)
+name: UI Integration Tests (Nightly)
 
 on:
   schedule:
@@ -26,7 +27,7 @@ permissions:
   checks: write
 
 jobs:
-  java-playwright-nightly:
+  ui-it-nightly:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -76,14 +77,14 @@ jobs:
         # consistent across actors.
         run: echo "127.0.0.1 om-mock-idp" | sudo tee -a /etc/hosts
 
-      - name: Build dependencies for Java Playwright module
+      - name: Build dependencies for integration-tests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -DskipTests clean install -pl :openmetadata-java-playwright -am
+        run: mvn -DskipTests clean install -pl :openmetadata-integration-tests -am
 
       - name: Install Playwright browsers
         run: |
-          mvn -pl :openmetadata-java-playwright dependency:build-classpath -Dmdep.outputFile=/tmp/cp.txt -q
+          mvn -pl :openmetadata-integration-tests dependency:build-classpath -Dmdep.outputFile=/tmp/cp.txt -q
           java -cp "$(cat /tmp/cp.txt)" com.microsoft.playwright.CLI install --with-deps chromium
 
       - name: Free build artifacts
@@ -93,17 +94,16 @@ jobs:
           rm -rf openmetadata-shaded-deps/*/target
           df -h /
 
-      - name: Run Java Playwright scenarios (${{ matrix.searchEngine }})
+      - name: Run UI integration tests (${{ matrix.searchEngine }})
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          JPW_MODE: embedded
         run: |
           if [ "${{ matrix.searchEngine }}" = "elasticsearch" ]; then
-            mvn verify -pl :openmetadata-java-playwright \
+            mvn verify -P ui-it -pl :openmetadata-integration-tests \
               -DsearchType=elasticsearch \
               -DsearchImage=docker.elastic.co/elasticsearch/elasticsearch:9.3.0
           else
-            mvn verify -pl :openmetadata-java-playwright
+            mvn verify -P ui-it -pl :openmetadata-integration-tests
           fi
 
       - name: Upload Playwright traces
@@ -111,7 +111,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-traces-${{ matrix.searchEngine }}-${{ github.run_id }}
-          path: openmetadata-java-playwright/target/playwright-traces
+          path: openmetadata-integration-tests/target/playwright-traces
           if-no-files-found: ignore
           retention-days: 14
 
@@ -120,7 +120,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: failsafe-reports-${{ matrix.searchEngine }}-${{ github.run_id }}
-          path: openmetadata-java-playwright/target/failsafe-reports
+          path: openmetadata-integration-tests/target/failsafe-reports
           if-no-files-found: ignore
           retention-days: 14
 
@@ -130,4 +130,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_test_failures: true
-          report_paths: 'openmetadata-java-playwright/target/failsafe-reports/TEST-*.xml'
+          report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'

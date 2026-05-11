@@ -160,6 +160,13 @@
       <version>4.4.0</version>
       <scope>test</scope>
     </dependency>
+    <!-- Playwright Java for UI integration tests (*UIIT.java) -->
+    <dependency>
+      <groupId>com.microsoft.playwright</groupId>
+      <artifactId>playwright</artifactId>
+      <version>1.49.0</version>
+      <scope>test</scope>
+    </dependency>
     <!-- RDF support (Apache Jena) for RDF tests -->
     <dependency>
       <groupId>org.apache.jena</groupId>
@@ -208,6 +215,9 @@
                 <include>org/openmetadata/it/auth/**</include>
                 <include>org/openmetadata/it/util/**</include>
                 <include>org/openmetadata/it/factories/**</include>
+                <include>org/openmetadata/it/server/**</include>
+                <include>org/openmetadata/it/search/**</include>
+                <include>org/openmetadata/it/ui/**</include>
                 <include>org/openmetadata/it/tests/BaseEntityIT*</include>
                 <include>private_key.der</include>
                 <include>public_key.der</include>
@@ -291,6 +301,7 @@
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -383,6 +394,7 @@
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -477,6 +489,7 @@
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -568,6 +581,7 @@
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -660,6 +674,7 @@
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -750,6 +765,7 @@
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -894,6 +910,7 @@
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
@@ -917,6 +934,56 @@
                 <goals>
                   <goal>verify</goal>
                 </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- UI integration tests (*UIIT.java). Run with `mvn verify -P ui-it`. Boots the OM
+         Docker image via ContainerizedServer + Playwright; embedded TestSuiteBootstrap is
+         skipped. Per-method parallel; tests with global state opt out via @ResourceLock
+         or @Execution(SAME_THREAD). -->
+    <profile>
+      <id>ui-it</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
+            <executions>
+              <execution>
+                <id>ui-scenario-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/*UIIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <skip.embedded.bootstrap>true</skip.embedded.bootstrap>
+                    <!-- Video recording on by default while the suite is young — captures
+                         each run to target/playwright-videos/ for triage. Disable per-run
+                         with -DPW_VIDEO=false. -->
+                    <PW_VIDEO>true</PW_VIDEO>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                    <junit.jupiter.execution.parallel.mode.default>concurrent</junit.jupiter.execution.parallel.mode.default>
+                    <junit.jupiter.execution.parallel.mode.classes.default>same_thread</junit.jupiter.execution.parallel.mode.classes.default>
+                    <junit.jupiter.execution.parallel.config.strategy>dynamic</junit.jupiter.execution.parallel.config.strategy>
+                    <junit.jupiter.execution.parallel.config.dynamic.factor>0.5</junit.jupiter.execution.parallel.config.dynamic.factor>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
               </execution>
             </executions>
           </plugin>
