@@ -162,16 +162,16 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     },
   ];
 
-  const afterDeleteAction = (isSoftDelete?: boolean) => {
+  const afterDeleteAction = async (isSoftDelete?: boolean) => {
     updateKnowledgeCenterRecentViewed(
       recentlyViewed.filter((page) => page.id !== knowledgePage?.id)
     );
+    await fetchKnowledgePageHierarchy?.(true);
     if (isSoftDelete) {
       onToggleDelete();
     } else {
       navigate(ROUTES.CONTEXT_CENTER_ARTICLES);
     }
-    fetchKnowledgePageHierarchy?.(true);
   };
 
   const handleShare = async () => {

@@ -233,7 +233,7 @@ const KnowledgePagesHierarchy = forwardRef<
           });
         }
 
-        if (isCreateHash) {
+        if (isCreateHash || forceRefresh) {
           setKnowledgePageHierarchy(data);
         } else {
           // Check if we have an activeFqn that represents a nested child node
