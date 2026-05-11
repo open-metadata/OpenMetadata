@@ -579,8 +579,12 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
             is_partitioned, partition_details = self.get_table_partition_details(
                 table_name=table_name, schema_name=schema_name, inspector=self.inspector
             )
-            if is_partitioned:
+            if is_partitioned and table_type not in (
+                TableType.View,
+                TableType.MaterializedView,
+            ):
                 table_request.tableType = TableType.Partitioned.value
+            if is_partitioned:
                 table_request.tablePartition = partition_details
 
             yield Either(right=table_request)
