@@ -92,11 +92,7 @@ class IndexFieldExplosionIT {
       property.setPropertyType(stringType.getEntityReference());
       client
           .getHttpClient()
-          .execute(
-              HttpMethod.PUT,
-              "/v1/metadata/types/" + tableType.getId(),
-              property,
-              Type.class);
+          .execute(HttpMethod.PUT, "/v1/metadata/types/" + tableType.getId(), property, Type.class);
     }
     ReindexHelpers.triggerSearchIndexAndWait(server);
 

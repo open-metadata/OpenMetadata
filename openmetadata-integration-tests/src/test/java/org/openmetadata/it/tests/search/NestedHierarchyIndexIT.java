@@ -70,7 +70,6 @@ class NestedHierarchyIndexIT {
         .as("deep glossary chain must not produce failed records")
         .isZero();
 
-    search.assertEntityIndexed(
-        GLOSSARY_TERM_ALIAS, "glossaryTerm", leaf.getFullyQualifiedName());
+    search.assertEntityIndexed(GLOSSARY_TERM_ALIAS, "glossaryTerm", leaf.getFullyQualifiedName());
   }
 }

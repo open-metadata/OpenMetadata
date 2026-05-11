@@ -245,11 +245,13 @@ in DB) reconciles for every entity type.
     request (no docs written after `stopRequestTimestamp + 2s`).
 - **Effort:** 1d.
 
-### 7b · `StopReindexUIIT` (Tier B)
-- **Path:** `org/openmetadata/playwright/scenarios/search/reindex/StopReindexUIIT.java`
-- Verify the Stop button is enabled while running, click it, assert UI flips
-  to Stopped status within Awaitility.
-- **Effort:** 0.5d.
+### 7b · `StopReindexUIIT` (Tier B) — DEFERRED
+- **Status:** deferred. Awaiting confirmation of the Stop button testid in
+  `/settings/apps/SearchIndexingApplication` — current `SearchIndexAppPage`
+  has no locator for it. To unblock: open the page in dev, inspect the stop
+  control, then add `Locator stopButton()` to the page object and write the
+  test. Backend test `ReindexStopUnderLoadIT` already covers the contract.
+- **Effort:** 0.5d once locator is known.
 
 ---
 

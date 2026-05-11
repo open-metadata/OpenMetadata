@@ -162,7 +162,8 @@ public final class ReindexHelpers {
     server.sdk().search().reindexAll();
   }
 
-  private static AppRunRecord fetchLatestRun(final ServerHandle server, final String appName) {
+  /** Latest {@link AppRunRecord} for the named app, or {@code null} if no runs yet. */
+  public static AppRunRecord fetchLatestRun(final ServerHandle server, final String appName) {
     return server
         .sdk()
         .getHttpClient()

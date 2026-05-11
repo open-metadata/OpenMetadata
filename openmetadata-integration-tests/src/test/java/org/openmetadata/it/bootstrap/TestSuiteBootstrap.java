@@ -1124,6 +1124,15 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   /**
+   * Search engine testcontainer (OpenSearch or Elasticsearch). Exposed for failure-path
+   * tests that need to pause/unpause/disconnect the engine to validate retry semantics.
+   * Returns {@code null} if the bootstrap hasn't started yet.
+   */
+  public static GenericContainer<?> getSearchContainer() {
+    return SEARCH_CONTAINER;
+  }
+
+  /**
    * Returns the Jdbi instance for direct database access if needed.
    */
   public static Jdbi getJdbi() {

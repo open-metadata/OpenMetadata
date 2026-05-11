@@ -61,15 +61,12 @@ class IndexMappingTemplatesIT {
       final JsonNode properties = mapping.path("properties");
       for (final String field : REQUIRED_FIELDS) {
         if (properties.path(field).isMissingNode() || properties.path(field).isEmpty()) {
-          failures.add(
-              String.format("  %s: missing required field '%s' in mapping", alias, field));
+          failures.add(String.format("  %s: missing required field '%s' in mapping", alias, field));
         }
       }
     }
     assertThat(failures)
-        .as(
-            "every alias must declare canonical envelope fields:%n%s",
-            String.join("\n", failures))
+        .as("every alias must declare canonical envelope fields:%n%s", String.join("\n", failures))
         .isEmpty();
   }
 }
