@@ -30,7 +30,7 @@ import {
   convertSecondsToHumanReadableFormat,
   formatDateTime,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { getTestCaseDetailPagePath } from '../../../../utils/RouterUtils';
+import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import './test-summary-custom-tooltip.less';
@@ -202,7 +202,7 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
                 {testCaseFqnProp ? (
                   <Link
                     className="tooltip-incident-link font-medium cursor-pointer"
-                    to={getTestCaseDetailPagePath(
+                    to={observabilityRouterClassBase.getTestCaseDetailPagePath(
                       testCaseFqnProp,
                       TestCasePageTabs.ISSUES
                     )}>
