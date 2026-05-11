@@ -11,14 +11,16 @@
 """
 Base class for ingesting database services
 """
+
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple
+from typing import Any, Iterable, List, Optional, Set, Tuple, cast
 
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import Inspector
 from typing_extensions import Annotated
 
+from metadata.domain.tags import TagCanonicalizer, TagRegistry
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -95,49 +97,49 @@ class DatabaseServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
-        producer="get_services",
-        stages=[
-            NodeStage(
-                type_=DatabaseService,
-                context="database_service",
-                processor="yield_create_request_database_service",
-                overwrite=False,
-                must_return=True,
-                cache_entities=True,
-            ),
-        ],
-        children=["database"],
-        post_process=[
-            "yield_external_table_lineage",
-            "yield_table_constraints",
-        ],
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = (
+        TopologyNode(
+            producer="get_services",
+            stages=[
+                NodeStage(
+                    type_=DatabaseService,
+                    context="database_service",
+                    processor="yield_create_request_database_service",
+                    overwrite=False,
+                    must_return=True,
+                    cache_entities=True,
+                ),
+            ],
+            children=["database"],
+            post_process=[
+                "yield_external_table_lineage",
+                "yield_table_constraints",
+            ],
+        )
     )
-    database: Annotated[
-        TopologyNode, Field(description="Database Node")
-    ] = TopologyNode(
-        producer="get_database_names",
-        stages=[
-            NodeStage(
-                type_=OMetaTagAndClassification,
-                context="tags",
-                processor="yield_database_tag_details",
-                nullable=True,
-                store_all_in_context=True,
-            ),
-            NodeStage(
-                type_=Database,
-                context="database",
-                processor="yield_database",
-                consumer=["database_service"],
-                cache_entities=True,
-                use_cache=True,
-            ),
-        ],
-        children=["databaseSchema"],
-        post_process=["mark_databases_as_deleted"],
+    database: Annotated[TopologyNode, Field(description="Database Node")] = (
+        TopologyNode(
+            producer="get_database_names",
+            stages=[
+                NodeStage(
+                    type_=OMetaTagAndClassification,
+                    context="tags",
+                    processor="yield_database_tag_details",
+                    nullable=True,
+                    store_all_in_context=True,
+                ),
+                NodeStage(
+                    type_=Database,
+                    context="database",
+                    processor="yield_database",
+                    consumer=["database_service"],
+                    cache_entities=True,
+                    use_cache=True,
+                ),
+            ],
+            children=["databaseSchema"],
+            post_process=["mark_databases_as_deleted"],
+        )
     )
     databaseSchema: Annotated[
         TopologyNode, Field(description="Database Schema Node")
@@ -165,34 +167,36 @@ class DatabaseServiceTopology(ServiceTopology):
             "mark_schemas_as_deleted",
             "mark_tables_as_deleted",
             "mark_stored_procedures_as_deleted",
+            "clear_database_tag_scope",
         ],
         threads=True,
     )
-    table: Annotated[
-        TopologyNode, Field(description="Main table processing logic")
-    ] = TopologyNode(
-        producer="get_tables_name_and_type",
-        stages=[
-            NodeStage(
-                type_=OMetaTagAndClassification,
-                context="tags",
-                processor="yield_table_tag_details",
-                nullable=True,
-                store_all_in_context=True,
-            ),
-            NodeStage(
-                type_=Table,
-                context="table",
-                processor="yield_table",
-                consumer=["database_service", "database", "database_schema"],
-                use_cache=True,
-            ),
-            NodeStage(
-                type_=OMetaLifeCycleData,
-                processor="yield_life_cycle_data",
-                nullable=True,
-            ),
-        ],
+    table: Annotated[TopologyNode, Field(description="Main table processing logic")] = (
+        TopologyNode(
+            producer="get_tables_name_and_type",
+            stages=[
+                NodeStage(
+                    type_=OMetaTagAndClassification,
+                    context="tags",
+                    processor="yield_table_tag_details",
+                    nullable=True,
+                    store_all_in_context=True,
+                ),
+                NodeStage(
+                    type_=Table,
+                    context="table",
+                    processor="yield_table",
+                    consumer=["database_service", "database", "database_schema"],
+                    use_cache=True,
+                ),
+                NodeStage(
+                    type_=OMetaLifeCycleData,
+                    processor="yield_life_cycle_data",
+                    nullable=True,
+                ),
+            ],
+            post_process=["clear_schema_tag_scope"],
+        )
     )
     stored_procedure: Annotated[
         TopologyNode, Field(description="Stored Procedure Node")
@@ -234,6 +238,30 @@ class DatabaseServiceSource(
 
     topology = DatabaseServiceTopology()
     context = TopologyContextManager(topology)
+
+    # ``vars(self).setdefault(...)`` for thread-safe lazy init.
+    # See: https://docs.python.org/3/library/threadsafety.html
+    @property
+    def tags_registry(self) -> TagRegistry:
+        """Per-Source registry tracking tag/classification ingestion state."""
+        instance_dict = vars(self)
+        cached = instance_dict.get("tags_registry")
+        if cached is not None:
+            return cached
+        return instance_dict.setdefault(
+            "tags_registry", TagRegistry(metadata=self.metadata)
+        )
+
+    @property
+    def tag_canonicalizer(self) -> TagCanonicalizer:
+        """Per-Source canonicalizer for case-corrected tag/classification names."""
+        instance_dict = vars(self)
+        cached = instance_dict.get("tag_canonicalizer")
+        if cached is not None:
+            return cached
+        return instance_dict.setdefault(
+            "tag_canonicalizer", TagCanonicalizer(metadata=self.metadata)
+        )
 
     @property
     def name(self) -> str:
@@ -313,14 +341,16 @@ class DatabaseServiceSource(
         """
 
     def yield_table_tags(
-        self, table_name_and_type: Tuple[str, TableType]
+        self,
+        table_name_and_type: Tuple[str, TableType],
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each table
         """
 
     def yield_table_tag_details(
-        self, table_name_and_type: Tuple[str, TableType]
+        self,
+        table_name_and_type: Tuple[str, TableType],
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each table
@@ -900,6 +930,43 @@ class DatabaseServiceSource(
         """
         Get the life cycle data of the table
         """
+
+    def clear_schema_tag_scope(self):
+        """Drop tag-registry state for the current schema scope."""
+        schema_name = (
+            self.context.get().database_schema
+        )  # pyright: ignore[reportAttributeAccessIssue]
+        if schema_name:
+            schema_fqn = cast(
+                "str",
+                fqn.build(
+                    self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                    schema_name=schema_name,
+                ),
+            )
+            self.tags_registry.clear_scope(schema_fqn)
+        yield from ()
+
+    def clear_database_tag_scope(self):
+        """Drop tag-registry state for the current database scope."""
+        database_name = (
+            self.context.get().database
+        )  # pyright: ignore[reportAttributeAccessIssue]
+        if database_name:
+            database_fqn = cast(
+                "str",
+                fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    database_name=database_name,
+                ),
+            )
+            self.tags_registry.clear_scope(database_fqn)
+        yield from ()
 
     def yield_external_table_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         """
