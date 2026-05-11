@@ -15,9 +15,17 @@
  */
 export interface TaskCount {
     /**
+     * Total count of all approved tasks awaiting grant (Data Access Requests).
+     */
+    approved?: number;
+    /**
      * Total count of all completed/closed tasks.
      */
     completed?: number;
+    /**
+     * Total count of all granted tasks with active access (Data Access Requests).
+     */
+    granted?: number;
     /**
      * Total count of all in-progress tasks.
      */
