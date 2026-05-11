@@ -77,7 +77,8 @@ public final class DbCountQuerier {
   public long count(final String entityType, final boolean includeDeleted) {
     final String path = COLLECTION_PATHS.get(entityType);
     if (path == null) {
-      throw new IllegalArgumentException("No collection path mapped for entity type: " + entityType);
+      throw new IllegalArgumentException(
+          "No collection path mapped for entity type: " + entityType);
     }
     final String url = path + "?limit=0" + (includeDeleted ? "&include=all" : "");
     final String body =

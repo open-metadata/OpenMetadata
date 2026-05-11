@@ -42,7 +42,8 @@ public final class IndexAliasInspector {
   public String aliasFor(final String entityType) {
     final IndexMapping mapping = IndexMappingLoader.getInstance().getIndexMapping().get(entityType);
     if (mapping == null) {
-      throw new IllegalArgumentException("No index mapping declared for entity type: " + entityType);
+      throw new IllegalArgumentException(
+          "No index mapping declared for entity type: " + entityType);
     }
     return mapping.getAlias(null);
   }

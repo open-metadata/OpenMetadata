@@ -31,8 +31,8 @@ via the test-jar.
 
 | Helper | API surface | Used by |
 |---|---|---|
-| `IndexAliasInspector` | `Map<String,String> aliasToIndex()`, `long docCount(alias)`, `JsonNode mapping(alias)`, `long fieldCount(alias)` | #1, #4, #5, #11, #13 |
-| `JobStatsParser` | typed reader: `reader.read`, `processor.processed`, `sink.{success,failure,warning}`, `vector.embedded`, `retries.perEntity` | #2, #3, #6, #7, #13 |
+| `IndexAliasInspector` | `Map<String,String> aliasToIndex()`, `long docCount(alias)`, `JsonNode mapping(alias)`, `long fieldCount(alias)`, `Set<String> declaredAliases()` (reads from `IndexMappingLoader`) | #1, #4, #5, #11, #13 |
+| ~~`JobStatsParser`~~ | **Not needed** — `AppRunRecord.successContext.stats` is already typed (`org.openmetadata.schema.system.Stats` → `StepStats`). Use directly. | n/a |
 | `DbCountQuerier` | `Map<EntityType,Long> dbCounts()` — runs `SELECT COUNT(*)` against entity tables via the management SDK or a JDBI binding | #1, #13 |
 | `EsCountQuerier` | wraps `_cat/count?alias=...`, `_search?size=0`, and `_search?aggs=cardinality(_id)` | #1, #2, #13 |
 | `EsOutageInjector` | testcontainers helper: `pause(Duration)`, `dropConnections()`, `rejectWrites(Duration)` | #6, #14 |
@@ -469,17 +469,33 @@ Each mirror is < 80 lines — it's a constructor swap on the existing factory
 Total: ~25d. Phases 0–3 are the load-bearing cohort; everything past phase 4
 can land in parallel.
 
-## Open questions to resolve before phase 0
+## Resolved questions
 
-1. Does `AppRunRecord` expose typed stats accessors today, or only a JSON
-   blob? Drives the design of `JobStatsParser`.
-2. Is there a leader-election primitive for multi-server, or is it
-   DB-lock-based? Drives #9b setup.
-3. Is there an existing metric for live-index retry count, or do we have to
-   scrape logs? Drives #6.
-4. What's the canonical way to inject a broken-FK row for #3 — JDBI fixture,
-   raw SQL via testcontainers, or a deliberate `Entity.delete` skipping the
-   relationship cleanup hook? Pick one and document it.
-5. Confirm `indexMapping.json` is the single source of truth for "every alias
-   that must exist." If anything bypasses it (e.g., dynamic indexes per
-   tenant), #13 needs a different enumeration source.
+1. **Stats accessor.** Fully typed — `AppRunRecord.successContext.stats` is
+   `org.openmetadata.schema.system.Stats` with typed getters for `jobStats`,
+   `readerStats`, `processStats`, `sinkStats`, `vectorStats`, `entityStats`.
+   Each is a `StepStats` with `totalRecords`, `successRecords`,
+   `failedRecords`, `warningRecords`, plus vector + timing fields. **`JobStatsParser`
+   helper is dropped** — tests use the typed schema directly.
+2. **Multi-server coordination.** DB-lock based, **not** leader-election.
+   `DistributedSearchIndexCoordinator` acquires `SEARCH_REINDEX_LOCK` via
+   `SearchReindexLockDAO` with a 5-min timeout. Partitions are claimed via
+   `FOR UPDATE SKIP LOCKED`. Takeover happens when a partition's claim is
+   unrefreshed for 3 min (`PARTITION_CLAIM_TIMEOUT_MS`). Quartz is
+   clustered. So #9b validates **partition reclaim**, not leader election —
+   kill the server holding partitions, wait 3 min, surviving node claims them.
+3. **Retry instrumentation.** Two signals exist:
+   - Micrometer counter `search.retry.enqueued` (in `SearchIndexRetryQueue`).
+   - DB table `search_index_retry_queue` with statuses `STATUS_PENDING`,
+     `STATUS_PENDING_RETRY_1`, `STATUS_PENDING_RETRY_2`, `STATUS_FAILED`,
+     etc. Query directly for assertion — no log scraping needed.
+4. **Broken-FK injection.** Use `Entity.getCollectionDAO().tableDAO().delete(uuid)`
+   (pattern from `LineageBrokenReferenceIT.java`). The DAO delete leaves
+   `entity_relationship` rows orphaned. `buildSearchIndexDoc()` already
+   tolerates this and surfaces a warning in `StepStats.warningRecords`.
+5. **Alias enumeration source.** `IndexMappingLoader.getInstance().getIndexMapping()`
+   returns the merged OM+Collate map. OM file loads first
+   (`openmetadata-spec/.../indexMapping.json`); Collate file overrides
+   matching keys (`openmetadata-service/.../elasticsearch/collate/indexMapping.json`).
+   No dynamic/plugin/per-tenant registration. **`#13` enumerates via this
+   loader**, not by reading the JSON file directly.

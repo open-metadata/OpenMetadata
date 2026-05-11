@@ -55,14 +55,17 @@ public final class SearchAssertions {
   }
 
   /**
-   * Cardinality of {@code _id} on the alias — i.e., the count of distinct documents
-   * regardless of how many backing indices the alias spans. Used by the no-duplicates
-   * invariant: during reindex, {@code count(alias) == distinctIds(alias)} must always
-   * hold, otherwise two backing indices are returning the same logical document.
+   * Cardinality of the OM entity id ({@code id.keyword}) on the alias — i.e., the count
+   * of distinct entities regardless of how many backing indices the alias spans. Used by
+   * the no-duplicates invariant: during reindex, {@code count(alias) == distinctIds(alias)}
+   * must always hold, otherwise two backing indices are returning the same logical entity.
+   *
+   * <p>Aggregating on {@code id.keyword} rather than {@code _id} works without enabling
+   * fielddata; OM sets the doc {@code _id} equal to the entity id so the two values match.
    */
   public long distinctIds(final String alias) {
     final String body =
-        "{\"size\":0,\"aggs\":{\"distinct_ids\":{\"cardinality\":{\"field\":\"_id\","
+        "{\"size\":0,\"aggs\":{\"distinct_ids\":{\"cardinality\":{\"field\":\"id.keyword\","
             + "\"precision_threshold\":40000}}}}";
     final JsonNode response = search.post("/" + alias + "/_search", body);
     return response.path("aggregations").path("distinct_ids").path("value").asLong();
