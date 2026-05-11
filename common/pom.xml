@@ -47,14 +47,14 @@
       <scope>test</scope>
     </dependency>
     <!-- Build-time only (used by jsonschema2pojo-maven-plugin in openmetadata-spec).
-         <optional>true</optional> stops all transitive deps — including Jackson 3.x
-         (GHSA-2m67-wjpj-xhg9, CVE-2026-29062, GHSA-72hv-8253-57qq) — from leaking
-         into the runtime classpath of downstream consumers. -->
+         <scope>provided</scope> keeps it on compile classpath but excludes it (and all
+         transitives — including Jackson 3.x: GHSA-2m67-wjpj-xhg9, CVE-2026-29062,
+         GHSA-72hv-8253-57qq) from runtime / dist packaging. -->
     <dependency>
       <groupId>org.jsonschema2pojo</groupId>
       <artifactId>jsonschema2pojo-core</artifactId>
       <version>${jsonschema2pojo.version}</version>
-      <optional>true</optional>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
