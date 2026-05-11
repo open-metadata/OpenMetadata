@@ -14,12 +14,13 @@ Base class for ingesting database services
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple  # noqa: UP035
+from typing import Any, Iterable, List, Optional, Set, Tuple, cast  # noqa: UP035
 
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import Inspector
 from typing_extensions import Annotated  # noqa: UP035
 
+from metadata.domain.tags import TagCanonicalizer, TagRegistry
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -160,6 +161,7 @@ class DatabaseServiceTopology(ServiceTopology):
             "mark_schemas_as_deleted",
             "mark_tables_as_deleted",
             "mark_stored_procedures_as_deleted",
+            "clear_database_tag_scope",
         ],
         threads=True,
     )
@@ -186,6 +188,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 nullable=True,
             ),
         ],
+        post_process=["clear_schema_tag_scope"],
     )
     stored_procedure: Annotated[TopologyNode, Field(description="Stored Procedure Node")] = TopologyNode(
         producer="get_stored_procedures",
@@ -223,6 +226,26 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
     topology = DatabaseServiceTopology()
     context = TopologyContextManager(topology)
+
+    # ``vars(self).setdefault(...)`` for thread-safe lazy init.
+    # See: https://docs.python.org/3/library/threadsafety.html
+    @property
+    def tags_registry(self) -> TagRegistry:
+        """Per-Source registry tracking tag/classification ingestion state."""
+        instance_dict = vars(self)
+        cached = instance_dict.get("tags_registry")
+        if cached is not None:
+            return cached
+        return instance_dict.setdefault("tags_registry", TagRegistry(metadata=self.metadata))
+
+    @property
+    def tag_canonicalizer(self) -> TagCanonicalizer:
+        """Per-Source canonicalizer for case-corrected tag/classification names."""
+        instance_dict = vars(self)
+        cached = instance_dict.get("tag_canonicalizer")
+        if cached is not None:
+            return cached
+        return instance_dict.setdefault("tag_canonicalizer", TagCanonicalizer(metadata=self.metadata))
 
     @property
     def name(self) -> str:
@@ -810,6 +833,39 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
         Get the life cycle data of the table
         """
+
+    def clear_schema_tag_scope(self):
+        """Drop tag-registry state for the current schema scope."""
+        schema_name = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
+        if schema_name:
+            schema_fqn = cast(
+                "str",
+                fqn.build(
+                    self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                    schema_name=schema_name,
+                ),
+            )
+            self.tags_registry.clear_scope(schema_fqn)
+        yield from ()
+
+    def clear_database_tag_scope(self):
+        """Drop tag-registry state for the current database scope."""
+        database_name = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        if database_name:
+            database_fqn = cast(
+                "str",
+                fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    database_name=database_name,
+                ),
+            )
+            self.tags_registry.clear_scope(database_fqn)
+        yield from ()
 
     def yield_external_table_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         """

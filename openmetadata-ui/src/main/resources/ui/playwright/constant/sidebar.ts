@@ -31,6 +31,7 @@ export enum SidebarItem {
   LINEAGE = 'lineage',
   COLUMN_BULK_OPERATIONS = 'column-bulk-operations',
   DATA_MARKETPLACE = 'data-marketplace',
+  KNOWLEDGE_CENTER = 'knowledge-center',
 }
 
 export const SIDEBAR_LIST_ITEMS = {
