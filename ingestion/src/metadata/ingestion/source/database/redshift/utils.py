@@ -238,7 +238,7 @@ def _get_args_and_kwargs(charlen, attype, format_type):
         if charlen:
             args = tuple(int(p) for p in charlen.split(","))
         else:
-            args = ()
+            args = tuple(int(p) for p in args)
 
     elif attype == "double precision":
         args = (53,)
