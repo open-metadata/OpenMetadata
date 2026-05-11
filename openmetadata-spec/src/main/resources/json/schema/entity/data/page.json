@@ -1,0 +1,146 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/page.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Page",
+  "$comment": "@om-entity-type",
+  "description": "This schema defines the type of Page.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.Page",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "pageType": {
+      "javaType": "org.openmetadata.schema.entity.data.PageType",
+      "description": "Type of the Knowledge Page.",
+      "type": "string",
+      "enum": ["Article", "QuickLink"]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the Knowledge Page.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of Knowledge Page belongs to",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of a Knowledge Page.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Knowledge Page. It could be title or label.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of a Knowledge Page.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who updated the Knowledge Page.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this Knowledge Page resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "owners": {
+      "description": "Owners of this Knowledge Page.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "reviewers": {
+      "description": "User references of the reviewers for this tag.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "entityStatus": {
+      "description": "Status of the tag.",
+      "$ref": "../../type/status.json"
+    },
+    "followers": {
+      "description": "Followers of this Knowledge Page.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "votes" : {
+      "description": "Votes for this Knowledge Page.",
+      "$ref": "../../type/votes.json"
+    },
+    "tags": {
+      "description": "Tags for this SQL query.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "pageType" : {
+      "description": "Type of the Knowledge Page.",
+      "$ref": "#/definitions/pageType"
+    },
+    "page" : {
+      "description": "Knowledge Page Schema",
+      "oneOf": [
+        {
+          "$ref": "./article.json"
+        },
+        {
+          "$ref": "./quickLink.json"
+        }
+      ]
+    },
+    "relatedEntities": {
+      "description": "Related Entities for the Knowledge Page",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "editors": {
+      "description": "List of users who are updating the entity",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "parent" : {
+      "description" : "Parent of this Knowledege Center.",
+      "$ref" : "../../type/entityReference.json"
+    },
+    "children" : {
+      "description" : "Children of this Knowledge Center.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
+    "childrenCount": {
+      "description": "Count of immediate children glossary terms.",
+      "type": "integer"
+    },
+    "domains" : {
+      "description": "Fully qualified name of the domains the Knowledge Page belongs to.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
+    "attachments": {
+      "description": "Attachments for the Knowledge Page",
+      "type": "array",
+      "items": {
+        "$ref": "../../attachments/asset.json"
+      },
+      "default": null
+    }
+  },
+  "required": ["name", "pageType", "page"],
+  "additionalProperties": false
+}

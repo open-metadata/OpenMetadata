@@ -283,7 +283,14 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 
 ### Java Code Requirements
 
-**Always run `mvn spotless:apply` when generating/modifying .java files.**
+**Always run `mvn spotless:apply` before you finish any task that touched
+`.java` files.** CI runs `mvn spotless:check` and will fail the PR otherwise —
+the bot's exact suggestion is "Please run `mvn spotless:apply` in the root of
+your repository and commit the changes to this PR." Scope the run with
+`-pl <module>` for speed if only one module changed. When asked to "fix
+checkstyle" / "fix Java formatting" / "apply spotless", invoke the
+`java-checkstyle` skill (see `.claude/skills/java-checkstyle/`) rather than
+hand-editing formatting.
 
 #### Method Size and Complexity (Kafka-Grade Standards)
 - **Methods must be 15 lines or fewer** (excluding blank lines and braces). If a method is longer, break it into smaller focused methods with descriptive names.
@@ -421,6 +428,19 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - One statement per line — no `if (x) return y;` on one line
 
 ### TypeScript/Frontend Code Requirements
+
+**Always run the UI checkstyle sequence before you finish any task that
+touched `.ts`/`.tsx`/`.js`/`.jsx`/`.json` under
+`openmetadata-ui/src/main/resources/ui/src/`, `.../playwright/`, or
+`openmetadata-ui-core-components/src/main/resources/ui/src/`.** CI's
+`UI Checkstyle / lint-src|lint-playwright|lint-core-components` jobs fail the
+PR otherwise. The order matters — run `organize-imports-cli`, then
+`eslint --fix`, then `prettier --write`; reversing organize-imports and
+prettier leaves a dirty diff (organize-imports uses 4-space indentation,
+prettier uses 2 + trailing commas). When asked to "fix UI checkstyle" / "run
+prettier" / "fix UI lint", invoke the `ui-checkstyle` skill (see
+`.claude/skills/ui-checkstyle/`) rather than hand-editing formatting.
+
 - **NEVER use `any` type** in TypeScript code - always use proper types
 - Use `unknown` when the type is truly unknown and add type guards
 - Import types from existing type definitions (e.g., `RJSFSchema` from `@rjsf/utils`)

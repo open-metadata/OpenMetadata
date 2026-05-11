@@ -201,6 +201,9 @@ public final class Entity {
   public static final String FILE = "file";
   public static final String SPREADSHEET = "spreadsheet";
   public static final String WORKSHEET = "worksheet";
+  public static final String FOLDER = "folder";
+  public static final String CONTEXT_FILE = "contextFile";
+  public static final String CONTEXT_FILE_CONTENT = "contextFileContent";
 
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
