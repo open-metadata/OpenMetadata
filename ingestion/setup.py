@@ -370,6 +370,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["avro"],
         VERSIONS["grpc-tools"],
         VERSIONS["sqlalchemy-bigquery"],
+        VERSIONS["spacy"],
         VERSIONS["presidio-analyzer"],
     },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
