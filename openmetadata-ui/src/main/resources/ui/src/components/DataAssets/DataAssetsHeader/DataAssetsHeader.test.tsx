@@ -747,6 +747,37 @@ describe('DataAssetsHeader component', () => {
       ).not.toBeInTheDocument();
     });
 
+    it('should not render when user belongs to an owner team', async () => {
+      const { useApplicationStore } = jest.requireMock(
+        '../../../hooks/useApplicationStore'
+      );
+      (useApplicationStore as jest.Mock).mockReturnValue({
+        currentUser: {
+          id: 'user-2',
+          name: 'team.member',
+          teams: [{ id: 'team-1', type: 'team' }],
+        },
+      });
+
+      render(
+        <DataAssetsHeader
+          {...tableProps}
+          dataAsset={{
+            ...tableProps.dataAsset,
+            owners: [{ id: 'team-1', type: 'team' }],
+          }}
+        />
+      );
+
+      expect(
+        screen.queryByTestId('request-data-access-button')
+      ).not.toBeInTheDocument();
+
+      (useApplicationStore as jest.Mock).mockReturnValue({
+        currentUser: { id: 'user-1', name: 'test.user' },
+      });
+    });
+
     it('should render enabled button when no existing DAR task', async () => {
       mockListTasks.mockResolvedValue({ data: [] });
 
