@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -24,7 +24,7 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import ConfigureService from '../../components/Settings/Services/AddService/Steps/ConfigureService';
 import SelectServiceType from '../../components/Settings/Services/AddService/Steps/SelectServiceType';
 import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
-import ConnectionConfigForm from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm';
+import EmbeddedConnectionConfigForm from '../../components/Settings/Services/ServiceConfig/EmbeddedConnectionConfigForm';
 import FiltersConfigForm from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm';
 import { AUTO_PILOT_APP_NAME } from '../../constants/Applications.constant';
 import {
@@ -51,9 +51,9 @@ import {
 } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import { ServiceConfig } from './AddServicePage.interface';
+import { ServiceConfig } from '../AddServicePage/AddServicePage.interface';
 
-const AddServicePage = () => {
+const EmbeddedAddServicePage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { serviceCategory } = useRequiredParams<{
@@ -77,10 +77,17 @@ const AddServicePage = () => {
     useState<LoadingState>('initial');
   const [activeField, setActiveField] = useState<string>('');
 
-  const slashedBreadcrumb = useMemo(
-    () => getAddServiceEntityBreadcrumb(serviceCategory),
-    [serviceCategory]
-  );
+  const slashedBreadcrumb = useMemo(() => {
+    const crumbs = getAddServiceEntityBreadcrumb(serviceCategory);
+
+    return [
+      {
+        ...crumbs[0],
+        url: `/askCollate/connections/settings/services/${serviceCategory}`,
+      },
+      ...crumbs.slice(1),
+    ];
+  }, [serviceCategory]);
 
   const translatedSteps = useMemo(
     () =>
@@ -112,7 +119,6 @@ const AddServicePage = () => {
     navigate(connectionsRouterClassBase.getAddServicePath(category));
   };
 
-  // Select service
   const handleSelectServiceCancel = () => {
     navigate(
       connectionsRouterClassBase.getSettingsServicesPath(serviceCategory)
@@ -127,7 +133,6 @@ const AddServicePage = () => {
     }
   };
 
-  // Configure service name
   const handleConfigureServiceBackClick = () => setActiveServiceStep(1);
   const handleConfigureServiceNextClick = (
     value: Pick<ServiceConfig, 'name' | 'description'>
@@ -139,7 +144,6 @@ const AddServicePage = () => {
     setActiveServiceStep(3);
   };
 
-  // Service connection
   const handleConnectionDetailsBackClick = () => setActiveServiceStep(2);
   const handleConfigUpdate = (newConfigData: ConfigData) => {
     const data = serviceUtilClassBase.getServiceConfigData({
@@ -175,7 +179,6 @@ const AddServicePage = () => {
     }
   };
 
-  // Filters Input step
   const handleFiltersInputBackClick = () => setActiveServiceStep(3);
   const handleFiltersInputNextClick = async (config: ConfigData) => {
     const configData = {
@@ -219,7 +222,6 @@ const AddServicePage = () => {
     }
   };
 
-  // Service focused field
   const handleFieldFocus = (fieldName: string) => {
     if (isEmpty(fieldName)) {
       return;
@@ -286,7 +288,7 @@ const AddServicePage = () => {
             )}
 
             {activeServiceStep === 3 && (
-              <ConnectionConfigForm
+              <EmbeddedConnectionConfigForm
                 cancelText={t('label.back')}
                 data={serviceConfig as ServicesType}
                 okText={t('label.next')}
@@ -326,7 +328,7 @@ const AddServicePage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel tw:!bg-transparent"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,
@@ -353,4 +355,4 @@ const AddServicePage = () => {
   );
 };
 
-export default withPageLayout(AddServicePage);
+export default withPageLayout(EmbeddedAddServicePage);
