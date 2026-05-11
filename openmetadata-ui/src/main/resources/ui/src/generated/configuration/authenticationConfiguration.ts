@@ -31,6 +31,16 @@ export interface AuthenticationConfiguration {
      */
     clientType?: ClientType;
     /**
+     * OIDC Discovery endpoint URL. Primary input for both public and confidential flows.
+     * Authority, publicKeyUrls, and other endpoints are auto-derived from this.
+     */
+    discoveryUri?: string;
+    /**
+     * JWT claim name containing the user's email address. Set via Test Login. Takes priority
+     * over jwtPrincipalClaims fallback but not over jwtPrincipalClaimsMapping.
+     */
+    emailClaim?: string;
+    /**
      * Enable automatic redirect from the sign-in page to the configured SSO provider.
      */
     enableAutoRedirect?: boolean;
@@ -339,7 +349,7 @@ export interface OidcClientConfig {
     /**
      * Client Secret.
      */
-    secret: string;
+    secret?: string;
     /**
      * Server Url.
      */
