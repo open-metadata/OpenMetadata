@@ -22,11 +22,11 @@ import {
   LOGOUT_ITEM,
   SETTING_ITEM,
 } from '../../../constants/LeftSidebar.constants';
-import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 import { SidebarItem } from '../../../enums/sidebar.enum';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useSidebarItems } from '../../../hooks/useSidebarItems';
+import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import './left-sidebar.less';

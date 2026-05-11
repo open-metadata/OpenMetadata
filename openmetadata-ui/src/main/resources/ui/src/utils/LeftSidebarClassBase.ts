@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
-import { SIDEBAR_LIST, SIDEBAR_NESTED_KEYS } from '../constants/LeftSidebar.constants';
+import {
+  SIDEBAR_LIST,
+  SIDEBAR_NESTED_KEYS,
+} from '../constants/LeftSidebar.constants';
 
 class LeftSidebarClassBase {
   sidebarItems: Array<LeftSidebarItem>;
