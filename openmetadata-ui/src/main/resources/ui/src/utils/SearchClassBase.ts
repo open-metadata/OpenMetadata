@@ -811,7 +811,6 @@ class SearchClassBase {
       EntityType.TAG,
       EntityType.DATA_PRODUCT,
       EntityType.KNOWLEDGE_PAGE,
-      EntityType.KNOWLEDGE_PAGE,
     ];
   }
 }
