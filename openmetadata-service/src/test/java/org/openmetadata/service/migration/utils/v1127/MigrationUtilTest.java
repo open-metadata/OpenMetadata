@@ -162,6 +162,17 @@ class MigrationUtilTest {
   }
 
   @Test
+  void threadEntity_rowWithMalformedJson_isSkippedWithoutUpdate() throws Exception {
+    Handle handle = mockHandle();
+    stubTableExists(handle, "thread_entity");
+    stubBatch(handle, rows("not-valid-json{{{"), Collections.emptyList());
+
+    assertDoesNotThrow(() -> new MigrationUtil(handle, ConnectionType.MYSQL).migrateTaskDomains());
+
+    verify(handle, never()).createUpdate(anyString());
+  }
+
+  @Test
   void threadEntity_rowWithValidAboutButUnknownEntityType_marksAsMigrated() throws Exception {
     Handle handle = mockHandle();
     stubTableExists(handle, "thread_entity");
