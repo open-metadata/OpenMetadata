@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-export type DocFileType = 'pdf' | 'xlsx' | 'csv' | 'doc' | 'image' | 'other';
+export type DocFileType = 'pdf' | 'xls' | 'csv' | 'doc' | 'image' | 'other';
 
 export interface DocFile {
   id: string;
@@ -30,7 +30,8 @@ export interface DocFolder {
 }
 
 export interface DocumentsViewProps {
-  folders: DocFolder[];
+  data: DocFolder[];
+  isLoading: boolean;
   onDownload?: (file: DocFile) => void;
   onMoveToFolder?: (file: DocFile) => void;
   onShareFile?: (file: DocFile) => void;

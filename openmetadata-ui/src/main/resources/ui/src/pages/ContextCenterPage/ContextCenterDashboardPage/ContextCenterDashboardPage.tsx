@@ -90,7 +90,7 @@ const ContextCenterDashboardPage: FC = () => {
   }, [fetchRecentArticles, fetchDocuments]);
 
   const handleUploaded = useCallback((newAssets: Asset[]) => {
-    setDocuments((prev) => [...newAssets.map(assetToDocumentItem), ...prev]);
+    setDocuments((prev) => [...prev, ...newAssets.map(assetToDocumentItem)]);
   }, []);
 
   return (

@@ -11,14 +11,22 @@
  *  limitations under the License.
  */
 
+import { File06 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { ReactComponent as DOCIcon } from '../assets/svg/ic-doc.svg';
+import { ReactComponent as ImageIcon } from '../assets/svg/ic-image.svg';
+import { ReactComponent as PDFIcon } from '../assets/svg/ic-pdf.svg';
+import { ReactComponent as XLSIcon } from '../assets/svg/ic-xls.svg';
 import { ArticleCardItem } from '../components/ContextCenter/ArticleCard/ArticleCard.interface';
 import { UploadedDocumentItem } from '../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
 import { CREATE_PAGE_HASH, ROUTES } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { Asset, AssetType } from '../generated/attachments/asset';
-import { CreateKnowledgePage, PageType } from '../interface/knowledge-center.interface';
+import {
+  CreateKnowledgePage,
+  PageType,
+} from '../interface/knowledge-center.interface';
 import { listAssetsByFqn } from '../rest/assetAPI';
 import { postKnowledgePage } from '../rest/knowledgeCenterAPI';
 import EntityLink from './EntityLink';
@@ -51,6 +59,25 @@ export const extensionToFileType = (
   }
 
   return 'other';
+};
+
+export const getFileTypeIcon = (fileType: string) => {
+  const commonProps = {
+    width: 32,
+    height: 32,
+  };
+  switch (fileType) {
+    case 'doc':
+      return <DOCIcon {...commonProps} />;
+    case 'pdf':
+      return <PDFIcon {...commonProps} />;
+    case 'xls':
+      return <XLSIcon {...commonProps} />;
+    case 'image':
+      return <ImageIcon {...commonProps} />;
+    default:
+      return <File06 {...commonProps} className="tw:text-gray-500" />;
+  }
 };
 
 export const formatBytes = (bytes?: number): string => {

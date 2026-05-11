@@ -20,13 +20,13 @@ import {
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
 import { Asset } from 'generated/attachments/asset';
-import { FC, useState } from 'react';
+import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { uploadAsset } from 'rest/assetAPI';
 import { showErrorToast } from 'utils/ToastUtils';
 import { UploadDocumentModalProps } from './UploadDocumentModal.interface';
 
-type UploadStatus = 'pending' | 'uploading' | 'done' | 'error';
+type UploadStatus = 'uploading' | 'done' | 'error' | 'size-error';
 
 interface QueuedFile {
   id: string;
@@ -43,71 +43,87 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const [queuedFiles, setQueuedFiles] = useState<QueuedFile[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
+  const uploadedAssetsRef = useRef<Asset[]>([]);
+
+  const handleClose = () => {
+    if (uploadedAssetsRef.current.length > 0) {
+      onUploaded?.(uploadedAssetsRef.current);
+    }
+
+    uploadedAssetsRef.current = [];
+    setQueuedFiles([]);
+    onClose();
+  };
+
+  const uploadSingleFile = async (entry: QueuedFile): Promise<void> => {
+    try {
+      const asset = await uploadAsset(entry.file, entityLink);
+      uploadedAssetsRef.current = [...uploadedAssetsRef.current, asset];
+      setQueuedFiles((prev) =>
+        prev.map((f) =>
+          f.id === entry.id ? { ...f, progress: 100, status: 'done' } : f
+        )
+      );
+    } catch {
+      setQueuedFiles((prev) =>
+        prev.map((f) =>
+          f.id === entry.id ? { ...f, progress: 0, status: 'error' } : f
+        )
+      );
+    }
+  };
 
   const handleDropFiles = (files: FileList) => {
     const newEntries: QueuedFile[] = Array.from(files).map((file) => ({
       file,
       id: `${file.name}-${file.size}-${Date.now()}`,
       progress: 0,
-      status: 'pending' as UploadStatus,
+      status: 'uploading' as UploadStatus,
     }));
 
     setQueuedFiles((prev) => [...prev, ...newEntries]);
+
+    newEntries.forEach((entry) => uploadSingleFile(entry));
+  };
+
+  const handleSizeLimitExceed = (files: FileList) => {
+    const oversizedEntries: QueuedFile[] = Array.from(files).map((file) => ({
+      file,
+      id: `${file.name}-${file.size}-${Date.now()}`,
+      progress: 0,
+      status: 'size-error' as UploadStatus,
+    }));
+
+    setQueuedFiles((prev) => [...prev, ...oversizedEntries]);
+    showErrorToast(
+      t('message.file-size-limit-exceeded', {
+        defaultValue:
+          'Some files exceed the 5 MB size limit and were not uploaded.',
+      })
+    );
   };
 
   const handleRemove = (id: string) => {
     setQueuedFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
-  const handleClose = () => {
-    setQueuedFiles([]);
-    onClose();
-  };
+  const handleRetry = (id: string) => {
+    const entry = queuedFiles.find((f) => f.id === id);
 
-  const handleAttach = async () => {
-    const pending = queuedFiles.filter((f) => f.status === 'pending');
-
-    if (pending.length === 0) {
+    if (!entry) {
       return;
     }
 
-    setIsUploading(true);
-    const uploaded: Asset[] = [];
+    setQueuedFiles((prev) =>
+      prev.map((f) =>
+        f.id === id ? { ...f, progress: 0, status: 'uploading' } : f
+      )
+    );
 
-    for (const entry of pending) {
-      setQueuedFiles((prev) =>
-        prev.map((f) =>
-          f.id === entry.id ? { ...f, progress: 0, status: 'uploading' } : f
-        )
-      );
-
-      try {
-        const asset = await uploadAsset(entry.file, entityLink);
-        uploaded.push(asset);
-        setQueuedFiles((prev) =>
-          prev.map((f) =>
-            f.id === entry.id ? { ...f, progress: 100, status: 'done' } : f
-          )
-        );
-      } catch (err) {
-        showErrorToast(err as Error);
-        setQueuedFiles((prev) =>
-          prev.map((f) =>
-            f.id === entry.id ? { ...f, status: 'error' } : f
-          )
-        );
-      }
-    }
-
-    setIsUploading(false);
-
-    if (uploaded.length > 0) {
-      onUploaded?.(uploaded);
-    }
-
-    handleClose();
+    uploadSingleFile({ ...entry, status: 'uploading' });
   };
+
+  const isUploading = queuedFiles.some((f) => f.status === 'uploading');
 
   return (
     <ModalOverlay
@@ -128,17 +144,19 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
                   defaultValue: 'Click to upload',
                 })}
                 hint={t('message.upload-document-hint')}
-                maxSize={25 * 1024 * 1024}
+                maxSize={5 * 1024 * 1024}
                 orDragAndDropLabel={t('message.or-drag-and-drop', {
                   defaultValue: 'or drag and drop',
                 })}
                 onDropFiles={handleDropFiles}
+                onSizeLimitExceed={handleSizeLimitExceed}
               />
 
               {queuedFiles.length > 0 && (
                 <FileUpload.List className="tw:max-h-60 tw:overflow-y-auto">
                   {queuedFiles.map(({ id, file, progress, status }) => (
                     <FileUpload.ListItemProgressBar
+                      failed={status === 'error' || status === 'size-error'}
                       key={id}
                       name={file.name}
                       progress={status === 'done' ? 100 : progress}
@@ -147,6 +165,9 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
                         status !== 'uploading'
                           ? () => handleRemove(id)
                           : undefined
+                      }
+                      onRetry={
+                        status === 'error' ? () => handleRetry(id) : undefined
                       }
                     />
                   ))}
@@ -160,18 +181,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
                 isDisabled={isUploading}
                 size="sm"
                 onClick={handleClose}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                color="primary"
-                isDisabled={
-                  queuedFiles.filter((f) => f.status === 'pending').length ===
-                    0 || isUploading
-                }
-                isLoading={isUploading}
-                size="sm"
-                onClick={handleAttach}>
-                {t('label.attach-file-plural')}
+                {t('label.close')}
               </Button>
             </div>
           </Dialog.Content>

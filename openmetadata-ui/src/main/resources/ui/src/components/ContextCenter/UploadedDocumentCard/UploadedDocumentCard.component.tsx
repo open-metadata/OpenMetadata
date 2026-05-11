@@ -12,13 +12,11 @@
  */
 
 import { Card, Typography } from '@openmetadata/ui-core-components';
-import { FC } from 'react';
-import { useTranslation } from 'react-i18next';
-import { ReactComponent as FileIcon } from '../../../assets/svg/spreadsheet-icon.svg';
+import { FC, useMemo } from 'react';
+import { getFileTypeIcon } from 'utils/ContextCenterUtils';
 import {
   DocumentFileType,
   UploadedDocumentCardProps,
-  UploadedDocumentItem,
 } from './UploadedDocumentCard.interface';
 const FILE_TYPE_STYLES: Record<
   DocumentFileType,
@@ -55,21 +53,25 @@ const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({
   document,
   onClick,
 }) => {
-  const { t } = useTranslation();
-  const { name, fileType, sizeLabel, status } = document;
+  const { name, fileType, sizeLabel } = document;
+
+  const fileTypeIcon = useMemo(() => {
+    return getFileTypeIcon(fileType);
+  }, [fileType]);
 
   return (
     <Card
       className="tw:flex tw:flex-col tw:gap-3 tw:max-w-42"
       data-testid="uploaded-document-card"
-      onClick={() => onClick?.(document as UploadedDocumentItem)}>
+      onClick={() => onClick?.(document)}>
       <div className="tw:flex tw:items-center tw:justify-center tw:h-15 tw:bg-gray-50">
-        <FileIcon height={32} width={32} />
+        {fileTypeIcon}
       </div>
 
       <div className="tw:flex tw:flex-col tw:p-3">
         <Typography
-          className="tw:m-0 tw:truncate"
+          ellipsis
+          className="tw:m-0"
           size="text-xs"
           title={name}
           weight="medium">

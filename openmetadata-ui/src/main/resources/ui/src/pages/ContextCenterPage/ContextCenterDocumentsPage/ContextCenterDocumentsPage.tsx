@@ -11,29 +11,51 @@
  *  limitations under the License.
  */
 
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { FC, useCallback, useState } from 'react';
+import { AxiosError } from 'axios';
+import { UploadedDocumentItem } from 'components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
+import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { showErrorToast } from 'utils/ToastUtils';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import DocumentsView from '../../../components/ContextCenter/DocumentsView/DocumentsView.component';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
 import { ROUTES } from '../../../constants/constants';
-import { MOCK_FOLDERS } from '../ContextCenterPage.mock';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
+  assetToDocumentItem,
   CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
   createArticleKnowledgePage,
+  fetchContextCenterDocuments,
 } from '../../../utils/ContextCenterUtils';
 
 const ContextCenterDocumentsPage: FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
+  const [documents, setDocuments] = useState<UploadedDocumentItem[]>([]);
+  const [isDocumentsLoading, setIsDocumentsLoading] = useState(true);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   const handleCreateArticle = useCallback(async () => {
     await createArticleKnowledgePage(currentUser?.id ?? '', navigate);
   }, [currentUser, navigate]);
+
+  const fetchDocuments = useCallback(async () => {
+    setIsDocumentsLoading(true);
+    try {
+      const assets = await fetchContextCenterDocuments();
+      setDocuments(assets.map(assetToDocumentItem));
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsDocumentsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
 
   return (
     <div
@@ -57,7 +79,7 @@ const ContextCenterDocumentsPage: FC = () => {
       />
 
       <div className="tw:flex-1 tw:overflow-hidden">
-        <DocumentsView folders={MOCK_FOLDERS} />
+        <DocumentsView data={documents} isLoading={isDocumentsLoading} />
       </div>
 
       <UploadDocumentModal
