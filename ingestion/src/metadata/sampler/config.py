@@ -93,7 +93,7 @@ def get_storage_config_for_table(
         return get_sample_storage_config(database_profiler_config)
 
     try:
-        return db_service.connection.config.sampleDataStorageConfig.config
+        return db_service.connection.config.sampleDataStorageConfig.config  # pyright: ignore[reportAttributeAccessIssue]
     except AttributeError:
         pass
 
