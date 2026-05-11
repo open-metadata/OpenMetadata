@@ -285,7 +285,8 @@ public class MigrationUtil {
                   + " "
                   + "  AND NOT EXISTS ("
                   + "    SELECT 1 FROM entity_relationship ex "
-                  + "    WHERE ex.toId = er_about.toId AND ex.toEntity = 'task' "
+                  + "    WHERE ex.fromId = er_domain.fromId "
+                  + "    AND ex.toId = er_about.toId AND ex.toEntity = 'task' "
                   + "    AND ex.fromEntity = 'domain' AND ex.relation = "
                   + RELATION_HAS
                   + "  ) "
@@ -314,7 +315,8 @@ public class MigrationUtil {
                   + " "
                   + "  AND NOT EXISTS ("
                   + "    SELECT 1 FROM entity_relationship ex "
-                  + "    WHERE ex.toId = er_about.toId AND ex.toEntity = 'task' "
+                  + "    WHERE ex.fromId = er_domain.fromId "
+                  + "    AND ex.toId = er_about.toId AND ex.toEntity = 'task' "
                   + "    AND ex.fromEntity = 'domain' AND ex.relation = "
                   + RELATION_HAS
                   + "  ) "

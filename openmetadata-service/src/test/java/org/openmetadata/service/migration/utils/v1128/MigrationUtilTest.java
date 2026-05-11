@@ -180,7 +180,7 @@ class MigrationUtilTest {
   }
 
   @Test
-  void threadEntity_twoRowsSameEntityLink_cacheHitOnSecondRow() throws Exception {
+  void threadEntity_twoRowsSameEntityLink_bothRowsGetMigrated() throws Exception {
     Handle handle = mockHandle();
     stubTableExists(handle, "thread_entity");
     String json = "{\"about\":\"<#E::glossaryTerm::MyGlossary.MyTerm>\"}";
