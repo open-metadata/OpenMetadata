@@ -9,3 +9,9 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
     PRIMARY KEY (old_thread_id),
     KEY idx_task_migration_mapping_new_task_id (new_task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Data Access Request: indexed approver column for the Approver filter on /v1/tasks and /v1/tasks/dataAccessRequests.
+ALTER TABLE task_entity
+    ADD COLUMN IF NOT EXISTS approvedById varchar(36)
+        GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.approvedById'))) STORED,
+    ADD KEY IF NOT EXISTS idx_approved_by_id (approvedById);

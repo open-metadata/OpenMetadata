@@ -232,6 +232,9 @@ public class TaskWorkflowHandler {
           "[TaskWorkflowHandler] Non-terminal transition '{}' for task '{}' — workflow advanced, no resolution applied",
           transitionId,
           taskId);
+      if ("approve".equals(transitionId)) {
+        captureApprover(taskRepository, taskId, user);
+      }
       return refreshTask(taskId);
     }
 
@@ -264,6 +267,19 @@ public class TaskWorkflowHandler {
           task.getId(),
           e.getMessage());
       return task;
+    }
+  }
+
+  private void captureApprover(TaskRepository taskRepository, UUID taskId, String user) {
+    try {
+      EntityReference approver =
+          Entity.getEntityReferenceByName(Entity.USER, user, Include.NON_DELETED);
+      taskRepository.persistApprover(taskId, approver, user);
+    } catch (Exception e) {
+      LOG.warn(
+          "[TaskWorkflowHandler] Failed to capture approver for task '{}': {}",
+          taskId,
+          e.getMessage());
     }
   }
 
@@ -337,6 +353,11 @@ public class TaskWorkflowHandler {
       task.setWorkflowStageId(selectedTransition.getTargetStageId());
       task.setWorkflowStageDisplayName(selectedTransition.getTargetStageId());
       task.setAvailableTransitions(List.of());
+      if ("approve".equals(selectedTransition.getId())) {
+        task.setApprovedBy(resolvedByRef);
+        task.setApprovedById(resolvedByRef.getId().toString());
+        task.setApprovedAt(System.currentTimeMillis());
+      }
     }
 
     task = taskRepository.resolveTask(task, resolution, user);
@@ -1183,13 +1204,12 @@ public class TaskWorkflowHandler {
 
     if (selectedTransition != null && selectedTransition.getTargetTaskStatus() != null) {
       return switch (selectedTransition.getTargetTaskStatus()) {
-        case Approved -> TaskResolutionType.Approved;
         case Rejected -> TaskResolutionType.Rejected;
         case Completed -> TaskResolutionType.Completed;
         case Cancelled -> TaskResolutionType.Cancelled;
         case Revoked -> TaskResolutionType.Revoked;
         case Failed -> TaskResolutionType.TimedOut;
-        case Open, InProgress, Pending -> null;
+        case Open, InProgress, Pending, Approved, Granted -> null;
       };
     }
 

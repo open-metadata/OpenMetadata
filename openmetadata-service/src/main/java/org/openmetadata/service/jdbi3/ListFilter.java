@@ -81,6 +81,9 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskFormCategoryCondition(tableName));
     conditions.add(getTaskTypeCondition(tableName));
     conditions.add(getTaskPriorityCondition(tableName));
+    conditions.add(getTaskApproverCondition());
+    conditions.add(getTaskAboutServiceCondition());
+    conditions.add(getTaskAccessTypeCondition());
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition(tableName));
     conditions.add(getNameFilterCondition());
@@ -977,9 +980,13 @@ public class ListFilter extends Filter<ListFilter> {
       String column = tableName == null ? "status" : tableName + ".status";
       if ("open".equalsIgnoreCase(statusGroup)) {
         return String.format("%s IN ('Open', 'InProgress', 'Pending')", column);
+      } else if ("active".equalsIgnoreCase(statusGroup)) {
+        return String.format(
+            "%s IN ('Open', 'InProgress', 'Pending', 'Approved', 'Granted')", column);
       } else if ("closed".equalsIgnoreCase(statusGroup)) {
         return String.format(
-            "%s IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed')", column);
+            "%s IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked')",
+            column);
       }
     }
 
@@ -991,6 +998,47 @@ public class ListFilter extends Filter<ListFilter> {
     return tableName == null
         ? String.format("status = '%s'", safeStatus)
         : String.format("%s.status = '%s'", tableName, safeStatus);
+  }
+
+  private String getTaskApproverCondition() {
+    String approvedById = queryParams.get("approverId");
+    if (approvedById != null) {
+      queryParams.put("approverIdParam", approvedById);
+      return "approvedById = :approverIdParam";
+    }
+
+    String approverFqn = queryParams.get("approver");
+    if (approverFqn == null) {
+      return "";
+    }
+    String approverFqnHash = FullyQualifiedName.buildHash(approverFqn);
+    queryParams.put("approverFqnHashParam", approverFqnHash);
+    return "(approvedById IN (SELECT u.id FROM user_entity u "
+        + "WHERE u.nameHash = :approverFqnHashParam))";
+  }
+
+  private String getTaskAboutServiceCondition() {
+    String serviceFqn = queryParams.get("aboutService");
+    if (serviceFqn == null) {
+      return "";
+    }
+    String serviceFqnHash = FullyQualifiedName.buildHash(serviceFqn);
+    queryParams.put("aboutServiceFqnHashParam", serviceFqnHash);
+    queryParams.put("aboutServiceFqnHashPrefixParam", serviceFqnHash + ".%");
+    return "(aboutFqnHash = :aboutServiceFqnHashParam "
+        + "OR aboutFqnHash LIKE :aboutServiceFqnHashPrefixParam)";
+  }
+
+  private String getTaskAccessTypeCondition() {
+    String accessType = queryParams.get("accessType");
+    if (accessType == null) {
+      return "";
+    }
+    queryParams.put("accessTypeParam", accessType);
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.payload.accessType')) = :accessTypeParam";
+    }
+    return "json->'payload'->>'accessType' = :accessTypeParam";
   }
 
   private String getTaskTypeCondition(String tableName) {

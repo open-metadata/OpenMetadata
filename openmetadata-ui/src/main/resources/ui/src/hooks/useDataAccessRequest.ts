@@ -12,10 +12,9 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  listTasks,
+  listDataAccessRequests,
   Task,
-  TaskCategory,
-  TaskEntityType,
+  TaskEntityStatus,
 } from '../rest/tasksAPI';
 import { isDarApprovalActive } from '../utils/TasksUtils';
 import { useApplicationStore } from './useApplicationStore';
@@ -28,6 +27,7 @@ interface UseDataAccessRequestParams {
 
 interface UseDataAccessRequestResult {
   isDarDisabled: boolean;
+  isDarAwaitingGrant: boolean;
   refetch: () => void;
 }
 
@@ -47,12 +47,10 @@ export const useDataAccessRequest = ({
     }
 
     try {
-      const res = await listTasks({
-        aboutEntity: entityFqn,
-        category: TaskCategory.DataAccess,
-        type: TaskEntityType.DataAccessRequest,
-        createdBy: currentUser.name,
-        statusGroup: 'open',
+      const res = await listDataAccessRequests({
+        dataset: entityFqn,
+        requestedBy: currentUser.name,
+        statusGroup: 'active',
         fields: 'about,resolution',
         limit: 10,
       });
@@ -84,12 +82,27 @@ export const useDataAccessRequest = ({
   const isDarDisabled = useMemo(
     () =>
       existingDarTasks.some((task) => {
+        if (
+          task.status === TaskEntityStatus.Approved ||
+          task.status === TaskEntityStatus.Granted
+        ) {
+          const payload = task.payload as
+            | { duration?: string; expirationDate?: number }
+            | undefined;
+
+          return isDarApprovalActive(
+            task.updatedAt ?? task.createdAt,
+            payload?.duration,
+            payload?.expirationDate
+          );
+        }
+
         const stage = (
           task.workflowStageDisplayName ??
           task.workflowStageId ??
           ''
         ).toLowerCase();
-        if (stage === 'approved') {
+        if (stage === 'approved' || stage === 'granted') {
           const payload = task.payload as
             | { duration?: string; expirationDate?: number }
             | undefined;
@@ -106,5 +119,23 @@ export const useDataAccessRequest = ({
     [existingDarTasks]
   );
 
-  return { isDarDisabled, refetch: fetchExistingDar };
+  const isDarAwaitingGrant = useMemo(
+    () =>
+      existingDarTasks.some((task) => {
+        if (task.status === TaskEntityStatus.Approved) {
+          return true;
+        }
+
+        const stage = (
+          task.workflowStageDisplayName ??
+          task.workflowStageId ??
+          ''
+        ).toLowerCase();
+
+        return stage === 'approved' && task.status !== TaskEntityStatus.Granted;
+      }),
+    [existingDarTasks]
+  );
+
+  return { isDarDisabled, isDarAwaitingGrant, refetch: fetchExistingDar };
 };

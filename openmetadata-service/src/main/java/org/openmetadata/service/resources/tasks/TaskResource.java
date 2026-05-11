@@ -155,6 +155,14 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           UUID createdById,
       @Parameter(description = "Filter by entity FQN the task is about") @QueryParam("aboutEntity")
           String aboutEntity,
+      @Parameter(description = "Filter by parent service FQN of the entity the task is about")
+          @QueryParam("aboutService")
+          String aboutService,
+      @Parameter(description = "Filter by approver FQN (user who approved the task)")
+          @QueryParam("approver")
+          String approver,
+      @Parameter(description = "Filter by approver user id") @QueryParam("approverId")
+          UUID approverId,
       @Parameter(description = "Filter by user FQN who was mentioned in task comments")
           @QueryParam("mentionedUser")
           String mentionedUser,
@@ -199,6 +207,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
     if (aboutEntity != null) {
       filter.addQueryParam("aboutEntity", aboutEntity);
+    }
+    if (aboutService != null) {
+      filter.addQueryParam("aboutService", aboutService);
+    }
+    if (approver != null) {
+      filter.addQueryParam("approver", approver);
+    }
+    if (approverId != null) {
+      filter.addQueryParam("approverId", approverId.toString());
     }
     if (mentionedUser != null) {
       filter.addQueryParam("mentionedUser", mentionedUser);
@@ -261,9 +278,117 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             .withOpen(countSummary.getOpen())
             .withCompleted(countSummary.getCompleted())
             .withInProgress(countSummary.getInProgress())
+            .withApproved(countSummary.getApproved())
+            .withGranted(countSummary.getGranted())
             .withTotal(countSummary.getTotal());
 
     return Response.ok(response).build();
+  }
+
+  @GET
+  @Path("/dataAccessRequests")
+  @Operation(
+      operationId = "listDataAccessRequests",
+      summary = "List data access requests",
+      description =
+          "Get a paginated list of Data Access Request tasks with DAR-specific filters. "
+              + "Pre-applies category=DataAccess and type=DataAccessRequest. "
+              + "Pagination is offset-based and results are sorted by createdAt (default DESC).",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Data Access Requests",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TaskList.class)))
+      })
+  public ResultList<Task> listDataAccessRequests(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Filter by task status") @QueryParam("status")
+          TaskEntityStatus status,
+      @Parameter(
+              description =
+                  "Filter by status group: 'open' for Open/InProgress/Pending/Approved/Granted, 'closed' for Rejected/Completed/Cancelled/Failed/Revoked")
+          @QueryParam("statusGroup")
+          String statusGroup,
+      @Parameter(description = "Filter by dataset FQN (entity the DAR is about)")
+          @QueryParam("dataset")
+          String dataset,
+      @Parameter(description = "Filter by parent service FQN of the dataset") @QueryParam("service")
+          String service,
+      @Parameter(description = "Filter by requester FQN") @QueryParam("requestedBy")
+          String requestedBy,
+      @Parameter(description = "Filter by requester user id") @QueryParam("requestedById")
+          UUID requestedById,
+      @Parameter(description = "Filter by approver FQN") @QueryParam("approver") String approver,
+      @Parameter(description = "Filter by approver user id") @QueryParam("approverId")
+          UUID approverId,
+      @Parameter(description = "Filter by access type") @QueryParam("accessType") String accessType,
+      @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
+      @Parameter(
+              description = "Sort order on createdAt",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("desc")
+          String sortOrder,
+      @Parameter(description = "Limit the number of results", schema = @Schema(type = "integer"))
+          @DefaultValue("10")
+          @QueryParam("limit")
+          @Min(0)
+          @Max(1000000)
+          int limitParam,
+      @Parameter(description = "Offset into the result set", schema = @Schema(type = "integer"))
+          @DefaultValue("0")
+          @QueryParam("offset")
+          @Min(0)
+          int offset,
+      @Parameter(description = "Include deleted tasks")
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    ListFilter filter = new ListFilter(include);
+    filter.addQueryParam("category", TaskCategory.DataAccess.value());
+    filter.addQueryParam("taskType", TaskEntityType.DataAccessRequest.value());
+
+    if (statusGroup != null) {
+      filter.addQueryParam("taskStatusGroup", statusGroup);
+    } else if (status != null) {
+      filter.addQueryParam("taskStatus", status.value());
+    }
+    if (dataset != null) {
+      filter.addQueryParam("aboutEntity", dataset);
+    }
+    if (service != null) {
+      filter.addQueryParam("aboutService", service);
+    }
+    if (requestedBy != null) {
+      filter.addQueryParam("createdBy", requestedBy);
+    }
+    if (requestedById != null) {
+      filter.addQueryParam("createdById", requestedById.toString());
+    }
+    if (approver != null) {
+      filter.addQueryParam("approver", approver);
+    }
+    if (approverId != null) {
+      filter.addQueryParam("approverId", approverId.toString());
+    }
+    if (accessType != null) {
+      filter.addQueryParam("accessType", accessType);
+    }
+    repository.addDomainFilter(filter, domain);
+
+    Fields fields = getFields(fieldsParam);
+    return repository.listDataAccessRequests(
+        uriInfo, fields, filter, limitParam, offset, sortOrder);
   }
 
   @GET
@@ -1201,7 +1326,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     TaskEntityStatus status = task.getStatus();
     if (status == TaskEntityStatus.Open
         || status == TaskEntityStatus.InProgress
-        || status == TaskEntityStatus.Pending) {
+        || status == TaskEntityStatus.Pending
+        || status == TaskEntityStatus.Approved
+        || status == TaskEntityStatus.Granted) {
       return;
     }
 

@@ -24,11 +24,19 @@ export enum TaskEntityStatus {
   InProgress = 'InProgress',
   Pending = 'Pending',
   Approved = 'Approved',
+  Granted = 'Granted',
   Rejected = 'Rejected',
   Completed = 'Completed',
   Cancelled = 'Cancelled',
   Failed = 'Failed',
   Revoked = 'Revoked',
+}
+
+// Data access type enum - matches backend DataAccessType
+export enum DataAccessType {
+  FullAccess = 'FullAccess',
+  ColumnLevel = 'ColumnLevel',
+  Masked = 'Masked',
 }
 
 // Task category enum - matches backend TaskCategory
@@ -210,7 +218,7 @@ export interface ResolveTask {
 
 const BASE_URL = '/tasks';
 
-export type TaskStatusGroup = 'open' | 'closed';
+export type TaskStatusGroup = 'open' | 'active' | 'closed';
 export type TaskCountView =
   | 'all'
   | 'visible'
@@ -241,11 +249,33 @@ export interface ListTasksParams {
   priority?: TaskPriority;
   assignee?: string;
   createdBy?: string;
+  createdById?: string;
   aboutEntity?: string;
+  aboutService?: string;
+  approver?: string;
+  approverId?: string;
   mentionedUser?: string;
   limit?: number;
   before?: string;
   after?: string;
+  include?: Include;
+}
+
+export interface ListDataAccessRequestsParams {
+  fields?: string;
+  status?: TaskEntityStatus;
+  statusGroup?: TaskStatusGroup;
+  dataset?: string;
+  service?: string;
+  requestedBy?: string;
+  requestedById?: string;
+  approver?: string;
+  approverId?: string;
+  accessType?: DataAccessType;
+  domain?: string;
+  sortOrder?: 'asc' | 'desc';
+  limit?: number;
+  offset?: number;
   include?: Include;
 }
 
@@ -256,6 +286,20 @@ export const listTasks = async (params?: ListTasksParams) => {
   const response = await APIClient.get<PagingResponse<Task[]>>(BASE_URL, {
     params,
   });
+
+  return response.data;
+};
+
+/**
+ * List Data Access Requests with DAR-specific filters and offset-based pagination.
+ */
+export const listDataAccessRequests = async (
+  params?: ListDataAccessRequestsParams
+) => {
+  const response = await APIClient.get<PagingResponse<Task[]>>(
+    `${BASE_URL}/dataAccessRequests`,
+    { params }
+  );
 
   return response.data;
 };

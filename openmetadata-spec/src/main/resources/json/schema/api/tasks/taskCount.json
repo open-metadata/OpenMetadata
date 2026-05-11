@@ -16,6 +16,16 @@
       "type": "integer",
       "minimum": 0
     },
+    "approved": {
+      "description": "Total count of all approved tasks awaiting grant (Data Access Requests).",
+      "type": "integer",
+      "minimum": 0
+    },
+    "granted": {
+      "description": "Total count of all granted tasks with active access (Data Access Requests).",
+      "type": "integer",
+      "minimum": 0
+    },
     "completed": {
       "description": "Total count of all completed/closed tasks.",
       "type": "integer",
