@@ -853,6 +853,44 @@ class TestFetchColTypesWithParsedObjects:
         assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.INT
 
 
+class TestFetchColTypesMixedTypes:
+    """fetch_col_types must resolve the dominant type via explicit precedence, not
+    lexicographic max(). The old max() would return 'str' whenever a string value appeared
+    in the column because 'str' > 'dict' and 'str' > 'list' lexicographically."""
+
+    def test_dict_and_string_mix_typed_as_json(self):
+        # Previously: max(["dict", "str"]) == "str" → STRING (wrong)
+        # Now: precedence picks "dict" → JSON (correct)
+        df = pd.DataFrame({"col": [{"a": 1}, "fallback_string"]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.JSON
+
+    def test_list_and_string_mix_typed_as_array(self):
+        # Previously: max(["list", "str"]) == "str" → STRING (wrong)
+        # Now: precedence picks "list" → ARRAY (correct)
+        df = pd.DataFrame({"col": [[1, 2], "fallback_string"]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.ARRAY
+
+    def test_int_and_float_mix_typed_as_float(self):
+        # float64 beats int64 in precedence — a column with mixed numeric types resolves to FLOAT
+        df = pd.DataFrame({"col": ["42", "3.14"]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.FLOAT
+
+    def test_pure_string_column_typed_as_string(self):
+        # Control: no structured types present → still STRING
+        df = pd.DataFrame({"col": ["hello", "world"]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.STRING
+
+    def test_pure_dict_column_typed_as_json(self):
+        # Control: all dicts → JSON with no ambiguity
+        df = pd.DataFrame({"col": [{"a": 1}, {"b": 2}]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.JSON
+
+    def test_dict_beats_list_in_mixed_column(self):
+        # dict > list in precedence
+        df = pd.DataFrame({"col": [{"a": 1}, [1, 2]]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.JSON
+
+
 class TestGetChildrenWithParsedDicts:
     """get_children must correctly extract children regardless of whether the Series
     values are already-parsed Python dicts, JSON strings, or a mix of both."""
