@@ -1501,13 +1501,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       return entity;
     } catch (ExecutionException | UncheckedExecutionException e) {
-      // Guava loader couldn't resolve the id — typically because the DB returned null.
-      // Populate the negative cache so subsequent default-cached lookups for the same id
-      // short-circuit via the fast-path above instead of paying the loader cost again.
-      if (include == NON_DELETED && notFoundCache != null) {
-        notFoundCache.markNotFoundById(entityType, id);
+      // The Guava loader can fail for several reasons; only the "entity truly doesn't exist"
+      // case is safe to negative-cache. Transient DB errors (JDBI timeout, connection reset)
+      // and structural errors (invalid-but-existing entity, JSON deserialization) would
+      // otherwise turn a brief blip into a 30s 404 storm, and would mask the real error from
+      // the caller. We only populate the negative cache on EntityNotFoundException; other
+      // causes are rethrown unchanged.
+      Throwable cause = e.getCause();
+      if (cause instanceof EntityNotFoundException notFound) {
+        if (include == NON_DELETED && notFoundCache != null) {
+          notFoundCache.markNotFoundById(entityType, id);
+        }
+        throw notFound;
       }
-      throw new EntityNotFoundException(entityNotFound(entityType, id));
+      if (cause instanceof RuntimeException re) {
+        throw re;
+      }
+      throw new RuntimeException(cause != null ? cause : e);
     }
   }
 
@@ -2091,12 +2101,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       return entity;
     } catch (ExecutionException | UncheckedExecutionException e) {
-      // Guava loader couldn't resolve the fqn — populate the negative cache so subsequent
-      // default-cached lookups short-circuit instead of paying the loader cost again.
-      if (include == NON_DELETED && notFoundCache != null) {
-        notFoundCache.markNotFoundByName(entityType, fqn);
+      // Only negative-cache when the cause is genuinely "entity doesn't exist". Transient
+      // failures (DB timeout, deserialization error) must not poison the cache for 30s and
+      // must not be masked as 404s — same reasoning as the find(UUID, …) path above.
+      Throwable cause = e.getCause();
+      if (cause instanceof EntityNotFoundException notFound) {
+        if (include == NON_DELETED && notFoundCache != null) {
+          notFoundCache.markNotFoundByName(entityType, fqn);
+        }
+        throw notFound;
       }
-      throw new EntityNotFoundException(entityNotFound(entityType, fqn));
+      if (cause instanceof RuntimeException re) {
+        throw re;
+      }
+      throw new RuntimeException(cause != null ? cause : e);
     }
   }
 
