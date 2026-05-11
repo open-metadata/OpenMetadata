@@ -167,6 +167,7 @@ base_requirements = {
     "sqlalchemy>=1.4.0,<2",
     "collate-sqllineage>=2.1.1",
     "tabulate==0.9.0",
+    "tenacity>=8.0,<10",
     "typing-inspect",
     "packaging",  # For version parsing
     "setuptools>=78.1.1,<81",  # <81 required: pkg_resources removed in setuptools 81+
