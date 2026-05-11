@@ -18,6 +18,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -82,36 +83,48 @@ public class MigrationUtil {
     }
 
     Map<String, List<UUID>> domainCache = new HashMap<>();
-    int updated = 0;
+    int withDomains = 0;
+    int markedDone = 0;
 
     while (true) {
       List<String[]> batch = readThreadTaskBatch(BATCH_SIZE);
       if (batch.isEmpty()) break;
       for (String[] row : batch) {
-        if (processThreadTaskRow(row[0], row[1], domainCache)) updated++;
+        int result = processThreadTaskRow(row[0], row[1], domainCache);
+        if (result == 1) withDomains++;
+        else if (result == 2) markedDone++;
       }
-      LOG.debug("Thread task migration progress: {} tasks migrated so far", updated);
+      LOG.debug(
+          "Thread task migration progress: withDomains={}, markedDone={}", withDomains, markedDone);
     }
 
-    LOG.info("Migrated domains for {} thread tasks in thread_entity", updated);
-    return updated;
+    LOG.info(
+        "Migrated {} thread tasks in thread_entity (withDomains={}, markedDone={})",
+        withDomains + markedDone,
+        withDomains,
+        markedDone);
+    return withDomains + markedDone;
   }
 
-  private boolean processThreadTaskRow(
-      String id, String json, Map<String, List<UUID>> domainCache) {
+  // Returns: 0 = skipped (lookup failed), 1 = updated with domains, 2 = marked done (no domains)
+  private int processThreadTaskRow(String id, String json, Map<String, List<UUID>> domainCache) {
     try {
       List<UUID> domainIds = resolveThreadTaskDomains(json, domainCache);
-      if (nullOrEmpty(domainIds)) {
+      if (domainIds == null) {
+        // Lookup failed — skip without marking so it can be retried.
+        return 0;
+      }
+      if (domainIds.isEmpty()) {
         // Setting $.domains=[] makes JSON_EXTRACT(json,'$.domains') return []
         // (not SQL NULL), so it drops out of the WHERE clause.
         markThreadDomainsMigrated(id);
-        return false;
+        return 2;
       }
       updateThreadDomains(id, domainIds);
-      return true;
+      return 1;
     } catch (Exception e) {
       LOG.warn("Failed to migrate thread task domains for id={}: {}", id, e.getMessage());
-      return false;
+      return 0;
     }
   }
 
@@ -130,21 +143,22 @@ public class MigrationUtil {
         .list();
   }
 
+  // null = lookup failed (skip row); emptyList = no domains (mark done); non-empty = has domains
   private List<UUID> resolveThreadTaskDomains(String json, Map<String, List<UUID>> cache) {
     try {
       JsonNode node = JsonUtils.readTree(json);
       JsonNode aboutNode = node.get("about");
-      if (aboutNode == null || aboutNode.isNull()) return null;
+      if (aboutNode == null || aboutNode.isNull()) return Collections.emptyList();
 
       String about = aboutNode.asText(null);
-      if (nullOrEmpty(about)) return null;
+      if (nullOrEmpty(about)) return Collections.emptyList();
 
       MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(about);
       String cacheKey = entityLink.getEntityType() + "::" + entityLink.getEntityFQN();
 
       if (cache.containsKey(cacheKey)) return cache.get(cacheKey);
       List<UUID> ids = fetchDomainIds(entityLink);
-      if (ids != null) cache.put(cacheKey, ids);
+      cache.put(cacheKey, ids);
       return ids;
     } catch (Exception e) {
       LOG.debug("Could not resolve domains from thread JSON: {}", e.getMessage());
@@ -175,13 +189,12 @@ public class MigrationUtil {
         if (d.getId() != null) ids.add(d.getId());
       }
       return ids;
-    } catch (Exception e) {
+    } catch (EntityNotFoundException e) {
       LOG.debug(
-          "Could not fetch domains for {}::{}: {}",
+          "Entity not found for {}::{}, treating as no domains",
           entityLink.getEntityType(),
-          entityLink.getEntityFQN(),
-          e.getMessage());
-      return null;
+          entityLink.getEntityFQN());
+      return Collections.emptyList();
     }
   }
 
