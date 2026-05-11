@@ -202,6 +202,7 @@ export const BETA_SERVICES = [
   DriveServiceType.SFTP,
   DatabaseServiceType.Informix,
   DatabaseServiceType.MicrosoftAccess,
+  DatabaseServiceType.QuestDB,
   DashboardServiceType.SapS4Hana,
 ];
 
