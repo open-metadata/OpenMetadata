@@ -247,10 +247,10 @@ describe('TagClassBase', () => {
   });
 
   describe('getCommonWidgetList', () => {
-    it('returns 3 widgets', () => {
+    it('returns 4 widgets', () => {
       const widgets = tagClassBase.getCommonWidgetList();
 
-      expect(widgets).toHaveLength(3);
+      expect(widgets).toHaveLength(4);
     });
 
     it('first widget is DESCRIPTION', () => {
@@ -267,6 +267,13 @@ describe('TagClassBase', () => {
 
       expect(keys).toContain(DetailPageWidgetKeys.DOMAIN);
       expect(keys).toContain(DetailPageWidgetKeys.OWNERS);
+    });
+
+    it('KNOWLEDGE_ARTICLE_WIDGET widget to be included', () => {
+      const widgets = tagClassBase.getCommonWidgetList();
+      const keys = widgets.map((w) => w.fullyQualifiedName);
+
+      expect(keys).toContain(DetailPageWidgetKeys.KNOWLEDGE_ARTICLE);
     });
   });
 

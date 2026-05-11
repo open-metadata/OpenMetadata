@@ -87,7 +87,6 @@ import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
-import { getTestSuitePath } from '../../utils/RouterUtils';
 import { ExtraTestCaseDropdownOptions } from '../../utils/TestCaseUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './test-suite-details-page.less';
@@ -195,7 +194,9 @@ const TestSuiteDetailsPage = () => {
       },
       {
         name: getEntityName(testSuite),
-        url: getTestSuitePath(testSuite?.fullyQualifiedName ?? ''),
+        url: observabilityRouterClassBase.getTestSuitePath(
+          testSuite?.fullyQualifiedName ?? ''
+        ),
       },
     ];
   }, [testSuite]);

@@ -142,6 +142,7 @@ import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.client.BedrockEmbeddingClient;
 import org.openmetadata.service.search.vector.client.DjlEmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.GoogleEmbeddingClient;
 import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -2491,6 +2492,12 @@ public class SearchRepository {
           Entity.DRIVE_SERVICE -> searchClient.deleteEntityByFields(
           indexMapping.getChildAliases(clusterAlias),
           List.of(new ImmutablePair<>("service.id", docId)));
+        // Knowledge Center pages are nested via FQN (parent.fqn -> parent.fqn.child),
+        // not via a parent.id field on the child doc. A recursive hard-delete on the
+        // parent must therefore also remove every descendant from search by FQN
+        // prefix; otherwise stale child docs survive in the index and re-appear in
+        // hierarchy / search results until a full reindex.
+      case Entity.PAGE -> deleteEntityByFQNPrefix(entity);
       default -> {
         List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
         if (!indexNames.isEmpty()) {
@@ -3226,6 +3233,13 @@ public class SearchRepository {
               "OpenAI configuration is required when using openai provider");
         }
         yield new OpenAIEmbeddingClient(esConfig);
+      }
+      case "google" -> {
+        if (config.getGoogle() == null) {
+          throw new IllegalStateException(
+              "Google configuration is required when using google provider");
+        }
+        yield new GoogleEmbeddingClient(esConfig);
       }
       case "djl" -> {
         if (config.getDjl() == null) {

@@ -54,15 +54,38 @@ describe('coreWidgetUtils', () => {
     expect(
       getWidgetLabel({
         hideLabel: true,
-        label: 'Name',
+        label: 'rawFieldName',
       } as never)
     ).toBeUndefined();
 
     expect(
       getWidgetLabel({
         hideLabel: false,
-        label: 'Name',
+        label: 'Raw Field Name',
       } as never)
-    ).toBe('Name');
+    ).toBe('Raw Field Name');
+  });
+
+  it('formats raw camelCase labels and preserves display labels', () => {
+    expect(
+      getWidgetLabel({
+        hideLabel: false,
+        label: 'sampleDataStorageConfig',
+      } as never)
+    ).toBe('Sample Data Storage Config');
+
+    expect(
+      getWidgetLabel({
+        hideLabel: false,
+        label: 'label.sample-data-storage-config',
+      } as never)
+    ).toBe('label.sample-data-storage-config');
+
+    expect(
+      getWidgetLabel({
+        hideLabel: false,
+        label: 'Sample data storage config',
+      } as never)
+    ).toBe('Sample data storage config');
   });
 });
