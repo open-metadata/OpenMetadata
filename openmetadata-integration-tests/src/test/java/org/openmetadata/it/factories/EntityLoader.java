@@ -53,8 +53,10 @@ public final class EntityLoader {
     EntityLoadSummary.Builder summary = new EntityLoadSummary.Builder();
     ExecutorService executor = Executors.newFixedThreadPool(spec.parallelWorkers());
     try {
-      runIfRequested(EntityKind.TABLE, spec, summary, () -> loadTables(spec, ns, executor, summary));
-      runIfRequested(EntityKind.TOPIC, spec, summary, () -> loadTopics(spec, ns, executor, summary));
+      runIfRequested(
+          EntityKind.TABLE, spec, summary, () -> loadTables(spec, ns, executor, summary));
+      runIfRequested(
+          EntityKind.TOPIC, spec, summary, () -> loadTopics(spec, ns, executor, summary));
       runIfRequested(
           EntityKind.DASHBOARD, spec, summary, () -> loadDashboards(spec, ns, executor, summary));
       runIfRequested(
@@ -72,10 +74,7 @@ public final class EntityLoader {
   }
 
   private static void runIfRequested(
-      EntityKind kind,
-      EntityLoadSpec spec,
-      EntityLoadSummary.Builder summary,
-      Runnable loader) {
+      EntityKind kind, EntityLoadSpec spec, EntityLoadSummary.Builder summary, Runnable loader) {
     int requested = spec.countOf(kind);
     if (requested <= 0) {
       return;

@@ -17,12 +17,12 @@ import org.openmetadata.it.factories.EntityLoadSpec;
 import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
 import org.openmetadata.it.factories.EntityLoadSummary;
 import org.openmetadata.it.factories.EntityLoader;
-import org.openmetadata.it.util.TestNamespace;
-import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.it.search.SearchQueryHelper;
 import org.openmetadata.it.search.SearchQueryHelper.SearchProbe;
 import org.openmetadata.it.server.ServerHandle;
+import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.playwright.ui.UiSession;
 import org.openmetadata.playwright.ui.UiSessionExtension;
 import org.openmetadata.playwright.ui.pages.SearchIndexAppPage;
@@ -48,8 +48,7 @@ import org.slf4j.LoggerFactory;
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
 class SearchAvailableDuringReindexUIIT {
 
-  private static final Logger LOG =
-      LoggerFactory.getLogger(SearchAvailableDuringReindexUIIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SearchAvailableDuringReindexUIIT.class);
 
   // Cohort sized to make reindex span enough wall-time for ~5+ probes to observe
   // mid-flight state under the constrained config below. OM's reindex is fast even with
@@ -156,8 +155,7 @@ class SearchAvailableDuringReindexUIIT {
    */
   private static void assertMidFlightProbe(final ServerHandle server, final int probeIndex) {
     Instant probedAt = Instant.now();
-    SearchProbe probe =
-        SearchQueryHelper.probeIndex(server, TABLE_INDEX_ALIAS, PROBE_PAGE_SIZE);
+    SearchProbe probe = SearchQueryHelper.probeIndex(server, TABLE_INDEX_ALIAS, PROBE_PAGE_SIZE);
 
     assertThat(probe.total())
         .as(
@@ -179,8 +177,7 @@ class SearchAvailableDuringReindexUIIT {
    */
   private static void assertEventualConsistency(
       final ServerHandle server, final Set<String> baselineIds) {
-    SearchProbe probe =
-        SearchQueryHelper.probeIndex(server, TABLE_INDEX_ALIAS, PROBE_PAGE_SIZE);
+    SearchProbe probe = SearchQueryHelper.probeIndex(server, TABLE_INDEX_ALIAS, PROBE_PAGE_SIZE);
     LOG.info("Final probe: total={}, unique={}", probe.total(), probe.unique());
     assertThat(probe.uniqueIds())
         .as(

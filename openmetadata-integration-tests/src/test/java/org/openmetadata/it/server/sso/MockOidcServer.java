@@ -61,8 +61,7 @@ public final class MockOidcServer implements AutoCloseable {
                 cmd ->
                     cmd.getHostConfig()
                         .withPortBindings(
-                            new PortBinding(
-                                Ports.Binding.bindPort(PORT), new ExposedPort(PORT))))
+                            new PortBinding(Ports.Binding.bindPort(PORT), new ExposedPort(PORT))))
             .waitingFor(
                 Wait.forHttp("/default/.well-known/openid-configuration")
                     .forPort(PORT)

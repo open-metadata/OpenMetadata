@@ -2,7 +2,6 @@ package org.openmetadata.it.util;
 
 import java.net.URI;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
-import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.server.ServerHandle;
 
 /**

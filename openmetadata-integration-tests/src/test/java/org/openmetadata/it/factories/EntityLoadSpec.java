@@ -11,9 +11,7 @@ import java.util.Map;
  * just executes whatever the spec asks for.
  */
 public record EntityLoadSpec(
-    int parallelWorkers,
-    Map<EntityKind, Integer> counts,
-    int columnsPerTable) {
+    int parallelWorkers, Map<EntityKind, Integer> counts, int columnsPerTable) {
 
   /** Entity types {@link EntityLoader} can create. Add new kinds as we extend coverage. */
   public enum EntityKind {

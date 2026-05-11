@@ -1,6 +1,5 @@
 package org.openmetadata.it.util;
 
-import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.auth.AuthBackend;
 import org.openmetadata.it.auth.AuthBackends;
 import org.openmetadata.it.auth.AuthSession;

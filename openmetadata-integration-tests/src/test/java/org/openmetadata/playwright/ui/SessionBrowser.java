@@ -30,13 +30,15 @@ public final class SessionBrowser {
       return browser;
     }
     playwright = Playwright.create();
-    final BrowserType.LaunchOptions options = new BrowserType.LaunchOptions().setHeadless(!isHeaded());
+    final BrowserType.LaunchOptions options =
+        new BrowserType.LaunchOptions().setHeadless(!isHeaded());
     final int slowMoMs = resolveSlowMo();
     if (slowMoMs > 0) {
       options.setSlowMo(slowMoMs);
     }
     browser = playwright.chromium().launch(options);
-    Runtime.getRuntime().addShutdownHook(new Thread(SessionBrowser::tearDown, "SessionBrowser-cleanup"));
+    Runtime.getRuntime()
+        .addShutdownHook(new Thread(SessionBrowser::tearDown, "SessionBrowser-cleanup"));
     LOG.info("SessionBrowser launched: chromium headed={} slowMo={}ms", isHeaded(), slowMoMs);
     return browser;
   }

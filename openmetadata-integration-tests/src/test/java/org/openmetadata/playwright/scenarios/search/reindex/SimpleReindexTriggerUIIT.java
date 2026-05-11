@@ -81,7 +81,9 @@ class SimpleReindexTriggerUIIT {
     app.triggerAndWaitForStatus(STATUS_SUCCESS, REINDEX_TIMEOUT);
     LOG.info("Reindex completed");
 
-    seeded.created().forEach((kind, expectedCount) -> assertExploreCount(ui, ns, kind, expectedCount));
+    seeded
+        .created()
+        .forEach((kind, expectedCount) -> assertExploreCount(ui, ns, kind, expectedCount));
   }
 
   private static EntityLoadSummary ingest(final TestNamespace ns) {

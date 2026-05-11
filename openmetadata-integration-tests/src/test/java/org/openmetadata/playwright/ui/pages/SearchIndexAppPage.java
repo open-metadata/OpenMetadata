@@ -65,7 +65,8 @@ public final class SearchIndexAppPage extends PageObject {
 
   public void waitForLatestRunStatus(final String label, final Duration timeout) {
     PlaywrightAssertions.assertThat(latestRunStatus())
-        .containsText(label,
+        .containsText(
+            label,
             new com.microsoft.playwright.assertions.LocatorAssertions.ContainsTextOptions()
                 .setTimeout(timeout.toMillis()));
   }

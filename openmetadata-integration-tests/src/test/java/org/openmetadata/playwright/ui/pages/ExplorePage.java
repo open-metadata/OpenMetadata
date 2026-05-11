@@ -53,8 +53,7 @@ public final class ExplorePage extends PageObject {
    * <p>We deliberately do not type into the navbar's {@code searchBox} — OM binds it to
    * React-controlled state that {@code fill()} can't reliably override across navigations.
    */
-  public static ExplorePage openWithSearch(
-      final UiSession ui, final Tab tab, final String query) {
+  public static ExplorePage openWithSearch(final UiSession ui, final Tab tab, final String query) {
     final Page page = ui.newPage();
     final String url = ui.uiUrl(EXPLORE_PATH_PREFIX + tab.path + "?search=" + urlEncode(query));
     page.waitForResponse(

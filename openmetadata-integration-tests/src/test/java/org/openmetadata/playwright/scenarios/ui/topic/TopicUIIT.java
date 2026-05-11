@@ -23,8 +23,7 @@ import org.openmetadata.schema.entity.data.Topic;
 class TopicUIIT {
 
   @Test
-  void topicDetailsPageShowsSchemaTabWithFieldCount(
-      final UiSession ui, final TestNamespace ns) {
+  void topicDetailsPageShowsSchemaTabWithFieldCount(final UiSession ui, final TestNamespace ns) {
     final Topic topic = TopicTestFactory.createSimple(ns);
 
     final TopicPage topicPage = TopicPage.open(ui, topic.getFullyQualifiedName());

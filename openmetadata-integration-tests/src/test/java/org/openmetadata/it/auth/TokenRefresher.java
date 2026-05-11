@@ -4,9 +4,9 @@ import java.time.Duration;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.it.server.sso.MockOidcServer;
+import org.openmetadata.it.util.SdkClients;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,17 +46,15 @@ public final class TokenRefresher implements AutoCloseable {
   public static TokenRefresher start(
       final AuthBackend backend, final ServerHandle server, final MockOidcServer idp) {
     final ScheduledExecutorService scheduler =
-        Executors.newSingleThreadScheduledExecutor(r -> {
-          Thread t = new Thread(r, "jpw-token-refresher");
-          t.setDaemon(true);
-          return t;
-        });
+        Executors.newSingleThreadScheduledExecutor(
+            r -> {
+              Thread t = new Thread(r, "jpw-token-refresher");
+              t.setDaemon(true);
+              return t;
+            });
     final TokenRefresher refresher = new TokenRefresher(scheduler, backend, server, idp);
     scheduler.scheduleAtFixedRate(
-        refresher::tick,
-        TICK_INTERVAL.toSeconds(),
-        TICK_INTERVAL.toSeconds(),
-        TimeUnit.SECONDS);
+        refresher::tick, TICK_INTERVAL.toSeconds(), TICK_INTERVAL.toSeconds(), TimeUnit.SECONDS);
     return refresher;
   }
 

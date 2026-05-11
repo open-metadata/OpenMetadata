@@ -4,7 +4,6 @@ import com.microsoft.playwright.BrowserContext;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
-import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.it.server.sso.MockOidcServer;
 import org.openmetadata.it.server.sso.SsoProfile;

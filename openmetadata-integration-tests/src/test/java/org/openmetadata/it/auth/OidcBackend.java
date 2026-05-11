@@ -2,12 +2,12 @@ package org.openmetadata.it.auth;
 
 import com.microsoft.playwright.BrowserContext;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -101,7 +101,11 @@ public final class OidcBackend implements AuthBackend {
   private TokenSet requestTokens(final MockOidcServer idp, final String formBody) {
     final URI tokenUri = URI.create(idp.issuerUrl(profile.issuerId()) + "/token");
     final String body =
-        formBody + "&client_id=" + urlEncode(CLIENT_ID) + "&client_secret=" + urlEncode(CLIENT_SECRET);
+        formBody
+            + "&client_id="
+            + urlEncode(CLIENT_ID)
+            + "&client_secret="
+            + urlEncode(CLIENT_SECRET);
     final HttpRequest request =
         HttpRequest.newBuilder(tokenUri)
             .header("Content-Type", "application/x-www-form-urlencoded")

@@ -63,8 +63,7 @@ public final class SearchQueryHelper {
     } else if (total instanceof Number) {
       totalHits = ((Number) total).longValue();
     }
-    final List<Map<String, Object>> innerHits =
-        (List<Map<String, Object>>) outerHits.get("hits");
+    final List<Map<String, Object>> innerHits = (List<Map<String, Object>>) outerHits.get("hits");
     if (innerHits != null) {
       for (Map<String, Object> hit : innerHits) {
         final Object idObj = hit.get("_id");

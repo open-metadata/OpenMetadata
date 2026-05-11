@@ -33,8 +33,10 @@ public final class TraceRecorder {
   }
 
   public Path stopAndSave(final String filenameStem) {
-    final Path tracePath = TRACE_DIR.resolve(filenameStem + "-" + System.currentTimeMillis() + ".zip");
-    final boolean dirReady = tracePath.getParent().toFile().mkdirs() || tracePath.getParent().toFile().isDirectory();
+    final Path tracePath =
+        TRACE_DIR.resolve(filenameStem + "-" + System.currentTimeMillis() + ".zip");
+    final boolean dirReady =
+        tracePath.getParent().toFile().mkdirs() || tracePath.getParent().toFile().isDirectory();
     if (!dirReady) {
       throw new IllegalStateException("Could not prepare trace directory " + tracePath.getParent());
     }

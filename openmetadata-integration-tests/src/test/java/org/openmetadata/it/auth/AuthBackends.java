@@ -31,17 +31,15 @@ public final class AuthBackends {
       case "sso-google-confidential" -> new OidcBackend(new GoogleProfile(ClientType.CONFIDENTIAL));
       case "sso-okta-public" -> new OidcBackend(new OktaProfile(ClientType.PUBLIC));
       case "sso-okta-confidential" -> new OidcBackend(new OktaProfile(ClientType.CONFIDENTIAL));
-      case "sso-custom-oidc-public" ->
-          new OidcBackend(new CustomOidcProfile(ClientType.PUBLIC));
-      case "sso-custom-oidc-confidential" ->
-          new OidcBackend(new CustomOidcProfile(ClientType.CONFIDENTIAL));
-      default ->
-          throw new IllegalArgumentException(
-              "Unknown jpw.auth='"
-                  + name
-                  + "'. Known: basic, sso-google-public, sso-google-confidential, "
-                  + "sso-okta-public, sso-okta-confidential, "
-                  + "sso-custom-oidc-public, sso-custom-oidc-confidential.");
+      case "sso-custom-oidc-public" -> new OidcBackend(new CustomOidcProfile(ClientType.PUBLIC));
+      case "sso-custom-oidc-confidential" -> new OidcBackend(
+          new CustomOidcProfile(ClientType.CONFIDENTIAL));
+      default -> throw new IllegalArgumentException(
+          "Unknown jpw.auth='"
+              + name
+              + "'. Known: basic, sso-google-public, sso-google-confidential, "
+              + "sso-okta-public, sso-okta-confidential, "
+              + "sso-custom-oidc-public, sso-custom-oidc-confidential.");
     };
   }
 

@@ -16,12 +16,12 @@ import org.openmetadata.it.factories.EntityLoadSpec;
 import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
 import org.openmetadata.it.factories.EntityLoadSummary;
 import org.openmetadata.it.factories.EntityLoader;
-import org.openmetadata.it.util.TestNamespace;
-import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.it.search.SearchQueryHelper;
 import org.openmetadata.it.search.SearchQueryHelper.SearchProbe;
 import org.openmetadata.it.server.ServerHandle;
+import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.playwright.ui.UiSession;
 import org.openmetadata.playwright.ui.UiSessionExtension;
 import org.openmetadata.playwright.ui.pages.SearchIndexAppPage;
@@ -40,8 +40,7 @@ import org.slf4j.LoggerFactory;
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
 class DistributedAutoTuneReindexUIIT {
 
-  private static final Logger LOG =
-      LoggerFactory.getLogger(DistributedAutoTuneReindexUIIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DistributedAutoTuneReindexUIIT.class);
 
   // Cohort distributed across four entity types — exercises the per-type partitioning
   // logic distributed reindex relies on rather than just a single-type happy path.
@@ -96,7 +95,8 @@ class DistributedAutoTuneReindexUIIT {
             () ->
                 ReindexHelpers.freshRunIsTerminal(
                     server, ReindexHelpers.SEARCH_INDEX_APP, triggerTime));
-    LOG.info("Reindex terminal — waiting {}ms for ES refresh", POST_REINDEX_REFRESH_GRACE.toMillis());
+    LOG.info(
+        "Reindex terminal — waiting {}ms for ES refresh", POST_REINDEX_REFRESH_GRACE.toMillis());
     Thread.sleep(POST_REINDEX_REFRESH_GRACE.toMillis());
 
     assertPerTypeCounts(server, ns, seeded);
@@ -124,8 +124,7 @@ class DistributedAutoTuneReindexUIIT {
 
   private static Map<String, Object> distributedAutoTuneConfig() {
     Map<String, Object> config = new HashMap<>();
-    config.put(
-        "entities", java.util.List.of("table", "topic", "dashboard", "pipeline"));
+    config.put("entities", java.util.List.of("table", "topic", "dashboard", "pipeline"));
     config.put("recreateIndex", true);
     config.put("useDistributedIndexing", true);
     config.put("autoTune", true);

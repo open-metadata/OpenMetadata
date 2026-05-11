@@ -111,9 +111,7 @@ public final class ReindexHelpers {
         .until(
             () -> {
               final AppRunRecord run = fetchLatestRun(server, appName);
-              return run != null
-                  && run.getTimestamp() != null
-                  && run.getTimestamp() >= sinceMillis;
+              return run != null && run.getTimestamp() != null && run.getTimestamp() >= sinceMillis;
             });
   }
 

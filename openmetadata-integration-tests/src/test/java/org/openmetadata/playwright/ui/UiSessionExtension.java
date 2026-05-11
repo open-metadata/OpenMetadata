@@ -137,14 +137,15 @@ public final class UiSessionExtension
     return context.pages().stream()
         .map(Page::video)
         .filter(Objects::nonNull)
-        .map(video -> {
-          try {
-            return video.path();
-          } catch (RuntimeException e) {
-            LOG.warn("Could not resolve video path: {}", e.getMessage());
-            return null;
-          }
-        })
+        .map(
+            video -> {
+              try {
+                return video.path();
+              } catch (RuntimeException e) {
+                LOG.warn("Could not resolve video path: {}", e.getMessage());
+                return null;
+              }
+            })
         .filter(Objects::nonNull)
         .toList();
   }
@@ -153,7 +154,8 @@ public final class UiSessionExtension
     for (int i = 0; i < videoPaths.size(); i++) {
       final Path src = videoPaths.get(i);
       final String suffix = videoPaths.size() == 1 ? "" : "-" + i;
-      final Path dst = src.resolveSibling(stem + suffix + "-" + System.currentTimeMillis() + ".webm");
+      final Path dst =
+          src.resolveSibling(stem + suffix + "-" + System.currentTimeMillis() + ".webm");
       try {
         Files.move(src, dst, StandardCopyOption.REPLACE_EXISTING);
       } catch (IOException e) {
