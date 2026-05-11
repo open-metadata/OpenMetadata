@@ -11,23 +11,36 @@
  *  limitations under the License.
  */
 /**
- * App Extension Object.
+ * Single MCP tool-call usage record. One row written per tool invocation to the
+ * apps_extension_time_series table with extension='mcpUsage'. Used to surface MCP traffic
+ * as a product growth metric — not billed, no enforcement.
  */
-export interface AppExtension {
+export interface MCPToolCallUsage {
     /**
-     * Unique identifier of this application.
+     * Unique identifier of the McpApplication.
      */
-    appId: string;
+    appId?: string;
     /**
-     * Name of the application.
+     * Name of the application (McpApplication).
      */
-    appName:   string;
+    appName?:  string;
     extension: ExtensionType;
     /**
-     * Start of the job status.
+     * True if the tool call returned without an error result.
+     */
+    success?: boolean;
+    /**
+     * Time the tool call completed (epoch millis, UTC).
      */
     timestamp?: number;
-    [property: string]: any;
+    /**
+     * Name of the MCP tool that was invoked (e.g. search_metadata, create_glossary, nlq_search).
+     */
+    toolName?: string;
+    /**
+     * Principal name from the MCP request's security context.
+     */
+    userName?: string;
 }
 
 /**
