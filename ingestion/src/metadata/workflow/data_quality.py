@@ -11,7 +11,8 @@
 """
 Workflow definition for the Data Quality
 """
-from typing import Optional, Tuple
+
+from typing import Optional, Tuple  # noqa: UP035
 
 from metadata.data_quality.processor.test_case_runner import TestCaseRunner
 from metadata.data_quality.source.test_suite import TestSuiteSource
@@ -37,7 +38,7 @@ class TestSuiteWorkflow(IngestionWorkflow):
 
     __test__ = False
     service_type = ServiceType.TestSuite
-    steps: Tuple[Processor, Sink]
+    steps: Tuple[Processor, Sink]  # noqa: UP006
 
     def set_steps(self):
         self.source = TestSuiteSource.create(self.config.model_dump(), self.metadata)
@@ -65,7 +66,7 @@ class TestSuiteWorkflow(IngestionWorkflow):
         in the YAML already.
         """
 
-    def _get_ingestion_pipeline_service(self) -> Optional[T]:
+    def _get_ingestion_pipeline_service(self) -> Optional[T]:  # noqa: UP045
         """
         Ingestion Pipelines are linked to either an EntityService (DatabaseService, MessagingService,...)
         or a Test Suite.
@@ -78,8 +79,6 @@ class TestSuiteWorkflow(IngestionWorkflow):
             fqn=fqn.build(
                 metadata=None,
                 entity_type=TestSuite,
-                table_fqn=model_str(
-                    self.config.source.sourceConfig.config.entityFullyQualifiedName
-                ),
+                table_fqn=model_str(self.config.source.sourceConfig.config.entityFullyQualifiedName),
             ),
         )

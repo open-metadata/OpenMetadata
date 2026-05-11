@@ -43,22 +43,19 @@ import {
 } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
-import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
-} from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
-import { Container } from '../../../generated/entity/data/container';
 import {
   ContractExecutionStatus,
   DataContract,
 } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useDataAccessRequest } from '../../../hooks/useDataAccessRequest';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
   AnnouncementEntity,
@@ -67,7 +64,7 @@ import {
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
-import { getContainerByName } from '../../../rest/storageAPI';
+import { getContainerAncestors } from '../../../rest/storageAPI';
 import {
   getDataAssetsHeaderInfo,
   isDataAssetsWithServiceField,
@@ -153,7 +150,9 @@ export const DataAssetsHeader = ({
   const { customizedPage } = useCustomPages(
     ENTITY_PAGE_TYPE_MAP[entityType as CustomizeEntityType]
   );
-  const [parentContainers, setParentContainers] = useState<Container[]>([]);
+  const [parentContainers, setParentContainers] = useState<EntityReference[]>(
+    []
+  );
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
@@ -162,6 +161,10 @@ export const DataAssetsHeader = ({
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
   const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
+  const { isDarDisabled, refetch: refetchExistingDar } = useDataAccessRequest({
+    entityFqn: dataAsset.fullyQualifiedName,
+    enabled: entityType === EntityType.TABLE,
+  });
 
   const fetchDataContract = async (entityId: string) => {
     try {
@@ -336,27 +339,14 @@ export const DataAssetsHeader = ({
     }
   };
 
-  const fetchContainerParent = async (
-    parentName: string,
-    parents = [] as Container[]
-  ) => {
-    if (isEmpty(parentName)) {
+  const fetchContainerAncestors = async (fqn: string) => {
+    if (isEmpty(fqn)) {
       return;
     }
     setIsBreadcrumbLoading(true);
     try {
-      const response = await getContainerByName(parentName, {
-        fields: TabSpecificField.PARENT,
-      });
-      const updatedParent = [response, ...parents];
-      if (response?.parent?.fullyQualifiedName) {
-        await fetchContainerParent(
-          response.parent.fullyQualifiedName,
-          updatedParent
-        );
-      } else {
-        setParentContainers(updatedParent);
-      }
+      const ancestors = await getContainerAncestors(fqn);
+      setParentContainers(ancestors);
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
     } finally {
@@ -370,8 +360,7 @@ export const DataAssetsHeader = ({
       fetchDQFailureCount();
     }
     if (entityType === EntityType.CONTAINER && !isCustomizedView) {
-      const asset = dataAsset;
-      fetchContainerParent(asset.parent?.fullyQualifiedName ?? '');
+      fetchContainerAncestors(dataAsset.fullyQualifiedName ?? '');
     }
   }, [dataAsset.fullyQualifiedName, isTourPage, isCustomizedView]);
 
@@ -590,24 +579,38 @@ export const DataAssetsHeader = ({
     permissions.Trigger,
   ]);
 
+  const isOwner = useMemo(
+    () => dataAsset.owners?.some((o) => o.id === USER_ID) ?? false,
+    [dataAsset.owners, USER_ID]
+  );
+
   const requestDataAccessButton = useMemo(() => {
     if (
       !tableClassBase.getShowRequestDataAccess() ||
       SERVICE_TYPES.includes(entityType) ||
-      deleted
+      entityType !== EntityType.TABLE ||
+      deleted ||
+      isOwner
     ) {
       return null;
     }
 
+    const tooltipTitle = isDarDisabled
+      ? t('message.data-access-request-already-exists')
+      : undefined;
+
     return (
-      <Button
-        className="source-url-button font-semibold"
-        data-testid="request-data-access-button"
-        onClick={() => setIsRequestDataAccessOpen(true)}>
-        {t('label.request-data-access')}
-      </Button>
+      <Tooltip title={tooltipTitle}>
+        <Button
+          className="source-url-button font-semibold"
+          data-testid="request-data-access-button"
+          disabled={isDarDisabled}
+          onClick={() => setIsRequestDataAccessOpen(true)}>
+          {t('label.request-data-access')}
+        </Button>
+      </Tooltip>
     );
-  }, [entityType, deleted]);
+  }, [entityType, deleted, isOwner, isDarDisabled, t]);
 
   useEffect(() => {
     if (dataAsset.id) {
@@ -925,7 +928,8 @@ export const DataAssetsHeader = ({
         () => setIsRequestDataAccessOpen(false),
         dataAsset.fullyQualifiedName ?? '',
         getEntityName(dataAsset),
-        entityType
+        entityType,
+        refetchExistingDar
       )}
     </>
   );

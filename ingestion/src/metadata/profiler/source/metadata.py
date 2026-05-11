@@ -11,23 +11,24 @@
 """
 OpenMetadata source for the profiler
 """
-from typing import Iterable, List, Optional
+
+from typing import Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
-    DatabaseServiceAutoClassificationPipeline,
+    DatabaseServiceAutoClassificationPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
-    DatabaseServiceProfilerPipeline,
+    DatabaseServiceProfilerPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.storageServiceAutoClassificationPipeline import (
-    StorageServiceAutoClassificationPipeline,
+    StorageServiceAutoClassificationPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.ingestion.api.step import Step
+from metadata.ingestion.api.step import Step  # noqa: TC001
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.source.fetcher.entity_fetcher import EntityFetcher
@@ -84,25 +85,19 @@ class OpenMetadataSource(Source):
                 "and that your ingestion token (settings > bots) is still valid."
             )
 
-        logger.info(
-            f"Starting profiler for service {self.config.source.serviceName}"
-            f":{self.config.source.type.lower()}"
-        )
+        logger.info(f"Starting profiler for service {self.config.source.serviceName}:{self.config.source.type.lower()}")
 
-    def _get_fields(self) -> List[str]:
+    def _get_fields(self) -> List[str]:  # noqa: UP006
         """Get the fields required to process the tables"""
-        return (
-            TABLE_FIELDS
-            if not self.source_config.processPiiSensitive
-            else TABLE_FIELDS + TAGS_FIELD
-        )
+        return TABLE_FIELDS if not self.source_config.processPiiSensitive else TABLE_FIELDS + TAGS_FIELD
 
     def _validate_service_name(self):
         """Validate service name exists in OpenMetadata"""
         service_type = get_service_type_from_source_type(self.config.source.type)
         service_class = get_service_class_from_service_type(service_type)
         return self.metadata.get_by_name(
-            entity=service_class, fqn=self.config.source.serviceName  # type: ignore
+            entity=service_class,
+            fqn=self.config.source.serviceName,  # type: ignore
         )
 
     def prepare(self):
@@ -117,9 +112,7 @@ class OpenMetadataSource(Source):
 
     def _iter(self, *_, **__) -> Iterable[Either[ProfilerSourceAndEntity]]:
         global_profiler_config = self.metadata.get_profiler_config_settings()
-        entity_fetcher = EntityFetcher(
-            self.config, self.metadata, global_profiler_config, self.status
-        )
+        entity_fetcher = EntityFetcher(self.config, self.metadata, global_profiler_config, self.status)
         yield from entity_fetcher.fetch()
 
     @classmethod
@@ -127,7 +120,7 @@ class OpenMetadataSource(Source):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)

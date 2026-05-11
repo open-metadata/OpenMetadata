@@ -124,18 +124,16 @@ class TestPandasFailedRowSamplerMixin:
     def test_respects_sample_size_limit(self):
         import pandas as pd
 
-        large_df = pd.DataFrame(
-            {"col1": range(100), "col2": [f"val_{i}" for i in range(100)]}
-        )
+        large_df = pd.DataFrame({"col1": range(100), "col2": [f"val_{i}" for i in range(100)]})
 
         class TestValidator(PandasFailedRowSamplerMixin):
-            def runner(self_inner):
+            def runner(self_inner):  # noqa: N805
                 def gen():
                     yield large_df
 
                 return gen()
 
-            def filter(self_inner):
+            def filter(self_inner):  # noqa: N805
                 return "col1 >= 0"
 
         validator = TestValidator()
@@ -150,13 +148,13 @@ class TestPandasFailedRowSamplerMixin:
         df = pd.DataFrame({"col1": [1, 2, 3], "col2": ["a", "b", "c"]})
 
         class TestValidator(PandasFailedRowSamplerMixin):
-            def runner(self_inner):
+            def runner(self_inner):  # noqa: N805
                 def gen():
                     yield df
 
                 return gen()
 
-            def filter(self_inner):
+            def filter(self_inner):  # noqa: N805
                 return "col1 > 100"
 
         validator = TestValidator()
@@ -172,14 +170,14 @@ class TestPandasFailedRowSamplerMixin:
         chunk2 = pd.DataFrame({"a": [3, 4], "b": ["z", "w"]})
 
         class TestValidator(PandasFailedRowSamplerMixin):
-            def runner(self_inner):
+            def runner(self_inner):  # noqa: N805
                 def gen():
                     yield chunk1
                     yield chunk2
 
                 return gen()
 
-            def filter(self_inner):
+            def filter(self_inner):  # noqa: N805
                 return "a >= 1"
 
         validator = TestValidator()
@@ -248,7 +246,7 @@ class TestSQARowSamplerMixin:
             return_value=mock_inspect,
         ):
             validator.filter = lambda: sqa_filter
-            cols, rows = validator._get_failed_rows_sample()
+            cols, rows = validator._get_failed_rows_sample()  # noqa: RUF059
 
         mock_query.filter.assert_called_once_with(sqa_filter)
         assert cols == ["test_col"]

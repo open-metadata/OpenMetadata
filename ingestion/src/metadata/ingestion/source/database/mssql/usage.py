@@ -11,6 +11,7 @@
 """
 MSSQL usage module
 """
+
 from datetime import datetime
 
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -50,9 +51,7 @@ class MssqlUsageSource(MssqlQueryParserSource, UsageSource):
 
         if self.engine:
             server_date_format = get_sqlalchemy_engine_dateformat(self.engine)
-            self.dt_format = MSSQL_DATEFORMAT_DATETIME_MAP.get(
-                server_date_format, DEFAULT_DATETIME_FORMAT
-            )
+            self.dt_format = MSSQL_DATEFORMAT_DATETIME_MAP.get(server_date_format, DEFAULT_DATETIME_FORMAT)
 
     def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
         """

@@ -817,9 +817,15 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix, String paramName) {
-    String databaseFqnHash =
-        String.format("%s%s%%", FullyQualifiedName.buildHash(fqnPrefix), Entity.SEPARATOR);
-    queryParams.put(paramName + "Hash", databaseFqnHash);
+    String prefix = FullyQualifiedName.buildHash(fqnPrefix) + Entity.SEPARATOR;
+    queryParams.put(paramName + "Hash", prefix + "%");
+    // Companion bind for "exclude descendants below the immediate level" — used by listings
+    // that need direct children only (e.g. ContainerDAO root listings, ContainerRepository
+    // listChildren). fqnHash uses fixed-width MD5 segments joined by '.', so a fqnHash that
+    // matches `<prefix>.%.%` has at least two segments below the prefix and is therefore not
+    // a direct child. Always bound — most queries don't reference it; the cost is one map
+    // entry. Avoids threading an extra param through every listing site.
+    queryParams.put(paramName + "HashChild", prefix + "%.%");
     return tableName == null
         ? String.format("fqnHash LIKE :%s", paramName + "Hash")
         : String.format("%s.fqnHash LIKE :%s", tableName, paramName + "Hash");

@@ -11,6 +11,7 @@
 """
 Ssrs connection integration tests
 """
+
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -110,46 +111,34 @@ def ssrs_always_failing_url():
 @pytest.mark.integration
 class TestSsrsConnection:
     def test_get_connection(self, ssrs_mock_url):
-        connection = SsrsConnection(
-            hostPort=ssrs_mock_url, username="test_user", password="test_pass"
-        )
+        connection = SsrsConnection(hostPort=ssrs_mock_url, username="test_user", password="test_pass")
         client = get_connection(connection)
         assert isinstance(client, SsrsClient)
 
     def test_get_connection_test_access(self, ssrs_mock_url):
-        connection = SsrsConnection(
-            hostPort=ssrs_mock_url, username="test_user", password="test_pass"
-        )
+        connection = SsrsConnection(hostPort=ssrs_mock_url, username="test_user", password="test_pass")
         client = get_connection(connection)
         client.test_access()
 
     def test_get_connection_test_get_reports(self, ssrs_mock_url):
-        connection = SsrsConnection(
-            hostPort=ssrs_mock_url, username="test_user", password="test_pass"
-        )
+        connection = SsrsConnection(hostPort=ssrs_mock_url, username="test_user", password="test_pass")
         client = get_connection(connection)
         client.test_get_reports()
 
     def test_connection_bad_host(self):
-        connection = SsrsConnection(
-            hostPort="http://localhost:1", username="test_user", password="test_pass"
-        )
+        connection = SsrsConnection(hostPort="http://localhost:1", username="test_user", password="test_pass")
         client = get_connection(connection)
         with pytest.raises(SourceConnectionException):
             client.test_access()
 
     def test_connection_bad_host_get_reports(self):
-        connection = SsrsConnection(
-            hostPort="http://localhost:1", username="test_user", password="test_pass"
-        )
+        connection = SsrsConnection(hostPort="http://localhost:1", username="test_user", password="test_pass")
         client = get_connection(connection)
         with pytest.raises(SourceConnectionException):
             client.test_get_reports()
 
     def test_get_reports_retries_transient_failures(self, ssrs_flaky_url):
-        connection = SsrsConnection(
-            hostPort=ssrs_flaky_url, username="test_user", password="test_pass"
-        )
+        connection = SsrsConnection(hostPort=ssrs_flaky_url, username="test_user", password="test_pass")
         client = get_connection(connection)
         reports = list(client.get_reports())
         assert reports == []

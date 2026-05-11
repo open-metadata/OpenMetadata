@@ -12,6 +12,7 @@
 """
 Define Length function
 """
+
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string,duplicate-code
 from sqlalchemy.ext.compiler import compiles
@@ -28,7 +29,7 @@ class LenFn(FunctionElement):
 
 @compiles(LenFn)
 def _(element, compiler, **kw):
-    return "LEN(%s)" % compiler.process(element.clauses, **kw)
+    return "LEN(%s)" % compiler.process(element.clauses, **kw)  # noqa: UP031
 
 
 @compiles(LenFn, Dialects.SQLite)
@@ -53,25 +54,25 @@ def _(element, compiler, **kw):
 @compiles(LenFn, Dialects.Teradata)
 @compiles(LenFn, Dialects.Informix)
 def _(element, compiler, **kw):
-    return "LENGTH(%s)" % compiler.process(element.clauses, **kw)
+    return "LENGTH(%s)" % compiler.process(element.clauses, **kw)  # noqa: UP031
 
 
 @compiles(LenFn, Dialects.Cockroach)
 @compiles(LenFn, Dialects.Postgres)
 def _(element, compiler, **kw):
-    return "LENGTH(CAST(%s AS text))" % compiler.process(element.clauses, **kw)
+    return "LENGTH(CAST(%s AS text))" % compiler.process(element.clauses, **kw)  # noqa: UP031
 
 
 @compiles(LenFn, Dialects.ClickHouse)
 def _(element, compiler, **kw):
     """Handles lenght function for ClickHouse"""
     if isinstance(element.clauses.clauses[0].type, sqltypes.Enum):
-        return "length(cast(%s, 'String'))" % compiler.process(element.clauses, **kw)
-    return "length(%s)" % compiler.process(element.clauses, **kw)
+        return "length(cast(%s, 'String'))" % compiler.process(element.clauses, **kw)  # noqa: UP031
+    return "length(%s)" % compiler.process(element.clauses, **kw)  # noqa: UP031
 
 
 @compiles(LenFn, Dialects.MSSQL)
 def _(element, compiler, **kw):
     if isinstance(element.clauses.clauses[0].type, (sqltypes.TEXT, sqltypes.NVARCHAR)):
-        return "LEN(CAST(%s as [nvarchar]))" % compiler.process(element.clauses, **kw)
-    return "LEN(%s)" % compiler.process(element.clauses, **kw)
+        return "LEN(CAST(%s as [nvarchar]))" % compiler.process(element.clauses, **kw)  # noqa: UP031
+    return "LEN(%s)" % compiler.process(element.clauses, **kw)  # noqa: UP031

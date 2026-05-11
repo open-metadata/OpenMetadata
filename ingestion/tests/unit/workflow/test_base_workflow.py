@@ -11,7 +11,8 @@
 """
 Validate the logic and status handling of the base workflow
 """
-from typing import Iterable, Tuple
+
+from typing import Iterable, Tuple  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -37,7 +38,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.api.step import Step
+from metadata.ingestion.api.step import Step  # noqa: TC001
 from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.api.steps import Source as WorkflowSource
 from metadata.workflow.ingestion import IngestionWorkflow
@@ -62,7 +63,7 @@ class SimpleSource(WorkflowSource):
         """Nothing to do"""
 
     def _iter(self, *args, **kwargs) -> Iterable[Either]:
-        for element in range(0, 5):
+        for element in range(0, 5):  # noqa: PIE808
             yield Either(right=element)
 
 
@@ -83,7 +84,7 @@ class BrokenSource(WorkflowSource):
         """Nothing to do"""
 
     def _iter(self, *args, **kwargs) -> Iterable[int]:
-        for element in range(0, 5):
+        for element in range(0, 5):  # noqa: PIE808
             yield int(element)
 
 
@@ -94,9 +95,7 @@ class SimpleSink(Sink):
 
     def _run(self, element: int) -> Either:
         if element == 2:
-            return Either(
-                left=StackTraceError(name="bum", error="kaboom", stackTrace="trace")
-            )
+            return Either(left=StackTraceError(name="bum", error="kaboom", stackTrace="trace"))
 
         return Either(right=element)
 
@@ -116,7 +115,7 @@ class SimpleWorkflow(IngestionWorkflow):
     def set_steps(self):
         self.source = SimpleSource()
 
-        self.steps: Tuple[Step] = (SimpleSink(),)
+        self.steps: Tuple[Step] = (SimpleSink(),)  # noqa: UP006
 
 
 class BrokenWorkflow(IngestionWorkflow):
@@ -127,7 +126,7 @@ class BrokenWorkflow(IngestionWorkflow):
     def set_steps(self):
         self.source = BrokenSource()
 
-        self.steps: Tuple[Step] = (SimpleSink(),)
+        self.steps: Tuple[Step] = (SimpleSink(),)  # noqa: UP006
 
 
 # Pass only the required details so that the workflow can be initialized
@@ -182,16 +181,9 @@ class TestBaseWorkflow(TestCase):
     def test_broken_workflow(self):
         """test our broken workflow return expected exc"""
         self.broken_workflow.execute()
-        self.assertRaises(
-            WorkflowExecutionError, self.broken_workflow.raise_from_status
-        )
-        self.assertEqual(
-            self.broken_workflow.source.status.failures[0].name, "Not an Either"
-        )
-        assert (
-            "workflow/test_base_workflow.py"
-            in self.broken_workflow.source.status.failures[0].error
-        )
+        self.assertRaises(WorkflowExecutionError, self.broken_workflow.raise_from_status)
+        self.assertEqual(self.broken_workflow.source.status.failures[0].name, "Not an Either")
+        assert "workflow/test_base_workflow.py" in self.broken_workflow.source.status.failures[0].error
 
     def test_workflow_config_supports_ingestion_runner_name(self):
         workflow_config = OpenMetadataWorkflowConfig(
@@ -215,11 +207,10 @@ class TestWorkflowExecuteTeardown:
         workflow = SimpleWorkflow(config=config)
         manager = MagicMock()
 
-        with patch.object(
-            workflow, "print_status", wraps=workflow.print_status
-        ) as mock_print_status, patch.object(
-            workflow, "stop", wraps=workflow.stop
-        ) as mock_stop:
+        with (
+            patch.object(workflow, "print_status", wraps=workflow.print_status) as mock_print_status,
+            patch.object(workflow, "stop", wraps=workflow.stop) as mock_stop,
+        ):
             manager.attach_mock(mock_print_status, "print_status")
             manager.attach_mock(mock_stop, "stop")
 
@@ -231,13 +222,14 @@ class TestWorkflowExecuteTeardown:
     def test_stop_still_runs_when_print_status_raises(self):
         workflow = SimpleWorkflow(config=config)
 
-        with patch.object(
-            workflow,
-            "print_status",
-            side_effect=RuntimeError("boom"),
-        ) as mock_print_status, patch.object(
-            workflow, "stop", wraps=workflow.stop
-        ) as mock_stop:
+        with (
+            patch.object(
+                workflow,
+                "print_status",
+                side_effect=RuntimeError("boom"),
+            ) as mock_print_status,
+            patch.object(workflow, "stop", wraps=workflow.stop) as mock_stop,
+        ):
             with pytest.raises(RuntimeError, match="boom"):
                 workflow.execute()
 

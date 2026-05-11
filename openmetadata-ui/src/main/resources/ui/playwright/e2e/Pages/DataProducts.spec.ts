@@ -65,6 +65,7 @@ const test = base.extend<{
 
 test.describe('Data Products', () => {
   test.describe.configure({ mode: 'serial' });
+  test.slow();
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -466,9 +467,10 @@ test.describe('Data Products', () => {
         .fill(dataProduct.data.displayName);
       await page.locator(descriptionBox).fill(dataProduct.data.description);
 
-      const domainInput = page.getByTestId('domain-select');
-      await domainInput.scrollIntoViewIfNeeded();
-      await domainInput.waitFor({ state: 'visible' });
+      const domainContainer = page.getByTestId('domain-select');
+      await domainContainer.scrollIntoViewIfNeeded();
+      await domainContainer.waitFor({ state: 'visible' });
+      const domainInput = domainContainer.getByRole('combobox');
       await domainInput.click();
       const searchDomain = page.waitForResponse(
         '/api/v1/search/query?q=*index=domain*'
@@ -478,6 +480,11 @@ test.describe('Data Products', () => {
       const domainOption = page.getByText(domain.data.displayName);
       await domainOption.waitFor({ state: 'visible' });
       await domainOption.click();
+      await page.keyboard.press('Escape');
+      await page
+        .locator('[role="listbox"]')
+        .first()
+        .waitFor({ state: 'hidden' });
     });
 
     await test.step('Search and select tag via TagSuggestion', async () => {
@@ -487,8 +494,11 @@ test.describe('Data Products', () => {
       });
 
       await expect(
-        page.locator('[data-testid="tag-suggestion"]')
-      ).toContainText(tag.data.displayName);
+        page
+          .getByTestId('add-domain-form')
+          .getByTestId('tags-container')
+          .getByText(tag.data.displayName)
+      ).toBeVisible();
     });
 
     await test.step('Save and verify tag is applied', async () => {

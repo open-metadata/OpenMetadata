@@ -11,6 +11,7 @@
 """
 Microsoft Fabric Pipeline Service Spec
 """
+
 from metadata.ingestion.source.pipeline.microsoftfabricpipeline.metadata import (
     MicrosoftFabricPipelineSource,
 )

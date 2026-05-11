@@ -62,6 +62,7 @@ we'll join the keys and get [
 ]
 and we'll treat this as independent sets of lineage
 """
+
 import json
 import logging
 import textwrap
@@ -70,7 +71,7 @@ from collections import defaultdict
 from copy import deepcopy
 from enum import Enum
 from functools import singledispatch
-from typing import Any, DefaultDict, Dict, List, Optional, Type
+from typing import Any, DefaultDict, Dict, List, Optional, Type  # noqa: UP035
 
 import attr
 from pydantic import BaseModel, ConfigDict
@@ -107,7 +108,7 @@ class OMEntity:
     """
 
     # Entity Type, such as Table, Container or Dashboard.
-    entity: Type[T] = attr.ib()
+    entity: Type[T] = attr.ib()  # noqa: UP006
     # Entity Fully Qualified Name, e.g., service.database.schema.table
     fqn: str = attr.ib()
     # We will use the key in case we need to group different lineages from the same DAG
@@ -131,13 +132,14 @@ class XLets(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    inlets: List[OMEntity]
-    outlets: List[OMEntity]
+    inlets: List[OMEntity]  # noqa: UP006
+    outlets: List[OMEntity]  # noqa: UP006
 
 
 def concat_dict_values(
-    dict_1: DefaultDict[str, List[Any]], dict_2: Optional[Dict[str, List[Any]]]
-) -> DefaultDict[str, List[Any]]:
+    dict_1: defaultdict[str, list[Any]],
+    dict_2: Optional[Dict[str, List[Any]]],  # noqa: UP006, UP045
+) -> DefaultDict[str, List[Any]]:  # noqa: UP006
     """
     Update d1 based on d2 values concatenating their results.
     """
@@ -148,7 +150,7 @@ def concat_dict_values(
     return dict_1
 
 
-def parse_xlets(xlet: List[Any]) -> Optional[Dict[str, List[OMEntity]]]:
+def parse_xlets(xlet: List[Any]) -> Optional[Dict[str, List[OMEntity]]]:  # noqa: UP006, UP045
     """
     :param xlet: airflow v2 xlet dict
     :return: dictionary of xlet list or None
@@ -206,11 +208,11 @@ def _parse_xlets(xlet: Any) -> None:
         """
     Please update your inlets/outlets to follow 
     https://docs.open-metadata.org/connectors/pipeline/airflow/configuring-lineage
-    """
+    """  # noqa: W291
     ),
     release="1.4.0",
 )
-def dictionary_lineage_annotation(xlet: dict) -> Dict[str, List[OMEntity]]:
+def dictionary_lineage_annotation(xlet: dict) -> Dict[str, List[OMEntity]]:  # noqa: UP006
     """
     Handle OM specific inlet/outlet information. E.g.,
 
@@ -294,7 +296,7 @@ def dictionary_lineage_annotation(xlet: dict) -> Dict[str, List[OMEntity]]:
 
 
 @_parse_xlets.register
-def _(xlet: OMEntity) -> Optional[Dict[str, List[OMEntity]]]:
+def _(xlet: OMEntity) -> Optional[Dict[str, List[OMEntity]]]:  # noqa: UP006, UP045
     """
     Handle OM specific inlet/outlet information. E.g.,
 
@@ -310,7 +312,7 @@ def _(xlet: OMEntity) -> Optional[Dict[str, List[OMEntity]]]:
 
 
 @_parse_xlets.register
-def _(xlet: str) -> Optional[Dict[str, List[OMEntity]]]:
+def _(xlet: str) -> Optional[Dict[str, List[OMEntity]]]:  # noqa: UP006, UP045
     """
     Handle OM specific inlet/outlet information. E.g.,
 
@@ -343,17 +345,16 @@ def _(xlet: str) -> Optional[Dict[str, List[OMEntity]]]:
             key=body.get("key"),
         )
 
-        return {om_entity.key: [om_entity]}
+        return {om_entity.key: [om_entity]}  # noqa: TRY300
     except Exception as exc:
-        logger.error(
-            f"We could not parse the inlet/outlet information from [{xlet}] due to [{exc}]"
-        )
+        logger.error(f"We could not parse the inlet/outlet information from [{xlet}] due to [{exc}]")
         return None
 
 
 def get_xlets_from_operator(
-    operator: "BaseOperator", xlet_mode: XLetsMode
-) -> Optional[Dict[str, List[OMEntity]]]:
+    operator: "BaseOperator",  # noqa: F821
+    xlet_mode: XLetsMode,  # noqa: F821, RUF100
+) -> Optional[Dict[str, List[OMEntity]]]:  # noqa: UP006, UP045
     """
     Given an Airflow DAG Task, obtain the tables
     set in inlets or outlets.
@@ -368,16 +369,12 @@ def get_xlets_from_operator(
     attribute = None
     if xlet_mode == XLetsMode.INLETS:
         attribute = (
-            XLetsAttr.INLETS.value
-            if hasattr(operator, XLetsAttr.INLETS.value)
-            else XLetsAttr.PRIVATE_INLETS.value
+            XLetsAttr.INLETS.value if hasattr(operator, XLetsAttr.INLETS.value) else XLetsAttr.PRIVATE_INLETS.value
         )
 
     if xlet_mode == XLetsMode.OUTLETS:
         attribute = (
-            XLetsAttr.OUTLETS.value
-            if hasattr(operator, XLetsAttr.OUTLETS.value)
-            else XLetsAttr.PRIVATE_OUTLETS.value
+            XLetsAttr.OUTLETS.value if hasattr(operator, XLetsAttr.OUTLETS.value) else XLetsAttr.PRIVATE_OUTLETS.value
         )
 
     if attribute is None:
@@ -399,7 +396,7 @@ def get_xlets_from_operator(
     return xlet_data
 
 
-def get_xlets_from_dag(dag: "DAG") -> List[XLets]:
+def get_xlets_from_dag(dag: "DAG") -> List[XLets]:  # noqa: F821, UP006
     """
     Fill the inlets and outlets of the Pipeline by iterating
     over all its tasks
@@ -427,16 +424,10 @@ def get_xlets_from_dag(dag: "DAG") -> List[XLets]:
             )
 
         except Exception as exc:
-            error_msg = (
-                f"Error while getting inlets and outlets for task - {task} - {exc}"
-            )
+            error_msg = f"Error while getting inlets and outlets for task - {task} - {exc}"
             logger.error(error_msg)
             logger.error(traceback.format_exc())
 
     # We expect to have the same keys in both inlets and outlets dicts
     # We will then iterate over the inlet keys to build the list of XLets
-    return [
-        XLets(inlets=value, outlets=_outlets[key])
-        for key, value in _inlets.items()
-        if value and _outlets.get(key)
-    ]
+    return [XLets(inlets=value, outlets=_outlets[key]) for key, value in _inlets.items() if value and _outlets.get(key)]

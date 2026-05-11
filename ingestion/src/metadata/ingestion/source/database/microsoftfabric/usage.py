@@ -11,6 +11,7 @@
 """
 Microsoft Fabric usage module
 """
+
 from metadata.ingestion.source.database.microsoftfabric.queries import (
     FABRIC_SQL_STATEMENT,
 )

@@ -13,7 +13,8 @@ Handle Entity Link building and splitting logic.
 Filter information has been taken from the
 ES indexes definitions
 """
-from typing import Any, List, Optional, TypeVar
+
+from typing import Any, List, Optional, TypeVar  # noqa: UP035
 
 from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
@@ -36,13 +37,13 @@ class CustomColumnName(BaseModel):
     root: str
 
 
-class EntityLinkBuildingException(Exception):
+class EntityLinkBuildingException(Exception):  # noqa: N818
     """
     Raise for inconsistencies when building the EntityLink
     """
 
 
-def split(str_: str) -> List[str]:
+def split(str_: str) -> List[str]:  # noqa: UP006
     """
     Method to handle the splitting logic
     """
@@ -73,9 +74,7 @@ def get_decoded_column(entity_link: str) -> str:
         entity_link: entity link
     """
 
-    return CustomColumnName(
-        root=unquote_plus(entity_link.split("::")[-1].replace(">", ""))
-    ).root
+    return CustomColumnName(root=unquote_plus(entity_link.split("::")[-1].replace(">", ""))).root  # noqa: PLC0207
 
 
 def get_table_fqn(entity_link: str) -> str:
@@ -100,13 +99,10 @@ def get_table_or_column_fqn(entity_link: str) -> str:
     if len(split_entity_link) == 4 and split_entity_link[2] == "columns":
         return f"{split_entity_link[1]}.{split_entity_link[3]}"
 
-    raise ValueError(
-        "Invalid entity link."
-        " {split_entity_link} does not look like a table or a column entity link"
-    )
+    raise ValueError("Invalid entity link. {split_entity_link} does not look like a table or a column entity link")
 
 
-def get_column_name_or_none(entity_link: str) -> Optional[str]:
+def get_column_name_or_none(entity_link: str) -> Optional[str]:  # noqa: UP045
     """It attempts to get a column from an entity link
 
     Args:
@@ -140,7 +136,7 @@ def get_entity_link(entity_type: Any, fqn: str, **kwargs) -> str:
 
 
 @get_entity_link_registry.add(Table)
-def _(fqn: str, column_name: Optional[str] = None) -> str:
+def _(fqn: str, column_name: Optional[str] = None) -> str:  # noqa: UP045
     """From table fqn and column name get the entity_link"""
 
     if column_name:

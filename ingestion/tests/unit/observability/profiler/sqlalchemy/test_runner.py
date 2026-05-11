@@ -12,6 +12,7 @@
 """
 Test Sample behavior
 """
+
 import sys
 import time
 from unittest import TestCase, mock
@@ -22,13 +23,13 @@ from sqlalchemy import TEXT, Column, Integer, String, create_engine, func
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import DeclarativeBase
 
+from metadata.generated.schema.type.samplingConfig import SampleConfigType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.sampler.models import (
     ProfileSampleConfig,
-    ProfileSampleConfigType,
     SampleConfig,
-    StaticSamplingConfig,
 )
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.timeout import cls_timeout
@@ -38,7 +39,7 @@ class Base(DeclarativeBase):
     pass
 
 
-if sys.version_info < (3, 9):
+if sys.version_info < (3, 9):  # noqa: UP036
     pytest.skip(
         "requires python 3.9+ due to incompatibility with object patch",
         allow_module_level=True,
@@ -99,20 +100,18 @@ class RunnerTest(TestCase):
                 entity=None,
                 sample_config=SampleConfig(
                     profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        sampleConfigType=SampleConfigType.STATIC,
                         config=StaticSamplingConfig(profileSample=50.0),
                     )
                 ),
             )
             cls.dataset = sampler.get_dataset()
 
-        cls.raw_runner = QueryRunner(
-            session=cls.session, dataset=cls.dataset, raw_dataset=sampler.raw_dataset
-        )
+        cls.raw_runner = QueryRunner(session=cls.session, dataset=cls.dataset, raw_dataset=sampler.raw_dataset)
         cls.timeout_runner: Timer = cls_timeout(1)(Timer())
 
         # Insert 30 rows
-        for i in range(10):
+        for i in range(10):  # noqa: B007
             data = [
                 User(
                     name="John",

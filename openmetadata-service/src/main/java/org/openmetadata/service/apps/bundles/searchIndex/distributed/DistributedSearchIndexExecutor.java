@@ -1016,6 +1016,17 @@ public class DistributedSearchIndexExecutor {
       if (currentJob != null) {
         coordinator.requestStop(currentJob.getId());
       }
+
+      // Forcibly interrupt blocked worker threads. {@code worker.stop()} above only sets a
+      // boolean — workers parked inside the bulk-sink semaphore, a slow {@code
+      // initializeKeysetCursor} DB query, or {@code waitForSinkOperations} (5-minute deadline)
+      // won't observe that flag for a long time. {@code shutdownNow} sends Thread.interrupt()
+      // to every running task so the existing InterruptedException catch blocks unwind quickly
+      // and {@code workerLatch} can count down. Without this the user-clicked Stop is invisible
+      // for minutes, the aggregator keeps broadcasting stale state, and the UI stays "Running".
+      if (workerExecutor != null && !workerExecutor.isShutdown()) {
+        workerExecutor.shutdownNow();
+      }
     }
   }
 
@@ -1091,6 +1102,15 @@ public class DistributedSearchIndexExecutor {
     // Set up per-entity promotion callback if recreating indices
     if (recreateIndex && recreateContext != null) {
       this.recreateIndexHandler = Entity.getSearchRepository().createReindexHandler();
+      // Wire jobData into the handler so applyLiveServingSettings can revert bulk-build
+      // overrides (refresh_interval=-1, replicas=0, async translog) before the per-entity
+      // alias swap. Without this, buildRevertJson returns null and the bulk overrides
+      // silently become the live settings.
+      if (recreateIndexHandler instanceof DefaultRecreateHandler defaultHandler
+          && currentJob != null
+          && currentJob.getJobConfiguration() != null) {
+        defaultHandler.withJobData(currentJob.getJobConfiguration());
+      }
       entityTracker.setOnEntityComplete(this::promoteEntityIndex);
       LOG.info(
           "Per-entity promotion callback SET for job {} (recreateIndex={}, recreateContext entities={})",
