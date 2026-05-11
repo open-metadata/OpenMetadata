@@ -598,6 +598,34 @@ services:
     profiles:
       - sso-test
 
+  openldap-test:
+    build:
+      context: ./openldap-seed
+      dockerfile: Dockerfile
+    container_name: openldap_test
+    environment:
+      LDAP_ORGANISATION: OpenMetadata Test
+      LDAP_DOMAIN: test.local
+      LDAP_BASE_DN: dc=test,dc=local
+      LDAP_ADMIN_PASSWORD: admin-pass
+      LDAP_TLS: "false"
+    expose:
+      - 389
+    ports:
+      - "1389:389"
+    networks:
+      - local_app_net
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "ldapsearch -x -H ldap://localhost:389 -D 'cn=admin,dc=test,dc=local' -w admin-pass -b 'ou=people,dc=test,dc=local' '(cn=alice)' cn >/dev/null 2>&1"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    profiles:
+      - sso-test
+
 networks:
   local_app_net:
     name: ometa_network

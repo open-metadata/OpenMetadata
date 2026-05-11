@@ -3563,7 +3563,8 @@ describe('prepareOidcSubmitPayload', () => {
           provider: AuthProvider.Azure,
           providerName: 'azure',
         }),
-        discoveryUri: 'https://explicit.example.com/.well-known/openid-configuration',
+        discoveryUri:
+          'https://explicit.example.com/.well-known/openid-configuration',
       } as FormData['authenticationConfiguration'] & { discoveryUri?: string },
       authorizerConfiguration: buildAuthorizerConfig(),
     };

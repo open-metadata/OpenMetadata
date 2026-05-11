@@ -90,12 +90,26 @@ export default defineConfig({
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
         '**/SSOLogin.spec.ts',
+        '**/SSOTestLogin-*.spec.ts',
       ],
     },
     {
       name: 'sso-auth',
       testMatch: ['**/SSOLogin.spec.ts', '**/SSORenewal.spec.ts'],
       use: { ...devices['Desktop Chrome'] },
+      fullyParallel: false,
+      workers: 1,
+    },
+    // SSO Test Login UI specs (Custom OIDC, LDAP, SAML). These need the
+    // sso-test docker profile (mock OIDC + OpenLDAP) running and, for SAML,
+    // a Keycloak fixture. Run via:
+    //   docker compose --profile sso-test up -d
+    //   yarn playwright test --project=sso-test-login
+    {
+      name: 'sso-test-login',
+      testMatch: '**/SSOTestLogin-*.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
       fullyParallel: false,
       workers: 1,
     },

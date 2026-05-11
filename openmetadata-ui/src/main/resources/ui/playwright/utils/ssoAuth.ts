@@ -34,6 +34,8 @@ const NON_ROUND_TRIPPABLE_AUTH_FIELDS = [
   'samlConfiguration',
 ] as const;
 
+export type AuthConfigMatcher = (auth: Record<string, unknown>) => void;
+
 export const fetchSecurityConfig = async (
   apiContext: APIRequestContext
 ): Promise<SecurityConfigSnapshot> => {
@@ -99,7 +101,12 @@ export const applyProviderConfig = async (
     data: merged,
   });
 
-  expect(response.status()).toBe(200);
+  if (response.status() !== 200) {
+    const body = await response.text().catch(() => '<no body>');
+    throw new Error(
+      `applyProviderConfig PUT returned ${response.status()}: ${body.slice(0, 1500)}`
+    );
+  }
 };
 
 export const restoreSecurityConfig = async (
@@ -110,7 +117,24 @@ export const restoreSecurityConfig = async (
     data: snapshot,
   });
 
-  expect(response.status()).toBe(200);
+  if (response.status() !== 200) {
+    const body = await response.text().catch(() => '<no body>');
+    throw new Error(
+      `restoreSecurityConfig PUT returned ${response.status()}: ${body.slice(0, 1500)}`
+    );
+  }
+};
+
+export const expectPersistedSecurityConfig = async (
+  apiContext: APIRequestContext,
+  matcher: AuthConfigMatcher
+): Promise<void> => {
+  const response = await apiContext.get(SECURITY_CONFIG_ENDPOINT);
+  expect(response.ok()).toBeTruthy();
+  const persisted = (await response.json()) as {
+    authenticationConfiguration: Record<string, unknown>;
+  };
+  matcher(persisted.authenticationConfiguration);
 };
 
 export const verifyLoggedInUserMatches = async (

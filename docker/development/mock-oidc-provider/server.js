@@ -118,6 +118,9 @@ const providerConfig = {
     profile: ['name', 'preferred_username'],
   },
   scopes: ['openid', 'email', 'profile', 'offline_access'],
+  // Include all granted scope claims in the id_token so SSO Test Login (which
+  // reads claims from id_token only, not userinfo) can surface email/profile.
+  conformIdTokenClaims: false,
   features: {
     devInteractions: { enabled: false },
     rpInitiatedLogout: { enabled: true },

@@ -13,7 +13,7 @@
 import { expect, Page } from '@playwright/test';
 import { OM_BASE_URL, SSO_ENV } from '../../constant/ssoAuth';
 import { ProviderConfigOverride, ProviderCredentials } from '../ssoAuth';
-import type { ProviderHelper } from './index';
+import type { FillFormOverrides, ProviderHelper } from './index';
 import { fetchIdpX509Certificate } from './saml-metadata';
 
 const SUPPORTED_OM_BASE_URL = 'http://localhost:8585';
@@ -69,8 +69,13 @@ const buildConfigPayload = async ({
           nameId: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
         },
         sp: {
-          entityId: `${OM_BASE_URL}/api/v1/saml/metadata`,
-          acs: `${OM_BASE_URL}/api/v1/saml/acs`,
+          // entityId must match Keycloak's SAML clientId or the AuthnRequest
+          // is rejected as 'client_not_found'.
+          entityId: OM_BASE_URL,
+          // /callback (not /api/v1/saml/acs): only AuthCallbackServlet routes
+          // by saml-test-login: RelayState; the production ACS would log the
+          // browser into OM and break the parent page's admin context.
+          acs: `${OM_BASE_URL}/callback`,
           callback: `${OM_BASE_URL}/callback`,
         },
         security: {
@@ -118,16 +123,59 @@ const performProviderLogin = async (
   await loginButton.click();
 };
 
-// OM renders a fixed "SAML SSO" label for every SAML provider — providerName
-// is dropped for the SAML branch of getAuthConfig.
 const createKeycloakSamlProviderHelper = (
   profile: KeycloakSamlProfile
-): ProviderHelper => ({
-  expectedButtonText: 'Sign in with SAML SSO',
-  loginUrlPattern: new RegExp(`/realms/${escapeRegExp(profile.realm)}/`),
-  buildConfigPayload: () => buildConfigPayload(profile),
-  performProviderLogin,
-});
+): ProviderHelper => {
+  let cachedPayload: ProviderConfigOverride | undefined;
+  const resolvePayload = async (): Promise<ProviderConfigOverride> => {
+    if (!cachedPayload) {
+      cachedPayload = await buildConfigPayload(profile);
+    }
+
+    return cachedPayload;
+  };
+
+  return {
+    expectedButtonText: 'Sign in with SAML SSO',
+    loginUrlPattern: new RegExp(`/realms/${escapeRegExp(profile.realm)}/`),
+    buildConfigPayload: resolvePayload,
+    performProviderLogin,
+    fillForm: async (page: Page, overrides: FillFormOverrides = {}) => {
+      const payload = await resolvePayload();
+      const idp = (
+        payload.authenticationConfiguration as {
+          samlConfiguration?: {
+            idp?: {
+              entityId?: string;
+              ssoLoginUrl?: string;
+              idpX509Certificate?: string;
+              nameId?: string;
+            };
+          };
+        }
+      ).samlConfiguration?.idp;
+      if (!idp) {
+        throw new Error('SAML payload missing idp configuration');
+      }
+
+      await page
+        .getByRole('textbox', { name: /^IdP Entity ID/ })
+        .fill(idp.entityId ?? '');
+      await page
+        .getByRole('textbox', { name: /^IdP SSO Login URL/ })
+        .fill(idp.ssoLoginUrl ?? '');
+      await page
+        .getByRole('textbox', { name: /^IdP X\.509 Certificate/ })
+        .fill(overrides.cert ?? idp.idpX509Certificate ?? '');
+      if (idp.nameId) {
+        const nameIdField = page.getByRole('textbox', { name: /Name ID/i });
+        if (await nameIdField.isVisible().catch(() => false)) {
+          await nameIdField.fill(idp.nameId);
+        }
+      }
+    },
+  };
+};
 
 export const keycloakAzureSamlProviderHelper = createKeycloakSamlProviderHelper(
   {
