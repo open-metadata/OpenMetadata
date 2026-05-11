@@ -136,11 +136,11 @@ class Max(StaticMetric):
         import pandas as pd  # noqa: PLC0415
         from pandas import Timestamp  # noqa: PLC0415
 
-        chunk_max: int | None = None
+        chunk_max: float | None = None
 
         if is_quantifiable(column.type):
             raw = df[column.name].max()
-            chunk_max = int(float(raw)) if not bool(pd.isnull(raw)) else None  # type: ignore[arg-type]
+            chunk_max = float(raw) if not bool(pd.isnull(raw)) else None  # type: ignore[arg-type]
         elif is_date_time(column.type):
             if column.type in {DataType.DATETIME, DataType.DATE}:
                 max_val = pd.to_datetime(df[column.name]).max()

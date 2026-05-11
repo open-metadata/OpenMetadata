@@ -137,11 +137,11 @@ class Min(StaticMetric):
         import pandas as pd  # noqa: PLC0415
         from pandas import Timestamp  # noqa: PLC0415
 
-        chunk_min: int | None = None
+        chunk_min: float | None = None
 
         if is_quantifiable(column.type):
             raw = df[column.name].min()
-            chunk_min = int(float(raw)) if not bool(pd.isnull(raw)) else None  # type: ignore[arg-type]
+            chunk_min = float(raw) if not bool(pd.isnull(raw)) else None  # type: ignore[arg-type]
         elif is_date_time(column.type):
             if column.type in {DataType.DATETIME, DataType.DATE}:
                 min_val = pd.to_datetime(df[column.name]).min()
