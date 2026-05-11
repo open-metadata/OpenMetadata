@@ -39,7 +39,7 @@ yarn_start_e2e_ui:  ## Run the e2e tests locally in UI mode with Yarn
 .PHONY: yarn_start_e2e_codegen
 yarn_start_e2e_codegen:  ## generate playwright code
 	cd openmetadata-ui/src/main/resources/ui && yarn playwright:codegen
-	
+
 .PHONY: py_antlr
 py_antlr:  ## Generate the Python code for parsing FQNs
 	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
@@ -254,21 +254,21 @@ ui-checkstyle-core-components:
 	cd openmetadata-ui-core-components/src/main/resources/ui && yarn install --frozen-lockfile && yarn lint:fix && yarn pretty
 
 # Fix linting and formatting errors in changed files in src folder
-# Changed files are detected based on the current branch against main branch. 
+# Changed files are detected based on the current branch against main branch.
 # So make sure to run this after rebasing to main to get the correct list of changed files.
 .PHONY: ui-checkstyle-src-changed
 ui-checkstyle-src-changed:
 	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:changed
 
 # Fix linting and formatting errors in changed playwright test files
-# Changed files are detected based on the current branch against main branch. 
+# Changed files are detected based on the current branch against main branch.
 # So make sure to run this after rebasing to main to get the correct list of changed files.
 .PHONY: ui-checkstyle-playwright-changed
 ui-checkstyle-playwright-changed:
 	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:playwright:changed
 
 # Fix linting and formatting errors in changed core components files
-# Changed files are detected based on the current branch against main branch. 
+# Changed files are detected based on the current branch against main branch.
 # So make sure to run this after rebasing to main to get the correct list of changed files.
 .PHONY: ui-checkstyle-core-components-changed
 ui-checkstyle-core-components-changed:
