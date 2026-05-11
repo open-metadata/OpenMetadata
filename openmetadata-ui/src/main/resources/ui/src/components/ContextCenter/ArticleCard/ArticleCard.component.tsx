@@ -12,8 +12,10 @@
  */
 
 import { Badge, Card, Typography } from '@openmetadata/ui-core-components';
+import RichTextEditorPreviewerV1 from 'components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getFrontEndFormat } from 'utils/FeedUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { ArticleCardItem, ArticleCardProps } from './ArticleCard.interface';
 
@@ -57,11 +59,11 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, onClick }) => {
         {title}
       </Typography>
 
-      <Typography
-        className="tw:text-gray-500 tw:line-clamp-2 tw:m-0"
-        size="text-xs">
-        {description}
-      </Typography>
+      <RichTextEditorPreviewerV1
+        showReadMoreBtn
+        className="max-two-lines tw:text-gray-500 tw:text-xs"
+        markdown={getFrontEndFormat(description)}
+      />
 
       {tags.length > 0 && (
         <div className="tw:flex tw:flex-wrap tw:gap-1 tw:mt-3">

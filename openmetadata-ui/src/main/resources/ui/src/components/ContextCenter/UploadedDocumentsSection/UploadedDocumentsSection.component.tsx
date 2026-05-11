@@ -18,6 +18,8 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowUpRight, Upload01 } from '@untitledui/icons';
+import ErrorPlaceHolder from 'components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import UploadedDocumentCard from '../UploadedDocumentCard/UploadedDocumentCard.component';
@@ -25,7 +27,7 @@ import { UploadedDocumentItem } from '../UploadedDocumentCard/UploadedDocumentCa
 import { UploadedDocumentsSectionProps } from './UploadedDocumentsSection.interface';
 
 const DocumentCardSkeleton: FC = () => (
-  <div className="tw:flex tw:flex-col tw:gap-3 tw:rounded-xl tw:border tw:border-[var(--color-border-primary)] tw:p-3">
+  <Card className="tw:flex tw:flex-col tw:gap-3 tw:p-3">
     <Skeleton height="120px" variant="rectangular" width="100%" />
     <div className="tw:flex tw:flex-col tw:gap-1">
       <Skeleton height="12px" variant="rounded" width="75%" />
@@ -34,7 +36,7 @@ const DocumentCardSkeleton: FC = () => (
         <Skeleton height="12px" variant="rounded" width="64px" />
       </div>
     </div>
-  </div>
+  </Card>
 );
 
 const UploadedDocumentsSection: FC<UploadedDocumentsSectionProps> = ({
@@ -77,19 +79,26 @@ const UploadedDocumentsSection: FC<UploadedDocumentsSectionProps> = ({
         )}
       </div>
 
-      <div className="tw:grid tw:grid-cols-6 tw:gap-4">
-        {isLoading
-          ? Array.from({ length: 8 }).map((_, idx) => (
-              <DocumentCardSkeleton key={idx} />
-            ))
-          : documents.map((doc: UploadedDocumentItem) => (
-              <UploadedDocumentCard
-                document={doc}
-                key={doc.id}
-                onClick={onDocumentClick}
-              />
-            ))}
-      </div>
+      {documents.length > 0 || isLoading ? (
+        <div className="tw:grid tw:grid-cols-[repeat(auto-fill,168px)] tw:gap-4">
+          {isLoading
+            ? Array.from({ length: 8 }).map((_, idx) => (
+                <DocumentCardSkeleton key={idx} />
+              ))
+            : documents.map((doc: UploadedDocumentItem) => (
+                <UploadedDocumentCard
+                  document={doc}
+                  key={doc.id}
+                  onClick={onDocumentClick}
+                />
+              ))}
+        </div>
+      ) : (
+        <ErrorPlaceHolder
+          className="tw:border-0 tw:h-auto"
+          type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+        />
+      )}
     </Card>
   );
 };

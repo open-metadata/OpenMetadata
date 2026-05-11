@@ -11,20 +11,87 @@
  *  limitations under the License.
  */
 
-import { FC, useState } from 'react';
+import { AxiosError } from 'axios';
+import { ArticleCardItem } from 'components/ContextCenter/ArticleCard/ArticleCard.interface';
+import ArticleListSection from 'components/ContextCenter/ArticleListSection/ArticleListSection.component';
+import ContextCenterHeader from 'components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
+import UploadDocumentModal from 'components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
+import { UploadedDocumentItem } from 'components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
+import UploadedDocumentsSection from 'components/ContextCenter/UploadedDocumentsSection/UploadedDocumentsSection.component';
+import { ROUTES } from 'constants/constants';
+import { Asset } from 'generated/attachments/asset';
+import { useApplicationStore } from 'hooks/useApplicationStore';
+import { KnowledgePage, PageType } from 'interface/knowledge-center.interface';
+import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ArticleListSection from '../../../components/ContextCenter/ArticleListSection/ArticleListSection.component';
-import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
-import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
-import UploadedDocumentsSection from '../../../components/ContextCenter/UploadedDocumentsSection/UploadedDocumentsSection.component';
-import { ROUTES } from '../../../constants/constants';
-import { MOCK_ARTICLES, MOCK_DOCUMENTS } from '../ContextCenterPage.mock';
+import { getListKnowledgePages } from 'rest/knowledgeCenterAPI';
+import {
+  CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
+  assetToDocumentItem,
+  createArticleKnowledgePage,
+  fetchContextCenterDocuments,
+  knowledgePageToArticleItem,
+} from 'utils/ContextCenterUtils';
+import { showErrorToast } from 'utils/ToastUtils';
+
+const RECENT_ARTICLES_LIMIT = 6;
 
 const ContextCenterDashboardPage: FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { currentUser } = useApplicationStore();
+
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [articles, setArticles] = useState<ArticleCardItem[]>([]);
+  const [documents, setDocuments] = useState<UploadedDocumentItem[]>([]);
+  const [isArticlesLoading, setIsArticlesLoading] = useState(true);
+  const [isDocumentsLoading, setIsDocumentsLoading] = useState(true);
+
+  const handleCreateArticle = useCallback(async () => {
+    await createArticleKnowledgePage(currentUser?.id ?? '', navigate);
+  }, [currentUser, navigate]);
+
+  const fetchRecentArticles = useCallback(async () => {
+    setIsArticlesLoading(true);
+    try {
+      const response = await getListKnowledgePages({
+        fields: 'tags',
+        limit: RECENT_ARTICLES_LIMIT,
+        pageType: PageType.ARTICLE,
+      });
+      setArticles(
+        response.data.map((page: KnowledgePage) =>
+          knowledgePageToArticleItem(page, t('label.untitled'))
+        )
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsArticlesLoading(false);
+    }
+  }, [t]);
+
+  const fetchDocuments = useCallback(async () => {
+    setIsDocumentsLoading(true);
+    try {
+      const assets = await fetchContextCenterDocuments();
+      setDocuments(assets.map(assetToDocumentItem));
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsDocumentsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRecentArticles();
+    fetchDocuments();
+  }, [fetchRecentArticles, fetchDocuments]);
+
+  const handleUploaded = useCallback((newAssets: Asset[]) => {
+    setDocuments((prev) => [...newAssets.map(assetToDocumentItem), ...prev]);
+  }, []);
 
   return (
     <div
@@ -43,13 +110,14 @@ const ContextCenterDashboardPage: FC = () => {
           defaultValue: 'Overview of your knowledge base and document library',
         })}
         title={t('label.dashboard')}
-        onCreateArticle={() => navigate(ROUTES.CONTEXT_CENTER_ARTICLES)}
+        onCreateArticle={handleCreateArticle}
         onUploadFile={() => setIsUploadModalOpen(true)}
       />
 
       <div className="tw:flex tw:flex-col tw:gap-6">
         <ArticleListSection
-          articles={MOCK_ARTICLES}
+          articles={articles}
+          isLoading={isArticlesLoading}
           subtitle={t('message.internal-knowledge-base-agent-training', {
             defaultValue: 'Internal knowledge base for agent training',
           })}
@@ -58,14 +126,17 @@ const ContextCenterDashboardPage: FC = () => {
         />
 
         <UploadedDocumentsSection
-          documents={MOCK_DOCUMENTS}
+          documents={documents}
+          isLoading={isDocumentsLoading}
           onViewAll={() => navigate(ROUTES.CONTEXT_CENTER_DOCUMENTS)}
         />
       </div>
 
       <UploadDocumentModal
+        entityLink={CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK}
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
+        onUploaded={handleUploaded}
       />
     </div>
   );

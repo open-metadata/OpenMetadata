@@ -51,7 +51,7 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { ROUTES } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -522,18 +522,20 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             </Tabs.List>
           </Tabs>
 
-          <ButtonUtility
-            className="tw:relative tw:bottom-2.5"
-            color="tertiary"
-            icon={
-              <SidebarCollapsible
-                className={isRightPanelOpen ? undefined : 'tw:rotate-180'}
-                height={18}
-                width={18}
-              />
-            }
-            onClick={onToggleRightPanel}
-          />
+          {activeTab !== EntityTabs.ACTIVITY_FEED && (
+            <ButtonUtility
+              className="tw:relative tw:bottom-2.5"
+              color="tertiary"
+              icon={
+                <SidebarCollapsible
+                  className={isRightPanelOpen ? undefined : 'tw:rotate-180'}
+                  height={18}
+                  width={18}
+                />
+              }
+              onClick={onToggleRightPanel}
+            />
+          )}
         </div>
       </Card>
     </div>

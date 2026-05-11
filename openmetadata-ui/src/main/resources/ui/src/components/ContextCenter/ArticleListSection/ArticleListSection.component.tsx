@@ -18,14 +18,18 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowUpRight, File06 } from '@untitledui/icons';
-import { FC } from 'react';
+import ErrorPlaceHolder from 'components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { getKnowledgePagePath } from 'utils/KnowledgePageUtils';
 import ArticleCard from '../ArticleCard/ArticleCard.component';
 import { ArticleCardItem } from '../ArticleCard/ArticleCard.interface';
 import { ArticleListSectionProps } from './ArticleListSection.interface';
 
 const ArticleCardSkeleton: FC = () => (
-  <div className="tw:flex tw:flex-col tw:gap-3 tw:p-4 tw:rounded-xl tw:border tw:border-[var(--color-border-primary)]">
+  <Card className="tw:flex tw:flex-col tw:gap-3 tw:p-4">
     <div className="tw:flex tw:justify-between tw:gap-4">
       <Skeleton height="20px" variant="rounded" width="64px" />
       <Skeleton height="16px" variant="rounded" width="96px" />
@@ -37,7 +41,7 @@ const ArticleCardSkeleton: FC = () => (
       <Skeleton height="20px" variant="rounded" width="56px" />
       <Skeleton height="20px" variant="rounded" width="40px" />
     </div>
-  </div>
+  </Card>
 );
 
 const ArticleListSection: FC<ArticleListSectionProps> = ({
@@ -45,11 +49,30 @@ const ArticleListSection: FC<ArticleListSectionProps> = ({
   subtitle,
   articles,
   viewAllHref,
+  getPagePath,
   onViewAll,
   onArticleClick,
   isLoading = false,
 }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  const handleArticleClick = useCallback(
+    (article: ArticleCardItem) => {
+      if (onArticleClick) {
+        onArticleClick(article);
+
+        return;
+      }
+
+      const path = getPagePath
+        ? getPagePath(article.id)
+        : getKnowledgePagePath(article.id);
+
+      navigate(path);
+    },
+    [onArticleClick, getPagePath, navigate]
+  );
 
   return (
     <Card
@@ -82,19 +105,26 @@ const ArticleListSection: FC<ArticleListSectionProps> = ({
         )}
       </div>
 
-      <div className="tw:grid tw:grid-cols-3 tw:gap-4">
-        {isLoading
-          ? Array.from({ length: 6 }).map((_, idx) => (
-              <ArticleCardSkeleton key={idx} />
-            ))
-          : articles.map((article: ArticleCardItem) => (
-              <ArticleCard
-                article={article}
-                key={article.id}
-                onClick={onArticleClick}
-              />
-            ))}
-      </div>
+      {articles.length > 0 || isLoading ? (
+        <div className="tw:grid tw:grid-cols-[repeat(auto-fill,320px)]  tw:gap-4">
+          {isLoading
+            ? Array.from({ length: 6 }).map((_, idx) => (
+                <ArticleCardSkeleton key={idx} />
+              ))
+            : articles.map((article: ArticleCardItem) => (
+                <ArticleCard
+                  article={article}
+                  key={article.id}
+                  onClick={handleArticleClick}
+                />
+              ))}
+        </div>
+      ) : (
+        <ErrorPlaceHolder
+          className="tw:border-0 tw:h-auto"
+          type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+        />
+      )}
     </Card>
   );
 };

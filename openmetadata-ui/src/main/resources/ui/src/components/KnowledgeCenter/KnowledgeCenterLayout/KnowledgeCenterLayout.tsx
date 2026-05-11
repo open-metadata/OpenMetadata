@@ -98,7 +98,7 @@ const KnowledgeCenterLayout: FC<KnowledgeCenterLayoutProps> = ({
             'has-sidebar': !isLeftPanelCollapsed,
           })}
           data-testid="center-panel"
-          flex={isRightPanelCollapsed ? 0.8 : 0.6}
+          flex={isRightPanelCollapsed ? 1 : 0.6}
           minSize={700}>
           <Card
             bodyStyle={centerNoPadding ? { padding: 0 } : undefined}

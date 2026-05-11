@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
+import { Asset } from '../../../generated/attachments/asset';
+
 export interface UploadDocumentModalProps {
   isOpen: boolean;
+  entityLink: string;
   onClose: () => void;
-  onUpload?: (files: FileList) => void;
+  onUploaded?: (assets: Asset[]) => void;
 }

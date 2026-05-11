@@ -19,31 +19,41 @@ import {
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
+import { Asset } from 'generated/attachments/asset';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { uploadAsset } from 'rest/assetAPI';
+import { showErrorToast } from 'utils/ToastUtils';
 import { UploadDocumentModalProps } from './UploadDocumentModal.interface';
+
+type UploadStatus = 'pending' | 'uploading' | 'done' | 'error';
 
 interface QueuedFile {
   id: string;
   file: File;
+  progress: number;
+  status: UploadStatus;
 }
 
 const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   isOpen,
+  entityLink,
   onClose,
-  onUpload,
+  onUploaded,
 }) => {
   const { t } = useTranslation();
   const [queuedFiles, setQueuedFiles] = useState<QueuedFile[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleDropFiles = (files: FileList) => {
     const newEntries: QueuedFile[] = Array.from(files).map((file) => ({
       file,
       id: `${file.name}-${file.size}-${Date.now()}`,
+      progress: 0,
+      status: 'pending' as UploadStatus,
     }));
 
     setQueuedFiles((prev) => [...prev, ...newEntries]);
-    onUpload?.(files);
   };
 
   const handleRemove = (id: string) => {
@@ -53,6 +63,50 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   const handleClose = () => {
     setQueuedFiles([]);
     onClose();
+  };
+
+  const handleAttach = async () => {
+    const pending = queuedFiles.filter((f) => f.status === 'pending');
+
+    if (pending.length === 0) {
+      return;
+    }
+
+    setIsUploading(true);
+    const uploaded: Asset[] = [];
+
+    for (const entry of pending) {
+      setQueuedFiles((prev) =>
+        prev.map((f) =>
+          f.id === entry.id ? { ...f, progress: 0, status: 'uploading' } : f
+        )
+      );
+
+      try {
+        const asset = await uploadAsset(entry.file, entityLink);
+        uploaded.push(asset);
+        setQueuedFiles((prev) =>
+          prev.map((f) =>
+            f.id === entry.id ? { ...f, progress: 100, status: 'done' } : f
+          )
+        );
+      } catch (err) {
+        showErrorToast(err as Error);
+        setQueuedFiles((prev) =>
+          prev.map((f) =>
+            f.id === entry.id ? { ...f, status: 'error' } : f
+          )
+        );
+      }
+    }
+
+    setIsUploading(false);
+
+    if (uploaded.length > 0) {
+      onUploaded?.(uploaded);
+    }
+
+    handleClose();
   };
 
   return (
@@ -83,13 +137,17 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
 
               {queuedFiles.length > 0 && (
                 <FileUpload.List className="tw:max-h-60 tw:overflow-y-auto">
-                  {queuedFiles.map(({ id, file }) => (
+                  {queuedFiles.map(({ id, file, progress, status }) => (
                     <FileUpload.ListItemProgressBar
                       key={id}
                       name={file.name}
-                      progress={100}
+                      progress={status === 'done' ? 100 : progress}
                       size={file.size}
-                      onDelete={() => handleRemove(id)}
+                      onDelete={
+                        status !== 'uploading'
+                          ? () => handleRemove(id)
+                          : undefined
+                      }
                     />
                   ))}
                 </FileUpload.List>
@@ -97,14 +155,22 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
             </FileUpload.Root>
 
             <div className="tw:flex tw:justify-end tw:gap-3">
-              <Button color="secondary" size="sm" onClick={handleClose}>
+              <Button
+                color="secondary"
+                isDisabled={isUploading}
+                size="sm"
+                onClick={handleClose}>
                 {t('label.cancel')}
               </Button>
               <Button
                 color="primary"
-                isDisabled={queuedFiles.length === 0}
+                isDisabled={
+                  queuedFiles.filter((f) => f.status === 'pending').length ===
+                    0 || isUploading
+                }
+                isLoading={isUploading}
                 size="sm"
-                onClick={handleClose}>
+                onClick={handleAttach}>
                 {t('label.attach-file-plural')}
               </Button>
             </div>

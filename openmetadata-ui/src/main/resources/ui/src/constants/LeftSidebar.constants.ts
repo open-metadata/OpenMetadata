@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Archive,
-  BookOpen01,
-  Cube01,
-  LayoutGrid01,
-  Share07,
-} from '@untitledui/icons';
+import { Archive, Cube01, File06 } from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-observability/data-quality-rules.svg';
@@ -28,8 +22,11 @@ import { ReactComponent as ColumnBulkIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as MarketplaceIcon } from '../assets/svg/ic-data-marketplace.svg';
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
+import { ReactComponent as FolderIcon } from '../assets/svg/ic-folder-new.svg';
+import { ReactComponent as GridIcon } from '../assets/svg/ic-grid-new.svg';
 import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
 import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
+import { ReactComponent as IntegrationIcon } from '../assets/svg/ic-integration.svg';
 import { ReactComponent as KnowledgeCenterIcon } from '../assets/svg/ic-knowledge-center.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage.svg';
 import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
@@ -54,22 +51,11 @@ type UntitledIconType = React.ComponentType<{
 
 const DataProductIcon = createIconWithStroke(Cube01 as UntitledIconType, 1.2);
 
-const ContextCenterDashboardIcon = createIconWithStroke(
-  LayoutGrid01 as UntitledIconType,
-  1.5
-);
 const ContextCenterArticlesIcon = createIconWithStroke(
-  BookOpen01 as UntitledIconType,
+  File06 as UntitledIconType,
   1.5
 );
-const ContextCenterDocumentsIcon = createIconWithStroke(
-  Cube01 as UntitledIconType,
-  1.5
-);
-const ContextCenterIntegrationsIcon = createIconWithStroke(
-  Share07 as UntitledIconType,
-  1.5
-);
+
 const ContextCenterArchiveIcon = createIconWithStroke(
   Archive as UntitledIconType,
   1.5
@@ -243,7 +229,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         key: ROUTES.CONTEXT_CENTER_DASHBOARD,
         title: 'label.dashboard',
         redirect_url: ROUTES.CONTEXT_CENTER_DASHBOARD,
-        icon: ContextCenterDashboardIcon,
+        icon: GridIcon,
         dataTestId: `app-bar-item-context-center-dashboard`,
       },
       {
@@ -257,14 +243,14 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         key: ROUTES.CONTEXT_CENTER_DOCUMENTS,
         title: 'label.document-plural',
         redirect_url: ROUTES.CONTEXT_CENTER_DOCUMENTS,
-        icon: ContextCenterDocumentsIcon,
+        icon: FolderIcon,
         dataTestId: `app-bar-item-context-center-documents`,
       },
       {
         key: ROUTES.CONTEXT_CENTER_INTEGRATIONS,
         title: 'label.integration-plural',
         redirect_url: ROUTES.CONTEXT_CENTER_INTEGRATIONS,
-        icon: ContextCenterIntegrationsIcon,
+        icon: IntegrationIcon,
         dataTestId: `app-bar-item-context-center-integrations`,
       },
       {

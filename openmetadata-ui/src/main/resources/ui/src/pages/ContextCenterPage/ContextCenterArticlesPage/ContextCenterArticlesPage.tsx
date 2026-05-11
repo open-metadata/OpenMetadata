@@ -14,8 +14,6 @@
 import { DownOutlined } from '@ant-design/icons';
 import { Button, Dropdown } from 'antd';
 import { AxiosError } from 'axios';
-import { CREATE_PAGE_HASH } from 'constants/constants';
-import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -41,6 +39,7 @@ import { EntityTabs } from '../../../enums/entity.enum';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
+import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import {
   ContentChangeState,
   CreateKnowledgePage,
@@ -50,6 +49,7 @@ import {
   PageType,
 } from '../../../interface/knowledge-center.interface';
 import { postKnowledgePage } from '../../../rest/knowledgeCenterAPI';
+import { createArticleKnowledgePage } from '../../../utils/ContextCenterUtils';
 import { getContextCenterArticlePath } from '../../../utils/KnowledgePageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -77,6 +77,14 @@ const ContextCenterArticlesPage = () => {
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
 
+  const handleFetchKnowledgePageHierarchy = useCallback(
+    (forceRefresh?: boolean) =>
+      knowledgePagesHierarchyRef.current?.fetchKnowledgePageHierarchy(
+        forceRefresh
+      ) ?? Promise.resolve(),
+    []
+  );
+
   const handlePageChange = useCallback(
     (incoming: Partial<KnowledgeCenterPageProps>) => {
       setPage((prev) => ({ ...prev, ...incoming }));
@@ -101,27 +109,9 @@ const ContextCenterArticlesPage = () => {
   };
 
   const addArticleKnowledgePage = async () => {
-    try {
-      const data: CreateKnowledgePage = {
-        description: '',
-        displayName: '',
-        name: `${PageType.ARTICLE}_${cryptoRandomString({
-          length: 8,
-          type: 'alphanumeric',
-        })}`,
-        owners: [{ id: USERId, type: 'user' }],
-        page: { publicationDate: new Date(), relatedArticles: [] },
-        pageType: PageType.ARTICLE,
-      };
-      const response = await postKnowledgePage(data);
-      getResourceLimit('knowledgeCenter', true, true);
-      navigate({
-        hash: CREATE_PAGE_HASH,
-        pathname: getContextCenterArticlePath(response.fullyQualifiedName),
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
+    await createArticleKnowledgePage(USERId, navigate, () =>
+      getResourceLimit('knowledgeCenter', true, true)
+    );
   };
 
   const addQuickLinkKnowledgePage = async (
@@ -162,9 +152,7 @@ const ContextCenterArticlesPage = () => {
       contentChangeState={
         page.handlers?.contentChangeState ?? ContentChangeState.SAVED
       }
-      fetchKnowledgePageHierarchy={
-        knowledgePagesHierarchyRef.current?.fetchKnowledgePageHierarchy
-      }
+      fetchKnowledgePageHierarchy={handleFetchKnowledgePageHierarchy}
       isRightPanelOpen={isRightPanelOpen}
       knowledgePage={page.data}
       permissions={permissions}
@@ -253,9 +241,7 @@ const ContextCenterArticlesPage = () => {
         }>
         {fqn ? (
           <KnowledgePageDetailComponent
-            fetchKnowledgePageHierarchy={
-              knowledgePagesHierarchyRef.current?.fetchKnowledgePageHierarchy
-            }
+            fetchKnowledgePageHierarchy={handleFetchKnowledgePageHierarchy}
             getArticlePath={getContextCenterArticlePath}
             isRightPanelOpen={isRightPanelOpen}
             onPageChange={handlePageChange}
