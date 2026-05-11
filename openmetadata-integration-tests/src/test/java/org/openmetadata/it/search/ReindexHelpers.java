@@ -133,6 +133,30 @@ public final class ReindexHelpers {
     server.sdk().search().reindex(entityType);
   }
 
+  /**
+   * Sends a stop request to the named app and blocks until the latest run reaches a
+   * terminal status (typically {@code stopped}). Used by stop-under-load tests.
+   */
+  public static AppRunRecord stopAppAndWait(
+      final ServerHandle server, final String appName, final Duration timeout) {
+    final long stopRequestedAt = System.currentTimeMillis();
+    server
+        .sdk()
+        .getHttpClient()
+        .execute(HttpMethod.POST, "/v1/apps/stop/" + appName, null, Void.class);
+    return waitForRunAfter(server, appName, 0L, timeout);
+  }
+
+  /** Records the wall-clock instant just before sending a stop request. */
+  public static long sendStop(final ServerHandle server, final String appName) {
+    final long ts = System.currentTimeMillis();
+    server
+        .sdk()
+        .getHttpClient()
+        .execute(HttpMethod.POST, "/v1/apps/stop/" + appName, null, Void.class);
+    return ts;
+  }
+
   /** Triggers reindex of all entity types via {@code POST /v1/search/reindex/all}. */
   public static void reindexAll(final ServerHandle server) {
     server.sdk().search().reindexAll();

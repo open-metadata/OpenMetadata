@@ -54,6 +54,20 @@ public final class SearchAssertions {
     return result;
   }
 
+  /**
+   * Cardinality of {@code _id} on the alias — i.e., the count of distinct documents
+   * regardless of how many backing indices the alias spans. Used by the no-duplicates
+   * invariant: during reindex, {@code count(alias) == distinctIds(alias)} must always
+   * hold, otherwise two backing indices are returning the same logical document.
+   */
+  public long distinctIds(final String alias) {
+    final String body =
+        "{\"size\":0,\"aggs\":{\"distinct_ids\":{\"cardinality\":{\"field\":\"_id\","
+            + "\"precision_threshold\":40000}}}}";
+    final JsonNode response = search.post("/" + alias + "/_search", body);
+    return response.path("aggregations").path("distinct_ids").path("value").asLong();
+  }
+
   public void assertCountAtLeast(final String indexOrAlias, final long minimum) {
     final long actual = count(indexOrAlias);
     assertThat(actual)
