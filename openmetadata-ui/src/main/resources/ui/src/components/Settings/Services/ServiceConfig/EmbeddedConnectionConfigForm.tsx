@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,12 +12,10 @@
  */
 
 import Form, { IChangeEvent } from '@rjsf/core';
-import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
-import validator from '@rjsf/validator-ajv8';
+import { RJSFSchema } from '@rjsf/utils';
 import { Alert } from 'antd';
-
 import { isEmpty, isUndefined } from 'lodash';
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AIRFLOW_HYBRID,
@@ -38,14 +36,12 @@ import {
   getUISchemaWithNestedDefaultFilterFieldsHidden,
 } from '../../../../utils/ServiceConnectionUtils';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
-import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
-import WorkflowArrayFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
-import FormBuilder from '../../../common/FormBuilder/FormBuilder';
+import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import TestConnection from '../../../common/TestConnection/TestConnection';
 import { ConnectionConfigFormProps } from './ConnectionConfigForm.interface';
 
-const ConnectionConfigForm = ({
+const EmbeddedConnectionConfigForm = ({
   data,
   okText = i18n.t('label.save'),
   cancelText = i18n.t('label.cancel'),
@@ -95,11 +91,6 @@ const ConnectionConfigForm = ({
     await onSave({ ...data, formData: updatedFormData });
   };
 
-  const customFields: RegistryFieldsType = {
-    BooleanField: BooleanFieldTemplate,
-    ArrayField: WorkflowArrayFieldTemplate,
-  };
-
   const { connSch, validConfig } = useMemo(
     () =>
       getConnectionSchemas({
@@ -122,8 +113,6 @@ const ConnectionConfigForm = ({
     );
   }, [connSch.schema, isAirflowAvailable, hostIp, platform, ingestionRunner]);
 
-  // Remove the filters property from the schema
-  // Since it'll have a separate form in the next step
   const propertiesWithoutDefaultFilterPatternFields = useMemo(
     () =>
       getFilteredSchema(
@@ -141,8 +130,6 @@ const ConnectionConfigForm = ({
     [connectionSchema, propertiesWithoutDefaultFilterPatternFields]
   );
 
-  // UI Schema to hide the nested default filter pattern fields
-  // Since some connections have reference to the other connections
   const uiSchema = useMemo(() => {
     return getUISchemaWithNestedDefaultFilterFieldsHidden(connSch.uiSchema);
   }, [connSch.uiSchema]);
@@ -158,70 +145,63 @@ const ConnectionConfigForm = ({
     }
   }, [formRef.current?.state?.formData]);
 
-  const formChildren = (
-    <>
-      {isEmpty(connSch.schema) && (
-        <div
-          className="text-grey-muted text-center"
-          data-testid="no-config-available">
-          {t('message.no-config-available')}
-        </div>
-      )}
-      {shouldShowIPAlert && (
-        <Alert
-          className="tw:mt-2 tw:rounded-lg"
-          data-testid="ip-address"
-          description={
-            <Transi18next
-              i18nKey="message.airflow-host-ip-address"
-              renderElement={<strong />}
-              values={{ hostIp, brandName: brandClassBase.getPageTitle() }}
-            />
-          }
-          type="info"
-        />
-      )}
-      {!isEmpty(connSch.schema) &&
-        isAirflowAvailable &&
-        formRef.current?.state?.formData && (
-          <TestConnection
-            connectionType={serviceType}
-            getData={() => formRef.current?.state?.formData}
-            hostIp={hostIp}
-            isTestingDisabled={disableTestConnection}
-            serviceCategory={serviceCategory}
-            serviceName={data?.name}
-            onValidateFormRequiredFields={handleRequiredFieldsValidation}
-          />
-        )}
-      {!isUndefined(inlineAlertDetails) && (
-        <InlineAlert alertClassName="m-t-xs" {...inlineAlertDetails} />
-      )}
-    </>
-  );
-
   return (
-    <Fragment>
+    <>
       <AirflowMessageBanner />
-      <FormBuilder
-        useSelectWidget
+      <FormBuilderV1
         cancelText={cancelText ?? ''}
-        fields={customFields}
+        formContext={{ handleFocus: onFocus }}
         formData={validConfig}
         okText={okText ?? ''}
         ref={formRef}
         schema={schemaWithoutDefaultFilterPatternFields}
-        serviceCategory={serviceCategory}
         status={status}
         uiSchema={uiSchema}
-        validator={validator}
         onCancel={onCancel}
         onFocus={onFocus}
         onSubmit={handleSave}>
-        {formChildren}
-      </FormBuilder>
-    </Fragment>
+        <>
+          {isEmpty(connSch.schema) && (
+            <div
+              className="text-grey-muted text-center"
+              data-testid="no-config-available">
+              {t('message.no-config-available')}
+            </div>
+          )}
+          {shouldShowIPAlert && (
+            <Alert
+              className="tw:mt-2 tw:rounded-lg"
+              data-testid="ip-address"
+              description={
+                <Transi18next
+                  i18nKey="message.airflow-host-ip-address"
+                  renderElement={<strong />}
+                  values={{ hostIp, brandName: brandClassBase.getPageTitle() }}
+                />
+              }
+              type="info"
+            />
+          )}
+          {!isEmpty(connSch.schema) &&
+            isAirflowAvailable &&
+            formRef.current?.state?.formData && (
+              <TestConnection
+                connectionType={serviceType}
+                getData={() => formRef.current?.state?.formData}
+                hostIp={hostIp}
+                isTestingDisabled={disableTestConnection}
+                serviceCategory={serviceCategory}
+                serviceName={data?.name}
+                onValidateFormRequiredFields={handleRequiredFieldsValidation}
+              />
+            )}
+          {!isUndefined(inlineAlertDetails) && (
+            <InlineAlert alertClassName="m-t-xs" {...inlineAlertDetails} />
+          )}
+        </>
+      </FormBuilderV1>
+    </>
   );
 };
 
-export default ConnectionConfigForm;
+export default EmbeddedConnectionConfigForm;
