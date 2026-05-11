@@ -388,15 +388,31 @@
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>sts</artifactId>
     </dependency>
+    <!-- GHSA-rwm7-x88c-3g2p / CVE-2026-42577: exclude Linux native epoll binding (the only
+         vulnerable artifact is the .so JAR; bug is in netty 4.2.x, GHSA range overly broad).
+         Netty falls back to Java NIO; netty-transport-classes-epoll stays. Per-direct-dep so
+         future Azure SDK bumps aren't blocked by a pinned azure-core-http-netty version. -->
     <dependency>
       <groupId>com.azure</groupId>
       <artifactId>azure-security-keyvault-secrets</artifactId>
       <version>${azure-kv.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>io.netty</groupId>
+          <artifactId>netty-transport-native-epoll</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.azure</groupId>
       <artifactId>azure-identity</artifactId>
       <version>${azure-identity.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>io.netty</groupId>
+          <artifactId>netty-transport-native-epoll</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.azure</groupId>
@@ -1023,6 +1039,12 @@
       <groupId>com.azure</groupId>
       <artifactId>azure-storage-blob</artifactId>
       <version>12.31.1</version>
+      <exclusions>
+        <exclusion>
+          <groupId>io.netty</groupId>
+          <artifactId>netty-transport-native-epoll</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
