@@ -122,7 +122,11 @@
           "directory",
           "file",
           "spreadsheet",
-          "worksheet"
+          "worksheet",
+          "securityService",
+          "page",
+          "folder",
+          "contextFile"
         ]
       },
       "default": ["all"],

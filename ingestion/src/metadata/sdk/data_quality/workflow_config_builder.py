@@ -172,9 +172,6 @@ class WorkflowConfigBuilder:
             entityFullyQualifiedName=FullyQualifiedEntityName(root=self.table.fullyQualifiedName.root),
             type=TestSuiteConfigType.TestSuite,
             serviceConnections=None,
-            profileSample=None,
-            profileSampleType=None,
-            samplingMethodType=None,
             testCases=None,
         )
 

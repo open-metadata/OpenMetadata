@@ -81,6 +81,7 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -1338,10 +1339,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             .withUpdatedBy(user)
             .withUpdatedAt(System.currentTimeMillis());
 
-    if (create.getAbout() != null && create.getAboutType() != null) {
+    if (create.getAbout() != null) {
+      EntityLink link = EntityLink.parse(create.getAbout());
       task.setAbout(
           Entity.getEntityReferenceByName(
-              create.getAboutType(), create.getAbout(), Include.NON_DELETED));
+              link.getEntityType(), link.getEntityFQN(), Include.NON_DELETED));
     }
 
     // Note: domains are inherited from the target entity (about) automatically in
