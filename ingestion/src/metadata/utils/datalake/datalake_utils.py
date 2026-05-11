@@ -32,6 +32,34 @@ from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
+# Explicit type precedence so mixed-type object columns are not mis-typed by lexicographic max().
+# dict > list > datetime > numeric > str, matching _data_formats priority.
+_TYPE_PRECEDENCE = (
+    "dict",
+    "list",
+    "datetime64[ns]",
+    "datetime",
+    "timedelta[ns]",
+    "float64",
+    "float32",
+    "float",
+    "int64",
+    "int32",
+    "int",
+    "bool",
+    "str",
+    "bytes",
+)
+
+
+def _resolve_col_type(type_list: List[str]) -> str:  # noqa: UP006
+    """Pick the dominant type from type_list using _TYPE_PRECEDENCE instead of lexicographic max()."""
+    type_set = set(type_list)
+    for t in _TYPE_PRECEDENCE:
+        if t in type_set:
+            return t
+    return type_list[0] if type_list else "str"
+
 
 class _ArrayOfStruct:
     """Marker for a JSON value observed as a list of dicts. Carries the merged struct shape
@@ -334,14 +362,20 @@ class GenericDataFrameColumnParser:
         """
         data_type = None  # default to string
         try:
-            if data_frame[column_name].dtypes.name == "object" and any(data_frame[column_name].dropna().values):
+            col_series = data_frame[column_name]
+            col_non_null = col_series.dropna()
+            if col_series.dtypes.name == "object" and len(col_non_null) > 0:
                 try:
-                    # Safely evaluate the input string
-                    df_row_val_list = data_frame[column_name].dropna().values[:1000]
+                    df_row_val_list = col_non_null.values[:1000]
                     parsed_object_datatype_list = []
                     for df_row_val in df_row_val_list:
                         try:
-                            parsed_object_datatype_list.append(type(ast.literal_eval(str(df_row_val))).__name__.lower())
+                            if isinstance(df_row_val, (dict, list)):
+                                parsed_object_datatype_list.append(type(df_row_val).__name__.lower())
+                            else:
+                                parsed_object_datatype_list.append(
+                                    type(ast.literal_eval(str(df_row_val))).__name__.lower()
+                                )
                         except (ValueError, SyntaxError):
                             # we try to parse the value as a datetime, if it fails, we fallback to string
                             # as literal_eval will fail for string
@@ -354,11 +388,11 @@ class GenericDataFrameColumnParser:
                                 if not str(df_row_val).isnumeric():
                                     # check if the row value is time
                                     try:
-                                        datetime.strptime(df_row_val, "%H:%M:%S").time()
+                                        datetime.strptime(str(df_row_val), "%H:%M:%S").time()
                                         dtype_ = "timedelta[ns]"
                                     except (ValueError, TypeError):
                                         # check if the row value is date / time / datetime
-                                        type(parse(df_row_val)).__name__.lower()
+                                        type(parse(str(df_row_val))).__name__.lower()
                                         dtype_ = "datetime64[ns]"
                                 parsed_object_datatype_list.append(dtype_)
                             except (ParserError, TypeError):
@@ -369,8 +403,7 @@ class GenericDataFrameColumnParser:
                             )
                             parsed_object_datatype_list.append("str")
 
-                    data_type = max(parsed_object_datatype_list)
-                    # Determine the data type of the parsed object
+                    data_type = _resolve_col_type(parsed_object_datatype_list)
 
                 except (ValueError, SyntaxError) as exc:
                     # Handle any exceptions that may occur
@@ -378,10 +411,10 @@ class GenericDataFrameColumnParser:
                         f"ValueError/SyntaxError while parsing column '{column_name}' datatype: {exc}. "
                         f"Falling back to string."
                     )
-                    data_type = "string"
+                    data_type = "str"
 
             data_type = cls._data_formats.get(
-                data_type or data_frame[column_name].dtypes.name,
+                data_type or col_series.dtypes.name,
             )
             if not data_type:
                 logger.debug(f"unknown data type {data_frame[column_name].dtypes.name}. resolving to string.")
@@ -459,16 +492,33 @@ class GenericDataFrameColumnParser:
         from pandas import Series  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         json_column = cast(Series, json_column)  # noqa: TC006
-        try:
-            json_column = json_column.apply(json.loads)
-        except TypeError as exc:
-            # if values are not strings, we will assume they are already json objects
-            # based on the read class logic
-            logger.debug(
-                f"TypeError while parsing JSON column children: {exc}. Assuming values are already JSON objects."
-            )
-        json_structure = cls.unique_json_structure(json_column.values.tolist())
 
+        dict_values = []
+        for value in json_column.dropna().values:
+            if isinstance(value, dict):
+                dict_values.append(value)
+            elif isinstance(value, str):
+                try:
+                    parsed = json.loads(value)
+                    if isinstance(parsed, dict):
+                        dict_values.append(parsed)
+                    else:
+                        logger.debug(
+                            "Skipping non-object JSON value while extracting column children: "
+                            f"parsed type is {type(parsed).__name__}"
+                        )
+                except (TypeError, json.JSONDecodeError) as exc:
+                    logger.debug(f"Skipping unparseable string value while extracting column children: {exc}")
+            else:
+                logger.debug(
+                    "Skipping non-string, non-dict value while extracting column children: "
+                    f"type is {type(value).__name__}"
+                )
+
+        if not dict_values:
+            return []
+
+        json_structure = cls.unique_json_structure(dict_values)
         return cls.construct_json_column_children(json_structure)
 
     @classmethod
