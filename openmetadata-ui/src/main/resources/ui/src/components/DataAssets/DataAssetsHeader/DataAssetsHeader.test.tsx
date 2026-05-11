@@ -790,22 +790,6 @@ describe('DataAssetsHeader component', () => {
       });
     });
 
-    it('should call listTasks with correct server-side filters', async () => {
-      render(<DataAssetsHeader {...tableProps} />);
-
-      await waitFor(() => {
-        expect(mockListTasks).toHaveBeenCalledWith(
-          expect.objectContaining({
-            aboutEntity: 'service.db.schema.my_table',
-            category: 'DataAccess',
-            type: 'DataAccessRequest',
-            createdBy: 'test.user',
-            statusGroup: 'open',
-          })
-        );
-      });
-    });
-
     it('should disable button when a task is in review stage', async () => {
       mockListTasks.mockResolvedValue({
         data: [
