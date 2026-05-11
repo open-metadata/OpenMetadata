@@ -27,7 +27,7 @@ const ContextCenterDocumentsPage: FC = () => {
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-[var(--color-bg-secondary)]"
+      className="tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-secondary tw:px-5"
       data-testid="context-center-documents-page">
       <ContextCenterHeader
         breadcrumbs={[
@@ -46,7 +46,7 @@ const ContextCenterDocumentsPage: FC = () => {
         onUploadFile={() => setIsUploadModalOpen(true)}
       />
 
-      <div className="tw:p-6 tw:flex-1 tw:overflow-hidden">
+      <div className="tw:flex-1 tw:overflow-hidden">
         <DocumentsView folders={MOCK_FOLDERS} />
       </div>
 

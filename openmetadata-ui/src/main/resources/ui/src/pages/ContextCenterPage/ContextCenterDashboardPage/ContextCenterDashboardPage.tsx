@@ -19,10 +19,7 @@ import ContextCenterHeader from '../../../components/ContextCenter/ContextCenter
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
 import UploadedDocumentsSection from '../../../components/ContextCenter/UploadedDocumentsSection/UploadedDocumentsSection.component';
 import { ROUTES } from '../../../constants/constants';
-import {
-  MOCK_ARTICLES,
-  MOCK_DOCUMENTS,
-} from '../ContextCenterPage.mock';
+import { MOCK_ARTICLES, MOCK_DOCUMENTS } from '../ContextCenterPage.mock';
 
 const ContextCenterDashboardPage: FC = () => {
   const { t } = useTranslation();
@@ -31,7 +28,7 @@ const ContextCenterDashboardPage: FC = () => {
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:w-full tw:bg-[var(--color-bg-secondary)]"
+      className="tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:px-5"
       data-testid="context-center-dashboard-page">
       <ContextCenterHeader
         breadcrumbs={[
@@ -50,7 +47,7 @@ const ContextCenterDashboardPage: FC = () => {
         onUploadFile={() => setIsUploadModalOpen(true)}
       />
 
-      <div className="tw:flex tw:flex-col tw:gap-6 tw:p-6">
+      <div className="tw:flex tw:flex-col tw:gap-6">
         <ArticleListSection
           articles={MOCK_ARTICLES}
           subtitle={t('message.internal-knowledge-base-agent-training', {

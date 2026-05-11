@@ -12,7 +12,7 @@
  */
 
 import {
-  Badge,
+  Button,
   ButtonUtility,
   Card,
   Dot,
@@ -27,17 +27,22 @@ import {
   Globe01,
   MessageChatSquare,
   Share07,
-  Star01,
-  Star02,
   ThumbsDown,
   ThumbsUp,
   User03,
 } from '@untitledui/icons';
+import Loader from 'components/common/Loader/Loader';
+import { EntityStatusBadge } from 'components/Entity/EntityStatusBadge/EntityStatusBadge.component';
+import { EntityStatus } from 'generated/governance/workflows/elements/nodes/automatedTask/setGlossaryTermStatusTask';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as IconSaved } from '../../../assets/svg/ic-saved.svg';
 import { ReactComponent as SidebarCollapsible } from '../../../assets/svg/ic-sidebar-collapsible.svg';
+import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
+import { ReactComponent as StarIcon } from '../../../assets/svg/ic-star.svg';
+import { ReactComponent as IconUnSaved } from '../../../assets/svg/ic-unsaved.svg';
 import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
@@ -199,29 +204,42 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   };
 
   const entityStatusBadge = useMemo(() => {
-    if (contentChangeState === ContentChangeState.SAVING) {
-      return (
-        <Badge color="gray" type="pill-color">
-          Publishing
-        </Badge>
-      );
-    }
-    if (contentChangeState === ContentChangeState.SAVED) {
-      return (
-        <Badge color="success" type="pill-color">
-          Published
-        </Badge>
-      );
-    }
-    if (contentChangeState === ContentChangeState.UN_SAVED) {
-      return (
-        <Badge color="gray" type="pill-color">
-          Unsaved
-        </Badge>
-      );
+    const shouldShowStatus = true;
+    const entityStatus = knowledgePage?.entityStatus;
+
+    if (
+      !shouldShowStatus ||
+      !entityStatus ||
+      entityStatus === EntityStatus.Unprocessed
+    ) {
+      return null;
     }
 
-    return null;
+    return <EntityStatusBadge showDivider={false} status={entityStatus} />;
+  }, [knowledgePage?.entityStatus]);
+
+  const contentChangeIcon = useMemo(() => {
+    if (contentChangeState === ContentChangeState.SAVED) {
+      return (
+        <div className="tw:flex tw:items-center tw:gap-2">
+          <IconSaved />{' '}
+          <Typography className="tw:text-green-600" weight="medium">
+            {t('label.saved')}
+          </Typography>
+        </div>
+      );
+    } else if (contentChangeState === ContentChangeState.SAVING) {
+      return <Loader />;
+    } else if (contentChangeState === ContentChangeState.UN_SAVED) {
+      return (
+        <div className="tw:flex tw:items-center tw:gap-2">
+          <IconUnSaved />{' '}
+          <Typography weight="medium">{t('label.unsaved')}</Typography>
+        </div>
+      );
+    } else {
+      return null;
+    }
   }, [contentChangeState]);
 
   const showSaveButton =
@@ -254,7 +272,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:gap-3 tw:px-6 tw:py-4"
+      className="tw:flex tw:flex-col tw:gap-3 tw:mb-5"
       data-testid="article-detail-header">
       <TitleBreadcrumb useCustomArrow titleLinks={breadcrumbs} />
 
@@ -364,10 +382,12 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
           {/* Action buttons */}
           <div className="tw:flex tw:items-center tw:gap-3 tw:shrink-0">
+            {contentChangeIcon}
+
             {showSaveButton && (
-              <ButtonUtility color="secondary" size="sm" onClick={onSave}>
+              <Button color="primary" size="sm" onClick={onSave}>
                 {t('label.save')}
-              </ButtonUtility>
+              </Button>
             )}
 
             {/* Up vote */}
@@ -381,7 +401,17 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                   }
                   color="secondary"
                   disabled={knowledgePage?.deleted || voteLoading !== null}
-                  icon={<ThumbsUp height={18} width={18} />}
+                  icon={
+                    <ThumbsUp
+                      className={
+                        voteStatus === QueryVoteType.votedUp
+                          ? 'tw:fill-blue-500 tw:stroke-white'
+                          : 'tw:fill-none'
+                      }
+                      height={18}
+                      width={18}
+                    />
+                  }
                   onClick={() => handleVoteChange(QueryVoteType.votedUp)}
                 />
               </TooltipTrigger>
@@ -398,7 +428,17 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                   }
                   color="secondary"
                   disabled={knowledgePage?.deleted || voteLoading !== null}
-                  icon={<ThumbsDown height={18} width={18} />}
+                  icon={
+                    <ThumbsDown
+                      className={
+                        voteStatus === QueryVoteType.votedDown
+                          ? 'tw:fill-blue-500 tw:stroke-white'
+                          : 'tw:fill-none'
+                      }
+                      height={18}
+                      width={18}
+                    />
+                  }
                   onClick={() => handleVoteChange(QueryVoteType.votedDown)}
                 />
               </TooltipTrigger>
@@ -418,19 +458,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               title={isFollowing ? t('label.un-follow') : t('label.follow')}>
               <TooltipTrigger>
                 <ButtonUtility
+                  className={isFollowing ? 'tw:text-brand-600' : undefined}
                   color="secondary"
                   disabled={isFollowLoading || knowledgePage?.deleted}
-                  icon={
-                    isFollowing ? (
-                      <Star02
-                        className="tw:text-brand-600"
-                        height={20}
-                        width={20}
-                      />
-                    ) : (
-                      <Star01 height={20} width={20} />
-                    )
-                  }
+                  icon={isFollowing ? StarFilledIcon : StarIcon}
                   onClick={handleFollowClick}
                 />
               </TooltipTrigger>

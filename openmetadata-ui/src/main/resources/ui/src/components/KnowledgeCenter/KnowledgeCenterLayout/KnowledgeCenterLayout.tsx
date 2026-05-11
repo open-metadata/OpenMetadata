@@ -50,7 +50,7 @@ const KnowledgeCenterLayout: FC<KnowledgeCenterLayoutProps> = ({
 
   return (
     <div
-      className="tw:px-6 tw:pb-4"
+      className="tw:pb-4"
       dir={i18n.dir()}
       id="knowledge-center-layout-container">
       <DocumentTitle title={pageTitle} />

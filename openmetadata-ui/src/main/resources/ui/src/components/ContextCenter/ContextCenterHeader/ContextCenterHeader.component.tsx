@@ -53,7 +53,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:gap-3 tw:px-6 tw:py-4"
+      className="tw:flex tw:flex-col tw:gap-3"
       data-testid="context-center-header">
       <TitleBreadcrumb useCustomArrow titleLinks={breadcrumbs} />
 

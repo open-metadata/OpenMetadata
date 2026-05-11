@@ -23,7 +23,7 @@ const ContextCenterIntegrationsPage: FC = () => {
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:w-full tw:bg-[var(--color-bg-secondary)]"
+      className="tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:px-5"
       data-testid="context-center-integrations-page">
       <ContextCenterHeader
         breadcrumbs={[
