@@ -11,32 +11,22 @@
  *  limitations under the License.
  */
 
-import { FieldTemplateProps, getTemplate, getUiOptions } from '@rjsf/utils';
+import { Toggle } from '@openmetadata/ui-core-components';
+import { FieldProps } from '@rjsf/utils';
+import { startCase } from 'lodash';
 
-export const CoreFieldTemplate = ({
-  children,
-  hidden = false,
-  registry,
-  uiSchema,
-  ...props
-}: FieldTemplateProps) => {
-  const uiOptions = getUiOptions(uiSchema);
-  const WrapIfAdditionalTemplate = getTemplate(
-    'WrapIfAdditionalTemplate',
-    registry,
-    uiOptions
-  );
-
-  if (hidden) {
-    return <div className="tw:hidden">{children}</div>;
-  }
-
+const CoreBooleanField = (props: FieldProps) => {
   return (
-    <WrapIfAdditionalTemplate
-      {...props}
-      registry={registry}
-      uiSchema={uiSchema}>
-      {children}
-    </WrapIfAdditionalTemplate>
+    <Toggle
+      isDisabled={props.disabled || props.readonly}
+      isSelected={props.formData ?? false}
+      label={props.schema.title ?? startCase(props.name)}
+      onChange={(value) => {
+        props.formContext?.handleFocus?.(props.idSchema.$id);
+        props.onChange(value);
+      }}
+    />
   );
 };
+
+export default CoreBooleanField;
