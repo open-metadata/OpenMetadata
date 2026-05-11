@@ -35,6 +35,88 @@ public final class ReindexHelpers {
     http.execute(HttpMethod.POST, "/v1/apps/trigger/" + appName, null, Void.class);
   }
 
+  /**
+   * Triggers the named app with an inline config payload — overrides the app's persisted
+   * configuration for this run only. Useful for slowing reindex (small batch + few
+   * threads) so concurrent assertions have time to observe mid-flight state.
+   */
+  public static void triggerAppWithConfig(
+      final ServerHandle server, final String appName, final Map<String, Object> config) {
+    final HttpClient http = server.sdk().getHttpClient();
+    http.execute(HttpMethod.POST, "/v1/apps/trigger/" + appName, config, Void.class);
+  }
+
+  /**
+   * Waits for the previous run to reach a terminal status, then triggers a fresh run with
+   * the given inline config — retrying the trigger until the server accepts it. OM's
+   * internal app-execution lock can linger briefly after {@code AppRunRecord} flips to
+   * {@code success}; a naive immediate trigger races with that release and gets
+   * "Job is already running" errors.
+   */
+  public static void triggerSearchIndexWithConfigWhenIdle(
+      final ServerHandle server,
+      final Map<String, Object> config,
+      final Duration acceptanceTimeout) {
+    waitForLatestRunTerminal(server, SEARCH_INDEX_APP, Duration.ofSeconds(30));
+    Awaitility.await("trigger SearchIndexApp with config")
+        .atMost(acceptanceTimeout)
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              triggerAppWithConfig(server, SEARCH_INDEX_APP, config);
+              return true;
+            });
+  }
+
+  /** Status of the latest run for the named app, or {@code null} if no runs yet. */
+  public static String latestRunStatus(final ServerHandle server, final String appName) {
+    final AppRunRecord run = fetchLatestRun(server, appName);
+    return (run == null || run.getStatus() == null) ? null : run.getStatus().value();
+  }
+
+  /** Whether the latest run for the named app is in a terminal status. */
+  public static boolean latestRunIsTerminal(final ServerHandle server, final String appName) {
+    return isTerminal(fetchLatestRun(server, appName));
+  }
+
+  /**
+   * Whether the latest run started at or after {@code sinceMillis} AND is in a terminal
+   * status. Lets callers distinguish "the run I just triggered finished" from "an older
+   * run is still marked Success" — which {@link #latestRunIsTerminal} cannot.
+   */
+  public static boolean freshRunIsTerminal(
+      final ServerHandle server, final String appName, final long sinceMillis) {
+    final AppRunRecord run = fetchLatestRun(server, appName);
+    if (run == null || run.getTimestamp() == null || run.getTimestamp() < sinceMillis) {
+      return false;
+    }
+    return isTerminal(run);
+  }
+
+  /**
+   * Blocks until a run started at or after {@code sinceMillis} appears for the app. Use
+   * after a trigger to avoid racing the next probe loop against a stale {@code Success}
+   * status from the previous run.
+   */
+  public static void waitForRunStartedSince(
+      final ServerHandle server,
+      final String appName,
+      final long sinceMillis,
+      final Duration timeout) {
+    Awaitility.await("new run for " + appName + " to register")
+        .atMost(timeout)
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              final AppRunRecord run = fetchLatestRun(server, appName);
+              return run != null
+                  && run.getTimestamp() != null
+                  && run.getTimestamp() >= sinceMillis;
+            });
+  }
+
   /** Trigger SearchIndexingApplication and block until the latest run reaches a terminal state. */
   public static AppRunRecord triggerSearchIndexAndWait(final ServerHandle server) {
     return triggerSearchIndexAndWait(server, DEFAULT_TIMEOUT);

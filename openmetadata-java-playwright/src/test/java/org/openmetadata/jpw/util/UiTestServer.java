@@ -54,6 +54,13 @@ public final class UiTestServer {
     final TokenSet initial = backend.acquireToken(cached, idp());
     AuthSession.initialize(backend, initial);
     SdkClients.overrideAdminToken(initial.accessToken());
+    // Rebuild the cached ServerHandle now that we have a real token. Without this,
+    // server.sdk() returns the placeholder client built with the empty token, and any
+    // caller that goes through it (e.g. ReindexHelpers.triggerApp) gets 401. External
+    // mode skips this — ExternalServer.fromEnv() already wired the real OM_ADMIN_TOKEN.
+    if (ownedContainer != null) {
+      cached = ownedContainer.handle(initial.accessToken());
+    }
     refresher = TokenRefresher.start(backend, cached, idp());
     Runtime.getRuntime()
         .addShutdownHook(new Thread(UiTestServer::tearDown, "UiTestServer-cleanup"));
