@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import { FieldErrorProps } from '@rjsf/utils';
 import { isEmpty } from 'lodash';
 import { FC } from 'react';
@@ -23,16 +24,16 @@ export const CoreFieldErrorTemplate: FC<FieldErrorProps> = (props) => {
   }
 
   return (
-    <div>
-      <ul className="tw:mt-1 tw:list-none tw:p-0">
-        {errorList.map((error, index) => (
-          <li
-            className="tw:text-xs tw:text-[var(--color-text-error-primary)]"
-            key={typeof error === 'string' ? error : index}>
-            {error}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <ul className="tw:mt-1 tw:list-none tw:p-0">
+      {errorList.map((error, index) => (
+        <Typography
+          as="li"
+          className="tw:text-error-primary"
+          key={typeof error === 'string' ? error : index}
+          size="text-xs">
+          {error}
+        </Typography>
+      ))}
+    </ul>
   );
 };
