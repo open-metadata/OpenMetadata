@@ -235,7 +235,7 @@ class TestDatalakeUtils(TestCase):
             "children": formatted_column,
         }
         column_obj = Column(**column)
-        assert len(column_obj.children) == 3
+        assert column_obj.children is not None and len(column_obj.children) == 3
 
 
 class TestParquetDataFrameColumnParser(TestCase):
@@ -809,6 +809,237 @@ class TestIcebergDeltaLakeMetadataParsing(TestCase):
         # The standard parser behavior would be different
         # This test ensures we don't break existing JSON Schema parsing
         self.assertIsNotNone(columns)
+
+
+class TestFetchColTypesWithParsedObjects:
+    """fetch_col_types must correctly type object-dtype columns whose values are already
+    parsed Python dicts or lists, including falsy containers ({}, [])."""
+
+    def test_empty_dict_typed_as_json(self):
+        df = pd.DataFrame({"col": [{}]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.JSON
+
+    def test_empty_list_typed_as_array(self):
+        df = pd.DataFrame({"col": [[]]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.ARRAY
+
+    def test_multiple_empty_dicts_typed_as_json(self):
+        df = pd.DataFrame({"col": [{}, {}, {}]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.JSON
+
+    def test_dict_with_data_typed_as_json(self):
+        df = pd.DataFrame({"col": [{"k": "v"}]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.JSON
+
+    def test_list_with_data_typed_as_array(self):
+        df = pd.DataFrame({"col": [[1, 2, 3]]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.ARRAY
+
+    def test_large_already_parsed_dict_typed_as_json(self):
+        large = {str(i): i for i in range(500)}
+        df = pd.DataFrame({"col": [large]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.JSON
+
+    def test_null_column_typed_as_string(self):
+        df = pd.DataFrame({"col": [None]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.STRING
+
+    def test_string_column_typed_as_string(self):
+        df = pd.DataFrame({"col": ["hello"]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.STRING
+
+    def test_int_column_typed_as_int(self):
+        df = pd.DataFrame({"col": [42]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.INT
+
+
+class TestFetchColTypesMixedTypes:
+    """fetch_col_types must resolve the dominant type via explicit precedence, not
+    lexicographic max(). The old max() would return 'str' whenever a string value appeared
+    in the column because 'str' > 'dict' and 'str' > 'list' lexicographically."""
+
+    def test_dict_and_string_mix_typed_as_json(self):
+        # Previously: max(["dict", "str"]) == "str" → STRING (wrong)
+        # Now: precedence picks "dict" → JSON (correct)
+        df = pd.DataFrame({"col": [{"a": 1}, "fallback_string"]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.JSON
+
+    def test_list_and_string_mix_typed_as_array(self):
+        # Previously: max(["list", "str"]) == "str" → STRING (wrong)
+        # Now: precedence picks "list" → ARRAY (correct)
+        df = pd.DataFrame({"col": [[1, 2], "fallback_string"]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.ARRAY
+
+    def test_int_and_float_mix_typed_as_float(self):
+        # float64 beats int64 in precedence — a column with mixed numeric types resolves to FLOAT
+        df = pd.DataFrame({"col": ["42", "3.14"]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.FLOAT
+
+    def test_pure_string_column_typed_as_string(self):
+        # Control: no structured types present → still STRING
+        df = pd.DataFrame({"col": ["hello", "world"]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.STRING
+
+    def test_pure_dict_column_typed_as_json(self):
+        # Control: all dicts → JSON with no ambiguity
+        df = pd.DataFrame({"col": [{"a": 1}, {"b": 2}]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.JSON
+
+    def test_dict_beats_list_in_mixed_column(self):
+        # dict > list in precedence
+        df = pd.DataFrame({"col": [{"a": 1}, [1, 2]]})
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.JSON
+
+
+class TestGetChildrenWithParsedDicts:
+    """get_children must correctly extract children regardless of whether the Series
+    values are already-parsed Python dicts, JSON strings, or a mix of both."""
+
+    def test_already_parsed_dict_returns_children(self):
+        col = pd.Series([{"name": "Alice", "age": 30}])
+        children = GenericDataFrameColumnParser.get_children(col)
+        assert {c["name"] for c in children} == {"name", "age"}
+
+    def test_empty_dict_returns_no_children(self):
+        col = pd.Series([{}])
+        assert GenericDataFrameColumnParser.get_children(col) == []
+
+    def test_all_null_returns_no_children(self):
+        col = pd.Series([None, None])
+        assert GenericDataFrameColumnParser.get_children(col) == []
+
+    def test_string_json_returns_children(self):
+        col = pd.Series(['{"name": "Bob", "score": 99}'])
+        children = GenericDataFrameColumnParser.get_children(col)
+        assert {c["name"] for c in children} == {"name", "score"}
+
+    def test_mixed_string_and_dict_values_returns_union_of_children(self):
+        col = pd.Series(['{"a": 1, "b": 2}', {"b": 2, "c": 3}])
+        children = GenericDataFrameColumnParser.get_children(col)
+        assert {c["name"] for c in children} == {"a", "b", "c"}
+
+    def test_malformed_string_values_are_skipped(self):
+        col = pd.Series(["not-json", {"key": "val"}])
+        children = GenericDataFrameColumnParser.get_children(col)
+        assert {c["name"] for c in children} == {"key"}
+
+    def test_nested_dict_structure_returns_children(self):
+        nodes = {"model.Project.my_model": {"name": "my_model", "unique_id": "x", "description": "test"}}
+        col = pd.Series([nodes])
+        children = GenericDataFrameColumnParser.get_children(col)
+        assert len(children) == 1
+        assert children[0]["name"] == "model.Project.my_model"
+
+
+class TestSingleObjectJsonFileIngestion:
+    """End-to-end column parsing for single-object JSON files.
+
+    Reads fixture files with json.loads → DataFrame.from_records → _get_columns → Column objects.
+    A single top-level JSON object is wrapped into a 1-row DataFrame. Every top-level key
+    becomes a column whose value is the Python object returned by json.loads — typically a
+    dict, list, or None. All columns must be typed correctly and children extracted without
+    errors.
+    """
+
+    RESOURCES = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "datalake")  # noqa: PTH118, PTH120
+
+    def _load_fixture_as_dataframe(self, filename):
+        path = os.path.join(self.RESOURCES, filename)  # noqa: PTH118
+        with open(path, "rb") as f:  # noqa: PTH123
+            data = json.loads(f.read())
+        if isinstance(data, dict):
+            data = [data]
+        return pd.DataFrame.from_records(data)
+
+    def _parsed_columns(self, filename):
+        df = self._load_fixture_as_dataframe(filename)
+        return {col.name.root: col for col in GenericDataFrameColumnParser._get_columns(df)}
+
+    def test_dict_valued_columns_typed_as_json(self):
+        cols = self._parsed_columns("dbt_catalog.json")
+        assert cols["metadata"].dataType == DataType.JSON
+        assert cols["nodes"].dataType == DataType.JSON
+        assert cols["sources"].dataType == DataType.JSON
+
+    def test_null_column_typed_as_string(self):
+        cols = self._parsed_columns("dbt_catalog.json")
+        assert cols["errors"].dataType == DataType.STRING
+
+    def test_non_empty_dict_column_has_children(self):
+        cols = self._parsed_columns("dbt_catalog.json")
+        assert cols["nodes"].children is not None and len(cols["nodes"].children) > 0
+
+    def test_empty_dict_columns_typed_as_json_not_string(self):
+        cols = self._parsed_columns("dbt_manifest.json")
+        for name in ("metrics", "groups", "disabled", "group_map", "saved_queries", "semantic_models", "unit_tests"):
+            assert cols[name].dataType == DataType.JSON, f"column '{name}': expected JSON, got {cols[name].dataType}"
+
+    def test_empty_dict_columns_have_no_children(self):
+        cols = self._parsed_columns("dbt_manifest.json")
+        for name in ("metrics", "groups", "disabled", "group_map", "saved_queries", "semantic_models", "unit_tests"):
+            children = cols[name].children
+            assert not children, f"column '{name}' should have no children"
+
+
+class TestDbtSingleObjectJsonIngestion:
+    """Single-object JSON files (e.g. dbt artifacts) are wrapped into a 1-row DataFrame
+    where every top-level key becomes a column with a Python dict value. The column parser
+    must correctly type all columns — including empty-dict columns — without errors."""
+
+    @staticmethod
+    def _make_catalog_df():
+        return pd.DataFrame(
+            [
+                {
+                    "metadata": {"dbt_version": "1.5.0", "generated_at": "2024-01-01"},
+                    "nodes": {"model.Project.tbl": {"name": "tbl", "description": "test"}},
+                    "sources": {},
+                    "errors": None,
+                }
+            ]
+        )
+
+    @staticmethod
+    def _make_manifest_df():
+        return pd.DataFrame(
+            [
+                {
+                    "metadata": {"dbt_version": "1.5.0"},
+                    "nodes": {"model.Project.tbl": {"name": "tbl"}},
+                    "sources": {},
+                    "metrics": {},
+                    "groups": {},
+                    "disabled": {},
+                    "group_map": {},
+                    "saved_queries": {},
+                    "semantic_models": {},
+                    "unit_tests": {},
+                }
+            ]
+        )
+
+    def test_catalog_column_types(self):
+        df = self._make_catalog_df()
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "metadata") == DataType.JSON
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "nodes") == DataType.JSON
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "sources") == DataType.JSON
+        assert GenericDataFrameColumnParser.fetch_col_types(df, "errors") == DataType.STRING
+
+    def test_manifest_empty_dict_columns_typed_as_json(self):
+        df = self._make_manifest_df()
+        for col in ("metrics", "groups", "disabled", "group_map", "saved_queries", "semantic_models", "unit_tests"):
+            assert GenericDataFrameColumnParser.fetch_col_types(df, col) == DataType.JSON, f"{col} should be JSON"
+
+    def test_catalog_nodes_children_extracted_without_error(self):
+        df = self._make_catalog_df()
+        nodes_col = df["nodes"].dropna()[:100]
+        children = GenericDataFrameColumnParser.get_children(nodes_col)
+        assert len(children) > 0
+
+    def test_catalog_sources_empty_dict_returns_no_children(self):
+        df = self._make_catalog_df()
+        sources_col = df["sources"].dropna()[:100]
+        assert GenericDataFrameColumnParser.get_children(sources_col) == []
 
 
 class TestCSVQuotedHeaderFix(TestCase):
