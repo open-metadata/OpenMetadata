@@ -73,14 +73,14 @@ export const addAssigneeFromPopoverWidget = async (data: {
   const taskTabEditAssigneesButton = page.getByTestId('edit-assignees').last();
 
   if (testCaseName) {
-    const incidentRow = page.getByTestId(`test-case-${testCaseName}`).first();
+    const incidentRow = page
+      .locator('tr')
+      .filter({ has: page.getByTestId(`test-case-${testCaseName}`) })
+      .first();
     const editOwnerButton = incidentRow.getByTestId('edit-owner');
 
-    if (await editOwnerButton.isVisible().catch(() => false)) {
-      await editOwnerButton.click();
-    } else {
-      await incidentRow.locator('td').last().getByRole('button').click();
-    }
+    await expect(editOwnerButton).toBeVisible();
+    await editOwnerButton.click();
   } else if (await taskTabEditAssigneesButton.isVisible().catch(() => false)) {
     await taskTabEditAssigneesButton.click();
     await waitForAllLoadersToDisappear(page);
