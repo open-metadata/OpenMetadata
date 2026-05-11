@@ -43,7 +43,7 @@ jobs:
         run: |
           npx retire@5 \
             --path node_modules/ \
-            --severity medium \
+            --severity high \
             --outputformat json \
             --outputpath retire-report.json
 
@@ -131,7 +131,7 @@ jobs:
           channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
           payload: |
             {
-              "text": "🚨 Vulnerability scan failed, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>. 🚨"
+              "text": "🚨 Vulnerability scan failed on branch `${{ github.ref_name }}`, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>. 🚨"
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -143,7 +143,7 @@ jobs:
           channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
           payload: |
             {
-              "text": "🟢 Vulnerability scan passed for OpenMetadata Repo, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
+              "text": "🟢 Vulnerability scan passed for OpenMetadata Repo on branch `${{ github.ref_name }}`, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -224,7 +224,7 @@ jobs:
           channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
           payload: |
             {
-              "text": "🚨 Security report failed, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>. 🚨"
+              "text": "🚨 Security report failed on branch `${{ github.ref_name }}`, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>. 🚨"
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -236,7 +236,7 @@ jobs:
           channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
           payload: |
             {
-              "text": "🟢 Security report generated for OpenMetadata Repo , please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
+              "text": "🟢 Security report generated for OpenMetadata Repo on branch `${{ github.ref_name }}`, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}

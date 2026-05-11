@@ -17,7 +17,6 @@ import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.RDFList;
 import org.apache.jena.rdf.model.Resource;
-import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
@@ -105,56 +104,26 @@ class RdfPropertyMapperTest {
   class VotesTests {
 
     @Test
-    @DisplayName("Votes should keep counts but omit voter relationship edges")
-    void testVotesStructured() throws Exception {
+    @DisplayName("Votes are ignored during RDF field processing (audit/helper data)")
+    void testVotesAreIgnored() throws Exception {
       ObjectNode votes = objectMapper.createObjectNode();
       votes.put("upVotes", 10);
       votes.put("downVotes", 2);
 
-      ArrayNode upVoters = objectMapper.createArrayNode();
-      ObjectNode voter = objectMapper.createObjectNode();
-      voter.put("id", UUID.randomUUID().toString());
-      voter.put("type", "user");
-      voter.put("name", "test_user");
-      upVoters.add(voter);
-      votes.set("upVoters", upVoters);
+      ObjectNode entityJson = objectMapper.createObjectNode();
+      entityJson.set("votes", votes);
 
-      java.lang.reflect.Method method =
-          RdfPropertyMapper.class.getDeclaredMethod(
-              "addVotes", JsonNode.class, Resource.class, Model.class);
-      method.setAccessible(true);
-      method.invoke(propertyMapper, votes, entityResource, model);
+      invokePrivate(
+          "processContextMappings",
+          new Class[] {Map.class, JsonNode.class, Resource.class, Model.class},
+          Map.of("votes", Map.of("@id", "om:hasVotes", "@type", "@json")),
+          entityJson,
+          entityResource,
+          model);
 
-      // Verify structured RDF was created
-      Property hasVotes = model.createProperty(OM_NS, "hasVotes");
-      assertTrue(model.contains(entityResource, hasVotes), "Entity should have hasVotes property");
-
-      Resource votesResource =
-          model.listObjectsOfProperty(entityResource, hasVotes).next().asResource();
-
-      // Verify type
-      assertTrue(
-          model.contains(votesResource, RDF.type, model.createResource(OM_NS + "Votes")),
-          "Votes should have correct type");
-
-      // Verify upVotes is stored as integer
-      Property upVotesProp = model.createProperty(OM_NS, "upVotes");
-      assertTrue(model.contains(votesResource, upVotesProp), "Votes should have upVotes");
-      Statement stmt = model.getProperty(votesResource, upVotesProp);
-      assertEquals(10, stmt.getInt(), "upVotes should be 10");
-
-      // Verify downVotes is stored as integer
-      Property downVotesProp = model.createProperty(OM_NS, "downVotes");
-      assertTrue(model.contains(votesResource, downVotesProp), "Votes should have downVotes");
-      stmt = model.getProperty(votesResource, downVotesProp);
-      assertEquals(2, stmt.getInt(), "downVotes should be 2");
-
-      // Verify individual voter references are not stored as graph edges
-      Property upVotersProp = model.createProperty(OM_NS, "upVoters");
-      assertFalse(model.contains(votesResource, upVotersProp), "Votes should not expose upVoters");
       assertFalse(
-          model.contains(votesResource, model.createProperty(OM_NS, "downVoters")),
-          "Votes should not expose downVoters");
+          model.contains(entityResource, model.createProperty(OM_NS, "hasVotes")),
+          "Votes helper nodes should not be emitted into RDF");
     }
   }
 
@@ -742,8 +711,8 @@ class RdfPropertyMapperTest {
     }
 
     @Test
-    @DisplayName("container, votes, and extension helpers should cover remaining value branches")
-    void testContainerVotesAndExtensionHelpersCoverRemainingBranches() throws Exception {
+    @DisplayName("container and extension helpers should cover remaining value branches")
+    void testContainerAndExtensionHelpersCoverRemainingBranches() throws Exception {
       ArrayNode listOfReferences = objectMapper.createArrayNode();
       UUID upstreamId = UUID.randomUUID();
       listOfReferences.add(entityReferenceNode("table", upstreamId.toString(), "orders", null));
@@ -765,30 +734,6 @@ class RdfPropertyMapperTest {
           linkedEntities.iterator().toList().stream()
               .map(node -> node.asResource().getURI())
               .toList());
-
-      ObjectNode votes = objectMapper.createObjectNode();
-      votes.put("upVotes", 2);
-      ArrayNode downVoters = objectMapper.createArrayNode();
-      UUID reviewerId = UUID.randomUUID();
-      downVoters.add(entityReferenceNode("user", reviewerId.toString(), "reviewer", null));
-      votes.set("downVoters", downVoters);
-      invokePrivate(
-          "addVotes",
-          new Class[] {JsonNode.class, Resource.class, Model.class},
-          votes,
-          entityResource,
-          model);
-      Resource votesResource =
-          model
-              .listObjectsOfProperty(entityResource, model.createProperty(OM_NS, "hasVotes"))
-              .next()
-              .asResource();
-      assertFalse(
-          model.contains(
-              votesResource,
-              model.createProperty(OM_NS, "downVoters"),
-              model.createResource(BASE_URI + "entity/user/" + reviewerId)),
-          "Vote helpers should not emit voter references");
 
       ObjectNode extension = objectMapper.createObjectNode();
       extension.put("threshold", 2.5);
@@ -841,7 +786,9 @@ class RdfPropertyMapperTest {
           votes,
           entityResource,
           model);
-      assertTrue(model.contains(entityResource, model.createProperty(OM_NS, "hasVotes")));
+      assertFalse(
+          model.contains(entityResource, model.createProperty(OM_NS, "hasVotes")),
+          "votes is ignored by the structured-property dispatch");
 
       ObjectNode lifeCycle = objectMapper.createObjectNode();
       lifeCycle.set(

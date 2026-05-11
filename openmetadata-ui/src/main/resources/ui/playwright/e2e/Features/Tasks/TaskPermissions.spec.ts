@@ -142,8 +142,7 @@ test.describe('Task Permissions - Assignee Must Have Edit Permission', () => {
     browser,
   }) => {
     const task = await createTaskAsAdmin(browser, {
-      about: table.entityResponseData?.fullyQualifiedName,
-      aboutType: 'table',
+      about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
       type: 'DescriptionUpdate',
       category: 'MetadataUpdate',
       assignees: [assigneeWithoutEdit.responseData.name],
@@ -183,8 +182,7 @@ test.describe('Task Permissions - Assignee Must Have Edit Permission', () => {
 
   test('owner (has EditDescription) CAN resolve task', async ({ browser }) => {
     const task = await createTaskAsAdmin(browser, {
-      about: table.entityResponseData?.fullyQualifiedName,
-      aboutType: 'table',
+      about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
       type: 'DescriptionUpdate',
       category: 'MetadataUpdate',
       assignees: [ownerUser.responseData.name],
@@ -216,8 +214,7 @@ test.describe('Task Permissions - Assignee Must Have Edit Permission', () => {
 
   test('admin CAN resolve any task', async ({ browser }) => {
     const task = await createTaskAsAdmin(browser, {
-      about: table.entityResponseData?.fullyQualifiedName,
-      aboutType: 'table',
+      about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
       type: 'DescriptionUpdate',
       category: 'MetadataUpdate',
       assignees: [assigneeWithoutEdit.responseData.name],
@@ -248,8 +245,7 @@ test.describe('Task Permissions - Assignee Must Have Edit Permission', () => {
     browser,
   }) => {
     const task = await createTaskAsAdmin(browser, {
-      about: table.entityResponseData?.fullyQualifiedName,
-      aboutType: 'table',
+      about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
       type: 'TagUpdate',
       category: 'MetadataUpdate',
       assignees: [assigneeWithoutEdit.responseData.name],
@@ -309,8 +305,7 @@ test.describe('Task Permissions - UI Button Visibility', () => {
       // Create task assigned to owner
       await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -461,8 +456,7 @@ test.describe('Task Permissions - Team Assignment', () => {
       // Create task assigned to team
       await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [team.responseData.name],
@@ -590,8 +584,7 @@ test.describe('Task Permissions - Task Creator', () => {
       // Create task as admin (simulating creator)
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [assigneeUser.responseData.name],
@@ -616,8 +609,7 @@ test.describe('Task Permissions - Task Creator', () => {
     // Create task as admin
     const taskResponse = await apiContext.post('/api/v1/tasks', {
       data: {
-        about: table.entityResponseData?.fullyQualifiedName,
-        aboutType: 'table',
+        about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
         type: 'DescriptionUpdate',
         category: 'MetadataUpdate',
         assignees: [assigneeUser.responseData.name],
@@ -689,8 +681,7 @@ test.describe('Task Permissions - Edge Cases', () => {
       // Create and close task
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [adminUser.responseData.name],
@@ -750,8 +741,7 @@ test.describe('Task Permissions - Edge Cases', () => {
       // Create task without assignees
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           // No assignees specified
