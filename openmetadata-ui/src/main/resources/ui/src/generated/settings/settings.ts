@@ -2173,7 +2173,7 @@ export interface NaturalLanguageSearch {
      */
     djl?: Djl;
     /**
-     * The provider to use for generating vector embeddings (e.g., bedrock, openai).
+     * The provider to use for generating vector embeddings (e.g., bedrock, openai, google, djl).
      */
     embeddingProvider?: string;
     /**
@@ -2184,6 +2184,10 @@ export interface NaturalLanguageSearch {
      * NLQ filter extractor cache and prompt tuning.
      */
     filterExtractor?: FilterExtractor;
+    /**
+     * Google Gemini configuration for embedding generation via the Generative Language API.
+     */
+    google?: Google;
     /**
      * Hybrid search runtime tuning combining BM25 keyword and KNN semantic queries.
      */
@@ -2319,6 +2323,40 @@ export interface FilterExtractor {
      * Max sample values shown per filter category in the system prompt.
      */
     maxSampleValues?: number;
+}
+
+/**
+ * Google Gemini configuration for embedding generation via the Generative Language API.
+ */
+export interface Google {
+    /**
+     * API key from Google AI Studio for authenticating with the Generative Language API.
+     */
+    apiKey?: string;
+    /**
+     * Dimension of the embedding vector, sent to Google as `outputDimensionality`. For
+     * `gemini-embedding-001` valid values are 768, 1536, or 3072. For `text-embedding-004` use
+     * 768.
+     */
+    embeddingDimension?: number;
+    /**
+     * Gemini embedding model identifier (e.g., gemini-embedding-001, text-embedding-004).
+     */
+    embeddingModelId?: string;
+    /**
+     * Optional override for the full embedding endpoint URL. Must be the complete URL including
+     * the model and `:embedContent` action (e.g.
+     * `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent`),
+     * not just a base URL. Leave empty to use the default Generative Language API endpoint,
+     * which is constructed from `embeddingModelId`. The `key` query parameter is appended
+     * automatically.
+     */
+    endpoint?: string;
+    /**
+     * Gemini chat model identifier for query transformation (e.g., gemini-2.5-flash,
+     * gemini-1.5-flash).
+     */
+    modelId?: string;
 }
 
 /**

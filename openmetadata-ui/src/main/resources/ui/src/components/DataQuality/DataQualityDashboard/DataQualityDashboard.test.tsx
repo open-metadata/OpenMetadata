@@ -21,6 +21,7 @@ import {
 import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
 import { IncidentTimeMetricsType } from '../DataQuality.interface';
 import DataQualityDashboard from './DataQualityDashboard.component';
@@ -530,6 +531,48 @@ describe('DataQualityDashboard', () => {
           title: 'label.resolution-time',
         })
       );
+    });
+
+    describe('observabilityRouterClassBase migration', () => {
+      it('open-incident widget redirectPath.pathname should be observabilityRouterClassBase.getIncidentManagerPath()', async () => {
+        render(<DataQualityDashboard />, { wrapper: MemoryRouter });
+
+        await waitFor(() => {
+          expect(mockIncidentTypeAreaChartWidget).toHaveBeenCalled();
+        });
+
+        const expectedPath =
+          observabilityRouterClassBase.getIncidentManagerPath();
+
+        expect(mockIncidentTypeAreaChartWidget).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: 'open-incident',
+            redirectPath: expect.objectContaining({
+              pathname: expectedPath,
+            }),
+          })
+        );
+      });
+
+      it('resolved-incident widget redirectPath.pathname should be observabilityRouterClassBase.getIncidentManagerPath()', async () => {
+        render(<DataQualityDashboard />, { wrapper: MemoryRouter });
+
+        await waitFor(() => {
+          expect(mockIncidentTypeAreaChartWidget).toHaveBeenCalled();
+        });
+
+        const expectedPath =
+          observabilityRouterClassBase.getIncidentManagerPath();
+
+        expect(mockIncidentTypeAreaChartWidget).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: 'resolved-incident',
+            redirectPath: expect.objectContaining({
+              pathname: expectedPath,
+            }),
+          })
+        );
+      });
     });
   });
 
