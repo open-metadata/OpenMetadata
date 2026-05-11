@@ -174,7 +174,7 @@ def test_sampler_processor_handles_table(mock_import_sampler, table_entity, work
     metadata_mock = MagicMock()
     metadata_mock.get_profiler_config_settings.return_value = None
 
-    with patch("metadata.sampler.entity_adapters.get_context_entities") as mock_get_context:
+    with patch("metadata.utils.profiler_utils.get_context_entities") as mock_get_context:
         mock_get_context.return_value = (Mock(), Mock(), None)
 
         with patch("metadata.sampler.entity_adapters.build_database_service_conn_config") as mock_build_conn:
