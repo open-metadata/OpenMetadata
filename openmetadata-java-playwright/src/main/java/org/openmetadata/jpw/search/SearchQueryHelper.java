@@ -49,28 +49,41 @@ public final class SearchQueryHelper {
   private static SearchProbe parse(final Map<String, Object> response) {
     final List<String> ids = new ArrayList<>();
     final Set<String> seen = new HashSet<>();
+    long totalHits = 0;
     final Map<String, Object> outerHits = (Map<String, Object>) response.get("hits");
     if (outerHits == null) {
-      return new SearchProbe(ids, seen);
+      return new SearchProbe(ids, seen, 0);
+    }
+    final Object total = outerHits.get("total");
+    if (total instanceof Map) {
+      final Object value = ((Map<String, Object>) total).get("value");
+      if (value instanceof Number) {
+        totalHits = ((Number) value).longValue();
+      }
+    } else if (total instanceof Number) {
+      totalHits = ((Number) total).longValue();
     }
     final List<Map<String, Object>> innerHits =
         (List<Map<String, Object>>) outerHits.get("hits");
-    if (innerHits == null) {
-      return new SearchProbe(ids, seen);
-    }
-    for (Map<String, Object> hit : innerHits) {
-      final Object idObj = hit.get("_id");
-      if (idObj != null) {
-        final String id = idObj.toString();
-        ids.add(id);
-        seen.add(id);
+    if (innerHits != null) {
+      for (Map<String, Object> hit : innerHits) {
+        final Object idObj = hit.get("_id");
+        if (idObj != null) {
+          final String id = idObj.toString();
+          ids.add(id);
+          seen.add(id);
+        }
       }
     }
-    return new SearchProbe(ids, seen);
+    return new SearchProbe(ids, seen, totalHits);
   }
 
-  /** Result of a single search probe: every hit ID + the deduplicated set. */
-  public record SearchProbe(List<String> ids, Set<String> uniqueIds) {
+  /**
+   * Result of a single search probe: every hit ID, the deduplicated set, and the true
+   * total from the response's {@code hits.total.value} (which can exceed {@code ids.size}
+   * when the response is paginated by the {@code size} param).
+   */
+  public record SearchProbe(List<String> ids, Set<String> uniqueIds, long totalHits) {
 
     public int total() {
       return ids.size();
