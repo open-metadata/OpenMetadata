@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 import os
 from datetime import datetime
 from functools import partial
@@ -80,7 +81,7 @@ def _add_location(url: str, connection: BigQueryConnection) -> str:
     return f"{url}{separator}location={encoded_location}"
 
 
-def get_connection_url(connection: BigQueryConnection) -> str:
+def get_connection_url(connection: BigQueryConnection) -> str:  # noqa: C901
     """
     Build the connection URL and set the project
     environment variable when needed
@@ -92,14 +93,8 @@ def get_connection_url(connection: BigQueryConnection) -> str:
             connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
             if not connection.credentials.gcpConfig.projectId.root:
-                url = (
-                    f"{connection.scheme.value}://"
-                    f"{connection.credentials.gcpConfig.projectId.root or ''}"
-                )
-            elif (
-                not connection.credentials.gcpConfig.privateKey
-                and connection.credentials.gcpConfig.projectId.root
-            ):
+                url = f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root or ''}"
+            elif not connection.credentials.gcpConfig.privateKey and connection.credentials.gcpConfig.projectId.root:
                 project_id = connection.credentials.gcpConfig.projectId.root
                 os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
                 url = f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
@@ -116,8 +111,7 @@ def get_connection_url(connection: BigQueryConnection) -> str:
 
     # If gcpConfig is the JSON key path and projectId is defined, we use it by default
     elif (
-        isinstance(connection.credentials.gcpConfig, GcpCredentialsPath)
-        and connection.credentials.gcpConfig.projectId
+        isinstance(connection.credentials.gcpConfig, GcpCredentialsPath) and connection.credentials.gcpConfig.projectId
     ):
         if isinstance(  # pylint: disable=no-else-return
             connection.credentials.gcpConfig.projectId, SingleProjectId
@@ -129,10 +123,7 @@ def get_connection_url(connection: BigQueryConnection) -> str:
                 break
 
     # If gcpConfig is the GCP ADC and projectId is defined, we use it by default
-    elif (
-        isinstance(connection.credentials.gcpConfig, GcpADC)
-        and connection.credentials.gcpConfig.projectId
-    ):
+    elif isinstance(connection.credentials.gcpConfig, GcpADC) and connection.credentials.gcpConfig.projectId:
         if isinstance(  # pylint: disable=no-else-return
             connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
@@ -169,20 +160,18 @@ def test_connection(
     metadata: OpenMetadata,
     engine: Engine,
     service_connection: BigQueryConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
 
-    def get_tags(taxonomies):
+    def get_tags(taxonomies):  # noqa: RET503
         for taxonomy in taxonomies:
-            policy_tags = PolicyTagManagerClient().list_policy_tags(
-                parent=taxonomy.name
-            )
-            return policy_tags
+            policy_tags = PolicyTagManagerClient().list_policy_tags(parent=taxonomy.name)
+            return policy_tags  # noqa: RET504
 
     def test_tags():
         if not service_connection.includePolicyTags:
@@ -206,9 +195,7 @@ def test_connection(
         taxonomies = []
         for project_id in taxonomy_project_ids:
             taxonomies.extend(
-                PolicyTagManagerClient().list_taxonomies(
-                    parent=f"projects/{project_id}/locations/{taxonomy_location}"
-                )
+                PolicyTagManagerClient().list_taxonomies(parent=f"projects/{project_id}/locations/{taxonomy_location}")
             )
         return get_tags(taxonomies)
 

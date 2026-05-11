@@ -20,9 +20,10 @@ Supports:
 - Service Principal (ClientSecretCredential)
 - Managed Identity (DefaultAzureCredential)
 """
+
 import traceback
 from time import sleep
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple  # noqa: UP035
 
 import msal
 
@@ -57,7 +58,7 @@ class FabricAuthenticator:
         self.client_id = client_id
         self.client_secret = client_secret
         self.authority_uri = authority_uri
-        self._msal_client: Optional[msal.ConfidentialClientApplication] = None
+        self._msal_client: Optional[msal.ConfidentialClientApplication] = None  # noqa: UP045
 
     @property
     def msal_client(self) -> msal.ConfidentialClientApplication:
@@ -70,7 +71,7 @@ class FabricAuthenticator:
             )
         return self._msal_client
 
-    def get_token(self, scopes: list) -> Tuple[str, int]:
+    def get_token(self, scopes: list) -> Tuple[str, int]:  # noqa: UP006
         """
         Acquire OAuth2 access token for the given scopes.
 
@@ -88,20 +89,18 @@ class FabricAuthenticator:
         expires_in = response_data.get("expires_in", 3600)
 
         if not access_token:
-            raise ValueError(
-                f"Failed to acquire token: {response_data.get('error_description', 'Unknown error')}"
-            )
+            raise ValueError(f"Failed to acquire token: {response_data.get('error_description', 'Unknown error')}")
 
         logger.info("Fabric access token generated successfully")
         return access_token, expires_in
 
-    def _generate_new_token(self, scopes: list) -> Optional[dict]:
+    def _generate_new_token(self, scopes: list) -> Optional[dict]:  # noqa: UP045
         """Generate new auth token with retry logic"""
         retry = AUTH_TOKEN_MAX_RETRIES
         while retry:
             try:
                 response_data = self.msal_client.acquire_token_for_client(scopes=scopes)
-                return response_data
+                return response_data  # noqa: RET504, TRY300
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error generating new auth token: {exc}")
@@ -113,21 +112,16 @@ class FabricAuthenticator:
                     )
                     sleep(AUTH_TOKEN_RETRY_WAIT)
                 else:
-                    logger.warning(
-                        "Could not generate new token after maximum retries, "
-                        "Please check provided configs"
-                    )
+                    logger.warning("Could not generate new token after maximum retries, Please check provided configs")
         return None
 
-    def _get_token_from_cache(self, scopes: list) -> Optional[dict]:
+    def _get_token_from_cache(self, scopes: list) -> Optional[dict]:  # noqa: UP045
         """Fetch auth token from cache with retry logic"""
         retry = AUTH_TOKEN_MAX_RETRIES
         while retry:
             try:
-                response_data = self.msal_client.acquire_token_silent(
-                    scopes=scopes, account=None
-                )
-                return response_data
+                response_data = self.msal_client.acquire_token_silent(scopes=scopes, account=None)
+                return response_data  # noqa: RET504, TRY300
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error getting token from cache: {exc}")
@@ -140,20 +134,19 @@ class FabricAuthenticator:
                     sleep(AUTH_TOKEN_RETRY_WAIT)
                 else:
                     logger.warning(
-                        "Could not get token from cache after maximum retries, "
-                        "Please check provided configs"
+                        "Could not get token from cache after maximum retries, Please check provided configs"
                     )
         return None
 
-    def get_fabric_api_token(self) -> Tuple[str, int]:
+    def get_fabric_api_token(self) -> Tuple[str, int]:  # noqa: UP006
         """Get token for Fabric REST API"""
         return self.get_token(FABRIC_API_SCOPE)
 
-    def get_power_bi_token(self) -> Tuple[str, int]:
+    def get_power_bi_token(self) -> Tuple[str, int]:  # noqa: UP006
         """Get token for Power BI API"""
         return self.get_token(POWER_BI_SCOPE)
 
-    def get_token_callback(self, scopes: list) -> Callable[[], Tuple[str, int]]:
+    def get_token_callback(self, scopes: list) -> Callable[[], Tuple[str, int]]:  # noqa: UP006
         """
         Returns a callable for lazy token acquisition.
         Useful for REST clients that need refreshable tokens.

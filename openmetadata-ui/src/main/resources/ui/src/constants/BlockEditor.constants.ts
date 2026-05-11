@@ -75,3 +75,12 @@ export const LINK_PASTE_REGEX =
 export const UPLOADED_ASSETS_URL = '/api/v1/attachments/';
 
 export const TEXT_TYPES = ['text/plain', 'text/rtf'];
+
+export const ADMONITION_TYPES = [
+  'note',
+  'warning',
+  'danger',
+  'info',
+  'tip',
+  'caution',
+] as const;

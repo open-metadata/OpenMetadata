@@ -597,9 +597,9 @@ export const getExcludedIndexesBasedOnEntityTypeEditTagPermission = (
 export const getTagAssetsQueryFilter = (fqn: string) => {
   let fieldName = 'tags.tagFQN';
 
-  if (fqn.includes('Tier.')) {
+  if (fqn.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)) {
     fieldName = 'tier.tagFQN';
-  } else if (fqn.includes('Certification.')) {
+  } else if (fqn.startsWith(`Certification${FQN_SEPARATOR_CHAR}`)) {
     fieldName = 'certification.tagLabel.tagFQN';
   }
 

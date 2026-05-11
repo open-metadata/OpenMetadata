@@ -44,8 +44,12 @@ public record TableIndex(Table table) implements ColumnIndex, DataAssetIndex {
   }
 
   @Override
-  public Object getIndexServiceType() {
-    return table.getServiceType();
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    // "columns" is fields-gated in TableRepository; without it column-level tags are not
+    // hydrated, breaking tag merge in the search doc.
+    fields.add("columns");
+    return java.util.Collections.unmodifiableSet(fields);
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {

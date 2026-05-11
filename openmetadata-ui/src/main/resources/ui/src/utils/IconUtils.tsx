@@ -218,17 +218,21 @@ export const getDefaultIconForEntityType = (entityType?: string): FC => {
 export const getEntityAvatarProps = (entity: {
   style?: { iconURL?: string; color?: string };
   entityType?: string;
-}) => ({
-  src:
-    entity.style?.iconURL?.startsWith('http') ||
-    entity.style?.iconURL?.startsWith('/')
-      ? entity.style.iconURL
-      : undefined,
-  className: 'tw:text-white',
-  style: {
-    backgroundColor: entity.style?.color ?? 'var(--tw-color-brand-600)',
-  },
-  placeholderIcon: getDefaultIconForEntityType(entity.entityType) as FC<{
-    className?: string;
-  }>,
-});
+}) => {
+  const iconURL = entity.style?.iconURL;
+  const isUrl = iconURL?.startsWith('http') || iconURL?.startsWith('/');
+  const iconComponent = iconURL ? ICON_MAP[iconURL] : undefined;
+
+  return {
+    src: isUrl ? iconURL : undefined,
+    className: 'tw:text-white',
+    style: {
+      backgroundColor: entity.style?.color ?? 'var(--tw-color-brand-600)',
+    },
+    placeholderIcon: (isUrl
+      ? undefined
+      : iconComponent ?? getDefaultIconForEntityType(entity.entityType)) as FC<{
+      className?: string;
+    }>,
+  };
+};

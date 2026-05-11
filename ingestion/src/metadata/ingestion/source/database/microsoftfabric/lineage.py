@@ -11,6 +11,7 @@
 """
 Microsoft Fabric lineage module
 """
+
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.microsoftfabric.queries import (
     FABRIC_GET_STORED_PROCEDURE_QUERIES,
@@ -28,9 +29,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class MicrosoftFabricLineageSource(
-    MicrosoftFabricQueryParserSource, StoredProcedureLineageMixin, LineageSource
-):
+class MicrosoftFabricLineageSource(MicrosoftFabricQueryParserSource, StoredProcedureLineageMixin, LineageSource):
     """
     Microsoft Fabric lineage source
     """

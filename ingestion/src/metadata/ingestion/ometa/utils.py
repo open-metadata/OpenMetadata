@@ -16,7 +16,7 @@ import base64
 import json
 import re
 import string
-from typing import Any, Dict, Optional, Type, TypeVar, Union
+from typing import Any, Dict, Optional, Type, TypeVar, Union  # noqa: UP035
 
 from pydantic import BaseModel
 from requests.utils import quote as url_quote
@@ -39,7 +39,7 @@ def format_name(name: str) -> str:
 
 
 def get_entity_type(
-    entity: Union[Type[T], str],
+    entity: Union[Type[T], str],  # noqa: UP006, UP007
 ) -> str:
     """
     Given an Entity T, return its type.
@@ -74,7 +74,7 @@ def model_str(arg: Any) -> str:
     return str(arg)
 
 
-def quote(fqn: Union[FullyQualifiedEntityName, str]) -> str:
+def quote(fqn: Union[FullyQualifiedEntityName, str]) -> str:  # noqa: UP007
     """
     Quote the FQN so that it's safe to pass to the API.
     E.g., `"foo.bar/baz"` -> `%22foo.bar%2Fbaz%22`
@@ -94,13 +94,13 @@ def build_entity_reference(entity: T) -> EntityReference:
     )
 
 
-def decode_jwt_token(jwt_token: str) -> Optional[Dict[str, Any]]:
+def decode_jwt_token(jwt_token: str) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
     """
     Decode JWT token to extract payload without verification.
     JWT tokens have three parts: header.payload.signature
     We only decode the payload part to get user information.
     """
-    from metadata.utils.logger import ometa_logger
+    from metadata.utils.logger import ometa_logger  # noqa: PLC0415
 
     logger = ometa_logger()
     try:

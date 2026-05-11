@@ -376,15 +376,11 @@ class TestSpecificDialectQueries(TestCase):
                 ),
                 (
                     TestColumnQualifierTuple("location_id", "dbt.stg_location"),
-                    TestColumnQualifierTuple(
-                        "location_id", "atlas.dbt.int_inventory_juvo"
-                    ),
+                    TestColumnQualifierTuple("location_id", "atlas.dbt.int_inventory_juvo"),
                 ),
                 (
                     TestColumnQualifierTuple("avg_unit_cost", "dbt.stg_sku_cost"),
-                    TestColumnQualifierTuple(
-                        "avg_cost_usd", "atlas.dbt.int_inventory_juvo"
-                    ),
+                    TestColumnQualifierTuple("avg_cost_usd", "atlas.dbt.int_inventory_juvo"),
                 ),
             ],
             dialect=Dialect.CLICKHOUSE.value,
@@ -584,32 +580,24 @@ class TestSpecificDialectQueries(TestCase):
                 # Legacy orders path: tb_jobs -> view
                 (
                     TestColumnQualifierTuple("job_id", "raw_legacy_mysql_mena.tb_jobs"),
-                    TestColumnQualifierTuple(
-                        "job_id", "stg_globalv2_default.b2c_order_operational_converted"
-                    ),
+                    TestColumnQualifierTuple("job_id", "stg_globalv2_default.b2c_order_operational_converted"),
                 ),
                 (
-                    TestColumnQualifierTuple(
-                        "order_id", "raw_legacy_mysql_mena.tb_jobs"
-                    ),
+                    TestColumnQualifierTuple("order_id", "raw_legacy_mysql_mena.tb_jobs"),
                     TestColumnQualifierTuple(
                         "customer_id",
                         "stg_globalv2_default.b2c_order_operational_converted",
                     ),
                 ),
                 (
-                    TestColumnQualifierTuple(
-                        "job_status", "raw_legacy_mysql_mena.tb_jobs"
-                    ),
+                    TestColumnQualifierTuple("job_status", "raw_legacy_mysql_mena.tb_jobs"),
                     TestColumnQualifierTuple(
                         "job_status",
                         "stg_globalv2_default.b2c_order_operational_converted",
                     ),
                 ),
                 (
-                    TestColumnQualifierTuple(
-                        "creation_datetime", "raw_legacy_mysql_mena.tb_jobs"
-                    ),
+                    TestColumnQualifierTuple("creation_datetime", "raw_legacy_mysql_mena.tb_jobs"),
                     TestColumnQualifierTuple(
                         "creation_datetime",
                         "stg_globalv2_default.b2c_order_operational_converted",
@@ -618,9 +606,7 @@ class TestSpecificDialectQueries(TestCase):
                 # New orders path: orders -> view
                 (
                     TestColumnQualifierTuple("id", "raw_globalv2_ms_order.orders"),
-                    TestColumnQualifierTuple(
-                        "job_id", "stg_globalv2_default.b2c_order_operational_converted"
-                    ),
+                    TestColumnQualifierTuple("job_id", "stg_globalv2_default.b2c_order_operational_converted"),
                 ),
                 (
                     TestColumnQualifierTuple("user_id", "raw_globalv2_ms_order.orders"),
@@ -637,9 +623,7 @@ class TestSpecificDialectQueries(TestCase):
                     ),
                 ),
                 (
-                    TestColumnQualifierTuple(
-                        "created_at", "raw_globalv2_ms_order.orders"
-                    ),
+                    TestColumnQualifierTuple("created_at", "raw_globalv2_ms_order.orders"),
                     TestColumnQualifierTuple(
                         "creation_datetime",
                         "stg_globalv2_default.b2c_order_operational_converted",
@@ -819,15 +803,11 @@ LATERAL FLATTEN (INPUT => V) a"""
             [
                 (
                     TestColumnQualifierTuple("V", "TBL_RETAIL_FACILITIES_RAW"),
-                    TestColumnQualifierTuple(
-                        "accountcategorycode", "TBL_RETAILFACILITY_BRONZE"
-                    ),
+                    TestColumnQualifierTuple("accountcategorycode", "TBL_RETAILFACILITY_BRONZE"),
                 ),
                 (
                     TestColumnQualifierTuple("V", "TBL_RETAIL_FACILITIES_RAW"),
-                    TestColumnQualifierTuple(
-                        "accountclassificationcode", "TBL_RETAILFACILITY_BRONZE"
-                    ),
+                    TestColumnQualifierTuple("accountclassificationcode", "TBL_RETAILFACILITY_BRONZE"),
                 ),
                 (
                     TestColumnQualifierTuple("V", "TBL_RETAIL_FACILITIES_RAW"),
@@ -835,33 +815,23 @@ LATERAL FLATTEN (INPUT => V) a"""
                 ),
                 (
                     TestColumnQualifierTuple("V", "TBL_RETAIL_FACILITIES_RAW"),
-                    TestColumnQualifierTuple(
-                        "accountnumber", "TBL_RETAILFACILITY_BRONZE"
-                    ),
+                    TestColumnQualifierTuple("accountnumber", "TBL_RETAILFACILITY_BRONZE"),
                 ),
                 (
                     TestColumnQualifierTuple("V", "TBL_RETAIL_FACILITIES_RAW"),
-                    TestColumnQualifierTuple(
-                        "address1_city", "TBL_RETAILFACILITY_BRONZE"
-                    ),
+                    TestColumnQualifierTuple("address1_city", "TBL_RETAILFACILITY_BRONZE"),
                 ),
                 (
                     TestColumnQualifierTuple("V", "TBL_RETAIL_FACILITIES_RAW"),
-                    TestColumnQualifierTuple(
-                        "address1_country", "TBL_RETAILFACILITY_BRONZE"
-                    ),
+                    TestColumnQualifierTuple("address1_country", "TBL_RETAILFACILITY_BRONZE"),
                 ),
                 (
                     TestColumnQualifierTuple("V", "TBL_RETAIL_FACILITIES_RAW"),
-                    TestColumnQualifierTuple(
-                        "address1_line1", "TBL_RETAILFACILITY_BRONZE"
-                    ),
+                    TestColumnQualifierTuple("address1_line1", "TBL_RETAILFACILITY_BRONZE"),
                 ),
                 (
                     TestColumnQualifierTuple("V", "TBL_RETAIL_FACILITIES_RAW"),
-                    TestColumnQualifierTuple(
-                        "address1_postalcode", "TBL_RETAILFACILITY_BRONZE"
-                    ),
+                    TestColumnQualifierTuple("address1_postalcode", "TBL_RETAILFACILITY_BRONZE"),
                 ),
                 (
                     TestColumnQualifierTuple("V", "TBL_RETAIL_FACILITIES_RAW"),
@@ -929,20 +899,12 @@ LATERAL FLATTEN (INPUT => V) a"""
             query,
             [
                 (
-                    TestColumnQualifierTuple(
-                        "source_id", "dev_edw_db.cqiqfu_trf.trf_base_year_type_20"
-                    ),
-                    TestColumnQualifierTuple(
-                        "end_src_batch_id", "cqiqfu_trf.dm_cntrl_tb"
-                    ),
+                    TestColumnQualifierTuple("source_id", "dev_edw_db.cqiqfu_trf.trf_base_year_type_20"),
+                    TestColumnQualifierTuple("end_src_batch_id", "cqiqfu_trf.dm_cntrl_tb"),
                 ),
                 (
-                    TestColumnQualifierTuple(
-                        "start_src_batch_id", "cqiqfu_trf.dm_cntrl_tb"
-                    ),
-                    TestColumnQualifierTuple(
-                        "end_src_batch_id", "cqiqfu_trf.dm_cntrl_tb"
-                    ),
+                    TestColumnQualifierTuple("start_src_batch_id", "cqiqfu_trf.dm_cntrl_tb"),
+                    TestColumnQualifierTuple("end_src_batch_id", "cqiqfu_trf.dm_cntrl_tb"),
                 ),
             ],
             dialect=Dialect.SNOWFLAKE.value,
@@ -1144,9 +1106,7 @@ END;"""
 
     def test_snowflake_copy_into_fully_qualified_stage(self):
         """Test COPY INTO table FROM @db.schema.stage with fully qualified stage name"""
-        query = (
-            "COPY INTO my_table FROM @my_db.my_schema.my_stage FILE_FORMAT=(TYPE=CSV)"
-        )
+        query = "COPY INTO my_table FROM @my_db.my_schema.my_stage FILE_FORMAT=(TYPE=CSV)"
 
         assert_table_lineage_equal(
             query,
@@ -1251,48 +1211,28 @@ SELECT entity_id, entity_name, source_system FROM source_b"""
             query,
             [
                 (
-                    TestColumnQualifierTuple(
-                        "entity_id", "staging.int_entity__source_a"
-                    ),
+                    TestColumnQualifierTuple("entity_id", "staging.int_entity__source_a"),
                     TestColumnQualifierTuple("entity_id", "analytics_mart.dim_entity"),
                 ),
                 (
-                    TestColumnQualifierTuple(
-                        "entity_name", "staging.int_entity__source_a"
-                    ),
-                    TestColumnQualifierTuple(
-                        "entity_name", "analytics_mart.dim_entity"
-                    ),
+                    TestColumnQualifierTuple("entity_name", "staging.int_entity__source_a"),
+                    TestColumnQualifierTuple("entity_name", "analytics_mart.dim_entity"),
                 ),
                 (
-                    TestColumnQualifierTuple(
-                        "source_system", "staging.int_entity__source_a"
-                    ),
-                    TestColumnQualifierTuple(
-                        "source_system", "analytics_mart.dim_entity"
-                    ),
+                    TestColumnQualifierTuple("source_system", "staging.int_entity__source_a"),
+                    TestColumnQualifierTuple("source_system", "analytics_mart.dim_entity"),
                 ),
                 (
-                    TestColumnQualifierTuple(
-                        "entity_id", "staging.int_entity__source_b"
-                    ),
+                    TestColumnQualifierTuple("entity_id", "staging.int_entity__source_b"),
                     TestColumnQualifierTuple("entity_id", "analytics_mart.dim_entity"),
                 ),
                 (
-                    TestColumnQualifierTuple(
-                        "entity_name", "staging.int_entity__source_b"
-                    ),
-                    TestColumnQualifierTuple(
-                        "entity_name", "analytics_mart.dim_entity"
-                    ),
+                    TestColumnQualifierTuple("entity_name", "staging.int_entity__source_b"),
+                    TestColumnQualifierTuple("entity_name", "analytics_mart.dim_entity"),
                 ),
                 (
-                    TestColumnQualifierTuple(
-                        "source_system", "staging.int_entity__source_b"
-                    ),
-                    TestColumnQualifierTuple(
-                        "source_system", "analytics_mart.dim_entity"
-                    ),
+                    TestColumnQualifierTuple("source_system", "staging.int_entity__source_b"),
+                    TestColumnQualifierTuple("source_system", "analytics_mart.dim_entity"),
                 ),
             ],
             dialect=Dialect.CLICKHOUSE.value,

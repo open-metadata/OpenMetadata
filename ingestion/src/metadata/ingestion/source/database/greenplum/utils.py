@@ -13,8 +13,9 @@
 """
 Greenplum SQLAlchemy util methods
 """
+
 import re
-from typing import Dict, Tuple
+from typing import Dict, Tuple  # noqa: UP035
 
 from sqlalchemy import sql, util
 from sqlalchemy.dialects.postgresql.base import ENUM
@@ -34,9 +35,7 @@ from metadata.utils.sqlalchemy_utils import (
 
 
 @reflection.cache
-def get_table_comment(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_comment(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     return get_table_comment_wrapper(
         self,
         connection,
@@ -54,15 +53,9 @@ def get_columns(  # pylint: disable=too-many-locals
     Overriding the dialect method to add raw_data_type in response
     """
 
-    table_oid = self.get_table_oid(
-        connection, table_name, schema, info_cache=kw.get("info_cache")
-    )
+    table_oid = self.get_table_oid(connection, table_name, schema, info_cache=kw.get("info_cache"))
 
-    generated = (
-        "a.attgenerated as generated"
-        if self.server_version_info >= (12,)
-        else "NULL as generated"
-    )
+    generated = "a.attgenerated as generated" if self.server_version_info >= (12,) else "NULL as generated"
     if self.server_version_info >= (10,):
         # a.attidentity != '' is required or it will reflect also
         # serial columns as identity.
@@ -101,7 +94,7 @@ def get_columns(  # pylint: disable=too-many-locals
         format_type,
         default_,
         notnull,
-        table_oid,
+        table_oid,  # noqa: B007
         comment,
         generated,
         identity,
@@ -130,7 +123,7 @@ def _get_numeric_args(charlen):
     return ()
 
 
-def _get_interval_args(charlen, attype, kwargs: Dict):
+def _get_interval_args(charlen, attype, kwargs: Dict):  # noqa: UP006
     field_match = re.match(r"interval (.+)", attype, re.I)
     if charlen:
         kwargs["precision"] = int(charlen)
@@ -148,9 +141,7 @@ def _get_bit_var_args(charlen, kwargs):
     return (), kwargs
 
 
-def get_column_args(
-    charlen: str, args: Tuple, kwargs: Dict, attype: str
-) -> Tuple[Tuple, Dict]:
+def get_column_args(charlen: str, args: Tuple, kwargs: Dict, attype: str) -> Tuple[Tuple, Dict]:  # noqa: UP006
     """
     Method to determine the args and kwargs
     """
@@ -210,13 +201,7 @@ def get_column_default(coltype, schema, default, generated):
                 # unconditionally quote the schema name.  this could
                 # later be enhanced to obey quoting rules /
                 # "quote schema"
-                default = (
-                    match.group(1)
-                    + (f'"{sch}"')
-                    + "."
-                    + match.group(2)
-                    + match.group(3)
-                )
+                default = match.group(1) + (f'"{sch}"') + "." + match.group(2) + match.group(3)
     return default, autoincrement, computed
 
 
@@ -337,9 +322,7 @@ def get_column_info(
 
 
 @reflection.cache
-def get_view_definition(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_view_definition(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     return get_view_definition_wrapper(
         self,
         connection,

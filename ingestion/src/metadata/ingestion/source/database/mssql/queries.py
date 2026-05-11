@@ -64,7 +64,7 @@ MSSQL_GET_DATABASE_COMMENTS = textwrap.dedent(
 FROM sys.extended_properties ep
 WHERE ep.class = 0  
 AND ep.name = 'MS_Description'
-"""
+"""  # noqa: W291
 )
 
 MSSQL_GET_SCHEMA_COMMENTS = textwrap.dedent(
@@ -79,7 +79,7 @@ LEFT JOIN sys.extended_properties ep
     AND ep.minor_id = 0 
     AND ep.class = 3
     AND ep.name = 'MS_Description'
-    """
+    """  # noqa: W291
 )
 
 MSSQL_GET_STORED_PROCEDURE_COMMENTS = textwrap.dedent(
@@ -96,7 +96,7 @@ LEFT JOIN sys.extended_properties ep
     AND ep.minor_id = 0 
     AND ep.class = 1
     AND ep.name = 'MS_Description';
-"""
+"""  # noqa: W291
 )
 
 MSSQL_ALL_VIEW_DEFINITIONS = textwrap.dedent(
@@ -247,7 +247,7 @@ JOIN sys.sql_modules l on l.object_id = p.object_id
  WHERE ROUTINE_TYPE = 'PROCEDURE'
    AND ROUTINE_CATALOG = '{database_name}'
    AND ROUTINE_SCHEMA = '{schema_name}'
-    """
+    """  # noqa: W291
 )
 
 MSSQL_GET_ENCRYPTED_STORED_PROCEDURES = textwrap.dedent(
@@ -319,7 +319,7 @@ JOIN Q_HISTORY Q
     )
 order by PROCEDURE_START_TIME desc
 ;
-    """
+    """  # noqa: W291
 )
 
 GET_DB_CONFIGS = textwrap.dedent("DBCC USEROPTIONS;")

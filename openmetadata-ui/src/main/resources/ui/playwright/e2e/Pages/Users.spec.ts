@@ -85,6 +85,7 @@ let user2: UserClass;
 let user3: UserClass;
 let tableEntity: TableClass;
 let tableEntity2: TableClass;
+let dataStewardPermissionTableUrl: string;
 let policy: PolicyClass;
 let role: RolesClass;
 let persona1: PersonaClass;
@@ -162,7 +163,16 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await user3.create(apiContext);
   await user3.setAdminRole(apiContext);
   await tableEntity.create(apiContext);
-  await tableEntity2.create(apiContext);
+  const { entity: dataStewardPermissionTable } = await tableEntity2.create(
+    apiContext
+  );
+  await tableEntity2.setOwner(apiContext, {
+    id: user3.responseData.id,
+    type: 'user',
+  });
+  dataStewardPermissionTableUrl = `/table/${encodeURIComponent(
+    dataStewardPermissionTable.fullyQualifiedName
+  )}`;
   await policy.create(apiContext, DATA_STEWARD_RULES);
   await role.create(apiContext, [policy.responseData.name]);
   await persona1.create(apiContext, [adminUser.responseData.id]);
@@ -474,35 +484,13 @@ test.describe('User with Data Steward Roles', () => {
     await settingPageOperationPermissionCheck(dataStewardPage);
   });
 
-  test('Check permissions for Data Steward', async ({
-    adminPage,
-    dataStewardPage,
-  }) => {
+  test('Check permissions for Data Steward', async ({ dataStewardPage }) => {
     test.slow();
-    await redirectToHomePage(adminPage);
 
     await checkStewardServicesPermissions(dataStewardPage);
 
-    const { apiContext, afterAction } = await getApiContext(adminPage);
-    try {
-      const tableResponse = await apiContext.get(
-        `/api/v1/tables/${tableEntity2.entityResponseData.id}`
-      );
-      expect(tableResponse.ok()).toBeTruthy();
-      const table = await tableResponse.json();
-
-      await tableEntity2.setOwner(apiContext, {
-        id: user3.responseData.id,
-        type: 'user',
-      });
-
-      await dataStewardPage.goto(
-        `/table/${encodeURIComponent(table.fullyQualifiedName)}`
-      );
-      await waitForAllLoadersToDisappear(dataStewardPage);
-    } finally {
-      await afterAction();
-    }
+    await dataStewardPage.goto(dataStewardPermissionTableUrl);
+    await waitForAllLoadersToDisappear(dataStewardPage);
 
     await checkStewardPermissions(dataStewardPage);
   });

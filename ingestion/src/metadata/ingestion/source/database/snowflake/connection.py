@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from functools import partial
 from typing import Any, Optional
 from urllib.parse import quote_plus
@@ -64,7 +65,7 @@ logger = ingestion_logger()
 class SnowflakeEngineWrapper(BaseModel):
     service_connection: SnowflakeConnectionConfig
     engine: Any
-    database_name: Optional[str] = None
+    database_name: Optional[str] = None  # noqa: UP045
 
 
 def _init_database(engine_wrapper: SnowflakeEngineWrapper):
@@ -132,11 +133,7 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
             url += f"{quote_plus(connection.username)}"
             if not connection.password:
                 connection.password = SecretStr("")
-            url += (
-                f":{quote_plus(connection.password.get_secret_value())}"
-                if connection
-                else ""
-            )
+            url += f":{quote_plus(connection.password.get_secret_value())}" if connection else ""
             url += "@"
 
         url += connection.account
@@ -146,11 +143,7 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
         if options:
             if not connection.database:
                 url += "/"
-            params = "&".join(
-                f"{key}={quote_plus(value)}"
-                for (key, value) in options.items()
-                if value
-            )
+            params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
             url = f"{url}?{params}"
         options = {
             "account": connection.account,
@@ -162,9 +155,7 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
             url = f"{url}?{params}"
         return url
 
-    def _get_private_key(
-        self, encoding: serialization.Encoding = serialization.Encoding.DER
-    ) -> Optional[bytes]:
+    def _get_private_key(self, encoding: serialization.Encoding = serialization.Encoding.DER) -> Optional[bytes]:  # noqa: UP045
         connection = self.service_connection
         if connection.privateKey:
             snowflake_private_key_passphrase = (
@@ -174,13 +165,9 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
             )
 
             if not snowflake_private_key_passphrase:
-                logger.warning(
-                    "Snowflake Private Key Passphrase not found, replacing it with empty string"
-                )
+                logger.warning("Snowflake Private Key Passphrase not found, replacing it with empty string")
 
-            encrypted_private_key = normalize_pem_string(
-                connection.privateKey.get_secret_value()
-            )
+            encrypted_private_key = normalize_pem_string(connection.privateKey.get_secret_value())
 
             p_key = serialization.load_pem_private_key(
                 bytes(
@@ -195,10 +182,10 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
                 format=serialization.PrivateFormat.PKCS8,
                 encryption_algorithm=serialization.NoEncryption(),
             )
-            return pkb
+            return pkb  # noqa: RET504
         return None
 
-    def _get_client_session_keep_alive(self) -> Optional[bool]:
+    def _get_client_session_keep_alive(self) -> Optional[bool]:  # noqa: UP045
         connection = self.service_connection
         if connection.clientSessionKeepAlive:
             return connection.clientSessionKeepAlive
@@ -216,27 +203,22 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
             connection.connectionArguments.root["private_key"] = private_key
 
         if keep_alive := self._get_client_session_keep_alive():
-            connection.connectionArguments.root[
-                "client_session_keep_alive"
-            ] = keep_alive
+            connection.connectionArguments.root["client_session_keep_alive"] = keep_alive
 
         engine = create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=self.get_connection_url,
             get_connection_args_fn=get_connection_args_common,
         )
-        if (
-            connection.connectionArguments.root
-            and connection.connectionArguments.root.get("private_key")
-        ):
+        if connection.connectionArguments.root and connection.connectionArguments.root.get("private_key"):
             del connection.connectionArguments.root["private_key"]
         return engine
 
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part
@@ -260,12 +242,8 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
         )
         test_fn = {
             "CheckAccess": partial(test_connection_engine_step, self.client),
-            "GetDatabases": partial(
-                test_query, statement=SNOWFLAKE_GET_DATABASES, engine=self.client
-            ),
-            "GetSchemas": partial(
-                execute_inspector_func, engine_wrapper, "get_schema_names"
-            ),
+            "GetDatabases": partial(test_query, statement=SNOWFLAKE_GET_DATABASES, engine=self.client),
+            "GetSchemas": partial(execute_inspector_func, engine_wrapper, "get_schema_names"),
             "GetTables": partial(
                 test_table_query,
                 statement=SNOWFLAKE_TEST_GET_TABLES,
@@ -283,16 +261,12 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
             ),
             "GetQueries": partial(
                 test_query,
-                statement=SNOWFLAKE_TEST_GET_QUERIES.format(
-                    account_usage=self.service_connection.accountUsageSchema
-                ),
+                statement=SNOWFLAKE_TEST_GET_QUERIES.format(account_usage=self.service_connection.accountUsageSchema),
                 engine=self.client,
             ),
             "GetTags": partial(
                 test_query,
-                statement=SNOWFLAKE_TEST_FETCH_TAG.format(
-                    account_usage=self.service_connection.accountUsageSchema
-                ),
+                statement=SNOWFLAKE_TEST_FETCH_TAG.format(account_usage=self.service_connection.accountUsageSchema),
                 engine=self.client,
             ),
         }
@@ -309,6 +283,4 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
         """
         Return the connection dictionary for this service.
         """
-        raise NotImplementedError(
-            "get_connection_dict is not implemented for Snowflake"
-        )
+        raise NotImplementedError("get_connection_dict is not implemented for Snowflake")

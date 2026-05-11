@@ -15,7 +15,7 @@ import sys
 import docker
 from testcontainers.oracle import OracleDbContainer
 
-from .database_test_container import DataBaseTestContainer
+from .database_test_container import DataBaseTestContainer  # noqa: TID252
 
 
 class OracleTestContainer(DataBaseTestContainer):
@@ -65,7 +65,7 @@ class OracleTestContainer(DataBaseTestContainer):
         https://stackoverflow.com/questions/74093231/nosuchmoduleerror-cant-load-plugin-sqlalchemy-dialectsoracle-oracledb
         """
         dialect = "oracle+oracledb"
-        if sqlalchemy_vers := sys.modules.get("sqlalchemy"):
+        if sqlalchemy_vers := sys.modules.get("sqlalchemy"):  # noqa: SIM102
             if sqlalchemy_vers.__version__.startswith("1."):
                 dialect = "oracle"
 
@@ -74,7 +74,7 @@ class OracleTestContainer(DataBaseTestContainer):
             username=self.username,
             password=self.password,
             port=self.port,
-        ) + "/?service_name={}".format(self.dbname)
+        ) + "/?service_name={}".format(self.dbname)  # noqa: UP032
 
     def get_config(self) -> str:
         return json.dumps(

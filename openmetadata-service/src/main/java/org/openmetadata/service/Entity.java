@@ -201,6 +201,9 @@ public final class Entity {
   public static final String FILE = "file";
   public static final String SPREADSHEET = "spreadsheet";
   public static final String WORKSHEET = "worksheet";
+  public static final String FOLDER = "folder";
+  public static final String CONTEXT_FILE = "contextFile";
+  public static final String CONTEXT_FILE_CONTENT = "contextFileContent";
 
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
@@ -561,6 +564,11 @@ public final class Entity {
   public static Fields getFields(String entityType, List<String> fields) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     return entityRepository.getFields(String.join(",", fields));
+  }
+
+  public static Fields getOnlySupportedFields(String entityType, List<String> fields) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    return entityRepository.getOnlySupportedFields(String.join(",", fields));
   }
 
   public static <T> T getEntity(EntityReference ref, String fields, Include include) {

@@ -15,7 +15,7 @@
           "description": "Type of sampling to apply. STATIC: fixed sample size. DYNAMIC: sample size determined at runtime based on row count thresholds.",
           "type": "string",
           "enum": ["STATIC", "DYNAMIC"],
-          "default": "STATIC"
+          "default": "DYNAMIC"
         },
         "config": {
           "oneOf": [

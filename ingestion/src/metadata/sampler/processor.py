@@ -11,9 +11,10 @@
 """
 Data Sampler for the PII Workflow
 """
+
 import traceback
 from copy import deepcopy
-from typing import Optional, Type, cast
+from typing import Optional, Type, cast  # noqa: UP035
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
@@ -40,14 +41,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.ingestion.api.step import Step
+from metadata.ingestion.api.step import Step  # noqa: TC001
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.profiler.source.metadata import ProfilerSourceAndEntity
 from metadata.sampler.config import get_config_for_table
 from metadata.sampler.models import SampleConfig, SampleData, SamplerResponse
-from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.sampler.sampler_interface import SamplerInterface  # noqa: TC001
 from metadata.utils.bigquery_utils import copy_service_config
 from metadata.utils.dependency_injector.dependency_injector import (
     DependencyNotFoundError,
@@ -69,7 +70,7 @@ class SamplerProcessor(Processor):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        profiler_config_class: Inject[Type[ProfilerProcessorConfig]] = None,
+        profiler_config_class: Inject[Type[ProfilerProcessorConfig]] = None,  # noqa: UP006
     ):
         if profiler_config_class is None:
             raise DependencyNotFoundError(
@@ -84,9 +85,7 @@ class SamplerProcessor(Processor):
         self.source_config = self.config.source.sourceConfig.config
 
         # We still rely on the orm-processor. We should decouple this in the future
-        self.profiler_config = profiler_config_class.model_validate(
-            self.config.processor.model_dump().get("config")
-        )
+        self.profiler_config = profiler_config_class.model_validate(self.config.processor.model_dump().get("config"))
 
         self._interface_type: str = config.source.type.lower()
 
@@ -98,7 +97,7 @@ class SamplerProcessor(Processor):
             self.service_type = ServiceType.Database
         else:
             # This should never happen if config parsing worked correctly
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004
                 f"Could not determine service type from config. "
                 f"Config type: {type(self.source_config).__name__}, "
                 f"Interface type: {self._interface_type}. "
@@ -111,14 +110,12 @@ class SamplerProcessor(Processor):
             f"interface_type={self._interface_type}"
         )
 
-        self.sampler_class = import_sampler_class(
-            self.service_type, source_type=self._interface_type
-        )
+        self.sampler_class = import_sampler_class(self.service_type, source_type=self._interface_type)
 
         self._sample_data_config = None
         settings = self.metadata.get_profiler_config_settings()
         if settings:
-            profiler_cfg = cast(ProfilerConfiguration, settings.config_value)
+            profiler_cfg = cast(ProfilerConfiguration, settings.config_value)  # noqa: TC006
             self._sample_data_config = profiler_cfg.sampleDataConfig
 
     @property
@@ -156,14 +153,10 @@ class SamplerProcessor(Processor):
             )
         )
 
-    def _run_for_table(
-        self, entity: Table, record: ProfilerSourceAndEntity
-    ) -> Either[SamplerResponse]:
+    def _run_for_table(self, entity: Table, record: ProfilerSourceAndEntity) -> Either[SamplerResponse]:
         """Process Table entity for sampling"""
         try:
-            schema_entity, database_entity, _ = get_context_entities(
-                entity=entity, metadata=self.metadata
-            )
+            schema_entity, database_entity, _ = get_context_entities(entity=entity, metadata=self.metadata)
 
             if database_entity is None:
                 return Either(
@@ -179,9 +172,7 @@ class SamplerProcessor(Processor):
                     )
                 )
 
-            service_conn_config = self._copy_service_config(
-                self.config, database_entity
-            )
+            service_conn_config = self._copy_service_config(self.config, database_entity)
 
             sampler_interface: SamplerInterface = self.sampler_class.create(
                 service_connection_config=service_conn_config,
@@ -198,10 +189,7 @@ class SamplerProcessor(Processor):
                 data=sampler_interface.generate_sample_data(self._sample_data_config),
                 store=bool(
                     self.source_config.storeSampleData
-                    and (
-                        self._sample_data_config is None
-                        or self._sample_data_config.storeSampleData
-                    )
+                    and (self._sample_data_config is None or self._sample_data_config.storeSampleData)
                 ),
             )
             sampler_interface.close()
@@ -220,14 +208,10 @@ class SamplerProcessor(Processor):
                 )
             )
 
-    def _run_for_container(
-        self, entity: Container, record: ProfilerSourceAndEntity
-    ) -> Either[SamplerResponse]:
+    def _run_for_container(self, entity: Container, record: ProfilerSourceAndEntity) -> Either[SamplerResponse]:
         """Process Container entity for sampling"""
         try:
-            service_conn_config = deepcopy(
-                self.config.source.serviceConnection.root.config
-            )
+            service_conn_config = deepcopy(self.config.source.serviceConnection.root.config)
 
             sampler_interface: SamplerInterface = self.sampler_class.create(
                 service_connection_config=service_conn_config,
@@ -244,10 +228,7 @@ class SamplerProcessor(Processor):
                 data=sampler_interface.generate_sample_data(self._sample_data_config),
                 store=bool(
                     self.source_config.storeSampleData
-                    and (
-                        self._sample_data_config is None
-                        or self._sample_data_config.storeSampleData
-                    )
+                    and (self._sample_data_config is None or self._sample_data_config.storeSampleData)
                 ),
             )
             sampler_interface.close()
@@ -271,14 +252,12 @@ class SamplerProcessor(Processor):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)
 
-    def _copy_service_config(
-        self, config: OpenMetadataWorkflowConfig, database: Database
-    ) -> DatabaseConnection:
+    def _copy_service_config(self, config: OpenMetadataWorkflowConfig, database: Database) -> DatabaseConnection:
         """Make a copy of the service config and update the database name
 
         Args:
@@ -303,9 +282,9 @@ class SamplerProcessor(Processor):
                 config_copy.catalog = database.name.root  # type: ignore
 
         # we know we'll only be working with DatabaseConnection, we cast the type to satisfy type checker
-        config_copy = cast(DatabaseConnection, config_copy)
+        config_copy = cast(DatabaseConnection, config_copy)  # noqa: TC006
 
-        return config_copy
+        return config_copy  # noqa: RET504
 
     def close(self) -> None:
         """Nothing to close"""

@@ -11,6 +11,7 @@
 """
 Test column type in column_type_parser
 """
+
 import json
 import logging
 import os
@@ -81,12 +82,12 @@ EXPTECTED_COLUMN_TYPE = [
     "GEOMETRY",
     "UNKNOWN",
 ]
-root = os.path.dirname(__file__)
+root = os.path.dirname(__file__)  # noqa: PTH120
 
 
 try:
-    with open(
-        os.path.join(root, "resources/expected_output_column_parser.json"),
+    with open(  # noqa: PTH123
+        os.path.join(root, "resources/expected_output_column_parser.json"),  # noqa: PTH118
         encoding="UTF-8",
     ) as f:
         EXPECTED_OUTPUT = json.loads(f.read())["data"]
@@ -130,9 +131,7 @@ def test_check_datalake_type():
     }
     df = pd.read_csv(root + "/test_column_type_parser.csv")
     for column_name in df.columns.values.tolist():
-        assert assert_col_type_dict.get(
-            column_name
-        ) == GenericDataFrameColumnParser.fetch_col_types(df, column_name)
+        assert assert_col_type_dict.get(column_name) == GenericDataFrameColumnParser.fetch_col_types(df, column_name)
 
 
 def test_superset_parse_array_data_type():
@@ -145,4 +144,4 @@ def test_superset_parse_array_data_type():
     assert result == DataType.UNKNOWN
     col_parse = {"dataType": "STRING", "arrayDataType": None}
     result = SupersetSourceMixin.parse_array_data_type(None, col_parse)
-    assert result == None
+    assert result == None  # noqa: E711

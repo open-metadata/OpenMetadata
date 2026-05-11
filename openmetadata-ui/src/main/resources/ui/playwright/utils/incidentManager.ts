@@ -42,10 +42,10 @@ export const acknowledgeTask = async (data: {
     page.locator(`[data-testid="status-badge-${testCase}"]`)
   ).toContainText('Failed');
 
-  await page
-    .locator(`[data-testid="${testCase}-status"] >> text=New`)
-    .waitFor();
-  await page.click(`[data-testid="${testCase}"] >> text=${testCase}`);
+  await expect(
+    page.locator(`[data-testid="${testCase}-status"]`)
+  ).toContainText('New');
+  await page.getByTestId(testCase).getByText(testCase).click();
   await waitForAllLoadersToDisappear(page);
   await page.click('[data-testid="edit-resolution-icon"]');
   await page.click('[data-testid="test-case-resolution-status-type"]');
@@ -53,9 +53,9 @@ export const acknowledgeTask = async (data: {
   const statusChangeResponse = waitForTaskResolveResponse(page);
   await page.click('#update-status-button');
   await statusChangeResponse;
-  await page
-    .locator(`[data-testid="${testCase}-status"] >> text=Ack`)
-    .waitFor();
+  await expect(
+    page.locator(`[data-testid="${testCase}-status"]`)
+  ).toContainText('Ack');
 
   await expect(
     page.locator(
@@ -210,7 +210,7 @@ export const assignIncident = async (data: {
     await addAssigneeFromPopoverWidget({ page, user, testCaseName });
   } else {
     await page.click(`[data-testid="${testCaseName}-status"]`);
-    await page.getByRole('menuitem', { name: 'Assigned' }).click();
+    await page.getByTestId('status-item-Assigned').click();
     await page.getByTestId(`${testCaseName}-assignee-popover`).waitFor();
     await page.click('[data-testid="assignee-search-input"]');
 

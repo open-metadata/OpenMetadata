@@ -11,10 +11,11 @@
 """
 Local Reader
 """
+
 import os
 import traceback
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional, Union  # noqa: UP035
 
 from metadata.readers.file.base import Reader, ReadException
 from metadata.utils.constants import UTF_8
@@ -28,10 +29,10 @@ class LocalReader(Reader):
     Read files locally
     """
 
-    def __init__(self, base_path: Optional[Path] = None):
+    def __init__(self, base_path: Optional[Path] = None):  # noqa: UP045
         self.base_path = base_path or Path(__file__)
 
-    def read(self, path: str, **kwargs) -> Union[str, bytes]:
+    def read(self, path: str, **kwargs) -> Union[str, bytes]:  # noqa: UP007
         """
         simple local reader
 
@@ -39,32 +40,25 @@ class LocalReader(Reader):
         to let the client use this data as needed.
         """
         try:
-            with open(self.base_path / path, encoding=UTF_8) as file:
+            with open(self.base_path / path, encoding=UTF_8) as file:  # noqa: PTH123
                 return file.read()
 
         except UnicodeDecodeError:
-            logger.debug(
-                "Cannot read the file with UTF-8 encoding. Trying to read bytes..."
-            )
-            with open(self.base_path / path, "rb") as file:
+            logger.debug("Cannot read the file with UTF-8 encoding. Trying to read bytes...")
+            with open(self.base_path / path, "rb") as file:  # noqa: PTH123
                 return file.read()
 
         except Exception as err:
             logger.debug(traceback.format_exc())
-            raise ReadException(f"Error reading file [{path}] locally: {err}")
+            raise ReadException(f"Error reading file [{path}] locally: {err}")  # noqa: B904
 
-    def _get_tree(self) -> Optional[List[str]]:
+    def _get_tree(self) -> Optional[List[str]]:  # noqa: UP006, UP045
         """
         Return the tree with the files relative to the base path
         """
-        return [
-            str(path).replace(str(self.base_path) + "/", "")
-            for path in Path(self.base_path).rglob("*")
-        ]
+        return [str(path).replace(str(self.base_path) + "/", "") for path in Path(self.base_path).rglob("*")]
 
-    def get_local_files(
-        self, search_key: str, excluded_files: Optional[List[str]] = None
-    ) -> List[str]:
+    def get_local_files(self, search_key: str, excluded_files: Optional[List[str]] = None) -> List[str]:  # noqa: UP006, UP045
         """Scan through local path recursively
         and retuns file path based on `search_key`"""
 
@@ -75,7 +69,7 @@ class LocalReader(Reader):
         for root, _, file in os.walk(self.base_path):
             for fle in file:
                 if search_key in fle and fle not in excluded_files:
-                    file_paths.append(f"{root}/{fle}")
+                    file_paths.append(f"{root}/{fle}")  # noqa: PERF401
 
         return file_paths
 
@@ -84,7 +78,7 @@ class LocalReader(Reader):
         path: str,
         local_file_path: str,
         *,
-        bucket_name: str = None,
+        bucket_name: str = None,  # noqa: RUF013
         verbose: bool = True,
         **__,
     ):

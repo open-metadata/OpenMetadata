@@ -11,9 +11,10 @@
 """
 Base class for the Auto Classification Processor.
 """
+
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Sequence, Type, TypeVar, cast, final
+from typing import Any, List, Optional, Sequence, Type, TypeVar, cast, final  # noqa: UP035
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Column, Table
@@ -59,14 +60,12 @@ class AutoClassificationProcessor(Processor, ABC):
 
         # Init and type the source config
         self.source_config: DatabaseServiceAutoClassificationPipeline = cast(
-            DatabaseServiceAutoClassificationPipeline,
+            DatabaseServiceAutoClassificationPipeline,  # noqa: TC006
             self.config.source.sourceConfig.config,
         )  # Used to satisfy type checked
 
     @abstractmethod
-    def create_column_tag_labels(
-        self, column: Column, sample_data: Sequence[Any]
-    ) -> Sequence[TagLabel]:
+    def create_column_tag_labels(self, column: Column, sample_data: Sequence[Any]) -> Sequence[TagLabel]:
         """
         Create tags for the column based on the sample data.
         """
@@ -81,16 +80,16 @@ class AutoClassificationProcessor(Processor, ABC):
     @classmethod
     @final
     def create(
-        cls: Type[C],
+        cls: Type[C],  # noqa: UP006
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ) -> C:
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)
 
     @staticmethod
-    def _get_entity_columns(entity) -> Optional[List[Column]]:
+    def _get_entity_columns(entity) -> Optional[List[Column]]:  # noqa: UP006, UP045
         """Get columns from a classifiable entity"""
         if isinstance(entity, Table):
             return entity.columns
@@ -127,9 +126,7 @@ class AutoClassificationProcessor(Processor, ABC):
                     sample_data=[row[idx] for row in record.sample_data.data.rows],
                 )
                 for tag in tags:
-                    column_tag = ColumnTag(
-                        column_fqn=column.fullyQualifiedName.root, tag_label=tag
-                    )
+                    column_tag = ColumnTag(column_fqn=column.fullyQualifiedName.root, tag_label=tag)
                     column_tags.append(column_tag)
             except Exception as err:
                 self.status.failed(

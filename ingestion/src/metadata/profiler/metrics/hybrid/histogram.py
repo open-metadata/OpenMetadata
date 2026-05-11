@@ -12,8 +12,9 @@
 """
 Histogram Metric definition
 """
+
 import math
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union, cast  # noqa: UP035
 
 from sqlalchemy import and_, case, column, func
 from sqlalchemy.orm import Session
@@ -61,7 +62,7 @@ class Histogram(HybridMetric):
         return dict
 
     @staticmethod
-    def _get_bin_width(iqr: float, row_count: float) -> Union[float, int]:
+    def _get_bin_width(iqr: float, row_count: float) -> Union[float, int]:  # noqa: UP007
         """
         Compute the bin width for the histogram using Freedman-Diaconis rule
         """
@@ -70,7 +71,7 @@ class Histogram(HybridMetric):
         return 2 * iqr * row_count ** (-1 / 3)
 
     @staticmethod
-    def _get_res(res: Dict[str, Any]):
+    def _get_res(res: Dict[str, Any]):  # noqa: UP006
         # get the metric need for the freedman-diaconis rule
         res_iqr = res.get(InterQuartileRange.name())
         res_row_count = res.get(Count.name())
@@ -88,9 +89,7 @@ class Histogram(HybridMetric):
         )  # Decimal to float
 
     @staticmethod
-    def _format_bin_labels(
-        lower_bin: Union[float, int], upper_bin: Optional[Union[float, int]] = None
-    ) -> str:
+    def _format_bin_labels(lower_bin: Union[float, int], upper_bin: Optional[Union[float, int]] = None) -> str:  # noqa: UP007, UP045
         """format bin labels
 
         Args:
@@ -108,9 +107,7 @@ class Histogram(HybridMetric):
             return f"{formatted_lower_bin} and up"
         return f"{formatted_lower_bin} to {format_large_string_numbers(upper_bin)}"
 
-    def _get_bins(
-        self, res_iqr: float, res_row_count: float, res_min: float, res_max: float
-    ):
+    def _get_bins(self, res_iqr: float, res_row_count: float, res_min: float, res_max: float):
         """Get the number of bins and the width of each bin.
         We'll first use the Freedman-Diaconis rule to compute the number of bins.
         If the number of bins is greater than 100, we'll fall back to Sturge's rule. If the number of bins
@@ -131,7 +128,7 @@ class Histogram(HybridMetric):
             num_bins = math.ceil((res_max - res_min) / bin_width)  # type: ignore
         # sturge's rule
         if res_iqr is None or num_bins > max_bin_count:
-            num_bins = int(math.ceil(math.log2(res_row_count) + 1))
+            num_bins = int(math.ceil(math.log2(res_row_count) + 1))  # noqa: RUF046
             bin_width = (res_max - res_min) / num_bins
 
         # fallback to max_bin_count bins
@@ -143,22 +140,19 @@ class Histogram(HybridMetric):
 
     def fn(
         self,
-        sample: Optional[type],
-        res: Dict[str, Any],
-        session: Optional[Session] = None,
+        sample: Optional[type],  # noqa: UP045
+        res: Dict[str, Any],  # noqa: UP006
+        session: Optional[Session] = None,  # noqa: UP045
     ):
         """
         Build the histogram query
         """
 
         if not session:
-            raise AttributeError(
-                "We are missing the session attribute to compute the Histogram."
-            )
+            raise AttributeError("We are missing the session attribute to compute the Histogram.")
 
         if not is_quantifiable(self.col.type) or (
-            is_value_non_numeric(res.get(Min.name()))
-            or is_value_non_numeric(res.get(Max.name()))
+            is_value_non_numeric(res.get(Min.name())) or is_value_non_numeric(res.get(Max.name()))
         ):
             return None
 
@@ -175,7 +169,7 @@ class Histogram(HybridMetric):
 
         # set starting and ending bin bounds for the first bin
         starting_bin_bound = res_min
-        res_min = cast(Union[float, int], res_min)  # satisfy mypy
+        res_min = cast(Union[float, int], res_min)  # satisfy mypy  # noqa: TC006, UP007
         ending_bin_bound = res_min + bin_width
 
         if is_concatenable(self.col.type):
@@ -190,11 +184,7 @@ class Histogram(HybridMetric):
             else:
                 # for the last bin we won't add the upper bound
                 condition = and_(col >= starting_bin_bound)
-                case_stmts.append(
-                    func.count(case((condition, col))).label(
-                        self._format_bin_labels(starting_bin_bound)
-                    )
-                )
+                case_stmts.append(func.count(case((condition, col))).label(self._format_bin_labels(starting_bin_bound)))
                 continue
 
             case_stmts.append(
@@ -216,7 +206,7 @@ class Histogram(HybridMetric):
 
     def df_fn(
         self,
-        res: Dict[str, Any],
+        res: Dict[str, Any],  # noqa: UP006
         dfs: Optional["PandasRunner"] = None,
     ):
         """_summary_
@@ -229,8 +219,8 @@ class Histogram(HybridMetric):
             Dict
         """
         # pylint: disable=import-outside-toplevel
-        import numpy as np
-        import pandas as pd
+        import numpy as np  # noqa: PLC0415
+        import pandas as pd  # noqa: PLC0415
 
         if self.col is None or not is_quantifiable(self.col.type):
             return None
@@ -248,9 +238,7 @@ class Histogram(HybridMetric):
 
         bins = list(np.arange(num_bins) * bin_width + res_min)
         bins_label = [
-            self._format_bin_labels(bins[i], bins[i + 1])
-            if i < len(bins) - 1
-            else self._format_bin_labels(bins[i])
+            self._format_bin_labels(bins[i], bins[i + 1]) if i < len(bins) - 1 else self._format_bin_labels(bins[i])
             for i in range(len(bins))
         ]
 
