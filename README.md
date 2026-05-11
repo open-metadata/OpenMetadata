@@ -353,7 +353,7 @@ With OpenMetadata MCP, AI assistants can:
 - analyze root causes of data quality failures
 
 Get started with MCP:
-[OpenMetadata MCP Server Documentation](https://docs.open-metadata.org/v1.12.x/how-to-guides/mcp)
+[OpenMetadata MCP Server Documentation](https://docs.open-metadata.org/how-to-guides/mcp)
 
 ### Semantic Search
 
