@@ -87,31 +87,32 @@ public class MigrationUtil {
     while (true) {
       List<String[]> batch = readThreadTaskBatch(BATCH_SIZE);
       if (batch.isEmpty()) break;
-
       for (String[] row : batch) {
-        String id = row[0];
-        String json = row[1];
-        try {
-          List<UUID> domainIds = resolveThreadTaskDomains(json, domainCache);
-          if (nullOrEmpty(domainIds)) {
-            // Mark this row so it is not re-fetched on the next iteration.
-            // Setting $.domains=[] makes JSON_EXTRACT(json,'$.domains') return []
-            // (not SQL NULL), so it drops out of the WHERE clause.
-            markThreadDomainsMigrated(id);
-            continue;
-          }
-          updateThreadDomains(id, domainIds);
-          updated++;
-        } catch (Exception e) {
-          LOG.warn("Failed to migrate thread task domains for id={}: {}", id, e.getMessage());
-        }
+        if (processThreadTaskRow(row[0], row[1], domainCache)) updated++;
       }
-
       LOG.debug("Thread task migration progress: {} tasks migrated so far", updated);
     }
 
     LOG.info("Migrated domains for {} thread tasks in thread_entity", updated);
     return updated;
+  }
+
+  private boolean processThreadTaskRow(
+      String id, String json, Map<String, List<UUID>> domainCache) {
+    try {
+      List<UUID> domainIds = resolveThreadTaskDomains(json, domainCache);
+      if (nullOrEmpty(domainIds)) {
+        // Setting $.domains=[] makes JSON_EXTRACT(json,'$.domains') return []
+        // (not SQL NULL), so it drops out of the WHERE clause.
+        markThreadDomainsMigrated(id);
+        return false;
+      }
+      updateThreadDomains(id, domainIds);
+      return true;
+    } catch (Exception e) {
+      LOG.warn("Failed to migrate thread task domains for id={}: {}", id, e.getMessage());
+      return false;
+    }
   }
 
   private List<String[]> readThreadTaskBatch(int limit) {
@@ -141,7 +142,10 @@ public class MigrationUtil {
       MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(about);
       String cacheKey = entityLink.getEntityType() + "::" + entityLink.getEntityFQN();
 
-      return cache.computeIfAbsent(cacheKey, k -> fetchDomainIds(entityLink));
+      if (cache.containsKey(cacheKey)) return cache.get(cacheKey);
+      List<UUID> ids = fetchDomainIds(entityLink);
+      if (ids != null) cache.put(cacheKey, ids);
+      return ids;
     } catch (Exception e) {
       LOG.debug("Could not resolve domains from thread JSON: {}", e.getMessage());
       return null;
@@ -177,7 +181,7 @@ public class MigrationUtil {
           entityLink.getEntityType(),
           entityLink.getEntityFQN(),
           e.getMessage());
-      return Collections.emptyList();
+      return null;
     }
   }
 
@@ -263,68 +267,70 @@ public class MigrationUtil {
   }
 
   private int insertTaskDomainsBatch() {
-    if (connectionType == ConnectionType.MYSQL) {
-      return handle
-          .createUpdate(
-              "INSERT IGNORE INTO entity_relationship "
-                  + "  (fromId, toId, fromEntity, toEntity, relation) "
-                  + "SELECT er_domain.fromId, er_about.toId, 'domain', 'task', "
-                  + RELATION_HAS
-                  + " "
-                  + "FROM entity_relationship er_about "
-                  + "JOIN entity_relationship er_domain "
-                  + "  ON er_domain.toId     = er_about.fromId "
-                  + "  AND er_domain.toEntity = er_about.fromEntity "
-                  + "  AND er_domain.fromEntity = 'domain' "
-                  + "  AND er_domain.relation = "
-                  + RELATION_HAS
-                  + " "
-                  + "WHERE er_about.toEntity = 'task' "
-                  + "  AND er_about.relation = "
-                  + RELATION_MENTIONED_IN
-                  + " "
-                  + "  AND NOT EXISTS ("
-                  + "    SELECT 1 FROM entity_relationship ex "
-                  + "    WHERE ex.fromId = er_domain.fromId "
-                  + "    AND ex.toId = er_about.toId AND ex.toEntity = 'task' "
-                  + "    AND ex.fromEntity = 'domain' AND ex.relation = "
-                  + RELATION_HAS
-                  + "  ) "
-                  + "LIMIT "
-                  + BATCH_SIZE)
-          .execute();
-    } else {
-      return handle
-          .createUpdate(
-              "INSERT INTO entity_relationship "
-                  + "  (fromId, toId, fromEntity, toEntity, relation) "
-                  + "SELECT er_domain.fromId, er_about.toId, 'domain', 'task', "
-                  + RELATION_HAS
-                  + " "
-                  + "FROM entity_relationship er_about "
-                  + "JOIN entity_relationship er_domain "
-                  + "  ON er_domain.toId     = er_about.fromId "
-                  + "  AND er_domain.toEntity = er_about.fromEntity "
-                  + "  AND er_domain.fromEntity = 'domain' "
-                  + "  AND er_domain.relation = "
-                  + RELATION_HAS
-                  + " "
-                  + "WHERE er_about.toEntity = 'task' "
-                  + "  AND er_about.relation = "
-                  + RELATION_MENTIONED_IN
-                  + " "
-                  + "  AND NOT EXISTS ("
-                  + "    SELECT 1 FROM entity_relationship ex "
-                  + "    WHERE ex.fromId = er_domain.fromId "
-                  + "    AND ex.toId = er_about.toId AND ex.toEntity = 'task' "
-                  + "    AND ex.fromEntity = 'domain' AND ex.relation = "
-                  + RELATION_HAS
-                  + "  ) "
-                  + "LIMIT "
-                  + BATCH_SIZE
-                  + " ON CONFLICT (fromId, toId, relation) DO NOTHING")
-          .execute();
-    }
+    String sql =
+        connectionType == ConnectionType.MYSQL
+            ? buildMysqlInsertTaskDomainSql()
+            : buildPostgresInsertTaskDomainSql();
+    return handle.createUpdate(sql).execute();
+  }
+
+  private String buildMysqlInsertTaskDomainSql() {
+    return "INSERT IGNORE INTO entity_relationship "
+        + "  (fromId, toId, fromEntity, toEntity, relation) "
+        + "SELECT er_domain.fromId, er_about.toId, 'domain', 'task', "
+        + RELATION_HAS
+        + " "
+        + "FROM entity_relationship er_about "
+        + "JOIN entity_relationship er_domain "
+        + "  ON er_domain.toId     = er_about.fromId "
+        + "  AND er_domain.toEntity = er_about.fromEntity "
+        + "  AND er_domain.fromEntity = 'domain' "
+        + "  AND er_domain.relation = "
+        + RELATION_HAS
+        + " "
+        + "WHERE er_about.toEntity = 'task' "
+        + "  AND er_about.relation = "
+        + RELATION_MENTIONED_IN
+        + " "
+        + "  AND NOT EXISTS ("
+        + "    SELECT 1 FROM entity_relationship ex "
+        + "    WHERE ex.fromId = er_domain.fromId "
+        + "    AND ex.toId = er_about.toId AND ex.toEntity = 'task' "
+        + "    AND ex.fromEntity = 'domain' AND ex.relation = "
+        + RELATION_HAS
+        + "  ) "
+        + "LIMIT "
+        + BATCH_SIZE;
+  }
+
+  private String buildPostgresInsertTaskDomainSql() {
+    return "INSERT INTO entity_relationship "
+        + "  (fromId, toId, fromEntity, toEntity, relation) "
+        + "SELECT er_domain.fromId, er_about.toId, 'domain', 'task', "
+        + RELATION_HAS
+        + " "
+        + "FROM entity_relationship er_about "
+        + "JOIN entity_relationship er_domain "
+        + "  ON er_domain.toId     = er_about.fromId "
+        + "  AND er_domain.toEntity = er_about.fromEntity "
+        + "  AND er_domain.fromEntity = 'domain' "
+        + "  AND er_domain.relation = "
+        + RELATION_HAS
+        + " "
+        + "WHERE er_about.toEntity = 'task' "
+        + "  AND er_about.relation = "
+        + RELATION_MENTIONED_IN
+        + " "
+        + "  AND NOT EXISTS ("
+        + "    SELECT 1 FROM entity_relationship ex "
+        + "    WHERE ex.fromId = er_domain.fromId "
+        + "    AND ex.toId = er_about.toId AND ex.toEntity = 'task' "
+        + "    AND ex.fromEntity = 'domain' AND ex.relation = "
+        + RELATION_HAS
+        + "  ) "
+        + "LIMIT "
+        + BATCH_SIZE
+        + " ON CONFLICT (fromId, toId, relation) DO NOTHING";
   }
 
   // ---------------------------------------------------------------------------
