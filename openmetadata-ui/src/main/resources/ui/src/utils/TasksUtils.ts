@@ -1286,21 +1286,21 @@ export const getTaskEntityFQN = (entityType: EntityType, fqn: string) => {
 };
 
 export const isDarApprovalActive = (
-  createdAt?: number,
+  approvedAt?: number,
   duration?: string,
   expirationDate?: number
 ): boolean => {
   const now = Date.now();
 
-  if (expirationDate) {
+  if (expirationDate != null) {
     return now <= expirationDate;
   }
 
-  if (!duration || !createdAt) {
+  if (!duration || !approvedAt) {
     return true;
   }
 
   const parsed = Duration.fromISO(duration);
 
-  return parsed.isValid && now <= createdAt + parsed.toMillis();
+  return parsed.isValid && now <= approvedAt + parsed.toMillis();
 };

@@ -14,6 +14,7 @@
 import {
   CommonWidgetType,
   GridSizes,
+  KNOWLEDGE_ARTICLE_WIDGET,
 } from '../../constants/CustomizeWidgets.constants';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
@@ -94,6 +95,7 @@ class DataMarketplaceClassBase {
           gridSizes: ['large'] as GridSizes[],
         },
       },
+      KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }
 

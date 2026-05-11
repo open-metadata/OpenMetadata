@@ -14,6 +14,7 @@
 package org.openmetadata.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
 import io.dropwizard.core.Configuration;
 import io.dropwizard.core.server.DefaultServerFactory;
 import jakarta.validation.Valid;
@@ -78,6 +79,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("elasticsearch")
   private ElasticSearchConfiguration elasticSearchConfiguration;
+
+  @JsonProperty("nlqHybridSearch")
+  private JsonNode nlqHybridSearch;
 
   @JsonProperty("eventHandlerConfiguration")
   private EventHandlerConfiguration eventHandlerConfiguration;
