@@ -21,8 +21,8 @@ import { Link } from 'react-router-dom';
 import {
   LOGOUT_ITEM,
   SETTING_ITEM,
-  SIDEBAR_NESTED_KEYS,
 } from '../../../constants/LeftSidebar.constants';
+import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 import { SidebarItem } from '../../../enums/sidebar.enum';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -53,7 +53,7 @@ const LeftSidebar = () => {
     const pathArray = location.pathname.split('/');
     const deepPath = [...pathArray].splice(0, 3).join('/');
 
-    return SIDEBAR_NESTED_KEYS[deepPath]
+    return leftSidebarClassBase.getSidebarNestedKeys()[deepPath]
       ? [deepPath]
       : [pathArray.splice(0, 2).join('/')];
   }, [location.pathname]);
