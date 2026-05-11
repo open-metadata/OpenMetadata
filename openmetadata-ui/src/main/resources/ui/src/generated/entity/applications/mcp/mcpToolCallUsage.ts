@@ -13,7 +13,7 @@
 /**
  * Single MCP tool-call usage record. One row written per tool invocation to the
  * apps_extension_time_series table with extension='mcpUsage'. Used to surface MCP traffic
- * as a product growth metric — not billed, no enforcement.
+ * as a product growth metric. Not billed, no enforcement.
  */
 export interface MCPToolCallUsage {
     /**
