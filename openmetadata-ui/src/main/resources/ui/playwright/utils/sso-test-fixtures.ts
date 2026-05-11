@@ -13,12 +13,12 @@
 import { APIRequestContext } from '@playwright/test';
 import { test as base } from '../e2e/fixtures/pages';
 import { getAuthContext, getToken, redirectToHomePage } from './common';
+import { clearCapturedTestLoginResult, installTestLoginCapture } from './sso';
 import {
   fetchSecurityConfig,
   restoreSecurityConfig,
   SecurityConfigSnapshot,
 } from './ssoAuth';
-import { clearCapturedTestLoginResult, installTestLoginCapture } from './sso';
 
 export type SsoFixtures = {
   adminApiContext: APIRequestContext;

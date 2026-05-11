@@ -12,11 +12,6 @@
  */
 
 import { expect, Page } from '@playwright/test';
-import { ssoTest as test } from '../../utils/sso-test-fixtures';
-import {
-  applyProviderConfig,
-  expectPersistedSecurityConfig,
-} from '../../utils/ssoAuth';
 import {
   enableSSOEditMode,
   expectSaveDisabledForLockoutRisk,
@@ -26,9 +21,14 @@ import {
   TEST_LOGIN_NETWORK_TIMEOUT_MS,
 } from '../../utils/sso';
 import {
-  OPENLDAP_FIXTURE,
   openldapProviderHelper,
+  OPENLDAP_FIXTURE,
 } from '../../utils/sso-providers/openldap';
+import { ssoTest as test } from '../../utils/sso-test-fixtures';
+import {
+  applyProviderConfig,
+  expectPersistedSecurityConfig,
+} from '../../utils/ssoAuth';
 
 const ensureLdapFixtureReady = async (page: Page) => {
   try {
@@ -64,7 +64,9 @@ test.describe('SSO Test Login — LDAP', () => {
     });
     expect(result.success).toBe(true);
     expect(result.derivedPrincipalDomain).toBe('company.com');
-    expect(result.suggestedAdminPrincipal).toBe(OPENLDAP_FIXTURE.validUser.email);
+    expect(result.suggestedAdminPrincipal).toBe(
+      OPENLDAP_FIXTURE.validUser.email
+    );
 
     await expect(page.getByTestId('ldap-test-login-modal')).toBeHidden();
     await expectSaveEnabled(page);
@@ -125,7 +127,9 @@ test.describe('SSO Test Login — LDAP', () => {
 
     const initiateRequestPromise = page.waitForRequest(
       (request) =>
-        request.url().includes('/system/config/auth/test-login/ldap-initiate') &&
+        request
+          .url()
+          .includes('/system/config/auth/test-login/ldap-initiate') &&
         request.method() === 'POST',
       { timeout: TEST_LOGIN_NETWORK_TIMEOUT_MS }
     );

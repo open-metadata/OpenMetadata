@@ -13,12 +13,6 @@
 
 import { expect } from '@playwright/test';
 import { SSO_ENV } from '../../constant/ssoAuth';
-import { ssoTest as test } from '../../utils/sso-test-fixtures';
-import {
-  applyProviderConfig,
-  expectPersistedSecurityConfig,
-  ProviderConfigOverride,
-} from '../../utils/ssoAuth';
 import {
   clickTestLoginButton,
   enableSSOEditMode,
@@ -31,6 +25,12 @@ import {
   TEST_LOGIN_NETWORK_TIMEOUT_MS,
 } from '../../utils/sso';
 import { keycloakAzureSamlProviderHelper } from '../../utils/sso-providers/keycloak-saml';
+import { ssoTest as test } from '../../utils/sso-test-fixtures';
+import {
+  applyProviderConfig,
+  expectPersistedSecurityConfig,
+  ProviderConfigOverride,
+} from '../../utils/ssoAuth';
 
 const username = process.env[SSO_ENV.USERNAME] ?? '';
 const password = process.env[SSO_ENV.PASSWORD] ?? '';
@@ -203,7 +203,9 @@ test.describe('SSO Test Login — SAML', () => {
 
     const altCert =
       '-----BEGIN CERTIFICATE-----\nMIICchanged=\n-----END CERTIFICATE-----';
-    await page.getByRole('textbox', { name: /^IdP X\.509 Certificate/ }).fill(altCert);
+    await page
+      .getByRole('textbox', { name: /^IdP X\.509 Certificate/ })
+      .fill(altCert);
     await expectSaveDisabledForLockoutRisk(page);
   });
 });

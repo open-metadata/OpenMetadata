@@ -17,11 +17,6 @@ import {
   setTokenEndpointError,
   waitForMockOidcReady,
 } from '../../utils/mockOidc';
-import { ssoTest as test } from '../../utils/sso-test-fixtures';
-import {
-  applyProviderConfig,
-  expectPersistedSecurityConfig,
-} from '../../utils/ssoAuth';
 import {
   clickTestLoginButton,
   enableSSOEditMode,
@@ -37,6 +32,11 @@ import {
   TEST_LOGIN_NETWORK_TIMEOUT_MS,
 } from '../../utils/sso';
 import { customOidcProviderHelper } from '../../utils/sso-providers/custom-oidc';
+import { ssoTest as test } from '../../utils/sso-test-fixtures';
+import {
+  applyProviderConfig,
+  expectPersistedSecurityConfig,
+} from '../../utils/ssoAuth';
 
 const PROVIDER_CREDENTIALS = { username: 'admin', password: 'unused' };
 

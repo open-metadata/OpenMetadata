@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, Page, Response } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
 import { settingClick } from './sidebar';
 
@@ -43,7 +43,8 @@ export const installTestLoginCapture = async (page: Page): Promise<void> => {
         if (storageKey === key) {
           const existing = ls.getItem(key);
           if (existing) {
-            (window as unknown as Record<string, unknown>)[captureKey] = existing;
+            (window as unknown as Record<string, unknown>)[captureKey] =
+              existing;
           }
         }
 
@@ -483,13 +484,11 @@ export const runTestLoginViaPopup = async (
   await popup.waitForLoadState('domcontentloaded').catch(() => undefined);
 
   if (!popup.isClosed()) {
-    await driver
-      .performProviderLogin(popup, credentials)
-      .catch((error) => {
-        if (!popup.isClosed()) {
-          throw error;
-        }
-      });
+    await driver.performProviderLogin(popup, credentials).catch((error) => {
+      if (!popup.isClosed()) {
+        throw error;
+      }
+    });
   }
 
   await closePromise;
@@ -502,7 +501,9 @@ export const readTestLoginResultFromStorage = async (
 ): Promise<TestLoginResultPayload> => {
   const raw = await page.evaluate(
     ({ key, captureKey }) => {
-      const captured = (window as unknown as Record<string, unknown>)[captureKey];
+      const captured = (window as unknown as Record<string, unknown>)[
+        captureKey
+      ];
       if (typeof captured === 'string') {
         return captured;
       }

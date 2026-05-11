@@ -104,7 +104,10 @@ export const applyProviderConfig = async (
   if (response.status() !== 200) {
     const body = await response.text().catch(() => '<no body>');
     throw new Error(
-      `applyProviderConfig PUT returned ${response.status()}: ${body.slice(0, 1500)}`
+      `applyProviderConfig PUT returned ${response.status()}: ${body.slice(
+        0,
+        1500
+      )}`
     );
   }
 };
@@ -120,7 +123,10 @@ export const restoreSecurityConfig = async (
   if (response.status() !== 200) {
     const body = await response.text().catch(() => '<no body>');
     throw new Error(
-      `restoreSecurityConfig PUT returned ${response.status()}: ${body.slice(0, 1500)}`
+      `restoreSecurityConfig PUT returned ${response.status()}: ${body.slice(
+        0,
+        1500
+      )}`
     );
   }
 };

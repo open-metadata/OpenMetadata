@@ -105,8 +105,7 @@ export const buildOidcPopupFields = ({
   scope,
 }: OidcPopupFieldsInput): Record<string, string> => {
   const oidc = formData?.oidcConfiguration;
-  const callbackUrl =
-    oidc?.callbackUrl ?? `${window.location.origin}/callback`;
+  const callbackUrl = oidc?.callbackUrl ?? `${window.location.origin}/callback`;
 
   return {
     mode: modeFor(hasExistingConfig),
