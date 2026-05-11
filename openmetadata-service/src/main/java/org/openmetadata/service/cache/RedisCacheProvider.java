@@ -66,6 +66,15 @@ public class RedisCacheProvider implements CacheProvider {
   // op outcome), so the lock cost is negligible compared to the round-trip we're already paying.
   private final Object stateLock = new Object();
 
+  // Serializes pipelined operations (currently {@link #mget}) that toggle
+  // {@code setAutoFlushCommands(false)} on the shared Lettuce connection. Without this lock
+  // two concurrent pipelines could overlap and the first one's commands would be buffered
+  // while the second is still issuing GETs — observable as random latency spikes and apparent
+  // hangs in other paths sharing the connection. We hold the lock for one pipeline at a time
+  // and unconditionally restore auto-flush in a finally.
+  private final java.util.concurrent.locks.ReentrantLock pipelineLock =
+      new java.util.concurrent.locks.ReentrantLock();
+
   public RedisCacheProvider(CacheConfig config) {
     this.config = config;
     this.keys = new CacheKeys(config.redis.keyspace);
@@ -601,56 +610,80 @@ public class RedisCacheProvider implements CacheProvider {
     Timer.Sample sample = startReadTimer(m);
     long startNanos = System.nanoTime();
     try {
-      // Auto-flush is a property of the SHARED connection. If we throw between
-      // setAutoFlushCommands(false) and the restoration call, every subsequent command issued
-      // by any caller against this connection silently buffers — a system-wide hang.
-      // Wrap the whole flow in a try/finally so restoration is unconditional, regardless of
-      // which step (queue, flush, await) throws.
-      connection.setAutoFlushCommands(false);
+      // Auto-flush is a property of the SHARED connection. Two layers of protection:
+      //   1. pipelineLock serializes concurrent mget calls so commands from one mget can't
+      //      overlap with another's auto-flush-off window — without it, the second caller's
+      //      commands would buffer until the first restored auto-flush, manifesting as
+      //      random latency spikes / hangs on the shared connection.
+      //   2. try/finally restores auto-flush unconditionally even if the queue / flush /
+      //      await steps throw.
+      pipelineLock.lock();
       try {
-        java.util.List<io.lettuce.core.RedisFuture<String>> futures = new java.util.ArrayList<>(n);
-        for (String k : keys) {
-          futures.add(k == null ? null : asyncCommands.get(k));
-        }
-        connection.flushCommands();
-        io.lettuce.core.LettuceFutures.awaitAll(
-            java.time.Duration.ofMillis(Math.max(1000, config.redis.commandTimeoutMs * 2L)),
-            futures.stream()
-                .filter(java.util.Objects::nonNull)
-                .toArray(io.lettuce.core.RedisFuture[]::new));
-        java.util.List<java.util.Optional<String>> out = new java.util.ArrayList<>(n);
-        int hits = 0;
-        int misses = 0;
-        for (io.lettuce.core.RedisFuture<String> f : futures) {
-          if (f == null) {
-            out.add(java.util.Optional.empty());
-            continue;
+        connection.setAutoFlushCommands(false);
+        try {
+          java.util.List<io.lettuce.core.RedisFuture<String>> futures =
+              new java.util.ArrayList<>(n);
+          for (String k : keys) {
+            futures.add(k == null ? null : asyncCommands.get(k));
           }
-          try {
-            String v = f.get();
-            out.add(java.util.Optional.ofNullable(v));
-            if (v != null) {
-              hits++;
-            } else {
+          connection.flushCommands();
+          io.lettuce.core.RedisFuture<?>[] nonNullFutures =
+              futures.stream()
+                  .filter(java.util.Objects::nonNull)
+                  .toArray(io.lettuce.core.RedisFuture[]::new);
+          long perCallTimeoutMs = Math.max(1000L, config.redis.commandTimeoutMs * 2L);
+          boolean allCompleted =
+              io.lettuce.core.LettuceFutures.awaitAll(
+                  java.time.Duration.ofMillis(perCallTimeoutMs), nonNullFutures);
+          // If awaitAll timed out, some futures are still in flight. Cancel them now — the
+          // unbounded f.get() below would otherwise block the request thread indefinitely
+          // while the Lettuce event loop holds the response slot open.
+          if (!allCompleted) {
+            for (io.lettuce.core.RedisFuture<?> f : nonNullFutures) {
+              if (!f.isDone()) {
+                f.cancel(false);
+              }
+            }
+            LOG.warn("Pipelined mget timed out after {}ms for {} keys", perCallTimeoutMs, n);
+          }
+          java.util.List<java.util.Optional<String>> out = new java.util.ArrayList<>(n);
+          int hits = 0;
+          int misses = 0;
+          for (io.lettuce.core.RedisFuture<String> f : futures) {
+            if (f == null) {
+              out.add(java.util.Optional.empty());
+              continue;
+            }
+            // After cancel-on-timeout above every future is done one way or another — got a
+            // value, errored, or was cancelled — so f.get() can't block.
+            try {
+              String v = f.get();
+              out.add(java.util.Optional.ofNullable(v));
+              if (v != null) {
+                hits++;
+              } else {
+                misses++;
+              }
+            } catch (Exception inner) {
+              out.add(java.util.Optional.empty());
               misses++;
             }
-          } catch (Exception inner) {
-            out.add(java.util.Optional.empty());
-            misses++;
           }
+          if (m != null) {
+            for (int i = 0; i < hits; i++) {
+              m.recordHit();
+            }
+            for (int i = 0; i < misses; i++) {
+              m.recordMiss();
+            }
+          }
+          recordSuccess();
+          return out;
+        } finally {
+          connection.setAutoFlushCommands(true);
         }
-        if (m != null) {
-          for (int i = 0; i < hits; i++) {
-            m.recordHit();
-          }
-          for (int i = 0; i < misses; i++) {
-            m.recordMiss();
-          }
-        }
-        recordSuccess();
-        return out;
       } finally {
-        connection.setAutoFlushCommands(true);
+        pipelineLock.unlock();
       }
     } catch (Exception e) {
       if (m != null) {

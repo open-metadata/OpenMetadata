@@ -1063,15 +1063,20 @@ public class SystemResource {
       @QueryParam("id") String idStr,
       @QueryParam("fqn") String fqn) {
     authorizer.authorizeAdmin(securityContext);
-    if (type == null || type.isBlank() || (idStr == null && (fqn == null || fqn.isBlank()))) {
+    // Normalize empty/whitespace query params to null up front so a request like
+    // `?type=X&id=&fqn=` doesn't slip past the required-params check on a non-null but
+    // blank `id` and then fall through to "neither id nor fqn was actually supplied".
+    String normalizedIdStr = (idStr == null || idStr.isBlank()) ? null : idStr;
+    String normalizedFqn = (fqn == null || fqn.isBlank()) ? null : fqn;
+    if (type == null || type.isBlank() || (normalizedIdStr == null && normalizedFqn == null)) {
       return Response.status(Response.Status.BAD_REQUEST)
           .entity(Map.of("error", "type and one of (id, fqn) are required"))
           .build();
     }
     UUID id = null;
-    if (idStr != null && !idStr.isBlank()) {
+    if (normalizedIdStr != null) {
       try {
-        id = UUID.fromString(idStr);
+        id = UUID.fromString(normalizedIdStr);
       } catch (IllegalArgumentException e) {
         return Response.status(Response.Status.BAD_REQUEST)
             .entity(Map.of("error", "id is not a valid UUID"))
@@ -1086,8 +1091,8 @@ public class SystemResource {
     //      take effect on the originating pod's in-memory cache. The static
     //      EntityRepository.invalidateCacheForEntity also propagates over the pub-sub channel
     //      to other pods so multi-replica deploys all evict simultaneously.
-    CacheBundle.invalidateEntity(type, id, fqn);
-    EntityRepository.invalidateCacheForEntity(type, id, fqn);
+    CacheBundle.invalidateEntity(type, id, normalizedFqn);
+    EntityRepository.invalidateCacheForEntity(type, id, normalizedFqn);
     return Response.ok(Map.of("invalidated", true, "type", type)).build();
   }
 
