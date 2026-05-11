@@ -84,8 +84,11 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
@@ -313,7 +316,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           TaskEntityStatus status,
       @Parameter(
               description =
-                  "Filter by status group: 'open' for Open/InProgress/Pending/Approved/Granted, 'closed' for Rejected/Completed/Cancelled/Failed/Revoked")
+                  "Filter by status group. 'open' = Open/InProgress/Pending only (still awaiting review). "
+                      + "'active' = Open/InProgress/Pending/Approved/Granted (full non-terminal DAR lifecycle — use this when looking for "
+                      + "DARs that are still 'in progress', including awaiting-grant and granted-with-active-access). "
+                      + "'closed' = Approved/Rejected/Completed/Cancelled/Failed/Revoked (mirrors the legacy closed bucket, which includes "
+                      + "Approved for backward compatibility with non-DAR workflows where Approved is terminal).",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"open", "active", "closed"}))
           @QueryParam("statusGroup")
           String statusGroup,
       @Parameter(description = "Filter by dataset FQN (entity the DAR is about)")
@@ -387,6 +398,14 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     repository.addDomainFilter(filter, domain);
 
     Fields fields = getFields(fieldsParam);
+    // Mirror the auth + domain-scoping that listInternal applies on the generic /v1/tasks
+    // endpoint. We don't reuse listInternal directly because this endpoint is offset-paginated
+    // and sorts by createdAt rather than the cursor-based (name, id) pagination listInternal uses.
+    OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
+    ResourceContextInterface resourceContext = filter.getResourceContext(entityType);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
+
     return repository.listDataAccessRequests(
         uriInfo, fields, filter, limitParam, offset, sortOrder);
   }
