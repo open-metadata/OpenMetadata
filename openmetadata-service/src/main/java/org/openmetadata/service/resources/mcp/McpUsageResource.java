@@ -37,6 +37,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
@@ -49,7 +51,7 @@ import org.openmetadata.service.security.Authorizer;
 
 /**
  * Read-only API for MCP tool-call usage. Backed by the {@code apps_extension_time_series} table
- * with extension {@code mcpUsage}. Counts only — no billing, no rate-limiting.
+ * with extension {@code mcpUsage}. Counts only. No billing, no rate-limiting.
  */
 @Path("/v1/mcp/usage")
 @Tag(name = "MCP Usage", description = "MCP tool-call usage counters and breakdowns.")
@@ -91,7 +93,7 @@ public class McpUsageResource {
             responseCode = "200",
             description = "Aggregate counters",
             content = @Content(mediaType = "application/json")),
-        @ApiResponse(responseCode = "403", description = "Forbidden — admin only")
+        @ApiResponse(responseCode = "403", description = "Forbidden. Admin only.")
       })
   public Response getSummary(
       @Context SecurityContext securityContext,
@@ -102,7 +104,13 @@ public class McpUsageResource {
           @QueryParam("endTs")
           Long endTs) {
     authorizer.authorizeAdmin(securityContext);
-    return Response.ok(buildSummary(resolveStart(startTs), resolveEnd(endTs))).build();
+    long from = resolveStart(startTs);
+    long to = resolveEnd(endTs);
+    Response invalid = validateWindow(from, to);
+    if (invalid != null) {
+      return invalid;
+    }
+    return Response.ok(buildSummary(from, to)).build();
   }
 
   @GET
@@ -118,7 +126,13 @@ public class McpUsageResource {
       @QueryParam("startTs") Long startTs,
       @QueryParam("endTs") Long endTs) {
     authorizer.authorizeAdmin(securityContext);
-    return Response.ok(buildDailyHistory(resolveStart(startTs), resolveEnd(endTs))).build();
+    long from = resolveStart(startTs);
+    long to = resolveEnd(endTs);
+    Response invalid = validateWindow(from, to);
+    if (invalid != null) {
+      return invalid;
+    }
+    return Response.ok(buildDailyHistory(from, to)).build();
   }
 
   @GET
@@ -132,8 +146,13 @@ public class McpUsageResource {
       @QueryParam("startTs") Long startTs,
       @QueryParam("endTs") Long endTs) {
     authorizer.authorizeAdmin(securityContext);
-    Map<String, Long> counts =
-        groupByCount(resolveStart(startTs), resolveEnd(endTs), McpToolCallUsage::getToolName, true);
+    long from = resolveStart(startTs);
+    long to = resolveEnd(endTs);
+    Response invalid = validateWindow(from, to);
+    if (invalid != null) {
+      return invalid;
+    }
+    Map<String, Long> counts = groupByCount(from, to, McpToolCallUsage::getToolName, true);
     return Response.ok(counts).build();
   }
 
@@ -150,9 +169,13 @@ public class McpUsageResource {
       @QueryParam("startTs") Long startTs,
       @QueryParam("endTs") Long endTs) {
     authorizer.authorizeAdmin(securityContext);
-    Map<String, Long> counts =
-        groupByCount(
-            resolveStart(startTs), resolveEnd(endTs), McpToolCallUsage::getUserName, false);
+    long from = resolveStart(startTs);
+    long to = resolveEnd(endTs);
+    Response invalid = validateWindow(from, to);
+    if (invalid != null) {
+      return invalid;
+    }
+    Map<String, Long> counts = groupByCount(from, to, McpToolCallUsage::getUserName, false);
     return Response.ok(counts).build();
   }
 
@@ -169,7 +192,13 @@ public class McpUsageResource {
       @QueryParam("startTs") Long startTs,
       @QueryParam("endTs") Long endTs) {
     String me = securityContext.getUserPrincipal().getName();
-    return Response.ok(buildSelf(me, resolveStart(startTs), resolveEnd(endTs))).build();
+    long from = resolveStart(startTs);
+    long to = resolveEnd(endTs);
+    Response invalid = validateWindow(from, to);
+    if (invalid != null) {
+      return invalid;
+    }
+    return Response.ok(buildSelf(me, from, to)).build();
   }
 
   private Map<String, Object> buildSummary(long from, long to) {
@@ -229,10 +258,7 @@ public class McpUsageResource {
   }
 
   private Map<String, Long> groupByCount(
-      long from,
-      long to,
-      java.util.function.Function<McpToolCallUsage, String> classifier,
-      boolean includeBots) {
+      long from, long to, Function<McpToolCallUsage, String> classifier, boolean includeBots) {
     Map<String, Long> counts = new LinkedHashMap<>();
     forEachRow(
         from,
@@ -253,9 +279,9 @@ public class McpUsageResource {
   /**
    * Pages through rows in the half-open window {@code [from, to)} using the upper-bounded SQL
    * helper. The SQL filter pins the result set so OFFSET pagination stays consistent across pages
-   * even if new MCP tool calls are recorded mid-request — preventing duplicate or skipped rows.
+   * even if new MCP tool calls are recorded mid-request, preventing duplicate or skipped rows.
    */
-  private void forEachRow(long from, long to, java.util.function.Consumer<McpToolCallUsage> visit) {
+  private void forEachRow(long from, long to, Consumer<McpToolCallUsage> visit) {
     App app = resolveMcpApp();
     if (app == null) {
       return;
@@ -297,6 +323,20 @@ public class McpUsageResource {
 
   static long resolveEnd(Long endTs) {
     return endTs != null ? endTs : Instant.now().toEpochMilli();
+  }
+
+  /**
+   * Returns a 400 Response if the resolved window is empty or reversed, otherwise {@code null}.
+   * Endpoints invoke this before aggregation so callers get an explicit error rather than a
+   * silently empty payload when they pass a bogus {@code startTs >= endTs}.
+   */
+  static Response validateWindow(long from, long to) {
+    if (from >= to) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(Map.of("error", "startTs must be before endTs"))
+          .build();
+    }
+    return null;
   }
 
   static long startOfDay(long epochMillis) {

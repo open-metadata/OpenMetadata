@@ -182,6 +182,24 @@ class McpUsageResourceTest {
   }
 
   @Test
+  void invalidWindowReturnsBadRequest() {
+    long now = Instant.now().toEpochMilli();
+    Response response = resource.getSummary(adminContext, now, now - 1);
+
+    assertThat(response.getStatus()).isEqualTo(400);
+    Map<String, Object> body = bodyAsMap(response);
+    assertThat(body.get("error")).isEqualTo("startTs must be before endTs");
+  }
+
+  @Test
+  void equalStartAndEndAlsoRejected() {
+    long now = Instant.now().toEpochMilli();
+    Response response = resource.getByTool(adminContext, now, now);
+
+    assertThat(response.getStatus()).isEqualTo(400);
+  }
+
+  @Test
   void mcpAppNotInitializedReturnsZeroCounts() {
     appContextStatic.close();
     ApplicationContext emptyContext = mock(ApplicationContext.class);

@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2025 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.mcp.usage;
 
 import org.openmetadata.schema.entity.app.App;
@@ -14,7 +27,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Best-effort one-row-per-call writer for MCP tool invocations. Records to the
- * {@code apps_extension_time_series} table with extension {@code mcpUsage}. Pure tracking — no
+ * {@code apps_extension_time_series} table with extension {@code mcpUsage}. Pure tracking. No
  * billing, no enforcement, no rate-limiting. A recording failure must never break the tool call,
  * so every code path catches and logs.
  */
@@ -29,7 +42,7 @@ public final class McpUsageRecorder {
       App app = resolveMcpApp();
       if (app == null) {
         LOG.debug(
-            "McpApplication not initialized — skipping MCP usage record for tool {}", toolName);
+            "McpApplication not initialized, skipping MCP usage record for tool {}", toolName);
         return;
       }
       McpToolCallUsage usage =

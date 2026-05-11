@@ -15,7 +15,7 @@ package org.openmetadata.service.apps.bundles.mcp;
 
 /**
  * Single source of truth for the {@link McpApplication} name written into
- * {@code apps_extension_time_series.appName} and queried by the read-side resource — prevents
+ * {@code apps_extension_time_series.appName} and queried by the read-side resource. Prevents
  * value drift across the recorder, the MCP server, and the REST resource.
  */
 public final class McpAppConstants {

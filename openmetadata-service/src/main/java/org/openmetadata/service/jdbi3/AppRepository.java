@@ -401,7 +401,7 @@ public class AppRepository extends EntityRepository<App> {
    * Page through extensions inside a half-open {@code [startTime, endTime)} window. Unlike
    * {@link #listAppExtensionAfterTimeByName}, the SQL filter excludes rows at or after
    * {@code endTime} so OFFSET pagination stays correct even when new rows are inserted
-   * concurrently — useful for any counter that aggregates across multiple pages.
+   * concurrently. Useful for any counter that aggregates across multiple pages.
    *
    * <p><b>Known limitation:</b> the {@code apps_extension_time_series} table has no surrogate
    * primary key, so the ORDER BY tie-breaker is limited to {@code timestamp}. Two writes that
