@@ -15,10 +15,19 @@ import {
   listTasks,
   Task,
   TaskCategory,
+  TaskEntityStatus,
   TaskEntityType,
 } from '../rest/tasksAPI';
 import { isDarApprovalActive } from '../utils/TasksUtils';
 import { useApplicationStore } from './useApplicationStore';
+
+const REAPPLY_ALLOWED_STATUSES = new Set([
+  TaskEntityStatus.Rejected,
+  TaskEntityStatus.Revoked,
+  TaskEntityStatus.Cancelled,
+  TaskEntityStatus.Completed,
+  TaskEntityStatus.Failed,
+]);
 
 interface UseDataAccessRequestParams {
   entityFqn: string | undefined;
@@ -52,7 +61,6 @@ export const useDataAccessRequest = ({
         category: TaskCategory.DataAccess,
         type: TaskEntityType.DataAccessRequest,
         createdBy: currentUser.name,
-        statusGroup: 'open',
         fields: 'about,resolution',
         limit: 10,
       });
@@ -84,12 +92,13 @@ export const useDataAccessRequest = ({
   const isDarDisabled = useMemo(
     () =>
       existingDarTasks.some((task) => {
-        const stage = (
-          task.workflowStageDisplayName ??
-          task.workflowStageId ??
-          ''
-        ).toLowerCase();
-        if (stage === 'approved') {
+        const status = task.status;
+
+        if (REAPPLY_ALLOWED_STATUSES.has(status)) {
+          return false;
+        }
+
+        if (status === TaskEntityStatus.Approved) {
           const payload = task.payload as
             | { duration?: string; expirationDate?: number }
             | undefined;
