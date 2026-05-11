@@ -12,7 +12,7 @@
  */
 
 import Form, { IChangeEvent } from '@rjsf/core';
-import { RegistryFieldsType } from '@rjsf/utils';
+import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Alert } from 'antd';
 
@@ -109,6 +109,7 @@ const ConnectionConfigForm = ({
       }),
     [data, serviceCategory, serviceType]
   );
+  const connectionSchema = connSch.schema as RJSFSchema;
 
   const shouldShowIPAlert = useMemo(() => {
     return (
@@ -124,16 +125,20 @@ const ConnectionConfigForm = ({
   // Remove the filters property from the schema
   // Since it'll have a separate form in the next step
   const propertiesWithoutDefaultFilterPatternFields = useMemo(
-    () => getFilteredSchema(connSch.schema.properties),
-    [connSch.schema.properties]
+    () =>
+      getFilteredSchema(
+        connectionSchema.properties as Record<string, unknown> | undefined
+      ),
+    [connectionSchema.properties]
   );
 
-  const schemaWithoutDefaultFilterPatternFields = useMemo(
+  const schemaWithoutDefaultFilterPatternFields = useMemo<RJSFSchema>(
     () => ({
-      ...connSch.schema,
-      properties: propertiesWithoutDefaultFilterPatternFields,
+      ...connectionSchema,
+      properties:
+        propertiesWithoutDefaultFilterPatternFields as RJSFSchema['properties'],
     }),
-    [connSch.schema, propertiesWithoutDefaultFilterPatternFields]
+    [connectionSchema, propertiesWithoutDefaultFilterPatternFields]
   );
 
   // UI Schema to hide the nested default filter pattern fields
@@ -153,6 +158,48 @@ const ConnectionConfigForm = ({
     }
   }, [formRef.current?.state?.formData]);
 
+  const formChildren = (
+    <>
+      {isEmpty(connSch.schema) && (
+        <div
+          className="text-grey-muted text-center"
+          data-testid="no-config-available">
+          {t('message.no-config-available')}
+        </div>
+      )}
+      {shouldShowIPAlert && (
+        <Alert
+          className="tw:mt-2 tw:rounded-lg"
+          data-testid="ip-address"
+          description={
+            <Transi18next
+              i18nKey="message.airflow-host-ip-address"
+              renderElement={<strong />}
+              values={{ hostIp, brandName: brandClassBase.getPageTitle() }}
+            />
+          }
+          type="info"
+        />
+      )}
+      {!isEmpty(connSch.schema) &&
+        isAirflowAvailable &&
+        formRef.current?.state?.formData && (
+          <TestConnection
+            connectionType={serviceType}
+            getData={() => formRef.current?.state?.formData}
+            hostIp={hostIp}
+            isTestingDisabled={disableTestConnection}
+            serviceCategory={serviceCategory}
+            serviceName={data?.name}
+            onValidateFormRequiredFields={handleRequiredFieldsValidation}
+          />
+        )}
+      {!isUndefined(inlineAlertDetails) && (
+        <InlineAlert alertClassName="m-t-xs" {...inlineAlertDetails} />
+      )}
+    </>
+  );
+
   return (
     <Fragment>
       <AirflowMessageBanner />
@@ -171,42 +218,7 @@ const ConnectionConfigForm = ({
         onCancel={onCancel}
         onFocus={onFocus}
         onSubmit={handleSave}>
-        {isEmpty(connSch.schema) && (
-          <div
-            className="text-grey-muted text-center"
-            data-testid="no-config-available">
-            {t('message.no-config-available')}
-          </div>
-        )}
-        {shouldShowIPAlert && (
-          <Alert
-            data-testid="ip-address"
-            description={
-              <Transi18next
-                i18nKey="message.airflow-host-ip-address"
-                renderElement={<strong />}
-                values={{ hostIp, brandName: brandClassBase.getPageTitle() }}
-              />
-            }
-            type="info"
-          />
-        )}
-        {!isEmpty(connSch.schema) &&
-          isAirflowAvailable &&
-          formRef.current?.state?.formData && (
-            <TestConnection
-              connectionType={serviceType}
-              getData={() => formRef.current?.state?.formData}
-              hostIp={hostIp}
-              isTestingDisabled={disableTestConnection}
-              serviceCategory={serviceCategory}
-              serviceName={data?.name}
-              onValidateFormRequiredFields={handleRequiredFieldsValidation}
-            />
-          )}
-        {!isUndefined(inlineAlertDetails) && (
-          <InlineAlert alertClassName="m-t-xs" {...inlineAlertDetails} />
-        )}
+        {formChildren}
       </FormBuilder>
     </Fragment>
   );
