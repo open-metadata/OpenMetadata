@@ -153,6 +153,9 @@ export interface Task {
   domain?: EntityReference;
   domains?: EntityReference[];
   createdBy?: EntityReference;
+  approvedBy?: EntityReference;
+  approvedById?: string;
+  approvedAt?: number;
   assignees?: EntityReference[];
   reviewers?: EntityReference[];
   watchers?: EntityReference[];

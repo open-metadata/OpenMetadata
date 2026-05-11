@@ -276,10 +276,9 @@ public class TaskWorkflowHandler {
           Entity.getEntityReferenceByName(Entity.USER, user, Include.NON_DELETED);
       taskRepository.persistApprover(taskId, approver, user);
     } catch (Exception e) {
-      LOG.warn(
-          "[TaskWorkflowHandler] Failed to capture approver for task '{}': {}",
-          taskId,
-          e.getMessage());
+      // Pass the exception so SLF4J appends the full stack trace — losing it makes
+      // production approver-capture failures effectively undiagnosable.
+      LOG.warn("[TaskWorkflowHandler] Failed to capture approver for task '{}'", taskId, e);
     }
   }
 
