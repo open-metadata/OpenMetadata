@@ -745,17 +745,13 @@ Learn more:
 
 Explore OpenMetadata using the sandbox:
 
-```text
-https://sandbox.open-metadata.org
-```
+[OpenMetadata Sandbox](https://sandbox.open-metadata.org)
 
 ### 2. Install OpenMetadata
 
 Follow the installation guide:
 
-```text
-https://docs.open-metadata.org/v1.12.x/quick-start
-```
+[OpenMetadata Quickstart](https://docs.open-metadata.org/latest/quick-start)
 
 ### 3. Ingest Metadata
 
