@@ -2579,7 +2579,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
     @SuppressWarnings("resource")
     Scanner scanner = new Scanner(System.in);
     LOG.info("Apply now? [y/N]: ");
-    String input = scanner.hasNext() ? scanner.next().trim().toLowerCase() : "";
+    // nextLine() (not next()) so a bare Enter — which the [y/N] convention implies as "no" —
+    // doesn't block waiting for a non-whitespace token. Treat empty / EOF as "no".
+    String input = scanner.hasNextLine() ? scanner.nextLine().trim().toLowerCase() : "";
     return input.equals("y") || input.equals("yes");
   }
 

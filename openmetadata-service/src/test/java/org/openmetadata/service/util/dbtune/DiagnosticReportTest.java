@@ -147,6 +147,25 @@ class DiagnosticReportTest {
         UnsupportedOperationException.class, () -> cols.add("new_col"));
   }
 
+  @Test
+  void nullSafe_returnsEmptyForNullAndUntouchedForNonNull() {
+    assertEquals("", PostgresDiagnostic.nullSafe(null));
+    assertEquals("", PostgresDiagnostic.nullSafe(""));
+    assertEquals("2026-05-11 10:00:00", PostgresDiagnostic.nullSafe("2026-05-11 10:00:00"));
+  }
+
+  @Test
+  void formatSeqIdxRatio_usesDoubleDivisionAndOneDecimal() {
+    assertEquals("7.5", PostgresDiagnostic.formatSeqIdxRatio(15, 2));
+    assertEquals("10.0", PostgresDiagnostic.formatSeqIdxRatio(100, 10));
+    assertEquals("0.5", PostgresDiagnostic.formatSeqIdxRatio(1, 2));
+  }
+
+  @Test
+  void formatSeqIdxRatio_zeroIdxScansRendersInfinity() {
+    assertEquals("∞", PostgresDiagnostic.formatSeqIdxRatio(50000, 0));
+  }
+
   private static Finding finding(final DiagnosticCategory category, final String objectName) {
     return new Finding(category, Severity.INFO, Map.of("table", objectName));
   }

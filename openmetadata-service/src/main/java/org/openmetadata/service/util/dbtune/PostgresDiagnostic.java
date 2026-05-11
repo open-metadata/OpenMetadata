@@ -123,7 +123,7 @@ public final class PostgresDiagnostic implements Diagnostic {
                         "live_rows", String.valueOf(rs.getLong("n_live_tup")),
                         "dead_rows", String.valueOf(rs.getLong("n_dead_tup")),
                         "dead_ratio", rs.getString("dead_pct") + "%",
-                        "last_vacuum", String.valueOf(rs.getString("last_autovacuum")))))
+                        "last_vacuum", nullSafe(rs.getString("last_autovacuum")))))
         .list();
   }
 
@@ -176,7 +176,7 @@ public final class PostgresDiagnostic implements Diagnostic {
                     Map.of(
                         "table", rs.getString("table_name"),
                         "live_rows", String.valueOf(rs.getLong("n_live_tup")),
-                        "last_analyzed", String.valueOf(rs.getString("last_analyzed")))))
+                        "last_analyzed", nullSafe(rs.getString("last_analyzed")))))
         .list();
   }
 
@@ -203,9 +203,7 @@ public final class PostgresDiagnostic implements Diagnostic {
                         "seq_scans", String.valueOf(rs.getLong("seq_scan")),
                         "idx_scans", String.valueOf(rs.getLong("idx_scan")),
                         "ratio",
-                            rs.getLong("idx_scan") == 0
-                                ? "∞"
-                                : String.valueOf(rs.getLong("seq_scan") / rs.getLong("idx_scan")))))
+                            formatSeqIdxRatio(rs.getLong("seq_scan"), rs.getLong("idx_scan")))))
         .list();
   }
 
@@ -251,5 +249,21 @@ public final class PostgresDiagnostic implements Diagnostic {
     return collapsed.length() <= QUERY_TRUNCATE
         ? collapsed
         : collapsed.substring(0, QUERY_TRUNCATE) + "…";
+  }
+
+  /** Empty string for SQL NULL — never the literal "null" since this lands in user-facing output. */
+  static String nullSafe(final String value) {
+    return value == null ? "" : value;
+  }
+
+  /**
+   * Formats {@code seq_scan / idx_scan} as a one-decimal ratio (e.g. {@code 7.5}) using {@code
+   * double} division. Returns {@code "∞"} when {@code idx_scan == 0}.
+   */
+  static String formatSeqIdxRatio(final long seqScan, final long idxScan) {
+    if (idxScan == 0) {
+      return "∞";
+    }
+    return String.format(java.util.Locale.ROOT, "%.1f", (double) seqScan / idxScan);
   }
 }
