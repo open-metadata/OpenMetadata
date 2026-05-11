@@ -120,7 +120,15 @@ class JSONDataFrameReader(DataFrameReader):
 
         content = content.decode(UTF_8, errors="ignore") if isinstance(content, bytes) else content
         data = json.loads(content)
-        raw_data = content if isinstance(data, dict) and data.get("$schema") else None
+        raw_data = (
+            content
+            if isinstance(data, dict)
+            and (
+                data.get("$schema") is not None  # JSON Schema files
+                or data.get("format-version") is not None  # Apache Iceberg table metadata
+            )
+            else None
+        )
         data = [data] if isinstance(data, dict) else data
 
         def chunk_generator():
@@ -140,9 +148,14 @@ class JSONDataFrameReader(DataFrameReader):
             return True
         try:
             obj = json.loads(first_line)
-            return isinstance(obj, dict) and not obj.get("$schema")
         except json.JSONDecodeError:
             return False
+        else:
+            if not isinstance(obj, dict):
+                return False
+            if obj.get("$schema") is not None:
+                return False
+            return obj.get("format-version") is None
 
     def _read_json_smart(
         self,

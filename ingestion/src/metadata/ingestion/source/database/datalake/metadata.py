@@ -16,7 +16,7 @@ DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 import json
 import traceback
 from hashlib import md5
-from typing import Any, Iterable, Optional, Tuple  # noqa: UP035
+from typing import Any, Dict, Iterable, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -59,7 +59,7 @@ from metadata.ingestion.source.storage.storage_service import (
     OPENMETADATA_TEMPLATE_FILE_NAME,
 )
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
-from metadata.readers.dataframe.reader_factory import SupportedTypes
+from metadata.readers.dataframe.reader_factory import SupportedTypes  # noqa: TC001
 from metadata.readers.file.base import ReadException
 from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils import fqn
@@ -67,6 +67,7 @@ from metadata.utils.datalake.datalake_utils import (
     DataFrameColumnParser,
     fetch_dataframe_first_chunk,
     get_file_format_type,
+    get_iceberg_table_name_from_metadata_path,
 )
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -95,6 +96,7 @@ class DatalakeSource(DatabaseServiceSource):
         self.connection_obj = self.client
         self.test_connection()
         self.reader = get_reader(config_source=self.config_source, client=self.client.client)
+        self._table_info: Dict[str, Tuple[SupportedTypes, Optional[int]]] = {}  # noqa: UP006, UP045
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -201,7 +203,7 @@ class DatalakeSource(DatabaseServiceSource):
 
     def get_tables_name_and_type(  # pylint: disable=too-many-branches
         self,
-    ) -> Iterable[Tuple[str, TableType, SupportedTypes, Optional[int]]]:  # noqa: UP006, UP045
+    ) -> Optional[Iterable[Tuple[str, TableType]]]:  # noqa: UP006, UP045
         """
         Handle table and views.
 
@@ -234,30 +236,39 @@ class DatalakeSource(DatabaseServiceSource):
                 logger.info(f"Processing table: {table_name}")
                 file_extension = get_file_format_type(key_name=key_name, metadata_entry=metadata_entry)
 
-                if table_name.endswith("/") or not file_extension:
+                if key_name.endswith("/") or not file_extension:
                     logger.debug(f"Object filtered due to unsupported file type: {key_name}")
                     continue
 
-                yield table_name, TableType.Regular, file_extension, file_size
+                table_type = (
+                    TableType.Iceberg
+                    if get_iceberg_table_name_from_metadata_path(key_name) is not None
+                    else TableType.Regular
+                )
+                self._table_info[key_name] = (file_extension, file_size)
+                yield key_name, table_type
 
     def yield_table(
         self,
-        table_name_and_type: Tuple[str, TableType, SupportedTypes, Optional[int]],  # noqa: UP006, UP045
+        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink.
         Uses first chunk only for schema inference to avoid loading entire file.
         """
-        table_name, table_type, table_extension, file_size = table_name_and_type
+        key_name, table_type = table_name_and_type
+        table_extension, file_size = self._table_info.pop(key_name, (None, None))
+        fetch_key = key_name
         schema_name = self.context.get().database_schema
+        table_name = self.standardize_table_name(schema_name, key_name)
         try:
             table_constraints = None
             data_frame, raw_data = fetch_dataframe_first_chunk(
                 config_source=self.config_source,
                 client=self.client.client,
                 file_fqn=DatalakeTableSchemaWrapper(
-                    key=table_name,
+                    key=fetch_key,
                     bucket_name=schema_name,
                     file_extension=table_extension,
                     file_size=file_size,
@@ -326,7 +337,8 @@ class DatalakeSource(DatabaseServiceSource):
         schema: str,
         table: str,  # pylint: disable=unused-argument
     ) -> str:
-        return table
+        iceberg_name = get_iceberg_table_name_from_metadata_path(table)
+        return iceberg_name if iceberg_name is not None else table
 
     def filter_dl_table(self, table_name: str):
         """Filters Datalake Tables based on filterPattern"""

@@ -18,7 +18,7 @@ import ast
 import json
 import random
 import traceback
-from typing import Any, Dict, List, Optional, Union, cast  # noqa: UP035
+from typing import Any, Dict, List, Optional, cast  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
@@ -187,6 +187,40 @@ def fetch_dataframe_first_chunk(
     return None
 
 
+_ICEBERG_METADATA_SUFFIX = ".metadata.json"
+_ICEBERG_METADATA_DIR = "/metadata/"
+
+
+def get_iceberg_table_name_from_metadata_path(metadata_path: str) -> str | None:
+    """
+    Extracts the Iceberg table directory name from a metadata file path.
+
+    Supports all standard Iceberg metadata filename formats:
+      "warehouse/orders/metadata/v2.metadata.json"                           -> "orders"
+      "warehouse/orders/metadata/v1-abc123.metadata.json"                    -> "orders"
+      "warehouse/orders/metadata/00015-8a14161c-65ad.metadata.json"          -> "orders"
+      "data/orders.json"                                                     -> None
+
+    Returns None if the path does not match the Iceberg metadata pattern.
+    """
+    if not metadata_path.endswith(_ICEBERG_METADATA_SUFFIX):
+        return None
+    metadata_idx = metadata_path.rfind(_ICEBERG_METADATA_DIR)
+    if metadata_idx < 0:
+        return None
+    filename = metadata_path[metadata_idx + len(_ICEBERG_METADATA_DIR) : -len(_ICEBERG_METADATA_SUFFIX)]
+    if not filename:
+        return None
+    raw = filename.lstrip("v")
+    dash_pos = raw.find("-")
+    version_part = raw[:dash_pos] if dash_pos > 0 else raw
+    if not version_part.isdigit():
+        return None
+    table_dir = metadata_path[:metadata_idx]
+    last_slash = table_dir.rfind("/")
+    return table_dir[last_slash + 1 :] if last_slash >= 0 else table_dir
+
+
 def get_file_format_type(key_name, metadata_entry=None):
     for supported_types in SupportedTypes:
         if key_name.lower().endswith(supported_types.value.lower()):
@@ -254,7 +288,7 @@ class DataFrameColumnParser:
 
     @staticmethod
     def _get_data_frame(
-        data_frame: Union[List["DataFrame"], "DataFrame"],  # noqa: F821, UP006
+        data_frame: list[Any] | Any,
         sample: bool,
         shuffle: bool,  # noqa: F821, RUF100
     ):
@@ -310,6 +344,36 @@ class GenericDataFrameColumnParser:
         return self._get_columns(self.data_frame)
 
     @classmethod
+    def _parse_column(cls, data_frame: Any, column: str) -> Optional[Column]:  # noqa: UP045
+        # use String by default
+        data_type = DataType.STRING
+        try:
+            if hasattr(data_frame[column], "dtypes"):
+                data_type = cls.fetch_col_types(data_frame, column_name=column)
+
+            parsed_string = {
+                "dataTypeDisplay": data_type.value,
+                "dataType": data_type,
+                "name": truncate_column_name(column),
+                "displayName": column,
+            }
+            if data_type == DataType.ARRAY:
+                parsed_string["arrayDataType"] = DataType.UNKNOWN
+                struct_children = cls._get_array_struct_children(data_frame[column].dropna()[:100])
+                if struct_children:
+                    parsed_string["arrayDataType"] = DataType.STRUCT
+                    parsed_string["children"] = struct_children
+
+            if data_type == DataType.JSON:
+                parsed_string["children"] = cls.get_children(data_frame[column].dropna()[:100])
+
+            return Column(**parsed_string)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
+        return None
+
+    @classmethod
     def _get_columns(cls, data_frame: "DataFrame"):  # noqa: F821
         """
         method to process column details.
@@ -319,34 +383,10 @@ class GenericDataFrameColumnParser:
         """
         cols = []
         if hasattr(data_frame, "columns"):
-            df_columns = list(data_frame.columns)
-            for column in df_columns:
-                # use String by default
-                data_type = DataType.STRING
-                try:
-                    if hasattr(data_frame[column], "dtypes"):
-                        data_type = cls.fetch_col_types(data_frame, column_name=column)
-
-                    parsed_string = {
-                        "dataTypeDisplay": data_type.value,
-                        "dataType": data_type,
-                        "name": truncate_column_name(column),
-                        "displayName": column,
-                    }
-                    if data_type == DataType.ARRAY:
-                        parsed_string["arrayDataType"] = DataType.UNKNOWN
-                        struct_children = cls._get_array_struct_children(data_frame[column].dropna()[:100])
-                        if struct_children:
-                            parsed_string["arrayDataType"] = DataType.STRUCT
-                            parsed_string["children"] = struct_children
-
-                    if data_type == DataType.JSON:
-                        parsed_string["children"] = cls.get_children(data_frame[column].dropna()[:100])
-
-                    cols.append(Column(**parsed_string))
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
+            for column in data_frame.columns:
+                parsed_col = cls._parse_column(data_frame, column)
+                if parsed_col:
+                    cols.append(parsed_col)
         return cols
 
     @classmethod
@@ -427,6 +467,21 @@ class GenericDataFrameColumnParser:
         return data_type or DataType.STRING
 
     @classmethod
+    def _process_unique_json_key(cls, result: Dict, key: str, value: Any) -> None:  # noqa: UP006
+        if isinstance(value, dict):
+            nested_json = result.get(key, {})
+            # `isinstance(nested_json, dict)` if for a key we first see a non dict value
+            # but then see a dict value later, we will consider the key to be a dict.
+            result[key] = cls.unique_json_structure([nested_json if isinstance(nested_json, dict) else {}, value])
+        elif isinstance(value, list) and value and all(isinstance(item, dict) for item in value):
+            merged_struct = cls.unique_json_structure(value)
+            existing = result.get(key)
+            existing_struct = existing.struct if isinstance(existing, _ArrayOfStruct) else {}
+            result[key] = _ArrayOfStruct(cls.unique_json_structure([existing_struct, merged_struct]))
+        else:
+            result[key] = value
+
+    @classmethod
     def unique_json_structure(cls, dicts: List[Dict]) -> Dict:  # noqa: UP006
         """Given a sample of `n` json objects, return a json object that represents the unique
         structure of all `n` objects. Note that the type of the key will be that of
@@ -438,20 +493,7 @@ class GenericDataFrameColumnParser:
         result = {}
         for dict_ in dicts:
             for key, value in dict_.items():
-                if isinstance(value, dict):
-                    nested_json = result.get(key, {})
-                    # `isinstance(nested_json, dict)` if for a key we first see a non dict value
-                    # but then see a dict value later, we will consider the key to be a dict.
-                    result[key] = cls.unique_json_structure(
-                        [nested_json if isinstance(nested_json, dict) else {}, value]
-                    )
-                elif isinstance(value, list) and value and all(isinstance(item, dict) for item in value):
-                    merged_struct = cls.unique_json_structure(value)
-                    existing = result.get(key)
-                    existing_struct = existing.struct if isinstance(existing, _ArrayOfStruct) else {}
-                    result[key] = _ArrayOfStruct(cls.unique_json_structure([existing_struct, merged_struct]))
-                else:
-                    result[key] = value
+                cls._process_unique_json_key(result, key, value)
         return result
 
     @classmethod

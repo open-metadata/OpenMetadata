@@ -726,7 +726,8 @@ class DatalakeYieldTableNameTest(TestCase):
                 return_value="local_datalake.default.my_bucket",
             ),
         ):
-            results = list(self.source.yield_table((table_name, TableType.Regular, None, None)))
+            self.source._table_info[table_name] = (None, None)
+            results = list(self.source.yield_table((table_name, TableType.Regular)))
 
         rights = [r.right for r in results if r.right is not None]
         return rights[0] if rights else None

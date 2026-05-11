@@ -16,7 +16,7 @@ Datalake GCS Client
 import os
 from copy import deepcopy
 from functools import partial
-from typing import Callable, Iterable, List, Optional, Set, Tuple  # noqa: UP035
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple  # noqa: UP035
 
 from google.cloud import storage
 
@@ -107,21 +107,51 @@ class DatalakeGcsClient(DatalakeBaseClient):
             for bucket in self._client.list_buckets():
                 yield bucket.name
 
+    @staticmethod
+    def _should_skip_gcs_cold_storage(blob: Any) -> bool:
+        storage_class = getattr(blob, "storage_class", None)
+        return bool(storage_class and storage_class in GCS_COLD_STORAGE_CLASSES)
+
     def get_table_names(
         self,
         bucket_name: str,
         prefix: Optional[str],  # noqa: UP045
         skip_cold_storage: bool = False,
     ) -> Iterable[Tuple[str, Optional[int]]]:  # noqa: UP006, UP045
-        bucket = self._client.get_bucket(bucket_name)
+        """
+        Lists tables in a GCS bucket using a single-pass approach.
 
-        for key in bucket.list_blobs(prefix=prefix):
-            if skip_cold_storage:
-                storage_class = getattr(key, "storage_class", None)
-                if storage_class and storage_class in GCS_COLD_STORAGE_CLASSES:
-                    logger.debug(f"Skipping cold storage object: {key.name} (storage_class: {storage_class})")
-                    continue
-            yield key.name, key.size
+        Iterates all blobs once, collecting Iceberg metadata entries and
+        buffering regular files. After the pass, yields Iceberg tables
+        (highest version per directory) followed by regular files that
+        do not belong to any Iceberg directory.
+        """
+        bucket = self._client.get_bucket(bucket_name)
+        iceberg_tables: Dict[str, Tuple[int, str, int | None]] = {}  # noqa: UP006
+        cold_iceberg_dirs: Set[str] = set()  # noqa: UP006
+        regular_files: List[Tuple[str, Optional[int]]] = []  # noqa: UP006, UP045
+
+        for blob in bucket.list_blobs(prefix=prefix):
+            if skip_cold_storage and self._should_skip_gcs_cold_storage(blob):
+                logger.debug(
+                    f"Skipping cold storage object: {blob.name} (storage_class: {getattr(blob, 'storage_class', None)})"
+                )
+                parsed = self._parse_iceberg_metadata(blob.name)
+                if parsed:
+                    cold_iceberg_dirs.add(parsed[0])
+                continue
+            if not self._update_iceberg_entry(iceberg_tables, blob.name, blob.size):
+                regular_files.append((blob.name, blob.size))
+
+        iceberg_dirs: Set[str] = set(iceberg_tables.keys()) | cold_iceberg_dirs  # noqa: UP006
+
+        for _, metadata_blob_path, size in iceberg_tables.values():
+            yield metadata_blob_path, size
+
+        for name, size in regular_files:
+            if iceberg_dirs and any(name.startswith(d + "/") for d in iceberg_dirs):
+                continue
+            yield name, size
 
     def close(self, service_connection):
         os.environ.pop("GOOGLE_CLOUD_PROJECT", "")

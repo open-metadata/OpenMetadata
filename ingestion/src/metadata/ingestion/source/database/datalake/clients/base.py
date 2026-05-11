@@ -14,11 +14,63 @@ Datalake Base Client
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Iterable, Optional, Tuple  # noqa: UP035
+from typing import Any, Callable, Dict, Iterable, Optional, Tuple  # noqa: UP035
 
 
 class DatalakeBaseClient(ABC):
     """Base DL client implementation"""
+
+    _ICEBERG_METADATA_SUFFIX = ".metadata.json"
+    _ICEBERG_METADATA_DIR = "/metadata/"
+
+    @staticmethod
+    def _parse_iceberg_metadata(name: str) -> Optional[Tuple[str, int]]:  # noqa: UP006, UP045
+        """
+        Parse an Iceberg metadata path, returning (table_dir, version) or None.
+
+        Supports all standard Iceberg metadata filename formats:
+          - v{n}.metadata.json           (Hadoop catalog)
+          - v{n}-<UUID>.metadata.json    (Hive catalog)
+          - {n}-<UUID>.metadata.json     (REST/Nessie catalog)
+        """
+        if not name.endswith(DatalakeBaseClient._ICEBERG_METADATA_SUFFIX):
+            return None
+        metadata_idx = name.rfind(DatalakeBaseClient._ICEBERG_METADATA_DIR)
+        if metadata_idx < 0:
+            return None
+        table_dir = name[:metadata_idx]
+        filename = name[
+            metadata_idx + len(DatalakeBaseClient._ICEBERG_METADATA_DIR) : -len(
+                DatalakeBaseClient._ICEBERG_METADATA_SUFFIX
+            )
+        ]
+        if not filename:
+            return None
+        raw = filename.lstrip("v")
+        dash_pos = raw.find("-")
+        version_part = raw[:dash_pos] if dash_pos > 0 else raw
+        if not version_part.isdigit():
+            return None
+        return table_dir, int(version_part)
+
+    def _update_iceberg_entry(
+        self,
+        iceberg_tables: Dict[str, Tuple[int, str, Optional[int]]],  # noqa: UP006, UP045
+        name: str,
+        size: Optional[int],  # noqa: UP045
+    ) -> bool:
+        """
+        If name matches the Iceberg metadata pattern, update iceberg_tables with
+        the highest-version entry and return True. Otherwise return False.
+        """
+        parsed = self._parse_iceberg_metadata(name)
+        if not parsed:
+            return False
+        table_dir, version = parsed
+        existing = iceberg_tables.get(table_dir)
+        if existing is None or version > existing[0]:
+            iceberg_tables[table_dir] = (version, name, size)
+        return True
 
     def __init__(self, client: Any, session: Any = None, **kwargs):
         self._client = client
