@@ -4330,6 +4330,12 @@ public interface CollectionDAO {
 
     @RegisterRowMapper(TaskCountSummaryMapper.class)
     @SqlQuery(
+        // 'Approved' double-counts in `completedCount` AND `approvedCount` because the
+        // same status means different things across task types: terminal for
+        // Glossary/DescriptionUpdate (legacy dashboards expect it under "completed") and
+        // non-terminal for Data Access Requests (the dedicated DAR list uses
+        // `approvedCount` / `grantedCount` and the `active` status group instead).
+        // See ListFilter.getTaskStatusCondition for the matching status-group semantics.
         "SELECT "
             + "COUNT(id) AS total, "
             + "COALESCE(SUM(CASE WHEN status IN ('Open', 'InProgress', 'Pending') THEN 1 ELSE 0 END), 0) AS openCount, "

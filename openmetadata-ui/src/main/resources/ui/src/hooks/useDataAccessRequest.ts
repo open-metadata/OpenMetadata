@@ -82,6 +82,9 @@ export const useDataAccessRequest = ({
   const isDarDisabled = useMemo(
     () =>
       existingDarTasks.some((task) => {
+        const approvalActiveStart =
+          task.approvedAt ?? task.updatedAt ?? task.createdAt;
+
         if (
           task.status === TaskEntityStatus.Approved ||
           task.status === TaskEntityStatus.Granted
@@ -91,7 +94,7 @@ export const useDataAccessRequest = ({
             | undefined;
 
           return isDarApprovalActive(
-            task.updatedAt ?? task.createdAt,
+            approvalActiveStart,
             payload?.duration,
             payload?.expirationDate
           );
@@ -108,7 +111,7 @@ export const useDataAccessRequest = ({
             | undefined;
 
           return isDarApprovalActive(
-            task.updatedAt ?? task.createdAt,
+            approvalActiveStart,
             payload?.duration,
             payload?.expirationDate
           );

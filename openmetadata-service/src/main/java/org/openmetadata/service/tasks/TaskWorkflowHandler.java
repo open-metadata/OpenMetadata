@@ -232,7 +232,7 @@ public class TaskWorkflowHandler {
           "[TaskWorkflowHandler] Non-terminal transition '{}' for task '{}' — workflow advanced, no resolution applied",
           transitionId,
           taskId);
-      if ("approve".equals(transitionId)) {
+      if (isApproveTransition(selectedTransition)) {
         captureApprover(taskRepository, taskId, user);
       }
       return refreshTask(taskId);
@@ -281,6 +281,16 @@ public class TaskWorkflowHandler {
           taskId,
           e.getMessage());
     }
+  }
+
+  /**
+   * Identify an approval transition by its target status rather than its `id` string. Every
+   * approve transition in our seeded workflows has `targetTaskStatus=Approved`, so this avoids
+   * coupling the handler to the literal `"approve"` id that the workflow JSON happens to use.
+   */
+  private static boolean isApproveTransition(TaskAvailableTransition selectedTransition) {
+    return selectedTransition != null
+        && selectedTransition.getTargetTaskStatus() == TaskEntityStatus.Approved;
   }
 
   /**
@@ -353,7 +363,7 @@ public class TaskWorkflowHandler {
       task.setWorkflowStageId(selectedTransition.getTargetStageId());
       task.setWorkflowStageDisplayName(selectedTransition.getTargetStageId());
       task.setAvailableTransitions(List.of());
-      if ("approve".equals(selectedTransition.getId())) {
+      if (isApproveTransition(selectedTransition)) {
         task.setApprovedBy(resolvedByRef);
         task.setApprovedById(resolvedByRef.getId().toString());
         task.setApprovedAt(System.currentTimeMillis());

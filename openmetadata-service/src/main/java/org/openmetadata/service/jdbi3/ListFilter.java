@@ -984,6 +984,14 @@ public class ListFilter extends Filter<ListFilter> {
         return String.format(
             "%s IN ('Open', 'InProgress', 'Pending', 'Approved', 'Granted')", column);
       } else if ("closed".equalsIgnoreCase(statusGroup)) {
+        // 'Approved' is intentionally a member of both 'active' and 'closed' because the
+        // same status maps to different lifecycle meanings depending on the task type:
+        //   - Glossary/DescriptionUpdate/etc.: 'Approved' is the terminal state and must
+        //     surface in the existing Closed tab.
+        //   - DataAccessRequest: 'Approved' means "awaiting grant" — non-terminal — and
+        //     callers reach those tasks via the 'active' group instead.
+        // Removing 'Approved' here would regress the Closed tab UX for the older workflows.
+        // A future refactor could make status group resolution task-type aware.
         return String.format(
             "%s IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked')",
             column);
