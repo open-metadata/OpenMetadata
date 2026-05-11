@@ -300,6 +300,8 @@ export interface RequestConnection {
  *
  * IOMETE Connection Config
  *
+ * QuestDB Connection Config
+ *
  * Looker Connection Config
  *
  * Metabase Connection Config
@@ -646,6 +648,8 @@ export interface ConfigObject {
      * Host and port of the Informix service.
      *
      * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
+     *
+     * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
      *
      * URL to the Looker instance.
      *
@@ -1068,6 +1072,8 @@ export interface ConfigObject {
      * metadata in Informix.
      *
      * Username to connect to IOMETE.
+     *
+     * Username to connect to QuestDB.
      *
      * Username to connect to Metabase. Required for basic authentication.
      *
@@ -5084,6 +5090,7 @@ export enum ConfigType {
     PubSub = "PubSub",
     QlikCloud = "QlikCloud",
     QlikSense = "QlikSense",
+    QuestDB = "QuestDB",
     QuickSight = "QuickSight",
     REST = "Rest",
     Ranger = "Ranger",

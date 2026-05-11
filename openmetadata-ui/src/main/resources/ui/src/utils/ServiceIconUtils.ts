@@ -41,6 +41,7 @@ import pinot from '../assets/img/service-icon-pinot.png';
 import postgres from '../assets/img/service-icon-post.png';
 import presto from '../assets/img/service-icon-presto.png';
 import bigquery from '../assets/img/service-icon-query.png';
+import questdb from '../assets/img/service-icon-questdb.png';
 import redshift from '../assets/img/service-icon-redshift.png';
 import salesforce from '../assets/img/service-icon-salesforce.png';
 import saperp from '../assets/img/service-icon-sap-erp.png';
@@ -177,6 +178,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   burstiq: burstiq,
   sas: sas,
   iomete: iomete,
+  questdb: questdb,
   domodatabase: domo,
   customdatabase: databasedefault,
   microsoftfabric: microsoftFabric,

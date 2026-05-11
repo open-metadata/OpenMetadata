@@ -619,8 +619,7 @@ test('My Tasks Widget', async ({ page }) => {
     await apiContext.post('/api/v1/tasks', {
       data: {
         name: `My Tasks Widget Test - ${Date.now()}`,
-        about: glossary1.responseData.fullyQualifiedName,
-        aboutType: 'glossary',
+        about: `<#E::glossary::${glossary1.responseData.fullyQualifiedName}>`,
         type: 'DescriptionUpdate',
         category: 'MetadataUpdate',
         assignees: [adminUser.responseData.name],

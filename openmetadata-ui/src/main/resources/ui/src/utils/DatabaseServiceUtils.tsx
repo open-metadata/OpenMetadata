@@ -55,6 +55,7 @@ import oracleConnection from '../jsons/connectionSchemas/connections/database/or
 import pinotConnection from '../jsons/connectionSchemas/connections/database/pinotDBConnection.json';
 import postgresConnection from '../jsons/connectionSchemas/connections/database/postgresConnection.json';
 import prestoConnection from '../jsons/connectionSchemas/connections/database/prestoConnection.json';
+import questdbConnection from '../jsons/connectionSchemas/connections/database/questdbConnection.json';
 import redshiftConnection from '../jsons/connectionSchemas/connections/database/redshiftConnection.json';
 import salesforceConnection from '../jsons/connectionSchemas/connections/database/salesforceConnection.json';
 import sapErpConnection from '../jsons/connectionSchemas/connections/database/sapErpConnection.json';
@@ -196,6 +197,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.Presto: {
       schema = prestoConnection;
+
+      break;
+    }
+    case DatabaseServiceType.QuestDB: {
+      schema = questdbConnection;
 
       break;
     }
