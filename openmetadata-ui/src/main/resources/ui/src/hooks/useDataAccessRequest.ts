@@ -15,19 +15,10 @@ import {
   listTasks,
   Task,
   TaskCategory,
-  TaskEntityStatus,
   TaskEntityType,
 } from '../rest/tasksAPI';
 import { isDarApprovalActive } from '../utils/TasksUtils';
 import { useApplicationStore } from './useApplicationStore';
-
-const REAPPLY_ALLOWED_STATUSES = new Set([
-  TaskEntityStatus.Rejected,
-  TaskEntityStatus.Revoked,
-  TaskEntityStatus.Cancelled,
-  TaskEntityStatus.Completed,
-  TaskEntityStatus.Failed,
-]);
 
 interface UseDataAccessRequestParams {
   entityFqn: string | undefined;
@@ -89,31 +80,33 @@ export const useDataAccessRequest = ({
     };
   }, [fetchExistingDar, listenForEvents]);
 
-  const isDarDisabled = useMemo(
-    () =>
-      existingDarTasks.some((task) => {
-        const status = task.status;
+  const isDarDisabled = useMemo(() => {
+    return existingDarTasks.some((task) => {
+      const stage = (
+        task.workflowStageDisplayName ??
+        task.workflowStageId ??
+        ''
+      ).toLowerCase();
 
-        if (REAPPLY_ALLOWED_STATUSES.has(status)) {
-          return false;
-        }
-
-        if (status === TaskEntityStatus.Approved) {
-          const payload = task.payload as
-            | { duration?: string; expirationDate?: number }
-            | undefined;
-
-          return isDarApprovalActive(
-            task.updatedAt ?? task.createdAt,
-            payload?.duration,
-            payload?.expirationDate
-          );
-        }
-
+      if (stage === 'review') {
         return true;
-      }),
-    [existingDarTasks]
-  );
+      }
+
+      if (stage === 'approved') {
+        const payload = task.payload as
+          | { duration?: string; expirationDate?: number }
+          | undefined;
+
+        return isDarApprovalActive(
+          task.updatedAt ?? task.createdAt,
+          payload?.duration,
+          payload?.expirationDate
+        );
+      }
+
+      return false;
+    });
+  }, [existingDarTasks]);
 
   return { isDarDisabled, refetch: fetchExistingDar };
 };
