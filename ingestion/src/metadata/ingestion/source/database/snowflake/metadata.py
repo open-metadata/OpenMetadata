@@ -14,7 +14,7 @@ Snowflake source module
 import json
 import traceback
 from datetime import datetime
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
 import sqlalchemy.types as sqltypes
 import sqlparse
@@ -34,6 +34,7 @@ from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedureType,
 )
 from metadata.generated.schema.entity.data.table import (
+    Column,
     PartitionColumnDetails,
     PartitionIntervalTypes,
     Table,
@@ -51,7 +52,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import (
     EntityName,
-    FullyQualifiedEntityName,
     SourceUrl,
 )
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
@@ -131,7 +131,6 @@ from metadata.utils.sqlalchemy_utils import (
     get_all_table_ddls,
     get_all_view_definitions,
 )
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_label
 
 
 class MAP(StructuredType):
@@ -527,9 +526,20 @@ class SnowflakeSource(
                     logger.debug(traceback.format_exc())
                     logger.error(f"Failed to fetch tags due to [{inner_exc}]")
 
+            schema_fqn = cast(
+                "str",
+                fqn.build(
+                    self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=schema_name,
+                ),
+            )
             for res in result:
                 row = list(res)
                 fqn_elements = [name for name in row[2:] if name]
+
                 # row[0] = TAG_NAME, row[1] = TAG_VALUE
                 if not row[1]:
                     logger.warning(
@@ -537,39 +547,113 @@ class SnowflakeSource(
                         "TAG_VALUE is empty. Snowflake tags require a value to be ingested."
                     )
                     continue
-                yield from get_ometa_tag_and_classification(
-                    tag_fqn=FullyQualifiedEntityName(
-                        fqn._build(  # pylint: disable=protected-access
-                            self.context.get().database_service, *fqn_elements
-                        )
-                    ),
-                    tags=[row[1]],
-                    classification_name=row[0],
-                    tag_description=SNOWFLAKE_TAG_DESCRIPTION,
-                    classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
-                    metadata=self.metadata,
-                    system_tags=True,
-                )
+
+                entity_fqn = fqn._build(self.context.get().database_service, *fqn_elements)  # pyright: ignore[reportAttributeAccessIssue]
+                try:
+                    classification = self.tag_canonicalizer.classification(
+                        row[0], default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION
+                    )
+                    tag = self.tag_canonicalizer.tag(
+                        classification.name, row[1], default_tag_description=SNOWFLAKE_TAG_DESCRIPTION
+                    )
+
+                    self.tags_registry.attach(
+                        scope_fqn=schema_fqn,
+                        entity_fqn=entity_fqn,
+                        classification_name=classification.name,
+                        tag_name=tag.name,
+                        classification_description=classification.description,
+                        tag_description=tag.description,
+                    )
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    yield Either(
+                        left=StackTraceError(
+                            name=f"{row[0]}.{row[1]}",
+                            error=f"Tag canonicalization failed for {row[0]}.{row[1]}: {exc}",
+                            stackTrace=traceback.format_exc(),
+                        ),
+                        right=None,
+                    )
 
             # Yield schema-level tags
             if schema_name in self.schema_tags_map:
-                schema_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=schema_name,
-                )
                 for tag_info in self.schema_tags_map[schema_name]:
-                    yield from get_ometa_tag_and_classification(
-                        tag_fqn=FullyQualifiedEntityName(schema_fqn),
-                        tags=[tag_info["tag_value"]],
-                        classification_name=tag_info["tag_name"],
-                        tag_description=SNOWFLAKE_TAG_DESCRIPTION,
-                        classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
-                        metadata=self.metadata,
-                        system_tags=True,
-                    )
+                    try:
+                        classification = self.tag_canonicalizer.classification(
+                            tag_info["tag_name"], default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION
+                        )
+                        tag = self.tag_canonicalizer.tag(
+                            classification.name,
+                            tag_info["tag_value"],
+                            default_tag_description=SNOWFLAKE_TAG_DESCRIPTION,
+                        )
+
+                        self.tags_registry.attach(
+                            scope_fqn=schema_fqn,
+                            entity_fqn=schema_fqn,
+                            classification_name=classification.name,
+                            tag_name=tag.name,
+                            classification_description=classification.description,
+                            tag_description=tag.description,
+                        )
+                    except Exception as exc:
+                        logger.debug(traceback.format_exc())
+                        yield Either(
+                            left=StackTraceError(
+                                name=f"{tag_info['tag_name']}.{tag_info['tag_value']}",
+                                error=f"Tag canonicalization failed for {tag_info['tag_name']}.{tag_info['tag_value']}: {exc}",
+                                stackTrace=traceback.format_exc(),
+                            ),
+                            right=None,
+                        )
+            yield from (Either(left=None, right=record) for record in self.tags_registry.drain())
+
+    def yield_database_tag(self, database_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Yield database-level tags for the topology."""
+        if not self.source_config.includeTags:
+            return
+
+        if database_name not in self.database_tags_map:
+            return
+
+        database_fqn = cast(
+            "str",
+            fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=database_name,
+            ),
+        )
+        for tag_info in self.database_tags_map[database_name]:
+            try:
+                classification = self.tag_canonicalizer.classification(
+                    tag_info["tag_name"], default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION
+                )
+                tag = self.tag_canonicalizer.tag(
+                    classification.name, tag_info["tag_value"], default_tag_description=SNOWFLAKE_TAG_DESCRIPTION
+                )
+
+                self.tags_registry.attach(
+                    scope_fqn=database_fqn,
+                    entity_fqn=database_fqn,
+                    classification_name=classification.name,
+                    tag_name=tag.name,
+                    classification_description=classification.description,
+                    tag_description=tag.description,
+                )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                yield Either(
+                    left=StackTraceError(
+                        name=f"{tag_info['tag_name']}.{tag_info['tag_value']}",
+                        error=f"Tag canonicalization failed for {tag_info['tag_name']}.{tag_info['tag_value']}: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    ),
+                    right=None,
+                )
+        yield from (Either(left=None, right=record) for record in self.tags_registry.drain())
 
     def _get_table_names_and_types(
         self, schema_name: str, table_type: TableType = TableType.Regular
@@ -1040,27 +1124,83 @@ class SnowflakeSource(
             f"Processing ownership is not supported for {self.service_connection.type.name}"
         )
 
-    def get_schema_tag_labels(self, schema_name: str) -> Optional[List[TagLabel]]:
+    def _get_classification_name(self, tag_label: TagLabel) -> str:
+        """Extract classification name from tag FQN (e.g., 'ENV.staging' -> 'ENV')"""
+        tag_fqn = tag_label.tagFQN.root if tag_label.tagFQN else ""
+        parts = fqn.split(tag_fqn) if tag_fqn else []
+        return parts[0] if parts else tag_fqn
+
+    def _has_classification(self, classification_name: str, tag_list: List[TagLabel]) -> bool:  # noqa: UP006
+        """Check if a tag with the given classification name already exists"""
+        for tag in tag_list:  # noqa: SIM110
+            if self._get_classification_name(tag) == classification_name:
+                return True
+        return False
+
+    def get_database_tag_labels(self, database_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+        """Return tags for the database entity from registry."""
+        database_fqn = cast(
+            "str",
+            fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=database_name,
+            ),
+        )
+        return self.tags_registry.labels_for(database_fqn) or None
+
+    def get_column_tag_labels(self, table_name: str, column: dict) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+        """Return tags for a column entity from the registry.
+
+        Column tags don't inherit from parent entities (table/schema/database)
+        — those have separate semantic meaning at their own level. Direct
+        lookup is sufficient.
+        """
+        col_fqn = cast(
+            "str",
+            fqn.build(
+                self.metadata,
+                entity_type=Column,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+                table_name=table_name,
+                column_name=column["name"],
+            ),
+        )
+        return self.tags_registry.labels_for(col_fqn) or None
+
+    def get_schema_tag_labels(self, schema_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """
         Return tags for schema entity including Snowflake schema-level tags.
         """
-        schema_tags = []
+        schema_fqn = cast(
+            "str",
+            fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                schema_name=schema_name,
+            ),
+        )
+        database_fqn = cast(
+            "str",
+            fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+            ),
+        )
 
-        if schema_name in self.schema_tags_map:
-            for tag_info in self.schema_tags_map[schema_name]:
-                tag_label = get_tag_label(
-                    metadata=self.metadata,
-                    tag_name=tag_info["tag_value"],
-                    classification_name=tag_info["tag_name"],
-                )
-                if tag_label:
-                    schema_tags.append(tag_label)
+        schema_tags = self.tags_registry.labels_for(schema_fqn)
 
-        # Include parent tags from context
-        parent_tags = super().get_schema_tag_labels(schema_name) or []
-        for tag in parent_tags:
-            if tag not in schema_tags:
-                schema_tags.append(tag)
+        # Add inherited database tags (only if classification doesn't already exist)
+        for label in self.tags_registry.labels_for(database_fqn):
+            if not self._has_classification(self._get_classification_name(label), schema_tags):
+                schema_tags.append(label)
 
         return schema_tags if schema_tags else None
 
@@ -1071,17 +1211,48 @@ class SnowflakeSource(
         1. Tags directly assigned to the table (from parent implementation)
         2. Tags inherited from the schema level
         """
-        table_tags = super().get_tag_labels(table_name) or []
+        table_fqn = cast(
+            "str",
+            fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+                table_name=table_name,
+                skip_es_search=True,
+            ),
+        )
+        schema_fqn = cast(
+            "str",
+            fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+            ),
+        )
+        database_fqn = cast(
+            "str",
+            fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+            ),
+        )
 
-        schema_name = self.context.get().database_schema
-        if schema_name and schema_name in self.schema_tags_map:
-            for tag_info in self.schema_tags_map[schema_name]:
-                tag_label = get_tag_label(
-                    metadata=self.metadata,
-                    tag_name=tag_info["tag_value"],
-                    classification_name=tag_info["tag_name"],
-                )
-                if tag_label and tag_label not in table_tags:
-                    table_tags.append(tag_label)
+        table_tags = self.tags_registry.labels_for(table_fqn)
+
+        # Add inherited schema tags (only if classification doesn't already exist)
+        for label in self.tags_registry.labels_for(schema_fqn):
+            if not self._has_classification(self._get_classification_name(label), table_tags):
+                table_tags.append(label)
+
+        # Add inherited database tags (only if classification doesn't already exist)
+        for label in self.tags_registry.labels_for(database_fqn):
+            if not self._has_classification(self._get_classification_name(label), table_tags):
+                table_tags.append(label)
 
         return table_tags if table_tags else None

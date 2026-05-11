@@ -18,7 +18,9 @@ from unittest.mock import Mock, PropertyMock, patch
 
 import sqlalchemy.types as sqltypes
 
-from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineStatus,
 )
@@ -26,14 +28,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.filterPattern import FilterPattern
-from metadata.generated.schema.type.tagLabel import (
-    LabelType,
-    State,
-    TagLabel,
-    TagSource,
-)
 from metadata.ingestion.source.database.snowflake.metadata import MAP, SnowflakeSource
 from metadata.ingestion.source.database.snowflake.models import SnowflakeStoredProcedure
+from metadata.utils import fqn
 
 SNOWFLAKE_CONFIGURATION = {
     "source": {
@@ -505,16 +502,39 @@ class SnowflakeUnitTest(TestCase):
         self.assertEqual(map_type.value_type, sqltypes.VARCHAR)  # default
         self.assertFalse(map_type.not_null)  # default
 
-    @patch(
-        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_tag_labels"
-    )
-    @patch("metadata.ingestion.source.database.snowflake.metadata.get_tag_label")
-    def test_schema_tag_inheritance(
-        self, mock_get_tag_label, mock_parent_get_tag_labels
-    ):
-        """Test schema tag inheritance"""
+    def _setup_tag_context(self, source, service_name="local_snowflake"):
+        """Populate the topology context for schema-stage tag tests and return the FQN trio."""
+        source.context.get().__dict__["database_service"] = service_name
+        source.context.get().__dict__["database"] = "TEST_DATABASE"
+        source.context.get().__dict__["database_schema"] = "TEST_SCHEMA"
+
+        database_fqn = fqn.build(
+            source.metadata,
+            entity_type=Database,
+            service_name=service_name,
+            database_name="TEST_DATABASE",
+        )
+        schema_fqn = fqn.build(
+            source.metadata,
+            entity_type=DatabaseSchema,
+            service_name=service_name,
+            database_name="TEST_DATABASE",
+            schema_name="TEST_SCHEMA",
+        )
+        table_fqn = fqn.build(
+            source.metadata,
+            entity_type=Table,
+            service_name=service_name,
+            database_name="TEST_DATABASE",
+            schema_name="TEST_SCHEMA",
+            table_name="TEST_TABLE",
+            skip_es_search=True,
+        )
+        return database_fqn, schema_fqn, table_fqn
+
+    def test_schema_tag_inheritance(self):
+        """Schema tags propagate to tables; classification dedup is preserved."""
         for source in self.sources.values():
-            # Verify tags are fetched and stored
             mock_schema_tags = [
                 Mock(
                     SCHEMA_NAME="TEST_SCHEMA", TAG_NAME="SCHEMA_TAG", TAG_VALUE="VALUE"
@@ -531,34 +551,141 @@ class SnowflakeUnitTest(TestCase):
                 {"tag_name": "SCHEMA_TAG", "tag_value": "VALUE"},
             )
 
-            # Verify schema tag labels
-            mock_get_tag_label.return_value = TagLabel(
-                tagFQN="SnowflakeTag.SCHEMA_TAG",
-                labelType=LabelType.Automated,
-                state=State.Suggested,
-                source=TagSource.Classification,
+            _, schema_fqn, table_fqn = self._setup_tag_context(source)
+
+            source.tags_registry.attach(
+                scope_fqn=schema_fqn,
+                entity_fqn=schema_fqn,
+                classification_name="SCHEMA_CLASSIFICATION",
+                tag_name="SCHEMA_TAG",
+                classification_description="",
+                tag_description="",
+            )
+            source.tags_registry.attach(
+                scope_fqn=schema_fqn,
+                entity_fqn=table_fqn,
+                classification_name="TABLE_CLASSIFICATION",
+                tag_name="TABLE_TAG",
+                classification_description="",
+                tag_description="",
             )
 
             schema_labels = source.get_schema_tag_labels(schema_name="TEST_SCHEMA")
             self.assertIsNotNone(schema_labels)
             self.assertEqual(len(schema_labels), 1)
-
-            # Verify tag inheritance
-            source.context.get().__dict__["database_schema"] = "TEST_SCHEMA"
-            mock_parent_get_tag_labels.return_value = [
-                TagLabel(
-                    tagFQN="SnowflakeTag.TABLE_TAG",
-                    labelType=LabelType.Automated,
-                    state=State.Suggested,
-                    source=TagSource.Classification,
-                )
-            ]
+            self.assertEqual(schema_labels[0].tagFQN.root, "SCHEMA_CLASSIFICATION.SCHEMA_TAG")
 
             table_labels = source.get_tag_labels(table_name="TEST_TABLE")
             self.assertEqual(len(table_labels), 2)
             tag_fqns = [tag.tagFQN.root for tag in table_labels]
-            self.assertIn("SnowflakeTag.SCHEMA_TAG", tag_fqns)
-            self.assertIn("SnowflakeTag.TABLE_TAG", tag_fqns)
+            self.assertIn("SCHEMA_CLASSIFICATION.SCHEMA_TAG", tag_fqns)
+            self.assertIn("TABLE_CLASSIFICATION.TABLE_TAG", tag_fqns)
+
+    def test_database_tag_inheritance(self):
+        """Database tags propagate to schemas and tables when classifications don't overlap."""
+        for source in self.sources.values():
+            mock_database_tags = [
+                Mock(
+                    DATABASE_NAME="TEST_DATABASE",
+                    TAG_NAME="DATABASE_TAG",
+                    TAG_VALUE="DB_VALUE",
+                ),
+            ]
+            mock_conn = MagicMock()
+            mock_conn.execute.return_value = mock_database_tags
+            source.engine = MagicMock()
+            source.engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+            source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+            source.set_database_tags_map("TEST_DATABASE")
+            self.assertEqual(len(source.database_tags_map["TEST_DATABASE"]), 1)
+            self.assertEqual(
+                source.database_tags_map["TEST_DATABASE"][0],
+                {"tag_name": "DATABASE_TAG", "tag_value": "DB_VALUE"},
+            )
+
+            database_fqn, schema_fqn, table_fqn = self._setup_tag_context(source)
+
+            source.tags_registry.attach(
+                scope_fqn=database_fqn,
+                entity_fqn=database_fqn,
+                classification_name="DATABASE_TAG",
+                tag_name="DB_VALUE",
+                classification_description="",
+                tag_description="",
+            )
+            source.tags_registry.attach(
+                scope_fqn=schema_fqn,
+                entity_fqn=schema_fqn,
+                classification_name="SCHEMA_TAG",
+                tag_name="SCHEMA_VALUE",
+                classification_description="",
+                tag_description="",
+            )
+            source.tags_registry.attach(
+                scope_fqn=schema_fqn,
+                entity_fqn=table_fqn,
+                classification_name="TABLE_TAG",
+                tag_name="TABLE_VALUE",
+                classification_description="",
+                tag_description="",
+            )
+
+            schema_labels = source.get_schema_tag_labels(schema_name="TEST_SCHEMA")
+            self.assertIsNotNone(schema_labels)
+            self.assertEqual(len(schema_labels), 2)
+            tag_fqns = [tag.tagFQN.root for tag in schema_labels]
+            self.assertIn("SCHEMA_TAG.SCHEMA_VALUE", tag_fqns)
+            self.assertIn("DATABASE_TAG.DB_VALUE", tag_fqns)
+
+            table_labels = source.get_tag_labels(table_name="TEST_TABLE")
+            self.assertEqual(len(table_labels), 3)
+            tag_fqns = [tag.tagFQN.root for tag in table_labels]
+            self.assertIn("TABLE_TAG.TABLE_VALUE", tag_fqns)
+            self.assertIn("SCHEMA_TAG.SCHEMA_VALUE", tag_fqns)
+            self.assertIn("DATABASE_TAG.DB_VALUE", tag_fqns)
+
+    def test_tag_value_precedence(self):
+        """Lower-level tags override inherited values for the same classification.
+
+        Database: ENV=dev, Schema: ENV=staging, Table: ENV=production.
+        Schema lookup must return only ENV.staging; table lookup only ENV.production.
+        """
+        for source in self.sources.values():
+            database_fqn, schema_fqn, table_fqn = self._setup_tag_context(source)
+
+            source.tags_registry.attach(
+                scope_fqn=database_fqn,
+                entity_fqn=database_fqn,
+                classification_name="ENV",
+                tag_name="dev",
+                classification_description="",
+                tag_description="",
+            )
+            source.tags_registry.attach(
+                scope_fqn=schema_fqn,
+                entity_fqn=schema_fqn,
+                classification_name="ENV",
+                tag_name="staging",
+                classification_description="",
+                tag_description="",
+            )
+            source.tags_registry.attach(
+                scope_fqn=schema_fqn,
+                entity_fqn=table_fqn,
+                classification_name="ENV",
+                tag_name="production",
+                classification_description="env classification",
+                tag_description="production tag",
+            )
+
+            schema_labels = source.get_schema_tag_labels(schema_name="TEST_SCHEMA")
+            self.assertEqual(len(schema_labels), 1)
+            self.assertEqual(schema_labels[0].tagFQN.root, "ENV.staging")
+
+            table_labels = source.get_tag_labels(table_name="TEST_TABLE")
+            self.assertEqual(len(table_labels), 1)
+            self.assertEqual(table_labels[0].tagFQN.root, "ENV.production")
 
     def test_table_names_full_query_generation(self):
         """Test complete SQL query generation for full extraction with different parameters"""
