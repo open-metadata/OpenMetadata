@@ -11,25 +11,40 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
 import { Plus } from '@untitledui/icons';
-import { Fragment, FunctionComponent, useState } from 'react';
+import { Fragment, FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const ADVANCED_PROPERTIES = new Set([
   'connectionArguments',
   'connectionOptions',
+  'sampleDataStorageConfig',
+  'scheme',
+  'sslConfig',
+  'sslMode',
 ]);
 
 export const CoreObjectFieldTemplate: FunctionComponent<
   ObjectFieldTemplateProps
-> = ({ title, onAddClick, schema, properties, idSchema }) => {
+> = ({ title, description, onAddClick, schema, properties, idSchema }) => {
   const { t } = useTranslation();
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  const isRoot = idSchema.$id === 'root';
 
   const { normalProperties, advancedProperties } = properties.reduce(
     (acc, prop) => {
+      if (prop.hidden) {
+        return acc;
+      }
       if (ADVANCED_PROPERTIES.has(prop.name)) {
         acc.advancedProperties.push(prop);
       } else {
@@ -44,9 +59,87 @@ export const CoreObjectFieldTemplate: FunctionComponent<
     }
   );
 
+  const propertiesContent = (
+    <>
+      <div className="tw:flex tw:flex-col tw:gap-6">
+        {!isRoot && schema.additionalProperties && (
+          <div className="tw:flex tw:items-center tw:justify-between">
+            <Typography
+              as="label"
+              className="tw:text-secondary"
+              size="text-xs"
+              weight="medium">
+              {t('label.additional-property-plural')}
+            </Typography>
+            <Button
+              aria-label={t('label.add-entity', { entity: title })}
+              color="primary"
+              data-testid={`add-item-${title}`}
+              id={`${idSchema.$id}`}
+              size="sm"
+              onClick={() => onAddClick(schema)()}>
+              <Plus data-icon size={14} />
+            </Button>
+          </div>
+        )}
+        {normalProperties.map((element) => (
+          <div
+            className={`tw:rounded-xl tw:bg-utility-gray-blue-50 ${
+              isRoot && 'tw:p-4'
+            }`}
+            key={element.name}>
+            {element.content}
+          </div>
+        ))}
+      </div>
+
+      {advancedProperties.length > 0 && (
+        <div className="tw:my-3">
+          <Accordion className="tw:ring-0 tw:divide-y-0 tw:rounded-lg">
+            <AccordionItem id={`${idSchema.$id}-advanced`}>
+              <AccordionHeader className="tw:py-3 tw:px-3 tw:text-md tw:font-medium tw:text-secondary tw:bg-utility-gray-blue-50">
+                {title
+                  ? `${title} ${t('label.advanced-config')}`
+                  : t('label.advanced-config')}
+              </AccordionHeader>
+              <AccordionPanel className="tw:flex tw:flex-col tw:bg-utility-gray-blue-50 tw:gap-4 tw:border-t-0">
+                {advancedProperties.map((element) => (
+                  <div key={element.name}>{element.content}</div>
+                ))}
+              </AccordionPanel>
+            </AccordionItem>
+          </Accordion>
+        </div>
+      )}
+    </>
+  );
+
+  if (!isRoot && title) {
+    return (
+      <div className="tw:flex tw:flex-col tw:gap-4 tw:rounded-xl tw:bg-utility-gray-blue-50">
+        <div className="tw:flex tw:flex-col tw:gap-0.5">
+          <Typography
+            as="label"
+            className="tw:text-primary"
+            id={`${idSchema.$id}__title`}
+            size="text-sm"
+            weight="semibold">
+            {title}
+          </Typography>
+          {description && (
+            <Typography as="span" className="tw:text-secondary" size="text-xs">
+              {description}
+            </Typography>
+          )}
+        </div>
+        {propertiesContent}
+      </div>
+    );
+  }
+
   return (
     <Fragment>
-      {title && (
+      {title && isRoot && (
         <div className="tw:flex tw:items-center tw:justify-between tw:mt-2">
           <Typography
             as="label"
@@ -69,37 +162,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
           )}
         </div>
       )}
-
-      <div className="tw:flex tw:flex-col tw:gap-4">
-        {normalProperties.map((element) => (
-          <div key={element.name}>{element.content}</div>
-        ))}
-      </div>
-
-      {advancedProperties.length > 0 && (
-        <div className="tw:mt-3">
-          <Button
-            aria-label={
-              advancedOpen
-                ? t('label.hide-entity', { entity: t('label.advanced-config') })
-                : t('label.show-entity', { entity: t('label.advanced-config') })
-            }
-            className="tw:flex tw:items-center tw:gap-1 tw:text-sm tw:font-medium tw:text-brand-primary hover:tw:underline"
-            color="link-color"
-            onClick={() => setAdvancedOpen((v) => !v)}>
-            {advancedOpen
-              ? t('label.hide-entity', { entity: t('label.advanced-config') })
-              : t('label.show-entity', { entity: t('label.advanced-config') })}
-          </Button>
-          {advancedOpen && (
-            <div className="tw:mt-2 tw:flex tw:flex-col tw:gap-4 tw:rounded-lg tw:border tw:border-primary tw:p-3">
-              {advancedProperties.map((element) => (
-                <div key={element.name}>{element.content}</div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {propertiesContent}
     </Fragment>
   );
 };

@@ -277,7 +277,7 @@ class AirflowSource(PipelineServiceSource):
                 )
                 .filter(DagRun.dag_id == dag_id)
                 .order_by(db_date_column.desc())
-                .limit(self.config.serviceConnection.root.config.numberOfStatus)
+                .limit(self.config.serviceConnection.root.config.numberOfStatus)  # pyright: ignore[reportAttributeAccessIssue]
                 .all()
             )
 
