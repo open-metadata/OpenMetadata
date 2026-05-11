@@ -217,7 +217,7 @@
                 <include>org/openmetadata/it/factories/**</include>
                 <include>org/openmetadata/it/server/**</include>
                 <include>org/openmetadata/it/search/**</include>
-                <include>org/openmetadata/it/ui/**</include>
+                <include>org/openmetadata/playwright/**</include>
                 <include>org/openmetadata/it/tests/BaseEntityIT*</include>
                 <include>private_key.der</include>
                 <include>public_key.der</include>
