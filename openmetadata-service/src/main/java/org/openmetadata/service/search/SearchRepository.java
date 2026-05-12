@@ -2201,7 +2201,8 @@ public class SearchRepository {
           }
         }
         Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
-        """;
+        """
+        + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
   private String generateDeleteTagLabelListScript() {
@@ -2216,7 +2217,8 @@ public class SearchRepository {
             }
           }
         }
-        """;
+        """
+        + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
   private String generateUpdateTagLabelListScript() {
@@ -2249,7 +2251,8 @@ public class SearchRepository {
           }
         }
         Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
-        """;
+        """
+        + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
   public void deleteByScript(String entityType, String scriptTxt, Map<String, Object> params) {
