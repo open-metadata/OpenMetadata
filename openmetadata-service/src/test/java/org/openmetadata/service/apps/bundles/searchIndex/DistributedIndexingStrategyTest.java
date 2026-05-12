@@ -478,8 +478,14 @@ class DistributedIndexingStrategyTest {
           contextCaptor.getAllValues().get(i).getEntityType(), successCaptor.getAllValues().get(i));
     }
 
-    assertEquals(Boolean.FALSE, outcomes.get("user"));
-    assertEquals(Boolean.FALSE, outcomes.get("dashboard"));
+    assertEquals(
+        Boolean.FALSE,
+        outcomes.get("user"),
+        "user has no entityStats entry — finalizer can't evaluate; default to failure");
+    assertEquals(
+        Boolean.TRUE,
+        outcomes.get("dashboard"),
+        "dashboard 4/5 (ratio 0.80) is below 0.95 but successRecords > 0 — policy rescues it");
   }
 
   @Test
