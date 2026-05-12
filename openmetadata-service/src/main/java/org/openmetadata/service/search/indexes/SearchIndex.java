@@ -68,9 +68,6 @@ public interface SearchIndex {
           "votes",
           "extension",
           "tags",
-          "tier",
-          "classificationTags",
-          "glossaryTags",
           "certification",
           "dataProducts");
 
