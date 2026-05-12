@@ -291,7 +291,7 @@ class HttpTransport:
 
     def send_request(self, method: str, params: Optional[Dict] = None) -> Dict[str, Any]:  # noqa: UP006, UP045
         """Send a JSON-RPC request via HTTP POST"""
-        request = {
+        request: Dict[str, Any] = {  # noqa: UP006
             "jsonrpc": "2.0",
             "id": str(uuid.uuid4()),
             "method": method,
