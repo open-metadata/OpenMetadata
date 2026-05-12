@@ -13,8 +13,9 @@
 import { expect, test } from '@playwright/test';
 // import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { SidebarItem } from '../../constant/sidebar';
+import { DataProduct } from '../../support/domain/DataProduct';
+import { Domain } from '../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
@@ -76,6 +77,8 @@ const knowledgePageQuickLink = {
 const dataAsset = new TopicClass();
 const tableAsset = new TableClass();
 const user = new UserClass();
+const domain = new Domain();
+const dataProduct = new DataProduct([domain]);
 
 const knowledgeCenter = new KnowledgeCenterClass({}, undefined, tableAsset);
 const knowledgeCenter1 = new KnowledgeCenterClass();
@@ -92,6 +95,8 @@ test.describe('Knowledge Center', () => {
     await user.create(apiContext);
     await tableAsset.create(apiContext);
     await dataAsset.create(apiContext);
+    await domain.create(apiContext);
+    await dataProduct.create(apiContext);
     await knowledgeCenter.create(apiContext, 15);
     await knowledgeCenter1.create(apiContext, 2);
     await afterAction();
@@ -121,19 +126,16 @@ test.describe('Knowledge Center', () => {
       // add title
       await addTitle(page, knowledgePageArticle.title);
 
-      await assignSingleSelectDomain(
-        page,
-        EntityDataClass.domain1.responseData
-      );
+      await assignSingleSelectDomain(page, domain.responseData);
 
       await assignDataProduct(
         page,
-        EntityDataClass.domain1.responseData,
-        [EntityDataClass.dataProduct1.responseData],
+        domain.responseData,
+        [dataProduct.responseData],
         'Add'
       );
 
-      await removeDataProduct(page, EntityDataClass.dataProduct1.responseData);
+      await removeDataProduct(page, dataProduct.responseData);
 
       // update owner
       await addMultiOwner({

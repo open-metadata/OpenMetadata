@@ -248,6 +248,7 @@ def _get_args_and_kwargs(charlen, attype, format_type):
         "time without time zone",
         "time",
     }:
+        args = ()
         kwargs = _get_kwargs_for_time_type(kwargs, charlen, attype)
 
     elif attype == "bit varying":
