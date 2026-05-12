@@ -227,7 +227,16 @@ export enum DarWorkflowStage {
 
 const BASE_URL = '/tasks';
 
-export type TaskStatusGroup = 'open' | 'active' | 'closed';
+// Task status group enum - matches backend ListFilter.getTaskStatusCondition.
+// 'Active' is a superset of 'Open' (Open/InProgress/Pending) that also includes
+// Approved and Granted; used by the DAR hook so awaiting-grant and active-access
+// requests are surfaced. 'Closed' keeps the legacy semantics that include
+// Approved for non-DAR workflows where it is terminal.
+export enum TaskStatusGroup {
+  Open = 'open',
+  Active = 'active',
+  Closed = 'closed',
+}
 export type TaskCountView =
   | 'all'
   | 'visible'

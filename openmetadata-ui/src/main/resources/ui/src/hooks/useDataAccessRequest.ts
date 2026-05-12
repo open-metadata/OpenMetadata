@@ -16,6 +16,7 @@ import {
   listDataAccessRequests,
   Task,
   TaskEntityStatus,
+  TaskStatusGroup,
 } from '../rest/tasksAPI';
 import { isDarApprovalActive } from '../utils/TasksUtils';
 import { useApplicationStore } from './useApplicationStore';
@@ -51,6 +52,7 @@ export const useDataAccessRequest = ({
       const res = await listDataAccessRequests({
         dataset: entityFqn,
         requestedBy: currentUser.name,
+        statusGroup: TaskStatusGroup.Active,
         fields: 'about,resolution',
         limit: 10,
       });
