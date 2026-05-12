@@ -25,7 +25,7 @@ import {
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
-const KNOWLEDGE_PAGE_ROUTE = '/knowledge-center/:fqn';
+const ARTICLE_PAGE_ROUTE = '/context-center/articles/:fqn';
 const FQN_PLACEHOLDER = ':fqn';
 
 export const deletePage = async (
@@ -34,7 +34,7 @@ export const deletePage = async (
   entityFqn?: string
 ) => {
   if (!isQuickLink) {
-    await page.getByTestId('manage-button').click();
+    await page.getByTestId('manage-button').first().click();
     await page.getByTestId('delete-button').click();
   }
 
@@ -198,7 +198,7 @@ export const readArticleData = async (
     tagFqn: string;
   }
 ) => {
-  await sidebarClick(page, SidebarItem.KNOWLEDGE_CENTER);
+  await sidebarClick(page, SidebarItem.ARTICLE);
   await readArticleInHierarchy(page, data.title);
 };
 
@@ -211,13 +211,8 @@ export const createQuickLink = async (
   },
   dataAsset: TopicClass
 ) => {
-  await page.locator('[data-testid="add-knowledge-page-btn"]').click();
-
-  await expect(
-    page.getByRole('menuitem', { name: 'Quick Link' })
-  ).toBeVisible();
-
-  await page.getByRole('menuitem', { name: 'Quick Link' }).click();
+  await page.getByTestId('create-knowledge-page-btn').click();
+  await page.getByTestId('create-quick-link-btn').click();
 
   await expect(page.locator('.ant-modal-title')).toHaveText('Add Quick Link');
 
@@ -489,18 +484,10 @@ export const toggleKnowledgePageBookmark = async (
       url.includes('/api/v1/knowledgeCenter') && url.includes('/followers')
     );
   });
-  const widgetRefreshResponse = page.waitForResponse((response) => {
-    return (
-      response.url().includes('/api/v1/users') &&
-      response.url().includes('fields=follows')
-    );
-  });
 
   await bookmarkBtn.click();
   const bookmarkRes = await bookmarkResponse;
-  const widgetRes = await widgetRefreshResponse;
   expect(bookmarkRes.status()).toBe(200);
-  expect(widgetRes.status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
 
   const rightPanel = page.getByTestId('knowledge-center-right-panel');
@@ -521,7 +508,7 @@ export const createNewKnowledgePageArticle = async (
 ) => {
   const createKnowledgePage = page.waitForResponse('/api/v1/knowledgeCenter');
 
-  await sidebarClick(page, SidebarItem.KNOWLEDGE_CENTER);
+  await sidebarClick(page, SidebarItem.ARTICLE);
   await page
     .locator('[data-testid="left-panel"]')
     .getByTestId('add-knowledge-page-btn')
@@ -895,7 +882,7 @@ export const navigateToArticle = async (page: Page, articleFqn: string) => {
       response.status() === 200
   );
 
-  const articlePath = KNOWLEDGE_PAGE_ROUTE.replace(FQN_PLACEHOLDER, articleFqn);
+  const articlePath = ARTICLE_PAGE_ROUTE.replace(FQN_PLACEHOLDER, articleFqn);
   await page.goto(articlePath);
   await getArticleResponse;
   await waitForAllLoadersToDisappear(page);
@@ -911,6 +898,6 @@ export const navigateToKnowledgeCenter = async (page: Page) => {
       response.url().includes('/knowledge-center')
   );
 
-  await sidebarClick(page, SidebarItem.KNOWLEDGE_CENTER);
+  await sidebarClick(page, SidebarItem.ARTICLE);
   await knowledgeCenterResponse;
 };

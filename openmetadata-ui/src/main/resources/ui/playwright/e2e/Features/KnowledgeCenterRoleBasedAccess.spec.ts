@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -159,7 +159,7 @@ testWithRolesPages(
 
     await articleResponse;
 
-    await dataConsumerPage.waitForURL(/\/knowledge-center\/.*/);
+    await dataConsumerPage.waitForURL(/\/context-center\/.*/);
 
     await dataConsumerPage.waitForSelector('.ant-skeleton-active', {
       state: 'detached',
@@ -229,7 +229,7 @@ testWithRolesPages(
 
     await articleResponse;
 
-    await dataStewardPage.waitForURL(/\/knowledge-center\/.*/);
+    await dataStewardPage.waitForURL(/\/context-center\/.*/);
 
     await dataStewardPage.waitForSelector('.ant-skeleton-active', {
       state: 'detached',

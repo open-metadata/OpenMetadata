@@ -486,6 +486,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               <TooltipTrigger>
                 <ButtonUtility
                   color="secondary"
+                  data-testid="conversation"
                   icon={<MessageChatSquare height={20} width={20} />}
                   onClick={handleOpenConversation}
                 />

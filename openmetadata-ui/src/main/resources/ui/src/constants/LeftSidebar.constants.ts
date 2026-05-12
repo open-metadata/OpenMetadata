@@ -222,28 +222,28 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     key: ROUTES.CONTEXT_CENTER,
     title: 'label.context-center',
     icon: KnowledgeCenterIcon,
-    dataTestId: `app-bar-item-${SidebarItem.CONTEXT_CENTER}`,
+    dataTestId: SidebarItem.CONTEXT_CENTER,
     children: [
       {
         key: ROUTES.CONTEXT_CENTER_DASHBOARD,
         title: 'label.dashboard',
         redirect_url: ROUTES.CONTEXT_CENTER_DASHBOARD,
         icon: GridIcon,
-        dataTestId: `app-bar-item-context-center-dashboard`,
+        dataTestId: `app-bar-item-${SidebarItem.DASHBOARD}`,
       },
       {
         key: ROUTES.CONTEXT_CENTER_ARTICLES,
         title: 'label.article-plural',
         redirect_url: ROUTES.CONTEXT_CENTER_ARTICLES,
         icon: ContextCenterArticlesIcon,
-        dataTestId: `app-bar-item-context-center-articles`,
+        dataTestId: `app-bar-item-${SidebarItem.ARTICLES}`,
       },
       {
         key: ROUTES.CONTEXT_CENTER_DOCUMENTS,
         title: 'label.document-plural',
         redirect_url: ROUTES.CONTEXT_CENTER_DOCUMENTS,
         icon: FolderIcon,
-        dataTestId: `app-bar-item-context-center-documents`,
+        dataTestId: `app-bar-item-${SidebarItem.DOCUMENTS}`,
       },
       // TODO: In progress
       // {

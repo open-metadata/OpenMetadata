@@ -171,17 +171,11 @@ const ContextCenterArticlesPage = () => {
             page.handlers?.onFollowChange ?? (async () => undefined)
           }
           onSave={page.handlers?.onSave}
-          onSetThreadLink={
-            page.handlers?.onSetThreadLink ?? (() => undefined)
-          }
+          onSetThreadLink={page.handlers?.onSetThreadLink ?? (() => undefined)}
           onTabChange={page.onTabChange}
-          onToggleDelete={
-            page.handlers?.onToggleDelete ?? (() => undefined)
-          }
+          onToggleDelete={page.handlers?.onToggleDelete ?? (() => undefined)}
           onToggleRightPanel={handleToggleRightPanel}
-          onVoteChange={
-            page.handlers?.onVoteChange ?? (async () => undefined)
-          }
+          onVoteChange={page.handlers?.onVoteChange ?? (async () => undefined)}
         />
       );
     }
@@ -285,7 +279,6 @@ const ContextCenterArticlesPage = () => {
       getPagePath={getContextCenterArticlePath}
       permissions={permissions}
       ref={knowledgeCenterPageRef}
-      rightPanelSlot={null}
       onPageChange={handlePageChange}
     />
   );
