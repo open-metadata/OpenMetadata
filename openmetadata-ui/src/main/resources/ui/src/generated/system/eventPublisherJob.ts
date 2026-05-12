@@ -77,6 +77,13 @@ export interface EventPublisherJob {
      */
     maxRetries?: number;
     /**
+     * Minimum per-entity success ratio (successRecords / totalRecords) required to mark a
+     * per-entity reindex as fully successful. Below this threshold the staged index is still
+     * promoted when at least one record indexed, but the run is surfaced as 'rescued'. Default
+     * 0.95.
+     */
+    minSuccessRatio?: number;
+    /**
      * Name of the result
      */
     name?: string;
