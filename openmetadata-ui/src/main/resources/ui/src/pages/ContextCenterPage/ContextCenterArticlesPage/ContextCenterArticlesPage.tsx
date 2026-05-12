@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { DownOutlined } from '@ant-design/icons';
-import { Home02 } from '@untitledui/icons';
-import { Button, Dropdown } from 'antd';
+import { Button, Dropdown } from '@openmetadata/ui-core-components';
+import { ChevronDown, Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -171,27 +170,30 @@ const ContextCenterArticlesPage = () => {
       actionsSlot={
         permissions.Create && (
           <LimitWrapper resource="knowledgeCenter">
-            <Dropdown
-              menu={{
-                items: [
-                  {
-                    key: PageType.ARTICLE,
-                    label: t('label.article'),
-                    onClick: addArticleKnowledgePage,
-                  },
-                  {
-                    key: PageType.QUICK_LINK,
-                    label: t('label.quick-link'),
-                    onClick: () => setShowAddLinkModal(true),
-                  },
-                ],
-              }}
-              trigger={['click']}>
-              <Button data-testid="create-knowledge-page-btn" type="primary">
+            <Dropdown.Root>
+              <Button
+                color="primary"
+                data-testid="create-knowledge-page-btn"
+                iconTrailing={ChevronDown}>
                 {t('label.create')}
-                <DownOutlined />
               </Button>
-            </Dropdown>
+
+              <Dropdown.Popover placement="bottom start">
+                <Dropdown.Menu aria-label="create knowledge page">
+                  <Dropdown.Item
+                    key={PageType.ARTICLE}
+                    onAction={addArticleKnowledgePage}>
+                    {t('label.article')}
+                  </Dropdown.Item>
+
+                  <Dropdown.Item
+                    key={PageType.QUICK_LINK}
+                    onAction={() => setShowAddLinkModal(true)}>
+                    {t('label.quick-link')}
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
           </LimitWrapper>
         )
       }

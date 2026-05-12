@@ -17,6 +17,7 @@ import {
   Dialog,
   FileUpload,
   FileUploadDropZone,
+  getReadableFileSize,
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
@@ -41,17 +42,6 @@ interface QueuedFile {
   progress: number;
   status: UploadStatus;
 }
-
-const getReadableSize = (bytes: number): string => {
-  if (bytes === 0) {
-    return '0 KB';
-  }
-
-  const suffixes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-
-  return `${Math.floor(bytes / Math.pow(1024, i))} ${suffixes[i]}`;
-};
 
 const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   isOpen,
@@ -169,19 +159,18 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     setQueuedFiles((prev) => [...prev, ...newQueued]);
     setIsUploading(true);
 
+    const batchAssets: Asset[] = [];
     for (const entry of newQueued) {
       const asset = await uploadSingleFile(entry);
-
       if (asset) {
-        uploadedAssetsRef.current = [...uploadedAssetsRef.current, asset];
+        batchAssets.push(asset);
       }
     }
 
     setIsUploading(false);
 
-    if (uploadedAssetsRef.current.length > 0) {
-      onUploaded?.(uploadedAssetsRef.current);
-      uploadedAssetsRef.current = [];
+    if (batchAssets.length > 0) {
+      onUploaded?.(batchAssets);
     }
   };
 
@@ -231,7 +220,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
                         </p>
 
                         <p className="tw:text-sm tw:text-tertiary">
-                          {getReadableSize(file.size)}
+                          {getReadableFileSize(file.size)}
                         </p>
                       </div>
 
