@@ -262,7 +262,9 @@ describe('ActivityFeedTab', () => {
       renderComponent(ActivityFeedTabs.TASKS);
 
       await waitFor(() =>
-        expect(screen.getByTestId('user-profile-page-task-filter-icon')).toBeInTheDocument()
+        expect(
+          screen.getByTestId('user-profile-page-task-filter-icon')
+        ).toBeInTheDocument()
       );
 
       fireEvent.click(screen.getByTestId('user-profile-page-task-filter-icon'));
