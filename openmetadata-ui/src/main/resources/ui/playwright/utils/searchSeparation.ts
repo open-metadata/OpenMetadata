@@ -36,7 +36,7 @@ import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../support/tag/ClassificationClass';
 import { TagClass } from '../support/tag/TagClass';
-import { createNewPage, redirectToHomePage } from './common';
+import { createNewPage, getApiContext, redirectToHomePage } from './common';
 import { checkExploreSearchFilter } from './entity';
 
 const TIER_FQN = 'Tier.Tier1';
@@ -123,9 +123,10 @@ export function registerFilterSeparationSuite(
 
     test('SearchIndexApp recreate reindex preserves searchable separation', async ({
       page,
-      browser,
     }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
+      // Reuse the already-authenticated page rather than opening a new one just to grab a
+      // token — saves a full browser navigation per entity suite.
+      const { apiContext, afterAction } = await getApiContext(page);
 
       const reindexRes = await apiContext.post(
         '/api/v1/search/reindexEntities?recreate=true',

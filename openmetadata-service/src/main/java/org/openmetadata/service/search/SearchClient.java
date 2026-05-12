@@ -92,6 +92,11 @@ public interface SearchClient
    * {@code TaggableIndex.applyTagFields} (the reindex path) produces. Without this, a propagation
    * or glossary-rename script can leave the lifted fields stale or land a Tier.* TagLabel inside
    * {@code tags[]}.
+   *
+   * <p>The shape mirrors {@code ParseTags}: Tier.* is lifted out of {@code tags[]} into
+   * {@code tier}, but its FQN is still included in {@code classificationTags} since it's
+   * sourced from a Classification — {@code ParseTags} iterates the original list to populate
+   * {@code classificationTags}, so the painless equivalent must do the same.
    */
   String TAG_RESEPARATION_SCRIPT =
       """
@@ -104,9 +109,9 @@ public interface SearchClient
           if (t == null || !t.containsKey('tagFQN') || t.tagFQN == null) { continue; }
           if (t.tagFQN.startsWith('Tier.')) {
             tier = t;
-            continue;
+          } else {
+            newTags.add(t);
           }
-          newTags.add(t);
           if (t.containsKey('source')) {
             if (t.source == 'Classification') { classTags.add(t.tagFQN); }
             else if (t.source == 'Glossary') { glossTags.add(t.tagFQN); }

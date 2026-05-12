@@ -91,7 +91,7 @@ class DistributedReindexFinalizerTest {
   }
 
   @Test
-  void finalizeRemainingEntitiesRescuesBelowThresholdWhenAnythingIndexed() {
+  void finalizeRemainingEntitiesFlagsBelowThresholdAsNotFullySuccessful() {
     RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
     ReindexContext stagedIndexContext = stagedContext(Entity.TABLE);
 
@@ -111,13 +111,14 @@ class DistributedReindexFinalizerTest {
     ArgumentCaptor<Boolean> successCaptor = ArgumentCaptor.forClass(Boolean.class);
     verify(indexPromotionHandler, times(1)).finalizeReindex(any(), successCaptor.capture());
     assertEquals(
-        Boolean.TRUE,
+        Boolean.FALSE,
         successCaptor.getValue(),
-        "40/100 records succeeded — below threshold but some indexed — still promote (rescue)");
+        "40/100 records succeeded — below 0.95 threshold — finalizer reports NOT fully"
+            + " successful; DefaultRecreateHandler will rescue via doc-count when this is false.");
   }
 
   @Test
-  void finalizeRemainingEntitiesRejectsPromotionWhenZeroSuccess() {
+  void finalizeRemainingEntitiesFlagsZeroSuccessAsNotFullySuccessful() {
     RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
     ReindexContext stagedIndexContext = stagedContext(Entity.TABLE);
 
@@ -139,7 +140,8 @@ class DistributedReindexFinalizerTest {
     assertEquals(
         Boolean.FALSE,
         successCaptor.getValue(),
-        "zero successful records — staged index is empty/broken; must not promote");
+        "zero successful records — handler's docCount rescue will then drop the empty staged"
+            + " index.");
   }
 
   private Map<String, Boolean> finalizations(

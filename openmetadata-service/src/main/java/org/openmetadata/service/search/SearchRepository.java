@@ -2519,34 +2519,26 @@ public class SearchRepository {
     // Each childAlias is an entity-type name (per indexMapping.json). Use the typed script's
     // capability check so we never apply soft-delete to an index whose schema lacks `deleted`.
     SoftDeleteScript script = new SoftDeleteScript(delete);
+    boolean hasClusterAlias = clusterAlias != null && !clusterAlias.isEmpty();
     List<String> targets =
         indexMapping.getChildAliases().stream()
             .filter(a -> script.compatibleWith(EntityIndexCapabilityRegistry.get(a)))
-            .map(a -> clusterAlias == null || clusterAlias.isEmpty() ? a : clusterAlias + "_" + a)
+            .map(a -> hasClusterAlias ? clusterAlias + IndexMapping.INDEX_NAME_SEPARATOR + a : a)
             .toList();
     if (targets.isEmpty()) {
       return;
     }
     String entityType = entityReference.getType();
+    // Service entities propagate child deletions through a shared service.id field; everything
+    // else uses the entity-type-specific <type>.id. Reuses the canonical SERVICE_ENTITY_SET that
+    // updateChildrenForSearchPropagation also relies on, so the contract stays in one place.
     String parentIdField =
-        SERVICE_ENTITY_TYPES.contains(entityType) ? "service.id" : entityType + ".id";
+        SERVICE_ENTITY_SET.contains(entityType) ? "service.id" : entityType + ".id";
     searchClient.softDeleteOrRestoreChildren(
         targets,
         script.painless(),
         List.of(new ImmutablePair<>(parentIdField, entityReference.getId().toString())));
   }
-
-  private static final Set<String> SERVICE_ENTITY_TYPES =
-      Set.of(
-          Entity.DASHBOARD_SERVICE,
-          Entity.DATABASE_SERVICE,
-          Entity.MESSAGING_SERVICE,
-          Entity.PIPELINE_SERVICE,
-          Entity.MLMODEL_SERVICE,
-          Entity.STORAGE_SERVICE,
-          Entity.SEARCH_SERVICE,
-          Entity.SECURITY_SERVICE,
-          Entity.DRIVE_SERVICE);
 
   public String getScriptWithParams(
       EntityInterface entity,

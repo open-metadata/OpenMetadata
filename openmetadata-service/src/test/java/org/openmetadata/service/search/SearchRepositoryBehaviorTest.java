@@ -138,7 +138,8 @@ class SearchRepositoryBehaviorTest {
           .indexName("test_case_search_index")
           .alias("testCase")
           .childAliases(
-              List.of(Entity.TEST_CASE_RESOLUTION_STATUS, Entity.TEST_CASE_RESULT, "tableColumn"))
+              List.of(
+                  Entity.TEST_CASE_RESOLUTION_STATUS, Entity.TEST_CASE_RESULT, Entity.TABLE_COLUMN))
           .indexMappingFile("/elasticsearch/%s/test_case_index_mapping.json")
           .build();
 

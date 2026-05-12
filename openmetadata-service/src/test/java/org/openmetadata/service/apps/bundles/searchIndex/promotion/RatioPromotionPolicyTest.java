@@ -22,46 +22,47 @@ import org.junit.jupiter.api.Test;
 class RatioPromotionPolicyTest {
 
   @Test
-  void promotesAtOrAboveThreshold() {
+  void fullySuccessfulAtOrAboveThreshold() {
     RatioPromotionPolicy policy = new RatioPromotionPolicy(0.95);
 
     assertTrue(
-        policy.evaluate(new EntityPromotionContext("table", 100, 95, 5)).promote(),
-        "exactly at threshold must promote");
+        policy.evaluate(new EntityPromotionContext("table", 100, 95, 5)).fullySuccessful(),
+        "exactly at threshold must report fully successful");
     assertTrue(
-        policy.evaluate(new EntityPromotionContext("table", 100, 100, 0)).promote(),
-        "100% must promote");
+        policy.evaluate(new EntityPromotionContext("table", 100, 100, 0)).fullySuccessful(),
+        "100% must report fully successful");
   }
 
   @Test
-  void rescuesBelowThresholdWhenAnythingIndexed() {
+  void notFullySuccessfulBelowThreshold() {
     RatioPromotionPolicy policy = new RatioPromotionPolicy(0.95);
 
     PromotionPolicy.Decision decision =
         policy.evaluate(new EntityPromotionContext("table", 100, 40, 60));
 
-    assertTrue(decision.promote(), "below threshold with some success must still promote");
+    assertFalse(
+        decision.fullySuccessful(),
+        "below threshold must NOT be fully successful — handler's doc-count rescue decides"
+            + " whether the staged index is promoted");
     assertTrue(
-        decision.reason().contains("partial promote"),
-        () -> "rescue reason should mention 'partial promote'; got: " + decision.reason());
+        decision.reason().contains("rescue"),
+        () -> "reason should mention the downstream rescue; got: " + decision.reason());
   }
 
   @Test
-  void rejectsWhenZeroSuccessRecords() {
+  void zeroSuccessRecordsNotFullySuccessful() {
     RatioPromotionPolicy policy = new RatioPromotionPolicy(0.95);
 
-    PromotionPolicy.Decision decision =
-        policy.evaluate(new EntityPromotionContext("table", 100, 0, 100));
-
-    assertFalse(decision.promote(), "zero indexed records must not promote");
+    assertFalse(
+        policy.evaluate(new EntityPromotionContext("table", 100, 0, 100)).fullySuccessful());
   }
 
   @Test
-  void promotesWhenNothingScheduled() {
+  void noRecordsScheduledIsFullySuccessful() {
     RatioPromotionPolicy policy = new RatioPromotionPolicy(0.95);
 
     assertTrue(
-        policy.evaluate(new EntityPromotionContext("page", 0, 0, 0)).promote(),
+        policy.evaluate(new EntityPromotionContext("page", 0, 0, 0)).fullySuccessful(),
         "empty entity types are not failures");
   }
 

@@ -695,13 +695,21 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   }
 
   /**
-   * Lenient-deserializes a search hit source into the time-series entity type. Tolerates legacy
-   * {@code deleted} fields that the live-indexing soft-delete script may have stamped onto
-   * append-only docs whose schema declares no such field. Once a recreate-style reindex has
-   * cleaned the index, the lenient mode is a no-op.
+   * Deserializes a search hit source into the time-series entity type. Strict by default so any
+   * genuine schema drift fails loudly. Targeted scrub of the legacy {@code deleted} field — the
+   * one known-pollution field stamped onto time-series docs by the soft-delete script before
+   * the Phase 1 fix — keeps that specific case from breaking reads, without the blanket
+   * unknown-field tolerance that {@link JsonUtils#readOrConvertValueLenient} would impose.
+   * Once a recreate-style reindex has cleaned the index, the scrub is a no-op.
    */
+  @SuppressWarnings("unchecked")
   private T readTimeSeriesSource(Object source) {
-    return JsonUtils.readOrConvertValueLenient(source, entityClass);
+    if (source instanceof Map<?, ?> mapSource && mapSource.containsKey(Entity.FIELD_DELETED)) {
+      Map<String, Object> scrubbed = new HashMap<>((Map<String, Object>) mapSource);
+      scrubbed.remove(Entity.FIELD_DELETED);
+      return JsonUtils.readOrConvertValue(scrubbed, entityClass);
+    }
+    return JsonUtils.readOrConvertValue(source, entityClass);
   }
 
   protected void setExcludeSearchFields(SearchListFilter searchListFilter) {

@@ -13,18 +13,29 @@
 package org.openmetadata.service.apps.bundles.searchIndex.promotion;
 
 /**
- * Decides whether a staged index should replace the live index given the entity's record-level
- * success / failure counts. The default implementation is {@link RatioPromotionPolicy}, which
- * promotes when the per-record success ratio clears a configurable threshold.
+ * Decides whether a per-entity reindex was "fully successful". The default implementation,
+ * {@link RatioPromotionPolicy}, declares success when the per-record success ratio clears a
+ * configurable threshold. Promotion itself remains unconditional — {@code DefaultRecreateHandler}
+ * always promotes a non-empty staged index via the existing doc-count rescue when this flag is
+ * false. The flag drives the operator-visible "did this entity run cleanly?" signal.
  *
- * <p>Prior to this abstraction the rule was binary ("zero failures") and a doc-count > 0 check in
- * {@code DefaultRecreateHandler} acted as a hidden rescue. Centralizing the decision in one place
- * keeps the contract explicit and lets us tune sensitivity per-deployment.
+ * <p>Prior to this abstraction the strict rule was binary ("zero failures") and the rescue lived
+ * unannounced inside the handler. Centralizing the success threshold here makes it tunable and
+ * makes the rescue's existence explicit in the contract.
  */
 public interface PromotionPolicy {
 
   Decision evaluate(EntityPromotionContext context);
 
-  /** Promotion decision plus a human-readable reason for the audit log. */
-  record Decision(boolean promote, String reason) {}
+  /**
+   * Outcome of {@link #evaluate(EntityPromotionContext)}.
+   *
+   * @param fullySuccessful true if the entity reindex met the policy's strict success bar;
+   *     false if the rescue path (doc-count fallback in
+   *     {@code DefaultRecreateHandler.promoteEntityIndex}) must decide whether the staged index
+   *     is salvageable. Promotion is always attempted regardless of this flag — the flag
+   *     controls how the run is logged / reported.
+   * @param reason human-readable rationale for the audit log
+   */
+  record Decision(boolean fullySuccessful, String reason) {}
 }

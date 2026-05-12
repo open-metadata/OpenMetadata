@@ -70,64 +70,98 @@ public class TestCaseSoftDeleteSearchIT {
     OpenMetadataClient client = SdkClients.adminClient();
 
     long ts = System.currentTimeMillis();
-    Database database =
-        client
-            .databases()
-            .create(
-                new CreateDatabase()
-                    .withName("soft_delete_db_" + ts)
-                    .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName()));
-    DatabaseSchema schema =
-        client
-            .databaseSchemas()
-            .create(
-                new CreateDatabaseSchema()
-                    .withName("soft_delete_schema_" + ts)
-                    .withDatabase(database.getFullyQualifiedName()));
-    Table table =
-        client
-            .tables()
-            .create(
-                new CreateTable()
-                    .withName("soft_delete_table_" + ts)
-                    .withDatabaseSchema(schema.getFullyQualifiedName())
-                    .withColumns(
-                        List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
+    Database database = null;
+    DatabaseSchema schema = null;
+    Table table = null;
+    TestCase testCase = null;
+    try {
+      database =
+          client
+              .databases()
+              .create(
+                  new CreateDatabase()
+                      .withName("soft_delete_db_" + ts)
+                      .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName()));
+      schema =
+          client
+              .databaseSchemas()
+              .create(
+                  new CreateDatabaseSchema()
+                      .withName("soft_delete_schema_" + ts)
+                      .withDatabase(database.getFullyQualifiedName()));
+      table =
+          client
+              .tables()
+              .create(
+                  new CreateTable()
+                      .withName("soft_delete_table_" + ts)
+                      .withDatabaseSchema(schema.getFullyQualifiedName())
+                      .withColumns(
+                          List.of(
+                              new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
 
-    String testDefFqn =
-        client
-            .testDefinitions()
-            .list(new ListParams().withLimit(1))
-            .getData()
-            .get(0)
-            .getFullyQualifiedName();
+      String testDefFqn =
+          client
+              .testDefinitions()
+              .list(new ListParams().withLimit(1))
+              .getData()
+              .get(0)
+              .getFullyQualifiedName();
 
-    TestCase testCase =
-        client
-            .testCases()
-            .create(
-                new CreateTestCase()
-                    .withName("soft_delete_tc_" + ts)
-                    .withEntityLink(
-                        "<#E::table::" + table.getFullyQualifiedName() + "::columns::id>")
-                    .withTestDefinition(testDefFqn));
+      testCase =
+          client
+              .testCases()
+              .create(
+                  new CreateTestCase()
+                      .withName("soft_delete_tc_" + ts)
+                      .withEntityLink(
+                          "<#E::table::" + table.getFullyQualifiedName() + "::columns::id>")
+                      .withTestDefinition(testDefFqn));
 
-    client
-        .testCaseResolutionStatuses()
-        .create(
-            new CreateTestCaseResolutionStatus()
-                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
-                .withTestCaseReference(testCase.getFullyQualifiedName())
-                .withSeverity(Severity.Severity2));
+      client
+          .testCaseResolutionStatuses()
+          .create(
+              new CreateTestCaseResolutionStatus()
+                  .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
+                  .withTestCaseReference(testCase.getFullyQualifiedName())
+                  .withSeverity(Severity.Severity2));
 
-    awaitIncidentIndexed(client, testCase.getFullyQualifiedName());
+      awaitIncidentIndexed(client, testCase.getFullyQualifiedName());
 
-    client
-        .testCases()
-        .delete(testCase.getId().toString(), Map.of("hardDelete", "false", "recursive", "true"));
+      client
+          .testCases()
+          .delete(
+              testCase.getId().toString(),
+              Map.of("hardDelete", "false", "recursive", "true"));
 
-    assertListingApiReturnsCleanlyAfterSoftDelete(client, testCase.getFullyQualifiedName());
-    assertNoTopLevelDeletedFieldOnIncidentDoc(client, testCase.getFullyQualifiedName());
+      assertListingApiReturnsCleanlyAfterSoftDelete(client, testCase.getFullyQualifiedName());
+      assertNoTopLevelDeletedFieldOnIncidentDoc(client, testCase.getFullyQualifiedName());
+    } finally {
+      // Hard-delete the entire database tree so the test leaves no artefacts behind. The
+      // testCase + resolution statuses are recursively cascaded with the parent table.
+      if (database != null) {
+        deleteQuietly(
+            () ->
+                client
+                    .databases()
+                    .delete(
+                        database.getId().toString(),
+                        Map.of("hardDelete", "true", "recursive", "true")));
+      }
+    }
+  }
+
+  private static void deleteQuietly(ThrowingRunnable action) {
+    try {
+      action.run();
+    } catch (Exception ignored) {
+      // best-effort cleanup; assertion failures take precedence
+    }
+  }
+
+  @FunctionalInterface
+  private interface ThrowingRunnable {
+    void run() throws Exception;
   }
 
   private void awaitIncidentIndexed(OpenMetadataClient client, String testCaseFqn) {

@@ -481,11 +481,12 @@ class DistributedIndexingStrategyTest {
     assertEquals(
         Boolean.FALSE,
         outcomes.get("user"),
-        "user has no entityStats entry — finalizer can't evaluate; default to failure");
+        "user has no entityStats entry — finalizer can't evaluate; default to not fully successful");
     assertEquals(
-        Boolean.TRUE,
+        Boolean.FALSE,
         outcomes.get("dashboard"),
-        "dashboard 4/5 (ratio 0.80) is below 0.95 but successRecords > 0 — policy rescues it");
+        "dashboard 4/5 (ratio 0.80) is below 0.95 — finalizer reports NOT fully successful;"
+            + " DefaultRecreateHandler's doc-count rescue then decides whether to promote");
   }
 
   @Test

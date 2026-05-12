@@ -98,11 +98,12 @@ test('Incident Manager renders without Jackson error after a test case is soft-d
     // `Unrecognized field "deleted"` in the body.
     expect(response.status()).toBe(200);
 
-    // And the page must not render an error toast saying "Unrecognized field"
-    // or "deleted".
-    const errorToast = page.getByText(/Unrecognized field|deleted/i, {
-      exact: false,
-    });
+    // And the toast bar must not surface a Jackson "Unrecognized field"/"deleted" error.
+    // Scope to the toast container so we don't false-positive on legitimate page text
+    // (e.g. a table cell that happens to contain the word "deleted").
+    const errorToast = page
+      .locator('[data-testid="alert-bar"]')
+      .filter({ hasText: /Unrecognized field|deleted/i });
     await expect(errorToast).toHaveCount(0);
   } finally {
     await table.delete(apiContext);

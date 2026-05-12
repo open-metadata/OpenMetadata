@@ -13,14 +13,17 @@
 package org.openmetadata.service.apps.bundles.searchIndex.promotion;
 
 /**
- * Promotes the staged index when the per-record success ratio meets {@code minSuccessRatio}. Any
- * staged index that contains at least one successful record is still promoted (a partial reindex
- * is strictly better than reverting to a stale live index), but the ratio decides whether we
- * surface the run as healthy or as "rescued".
+ * Per-entity reindex is "fully successful" when the per-record success ratio meets
+ * {@code minSuccessRatio}. The policy's {@link Decision#fullySuccessful()} captures that
+ * strict outcome; the caller hands it to {@code DefaultRecreateHandler.finalizeReindex} which
+ * already has a doc-count rescue path for cases where strict success was missed but the staged
+ * index still has data. Promotion is therefore unconditional at the policy level (the rescue
+ * decides whether to keep or drop the staged index), and the success flag carries the operator-
+ * visible "did this entity run cleanly" signal that {@code minSuccessRatio} controls.
  *
- * <p>The previous binary rule ({@code failedRecords == 0}) blocked promotion on a single failed
- * record, which combined with the doc-count fallback in {@code DefaultRecreateHandler} masked the
- * underlying issue. The ratio rule makes the threshold explicit.
+ * <p>The previous binary rule ({@code failedRecords == 0}) blocked the success signal on a
+ * single failed record. The ratio gives operators a tunable strict bar; below it, the
+ * downstream rescue still salvages a non-empty staged index.
  */
 public class RatioPromotionPolicy implements PromotionPolicy {
 
@@ -47,19 +50,16 @@ public class RatioPromotionPolicy implements PromotionPolicy {
   @Override
   public Decision evaluate(EntityPromotionContext context) {
     if (context.totalRecords() <= 0L) {
-      return new Decision(true, "no records scheduled; promoting empty staging is a no-op swap");
+      return new Decision(true, "no records scheduled; nothing to evaluate");
     }
     double ratio = context.successRatio();
     if (ratio >= minSuccessRatio) {
       return new Decision(
           true, "successRatio %.4f >= minSuccessRatio %.4f".formatted(ratio, minSuccessRatio));
     }
-    if (context.successRecords() > 0L) {
-      return new Decision(
-          true,
-          "successRatio %.4f below threshold %.4f but %d records indexed; partial promote"
-              .formatted(ratio, minSuccessRatio, context.successRecords()));
-    }
-    return new Decision(false, "no successful records; rejecting promotion");
+    return new Decision(
+        false,
+        "successRatio %.4f below threshold %.4f; DefaultRecreateHandler will rescue via doc-count"
+            .formatted(ratio, minSuccessRatio));
   }
 }

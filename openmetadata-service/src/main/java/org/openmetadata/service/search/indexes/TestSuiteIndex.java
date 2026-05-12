@@ -12,9 +12,11 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.TestSuiteRepository;
 
 public record TestSuiteIndex(TestSuite testSuite) implements TaggableIndex {
-  private static final Set<String> excludeFields = Set.of("summary", "testCaseResultSummary");
+  private static final Set<String> excludeFields =
+      Set.of(TestSuiteRepository.SUMMARY_FIELD, "testCaseResultSummary");
 
   @Override
   public Object getEntity() {
@@ -34,7 +36,7 @@ public record TestSuiteIndex(TestSuite testSuite) implements TaggableIndex {
   @Override
   public Set<String> getRequiredReindexFields() {
     Set<String> fields = new HashSet<>(TaggableIndex.super.getRequiredReindexFields());
-    fields.add("summary");
+    fields.add(TestSuiteRepository.SUMMARY_FIELD);
     return Collections.unmodifiableSet(fields);
   }
 
