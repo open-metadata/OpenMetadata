@@ -16,6 +16,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { waitForPageLoaded } from '../../utils/polling';
+import { waitForTaskListResponse } from '../../utils/task';
 
 async function createOpenTask(
   apiContext: Awaited<ReturnType<typeof performAdminLogin>>['apiContext'],
@@ -41,7 +42,7 @@ async function resolveTask(
   taskId: string
 ) {
   const res = await apiContext.post(`/api/v1/tasks/${taskId}/resolve`, {
-    data: { resolutionType: 'Completed' },
+    data: { resolutionType: 'Approved' },
   });
   expect([200, 201]).toContain(res.status());
 }
@@ -56,11 +57,7 @@ async function navigateToTasksPanel(page: import('@playwright/test').Page) {
 
   await expect(tasksMenuItem).toBeVisible();
 
-  const tasksCountResponse = page.waitForResponse(
-    (r) => r.url().includes('/api/v1/tasks/count') && r.status() === 200
-  );
   await tasksMenuItem.click();
-  await tasksCountResponse;
   await waitForPageLoaded(page);
 }
 
@@ -70,20 +67,16 @@ function badge(page: import('@playwright/test').Page) {
 
 async function switchToClosedFilter(page: import('@playwright/test').Page) {
   await page.getByTestId('user-profile-page-task-filter-icon').click();
-  const tasksCountResponse = page.waitForResponse(
-    (r) => r.url().includes('/api/v1/tasks/count') && r.status() === 200
-  );
+  const tasksListResponse = waitForTaskListResponse(page);
   await page.getByTestId('closed-tasks').click();
-  await tasksCountResponse;
+  await tasksListResponse;
 }
 
 async function switchToOpenFilter(page: import('@playwright/test').Page) {
   await page.getByTestId('user-profile-page-task-filter-icon').click();
-  const tasksCountResponse = page.waitForResponse(
-    (r) => r.url().includes('/api/v1/tasks/count') && r.status() === 200
-  );
+  const tasksListResponse = waitForTaskListResponse(page);
   await page.getByTestId('open-tasks').click();
-  await tasksCountResponse;
+  await tasksListResponse;
 }
 test.describe('ActivityFeedTab — task filter badge and placeholder', () => {
   const table = new TableClass();
@@ -127,6 +120,7 @@ test.describe('ActivityFeedTab — task filter badge and placeholder', () => {
       await resolveTask(apiContext, task.id);
 
       await page.reload();
+      await waitForPageLoaded(page);
       await navigateToTasksPanel(page);
 
       await expect(badge(page)).toHaveText('0');
