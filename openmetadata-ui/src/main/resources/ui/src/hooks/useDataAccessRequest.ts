@@ -87,7 +87,10 @@ export const useDataAccessRequest = ({
         ''
       ).toLowerCase();
 
-      if (stage === DarWorkflowStage.Review || stage === DarWorkflowStage.Granted) {
+      if (
+        stage === DarWorkflowStage.Review ||
+        stage === DarWorkflowStage.Granted
+      ) {
         return true;
       }
 
@@ -120,7 +123,10 @@ export const useDataAccessRequest = ({
           ''
         ).toLowerCase();
 
-        return stage === DarWorkflowStage.Approved && task.status !== TaskEntityStatus.Granted;
+        return (
+          stage === DarWorkflowStage.Approved &&
+          task.status !== TaskEntityStatus.Granted
+        );
       }),
     [existingDarTasks]
   );
