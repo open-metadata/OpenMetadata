@@ -139,7 +139,10 @@ public class CacheMetrics {
 
   public static CacheMetrics getInstance() {
     if (instance == null) {
-      LOG.warn("Cache metrics not initialized, returning null");
+      // DEBUG, not WARN: callers (eg admin /cache/stats poller) hit this every refresh on
+      // any deployment where cache isn't configured. WARN would spam ops logs for the
+      // entirely-normal "cache off" state.
+      LOG.debug("Cache metrics not initialized, returning null");
     }
     return instance;
   }

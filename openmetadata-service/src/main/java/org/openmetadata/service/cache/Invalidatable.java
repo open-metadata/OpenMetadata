@@ -34,9 +34,15 @@ public interface Invalidatable {
    * {@code (type, id, fqn)}. Either {@code id} or {@code fqn} may be null when the writer doesn't
    * have both; implementations should drop what they can.
    *
-   * <p>Called on the local pod synchronously from {@code EntityRepository.postUpdate /
-   * postDelete / restoreEntity}, and on remote pods from the {@code CacheInvalidationPubSub}
-   * subscriber. Both paths are best-effort; an exception here is logged and swallowed at the
+   * <p>Called on the local pod via {@link CacheBundle#invalidateEntity(String, UUID, String)},
+   * which is wired into {@code EntityRepository.invalidateCacheForEntity} (called from
+   * {@code postCreate}, write-through bulk update paths, and the admin invalidate endpoint).
+   * Note that {@code postUpdate} / {@code postDelete} / {@code restoreEntity} do NOT call
+   * this fan-out today — they rely on the write-through cache + L1 eviction. If a new
+   * Invalidatable needs to react to those events, add the wiring there. Remote pods invoke
+   * the same fan-out via the {@code CacheInvalidationPubSub} subscriber.
+   *
+   * <p>Both paths are best-effort; an exception here is logged and swallowed at the
    * caller — never let a cache hiccup take down a write path.
    */
   void invalidate(String type, UUID id, String fqn);

@@ -63,8 +63,19 @@ public class CachedReadBundle {
    * so this method is mostly a primitive for future paths to leverage.
    */
   public java.util.List<Dto> getBatch(String entityType, java.util.List<UUID> entityIds) {
-    if (entityIds == null || entityIds.isEmpty() || EntityCacheBypass.isSkipped()) {
+    if (entityIds == null || entityIds.isEmpty()) {
       return java.util.Collections.emptyList();
+    }
+    // Bypass = "treat every position as a miss" rather than an empty list. Callers index
+    // the returned list by position (parallel to entityIds); returning size 0 here would
+    // silently shift their hydration loop off the rails. The 1:1 contract takes precedence
+    // over the cheap empty-list short-circuit.
+    if (EntityCacheBypass.isSkipped()) {
+      java.util.List<Dto> out = new java.util.ArrayList<>(entityIds.size());
+      for (int i = 0; i < entityIds.size(); i++) {
+        out.add(null);
+      }
+      return out;
     }
     java.util.List<String> cacheKeys = new java.util.ArrayList<>(entityIds.size());
     for (UUID id : entityIds) {

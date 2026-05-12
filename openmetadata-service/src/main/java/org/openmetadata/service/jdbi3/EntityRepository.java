@@ -1435,19 +1435,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final T find(UUID id, Include include, boolean fromCache) throws EntityNotFoundException {
-    // Negative cache fast-path (P2.4): a recent lookup that resolved to "not found" lets us
-    // throw a 404 without re-hitting Guava L1 or the DB. Checking BEFORE the fromCache branch
-    // because the default-cached entry point — `find(id, include)` — delegates here with
-    // fromCache=true, and the cache layer above doesn't filter by negative state. Only checked
-    // for include=NON_DELETED so DELETED/ALL lookups always go to the DB (their semantics
-    // change which rows are visible).
     var notFoundCache = CacheBundle.getNotFoundCache();
-    if (include == NON_DELETED
-        && notFoundCache != null
-        && notFoundCache.isMarkedNotFoundById(entityType, id)) {
-      throw new EntityNotFoundException(entityNotFound(entityType, id));
-    }
     if (!fromCache) {
+      // On the explicit-bypass path the L1 cache is being skipped entirely, so checking the
+      // negative cache before touching the DB is a clear win — short-circuits a known-missing
+      // entity without paying for the DB round-trip.
+      if (include == NON_DELETED
+          && notFoundCache != null
+          && notFoundCache.isMarkedNotFoundById(entityType, id)) {
+        throw new EntityNotFoundException(entityNotFound(entityType, id));
+      }
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
       T entity;
       try (var ignored = phase("dbFindByIdNoCache")) {
@@ -1474,10 +1471,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return entity;
     }
 
+    // Hot path. Check L1 Guava cache FIRST — an L1 hit serves the entity with zero Redis
+    // traffic. Only on L1 miss do we consult the negative cache (one Redis GET) to avoid
+    // the much more expensive cache-loader + Redis-L2 + DB round trip. The earlier shape
+    // — check NotFoundCache unconditionally — was a hot-path regression for every L1 hit.
     try {
-      String cachedJson;
-      try (var ignored = phase("cacheGet")) {
-        cachedJson = CACHE_WITH_ID.get(new ImmutablePair<>(entityType, id));
+      ImmutablePair<String, UUID> cacheKey = new ImmutablePair<>(entityType, id);
+      String cachedJson = CACHE_WITH_ID.getIfPresent(cacheKey);
+      if (cachedJson == null) {
+        // L1 miss. Consult the negative cache so we can short-circuit before invoking the
+        // loader (which would do DB + optional Redis-L2 work).
+        if (include == NON_DELETED
+            && notFoundCache != null
+            && notFoundCache.isMarkedNotFoundById(entityType, id)) {
+          throw new EntityNotFoundException(entityNotFound(entityType, id));
+        }
+        try (var ignored = phase("cacheGet")) {
+          cachedJson = CACHE_WITH_ID.get(cacheKey);
+        }
       }
       T entity;
       try (var ignored = phase("cacheCopy")) {
@@ -2057,17 +2068,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final T findByName(String fqn, Include include, boolean fromCache) {
     fqn = quoteFqn ? quoteName(fqn) : fqn;
-    // Negative cache fast-path (P2.4) — see find(UUID,...) above for rationale. Check is hoisted
-    // OUTSIDE the `!fromCache` guard so the default cached entry point (`findByName(fqn, include)`
-    // → fromCache=true) benefits from it; otherwise the fast-path was unreachable for the most
-    // common caller.
     var notFoundCache = CacheBundle.getNotFoundCache();
-    if (include == NON_DELETED
-        && notFoundCache != null
-        && notFoundCache.isMarkedNotFoundByName(entityType, fqn)) {
-      throw new EntityNotFoundException(entityNotFound(entityType, fqn));
-    }
     if (!fromCache) {
+      // Explicit cache bypass — checking the negative cache before the DB still saves the
+      // DB hit on a known-missing entity. (Same reasoning as find(UUID, …).)
+      if (include == NON_DELETED
+          && notFoundCache != null
+          && notFoundCache.isMarkedNotFoundByName(entityType, fqn)) {
+        throw new EntityNotFoundException(entityNotFound(entityType, fqn));
+      }
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
       T entity;
       try (var ignored = phase("dbFindByNameNoCache")) {
@@ -2086,10 +2095,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return entity;
     }
 
+    // Hot path — L1 Guava first, NotFoundCache only on L1 miss. Same shape as find(UUID,…).
     try {
-      String cachedJson;
-      try (var ignored = phase("cacheGet")) {
-        cachedJson = CACHE_WITH_NAME.get(cacheNameKey(entityType, fqn));
+      Pair<String, String> cacheKey = cacheNameKey(entityType, fqn);
+      String cachedJson = CACHE_WITH_NAME.getIfPresent(cacheKey);
+      if (cachedJson == null) {
+        if (include == NON_DELETED
+            && notFoundCache != null
+            && notFoundCache.isMarkedNotFoundByName(entityType, fqn)) {
+          throw new EntityNotFoundException(entityNotFound(entityType, fqn));
+        }
+        try (var ignored = phase("cacheGet")) {
+          cachedJson = CACHE_WITH_NAME.get(cacheKey);
+        }
       }
       T entity;
       try (var ignored = phase("cacheCopy")) {

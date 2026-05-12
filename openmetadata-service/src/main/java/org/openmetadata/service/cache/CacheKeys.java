@@ -108,31 +108,24 @@ public final class CacheKeys {
   }
 
   /**
-   * Cached lineage graph keyed by the root entity. {@code upstreamDepth} and {@code
-   * downstreamDepth} are folded into the key so each variant is its own cache entry. Invalidation
-   * issues a SCAN + UNLINK for {@link #lineageGraphPattern} to drop every variant for that root
-   * at once.
-   *
-   * <p>The {@code rootId} is wrapped in Redis hash-tag braces so when we eventually run on Redis
-   * Cluster, all lineage variants for the same root land on the same slot — keeps SCAN+UNLINK
-   * efficient and avoids cross-slot pipeline rejection.
+   * Cached lineage graph keyed by the root entity. Variants ({@code upstreamDepth},
+   * {@code downstreamDepth}, {@code includeDeleted}) are stored as fields of one Redis hash
+   * per root — {@link #lineageGraphHash} returns the hash key, this returns the field name.
+   * Invalidation is a single {@code DEL hashKey} (O(1)), which matters because it runs on the
+   * hot write path. The earlier per-key + SCAN-and-delete scheme was O(N) over the cache
+   * keyspace per invalidate and spiked under load.
    */
-  public String lineageGraph(
-      java.util.UUID rootId, int upstreamDepth, int downstreamDepth, boolean includeDeleted) {
-    return ns
-        + ":lineage:graph:{"
-        + rootId.toString()
-        + "}:up="
-        + upstreamDepth
-        + ":down="
-        + downstreamDepth
-        + ":incDel="
-        + includeDeleted;
+  public String lineageGraphField(int upstreamDepth, int downstreamDepth, boolean includeDeleted) {
+    return "up=" + upstreamDepth + ":down=" + downstreamDepth + ":incDel=" + includeDeleted;
   }
 
-  /** SCAN/UNLINK pattern for {@link #lineageGraph} — matches every depth/include variant. */
-  public String lineageGraphPattern(java.util.UUID rootId) {
-    return ns + ":lineage:graph:{" + rootId.toString() + "}:*";
+  /**
+   * Hash key holding every cached lineage variant for {@code rootId}. The {@code rootId} is
+   * still wrapped in Redis hash-tag braces so a Redis Cluster keeps all related keys on the
+   * same slot if we ever co-locate other per-root caches.
+   */
+  public String lineageGraphHash(java.util.UUID rootId) {
+    return ns + ":lineage:graph:{" + rootId.toString() + "}";
   }
 
   /**

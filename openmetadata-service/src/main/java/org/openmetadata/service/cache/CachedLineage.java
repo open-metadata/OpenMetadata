@@ -14,6 +14,7 @@ package org.openmetadata.service.cache;
 
 import com.google.common.util.concurrent.Striped;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.locks.Lock;
@@ -25,6 +26,12 @@ import lombok.extern.slf4j.Slf4j;
  * TTL ({@link CacheConfig#lineageTtlSeconds}, default 60s) acts as a backstop, while explicit
  * invalidation handles the cases where staleness is most user-visible (the user just edited an
  * entity or changed a lineage edge involving the affected root).
+ *
+ * <p>Storage shape: one Redis hash per root entity. Field name encodes the variant
+ * ({@code up=N:down=M:incDel=B}), value is the cached lineage JSON. Invalidate is a single
+ * {@code DEL <hashKey>} — O(1) — which matters because this fires from the hot write path
+ * (entity updates and lineage-edge mutations). The earlier per-key + SCAN-and-delete scheme
+ * was O(N) over the cache keyspace per invalidate and spiked under load.
  *
  * <p>Why not a reverse index of every entity → root that contains it? Hub entities (popular
  * tables referenced in thousands of lineage graphs) would invalidate all of them on every PATCH,
@@ -57,10 +64,10 @@ public final class CachedLineage implements Invalidatable {
   }
 
   /**
-   * Single-flight load: cache lookup, then under a per-root stripe lock the supplier runs once
-   * and the result is cached. Concurrent waiters double-check the cache after acquiring the lock
-   * — the first waiter to win the race seeds the cache, the rest read it back without re-running
-   * the supplier.
+   * Single-flight load: cache lookup, then under a per-variant stripe lock the supplier runs
+   * once and the result is cached. Concurrent waiters double-check the cache after acquiring
+   * the lock — the first waiter to win the race seeds the cache, the rest read it back without
+   * re-running the supplier.
    *
    * <p>If the cache is disabled, this degrades to {@code supplier.get()} with no locking. That
    * matches what would happen if there were no cache layer at all — important for the
@@ -75,29 +82,27 @@ public final class CachedLineage implements Invalidatable {
     if (!enabled()) {
       return supplier.get();
     }
-    String key = keys.lineageGraph(rootId, upstreamDepth, downstreamDepth, includeDeleted);
-    Optional<String> first = safeGet(key);
+    String hashKey = keys.lineageGraphHash(rootId);
+    String field = keys.lineageGraphField(upstreamDepth, downstreamDepth, includeDeleted);
+    Optional<String> first = safeHget(hashKey, field);
     if (first.isPresent()) {
       recordHit();
       return first.get();
     }
-    // Lock on the FULL cache key, not the rootId. Different (depth, includeDeleted)
-    // combinations for the same root produce distinct cache slots and shouldn't serialize on
-    // each other — locking on rootId would cause concurrent `?upstreamDepth=1` and
-    // `?upstreamDepth=3` for the same entity to block each other for no good reason. Striped
-    // hashes the key into one of N locks; two genuinely-identical requests still single-flight,
-    // distinct requests run in parallel (modulo hash collisions, which are acceptable).
-    Lock lock = loadLocks.get(key);
+    // Lock on (rootId, variant) — different variants for the same root can compute in
+    // parallel; two identical requests still single-flight. Striped hashes the composite
+    // string into N locks.
+    Lock lock = loadLocks.get(hashKey + "#" + field);
     lock.lock();
     try {
-      Optional<String> recheck = safeGet(key);
+      Optional<String> recheck = safeHget(hashKey, field);
       if (recheck.isPresent()) {
         recordHit();
         return recheck.get();
       }
       recordMiss();
       String fresh = supplier.get();
-      safePut(key, fresh);
+      safeHset(hashKey, field, fresh);
       return fresh;
     } finally {
       lock.unlock();
@@ -105,9 +110,10 @@ public final class CachedLineage implements Invalidatable {
   }
 
   /**
-   * Invalidate every cached lineage variant rooted at {@code rootId} (all depths, both
-   * include-deleted flags). Called from entity mutation paths and from the
-   * {@code addLineage}/{@code deleteLineage} hooks for both endpoints of the affected edge.
+   * Invalidate every cached lineage variant rooted at {@code rootId}. One {@code DEL} on the
+   * per-root hash drops every depth/include-deleted variant at once. Called from entity
+   * mutation paths and from the {@code addLineage}/{@code deleteLineage} hooks for both
+   * endpoints of the affected edge.
    *
    * <p>No-op when the cache is disabled.
    */
@@ -116,10 +122,8 @@ public final class CachedLineage implements Invalidatable {
       return;
     }
     try {
-      long deleted = cache.scanDelete(keys.lineageGraphPattern(rootId));
-      if (deleted > 0) {
-        LOG.debug("Lineage cache invalidated rootId={} keys={}", rootId, deleted);
-      }
+      cache.del(keys.lineageGraphHash(rootId));
+      LOG.debug("Lineage cache invalidated rootId={}", rootId);
     } catch (Exception e) {
       LOG.debug("Lineage invalidate failed for rootId={}", rootId, e);
     }
@@ -141,22 +145,22 @@ public final class CachedLineage implements Invalidatable {
     invalidate(id);
   }
 
-  private Optional<String> safeGet(String key) {
+  private Optional<String> safeHget(String hashKey, String field) {
     try {
-      return cache.get(key);
+      return cache.hget(hashKey, field);
     } catch (Exception e) {
-      LOG.debug("Lineage cache get failed (treated as miss) key={}", key, e);
+      LOG.debug("Lineage cache hget failed (treated as miss) key={} field={}", hashKey, field, e);
       return Optional.empty();
     }
   }
 
-  private void safePut(String key, String value) {
+  private void safeHset(String hashKey, String field, String value) {
     if (value == null) return;
     try {
-      cache.set(key, value, Duration.ofSeconds(ttlSeconds));
+      cache.hset(hashKey, Collections.singletonMap(field, value), Duration.ofSeconds(ttlSeconds));
       recordWrite();
     } catch (Exception e) {
-      LOG.debug("Lineage cache put failed key={}", key, e);
+      LOG.debug("Lineage cache hset failed key={} field={}", hashKey, field, e);
       CacheMetrics m = CacheMetrics.getInstance();
       if (m != null) m.recordError();
     }

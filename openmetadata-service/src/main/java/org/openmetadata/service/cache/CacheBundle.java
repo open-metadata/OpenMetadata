@@ -204,10 +204,18 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
   }
 
   /**
-   * Fan an entity-write invalidation out to every registered Invalidatable. Called from
-   * {@code EntityRepository.postUpdate / postDelete / restoreEntity} on the local pod; remote
-   * pods invoke the same fan-out via the pub-sub handler above. No-op if no layers are
-   * registered (cache disabled or none registered yet).
+   * Fan an entity-write invalidation out to every registered {@link Invalidatable}. Today
+   * this is invoked from {@code EntityRepository.invalidateCacheForEntity(type, id, fqn)}
+   * (the static helper called from {@code postCreate} and other mutation paths), from the
+   * pub-sub handler above when a remote pod publishes a write, and from the admin
+   * {@code POST /system/cache/invalidate} endpoint.
+   *
+   * <p>Note: not every entity mutation hook calls this — {@code postUpdate} / {@code postDelete}
+   * / {@code restoreEntity} currently rely on the write-through cache + L1 eviction rather
+   * than the {@link Invalidatable} registry. If you wire a new Invalidatable that needs to
+   * react to those events, you'll need to add the call there as well.
+   *
+   * <p>No-op if no layers are registered (cache disabled or none registered yet).
    */
   public static void invalidateEntity(String type, java.util.UUID id, String fqn) {
     for (Invalidatable layer : INVALIDATABLES) {

@@ -43,6 +43,7 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -67,6 +68,7 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.cache.CacheMetrics;
 import org.openmetadata.service.cache.CacheProvider;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -958,11 +960,17 @@ public class SystemResource {
 
     CacheProvider cacheProvider = CacheBundle.getCacheProvider();
     Map<String, Object> stats = cacheProvider.getStats();
-    // Only ask for the metrics snapshot when the cache is actually live. When
-    // CACHE_PROVIDER=none the metrics singleton is never initialized and
-    // CacheMetrics.getInstance() logs a WARN — noisy for "cache off" deployments
-    // that still poll /system/cache/stats for ops dashboards.
-    if (cacheProvider.available()) {
+    // Gate on the *configured* provider, not the runtime available() flag. When the cache
+    // is configured but temporarily unavailable (circuit breaker tripped, init failed,
+    // Redis restarting) the app-level CacheMetrics counters are still meaningful for
+    // diagnosing the outage — that's exactly when an operator wants to inspect them.
+    // We only suppress the metrics block when CACHE_PROVIDER=none because the metrics
+    // singleton is never initialized in that mode and CacheMetrics.getInstance() would
+    // log a WARN on every poll.
+    CacheConfig cacheConfig = CacheBundle.getCacheConfig();
+    boolean cacheConfigured =
+        cacheConfig != null && cacheConfig.provider != CacheConfig.Provider.none;
+    if (cacheConfigured) {
       CacheMetrics metrics = CacheMetrics.getInstance();
       if (metrics != null) {
         stats.put("metrics", metrics.snapshot());
@@ -1091,6 +1099,28 @@ public class SystemResource {
         return Response.status(Response.Status.BAD_REQUEST)
             .entity(Map.of("error", "id is not a valid UUID"))
             .build();
+      }
+    }
+    // If the caller only supplied fqn, resolve to id so id-keyed cache layers (CachedLineage,
+    // CACHE_WITH_ID, NotFoundCache id-side) can be invalidated too. Without this resolution
+    // the endpoint silently misses those layers and the "invalidate every cache layer for this
+    // entity" contract isn't met. Lookup failures (entity already deleted, FQN typo) are
+    // logged but don't fail the request — we still proceed with fqn-only invalidation since
+    // fqn-keyed layers benefit and an "invalidate something that's gone" is harmless.
+    if (id == null && normalizedFqn != null) {
+      try {
+        EntityRepository<?> repository = Entity.getEntityRepository(type);
+        EntityInterface resolved = repository.findByName(normalizedFqn, Include.ALL, true);
+        if (resolved != null) {
+          id = resolved.getId();
+        }
+      } catch (Exception lookupFailure) {
+        LOG.debug(
+            "Could not resolve id for type={} fqn={} during cache invalidation; "
+                + "proceeding with fqn-only invalidation",
+            type,
+            normalizedFqn,
+            lookupFailure);
       }
     }
     // Reach every cache layer that holds entries keyed by this entity:
