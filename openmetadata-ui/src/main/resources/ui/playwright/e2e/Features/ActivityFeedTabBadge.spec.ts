@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-
 import { expect, test } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -58,31 +57,29 @@ async function navigateToTasksPanel(page: import('@playwright/test').Page) {
   await expect(tasksMenuItem).toBeVisible();
   await tasksMenuItem.click();
 
-  await page.waitForResponse((r) =>
-    r.url().includes('/api/v1/tasks/count') && r.status() === 200
+  await page.waitForResponse(
+    (r) => r.url().includes('/api/v1/tasks/count') && r.status() === 200
   );
   await waitForPageLoaded(page);
 }
 
 function badge(page: import('@playwright/test').Page) {
-  return page
-    .getByTestId('left-panel-task-count')
-    .getByTestId('filter-count');
+  return page.getByTestId('left-panel-task-count').getByTestId('filter-count');
 }
 
 async function switchToClosedFilter(page: import('@playwright/test').Page) {
   await page.getByTestId('user-profile-page-task-filter-icon').click();
   await page.getByTestId('closed-tasks').click();
-  await page.waitForResponse((r) =>
-    r.url().includes('/api/v1/tasks/count') && r.status() === 200
+  await page.waitForResponse(
+    (r) => r.url().includes('/api/v1/tasks/count') && r.status() === 200
   );
 }
 
 async function switchToOpenFilter(page: import('@playwright/test').Page) {
   await page.getByTestId('user-profile-page-task-filter-icon').click();
   await page.getByTestId('open-tasks').click();
-  await page.waitForResponse((r) =>
-    r.url().includes('/api/v1/tasks/count') && r.status() === 200
+  await page.waitForResponse(
+    (r) => r.url().includes('/api/v1/tasks/count') && r.status() === 200
   );
 }
 test.describe('ActivityFeedTab — task filter badge and placeholder', () => {
@@ -110,7 +107,11 @@ test.describe('ActivityFeedTab — task filter badge and placeholder', () => {
 
     try {
       const fqn = table.entityResponseData?.fullyQualifiedName as string;
-      const task = await createOpenTask(apiContext, fqn, assigneeUser.responseData.name);
+      const task = await createOpenTask(
+        apiContext,
+        fqn,
+        assigneeUser.responseData.name
+      );
 
       await table.visitEntityPage(page);
       await navigateToTasksPanel(page);

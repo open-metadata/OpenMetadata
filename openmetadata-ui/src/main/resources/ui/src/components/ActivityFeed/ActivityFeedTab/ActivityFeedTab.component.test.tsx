@@ -81,7 +81,9 @@ jest.mock('../../../rest/tasksAPI', () => ({
 }));
 
 jest.mock('../../../rest/feedsAPI', () => ({
-  getFeedCount: jest.fn().mockResolvedValue([{ conversationCount: 0, mentionCount: 0 }]),
+  getFeedCount: jest
+    .fn()
+    .mockResolvedValue([{ conversationCount: 0, mentionCount: 0 }]),
 }));
 
 jest.mock('../../../utils/CommonUtils', () => ({
@@ -89,7 +91,14 @@ jest.mock('../../../utils/CommonUtils', () => ({
     <span data-testid="filter-count">{count}</span>
   ),
   getFeedCounts: jest.fn((_, __, ___, cb) =>
-    cb({ conversationCount: 0, mentionCount: 0, totalCount: 0, totalTasksCount: 0, openTaskCount: 0, closedTaskCount: 0 })
+    cb({
+      conversationCount: 0,
+      mentionCount: 0,
+      totalCount: 0,
+      totalTasksCount: 0,
+      openTaskCount: 0,
+      closedTaskCount: 0,
+    })
   ),
 }));
 
@@ -110,9 +119,11 @@ jest.mock('../ActivityFeedList/ActivityFeedListV1New.component', () =>
 );
 
 jest.mock('../ActivityFeedList/TaskListV1.component', () =>
-  jest.fn().mockImplementation(({ emptyPlaceholderText }) => (
-    <div data-testid="task-list">{emptyPlaceholderText}</div>
-  ))
+  jest
+    .fn()
+    .mockImplementation(({ emptyPlaceholderText }) => (
+      <div data-testid="task-list">{emptyPlaceholderText}</div>
+    ))
 );
 
 jest.mock('../ActivityFeedPanel/FeedPanelBodyV1New', () =>
@@ -219,13 +230,17 @@ describe('ActivityFeedTab', () => {
       renderComponent(ActivityFeedTabs.TASKS);
 
       await waitFor(() =>
-        expect(screen.getByTestId('left-panel-task-count')).toHaveTextContent('3')
+        expect(screen.getByTestId('left-panel-task-count')).toHaveTextContent(
+          '3'
+        )
       );
 
       fireEvent.click(screen.getByTestId('closed-tasks'));
 
       await waitFor(() =>
-        expect(screen.getByTestId('left-panel-task-count')).toHaveTextContent('5')
+        expect(screen.getByTestId('left-panel-task-count')).toHaveTextContent(
+          '5'
+        )
       );
     });
 
@@ -233,7 +248,9 @@ describe('ActivityFeedTab', () => {
       renderComponent(ActivityFeedTabs.TASKS);
 
       await waitFor(() => {
-        expect(screen.getByText('message.no-open-tasks-title')).toBeInTheDocument();
+        expect(
+          screen.getByText('message.no-open-tasks-title')
+        ).toBeInTheDocument();
       });
     });
 
@@ -243,7 +260,9 @@ describe('ActivityFeedTab', () => {
       fireEvent.click(screen.getByTestId('closed-tasks'));
 
       await waitFor(() => {
-        expect(screen.getByText('message.no-closed-tasks-title')).toBeInTheDocument();
+        expect(
+          screen.getByText('message.no-closed-tasks-title')
+        ).toBeInTheDocument();
       });
     });
   });

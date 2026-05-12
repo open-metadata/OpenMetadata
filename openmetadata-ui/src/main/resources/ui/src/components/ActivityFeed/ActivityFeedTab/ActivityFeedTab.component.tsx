@@ -307,7 +307,8 @@ export const ActivityFeedTab = ({
         activeTab === ActivityFeedTabs.ALL
           ? ThreadType.Conversation
           : undefined,
-      feedFilter: activeTab === ActivityFeedTabs.MENTIONS ? FeedFilter.MENTIONS : filter,
+      feedFilter:
+        activeTab === ActivityFeedTabs.MENTIONS ? FeedFilter.MENTIONS : filter,
     };
   }, [activeTab, isAdminUser, currentUser, fqn, isUserEntity]);
 
