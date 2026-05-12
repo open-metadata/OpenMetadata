@@ -50,7 +50,7 @@ const UploadedDocumentsSection: FC<UploadedDocumentsSectionProps> = ({
 
   return (
     <Card
-      className="tw:p-6 tw:h-[calc(50vh-80px)] tw:overflow-y-scroll"
+      className="tw:p-6 tw:h-[calc(50vh-138px)] tw:overflow-y-scroll"
       data-testid="uploaded-documents-section">
       <div className="tw:flex tw:items-center tw:justify-between tw:pb-5">
         <div className="tw:flex tw:items-center tw:gap-3">

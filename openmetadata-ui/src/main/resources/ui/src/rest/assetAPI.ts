@@ -52,3 +52,12 @@ export const deleteAsset = async (
     params: { hardDelete },
   });
 };
+
+export const downloadAsset = async (id: string): Promise<Blob> => {
+  const response = await APIClient.get<Blob>(`/attachments/${id}/download`, {
+    params: { direct: false },
+    responseType: 'blob',
+  });
+
+  return response.data;
+};

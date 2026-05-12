@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Home02 } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -27,6 +28,12 @@ const ContextCenterIntegrationsPage: FC = () => {
       data-testid="context-center-integrations-page">
       <ContextCenterHeader
         breadcrumbs={[
+          {
+            name: '',
+            icon: <Home02 size={14} />,
+            url: '/',
+            activeTitle: true,
+          },
           { name: t('label.context-center'), url: ROUTES.CONTEXT_CENTER },
           {
             activeTitle: true,

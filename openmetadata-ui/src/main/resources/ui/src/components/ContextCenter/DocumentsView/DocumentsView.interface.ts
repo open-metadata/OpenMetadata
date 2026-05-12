@@ -18,8 +18,8 @@ export interface DocFile {
   name: string;
   fileType: DocFileType;
   sizeLabel: string;
-  uploadedBy: string;
-  uploadedAt: string;
+  uploadedBy?: string;
+  uploadedAt?: string;
   folderId?: string;
 }
 
@@ -30,7 +30,7 @@ export interface DocFolder {
 }
 
 export interface DocumentsViewProps {
-  data: DocFolder[];
+  data: DocFile[];
   isLoading: boolean;
   onDownload?: (file: DocFile) => void;
   onMoveToFolder?: (file: DocFile) => void;

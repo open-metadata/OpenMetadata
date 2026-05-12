@@ -12,10 +12,10 @@
  */
 
 import {
-  Button,
-  Card,
-  Skeleton,
-  Typography,
+    Button,
+    Card,
+    Skeleton,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { ArrowUpRight, File06 } from '@untitledui/icons';
 import ErrorPlaceHolder from 'components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -65,6 +65,18 @@ const ArticleListSection: FC<ArticleListSectionProps> = ({
         return;
       }
 
+      if (article.href) {
+        if (article.href.startsWith('http')) {
+          window.open(article.href, '_blank', 'noopener,noreferrer');
+
+          return;
+        }
+
+        navigate(article.href);
+
+        return;
+      }
+
       const path = getPagePath
         ? getPagePath(article.id)
         : getKnowledgePagePath(article.id);
@@ -76,7 +88,7 @@ const ArticleListSection: FC<ArticleListSectionProps> = ({
 
   return (
     <Card
-      className="tw:p-6 tw:overflow-y-scroll tw:h-[calc(50vh-80px)]"
+      className="tw:p-6 tw:overflow-y-scroll tw:h-[calc(50vh-138px)]"
       data-testid="article-list-section">
       <div className="tw:flex tw:items-center tw:justify-between tw:pb-5">
         <div className="tw:flex tw:items-center tw:gap-3">

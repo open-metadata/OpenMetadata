@@ -44,7 +44,6 @@ const FILE_TYPE_STYLES: Record<
 };
 
 const FileTypeBadge: FC<{ fileType: DocFileType }> = ({ fileType }) => {
-  console.log(fileType);
   const { bg, label, text } = FILE_TYPE_STYLES[fileType || 'other'];
 
   return (
@@ -164,18 +163,26 @@ const FileRow: FC<FileRowProps> = ({
         <Typography className="tw:text-gray-500" size="text-xs">
           {file.sizeLabel}
         </Typography>
-        <span className="tw:text-gray-500 tw:leading-none tw:select-none">
-          &middot;
-        </span>
-        <Typography className="tw:text-gray-500" size="text-xs">
-          {file.uploadedBy}
-        </Typography>
-        <span className="tw:text-gray-500 tw:leading-none tw:select-none">
-          &middot;
-        </span>
-        <Typography className="tw:text-gray-500" size="text-xs">
-          {file.uploadedAt}
-        </Typography>
+        {file.uploadedBy && (
+          <>
+            <span className="tw:text-gray-500 tw:leading-none tw:select-none">
+              &middot;
+            </span>
+            <Typography className="tw:text-gray-500" size="text-xs">
+              {file.uploadedBy}
+            </Typography>
+          </>
+        )}
+        {file.uploadedAt && (
+          <>
+            <span className="tw:text-gray-500 tw:leading-none tw:select-none">
+              &middot;
+            </span>
+            <Typography className="tw:text-gray-500" size="text-xs">
+              {file.uploadedAt}
+            </Typography>
+          </>
+        )}
       </div>
     </div>
 
@@ -209,7 +216,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
 }) => {
   return (
     <Card
-      className="tw:flex tw:h-full tw:overflow-hidden"
+      className="tw:flex tw:h-auto tw:overflow-hidden tw:max-h-full"
       data-testid="documents-view">
       {/* Right: file list */}
       {data.length > 0 || isLoading ? (

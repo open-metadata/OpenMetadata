@@ -49,10 +49,7 @@ const KnowledgeCenterLayout: FC<KnowledgeCenterLayoutProps> = ({
   const isRightPanelCollapsed = !rightSidebar;
 
   return (
-    <div
-      className="tw:pb-4"
-      dir={i18n.dir()}
-      id="knowledge-center-layout-container">
+    <div dir={i18n.dir()} id="knowledge-center-layout-container">
       <DocumentTitle title={pageTitle} />
       <ReflexContainer
         className={classNames('knowledge-center-layout', className)}

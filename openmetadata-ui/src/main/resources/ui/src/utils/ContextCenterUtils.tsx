@@ -24,8 +24,9 @@ import { CREATE_PAGE_HASH, ROUTES } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { Asset, AssetType } from '../generated/attachments/asset';
 import {
-  CreateKnowledgePage,
-  PageType,
+    CreateKnowledgePage,
+    PageType,
+    QuickLink
 } from '../interface/knowledge-center.interface';
 import { listAssetsByFqn } from '../rest/assetAPI';
 import { postKnowledgePage } from '../rest/knowledgeCenterAPI';
@@ -110,13 +111,18 @@ export const knowledgePageToArticleItem = (
     updatedAt: number;
     tags?: { tagFQN: string }[];
     fullyQualifiedName?: string;
+    pageType?: PageType;
+    page?: QuickLink | unknown;
   },
   untitledLabel: string
 ): ArticleCardItem => ({
   description: page.description ?? '',
-  href: page.fullyQualifiedName
-    ? `${ROUTES.CONTEXT_CENTER_ARTICLES}/${page.fullyQualifiedName}`
-    : undefined,
+  href:
+    page.pageType === PageType.QUICK_LINK
+      ? (page.page as QuickLink)?.url
+      : page.fullyQualifiedName
+      ? `${ROUTES.CONTEXT_CENTER_ARTICLES}/${page.fullyQualifiedName}`
+      : undefined,
   id: page.id,
   lastEditedAt: page.updatedAt,
   tags: (page.tags ?? []).map((tag) => ({

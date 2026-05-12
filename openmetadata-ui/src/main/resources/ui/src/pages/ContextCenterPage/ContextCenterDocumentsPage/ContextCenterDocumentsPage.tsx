@@ -11,35 +11,32 @@
  *  limitations under the License.
  */
 
+import { Button } from '@openmetadata/ui-core-components';
+import { Home02, UploadCloud02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { UploadedDocumentItem } from 'components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
+import DeleteModal from 'components/common/DeleteModal/DeleteModal';
+import { DocFile } from 'components/ContextCenter/DocumentsView/DocumentsView.interface';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { showErrorToast } from 'utils/ToastUtils';
+import { deleteAsset, downloadAsset } from 'rest/assetAPI';
+import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import DocumentsView from '../../../components/ContextCenter/DocumentsView/DocumentsView.component';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
 import { ROUTES } from '../../../constants/constants';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   assetToDocumentItem,
   CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
-  createArticleKnowledgePage,
   fetchContextCenterDocuments,
 } from '../../../utils/ContextCenterUtils';
 
 const ContextCenterDocumentsPage: FC = () => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const { currentUser } = useApplicationStore();
-  const [documents, setDocuments] = useState<UploadedDocumentItem[]>([]);
+  const [documents, setDocuments] = useState<DocFile[]>([]);
   const [isDocumentsLoading, setIsDocumentsLoading] = useState(true);
+  const [isDeletingFile, setIsDeletingFile] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<DocFile>();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-
-  const handleCreateArticle = useCallback(async () => {
-    await createArticleKnowledgePage(currentUser?.id ?? '', navigate);
-  }, [currentUser, navigate]);
 
   const fetchDocuments = useCallback(async () => {
     setIsDocumentsLoading(true);
@@ -57,12 +54,77 @@ const ContextCenterDocumentsPage: FC = () => {
     fetchDocuments();
   }, []);
 
+  const handleDownload = useCallback(async (file: DocFile) => {
+    try {
+      const blob = await downloadAsset(file.id);
+      const url = URL.createObjectURL(blob);
+      const element = document.createElement('a');
+      element.href = url;
+      element.download = file.name;
+      document.body.appendChild(element);
+      element.click();
+      element.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, []);
+
+  const handleDeleteFile = useCallback((file: DocFile) => {
+    setFileToDelete(file);
+  }, []);
+
+  const handleCancelDelete = useCallback(() => {
+    setFileToDelete(undefined);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!fileToDelete) {
+      return;
+    }
+
+    try {
+      setIsDeletingFile(true);
+      await deleteAsset(fileToDelete.id, true);
+      setDocuments((prev) =>
+        prev.filter((document) => document.id !== fileToDelete.id)
+      );
+      showSuccessToast(
+        t('server.entity-deleted-successfully', {
+          entity: t('label.document'),
+        })
+      );
+      setFileToDelete(undefined);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsDeletingFile(false);
+    }
+  }, [fileToDelete, t]);
+
   return (
     <div
-      className="tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-secondary tw:px-5"
+      className="tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0"
       data-testid="context-center-documents-page">
       <ContextCenterHeader
+        actionsSlot={
+          <div className="tw:flex tw:items-center tw:gap-3 tw:shrink-0">
+            <Button
+              color="primary"
+              iconLeading={UploadCloud02}
+              size="sm"
+              onClick={() => setIsUploadModalOpen(true)}>
+              {t('label.upload-file', { defaultValue: 'Upload File' })}
+            </Button>
+          </div>
+        }
         breadcrumbs={[
+          {
+            name: '',
+            icon: <Home02 size={14} />,
+            url: '/',
+            activeTitle: true,
+          },
           { name: t('label.context-center'), url: ROUTES.CONTEXT_CENTER },
           {
             activeTitle: true,
@@ -74,19 +136,36 @@ const ContextCenterDocumentsPage: FC = () => {
           defaultValue: 'Manage and organize your uploaded documents',
         })}
         title={t('label.document-plural')}
-        onCreateArticle={handleCreateArticle}
-        onUploadFile={() => setIsUploadModalOpen(true)}
       />
 
       <div className="tw:flex-1 tw:overflow-hidden">
-        <DocumentsView data={documents} isLoading={isDocumentsLoading} />
+        <DocumentsView
+          data={documents}
+          isLoading={isDocumentsLoading}
+          onDeleteFile={handleDeleteFile}
+          onDownload={handleDownload}
+        />
       </div>
 
       <UploadDocumentModal
         entityLink={CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK}
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
+        onUploaded={() => fetchDocuments()}
       />
+
+      {fileToDelete && (
+        <DeleteModal
+          entityTitle={fileToDelete.name}
+          isDeleting={isDeletingFile}
+          message={t('message.delete-entity-message', {
+            entity: fileToDelete.name,
+          })}
+          open={Boolean(fileToDelete)}
+          onCancel={handleCancelDelete}
+          onDelete={handleConfirmDelete}
+        />
+      )}
     </div>
   );
 };

@@ -12,8 +12,10 @@
  */
 
 import { DownOutlined } from '@ant-design/icons';
+import { Home02 } from '@untitledui/icons';
 import { Button, Dropdown } from 'antd';
 import { AxiosError } from 'axios';
+import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -39,7 +41,6 @@ import { EntityTabs } from '../../../enums/entity.enum';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
-import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import {
   ContentChangeState,
   CreateKnowledgePage,
@@ -195,6 +196,12 @@ const ContextCenterArticlesPage = () => {
         )
       }
       breadcrumbs={[
+        {
+          name: '',
+          icon: <Home02 size={14} />,
+          url: '/',
+          activeTitle: true,
+        },
         { name: t('label.context-center'), url: ROUTES.CONTEXT_CENTER },
         { activeTitle: true, name: t('label.article-plural'), url: '' },
       ]}
@@ -207,7 +214,7 @@ const ContextCenterArticlesPage = () => {
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:w-full tw:h-full tw:px-6 pb-4"
+      className="tw:flex tw:flex-col tw:w-full tw:h-full tw:p-5 tw:pt-0"
       data-testid="context-center-articles-page">
       {header}
 

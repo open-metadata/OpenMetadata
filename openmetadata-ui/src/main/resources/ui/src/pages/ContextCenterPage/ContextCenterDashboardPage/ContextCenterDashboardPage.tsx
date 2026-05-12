@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { ArticleCardItem } from 'components/ContextCenter/ArticleCard/ArticleCard.interface';
 import ArticleListSection from 'components/ContextCenter/ArticleListSection/ArticleListSection.component';
@@ -21,17 +22,15 @@ import UploadedDocumentsSection from 'components/ContextCenter/UploadedDocuments
 import { ROUTES } from 'constants/constants';
 import { Asset } from 'generated/attachments/asset';
 import { useApplicationStore } from 'hooks/useApplicationStore';
-import { KnowledgePage, PageType } from 'interface/knowledge-center.interface';
+import { KnowledgePage } from 'interface/knowledge-center.interface';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { getListKnowledgePages } from 'rest/knowledgeCenterAPI';
 import {
-  CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
-  assetToDocumentItem,
-  createArticleKnowledgePage,
-  fetchContextCenterDocuments,
-  knowledgePageToArticleItem,
+    assetToDocumentItem, CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK, createArticleKnowledgePage,
+    fetchContextCenterDocuments,
+    knowledgePageToArticleItem
 } from 'utils/ContextCenterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 
@@ -56,9 +55,8 @@ const ContextCenterDashboardPage: FC = () => {
     setIsArticlesLoading(true);
     try {
       const response = await getListKnowledgePages({
-        fields: 'tags',
+        fields: 'tags,page',
         limit: RECENT_ARTICLES_LIMIT,
-        pageType: PageType.ARTICLE,
       });
       setArticles(
         response.data.map((page: KnowledgePage) =>
@@ -95,10 +93,16 @@ const ContextCenterDashboardPage: FC = () => {
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:px-5"
+      className="tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:p-5 tw:pt-0"
       data-testid="context-center-dashboard-page">
       <ContextCenterHeader
         breadcrumbs={[
+          {
+            name: '',
+            icon: <Home02 size={14} />,
+            url: '/',
+            activeTitle: true,
+          },
           { name: t('label.context-center'), url: ROUTES.CONTEXT_CENTER },
           {
             activeTitle: true,

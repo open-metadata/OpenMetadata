@@ -25,6 +25,7 @@ import {
 import {
   File06,
   Globe01,
+  Home02,
   MessageChatSquare,
   Share07,
   ThumbsDown,
@@ -98,6 +99,12 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
   const breadcrumbs = useMemo(
     () => [
+      {
+        name: '',
+        icon: <Home02 size={14} />,
+        url: '/',
+        activeTitle: true,
+      },
       { name: t('label.context-center'), url: ROUTES.CONTEXT_CENTER },
       {
         name: t('label.article-plural'),
