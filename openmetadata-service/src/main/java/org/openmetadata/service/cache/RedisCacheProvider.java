@@ -610,95 +610,96 @@ public class RedisCacheProvider implements CacheProvider {
     Timer.Sample sample = startReadTimer(m);
     long startNanos = System.nanoTime();
     try {
-      // Auto-flush is a property of the SHARED connection. Two layers of protection:
-      //   1. pipelineLock serializes concurrent mget calls so commands from one mget can't
-      //      overlap with another's auto-flush-off window — without it, the second caller's
-      //      commands would buffer until the first restored auto-flush, manifesting as
-      //      random latency spikes / hangs on the shared connection.
-      //   2. try/finally restores auto-flush unconditionally even if the queue / flush /
-      //      await steps throw.
+      // Auto-flush is a property of the SHARED connection. Hold pipelineLock + auto-flush
+      // off only across the *queue + flush* window — the smallest possible critical section
+      // for the shared connection. Once flushCommands() returns, the batch is on the wire
+      // and other paths (single get/set/hget on the same connection) can resume immediately.
+      // The await happens with auto-flush already restored, so a slow Redis blocks only
+      // this thread — not every concurrent caller using the connection.
       pipelineLock.lock();
+      java.util.List<io.lettuce.core.RedisFuture<String>> futures = new java.util.ArrayList<>(n);
       try {
         connection.setAutoFlushCommands(false);
         try {
-          java.util.List<io.lettuce.core.RedisFuture<String>> futures =
-              new java.util.ArrayList<>(n);
           for (String k : keys) {
             futures.add(k == null ? null : asyncCommands.get(k));
           }
           connection.flushCommands();
-          io.lettuce.core.RedisFuture<?>[] nonNullFutures =
-              futures.stream()
-                  .filter(java.util.Objects::nonNull)
-                  .toArray(io.lettuce.core.RedisFuture[]::new);
-          long perCallTimeoutMs = Math.max(1000L, config.redis.commandTimeoutMs * 2L);
-          boolean allCompleted =
-              io.lettuce.core.LettuceFutures.awaitAll(
-                  java.time.Duration.ofMillis(perCallTimeoutMs), nonNullFutures);
-          // If awaitAll timed out, some futures are still in flight. Cancel them now — the
-          // unbounded f.get() below would otherwise block the request thread indefinitely
-          // while the Lettuce event loop holds the response slot open.
-          if (!allCompleted) {
-            for (io.lettuce.core.RedisFuture<?> f : nonNullFutures) {
-              if (!f.isDone()) {
-                f.cancel(false);
-              }
-            }
-            LOG.warn("Pipelined mget timed out after {}ms for {} keys", perCallTimeoutMs, n);
-            // Feed the partial timeout into the circuit breaker. Without this, persistent
-            // partial timeouts (Redis answering some keys, dropping others) would keep
-            // calling recordSuccess() and consecutiveSuccesses would prevent the breaker
-            // from ever opening — masking real backend slowness behind a "healthy" provider.
-            if (m != null) {
-              m.recordError();
-            }
-            recordFailure(
-                new java.util.concurrent.TimeoutException(
-                    "mget partial timeout after " + perCallTimeoutMs + "ms"));
-          }
-          java.util.List<java.util.Optional<String>> out = new java.util.ArrayList<>(n);
-          int hits = 0;
-          int misses = 0;
-          for (io.lettuce.core.RedisFuture<String> f : futures) {
-            if (f == null) {
-              out.add(java.util.Optional.empty());
-              continue;
-            }
-            // After cancel-on-timeout above every future is done one way or another — got a
-            // value, errored, or was cancelled — so f.get() can't block.
-            try {
-              String v = f.get();
-              out.add(java.util.Optional.ofNullable(v));
-              if (v != null) {
-                hits++;
-              } else {
-                misses++;
-              }
-            } catch (Exception inner) {
-              out.add(java.util.Optional.empty());
-              misses++;
-            }
-          }
-          if (m != null) {
-            for (int i = 0; i < hits; i++) {
-              m.recordHit();
-            }
-            for (int i = 0; i < misses; i++) {
-              m.recordMiss();
-            }
-          }
-          // Only the all-completed path is a "success" for the circuit breaker. The
-          // partial-timeout path already called recordFailure() above.
-          if (allCompleted) {
-            recordSuccess();
-          }
-          return out;
         } finally {
+          // Restore auto-flush before releasing the lock so subsequent callers (mget or
+          // anyone else) see a normal connection. The try/finally still guarantees this
+          // runs even if queue/flush throw.
           connection.setAutoFlushCommands(true);
         }
       } finally {
         pipelineLock.unlock();
       }
+      io.lettuce.core.RedisFuture<?>[] nonNullFutures =
+          futures.stream()
+              .filter(java.util.Objects::nonNull)
+              .toArray(io.lettuce.core.RedisFuture[]::new);
+      long perCallTimeoutMs = Math.max(1000L, config.redis.commandTimeoutMs * 2L);
+      boolean allCompleted =
+          io.lettuce.core.LettuceFutures.awaitAll(
+              java.time.Duration.ofMillis(perCallTimeoutMs), nonNullFutures);
+      // If awaitAll timed out, some futures are still in flight. Cancel them now — the
+      // unbounded f.get() below would otherwise block the request thread indefinitely
+      // while the Lettuce event loop holds the response slot open.
+      if (!allCompleted) {
+        for (io.lettuce.core.RedisFuture<?> f : nonNullFutures) {
+          if (!f.isDone()) {
+            f.cancel(false);
+          }
+        }
+        LOG.warn("Pipelined mget timed out after {}ms for {} keys", perCallTimeoutMs, n);
+        // Feed the partial timeout into the circuit breaker. Without this, persistent
+        // partial timeouts (Redis answering some keys, dropping others) would keep
+        // calling recordSuccess() and consecutiveSuccesses would prevent the breaker
+        // from ever opening — masking real backend slowness behind a "healthy" provider.
+        if (m != null) {
+          m.recordError();
+        }
+        recordFailure(
+            new java.util.concurrent.TimeoutException(
+                "mget partial timeout after " + perCallTimeoutMs + "ms"));
+      }
+      java.util.List<java.util.Optional<String>> out = new java.util.ArrayList<>(n);
+      int hits = 0;
+      int misses = 0;
+      for (io.lettuce.core.RedisFuture<String> f : futures) {
+        if (f == null) {
+          out.add(java.util.Optional.empty());
+          continue;
+        }
+        // After cancel-on-timeout above every future is done one way or another — got a
+        // value, errored, or was cancelled — so f.get() can't block.
+        try {
+          String v = f.get();
+          out.add(java.util.Optional.ofNullable(v));
+          if (v != null) {
+            hits++;
+          } else {
+            misses++;
+          }
+        } catch (Exception inner) {
+          out.add(java.util.Optional.empty());
+          misses++;
+        }
+      }
+      if (m != null) {
+        for (int i = 0; i < hits; i++) {
+          m.recordHit();
+        }
+        for (int i = 0; i < misses; i++) {
+          m.recordMiss();
+        }
+      }
+      // Only the all-completed path is a "success" for the circuit breaker. The
+      // partial-timeout path already called recordFailure() above.
+      if (allCompleted) {
+        recordSuccess();
+      }
+      return out;
     } catch (Exception e) {
       if (m != null) {
         m.recordError();

@@ -68,6 +68,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheMetrics;
+import org.openmetadata.service.cache.CacheProvider;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -955,10 +956,17 @@ public class SystemResource {
   public Response getCacheStats(@Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
 
-    Map<String, Object> stats = CacheBundle.getCacheProvider().getStats();
-    CacheMetrics metrics = CacheMetrics.getInstance();
-    if (metrics != null) {
-      stats.put("metrics", metrics.snapshot());
+    CacheProvider cacheProvider = CacheBundle.getCacheProvider();
+    Map<String, Object> stats = cacheProvider.getStats();
+    // Only ask for the metrics snapshot when the cache is actually live. When
+    // CACHE_PROVIDER=none the metrics singleton is never initialized and
+    // CacheMetrics.getInstance() logs a WARN — noisy for "cache off" deployments
+    // that still poll /system/cache/stats for ops dashboards.
+    if (cacheProvider.available()) {
+      CacheMetrics metrics = CacheMetrics.getInstance();
+      if (metrics != null) {
+        stats.put("metrics", metrics.snapshot());
+      }
     }
     return Response.ok(stats).build();
   }
@@ -1001,9 +1009,11 @@ public class SystemResource {
       summary = "SCAN keys matching a pattern (admin)",
       description =
           "Issues a Redis SCAN with the given glob-style pattern (e.g.,"
-              + " 'om:prod:e:table:*'). Bounded by the count parameter to keep the cluster"
-              + " responsive — never use this for unbounded enumeration. Returns -1 count if"
-              + " the cache provider doesn't support SCAN (Noop).",
+              + " 'om:prod:e:table:*') and returns the total match count. The"
+              + " pattern must have at least 6 literal characters before any"
+              + " wildcard (enforced by validateCachePattern) so unbounded scans"
+              + " like '*' or 'om:*' are rejected. Returns -1 count if the cache"
+              + " provider doesn't support SCAN (Noop).",
       responses = {
         @ApiResponse(responseCode = "200", description = "Match count"),
         @ApiResponse(responseCode = "403", description = "Forbidden")
