@@ -1,7 +1,6 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -205,6 +204,12 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
     String expectedFqn = driveService.getFullyQualifiedName() + "." + ns.prefix("fqn_test");
     assertEquals(expectedFqn, spreadsheet.getFullyQualifiedName());
+    assertTrue(
+        spreadsheet.getFullyQualifiedName().startsWith(driveService.getFullyQualifiedName()),
+        "Spreadsheet FQN should start with service FQN");
+    assertTrue(
+        spreadsheet.getFullyQualifiedName().endsWith(spreadsheet.getName()),
+        "Spreadsheet FQN should end with spreadsheet name");
   }
 
   @Test
@@ -212,10 +217,13 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
     String uniqueName = ns.prefix("unique_spreadsheet");
 
-    Spreadsheets.create()
-        .name(uniqueName)
-        .withService(driveService.getFullyQualifiedName())
-        .execute();
+    Spreadsheet first =
+        Spreadsheets.create()
+            .name(uniqueName)
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+
+    assertNotNull(first);
 
     assertThrows(
         Exception.class,
@@ -224,7 +232,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
                 .name(uniqueName)
                 .withService(driveService.getFullyQualifiedName())
                 .execute(),
-        "Creating duplicate spreadsheet under same service should fail");
+        "Creating duplicate spreadsheet with same name under same service should fail");
   }
 
   @Test
@@ -263,6 +271,8 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
     assertNotNull(spreadsheet.getDirectory());
     assertEquals(directory.getId(), spreadsheet.getDirectory().getId());
+    assertEquals(
+        directory.getFullyQualifiedName(), spreadsheet.getDirectory().getFullyQualifiedName());
   }
 
   @Test
@@ -276,11 +286,23 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
             .withPath("/reports")
             .execute();
 
+    Directory dir2 =
+        Directories.create()
+            .name(ns.prefix("analytics"))
+            .withService(driveService.getFullyQualifiedName())
+            .withPath("/analytics")
+            .execute();
+
     for (int i = 0; i < 2; i++) {
       Spreadsheets.create()
           .name(ns.prefix("report_" + i))
           .withService(driveService.getFullyQualifiedName())
           .withParent(dir1.getEntityReference())
+          .execute();
+      Spreadsheets.create()
+          .name(ns.prefix("analytics_" + i))
+          .withService(driveService.getFullyQualifiedName())
+          .withParent(dir2.getEntityReference())
           .execute();
     }
 
@@ -291,6 +313,14 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
         list.getData().stream()
             .allMatch(
                 s -> s.getDirectory() != null && s.getDirectory().getId().equals(dir1.getId())));
+
+    params = new ListParams().withDirectory(dir2.getFullyQualifiedName());
+    list = SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(list.getData().size() >= 2);
+    assertTrue(
+        list.getData().stream()
+            .allMatch(
+                s -> s.getDirectory() != null && s.getDirectory().getId().equals(dir2.getId())));
   }
 
   @Test
@@ -310,27 +340,43 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
         .execute();
 
     Spreadsheets.create()
+        .name(ns.prefix("rootSpreadsheet2"))
+        .withService(driveService.getFullyQualifiedName())
+        .execute();
+
+    Spreadsheets.create()
         .name(ns.prefix("childSpreadsheet1"))
         .withService(driveService.getFullyQualifiedName())
         .withParent(sheetsDir.getEntityReference())
         .execute();
 
-    ListParams params =
-        new ListParams().withService(driveService.getFullyQualifiedName()).withRoot("true");
+    Spreadsheets.create()
+        .name(ns.prefix("childSpreadsheet2"))
+        .withService(driveService.getFullyQualifiedName())
+        .withParent(sheetsDir.getEntityReference())
+        .execute();
+
+    ListParams params = new ListParams().withService(driveService.getFullyQualifiedName());
+    ListResponse<Spreadsheet> allSpreadsheets =
+        SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(allSpreadsheets.getData().size() >= 4);
+
+    params = new ListParams().withService(driveService.getFullyQualifiedName()).withRoot("true");
     ListResponse<Spreadsheet> rootSpreadsheets =
         SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(rootSpreadsheets.getData().size() >= 2);
 
-    assertTrue(
-        rootSpreadsheets.getData().stream()
-            .anyMatch(s -> s.getName().equals(ns.prefix("rootSpreadsheet1"))),
-        "Root spreadsheet we just created must appear in ?root=true results");
-    assertFalse(
-        rootSpreadsheets.getData().stream()
-            .anyMatch(s -> s.getName().equals(ns.prefix("childSpreadsheet1"))),
-        "Child spreadsheet must NOT appear in ?root=true results");
     for (Spreadsheet spreadsheet : rootSpreadsheets.getData()) {
-      assertNull(spreadsheet.getDirectory(), "Root spreadsheet should not have directory");
+      assertNull(spreadsheet.getDirectory());
+      assertTrue(
+          spreadsheet.getName().equals(ns.prefix("rootSpreadsheet1"))
+              || spreadsheet.getName().equals(ns.prefix("rootSpreadsheet2")));
     }
+
+    params = new ListParams().withService(driveService.getFullyQualifiedName()).withRoot("false");
+    ListResponse<Spreadsheet> nonRootSpreadsheets =
+        SdkClients.adminClient().spreadsheets().list(params);
+    assertTrue(nonRootSpreadsheets.getData().size() >= 4);
   }
 
   @Test
@@ -345,6 +391,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
             .withService(driveService.getFullyQualifiedName())
             .execute();
 
+    assertNotNull(spreadsheet);
     assertEquals("Display Name for Spreadsheet", spreadsheet.getDisplayName());
     assertEquals("Spreadsheet with optional fields", spreadsheet.getDescription());
   }
@@ -362,16 +409,19 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
     Spreadsheet fetched = Spreadsheets.get(created.getId().toString());
     fetched.setDescription("updated description");
+
     Spreadsheet updated = Spreadsheets.update(created.getId().toString()).entity(fetched).execute();
     assertEquals("updated description", updated.getDescription());
 
     fetched = Spreadsheets.get(created.getId().toString());
     fetched.setPath("/new/path/to/spreadsheet");
+
     updated = Spreadsheets.update(created.getId().toString()).entity(fetched).execute();
     assertEquals("/new/path/to/spreadsheet", updated.getPath());
 
     fetched = Spreadsheets.get(created.getId().toString());
     fetched.setSize(1024000);
+
     updated = Spreadsheets.update(created.getId().toString()).entity(fetched).execute();
     assertEquals(Integer.valueOf(1024000), updated.getSize());
   }
@@ -398,6 +448,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
     Spreadsheet spreadsheetWithWorksheets =
         Spreadsheets.find(spreadsheet.getId().toString()).withFields("worksheets").fetch();
     assertNotNull(spreadsheetWithWorksheets.getWorksheets());
+    // Filter worksheets that belong to this test by namespace prefix
     long testWorksheetCount =
         spreadsheetWithWorksheets.getWorksheets().stream()
             .filter(ws -> ws.getName().startsWith(ns.prefix("sheet")))
@@ -671,11 +722,13 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
         new ListParams().withService(service1.getFullyQualifiedName()).withRoot("true");
     ListResponse<Spreadsheet> googleRootSpreadsheets =
         SdkClients.adminClient().spreadsheets().list(params);
+    // Filter to only our test's spreadsheets
     long googleSheetCount =
         googleRootSpreadsheets.getData().stream()
             .filter(s -> s.getName().startsWith(ns.prefix("googleSheet")))
             .count();
     assertTrue(googleSheetCount >= 2, "Should have at least 2 root googleSheet spreadsheets");
+    // Verify root spreadsheets have no directory
     for (Spreadsheet spreadsheet : googleRootSpreadsheets.getData()) {
       if (spreadsheet.getName().startsWith(ns.prefix("googleSheet"))) {
         assertNull(spreadsheet.getDirectory(), "Root spreadsheet should not have directory");
@@ -685,11 +738,13 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
     params = new ListParams().withService(service2.getFullyQualifiedName()).withRoot("true");
     ListResponse<Spreadsheet> excelRootSpreadsheets =
         SdkClients.adminClient().spreadsheets().list(params);
+    // Filter to only our test's spreadsheets
     long excelWorkbookCount =
         excelRootSpreadsheets.getData().stream()
             .filter(s -> s.getName().startsWith(ns.prefix("excelWorkbook")))
             .count();
     assertTrue(excelWorkbookCount >= 4, "Should have at least 4 root excelWorkbook spreadsheets");
+    // Verify root spreadsheets have no directory
     for (Spreadsheet spreadsheet : excelRootSpreadsheets.getData()) {
       if (spreadsheet.getName().startsWith(ns.prefix("excelWorkbook"))) {
         assertNull(spreadsheet.getDirectory(), "Root spreadsheet should not have directory");
@@ -718,8 +773,11 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
             .withService(driveService.getFullyQualifiedName())
             .execute();
 
+    assertNotNull(spreadsheet);
+    assertNotNull(spreadsheet.getId());
     assertEquals(ns.prefix("spreadsheet"), spreadsheet.getName());
     assertEquals("Test spreadsheet", spreadsheet.getDescription());
+    assertNotNull(spreadsheet.getService());
     assertEquals(
         driveService.getFullyQualifiedName(), spreadsheet.getService().getFullyQualifiedName());
   }
@@ -734,6 +792,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
             .withService(driveService.getFullyQualifiedName())
             .execute();
 
+    assertNotNull(spreadsheet);
     assertNotNull(spreadsheet.getId());
     assertEquals(ns.prefix("minimal_spreadsheet"), spreadsheet.getName());
   }
@@ -741,6 +800,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
   @Test
   void test_getSpreadsheetById(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
     Spreadsheet created =
         Spreadsheets.create()
             .name(ns.prefix("spreadsheet_get"))
@@ -748,14 +808,20 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
             .execute();
 
     Spreadsheet fetched = Spreadsheets.get(created.getId().toString());
+
+    assertNotNull(fetched);
     assertEquals(created.getId(), fetched.getId());
     assertEquals(created.getName(), fetched.getName());
-    assertEquals(created.getFullyQualifiedName(), fetched.getFullyQualifiedName());
+    assertEquals(
+        created.getFullyQualifiedName(),
+        fetched.getFullyQualifiedName(),
+        "FQN should match between created and fetched");
   }
 
   @Test
   void test_getSpreadsheetByName(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
     Spreadsheet created =
         Spreadsheets.create()
             .name(ns.prefix("spreadsheet_getByName"))
@@ -763,18 +829,24 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
             .execute();
 
     Spreadsheet fetched = Spreadsheets.getByName(created.getFullyQualifiedName());
+
+    assertNotNull(fetched);
     assertEquals(created.getId(), fetched.getId());
+    assertEquals(created.getName(), fetched.getName());
     assertEquals(created.getFullyQualifiedName(), fetched.getFullyQualifiedName());
   }
 
   @Test
   void test_deleteSpreadsheet(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
     Spreadsheet created =
         Spreadsheets.create()
             .name(ns.prefix("spreadsheet_delete"))
             .withService(driveService.getFullyQualifiedName())
             .execute();
+
+    assertNotNull(created.getId());
 
     Spreadsheets.delete(created.getId().toString());
 
@@ -787,6 +859,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
   @Test
   void test_finderWithFields(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
     Spreadsheet created =
         Spreadsheets.create()
             .name(ns.prefix("spreadsheet_fields"))
@@ -796,6 +869,8 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
     Spreadsheet fetched =
         Spreadsheets.find(created.getId().toString()).withFields("service", "owners").fetch();
+
+    assertNotNull(fetched);
     assertEquals(created.getId(), fetched.getId());
     assertNotNull(fetched.getService());
   }
@@ -803,6 +878,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
   @Test
   void test_finderByNameWithFields(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
     Spreadsheet created =
         Spreadsheets.create()
             .name(ns.prefix("spreadsheet_name_fields"))
@@ -813,6 +889,8 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
         Spreadsheets.findByName(created.getFullyQualifiedName())
             .withFields("service", "tags")
             .fetch();
+
+    assertNotNull(fetched);
     assertEquals(created.getId(), fetched.getId());
     assertEquals(created.getFullyQualifiedName(), fetched.getFullyQualifiedName());
   }
@@ -820,6 +898,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
   @Test
   void test_getByNameWithFields(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
     Spreadsheet created =
         Spreadsheets.create()
             .name(ns.prefix("spreadsheet_byname_fields"))
@@ -827,6 +906,8 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
             .execute();
 
     Spreadsheet fetched = Spreadsheets.getByName(created.getFullyQualifiedName(), "service,owners");
+
+    assertNotNull(fetched);
     assertEquals(created.getId(), fetched.getId());
     assertNotNull(fetched.getService());
   }
@@ -842,6 +923,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
               .withService(driveService.getFullyQualifiedName())
               .execute();
 
+      assertNotNull(spreadsheet);
       assertNotNull(spreadsheet.getId());
       assertTrue(
           spreadsheet.getFullyQualifiedName().contains(ns.prefix("spreadsheet_" + i)),
@@ -852,6 +934,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
   @Test
   void test_patchSpreadsheetAttributes(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
     Spreadsheet spreadsheet =
         Spreadsheets.create()
             .name(ns.prefix("patchSpreadsheet"))

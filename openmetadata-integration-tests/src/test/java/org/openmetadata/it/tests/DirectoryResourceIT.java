@@ -167,6 +167,7 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
   @Test
   void test_createAndGetDirectory(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    assertNotNull(driveService);
 
     String directoryName = ns.prefix("test_directory");
     Directory created =
@@ -177,14 +178,20 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
             .withDescription("A test directory created by integration test")
             .execute();
 
+    assertNotNull(created);
     assertNotNull(created.getId());
     assertEquals(directoryName, created.getName());
     assertEquals("Test Directory", created.getDisplayName());
+    assertEquals("A test directory created by integration test", created.getDescription());
+    assertNotNull(created.getService());
     assertEquals(
         driveService.getFullyQualifiedName(), created.getService().getFullyQualifiedName());
 
     Directory fetched = Directories.get(created.getId().toString());
+    assertNotNull(fetched);
     assertEquals(created.getId(), fetched.getId());
+    assertEquals(created.getName(), fetched.getName());
+    assertEquals(created.getDisplayName(), fetched.getDisplayName());
   }
 
   @Test
@@ -211,6 +218,7 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
   @Test
   void test_directoryFullyQualifiedName(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    assertNotNull(driveService);
 
     String directoryName = ns.prefix("test_directory_fqn");
     Directory created =
@@ -219,6 +227,8 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
             .withService(driveService.getFullyQualifiedName())
             .execute();
 
+    assertNotNull(created);
+    assertNotNull(created.getFullyQualifiedName());
     assertTrue(created.getFullyQualifiedName().contains(driveService.getName()));
     assertTrue(created.getFullyQualifiedName().contains(directoryName));
   }
@@ -226,6 +236,7 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
   @Test
   void test_createDirectoryWithAllFields(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    assertNotNull(driveService);
 
     String directoryName = ns.prefix("test_directory_full");
     Directory created =
@@ -236,10 +247,13 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
             .withDescription("A directory with all fields populated for testing")
             .execute();
 
+    assertNotNull(created);
+    assertNotNull(created.getId());
     assertEquals(directoryName, created.getName());
     assertEquals("Complete Test Directory", created.getDisplayName());
     assertEquals("A directory with all fields populated for testing", created.getDescription());
     assertNotNull(created.getService());
+    assertNotNull(created.getFullyQualifiedName());
     assertTrue(
         created.getFullyQualifiedName().contains(directoryName),
         "FQN should contain directory name");
@@ -248,6 +262,8 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
   @Test
   void test_createDirectoryMinimalRequest(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    assertNotNull(driveService);
+
     String directoryName = ns.prefix("test_directory_minimal");
     Directory created =
         Directories.create()
@@ -255,6 +271,7 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
             .withService(driveService.getFullyQualifiedName())
             .execute();
 
+    assertNotNull(created);
     assertNotNull(created.getId());
     assertEquals(directoryName, created.getName());
     assertNotNull(created.getService());
@@ -263,6 +280,8 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
   @Test
   void test_getByName(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    assertNotNull(driveService);
+
     String directoryName = ns.prefix("test_directory_by_name");
     Directory created =
         Directories.create()
@@ -271,7 +290,11 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
             .withDisplayName("Test Directory By Name")
             .execute();
 
+    assertNotNull(created);
+    assertNotNull(created.getFullyQualifiedName());
+
     Directory fetched = Directories.getByName(created.getFullyQualifiedName());
+    assertNotNull(fetched);
     assertEquals(created.getId(), fetched.getId());
     assertEquals(created.getName(), fetched.getName());
     assertEquals(created.getFullyQualifiedName(), fetched.getFullyQualifiedName());
@@ -280,6 +303,8 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
   @Test
   void test_getByNameWithFields(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    assertNotNull(driveService);
+
     String directoryName = ns.prefix("test_directory_with_fields");
     Directory created =
         Directories.create()
@@ -288,7 +313,11 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
             .withDisplayName("Test Directory With Fields")
             .execute();
 
+    assertNotNull(created);
+    assertNotNull(created.getFullyQualifiedName());
+
     Directory fetched = Directories.getByName(created.getFullyQualifiedName(), "service,owners");
+    assertNotNull(fetched);
     assertEquals(created.getId(), fetched.getId());
     assertNotNull(fetched.getService());
   }
@@ -296,12 +325,17 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
   @Test
   void test_deleteDirectory(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    assertNotNull(driveService);
+
     String directoryName = ns.prefix("test_directory_delete");
     Directory created =
         Directories.create()
             .name(directoryName)
             .withService(driveService.getFullyQualifiedName())
+            .withDisplayName("Test Directory To Delete")
             .execute();
+
+    assertNotNull(created);
     String directoryId = created.getId().toString();
 
     Directories.delete(directoryId);
@@ -315,14 +349,20 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
   @Test
   void test_findDirectoryById(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    assertNotNull(driveService);
+
     String directoryName = ns.prefix("test_directory_find");
     Directory created =
         Directories.create()
             .name(directoryName)
             .withService(driveService.getFullyQualifiedName())
+            .withDisplayName("Test Directory Find")
             .execute();
 
+    assertNotNull(created);
+
     Directory fetched = Directories.find(created.getId().toString()).fetch();
+    assertNotNull(fetched);
     assertEquals(created.getId(), fetched.getId());
     assertEquals(created.getName(), fetched.getName());
   }
@@ -330,14 +370,21 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
   @Test
   void test_findDirectoryByName(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    assertNotNull(driveService);
+
     String directoryName = ns.prefix("test_directory_find_by_name");
     Directory created =
         Directories.create()
             .name(directoryName)
             .withService(driveService.getFullyQualifiedName())
+            .withDisplayName("Test Directory Find By Name")
             .execute();
 
+    assertNotNull(created);
+    assertNotNull(created.getFullyQualifiedName());
+
     Directory fetched = Directories.findByName(created.getFullyQualifiedName()).fetch();
+    assertNotNull(fetched);
     assertEquals(created.getId(), fetched.getId());
     assertEquals(created.getName(), fetched.getName());
   }
@@ -345,17 +392,23 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
   @Test
   void test_findDirectoryWithFields(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    assertNotNull(driveService);
+
     String directoryName = ns.prefix("test_directory_find_fields");
     Directory created =
         Directories.create()
             .name(directoryName)
             .withService(driveService.getFullyQualifiedName())
+            .withDisplayName("Test Directory Find Fields")
             .execute();
+
+    assertNotNull(created);
 
     Directory fetched =
         Directories.findByName(created.getFullyQualifiedName())
             .withFields("service", "owners", "tags")
             .fetch();
+    assertNotNull(fetched);
     assertEquals(created.getId(), fetched.getId());
     assertNotNull(fetched.getService());
   }
@@ -363,6 +416,7 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
   @Test
   void test_createMultipleDirectories(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    assertNotNull(driveService);
 
     for (int i = 1; i <= 3; i++) {
       String directoryName = ns.prefix("test_directory_multi_" + i);
@@ -374,6 +428,8 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
               .withDescription("Directory number " + i)
               .execute();
 
+      assertNotNull(created);
+      assertNotNull(created.getId());
       assertEquals(directoryName, created.getName());
       assertEquals("Test Directory " + i, created.getDisplayName());
 

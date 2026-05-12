@@ -248,9 +248,23 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
             .withService(driveService.getFullyQualifiedName())
             .execute();
 
+    File file3 =
+        Files.create()
+            .name(ns.prefix("file_3"))
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+
+    assertNotNull(file1);
+    assertNotNull(file2);
+    assertNotNull(file3);
+
     assertNotEquals(file1.getId(), file2.getId());
+    assertNotEquals(file2.getId(), file3.getId());
+    assertNotEquals(file1.getId(), file3.getId());
+
     assertEquals(driveService.getFullyQualifiedName(), file1.getService().getFullyQualifiedName());
     assertEquals(driveService.getFullyQualifiedName(), file2.getService().getFullyQualifiedName());
+    assertEquals(driveService.getFullyQualifiedName(), file3.getService().getFullyQualifiedName());
   }
 
   @Test
@@ -360,6 +374,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
             .withService(driveService.getFullyQualifiedName())
             .execute();
 
+    assertNotNull(createdFile);
     assertEquals(fileName, createdFile.getName());
     assertEquals(displayName, createdFile.getDisplayName());
   }
@@ -380,9 +395,11 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
             .withService(driveService.getFullyQualifiedName())
             .execute();
 
+    assertNotNull(createdFile);
     assertEquals(fileName, createdFile.getName());
     assertEquals(displayName, createdFile.getDisplayName());
     assertEquals(description, createdFile.getDescription());
+    assertNotNull(createdFile.getService());
     assertEquals(
         driveService.getFullyQualifiedName(), createdFile.getService().getFullyQualifiedName());
   }
@@ -390,11 +407,13 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
   @Test
   void test_createFileMinimal(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
     String fileName = ns.prefix("test_file_minimal");
 
     File createdFile =
         Files.create().name(fileName).withService(driveService.getFullyQualifiedName()).execute();
 
+    assertNotNull(createdFile);
     assertEquals(fileName, createdFile.getName());
     assertNotNull(createdFile.getId());
     assertNotNull(createdFile.getService());
@@ -403,6 +422,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
   @Test
   void test_createFileWithDescription(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
     String fileName = ns.prefix("test_file_desc");
     String description = "This is a detailed description of the test file";
 
@@ -413,6 +433,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
             .withService(driveService.getFullyQualifiedName())
             .execute();
 
+    assertNotNull(createdFile);
     assertEquals(fileName, createdFile.getName());
     assertEquals(description, createdFile.getDescription());
   }
@@ -420,12 +441,17 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
   @Test
   void test_deleteFile(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
     String fileName = ns.prefix("test_file_delete");
     File createdFile =
         Files.create().name(fileName).withService(driveService.getFullyQualifiedName()).execute();
+
+    assertNotNull(createdFile);
     String fileId = createdFile.getId().toString();
 
-    assertNotNull(Files.get(fileId));
+    File beforeDelete = Files.get(fileId);
+    assertNotNull(beforeDelete);
+
     Files.delete(fileId);
 
     assertThrows(
@@ -435,11 +461,15 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
   @Test
   void test_findFileById(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
     String fileName = ns.prefix("test_file_find");
     File createdFile =
         Files.create().name(fileName).withService(driveService.getFullyQualifiedName()).execute();
 
+    assertNotNull(createdFile);
+
     File foundFile = Files.find(createdFile.getId().toString()).fetch();
+    assertNotNull(foundFile);
     assertEquals(createdFile.getId(), foundFile.getId());
     assertEquals(fileName, foundFile.getName());
   }
@@ -447,6 +477,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
   @Test
   void test_findFileByNameWithFields(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
     String fileName = ns.prefix("test_file_find_by_name");
     File createdFile =
         Files.create()
@@ -455,16 +486,20 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
             .withDescription("Find by name with fields")
             .execute();
 
+    assertNotNull(createdFile);
+
     File foundFile =
         Files.findByName(createdFile.getFullyQualifiedName())
             .withFields("owners", "tags", "domains")
             .fetch();
+    assertNotNull(foundFile);
     assertEquals(createdFile.getId(), foundFile.getId());
   }
 
   @Test
   void test_getFileByNameWithFields(TestNamespace ns) {
     DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
     String fileName = ns.prefix("test_file_with_fields");
     File createdFile =
         Files.create()
@@ -473,7 +508,10 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
             .withDescription("File with specific fields")
             .execute();
 
+    assertNotNull(createdFile);
+
     File retrievedFile = Files.getByName(createdFile.getFullyQualifiedName(), "owners,tags");
+    assertNotNull(retrievedFile);
     assertEquals(createdFile.getId(), retrievedFile.getId());
   }
 
