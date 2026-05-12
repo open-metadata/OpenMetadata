@@ -720,6 +720,16 @@ public final class Entity {
         || ENTITY_TS_REPOSITORY_MAP.containsKey(entityType);
   }
 
+  /**
+   * Returns true when {@code entityTypeOrAlias} maps to an {@link EntityTimeSeriesInterface}
+   * (append-only, no top-level {@code deleted} field). Used by the search layer to skip
+   * propagation scripts that assume a regular-entity shape — e.g. the soft-delete script that
+   * stamps {@code deleted} onto child docs.
+   */
+  public static boolean isTimeSeriesEntity(@NonNull String entityTypeOrAlias) {
+    return ENTITY_TS_REPOSITORY_MAP.containsKey(entityTypeOrAlias);
+  }
+
   public static EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface>
       getEntityTimeSeriesRepository(@NonNull String entityType) {
     EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface> entityTimeSeriesRepository =

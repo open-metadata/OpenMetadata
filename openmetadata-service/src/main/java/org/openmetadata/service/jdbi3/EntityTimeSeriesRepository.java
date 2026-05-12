@@ -463,8 +463,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
               searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
-        T entity =
-            setFieldsInternal(JsonUtils.readOrConvertValueLenient(json, entityClass), fields);
+        T entity = setFieldsInternal(readTimeSeriesSource(json), fields);
         try {
           setInheritedFields(entity);
         } catch (RuntimeException e) {
@@ -525,9 +524,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
                 hitList -> {
                   for (Map<String, Object> hit : (List<Map<String, Object>>) hitList) {
                     Map<String, Object> source = extractAndFilterSource(hit);
-                    T entity =
-                        setFieldsInternal(
-                            JsonUtils.readOrConvertValueLenient(source, entityClass), fields);
+                    T entity = setFieldsInternal(readTimeSeriesSource(source), fields);
                     if (entity != null) {
                       try {
                         setInheritedFields(entity);
@@ -685,7 +682,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     SearchResultListMapper results =
         searchRepository.listWithOffset(searchListFilter, 1, 0, entityType, searchSortFilter, q);
     for (Map<String, Object> json : results.getResults()) {
-      T entity = setFieldsInternal(JsonUtils.readOrConvertValueLenient(json, entityClass), fields);
+      T entity = setFieldsInternal(readTimeSeriesSource(json), fields);
       setInheritedFields(entity);
       clearFieldsInternal(entity, fields);
       return entity;
@@ -695,6 +692,16 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
 
   protected void setIncludeSearchFields(SearchListFilter searchListFilter) {
     // Nothing to do in the default implementation
+  }
+
+  /**
+   * Lenient-deserializes a search hit source into the time-series entity type. Tolerates legacy
+   * {@code deleted} fields that the live-indexing soft-delete script may have stamped onto
+   * append-only docs whose schema declares no such field. Once a recreate-style reindex has
+   * cleaned the index, the lenient mode is a no-op.
+   */
+  private T readTimeSeriesSource(Object source) {
+    return JsonUtils.readOrConvertValueLenient(source, entityClass);
   }
 
   protected void setExcludeSearchFields(SearchListFilter searchListFilter) {

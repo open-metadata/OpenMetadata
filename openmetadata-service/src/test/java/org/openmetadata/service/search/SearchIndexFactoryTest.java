@@ -71,6 +71,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.search.indexes.APICollectionIndex;
 import org.openmetadata.service.search.indexes.APIEndpointIndex;
 import org.openmetadata.service.search.indexes.APIServiceIndex;
@@ -206,14 +207,14 @@ class SearchIndexFactoryTest {
     assertTrue(userFields.contains("roles"));
     assertTrue(userFields.contains("inheritedRoles"));
     Set<String> testCaseFields = factory.getReindexFieldsFor(Entity.TEST_CASE);
-    assertTrue(testCaseFields.contains("testSuite"));
-    assertTrue(testCaseFields.contains("testSuites"));
-    assertTrue(testCaseFields.contains("testDefinition"));
+    assertTrue(testCaseFields.contains(TestCaseRepository.TEST_SUITE_FIELD));
+    assertTrue(testCaseFields.contains(Entity.FIELD_TEST_SUITES));
+    assertTrue(testCaseFields.contains(TestCaseRepository.TEST_DEFINITION_FIELD));
     // Regression: testCaseResult/incidentId are stripped from storage JSON and
     // only fetched by setFieldsInBulk when explicitly requested. Reindex without
     // them produces docs missing testCaseStatus, blanking statuses in the UI.
     assertTrue(testCaseFields.contains(Entity.TEST_CASE_RESULT));
-    assertTrue(testCaseFields.contains("incidentId"));
+    assertTrue(testCaseFields.contains(TestCaseRepository.INCIDENTS_FIELD));
     // TestSuiteRepository registers a fetcher for "summary" that populates
     // testCaseResultSummary. The DQ TestSuites list page sorts by the
     // top-level lastResultTimestamp field (computed in TestSuiteIndex from

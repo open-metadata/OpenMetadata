@@ -133,6 +133,18 @@ class SearchRepositoryBehaviorTest {
           .indexMappingFile("/elasticsearch/%s/test_suite_index_mapping.json")
           .build();
 
+  private static final IndexMapping TEST_CASE_MAPPING =
+      IndexMapping.builder()
+          .indexName("test_case_search_index")
+          .alias("testCase")
+          .childAliases(
+              List.of(Entity.TEST_CASE_RESOLUTION_STATUS, Entity.TEST_CASE_RESULT, "tableColumn"))
+          .indexMappingFile("/elasticsearch/%s/test_case_index_mapping.json")
+          .build();
+
+  private static final List<String> MOCK_TIME_SERIES_ENTITY_TYPES =
+      List.of(Entity.TEST_CASE_RESOLUTION_STATUS, Entity.TEST_CASE_RESULT);
+
   private static final List<String> MOCK_ENTITY_TYPES =
       List.of(
           Entity.TABLE,
@@ -168,16 +180,19 @@ class SearchRepositoryBehaviorTest {
                 Map.entry(Entity.CLASSIFICATION, TABLE_MAPPING),
                 Map.entry(Entity.PAGE, PAGE_MAPPING),
                 Map.entry(Entity.TEST_SUITE, TEST_SUITE_MAPPING),
+                Map.entry(Entity.TEST_CASE, TEST_CASE_MAPPING),
                 Map.entry(Entity.QUERY, TABLE_MAPPING)),
             "cluster");
     Entity.setSearchRepository(repository);
     registerMockEntityRepositories();
+    registerMockTimeSeriesRepositories();
   }
 
   @AfterEach
   void tearDown() {
     Entity.setSearchRepository(null);
     clearMockEntityRepositories();
+    clearMockTimeSeriesRepositories();
   }
 
   @SuppressWarnings("unchecked")
@@ -207,6 +222,32 @@ class SearchRepositoryBehaviorTest {
       MOCK_ENTITY_TYPES.forEach(repoMap::remove);
     } catch (Exception e) {
       throw new RuntimeException("Failed to clear mock entity repositories", e);
+    }
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  private void registerMockTimeSeriesRepositories() {
+    try {
+      Field tsMap = Entity.class.getDeclaredField("ENTITY_TS_REPOSITORY_MAP");
+      tsMap.setAccessible(true);
+      Map<String, Object> map = (Map<String, Object>) tsMap.get(null);
+      for (String entityType : MOCK_TIME_SERIES_ENTITY_TYPES) {
+        map.put(entityType, mock(org.openmetadata.service.jdbi3.EntityTimeSeriesRepository.class));
+      }
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to register mock time-series repositories", e);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private void clearMockTimeSeriesRepositories() {
+    try {
+      Field tsMap = Entity.class.getDeclaredField("ENTITY_TS_REPOSITORY_MAP");
+      tsMap.setAccessible(true);
+      Map<String, Object> map = (Map<String, Object>) tsMap.get(null);
+      MOCK_TIME_SERIES_ENTITY_TYPES.forEach(map::remove);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to clear mock time-series repositories", e);
     }
   }
 
@@ -2051,6 +2092,57 @@ class SearchRepositoryBehaviorTest {
                     "table.id", table.getId().toString())));
   }
 
+  /**
+   * Regression for the Incident Manager Jackson error. The soft-delete script must NOT target
+   * {@code testCaseResolutionStatus} / {@code testCaseResult} — those are time-series indexes
+   * whose entity class declares no top-level {@code deleted} field. Non-time-series children on
+   * the same parent (here {@code tableColumn}) are still propagated.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void softDeleteOrRestoredChildrenSkipsTimeSeriesAliases() throws IOException {
+    EntityReference testCase =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TEST_CASE);
+
+    repository.softDeleteOrRestoredChildren(testCase, TEST_CASE_MAPPING, true);
+
+    ArgumentCaptor<List<String>> aliasCaptor = ArgumentCaptor.forClass(List.class);
+    verify(searchClient)
+        .softDeleteOrRestoreChildren(aliasCaptor.capture(), any(String.class), any(List.class));
+    List<String> aliases = aliasCaptor.getValue();
+    assertFalse(
+        aliases.contains("cluster_" + Entity.TEST_CASE_RESOLUTION_STATUS),
+        "testCaseResolutionStatus has no `deleted` field; the soft-delete script must not target it");
+    assertFalse(
+        aliases.contains("cluster_" + Entity.TEST_CASE_RESULT),
+        "testCaseResult has no `deleted` field; the soft-delete script must not target it");
+    assertTrue(
+        aliases.contains("cluster_tableColumn"),
+        "non-time-series children must still receive the propagation script");
+  }
+
+  /**
+   * When every declared child alias is a time-series entity, propagation is a no-op — the
+   * search client must not be invoked at all rather than be invoked with an empty list.
+   */
+  @Test
+  void softDeleteOrRestoredChildrenIsNoOpWhenEveryChildIsTimeSeries() throws IOException {
+    IndexMapping timeSeriesOnly =
+        IndexMapping.builder()
+            .indexName("test_case_search_index")
+            .alias("testCase")
+            .childAliases(List.of(Entity.TEST_CASE_RESOLUTION_STATUS, Entity.TEST_CASE_RESULT))
+            .indexMappingFile("/elasticsearch/%s/test_case_index_mapping.json")
+            .build();
+    EntityReference testCase =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TEST_CASE);
+
+    repository.softDeleteOrRestoredChildren(testCase, timeSeriesOnly, false);
+
+    verify(searchClient, never())
+        .softDeleteOrRestoreChildren(any(List.class), any(String.class), any(List.class));
+  }
+
   @Test
   void getScriptWithParamsBuildsExtensionAndDescriptionUpdates() {
     EntityInterface entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
@@ -2555,6 +2647,7 @@ class SearchRepositoryBehaviorTest {
             Entity.CLASSIFICATION,
             Entity.PAGE,
             Entity.TEST_SUITE,
+            Entity.TEST_CASE,
             Entity.QUERY),
         repository.getSearchEntities());
     assertSame(highLevelClient, repository.getHighLevelClient());

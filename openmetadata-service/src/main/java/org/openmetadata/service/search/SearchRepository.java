@@ -2511,11 +2511,29 @@ public class SearchRepository {
   public void softDeleteOrRestoredChildren(
       EntityReference entityReference, IndexMapping indexMapping, boolean delete)
       throws IOException {
-    String docId = entityReference.getId().toString();
+    // childAliases values are entity-type names (per indexMapping.json). Drop time-series
+    // children — their docs have no top-level `deleted` field and the script would pollute them.
+    List<String> targets =
+        indexMapping.getChildAliases().stream()
+            .filter(a -> !Entity.isTimeSeriesEntity(a))
+            .map(a -> clusterAlias == null || clusterAlias.isEmpty() ? a : clusterAlias + "_" + a)
+            .toList();
+    if (targets.isEmpty()) {
+      return;
+    }
     String entityType = entityReference.getType();
+    String parentIdField =
+        SERVICE_ENTITY_TYPES.contains(entityType) ? "service.id" : entityType + ".id";
     String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
-    switch (entityType) {
-      case Entity.DASHBOARD_SERVICE,
+    searchClient.softDeleteOrRestoreChildren(
+        targets,
+        scriptTxt,
+        List.of(new ImmutablePair<>(parentIdField, entityReference.getId().toString())));
+  }
+
+  private static final Set<String> SERVICE_ENTITY_TYPES =
+      Set.of(
+          Entity.DASHBOARD_SERVICE,
           Entity.DATABASE_SERVICE,
           Entity.MESSAGING_SERVICE,
           Entity.PIPELINE_SERVICE,
@@ -2523,21 +2541,7 @@ public class SearchRepository {
           Entity.STORAGE_SERVICE,
           Entity.SEARCH_SERVICE,
           Entity.SECURITY_SERVICE,
-          Entity.DRIVE_SERVICE -> searchClient.softDeleteOrRestoreChildren(
-          indexMapping.getChildAliases(clusterAlias),
-          scriptTxt,
-          List.of(new ImmutablePair<>("service.id", docId)));
-      default -> {
-        List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
-        if (!indexNames.isEmpty()) {
-          searchClient.softDeleteOrRestoreChildren(
-              indexMapping.getChildAliases(clusterAlias),
-              scriptTxt,
-              List.of(new ImmutablePair<>(entityType + ".id", docId)));
-        }
-      }
-    }
-  }
+          Entity.DRIVE_SERVICE);
 
   public String getScriptWithParams(
       EntityInterface entity,

@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -160,11 +161,11 @@ class TestCaseIndexTest {
         required.contains(Entity.TEST_CASE_RESULT),
         "TestCaseIndex.getRequiredReindexFields() must include 'testCaseResult'");
     assertTrue(
-        required.contains("incidentId"),
+        required.contains(TestCaseRepository.INCIDENTS_FIELD),
         "TestCaseIndex.getRequiredReindexFields() must include 'incidentId'");
-    assertTrue(required.contains("testSuite"));
-    assertTrue(required.contains("testSuites"));
-    assertTrue(required.contains("testDefinition"));
+    assertTrue(required.contains(TestCaseRepository.TEST_SUITE_FIELD));
+    assertTrue(required.contains(Entity.FIELD_TEST_SUITES));
+    assertTrue(required.contains(TestCaseRepository.TEST_DEFINITION_FIELD));
   }
 
   @Test
