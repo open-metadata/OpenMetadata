@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -317,6 +318,9 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
     ListResponse<Spreadsheet> rootSpreadsheets =
         SdkClients.adminClient().spreadsheets().list(params);
 
+    assertFalse(
+        rootSpreadsheets.getData().isEmpty(),
+        "Root spreadsheets list should not be empty — we just created one");
     for (Spreadsheet spreadsheet : rootSpreadsheets.getData()) {
       assertNull(spreadsheet.getDirectory(), "Root spreadsheet should not have directory");
     }
