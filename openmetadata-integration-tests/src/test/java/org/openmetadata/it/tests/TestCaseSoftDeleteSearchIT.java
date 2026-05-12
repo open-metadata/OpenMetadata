@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.data.CreateDatabase;
@@ -59,7 +60,8 @@ import org.openmetadata.sdk.models.ListResponse;
  * TC, and confirm that (a) the resolution-status listing API still parses cleanly and (b) the
  * underlying ES doc carries no top-level {@code deleted} field.
  */
-@Execution(ExecutionMode.CONCURRENT)
+@Execution(ExecutionMode.SAME_THREAD)
+@Isolated
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class TestCaseSoftDeleteSearchIT {
 

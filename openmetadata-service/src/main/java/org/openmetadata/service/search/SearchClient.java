@@ -83,7 +83,6 @@ public interface SearchClient
         ctx._source.put('%s', newObject);
       }
       """;
-  String SOFT_DELETE_RESTORE_SCRIPT = "ctx._source.put('deleted', '%s')";
 
   /**
    * Painless snippet that re-derives {@code tier} / {@code classificationTags} /
