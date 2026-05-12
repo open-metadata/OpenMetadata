@@ -15,6 +15,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
+import { expandNestedColumn } from '../../utils/nestedColumnUpdatesUtils';
 import { createTableTagsSuggestions } from '../../utils/suggestions';
 
 const table = new TableClass();
@@ -72,6 +73,21 @@ test.describe('Tags Suggestions Table Entity', () => {
 
       // Two users profile will be visible, 3rd one will come after AllFetch is clicked
       await expect(allAvatarSuggestion).toHaveCount(1);
+
+      // Expand nested struct/array columns so their suggestion cards render
+      const cols = table.entityResponseData.columns ?? [];
+      const structCol = cols[2];
+      const arrayCol = (structCol.children ?? [])[1];
+      await expandNestedColumn(
+        page,
+        structCol.fullyQualifiedName ?? '',
+        (structCol.children ?? [])[0].fullyQualifiedName ?? ''
+      );
+      await expandNestedColumn(
+        page,
+        arrayCol.fullyQualifiedName ?? '',
+        (arrayCol.children ?? [])[0].fullyQualifiedName ?? ''
+      );
 
       // Click the first avatar
       await allAvatarSuggestion.nth(0).click();
