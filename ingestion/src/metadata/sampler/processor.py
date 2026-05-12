@@ -112,7 +112,7 @@ class SamplerProcessor(Processor):
                 left=StackTraceError(
                     name=entity_fqn,
                     error=f"Unsupported entity type {type(entity).__name__} for sampling",
-                    stackTrace=traceback.format_exc(),
+                    stackTrace="".join(traceback.format_list(traceback.extract_stack())),
                 ),
                 right=None,
             )
@@ -145,7 +145,7 @@ class SamplerProcessor(Processor):
                             f"The search index may not be available or the entity has not been indexed yet. "
                             f"Please ensure the Elasticsearch index is properly configured and try reindexing."
                         ),
-                        stackTrace=traceback.format_exc(),
+                        stackTrace="".join(traceback.format_list(traceback.extract_stack())),
                     ),
                     right=None,
                 )

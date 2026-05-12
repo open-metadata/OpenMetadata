@@ -473,9 +473,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             return None
         adapter.set_columns(entity, columns)
         destination = entity.model_copy(deep=True)
-        for column_tag in column_tags or []:
-            dest_columns = adapter.get_columns(destination)
-            if dest_columns is not None:
+        dest_columns = adapter.get_columns(destination)
+        if dest_columns is not None:
+            for column_tag in column_tags or []:
                 update_column_tags(dest_columns, column_tag, operation)
         return destination
 
