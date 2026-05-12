@@ -1,5 +1,7 @@
 package org.openmetadata.service.search.indexes;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,6 +29,13 @@ public record TestSuiteIndex(TestSuite testSuite) implements TaggableIndex {
   @Override
   public Set<String> getExcludedFields() {
     return excludeFields;
+  }
+
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(TaggableIndex.super.getRequiredReindexFields());
+    fields.add("summary");
+    return Collections.unmodifiableSet(fields);
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
