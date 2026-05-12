@@ -706,4 +706,162 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
         SdkClients.adminClient().spreadsheets().list(params);
     assertTrue(allExcelSpreadsheets.getData().size() >= 5);
   }
+
+  @Test
+  void test_createSpreadsheet(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    Spreadsheet spreadsheet =
+        Spreadsheets.create()
+            .name(ns.prefix("spreadsheet"))
+            .withDescription("Test spreadsheet")
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+
+    assertEquals(ns.prefix("spreadsheet"), spreadsheet.getName());
+    assertEquals("Test spreadsheet", spreadsheet.getDescription());
+    assertEquals(
+        driveService.getFullyQualifiedName(), spreadsheet.getService().getFullyQualifiedName());
+  }
+
+  @Test
+  void test_createSpreadsheetMinimal(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    Spreadsheet spreadsheet =
+        Spreadsheets.create()
+            .name(ns.prefix("minimal_spreadsheet"))
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+
+    assertNotNull(spreadsheet.getId());
+    assertEquals(ns.prefix("minimal_spreadsheet"), spreadsheet.getName());
+  }
+
+  @Test
+  void test_getSpreadsheetById(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    Spreadsheet created =
+        Spreadsheets.create()
+            .name(ns.prefix("spreadsheet_get"))
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+
+    Spreadsheet fetched = Spreadsheets.get(created.getId().toString());
+    assertEquals(created.getId(), fetched.getId());
+    assertEquals(created.getName(), fetched.getName());
+    assertEquals(created.getFullyQualifiedName(), fetched.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_getSpreadsheetByName(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    Spreadsheet created =
+        Spreadsheets.create()
+            .name(ns.prefix("spreadsheet_getByName"))
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+
+    Spreadsheet fetched = Spreadsheets.getByName(created.getFullyQualifiedName());
+    assertEquals(created.getId(), fetched.getId());
+    assertEquals(created.getFullyQualifiedName(), fetched.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_deleteSpreadsheet(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    Spreadsheet created =
+        Spreadsheets.create()
+            .name(ns.prefix("spreadsheet_delete"))
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+
+    Spreadsheets.delete(created.getId().toString());
+
+    assertThrows(
+        Exception.class,
+        () -> Spreadsheets.get(created.getId().toString()),
+        "Getting deleted spreadsheet should fail");
+  }
+
+  @Test
+  void test_finderWithFields(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    Spreadsheet created =
+        Spreadsheets.create()
+            .name(ns.prefix("spreadsheet_fields"))
+            .withDescription("Test spreadsheet for fields")
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+
+    Spreadsheet fetched =
+        Spreadsheets.find(created.getId().toString()).withFields("service", "owners").fetch();
+    assertEquals(created.getId(), fetched.getId());
+    assertNotNull(fetched.getService());
+  }
+
+  @Test
+  void test_finderByNameWithFields(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    Spreadsheet created =
+        Spreadsheets.create()
+            .name(ns.prefix("spreadsheet_name_fields"))
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+
+    Spreadsheet fetched =
+        Spreadsheets.findByName(created.getFullyQualifiedName())
+            .withFields("service", "tags")
+            .fetch();
+    assertEquals(created.getId(), fetched.getId());
+    assertEquals(created.getFullyQualifiedName(), fetched.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_getByNameWithFields(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    Spreadsheet created =
+        Spreadsheets.create()
+            .name(ns.prefix("spreadsheet_byname_fields"))
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+
+    Spreadsheet fetched = Spreadsheets.getByName(created.getFullyQualifiedName(), "service,owners");
+    assertEquals(created.getId(), fetched.getId());
+    assertNotNull(fetched.getService());
+  }
+
+  @Test
+  void test_createMultipleSpreadsheetsUnderSameService(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    for (int i = 0; i < 3; i++) {
+      Spreadsheet spreadsheet =
+          Spreadsheets.create()
+              .name(ns.prefix("spreadsheet_" + i))
+              .withService(driveService.getFullyQualifiedName())
+              .execute();
+
+      assertNotNull(spreadsheet.getId());
+      assertTrue(
+          spreadsheet.getFullyQualifiedName().contains(ns.prefix("spreadsheet_" + i)),
+          "FQN should contain spreadsheet name");
+    }
+  }
+
+  @Test
+  void test_patchSpreadsheetAttributes(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    Spreadsheet spreadsheet =
+        Spreadsheets.create()
+            .name(ns.prefix("patchSpreadsheet"))
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+
+    Spreadsheet fetched = Spreadsheets.get(spreadsheet.getId().toString());
+    fetched.setDescription("patched description");
+    Spreadsheet patched =
+        Spreadsheets.update(spreadsheet.getId().toString()).entity(fetched).execute();
+    assertEquals("patched description", patched.getDescription());
+  }
 }

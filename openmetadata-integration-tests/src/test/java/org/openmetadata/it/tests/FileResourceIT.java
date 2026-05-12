@@ -386,4 +386,114 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
     assertEquals(
         driveService.getFullyQualifiedName(), createdFile.getService().getFullyQualifiedName());
   }
+
+  @Test
+  void test_createFileMinimal(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    String fileName = ns.prefix("test_file_minimal");
+
+    File createdFile =
+        Files.create().name(fileName).withService(driveService.getFullyQualifiedName()).execute();
+
+    assertEquals(fileName, createdFile.getName());
+    assertNotNull(createdFile.getId());
+    assertNotNull(createdFile.getService());
+  }
+
+  @Test
+  void test_createFileWithDescription(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    String fileName = ns.prefix("test_file_desc");
+    String description = "This is a detailed description of the test file";
+
+    File createdFile =
+        Files.create()
+            .name(fileName)
+            .withDescription(description)
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+
+    assertEquals(fileName, createdFile.getName());
+    assertEquals(description, createdFile.getDescription());
+  }
+
+  @Test
+  void test_deleteFile(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    String fileName = ns.prefix("test_file_delete");
+    File createdFile =
+        Files.create().name(fileName).withService(driveService.getFullyQualifiedName()).execute();
+    String fileId = createdFile.getId().toString();
+
+    assertNotNull(Files.get(fileId));
+    Files.delete(fileId);
+
+    assertThrows(
+        Exception.class, () -> Files.get(fileId), "Getting deleted file should throw exception");
+  }
+
+  @Test
+  void test_findFileById(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    String fileName = ns.prefix("test_file_find");
+    File createdFile =
+        Files.create().name(fileName).withService(driveService.getFullyQualifiedName()).execute();
+
+    File foundFile = Files.find(createdFile.getId().toString()).fetch();
+    assertEquals(createdFile.getId(), foundFile.getId());
+    assertEquals(fileName, foundFile.getName());
+  }
+
+  @Test
+  void test_findFileByNameWithFields(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    String fileName = ns.prefix("test_file_find_by_name");
+    File createdFile =
+        Files.create()
+            .name(fileName)
+            .withService(driveService.getFullyQualifiedName())
+            .withDescription("Find by name with fields")
+            .execute();
+
+    File foundFile =
+        Files.findByName(createdFile.getFullyQualifiedName())
+            .withFields("owners", "tags", "domains")
+            .fetch();
+    assertEquals(createdFile.getId(), foundFile.getId());
+  }
+
+  @Test
+  void test_getFileByNameWithFields(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    String fileName = ns.prefix("test_file_with_fields");
+    File createdFile =
+        Files.create()
+            .name(fileName)
+            .withService(driveService.getFullyQualifiedName())
+            .withDescription("File with specific fields")
+            .execute();
+
+    File retrievedFile = Files.getByName(createdFile.getFullyQualifiedName(), "owners,tags");
+    assertEquals(createdFile.getId(), retrievedFile.getId());
+  }
+
+  @Test
+  void test_getFileWithNonExistentId_shouldFail(TestNamespace ns) {
+    String nonExistentId = "00000000-0000-0000-0000-000000000000";
+
+    assertThrows(
+        Exception.class,
+        () -> Files.get(nonExistentId),
+        "Getting file with non-existent ID should fail");
+  }
+
+  @Test
+  void test_getFileByNameWithNonExistentFQN_shouldFail(TestNamespace ns) {
+    String nonExistentFQN = "nonexistent.service.nonexistent.file";
+
+    assertThrows(
+        Exception.class,
+        () -> Files.getByName(nonExistentFQN),
+        "Getting file with non-existent FQN should fail");
+  }
 }
