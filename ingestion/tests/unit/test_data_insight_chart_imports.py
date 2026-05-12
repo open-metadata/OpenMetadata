@@ -30,10 +30,7 @@ from pathlib import Path
 
 import pytest
 
-SCHEMA_DIR = (
-    Path(__file__).resolve().parents[3]
-    / "openmetadata-spec/src/main/resources/json/schema/dataInsight/custom"
-)
+SCHEMA_DIR = Path(__file__).resolve().parents[3] / "openmetadata-spec/src/main/resources/json/schema/dataInsight/custom"
 
 CHART_MODULES = (
     "metadata.generated.schema.dataInsight.custom.chartFunctions",
