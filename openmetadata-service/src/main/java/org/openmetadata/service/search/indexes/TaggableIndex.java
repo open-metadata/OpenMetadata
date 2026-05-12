@@ -37,8 +37,9 @@ public interface TaggableIndex extends SearchIndex {
     if (!(entity instanceof EntityInterface ei)) {
       return;
     }
-    ParseTags parseTags = new ParseTags(Entity.getEntityTags(getEntityTypeName(), ei));
-    doc.put("tags", parseTags.getTags());
+    List<TagLabel> entityTags = Entity.getEntityTags(getEntityTypeName(), ei);
+    ParseTags parseTags = new ParseTags(entityTags);
+    doc.put("tags", entityTags);
     doc.put("tier", parseTags.getTierTag());
     doc.put("classificationTags", parseTags.getClassificationTags());
     doc.put("glossaryTags", parseTags.getGlossaryTags());
