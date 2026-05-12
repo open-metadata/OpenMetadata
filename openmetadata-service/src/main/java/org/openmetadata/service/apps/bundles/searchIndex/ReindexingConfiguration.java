@@ -1,7 +1,6 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.system.EventPublisherJob;
