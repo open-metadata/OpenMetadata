@@ -26,14 +26,6 @@ import {
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 
 class ConnectionsRouterClassBase {
-  public setEmbeddedMode(_flag: boolean): void {
-    // no-op in base; overridden in Collate
-  }
-
-  public isEmbeddedMode(): boolean {
-    return false;
-  }
-
   public getSettingsServicesPath(serviceCategory?: string): string {
     if (serviceCategory) {
       return getSettingPath(

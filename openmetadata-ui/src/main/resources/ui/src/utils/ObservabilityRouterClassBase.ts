@@ -25,14 +25,6 @@ import {
 } from './RouterUtils';
 
 class ObservabilityRouterClassBase {
-  public setEmbeddedMode(_flag: boolean): void {
-    // no-op in base; overridden in Collate
-  }
-
-  public isEmbeddedMode(): boolean {
-    return false;
-  }
-
   public getDataQualityPagePath(
     tab?: DataQualityPageTabs,
     subTab?: string

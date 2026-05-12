@@ -65,18 +65,6 @@ describe('ObservabilityRouterClassBase', () => {
     router = new ObservabilityRouterClassBase();
   });
 
-  describe('embeddedMode', () => {
-    it('setEmbeddedMode should be a no-op', () => {
-      router.setEmbeddedMode(true);
-
-      expect(router.isEmbeddedMode()).toBe(false);
-    });
-
-    it('isEmbeddedMode should always return false', () => {
-      expect(router.isEmbeddedMode()).toBe(false);
-    });
-  });
-
   describe('getDataQualityPagePath', () => {
     it('should return base path without tab', () => {
       expect(router.getDataQualityPagePath()).toBe('/data-quality');

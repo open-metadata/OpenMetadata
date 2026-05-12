@@ -106,10 +106,7 @@ const GlobalSettingCategoryPage = () => {
 
         break;
       default:
-        if (
-          connectionsRouterClassBase.isEmbeddedMode() &&
-          category === GlobalSettingsMenuCategory.SERVICES
-        ) {
+        if (isEmbedded && category === GlobalSettingsMenuCategory.SERVICES) {
           navigate(connectionsRouterClassBase.getSettingsServicesPath(option));
         } else {
           navigate(getSettingPath(category, option));
@@ -117,7 +114,7 @@ const GlobalSettingCategoryPage = () => {
 
         break;
     }
-  }, []);
+  }, [isEmbedded, navigate]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.setting-plural')}>

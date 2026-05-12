@@ -59,18 +59,6 @@ describe('ConnectionsRouterClassBase', () => {
     router = new ConnectionsRouterClassBase();
   });
 
-  describe('embeddedMode', () => {
-    it('setEmbeddedMode should be a no-op', () => {
-      router.setEmbeddedMode(true);
-
-      expect(router.isEmbeddedMode()).toBe(false);
-    });
-
-    it('isEmbeddedMode should always return false', () => {
-      expect(router.isEmbeddedMode()).toBe(false);
-    });
-  });
-
   describe('getSettingsServicesPath', () => {
     it('should return the generic settings services path when no category given', () => {
       expect(router.getSettingsServicesPath()).toBe('/settings/services');
