@@ -36,7 +36,7 @@ import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
-import { listTasks } from '../../../rest/tasksAPI';
+import { listDataAccessRequests } from '../../../rest/tasksAPI';
 import { ExtraInfoLink } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -199,6 +199,7 @@ jest.mock('../../../utils/TableClassBase', () => ({
 
 jest.mock('../../../rest/tasksAPI', () => ({
   ...jest.requireActual('../../../rest/tasksAPI'),
+  listDataAccessRequests: jest.fn().mockResolvedValue({ data: [] }),
   listTasks: jest.fn().mockResolvedValue({ data: [] }),
 }));
 
@@ -704,10 +705,10 @@ describe('DataAssetsHeader component', () => {
       permissions: { ...DEFAULT_ENTITY_PERMISSION, ViewAll: true },
     };
 
-    const mockListTasks = listTasks as jest.Mock;
+    const mockListDataAccessRequests = listDataAccessRequests as jest.Mock;
 
     beforeEach(() => {
-      mockListTasks.mockResolvedValue({ data: [] });
+      mockListDataAccessRequests.mockResolvedValue({ data: [] });
       const { getShowRequestDataAccess } = jest.requireMock(
         '../../../utils/TableClassBase'
       );
@@ -748,7 +749,7 @@ describe('DataAssetsHeader component', () => {
     });
 
     it('should render enabled button when no existing DAR task', async () => {
-      mockListTasks.mockResolvedValue({ data: [] });
+      mockListDataAccessRequests.mockResolvedValue({ data: [] });
 
       render(<DataAssetsHeader {...tableProps} />);
 
@@ -759,24 +760,22 @@ describe('DataAssetsHeader component', () => {
       });
     });
 
-    it('should call listTasks with correct server-side filters', async () => {
+    it('should call listDataAccessRequests with correct server-side filters', async () => {
       render(<DataAssetsHeader {...tableProps} />);
 
       await waitFor(() => {
-        expect(mockListTasks).toHaveBeenCalledWith(
+        expect(mockListDataAccessRequests).toHaveBeenCalledWith(
           expect.objectContaining({
-            aboutEntity: 'service.db.schema.my_table',
-            category: 'DataAccess',
-            type: 'DataAccessRequest',
-            createdBy: 'test.user',
-            statusGroup: 'open',
+            dataset: 'service.db.schema.my_table',
+            requestedBy: 'test.user',
+            statusGroup: 'active',
           })
         );
       });
     });
 
     it('should disable button when a task is in review stage', async () => {
-      mockListTasks.mockResolvedValue({
+      mockListDataAccessRequests.mockResolvedValue({
         data: [
           {
             id: 'task-1',
@@ -795,7 +794,7 @@ describe('DataAssetsHeader component', () => {
     });
 
     it('should disable button when task is in approved stage and approval is still active', async () => {
-      mockListTasks.mockResolvedValue({
+      mockListDataAccessRequests.mockResolvedValue({
         data: [
           {
             id: 'task-2',
@@ -816,7 +815,7 @@ describe('DataAssetsHeader component', () => {
     });
 
     it('should enable button when task is in approved stage but approval has expired', async () => {
-      mockListTasks.mockResolvedValue({
+      mockListDataAccessRequests.mockResolvedValue({
         data: [
           {
             id: 'task-3',
@@ -841,7 +840,7 @@ describe('DataAssetsHeader component', () => {
     it('should use updatedAt (approval time) not createdAt for duration window', async () => {
       const approvedAt = Date.now() - 86_400_000 * 3;
 
-      mockListTasks.mockResolvedValue({
+      mockListDataAccessRequests.mockResolvedValue({
         data: [
           {
             id: 'task-dur',
@@ -862,7 +861,7 @@ describe('DataAssetsHeader component', () => {
     });
 
     it('should treat expirationDate 0 as expired (not as missing)', async () => {
-      mockListTasks.mockResolvedValue({
+      mockListDataAccessRequests.mockResolvedValue({
         data: [
           {
             id: 'task-zero-exp',
@@ -885,7 +884,7 @@ describe('DataAssetsHeader component', () => {
     });
 
     it('should disable when workflowStageDisplayName missing but workflowStageId is approved', async () => {
-      mockListTasks.mockResolvedValue({
+      mockListDataAccessRequests.mockResolvedValue({
         data: [
           {
             id: 'task-stageid',
@@ -905,7 +904,7 @@ describe('DataAssetsHeader component', () => {
       });
     });
 
-    it('should not call listTasks when currentUser has no name', async () => {
+    it('should not call listDataAccessRequests when currentUser has no name', async () => {
       const { useApplicationStore } = jest.requireMock(
         '../../../hooks/useApplicationStore'
       );
@@ -916,12 +915,12 @@ describe('DataAssetsHeader component', () => {
       render(<DataAssetsHeader {...tableProps} />);
 
       await waitFor(() => {
-        expect(mockListTasks).not.toHaveBeenCalled();
+        expect(mockListDataAccessRequests).not.toHaveBeenCalled();
       });
     });
 
-    it('should enable button when listTasks throws', async () => {
-      mockListTasks.mockRejectedValue(new Error('network error'));
+    it('should enable button when listDataAccessRequests throws', async () => {
+      mockListDataAccessRequests.mockRejectedValue(new Error('network error'));
 
       render(<DataAssetsHeader {...tableProps} />);
 
