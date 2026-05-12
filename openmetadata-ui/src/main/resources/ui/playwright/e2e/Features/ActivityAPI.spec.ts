@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { DOMAIN_TAGS } from '../../constant/config';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { TagClass } from '../../support/tag/TagClass';
@@ -43,41 +44,20 @@ import { test } from '../fixtures/pages';
 
 let entityChangesTable: TableClass;
 let entityChangesTag: TagClass;
-let adminDisplayName: string;
 
 test.describe(
   'Activity API - Entity Changes',
-  { tag: ['@Features', '@Discovery'] },
+  { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
-    test.beforeAll(
-      'Setup: create table, tag and get admin display name',
-      async ({ browser }) => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
-
-        entityChangesTable = new TableClass();
-        entityChangesTag = new TagClass({});
-
-        try {
-          await entityChangesTable.create(apiContext);
-          await entityChangesTag.create(apiContext);
-
-          const userResponse = await apiContext.get(
-            '/api/v1/users/loggedInUser'
-          );
-          const adminUser = await userResponse.json();
-          adminDisplayName = adminUser.displayName ?? adminUser.name;
-        } finally {
-          await afterAction();
-        }
-      }
-    );
-
-    test.afterAll('Cleanup: delete table and tag', async ({ browser }) => {
+    test.beforeAll('Setup: create table and tag', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
+      entityChangesTable = new TableClass();
+      entityChangesTag = new TagClass({});
+
       try {
-        await entityChangesTable.delete(apiContext);
-        await entityChangesTag.delete(apiContext);
+        await entityChangesTable.create(apiContext);
+        await entityChangesTag.create(apiContext);
       } finally {
         await afterAction();
       }
@@ -91,6 +71,8 @@ test.describe(
     test('creates an activity event when the description is updated', async ({
       page,
     }) => {
+      // waitForActivityEvent polls the API for up to 5 minutes (ACTIVITY_EVENT_TIMEOUT = 300_000ms)
+      // because activity events are processed asynchronously in the background.
       test.setTimeout(ACTIVITY_TEST_TIMEOUT);
 
       const newDescription = `Test description updated at ${Date.now()}`;
@@ -132,6 +114,8 @@ test.describe(
     });
 
     test('creates an activity event when tags are added', async ({ page }) => {
+      // waitForActivityEvent polls the API for up to 5 minutes (ACTIVITY_EVENT_TIMEOUT = 300_000ms)
+      // because activity events are processed asynchronously in the background.
       test.setTimeout(ACTIVITY_TEST_TIMEOUT);
 
       const entityFqn = getTableFqn(entityChangesTable);
@@ -170,9 +154,14 @@ test.describe(
     });
 
     test('creates an activity event when owner is added', async ({ page }) => {
+      // waitForActivityEvent polls the API for up to 5 minutes (ACTIVITY_EVENT_TIMEOUT = 300_000ms)
+      // because activity events are processed asynchronously in the background.
       test.setTimeout(ACTIVITY_TEST_TIMEOUT);
 
       const entityFqn = getTableFqn(entityChangesTable);
+      const userResponse = await page.request.get('/api/v1/users/loggedInUser');
+      const adminUser = await userResponse.json();
+      const adminDisplayName = adminUser.displayName ?? adminUser.name;
 
       await test.step('Add the owner from the entity page', async () => {
         await entityChangesTable.visitEntityPage(page);
@@ -207,10 +196,15 @@ test.describe(
     });
 
     test('shows the actor who made the activity change', async ({ page }) => {
+      // waitForActivityEvent polls the API for up to 5 minutes (ACTIVITY_EVENT_TIMEOUT = 300_000ms)
+      // because activity events are processed asynchronously in the background.
       test.setTimeout(ACTIVITY_TEST_TIMEOUT);
 
       const entityFqn = getTableFqn(entityChangesTable);
       const uniqueDescription = `Actor test description ${Date.now()}`;
+      const userResponse = await page.request.get('/api/v1/users/loggedInUser');
+      const adminUser = await userResponse.json();
+      const adminDisplayName = adminUser.displayName ?? adminUser.name;
 
       await test.step('Make a table change as the logged-in admin user', async () => {
         const { apiContext, afterAction } = await getApiContext(page);
@@ -242,6 +236,8 @@ test.describe(
     });
 
     test('links activity items to the correct entity', async ({ page }) => {
+      // waitForActivityEvent polls the API for up to 5 minutes (ACTIVITY_EVENT_TIMEOUT = 300_000ms)
+      // because activity events are processed asynchronously in the background.
       test.setTimeout(ACTIVITY_TEST_TIMEOUT);
 
       const description = `Entity link description ${uuid()}`;
@@ -273,7 +269,7 @@ test.describe(
 
 test.describe(
   'Activity API - Reactions',
-  { tag: ['@Features', '@Discovery'] },
+  { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
     const reactionsTable = new TableClass();
 
@@ -287,22 +283,14 @@ test.describe(
       }
     });
 
-    test.afterAll('Cleanup: delete table', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      try {
-        await reactionsTable.delete(apiContext);
-      } finally {
-        await afterAction();
-      }
-    });
-
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
       await waitForAllLoadersToDisappear(page);
     });
 
     test('adds a reaction to a feed item', async ({ page }) => {
+      // waitForActivityEvent polls the API for up to 5 minutes (ACTIVITY_EVENT_TIMEOUT = 300_000ms)
+      // because activity events are processed asynchronously in the background.
       test.setTimeout(ACTIVITY_TEST_TIMEOUT);
 
       const description = `Test activity for adding reaction ${uuid()}`;
@@ -327,6 +315,8 @@ test.describe(
     });
 
     test('removes an existing reaction from a feed item', async ({ page }) => {
+      // waitForActivityEvent polls the API for up to 5 minutes (ACTIVITY_EVENT_TIMEOUT = 300_000ms)
+      // because activity events are processed asynchronously in the background.
       test.setTimeout(ACTIVITY_TEST_TIMEOUT);
 
       const description = `Test activity for removing reaction ${uuid()}`;
@@ -359,7 +349,7 @@ test.describe(
 
 test.describe(
   'Activity API - Comments',
-  { tag: ['@Features', '@Discovery'] },
+  { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
     const commentsTable = new TableClass();
 
@@ -373,22 +363,14 @@ test.describe(
       }
     });
 
-    test.afterAll('Cleanup: delete table', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      try {
-        await commentsTable.delete(apiContext);
-      } finally {
-        await afterAction();
-      }
-    });
-
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
       await waitForAllLoadersToDisappear(page);
     });
 
     test('adds a comment to a feed item', async ({ page }) => {
+      // waitForActivityEvent polls the API for up to 5 minutes (ACTIVITY_EVENT_TIMEOUT = 300_000ms)
+      // because activity events are processed asynchronously in the background.
       test.setTimeout(ACTIVITY_TEST_TIMEOUT);
 
       const description = `Test activity for comments ${uuid()}`;
@@ -413,6 +395,8 @@ test.describe(
     });
 
     test('shows the activity detail layout', async ({ page }) => {
+      // waitForActivityEvent polls the API for up to 5 minutes (ACTIVITY_EVENT_TIMEOUT = 300_000ms)
+      // because activity events are processed asynchronously in the background.
       test.setTimeout(ACTIVITY_TEST_TIMEOUT);
 
       const description = `Test activity detail layout ${uuid()}`;
@@ -445,7 +429,7 @@ test.describe(
 
 test.describe(
   'Activity API - Homepage Widget',
-  { tag: ['@Features', '@Discovery'] },
+  { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
     const homepageTable = new TableClass();
 
@@ -464,16 +448,6 @@ test.describe(
       }
     });
 
-    test.afterAll('Cleanup: delete table', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      try {
-        await homepageTable.delete(apiContext);
-      } finally {
-        await afterAction();
-      }
-    });
-
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
       await waitForAllLoadersToDisappear(page);
@@ -482,8 +456,6 @@ test.describe(
     test('displays feed content in the Activity Feed widget', async ({
       page,
     }) => {
-      test.slow();
-
       const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
       const feedItems = feedWidget.getByTestId('message-container');
 
@@ -494,8 +466,6 @@ test.describe(
     });
 
     test('shows Activity Feed widget filter options', async ({ page }) => {
-      test.slow();
-
       const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
 
       await expect(feedWidget).toBeVisible();
