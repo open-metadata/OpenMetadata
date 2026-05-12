@@ -29,7 +29,7 @@ import { uploadAsset } from 'rest/assetAPI';
 import { showErrorToast } from 'utils/ToastUtils';
 import { UploadDocumentModalProps } from './UploadDocumentModal.interface';
 
-type UploadStatus = 'uploading' | 'done' | 'error' | 'size-error';
+type UploadStatus = 'uploading' | 'done' | 'error';
 
 interface StagedFile {
   id: string;
@@ -101,15 +101,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     setStagedFiles((prev) => [...prev, ...newEntries]);
   };
 
-  const handleSizeLimitExceed = (files: FileList) => {
-    const oversizedEntries: QueuedFile[] = Array.from(files).map((file) => ({
-      file,
-      id: `${file.name}-${file.size}-${Date.now()}`,
-      progress: 0,
-      status: 'size-error' as UploadStatus,
-    }));
-
-    setQueuedFiles((prev) => [...prev, ...oversizedEntries]);
+  const handleSizeLimitExceed = () => {
     showErrorToast(
       t('message.file-size-limit-exceeded', {
         defaultValue:
@@ -241,11 +233,16 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
                 <FileUpload.List className="tw:max-h-60 tw:overflow-y-auto">
                   {queuedFiles.map(({ id, file, progress, status }) => (
                     <FileUpload.ListItemProgressBar
-                      failed={status === 'error' || status === 'size-error'}
+                      completeLabel={t('label.complete')}
+                      deleteLabel={t('label.delete')}
+                      failed={status === 'error'}
+                      failedLabel={t('message.upload-failed')}
                       key={id}
                       name={file.name}
                       progress={status === 'done' ? 100 : progress}
                       size={file.size}
+                      tryAgainLabel={t('label.try-again')}
+                      uploadingLabel={t('label.uploading')}
                       onDelete={
                         status !== 'uploading'
                           ? () => handleRemoveQueued(id)

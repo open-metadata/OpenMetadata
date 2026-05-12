@@ -258,18 +258,28 @@ export interface FileListItemProps {
   progress: number;
   failed?: boolean;
   className?: string;
+  completeLabel?: string;
+  uploadingLabel?: string;
+  failedLabel?: string;
+  tryAgainLabel?: string;
+  deleteLabel?: string;
   onDelete?: () => void;
   onRetry?: () => void;
 }
 
 export const FileListItemProgressBar = ({
   className,
+  completeLabel = 'Complete',
+  deleteLabel = 'Delete',
   failed,
+  failedLabel = 'Failed',
   name,
   onDelete,
   onRetry,
   progress,
   size,
+  tryAgainLabel = 'Try again',
+  uploadingLabel = 'Uploading...',
 }: FileListItemProps) => {
   const isComplete = progress === 100;
 
@@ -300,7 +310,7 @@ export const FileListItemProgressBar = ({
                   <>
                     <CheckCircle className="tw:size-4 tw:stroke-[2.5px] tw:text-fg-success-primary" />
                     <p className="tw:text-sm tw:font-medium tw:text-success-primary">
-                      Complete
+                      {completeLabel}
                     </p>
                   </>
                 )}
@@ -308,7 +318,7 @@ export const FileListItemProgressBar = ({
                   <>
                     <UploadCloud02 className="tw:size-4 tw:stroke-[2.5px] tw:text-fg-quaternary" />
                     <p className="tw:text-sm tw:font-medium tw:text-quaternary">
-                      Uploading...
+                      {uploadingLabel}
                     </p>
                   </>
                 )}
@@ -316,7 +326,7 @@ export const FileListItemProgressBar = ({
                   <>
                     <XCircle className="tw:size-4 tw:text-fg-error-primary" />
                     <p className="tw:text-sm tw:font-medium tw:text-error-primary">
-                      Failed
+                      {failedLabel}
                     </p>
                   </>
                 )}
@@ -328,7 +338,7 @@ export const FileListItemProgressBar = ({
             color="tertiary"
             icon={Trash01}
             size="xs"
-            tooltip="Delete"
+            tooltip={deleteLabel}
             onClick={onDelete}
           />
         </div>
@@ -350,7 +360,7 @@ export const FileListItemProgressBar = ({
             color="link-destructive"
             size="sm"
             onClick={onRetry}>
-            Try again
+            {tryAgainLabel}
           </Button>
         )}
       </div>
@@ -360,12 +370,15 @@ export const FileListItemProgressBar = ({
 
 export const FileListItemProgressFill = ({
   className,
+  deleteLabel = 'Delete',
   failed,
+  failedLabel = 'Upload failed, please try again',
   name,
   onDelete,
   onRetry,
   progress,
   size,
+  tryAgainLabel = 'Try again',
 }: FileListItemProps) => {
   const isComplete = progress === 100;
 
@@ -404,9 +417,7 @@ export const FileListItemProgressFill = ({
             </p>
             <div className="tw:mt-0.5 tw:flex tw:items-center tw:gap-2">
               <p className="tw:text-sm tw:text-tertiary">
-                {failed
-                  ? 'Upload failed, please try again'
-                  : getReadableFileSize(size)}
+                {failed ? failedLabel : getReadableFileSize(size)}
               </p>
               {!failed && (
                 <>
@@ -429,7 +440,7 @@ export const FileListItemProgressFill = ({
               color="link-destructive"
               size="sm"
               onClick={onRetry}>
-              Try again
+              {tryAgainLabel}
             </Button>
           )}
         </div>
@@ -438,7 +449,7 @@ export const FileListItemProgressFill = ({
           color="tertiary"
           icon={Trash01}
           size="xs"
-          tooltip="Delete"
+          tooltip={deleteLabel}
           onClick={onDelete}
         />
       </div>
