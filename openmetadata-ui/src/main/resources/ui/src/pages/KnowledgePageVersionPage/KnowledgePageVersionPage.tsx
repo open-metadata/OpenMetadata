@@ -182,7 +182,7 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
     onPageChange({
       rightPanel: getVersionTimeLineElement(),
       title: selectedData?.displayName || t('label.untitled'),
-      data: undefined,
+      data: knowledgePage,
       header: getHeaderElement(),
     });
   }, [selectedData, loading, versionList, version, knowledgePage]);

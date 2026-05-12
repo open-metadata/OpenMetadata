@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import ArticleDetailHeader from '../../../components/ContextCenter/ArticleDetailHeader/ArticleDetailHeader.component';
+import ArticleVersionHeader from '../../../components/ContextCenter/ArticleVersionHeader/ArticleVersionHeader.component';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import KnowledgeCenterLayout from '../../../components/KnowledgeCenter/KnowledgeCenterLayout/KnowledgeCenterLayout';
 import KnowledgePageDetailComponent from '../../../components/KnowledgeCenter/KnowledgePageDetailComponent/KnowledgePageDetailComponent';
@@ -53,11 +54,14 @@ import { createArticleKnowledgePage } from '../../../utils/ContextCenterUtils';
 import { getContextCenterArticlePath } from '../../../utils/KnowledgePageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
+import KnowledgePageVersionPage from '../../KnowledgePageVersionPage/KnowledgePageVersionPage';
 
 const ContextCenterArticlesPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn } = useFqn();
+  const { version } = useRequiredParams<{ version?: string }>();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const { getResourcePermission } = usePermissionProvider();
@@ -146,71 +150,140 @@ const ContextCenterArticlesPage = () => {
     fetchPermission();
   }, []);
 
-  const header = fqn ? (
-    <ArticleDetailHeader
-      activeTab={page.activeTab}
-      contentChangeState={
-        page.handlers?.contentChangeState ?? ContentChangeState.SAVED
-      }
-      fetchKnowledgePageHierarchy={handleFetchKnowledgePageHierarchy}
-      isRightPanelOpen={isRightPanelOpen}
-      knowledgePage={page.data}
+  const renderHeader = () => {
+    if (version) {
+      return <ArticleVersionHeader knowledgePage={page.data} />;
+    }
+
+    if (fqn) {
+      return (
+        <ArticleDetailHeader
+          activeTab={page.activeTab}
+          contentChangeState={
+            page.handlers?.contentChangeState ?? ContentChangeState.SAVED
+          }
+          fetchKnowledgePageHierarchy={handleFetchKnowledgePageHierarchy}
+          isRightPanelOpen={isRightPanelOpen}
+          knowledgePage={page.data}
+          permissions={permissions}
+          tabs={page.tabs}
+          onFollowChange={
+            page.handlers?.onFollowChange ?? (async () => undefined)
+          }
+          onSave={page.handlers?.onSave}
+          onSetThreadLink={
+            page.handlers?.onSetThreadLink ?? (() => undefined)
+          }
+          onTabChange={page.onTabChange}
+          onToggleDelete={
+            page.handlers?.onToggleDelete ?? (() => undefined)
+          }
+          onToggleRightPanel={handleToggleRightPanel}
+          onVoteChange={
+            page.handlers?.onVoteChange ?? (async () => undefined)
+          }
+        />
+      );
+    }
+
+    return (
+      <ContextCenterHeader
+        actionsSlot={
+          permissions.Create && (
+            <LimitWrapper resource="knowledgeCenter">
+              <Dropdown.Root>
+                <Button
+                  color="primary"
+                  data-testid="create-knowledge-page-btn"
+                  iconTrailing={ChevronDown}>
+                  {t('label.create')}
+                </Button>
+
+                <Dropdown.Popover placement="bottom start">
+                  <Dropdown.Menu aria-label="create knowledge page">
+                    <Dropdown.Item
+                      key={PageType.ARTICLE}
+                      onAction={addArticleKnowledgePage}>
+                      {t('label.article')}
+                    </Dropdown.Item>
+
+                    <Dropdown.Item
+                      key={PageType.QUICK_LINK}
+                      onAction={() => setShowAddLinkModal(true)}>
+                      {t('label.quick-link')}
+                    </Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
+            </LimitWrapper>
+          )
+        }
+        breadcrumbs={[
+          {
+            name: '',
+            icon: <Home02 size={14} />,
+            url: '/',
+            activeTitle: true,
+          },
+          { name: t('label.context-center'), url: ROUTES.CONTEXT_CENTER },
+          { activeTitle: true, name: t('label.article-plural'), url: '' },
+        ]}
+        subtitle={t('message.internal-knowledge-base-agent-training', {
+          defaultValue: 'Internal knowledge base for agent training',
+        })}
+        title={t('label.article-plural')}
+      />
+    );
+  };
+
+  const isActivityFeedTab =
+    Boolean(fqn) && page.activeTab === EntityTabs.ACTIVITY_FEED;
+
+  const layoutClassName = version
+    ? 'knowledge-version-page'
+    : fqn
+    ? 'knowledge-details-page'
+    : undefined;
+
+  const leftSidebar = isActivityFeedTab ? null : (
+    <KnowledgePagesHierarchy
+      hideAddPageButton
+      activeKey={fqn}
+      activePage={page.data}
+      getPagePath={getContextCenterArticlePath}
+      homeRoute={ROUTES.CONTEXT_CENTER_ARTICLES}
+      isPageHeaderAvailable={Boolean(fqn)}
       permissions={permissions}
-      tabs={page.tabs}
-      onFollowChange={page.handlers?.onFollowChange ?? (async () => undefined)}
-      onSave={page.handlers?.onSave}
-      onSetThreadLink={page.handlers?.onSetThreadLink ?? (() => undefined)}
-      onTabChange={page.onTabChange}
-      onToggleDelete={page.handlers?.onToggleDelete ?? (() => undefined)}
+      ref={knowledgePagesHierarchyRef}
+      onPageDelete={knowledgeCenterPageRef.current?.onPageDelete}
+    />
+  );
+
+  const rightSidebar =
+    version || isActivityFeedTab
+      ? null
+      : isRightPanelOpen
+      ? page.rightPanel
+      : null;
+
+  const centerContent = version ? (
+    <KnowledgePageVersionPage onPageChange={handlePageChange} />
+  ) : fqn ? (
+    <KnowledgePageDetailComponent
+      fetchKnowledgePageHierarchy={handleFetchKnowledgePageHierarchy}
+      getArticlePath={getContextCenterArticlePath}
+      isRightPanelOpen={isRightPanelOpen}
+      onPageChange={handlePageChange}
       onToggleRightPanel={handleToggleRightPanel}
-      onVoteChange={page.handlers?.onVoteChange ?? (async () => undefined)}
     />
   ) : (
-    <ContextCenterHeader
-      actionsSlot={
-        permissions.Create && (
-          <LimitWrapper resource="knowledgeCenter">
-            <Dropdown.Root>
-              <Button
-                color="primary"
-                data-testid="create-knowledge-page-btn"
-                iconTrailing={ChevronDown}>
-                {t('label.create')}
-              </Button>
-
-              <Dropdown.Popover placement="bottom start">
-                <Dropdown.Menu aria-label="create knowledge page">
-                  <Dropdown.Item
-                    key={PageType.ARTICLE}
-                    onAction={addArticleKnowledgePage}>
-                    {t('label.article')}
-                  </Dropdown.Item>
-
-                  <Dropdown.Item
-                    key={PageType.QUICK_LINK}
-                    onAction={() => setShowAddLinkModal(true)}>
-                    {t('label.quick-link')}
-                  </Dropdown.Item>
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.Root>
-          </LimitWrapper>
-        )
-      }
-      breadcrumbs={[
-        {
-          name: '',
-          icon: <Home02 size={14} />,
-          url: '/',
-          activeTitle: true,
-        },
-        { name: t('label.context-center'), url: ROUTES.CONTEXT_CENTER },
-        { activeTitle: true, name: t('label.article-plural'), url: '' },
-      ]}
-      subtitle={t('message.internal-knowledge-base-agent-training', {
-        defaultValue: 'Internal knowledge base for agent training',
-      })}
-      title={t('label.article-plural')}
+    <KnowledgePageListComponent
+      hideAddButton
+      getPagePath={getContextCenterArticlePath}
+      permissions={permissions}
+      ref={knowledgeCenterPageRef}
+      rightPanelSlot={null}
+      onPageChange={handlePageChange}
     />
   );
 
@@ -218,54 +291,15 @@ const ContextCenterArticlesPage = () => {
     <div
       className="tw:flex tw:flex-col tw:w-full tw:h-full tw:p-5 tw:pt-0"
       data-testid="context-center-articles-page">
-      {header}
+      {renderHeader()}
 
       <KnowledgeCenterLayout
-        centerNoPadding={
-          Boolean(fqn) && page.activeTab === EntityTabs.ACTIVITY_FEED
-        }
-        className={fqn ? 'knowledge-details-page' : undefined}
-        leftSidebar={
-          fqn && page.activeTab === EntityTabs.ACTIVITY_FEED ? null : (
-            <KnowledgePagesHierarchy
-              hideAddPageButton
-              activeKey={fqn}
-              activePage={page.data}
-              getPagePath={getContextCenterArticlePath}
-              homeRoute={ROUTES.CONTEXT_CENTER_ARTICLES}
-              isPageHeaderAvailable={Boolean(fqn)}
-              permissions={permissions}
-              ref={knowledgePagesHierarchyRef}
-              onPageDelete={knowledgeCenterPageRef.current?.onPageDelete}
-            />
-          )
-        }
+        centerNoPadding={isActivityFeedTab}
+        className={layoutClassName}
+        leftSidebar={leftSidebar}
         pageTitle={page.title || t('label.article-plural')}
-        rightSidebar={
-          fqn && page.activeTab === EntityTabs.ACTIVITY_FEED
-            ? null
-            : isRightPanelOpen
-            ? page.rightPanel
-            : null
-        }>
-        {fqn ? (
-          <KnowledgePageDetailComponent
-            fetchKnowledgePageHierarchy={handleFetchKnowledgePageHierarchy}
-            getArticlePath={getContextCenterArticlePath}
-            isRightPanelOpen={isRightPanelOpen}
-            onPageChange={handlePageChange}
-            onToggleRightPanel={handleToggleRightPanel}
-          />
-        ) : (
-          <KnowledgePageListComponent
-            hideAddButton
-            getPagePath={getContextCenterArticlePath}
-            permissions={permissions}
-            ref={knowledgeCenterPageRef}
-            rightPanelSlot={null}
-            onPageChange={handlePageChange}
-          />
-        )}
+        rightSidebar={rightSidebar}>
+        {centerContent}
       </KnowledgeCenterLayout>
 
       <QuickLinkFormModal

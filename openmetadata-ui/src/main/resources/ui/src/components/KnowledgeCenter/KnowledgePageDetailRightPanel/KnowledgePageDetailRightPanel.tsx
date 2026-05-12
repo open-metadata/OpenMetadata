@@ -30,9 +30,7 @@ import { EntityTags } from '../../../Models';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';
 import './knowledge-page.less';
-import KnowledgePageDetailRightPanelSkeleton from './KnowledgePageDetailRightPanelSkeleton';
 interface KnowledgePageDetailRightPanelProps {
-  isLoading: boolean;
   permissions: OperationPermission;
   tags: Array<EntityTags>;
   knowledgePage?: KnowledgePage;
@@ -43,7 +41,6 @@ interface KnowledgePageDetailRightPanelProps {
 }
 
 const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
-  isLoading,
   knowledgePage,
   permissions,
   tags,
@@ -56,10 +53,6 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
     onUpdate,
     permissions: genericPermissions,
   } = useGenericContext<KnowledgePage>();
-
-  if (!entityRules) {
-    return <KnowledgePageDetailRightPanelSkeleton />;
-  }
 
   const handleDataProductsSave = useCallback(
     async (selectedDataProducts: DataProduct[]) => {
@@ -100,10 +93,6 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
   const hasDataProductsPermission = useMemo(() => {
     return genericPermissions?.EditAll && !data?.deleted;
   }, [genericPermissions?.EditAll, data?.deleted]);
-
-  if (isLoading) {
-    return <KnowledgePageDetailRightPanelSkeleton />;
-  }
 
   return (
     <div className="knowledge-page-right-panel">

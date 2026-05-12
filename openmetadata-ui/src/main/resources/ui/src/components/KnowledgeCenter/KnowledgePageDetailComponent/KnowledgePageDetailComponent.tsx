@@ -716,7 +716,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           onUpdate={updatePage}>
           <KnowledgePageDetailRightPanel
             handleRelatedEntitiesUpdate={handleRelatedEntitiesUpdate}
-            isLoading={isLoading}
             knowledgePage={knowledgePage}
             permissions={permissions}
             tags={tags}
@@ -747,7 +746,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     };
   }, [
     knowledgePage,
-    isLoading,
     isRightPanelOpen,
     onToggleRightPanel,
     permissions,

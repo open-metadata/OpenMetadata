@@ -36,7 +36,7 @@ import {
 import Loader from 'components/common/Loader/Loader';
 import { EntityStatusBadge } from 'components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { EntityStatus } from 'generated/governance/workflows/elements/nodes/automatedTask/setGlossaryTermStatusTask';
-import { isEmpty, isUndefined, uniqBy } from 'lodash';
+import { isEmpty, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -45,6 +45,7 @@ import { ReactComponent as SidebarCollapsible } from '../../../assets/svg/ic-sid
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-star.svg';
 import { ReactComponent as IconUnSaved } from '../../../assets/svg/ic-unsaved.svg';
+import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
@@ -57,6 +58,7 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useClipboard } from '../../../hooks/useClipBoard';
+import { useFqn } from '../../../hooks/useFqn';
 import {
   ContentChangeState,
   RecentlyViewedQuickLinks,
@@ -64,7 +66,10 @@ import {
 import deleteWidgetClassBase from '../../../utils/DeleteWidget/DeleteWidgetClassBase';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
+import {
+  getContextCenterArticleVersionsPath,
+  updateKnowledgeCenterRecentViewed,
+} from '../../../utils/KnowledgePageUtils';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
 
 const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
@@ -86,6 +91,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { fqn } = useFqn();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const [copyTooltip, setCopyTooltip] = useState<string>('');
@@ -113,7 +119,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       },
       {
         activeTitle: true,
-        name: (knowledgePage?.displayName ?? '') || t('label.untitled'),
+        name: getEntityName(knowledgePage) || t('label.untitled'),
         url: '',
       },
     ],
@@ -135,6 +141,8 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
     return QueryVoteType.unVoted;
   }, [knowledgePage, USERId]);
+
+  const version = toString(knowledgePage?.version ?? '0.1');
 
   const isFollowing = useMemo(
     () => Boolean(knowledgePage?.followers?.some(({ id }) => id === USERId)),
@@ -180,6 +188,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     } else {
       navigate(ROUTES.CONTEXT_CENTER_ARTICLES);
     }
+  };
+
+  const handleVersionClick = () => {
+    navigate(getContextCenterArticleVersionsPath(fqn, version));
   };
 
   const handleShare = async () => {
@@ -301,7 +313,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               {/* Article name with icon */}
               <div className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap">
                 <Typography as="h3" className="tw:truncate">
-                  {(knowledgePage?.displayName ?? '') || t('label.untitled')}
+                  {getEntityName(knowledgePage) || t('label.untitled')}
                 </Typography>
                 {entityStatusBadge}
               </div>
@@ -397,6 +409,19 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 {t('label.save')}
               </Button>
             )}
+
+            <Tooltip title={t('label.version-plural')}>
+              <TooltipTrigger>
+                <Button
+                  className="tw:p-1.5"
+                  color="secondary"
+                  iconLeading={<VersionIcon height={16} width={16} />}
+                  size="sm"
+                  onClick={handleVersionClick}>
+                  {version}
+                </Button>
+              </TooltipTrigger>
+            </Tooltip>
 
             {/* Up vote */}
             <Tooltip title={t('label.up-vote')}>
@@ -506,15 +531,16 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               successMessage={t('server.entity-deleted-successfully', {
                 entity: entityType,
               })}
-              trigger={
+              trigger={(onClick) => (
                 <ButtonUtility
                   icon={DotsVertical}
                   size="sm"
                   tooltip={t('label.manage-entity', {
                     entity: t('label.article'),
                   })}
+                  onClick={onClick}
                 />
-              }
+              )}
             />
           </div>
         </div>

@@ -44,6 +44,7 @@ import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserSt
 import { useApplicationStore } from '../hooks/useApplicationStore';
 import { RecentlyViewedData } from '../Models';
 import { arraySorterByKey } from './CommonUtils';
+import { getEntityName } from './EntityUtils';
 import Fqn from './Fqn';
 import i18n, { t } from './i18next/LocalUtil';
 
@@ -141,6 +142,18 @@ export const getKnowledgePagePath = (
 
 export const getContextCenterArticlePath = getKnowledgePagePath;
 
+export const getContextCenterArticleVersionsPath = (
+  knowledgePageName: string,
+  version: string
+) => {
+  let path = ROUTES.CONTEXT_CENTER_ARTICLE_VERSION;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, knowledgePageName)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
 export const getKnowledgeVersionsPath = (
   knowledgePageName: string,
   version: string
@@ -159,20 +172,21 @@ export const convertToTreeData = (
 ) => {
   const treeData: DataNode[] = pages.map((page) => {
     const isActive = activePage?.fullyQualifiedName === page.fullyQualifiedName;
-    const displayName = isActive ? activePage?.displayName : page.displayName;
+    const resolvedPage = isActive ? activePage : page;
+    const title =
+      getEntityName(resolvedPage as KnowledgePage) || i18n.t('label.untitled');
 
     const hasChildren = !isEmpty(page?.children);
     if (!hasChildren) {
       return {
         key: page.fullyQualifiedName,
-        title: displayName || i18n.t('label.untitled'),
-        // mark the node as leaf if it has no children
+        title,
         isLeaf: page.childrenCount === 0,
       } as DataNode;
     } else {
       return {
         key: page.fullyQualifiedName,
-        title: displayName || i18n.t('label.untitled'),
+        title,
         children: convertToTreeData(activePage, page.children),
       } as DataNode;
     }

@@ -67,6 +67,7 @@ const ManageButton: FC<ManageButtonProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isDelete, setIsDelete] = useState<boolean>(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isEntityRestoring, setIsEntityRestoring] = useState<boolean>(false);
   const [showReactiveModal, setShowReactiveModal] = useState(false);
   const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
@@ -244,43 +245,61 @@ const ManageButton: FC<ManageButtonProps> = ({
     [entityType]
   );
 
-  return (
-    <>
-      {items.length ? (
-        // Used Button to stop click propagation event in the
-        // TeamDetailsV1 and User.component collapsible panel.
-        <Button
-          className="remove-button-default-styling p-0"
-          onClick={(e) => e.stopPropagation()}>
+  const renderDropdownTrigger = () => {
+    if (trigger) {
+      return (
+        <>
+          {trigger(() => setIsDropdownOpen((prev) => !prev))}
           <Dropdown
-            align={{ targetOffset: [-12, 0] }}
+            align={{ targetOffset: [0, -16] }}
             dropdownRender={renderDropdownContainer}
             menu={{ items }}
+            open={isDropdownOpen}
             overlayClassName="manage-dropdown-list-container"
             overlayStyle={{ width: '350px' }}
             placement="bottomRight"
-            trigger={['click']}>
-            {trigger ? (
-              <span data-testid="manage-button">{trigger}</span>
-            ) : (
-              <Tooltip
-                placement="topRight"
-                title={t('label.manage-entity', {
-                  entity: formattedEntityType,
-                })}>
-                <Button
-                  className={classNames('flex-center px-1.5', buttonClassName)}
-                  data-testid="manage-button"
-                  type="default">
-                  <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                </Button>
-              </Tooltip>
-            )}
+            trigger={['click']}
+            onOpenChange={setIsDropdownOpen}>
+            <span data-testid="manage-button" />
           </Dropdown>
-        </Button>
-      ) : (
-        <></>
-      )}
+        </>
+      );
+    }
+
+    // Used Button to stop click propagation event in the
+    // TeamDetailsV1 and User.component collapsible panel.
+    return (
+      <Button
+        className="remove-button-default-styling p-0"
+        onClick={(e) => e.stopPropagation()}>
+        <Dropdown
+          align={{ targetOffset: [-12, 0] }}
+          dropdownRender={renderDropdownContainer}
+          menu={{ items }}
+          overlayClassName="manage-dropdown-list-container"
+          overlayStyle={{ width: '350px' }}
+          placement="bottomRight"
+          trigger={['click']}>
+          <Tooltip
+            placement="topRight"
+            title={t('label.manage-entity', {
+              entity: formattedEntityType,
+            })}>
+            <Button
+              className={classNames('flex-center px-1.5', buttonClassName)}
+              data-testid="manage-button"
+              type="default">
+              <IconDropdown className="anticon self-center manage-dropdown-icon" />
+            </Button>
+          </Tooltip>
+        </Dropdown>
+      </Button>
+    );
+  };
+
+  return (
+    <>
+      {items.length ? renderDropdownTrigger() : null}
       {isDelete && (
         <DeleteWidgetModal
           afterDeleteAction={afterDeleteAction}

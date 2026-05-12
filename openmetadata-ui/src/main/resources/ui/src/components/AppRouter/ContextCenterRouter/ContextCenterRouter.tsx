@@ -83,6 +83,7 @@ const ContextCenterRouter = () => {
         ROUTES.CONTEXT_CENTER_ARTICLE_DETAIL,
         ROUTES.CONTEXT_CENTER_ARTICLE_DETAIL_WITH_TAB,
         ROUTES.CONTEXT_CENTER_ARTICLE_DETAIL_WITH_SUB_TAB,
+        ROUTES.CONTEXT_CENTER_ARTICLE_VERSION,
       ].map((route) => (
         <Route
           element={<ContextCenterArticlesPage />}

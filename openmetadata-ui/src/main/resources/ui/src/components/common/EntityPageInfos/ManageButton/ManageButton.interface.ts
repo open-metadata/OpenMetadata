@@ -17,7 +17,7 @@ import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.inte
 import { DeleteOption } from '../../DeleteWidget/DeleteWidget.interface';
 
 export interface ManageButtonProps {
-  trigger?: ReactNode;
+  trigger?: (onClick: () => void) => ReactNode;
   allowSoftDelete?: boolean;
   afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
   buttonClassName?: string;
