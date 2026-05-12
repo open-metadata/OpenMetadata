@@ -6,6 +6,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -33,7 +34,8 @@ public class AsyncService {
     executorService =
         new BoundedExecutorService(
             Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("om-async-", 0).factory()),
-            concurrencyLimiter);
+            concurrencyLimiter,
+            maxConcurrency);
     LOG.info("AsyncService initialized with max concurrency: {}", maxConcurrency);
   }
 
@@ -243,24 +245,27 @@ public class AsyncService {
   private static class BoundedExecutorService extends AbstractExecutorService {
     private final ExecutorService delegate;
     private final Semaphore semaphore;
+    private final int maxConcurrency;
 
-    BoundedExecutorService(ExecutorService delegate, Semaphore semaphore) {
+    BoundedExecutorService(ExecutorService delegate, Semaphore semaphore, int maxConcurrency) {
       this.delegate = delegate;
       this.semaphore = semaphore;
+      this.maxConcurrency = maxConcurrency;
     }
 
     @Override
     public void execute(Runnable command) {
-      // Acquire the permit on the SUBMITTING thread so that a caller producing tasks faster
-      // than the executor can run them is back-pressured here, rather than spawning an
-      // unbounded number of virtual threads that all sit blocked on semaphore.acquire().
-      // Without this, the maxConcurrency only limits concurrent execution; submission depth
-      // is unbounded and pins JDBI connections under burst load.
-      try {
-        semaphore.acquire();
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new RuntimeException("Interrupted waiting for concurrency permit", e);
+      // Use tryAcquire so HTTP threads get fast rejection rather than blocking
+      // indefinitely under saturation — blocking the submitting thread would defeat the
+      // async 202 contract that this executor exists to serve. Callers (e.g.,
+      // restoreEntityAsync) catch RejectedExecutionException and map to 503 Service
+      // Unavailable so the client can retry. Internal back-pressure for trusted batch
+      // callers should be implemented at the caller level, not here.
+      if (!semaphore.tryAcquire()) {
+        throw new RejectedExecutionException(
+            String.format(
+                "Async concurrency limit reached (max=%d, in-use=%d). Retry later.",
+                maxConcurrency, maxConcurrency - semaphore.availablePermits()));
       }
       try {
         delegate.execute(

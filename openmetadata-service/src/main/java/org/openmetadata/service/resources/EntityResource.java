@@ -831,38 +831,54 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     // Intentionally don't capture uriInfo in the lambda — JAX-RS may invalidate it once the
     // 202 response is sent. The WebSocket notification only needs name/status, not HREFs.
-    executorService.submit(
-        RequestLatencyContext.wrapWithContext(
-            () -> {
-              try {
-                PutResponse<T> response = repository.restoreEntity(userName, id);
-                if (response == null) {
+    try {
+      executorService.submit(
+          RequestLatencyContext.wrapWithContext(
+              () -> {
+                try {
+                  PutResponse<T> response = repository.restoreEntity(userName, id);
+                  if (response == null) {
+                    WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
+                        jobId, securityContext, entityName, "Entity is not in deleted state");
+                    return;
+                  }
+                  repository.restoreFromSearch(response.getEntity());
+                  LOG.info(
+                      "[AsyncRestore] Restored {}:{} (jobId={})",
+                      Entity.getEntityTypeFromObject(response.getEntity()),
+                      response.getEntity().getId(),
+                      jobId);
+                  WebsocketNotificationHandler.sendRestoreOperationCompleteNotification(
+                      jobId, securityContext, response.getEntity());
+                } catch (Exception e) {
+                  LOG.error(
+                      "[AsyncRestore] Failed to restore {}:{} (name={})",
+                      entityType,
+                      id,
+                      entityName,
+                      e);
                   WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
-                      jobId, securityContext, entityName, "Entity is not in deleted state");
-                  return;
+                      jobId,
+                      securityContext,
+                      entityName,
+                      e.getMessage() == null ? e.toString() : e.getMessage());
                 }
-                repository.restoreFromSearch(response.getEntity());
-                LOG.info(
-                    "[AsyncRestore] Restored {}:{} (jobId={})",
-                    Entity.getEntityTypeFromObject(response.getEntity()),
-                    response.getEntity().getId(),
-                    jobId);
-                WebsocketNotificationHandler.sendRestoreOperationCompleteNotification(
-                    jobId, securityContext, response.getEntity());
-              } catch (Exception e) {
-                LOG.error(
-                    "[AsyncRestore] Failed to restore {}:{} (name={})",
-                    entityType,
-                    id,
-                    entityName,
-                    e);
-                WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
-                    jobId,
-                    securityContext,
-                    entityName,
-                    e.getMessage() == null ? e.toString() : e.getMessage());
-              }
-            }));
+              }));
+    } catch (java.util.concurrent.RejectedExecutionException saturated) {
+      // AsyncService is at capacity. Return 503 so the client can retry with backoff
+      // rather than block the HTTP thread here waiting on a permit.
+      LOG.warn(
+          "[AsyncRestore] Rejecting restore of {}:{} — executor saturated: {}",
+          entityType,
+          id,
+          saturated.getMessage());
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity(
+              new RestoreEntityResponse(
+                  null, "Async executor saturated, retry later: " + saturated.getMessage()))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
     RestoreEntityResponse response =
         new RestoreEntityResponse(jobId, "Restore initiated successfully.");
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
