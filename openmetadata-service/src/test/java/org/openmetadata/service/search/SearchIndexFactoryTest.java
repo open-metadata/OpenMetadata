@@ -214,6 +214,12 @@ class SearchIndexFactoryTest {
     // them produces docs missing testCaseStatus, blanking statuses in the UI.
     assertTrue(testCaseFields.contains(Entity.TEST_CASE_RESULT));
     assertTrue(testCaseFields.contains("incidentId"));
+    // TestSuiteRepository registers a fetcher for "summary" that populates
+    // testCaseResultSummary. The DQ TestSuites list page sorts by the
+    // top-level lastResultTimestamp field (computed in TestSuiteIndex from
+    // that summary) and renders a success-% column per row. Without
+    // "summary" the fetcher never runs and the ES doc has neither field.
+    assertTrue(factory.getReindexFieldsFor(Entity.TEST_SUITE).contains("summary"));
   }
 
   @Test
