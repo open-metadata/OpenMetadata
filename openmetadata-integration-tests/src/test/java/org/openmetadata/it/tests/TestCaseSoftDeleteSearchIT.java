@@ -195,8 +195,7 @@ public class TestCaseSoftDeleteSearchIT {
     JsonNode root = MAPPER.readTree(rawJson);
     JsonNode hits = root.path("hits").path("hits");
     assertTrue(
-        hits.isArray(),
-        () -> "ES response missing hits.hits array; raw response was: " + rawJson);
+        hits.isArray(), () -> "ES response missing hits.hits array; raw response was: " + rawJson);
     assertFalse(
         hits.elements().hasNext(),
         () ->
