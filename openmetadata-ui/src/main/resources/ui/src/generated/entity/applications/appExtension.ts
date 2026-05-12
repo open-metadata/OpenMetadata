@@ -36,6 +36,5 @@ export interface AppExtension {
 export enum ExtensionType {
     Custom = "custom",
     Limits = "limits",
-    MCPUsage = "mcpUsage",
     Status = "status",
 }

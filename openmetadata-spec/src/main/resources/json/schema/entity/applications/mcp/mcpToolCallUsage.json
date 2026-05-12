@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/applications/mcp/mcpToolCallUsage.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "McpToolCallUsage",
-  "description": "Single MCP tool-call usage record. One row written per tool invocation to the apps_extension_time_series table with extension='mcpUsage'. Used to surface MCP traffic as a product growth metric. Not billed, no enforcement.",
+  "description": "Single MCP tool-call usage record. One row written per tool invocation to the apps_extension_time_series table with extension='limits' (reusing the existing per-app usage extension; rows are isolated by appName='McpApplication'). Used to surface MCP traffic as a product growth metric. Not billed, no enforcement.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.app.mcp.McpToolCallUsage",
   "properties": {
@@ -20,7 +20,7 @@
     },
     "extension": {
       "$ref": "../../applications/appExtension.json#/definitions/extensionType",
-      "default": "mcpUsage"
+      "default": "limits"
     },
     "toolName": {
       "description": "Name of the MCP tool that was invoked (e.g. search_metadata, create_glossary, nlq_search).",

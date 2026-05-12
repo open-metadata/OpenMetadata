@@ -79,7 +79,7 @@ class McpUsageRecorderTest {
     ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<String> ext = ArgumentCaptor.forClass(String.class);
     verify(dao, times(1)).insert(json.capture(), ext.capture());
-    assertThat(ext.getValue()).isEqualTo("mcpUsage");
+    assertThat(ext.getValue()).isEqualTo("limits");
 
     McpToolCallUsage decoded = JsonUtils.readValue(json.getValue(), McpToolCallUsage.class);
     assertThat(decoded.getAppId()).isEqualTo(appId);
@@ -87,7 +87,7 @@ class McpUsageRecorderTest {
     assertThat(decoded.getToolName()).isEqualTo("search_metadata");
     assertThat(decoded.getUserName()).isEqualTo("alice");
     assertThat(decoded.getSuccess()).isTrue();
-    assertThat(decoded.getExtension()).isEqualTo(AppExtension.ExtensionType.MCP_USAGE);
+    assertThat(decoded.getExtension()).isEqualTo(AppExtension.ExtensionType.LIMITS);
     assertThat(decoded.getTimestamp()).isBetween(before, after);
   }
 
@@ -105,12 +105,12 @@ class McpUsageRecorderTest {
     McpUsageRecorder.record("any_tool", "alice", true);
 
     ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
-    verify(dao).insert(json.capture(), eq("mcpUsage"));
+    verify(dao).insert(json.capture(), eq("limits"));
     String raw = json.getValue();
     assertThat(raw).contains("\"appId\":");
     assertThat(raw).contains("\"appName\":");
     assertThat(raw).contains("\"timestamp\":");
-    assertThat(raw).contains("\"extension\":\"mcpUsage\"");
+    assertThat(raw).contains("\"extension\":\"limits\"");
   }
 
   @Test
@@ -125,11 +125,11 @@ class McpUsageRecorderTest {
   @Test
   void recordSwallowsDaoException() {
     stubMcpApp(UUID.randomUUID(), McpAppConstants.MCP_APP_NAME);
-    doThrow(new RuntimeException("db down")).when(dao).insert(anyString(), eq("mcpUsage"));
+    doThrow(new RuntimeException("db down")).when(dao).insert(anyString(), eq("limits"));
 
     McpUsageRecorder.record("create_glossary", "alice", false);
 
-    verify(dao, times(1)).insert(anyString(), eq("mcpUsage"));
+    verify(dao, times(1)).insert(anyString(), eq("limits"));
   }
 
   @Test
@@ -139,7 +139,7 @@ class McpUsageRecorderTest {
     McpUsageRecorder.record("patch_entity", "bob", false);
 
     ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
-    verify(dao).insert(json.capture(), eq("mcpUsage"));
+    verify(dao).insert(json.capture(), eq("limits"));
     McpToolCallUsage decoded = JsonUtils.readValue(json.getValue(), McpToolCallUsage.class);
     assertThat(decoded.getSuccess()).isFalse();
   }

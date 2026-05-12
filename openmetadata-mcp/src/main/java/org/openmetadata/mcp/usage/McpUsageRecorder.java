@@ -27,9 +27,11 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Best-effort one-row-per-call writer for MCP tool invocations. Records to the
- * {@code apps_extension_time_series} table with extension {@code mcpUsage}. Pure tracking. No
- * billing, no enforcement, no rate-limiting. A recording failure must never break the tool call,
- * so every code path catches and logs.
+ * {@code apps_extension_time_series} table reusing the {@code limits} extension type — the same
+ * per-app usage bucket CollateAI writes to. Rows are isolated from other apps by
+ * {@code appName='McpApplication'}, so the shared extension causes no cross-talk. Pure tracking.
+ * No billing, no enforcement, no rate-limiting. A recording failure must never break the tool
+ * call, so every code path catches and logs.
  */
 public final class McpUsageRecorder {
 
@@ -50,11 +52,11 @@ public final class McpUsageRecorder {
               .withAppId(app.getId())
               .withAppName(app.getName())
               .withTimestamp(System.currentTimeMillis())
-              .withExtension(AppExtension.ExtensionType.MCP_USAGE)
+              .withExtension(AppExtension.ExtensionType.LIMITS)
               .withToolName(toolName)
               .withUserName(userName)
               .withSuccess(success);
-      getDao().insert(JsonUtils.pojoToJson(usage), AppExtension.ExtensionType.MCP_USAGE.toString());
+      getDao().insert(JsonUtils.pojoToJson(usage), AppExtension.ExtensionType.LIMITS.toString());
     } catch (Exception e) {
       LOG.warn(
           "Failed to record MCP usage for tool={} user={} success={}: {}",

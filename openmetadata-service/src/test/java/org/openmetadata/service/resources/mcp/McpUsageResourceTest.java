@@ -222,7 +222,7 @@ class McpUsageResourceTest {
                 anyInt(),
                 anyInt(),
                 eq(McpToolCallUsage.class),
-                eq(AppExtension.ExtensionType.MCP_USAGE)))
+                eq(AppExtension.ExtensionType.LIMITS)))
         .thenReturn(new ArrayList<>());
   }
 
@@ -235,7 +235,7 @@ class McpUsageResourceTest {
             anyInt(),
             eq(0),
             eq(McpToolCallUsage.class),
-            eq(AppExtension.ExtensionType.MCP_USAGE)))
+            eq(AppExtension.ExtensionType.LIMITS)))
         .thenReturn(new ArrayList<>(Arrays.asList(rows)));
     when(repo.listAppExtensionInWindowByName(
             any(App.class),
@@ -244,7 +244,7 @@ class McpUsageResourceTest {
             anyInt(),
             eq(rows.length),
             eq(McpToolCallUsage.class),
-            eq(AppExtension.ExtensionType.MCP_USAGE)))
+            eq(AppExtension.ExtensionType.LIMITS)))
         .thenReturn(new ArrayList<>());
   }
 
@@ -252,7 +252,7 @@ class McpUsageResourceTest {
     return new McpToolCallUsage()
         .withAppId(UUID.randomUUID())
         .withAppName(McpAppConstants.MCP_APP_NAME)
-        .withExtension(AppExtension.ExtensionType.MCP_USAGE)
+        .withExtension(AppExtension.ExtensionType.LIMITS)
         .withToolName(tool)
         .withUserName(user)
         .withSuccess(success)

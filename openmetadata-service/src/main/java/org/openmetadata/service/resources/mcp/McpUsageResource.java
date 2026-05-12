@@ -51,7 +51,9 @@ import org.openmetadata.service.security.Authorizer;
 
 /**
  * Read-only API for MCP tool-call usage. Backed by the {@code apps_extension_time_series} table
- * with extension {@code mcpUsage}. Counts only. No billing, no rate-limiting.
+ * reading from the {@code limits} extension scoped to {@code appName='McpApplication'} — same
+ * per-app usage bucket CollateAI writes to, isolated by appName. Counts only. No billing, no
+ * rate-limiting.
  */
 @Path("/v1/mcp/usage")
 @Tag(name = "MCP Usage", description = "MCP tool-call usage counters and breakdowns.")
@@ -296,7 +298,7 @@ public class McpUsageResource {
               PAGE_SIZE,
               offset,
               McpToolCallUsage.class,
-              AppExtension.ExtensionType.MCP_USAGE);
+              AppExtension.ExtensionType.LIMITS);
       if (page.isEmpty()) {
         return;
       }

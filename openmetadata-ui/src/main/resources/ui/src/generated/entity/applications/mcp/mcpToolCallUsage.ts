@@ -12,8 +12,9 @@
  */
 /**
  * Single MCP tool-call usage record. One row written per tool invocation to the
- * apps_extension_time_series table with extension='mcpUsage'. Used to surface MCP traffic
- * as a product growth metric. Not billed, no enforcement.
+ * apps_extension_time_series table with extension='limits' (reusing the existing per-app
+ * usage extension; rows are isolated by appName='McpApplication'). Used to surface MCP
+ * traffic as a product growth metric. Not billed, no enforcement.
  */
 export interface MCPToolCallUsage {
     /**
@@ -49,6 +50,5 @@ export interface MCPToolCallUsage {
 export enum ExtensionType {
     Custom = "custom",
     Limits = "limits",
-    MCPUsage = "mcpUsage",
     Status = "status",
 }

@@ -21,7 +21,6 @@ package org.openmetadata.service.apps.bundles.mcp;
 public final class McpAppConstants {
 
   public static final String MCP_APP_NAME = "McpApplication";
-  public static final String MCP_USAGE_EXTENSION = "mcpUsage";
 
   private McpAppConstants() {}
 }
