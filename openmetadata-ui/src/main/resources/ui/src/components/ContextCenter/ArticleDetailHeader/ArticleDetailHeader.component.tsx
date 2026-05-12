@@ -490,6 +490,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
               allowSoftDelete={false}
+              buttonClassName='tw:h-[32px]'
               canDelete={permissions.Delete}
               deleteButtonDescription={t(
                 'message.delete-entity-type-action-description',

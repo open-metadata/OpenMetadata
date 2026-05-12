@@ -33,7 +33,6 @@ export interface DocumentsViewProps {
   data: DocFile[];
   isLoading: boolean;
   onDownload?: (file: DocFile) => void;
-  onMoveToFolder?: (file: DocFile) => void;
   onShareFile?: (file: DocFile) => void;
   onDeleteFile?: (file: DocFile) => void;
 }

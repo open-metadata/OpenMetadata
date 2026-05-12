@@ -18,7 +18,7 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Download01, Move, Share07, Trash01 } from '@untitledui/icons';
+import { Download01, Share07, Trash01 } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -58,7 +58,6 @@ const FileTypeBadge: FC<{ fileType: DocFileType }> = ({ fileType }) => {
 
 interface FileActionsProps {
   file: DocFile;
-  onMoveToFolder?: (file: DocFile) => void;
   onShareFile?: (file: DocFile) => void;
   onDeleteFile?: (file: DocFile) => void;
 }
@@ -66,7 +65,6 @@ interface FileActionsProps {
 const FileActions: FC<FileActionsProps> = ({
   file,
   onDeleteFile,
-  onMoveToFolder,
   onShareFile,
 }) => {
   const { t } = useTranslation();
@@ -77,21 +75,12 @@ const FileActions: FC<FileActionsProps> = ({
       <Dropdown.Popover>
         <Dropdown.Menu
           onAction={(key) => {
-            if (key === 'move') {
-              onMoveToFolder?.(file);
-            } else if (key === 'share') {
+            if (key === 'share') {
               onShareFile?.(file);
             } else if (key === 'delete') {
               onDeleteFile?.(file);
             }
           }}>
-          <Dropdown.Item
-            icon={Move}
-            id="move"
-            label={t('label.move-to-folder', {
-              defaultValue: 'Move to folder',
-            })}
-          />
           <Dropdown.Item
             icon={Share07}
             id="share"
@@ -147,7 +136,6 @@ const FileRow: FC<FileRowProps> = ({
   file,
   onDeleteFile,
   onDownload,
-  onMoveToFolder,
   onShareFile,
 }) => (
   <div
@@ -197,7 +185,6 @@ const FileRow: FC<FileRowProps> = ({
       <FileActions
         file={file}
         onDeleteFile={onDeleteFile}
-        onMoveToFolder={onMoveToFolder}
         onShareFile={onShareFile}
       />
     </div>
@@ -211,7 +198,6 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   isLoading,
   onDeleteFile,
   onDownload,
-  onMoveToFolder,
   onShareFile,
 }) => {
   return (
@@ -231,7 +217,6 @@ const DocumentsView: FC<DocumentsViewProps> = ({
                   key={file.id}
                   onDeleteFile={onDeleteFile}
                   onDownload={onDownload}
-                  onMoveToFolder={onMoveToFolder}
                   onShareFile={onShareFile}
                 />
               ))}
