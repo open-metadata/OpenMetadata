@@ -24,13 +24,14 @@ import { CREATE_PAGE_HASH, ROUTES } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { Asset, AssetType } from '../generated/attachments/asset';
 import {
-    CreateKnowledgePage,
-    PageType,
-    QuickLink
+  CreateKnowledgePage,
+  PageType,
+  QuickLink,
 } from '../interface/knowledge-center.interface';
 import { listAssetsByFqn } from '../rest/assetAPI';
 import { postKnowledgePage } from '../rest/knowledgeCenterAPI';
 import EntityLink from './EntityLink';
+import { getEntityName } from './EntityUtils';
 import { getContextCenterArticlePath } from './KnowledgePageUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -104,7 +105,7 @@ export const assetToDocumentItem = (asset: Asset): UploadedDocumentItem => ({
 });
 
 export const knowledgePageToArticleItem = (
-  page: {
+  data: {
     id: string;
     displayName?: string;
     description?: string;
@@ -116,19 +117,19 @@ export const knowledgePageToArticleItem = (
   },
   untitledLabel: string
 ): ArticleCardItem => ({
-  description: page.description ?? '',
+  description: data.description ?? '',
   href:
-    page.pageType === PageType.QUICK_LINK
-      ? (page.page as QuickLink)?.url
-      : page.fullyQualifiedName
+    data.pageType === PageType.QUICK_LINK
+      ? (data.page as QuickLink)?.url
+      : data.fullyQualifiedName
       ? `${ROUTES.CONTEXT_CENTER_ARTICLES}/${page.fullyQualifiedName}`
       : undefined,
-  id: page.id,
-  lastEditedAt: page.updatedAt,
-  tags: (page.tags ?? []).map((tag) => ({
+  id: data.id,
+  lastEditedAt: data.updatedAt,
+  tags: (data.tags ?? []).map((tag) => ({
     label: tag.tagFQN.split('.').pop() ?? tag.tagFQN,
   })),
-  title: page.displayName || untitledLabel,
+  title: getEntityName(data) || untitledLabel,
 });
 
 export const fetchContextCenterDocuments = async (): Promise<Asset[]> => {

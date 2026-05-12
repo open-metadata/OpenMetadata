@@ -95,7 +95,9 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
   }, [genericPermissions?.EditAll, data?.deleted]);
 
   return (
-    <div className="knowledge-page-right-panel">
+    <div
+      className="knowledge-page-right-panel"
+      data-testid="knowledge-page-right-panel">
       <Row gutter={[0, 24]}>
         <Col span={24}>
           <DomainLabelV2

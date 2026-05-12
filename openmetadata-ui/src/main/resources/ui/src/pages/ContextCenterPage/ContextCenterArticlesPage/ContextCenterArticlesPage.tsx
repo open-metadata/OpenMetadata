@@ -202,12 +202,14 @@ const ContextCenterArticlesPage = () => {
                 <Dropdown.Popover placement="bottom start">
                   <Dropdown.Menu aria-label="create knowledge page">
                     <Dropdown.Item
+                      data-testid="create-article-btn"
                       key={PageType.ARTICLE}
                       onAction={addArticleKnowledgePage}>
                       {t('label.article')}
                     </Dropdown.Item>
 
                     <Dropdown.Item
+                      data-testid="create-quick-link-btn"
                       key={PageType.QUICK_LINK}
                       onAction={() => setShowAddLinkModal(true)}>
                       {t('label.quick-link')}
@@ -259,12 +261,13 @@ const ContextCenterArticlesPage = () => {
     />
   );
 
-  const rightSidebar =
-    version || isActivityFeedTab
-      ? null
-      : isRightPanelOpen
-      ? page.rightPanel
-      : null;
+  const rightSidebar = isActivityFeedTab
+    ? null
+    : version
+    ? page.rightPanel
+    : isRightPanelOpen
+    ? page.rightPanel
+    : null;
 
   const centerContent = version ? (
     <KnowledgePageVersionPage onPageChange={handlePageChange} />

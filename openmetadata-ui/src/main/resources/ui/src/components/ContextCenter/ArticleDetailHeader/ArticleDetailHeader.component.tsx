@@ -241,7 +241,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   const contentChangeIcon = useMemo(() => {
     if (contentChangeState === ContentChangeState.SAVED) {
       return (
-        <div className="tw:flex tw:items-center tw:gap-2">
+        <div
+          className="tw:flex tw:items-center tw:gap-2"
+          data-testid="content-change-state">
           <IconSaved />{' '}
           <Typography className="tw:text-green-600" weight="medium">
             {t('label.saved')}
@@ -252,7 +254,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       return <Loader />;
     } else if (contentChangeState === ContentChangeState.UN_SAVED) {
       return (
-        <div className="tw:flex tw:items-center tw:gap-2">
+        <div
+          className="tw:flex tw:items-center tw:gap-2"
+          data-testid="content-change-state">
           <IconUnSaved />{' '}
           <Typography weight="medium">{t('label.unsaved')}</Typography>
         </div>
@@ -415,6 +419,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 <Button
                   className="tw:p-1.5"
                   color="secondary"
+                  data-testid="version-btn"
                   iconLeading={<VersionIcon height={16} width={16} />}
                   size="sm"
                   onClick={handleVersionClick}>
@@ -533,6 +538,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               })}
               trigger={(onClick) => (
                 <ButtonUtility
+                  data-testid="manage-button"
                   icon={DotsVertical}
                   size="sm"
                   tooltip={t('label.manage-entity', {

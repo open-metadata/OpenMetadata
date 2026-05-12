@@ -82,11 +82,17 @@ const FileActions: FC<FileActionsProps> = ({
             }
           }}>
           <Dropdown.Item
+            data-testid="share-btn"
             icon={Share07}
             id="share"
             label={t('label.share-file', { defaultValue: 'Share File' })}
           />
-          <Dropdown.Item icon={Trash01} id="delete" label={t('label.delete')} />
+          <Dropdown.Item
+            data-testid="delete-btn"
+            icon={Trash01}
+            id="delete"
+            label={t('label.delete')}
+          />
         </Dropdown.Menu>
       </Dropdown.Popover>
     </Dropdown.Root>

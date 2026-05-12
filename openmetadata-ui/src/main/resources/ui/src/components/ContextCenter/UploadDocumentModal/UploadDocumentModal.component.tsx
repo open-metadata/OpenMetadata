@@ -21,12 +21,11 @@ import {
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
-import { Trash01, UploadCloud02 } from '@untitledui/icons';
+import { AlertCircle, Trash01, UploadCloud02 } from '@untitledui/icons';
 import { Asset } from 'generated/attachments/asset';
 import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { uploadAsset } from 'rest/assetAPI';
-import { showErrorToast } from 'utils/ToastUtils';
 import { UploadDocumentModalProps } from './UploadDocumentModal.interface';
 
 type UploadStatus = 'uploading' | 'done' | 'error';
@@ -53,6 +52,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const [queuedFiles, setQueuedFiles] = useState<QueuedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [sizeError, setSizeError] = useState('');
   const uploadedAssetsRef = useRef<Asset[]>([]);
 
   const hasStartedUploading = queuedFiles.length > 0;
@@ -62,6 +62,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     setStagedFiles([]);
     setQueuedFiles([]);
     setIsUploading(false);
+    setSizeError('');
     onClose();
   };
 
@@ -102,7 +103,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   };
 
   const handleSizeLimitExceed = () => {
-    showErrorToast(
+    setSizeError(
       t('message.file-size-limit-exceeded', {
         defaultValue:
           'Some files exceed the 5 MB size limit and were not uploaded.',
@@ -256,6 +257,18 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
                 </FileUpload.List>
               )}
             </FileUpload.Root>
+
+            {sizeError && (
+              <div
+                className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:bg-error-secondary tw:px-3 tw:py-2 tw:text-sm tw:text-error-primary"
+                data-testid="size-error-message">
+                <AlertCircle
+                  className="tw:size-4 tw:shrink-0"
+                  strokeWidth={2}
+                />
+                <span>{sizeError}</span>
+              </div>
+            )}
 
             <div className="tw:flex tw:justify-end tw:gap-3">
               <Button
