@@ -6,9 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -92,6 +94,21 @@ public class FolderResourceIT extends BaseEntityIT<Folder, CreateFolder> {
     Map<String, String> params = new HashMap<>();
     params.put("hardDelete", "true");
     getFolderService().delete(id, params);
+    // FolderResource hard-delete is asynchronous: it returns 200 immediately and removes
+    // the row in the background. Poll with include=deleted until the entity is fully gone
+    // so BaseEntityIT.delete_entityAsAdmin_hardDelete_200 sees the post-condition.
+    Awaitility.await()
+        .pollInterval(Duration.ofMillis(200))
+        .atMost(Duration.ofSeconds(15))
+        .until(
+            () -> {
+              try {
+                getFolderService().get(id, null, "deleted");
+                return false;
+              } catch (Exception e) {
+                return true;
+              }
+            });
   }
 
   @Override
