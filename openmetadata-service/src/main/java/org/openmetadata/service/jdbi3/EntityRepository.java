@@ -145,6 +145,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -5778,11 +5779,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private List<EntityUpdater> buildBulkUpdaters(
-      List<T> originals,
-      String updatedBy,
-      Operation op,
-      String phaseName,
-      java.util.function.Consumer<T> mutator) {
+      List<T> originals, String updatedBy, Operation op, String phaseName, Consumer<T> mutator) {
     long now = System.currentTimeMillis();
     List<EntityUpdater> updaters = new ArrayList<>(originals.size());
     try (var ignored = phase(phaseName)) {
@@ -5807,8 +5804,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /**
    * Apply a batch of {@link EntityUpdater}s already in deferred-store state: write version
-   * history, persist entity rows, invalidate caches, emit change events. {@code phasePrefix}
-   * is used to tag latency phases (e.g. {@code "bulkRestore"} → {@code "bulkRestoreVersionHistory"}).
+   * history, persist entity rows, invalidate caches, dispatch the bulk lifecycle event so
+   * the search index handler updates ES, then emit change events. {@code phasePrefix} is
+   * used to tag latency phases (e.g. {@code "bulkRestore"} →
+   * {@code "bulkRestoreVersionHistory"}).
+   *
+   * <p>The lifecycle dispatch is required because the top-level
+   * {@code restoreFromSearch}/{@code deleteFromSearch} cascade only flips the deleted flag on
+   * child indexes whose docs join on the parent's id field. HAS-style descendants (e.g.,
+   * charts attached to dashboards) and entity types without a {@code parent.id} field in
+   * their ES mapping would otherwise drift — DB shows restored / soft-deleted, but ES still
+   * reflects the previous state. {@code SearchIndexHandler.onEntitiesUpdated} batches the
+   * writes via {@code updateEntitiesIndex}, so this is still bulk on the ES side.
    */
   private void persistBulkUpdaters(
       List<EntityUpdater> changed, EventType eventType, String userName, String phasePrefix) {
@@ -5819,6 +5826,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     try (var ignored = phase(phasePrefix + "Invalidate")) {
       invalidateMany(changedEntities);
+    }
+    try (var ignored = phase(phasePrefix + "LifecycleDispatch")) {
+      EntityLifecycleEventDispatcher.getInstance().onEntitiesUpdated(changedEntities, null, null);
     }
     writeBulkChangeEvents(changed, eventType, userName, phasePrefix + "ChangeEvents");
   }

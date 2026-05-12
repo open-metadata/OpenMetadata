@@ -835,7 +835,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 WebsocketNotificationHandler.sendRestoreOperationCompleteNotification(
                     jobId, securityContext, response.getEntity());
               } catch (Exception e) {
-                LOG.error("[AsyncRestore] Failed to restore {}:{}", entityType, id, e);
+                LOG.error(
+                    "[AsyncRestore] Failed to restore {}:{} (name={})",
+                    entityType,
+                    id,
+                    entityName,
+                    e);
                 WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
                     jobId,
                     securityContext,
