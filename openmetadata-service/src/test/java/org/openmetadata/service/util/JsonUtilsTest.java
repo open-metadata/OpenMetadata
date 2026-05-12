@@ -26,6 +26,7 @@ import jakarta.json.JsonException;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
 import jakarta.json.JsonPatchBuilder;
+import jakarta.json.JsonValue;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
@@ -115,6 +116,38 @@ class JsonUtilsTest {
             JsonException.class,
             () -> JsonUtils.applyPatch(original, jsonPatchBuilder2.build(), Team.class));
     assertTrue(jsonException.getMessage().contains("An array item index is out of range"));
+  }
+
+  /**
+   * Patch ops targeting the server-managed tag audit fields (appliedBy/appliedAt) are filtered
+   * out, mirroring the existing filter for href/changeDescription. Without the filter, a
+   * `remove /tags/N/appliedBy` op against a tag whose JSON has no appliedBy key (e.g. a derived
+   * tag, or a legacy row with applied_by = NULL serialized via @JsonInclude(NON_NULL)) throws
+   * "Non-existing name/value pair in the object for key appliedBy" — see issue #28038.
+   */
+  @Test
+  void applyPatchFiltersTagAuditFieldOps() {
+    JsonObjectBuilder tag =
+        Json.createObjectBuilder()
+            .add("tagFQN", "PII.Sensitive")
+            .add("source", "Classification")
+            .add("labelType", "Derived")
+            .add("state", "Confirmed");
+    JsonObjectBuilder entity =
+        Json.createObjectBuilder().add("tags", Json.createArrayBuilder().add(tag));
+
+    JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
+    patchBuilder.remove("/tags/0/appliedBy");
+    patchBuilder.remove("/tags/0/appliedAt");
+    patchBuilder.replace("/tags/0/state", "Suggested");
+
+    JsonValue result = JsonUtils.applyPatch(entity.build(), patchBuilder.build());
+    JsonObject patched = result.asJsonObject();
+    JsonObject patchedTag = patched.getJsonArray("tags").getJsonObject(0);
+
+    assertEquals("Suggested", patchedTag.getString("state"));
+    assertFalse(patchedTag.containsKey("appliedBy"));
+    assertFalse(patchedTag.containsKey("appliedAt"));
   }
 
   @Test

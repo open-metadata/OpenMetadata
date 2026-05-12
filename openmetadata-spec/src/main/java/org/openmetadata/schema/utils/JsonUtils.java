@@ -373,6 +373,13 @@ public final class JsonUtils {
     if (path.endsWith("href")) {
       return true;
     }
+    // Tag audit fields (appliedBy / appliedAt) are server-managed. Filter patch ops on
+    // them so a UI that retained a server-stamped value in local state cannot emit a
+    // "remove" against a target whose loaded copy doesn't carry the key (e.g. derived
+    // tags or legacy tag_usage rows). See issue #28038.
+    if (path.endsWith("/appliedBy") || path.endsWith("/appliedAt")) {
+      return true;
+    }
     return READ_ONLY_PATCH_ROOT_FIELDS.stream()
         .anyMatch(root -> path.equals(root) || path.startsWith(root + "/"));
   }

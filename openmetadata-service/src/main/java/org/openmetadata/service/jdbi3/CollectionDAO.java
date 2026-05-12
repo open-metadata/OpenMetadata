@@ -6459,7 +6459,8 @@ public interface CollectionDAO {
                 .withLabelType(TagLabel.LabelType.DERIVED)
                 .withState(TagLabel.State.values()[usage.getState()])
                 .withReason(usage.getReason())
-                .withAppliedAt(usage.toTagLabel().getAppliedAt());
+                .withAppliedAt(usage.toTagLabel().getAppliedAt())
+                .withAppliedBy(usage.toTagLabel().getAppliedBy());
         if (usage.getReason() != null) {
           tagLabel.withReason(usage.getReason());
         }
