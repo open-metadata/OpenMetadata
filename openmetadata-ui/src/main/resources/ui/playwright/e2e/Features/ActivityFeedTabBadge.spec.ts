@@ -18,8 +18,6 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { waitForPageLoaded } from '../../utils/polling';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
 async function createOpenTask(
   apiContext: Awaited<ReturnType<typeof performAdminLogin>>['apiContext'],
   tableFqn: string,
