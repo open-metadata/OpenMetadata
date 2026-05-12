@@ -1345,9 +1345,18 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     TaskEntityStatus status = task.getStatus();
     if (status == TaskEntityStatus.Open
         || status == TaskEntityStatus.InProgress
-        || status == TaskEntityStatus.Pending
-        || status == TaskEntityStatus.Approved
-        || status == TaskEntityStatus.Granted) {
+        || status == TaskEntityStatus.Pending) {
+      return;
+    }
+
+    // Approved and Granted are non-terminal only for workflows that expose further
+    // transitions out of them (Data Access Request: Approved → markAsGranted/revoke,
+    // Granted → revoke). For workflows where Approved is terminal (Glossary,
+    // DescriptionUpdate, etc.), availableTransitions is empty and the task must stay
+    // closed — re-resolving it would re-run postUpdate hooks and clobber resolution.
+    if ((status == TaskEntityStatus.Approved || status == TaskEntityStatus.Granted)
+        && task.getAvailableTransitions() != null
+        && !task.getAvailableTransitions().isEmpty()) {
       return;
     }
 

@@ -35,6 +35,46 @@ CREATE TABLE IF NOT EXISTS task_entity (
     KEY idx_approved_by_id (approvedById)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- For 2.0.0 environments that ran the CREATE TABLE above before the
+-- approvedById generated column was added inline, attach it now. CREATE TABLE
+-- IF NOT EXISTS is a no-op on those environments so the column would never
+-- appear otherwise. MySQL doesn't reliably support `ADD COLUMN IF NOT EXISTS`
+-- across 8.0 versions and has no `ADD KEY IF NOT EXISTS`, so guard both via
+-- information_schema.
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'task_entity'
+        AND column_name = 'approvedById'
+    ),
+    'SELECT 1',
+    'ALTER TABLE task_entity ADD COLUMN approvedById varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4''$.approvedById''))) STORED'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'task_entity'
+        AND index_name = 'idx_approved_by_id'
+    ),
+    'SELECT 1',
+    'ALTER TABLE task_entity ADD KEY idx_approved_by_id (approvedById)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 CREATE TABLE IF NOT EXISTS new_task_sequence (
     id bigint NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

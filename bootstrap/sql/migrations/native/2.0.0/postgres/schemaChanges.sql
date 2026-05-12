@@ -36,6 +36,14 @@ CREATE INDEX IF NOT EXISTS idx_task_created_by_id ON task_entity (createdbyid);
 CREATE INDEX IF NOT EXISTS idx_task_created_by_category ON task_entity (createdbyid, category);
 CREATE INDEX IF NOT EXISTS idx_task_approved_by_id ON task_entity (approvedbyid);
 
+-- For 2.0.0 environments that ran the CREATE TABLE above before the
+-- approvedbyid generated column was added inline, attach it now. CREATE TABLE
+-- IF NOT EXISTS is a no-op on those environments so the column would never
+-- appear otherwise. Postgres supports `ADD COLUMN IF NOT EXISTS` natively.
+ALTER TABLE task_entity
+    ADD COLUMN IF NOT EXISTS approvedbyid character varying(36)
+        GENERATED ALWAYS AS ((json ->> 'approvedById'::text)) STORED;
+
 CREATE TABLE IF NOT EXISTS new_task_sequence (
     id bigint NOT NULL DEFAULT 0
 );
