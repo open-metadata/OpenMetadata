@@ -50,11 +50,23 @@ signature (`DatabaseClass`, `DatabaseSchemaClass` today) aren't covered yet
 | ApiEndpoint | `ApiEndpoint.spec.ts` |
 | StoredProcedure | `StoredProcedure.spec.ts` |
 | Metric | `Metric.spec.ts` |
+| Database | `Database.spec.ts` |
+| DatabaseSchema | `DatabaseSchema.spec.ts` |
+
+## Painless-mutation cascade
+
+`GlossaryRenameCascade.spec.ts` covers the live-update path that uses a
+painless script rather than a full-doc rebuild: renaming a glossary term
+fires `UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT` against every doc
+tagged with the term. The script mutates `tags[]` in place and, because
+`TAG_RESEPARATION_SCRIPT` is appended, also re-derives `tier`,
+`classificationTags`, `glossaryTags` from the updated `tags[]`. If the
+reseparation snippet is dropped from any tag-mutating script, this spec
+fails — `glossaryTags[]` will keep the old FQN while `tags[]` has the new
+one.
 
 ## Not yet covered
 
-- `Database`, `DatabaseSchema` — entity classes use a positional `patch`
-  signature; needs adapter or class normalization.
 - Service-level entities (`DatabaseService`, etc.) — covered by entity-level
   specs through cascade; if a service-specific filter regression surfaces,
   add an explicit spec here.
