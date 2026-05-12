@@ -298,29 +298,6 @@ class TopologyRunnerMixin(Generic[C]):
             logger.debug(traceback.format_exc())
             logger.error(f"Error running stage processor: {exc}")
 
-    @staticmethod
-    def _entity_request_label(entity_request: Any, stage: NodeStage) -> str:
-        """Best-effort human-readable label for a yielded entity_request, used in error reporting.
-
-        Accepts ``Any`` because the per-stage iteration is typed loosely
-        (`Entity`/`Either[C]` are used interchangeably across the codebase),
-        and this helper is purely for log/error-message decoration — it must
-        never raise.
-        """
-        fallback = f"Stage {stage.processor}"
-        if entity_request is None:
-            return fallback
-        right = getattr(entity_request, "right", None)
-        if right is None:
-            return fallback
-        name_attr = getattr(right, "name", None)
-        if name_attr is None:
-            return fallback
-        try:
-            return model_str(name_attr)
-        except Exception:
-            return repr(name_attr)
-
     def _process_stage(self, stage: NodeStage, node_entity: Any, child_nodes: List[TopologyNode]) -> Iterable[Entity]:  # noqa: UP006
         """
         For each entity produced in the Node Producer, iterate over all the Node's Stages and
@@ -338,10 +315,9 @@ class TopologyRunnerMixin(Generic[C]):
             try:
                 # yield and make sure the data is updated
                 yield from self.sink_request(stage=stage, entity_request=entity_request)
-            except Exception as err:
-                entity_label = self._entity_request_label(entity_request, stage)
+            except ValueError as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error sinking entity [{entity_label}] in stage [{stage.processor}]: {err}")
+                logger.warning(f"Unexpected value error when processing stage: [{stage}]: {err}")
 
         if stage.cache_entities:
             self._init_cache_dict(stage=stage, child_nodes=child_nodes)
