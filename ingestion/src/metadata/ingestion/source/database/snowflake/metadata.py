@@ -689,14 +689,14 @@ class SnowflakeSource(
         )
 
         deleted_fqns = []
-        for table in snowflake_tables.get_deleted():
+        for table in snowflake_tables.get_deleted():  # pyright: ignore[reportAttributeAccessIssue]
             try:
                 deleted_fqns.append(
                     fqn.build(
                         metadata=self.metadata,
                         entity_type=Table,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
+                        service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                        database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
                         schema_name=schema_name,
                         table_name=table.name,
                     )
@@ -706,7 +706,7 @@ class SnowflakeSource(
                 logger.debug(traceback.format_exc())
         self.context.get_global().deleted_tables.extend(deleted_fqns)
 
-        return [TableNameAndType(name=table.name, type_=table.type_) for table in snowflake_tables.get_not_deleted()]
+        return [TableNameAndType(name=table.name, type_=table.type_) for table in snowflake_tables.get_not_deleted()]  # pyright: ignore[reportAttributeAccessIssue]
 
     def _get_stream_names_and_types(self, schema_name: str) -> List[TableNameAndType]:  # noqa: UP006
         table_type = TableType.Stream

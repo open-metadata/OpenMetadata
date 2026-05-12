@@ -353,7 +353,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
             for table_name in self.inspector.get_view_names(schema_name) or []
         ]
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:  # noqa: UP006, UP045
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, TableType]]]:  # noqa: UP006, UP045
         """
         Handle table and views.
 
@@ -392,9 +392,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                         )
                         continue
                 except Exception as err:
-                    logger.warning(
-                        f"Skipping table {table_and_type.name!r} in schema {schema_name} due to - {err}"
-                    )
+                    logger.warning(f"Skipping table {table_and_type.name!r} in schema {schema_name} due to - {err}")
                     logger.debug(traceback.format_exc())
                     continue
                 yield table_name, table_and_type.type_
@@ -428,9 +426,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                         )
                         continue
                 except Exception as err:
-                    logger.warning(
-                        f"Skipping view {view_and_type.name!r} in schema {schema_name} due to - {err}"
-                    )
+                    logger.warning(f"Skipping view {view_and_type.name!r} in schema {schema_name} due to - {err}")
                     logger.debug(traceback.format_exc())
                     continue
                 yield view_name, view_and_type.type_

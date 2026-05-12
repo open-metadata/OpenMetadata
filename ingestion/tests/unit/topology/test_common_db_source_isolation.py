@@ -76,10 +76,13 @@ def test_get_tables_name_and_type_isolates_failed_table(caplog, source):
     source.query_view_names_and_types = MagicMock(return_value=[])
     source.standardize_table_name = lambda _schema, name: name
 
-    with patch(
-        "metadata.ingestion.source.database.common_db_source.fqn.build",
-        side_effect=_fqn_side_effect(bad_name='BAD"NAME'),
-    ), caplog.at_level(logging.WARNING, logger="metadata.Ingestion"):
+    with (
+        patch(
+            "metadata.ingestion.source.database.common_db_source.fqn.build",
+            side_effect=_fqn_side_effect(bad_name='BAD"NAME'),
+        ),
+        caplog.at_level(logging.WARNING, logger="metadata.Ingestion"),
+    ):
         yielded = list(source.get_tables_name_and_type())
 
     assert [(n, t) for n, t in yielded] == [
@@ -106,10 +109,13 @@ def test_get_tables_name_and_type_isolates_failed_view(caplog, source):
     )
     source.standardize_table_name = lambda _schema, name: name
 
-    with patch(
-        "metadata.ingestion.source.database.common_db_source.fqn.build",
-        side_effect=_fqn_side_effect(bad_name='V"BAD'),
-    ), caplog.at_level(logging.WARNING, logger="metadata.Ingestion"):
+    with (
+        patch(
+            "metadata.ingestion.source.database.common_db_source.fqn.build",
+            side_effect=_fqn_side_effect(bad_name='V"BAD'),
+        ),
+        caplog.at_level(logging.WARNING, logger="metadata.Ingestion"),
+    ):
         yielded = list(source.get_tables_name_and_type())
 
     assert yielded == [("V_GOOD", TableType.View)]
