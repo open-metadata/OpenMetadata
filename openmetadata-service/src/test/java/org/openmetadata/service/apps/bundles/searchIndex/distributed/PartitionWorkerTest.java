@@ -64,6 +64,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
+import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageCounter;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
 import org.openmetadata.service.exception.SearchIndexException;
@@ -83,7 +84,7 @@ class PartitionWorkerTest {
   @Mock private CollectionDAO collectionDAO;
   @Mock private CollectionDAO.SearchIndexServerStatsDAO searchIndexServerStatsDAO;
   @Mock private BulkSink bulkSink;
-  @Mock private ReindexContext recreateContext;
+  @Mock private ReindexContext stagedIndexContext;
   @Mock private ReindexingConfiguration reindexingConfiguration;
 
   private PartitionWorker worker;
@@ -93,7 +94,10 @@ class PartitionWorkerTest {
 
   @BeforeEach
   void setUp() {
-    worker = new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, recreateContext, false);
+    when(stagedIndexContext.getStagedIndex(any()))
+        .thenAnswer(
+            invocation -> Optional.of(invocation.getArgument(0, String.class) + "_staging"));
+    worker = new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, stagedIndexContext);
   }
 
   @Test
@@ -144,14 +148,14 @@ class PartitionWorkerTest {
   @Test
   void testWorkerWithDifferentConfigurations() {
     PartitionWorker workerWithRecreate =
-        new PartitionWorker(coordinator, bulkSink, 200, recreateContext, true);
+        new PartitionWorker(coordinator, bulkSink, 200, stagedIndexContext);
 
     assertFalse(workerWithRecreate.isStopped());
 
-    PartitionWorker workerWithoutContext =
-        new PartitionWorker(coordinator, bulkSink, 50, null, false);
+    PartitionWorker workerWithSmallBatch =
+        new PartitionWorker(coordinator, bulkSink, 50, stagedIndexContext);
 
-    assertFalse(workerWithoutContext.isStopped());
+    assertFalse(workerWithSmallBatch.isStopped());
   }
 
   @Test
@@ -397,17 +401,17 @@ class PartitionWorkerTest {
   }
 
   @Test
-  void createContextDataIncludesRecreateContextTargetIndexAndStatsTracker() throws Exception {
-    PartitionWorker recreateWorker =
-        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, recreateContext, true);
+  void createContextDataIncludesStagedContextTargetIndexAndStatsTracker() throws Exception {
+    PartitionWorker stagedWorker =
+        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, stagedIndexContext);
     StageStatsTracker statsTracker = mock(StageStatsTracker.class);
-    when(recreateContext.getStagedIndex("table")).thenReturn(Optional.of("table_staging"));
+    when(stagedIndexContext.getStagedIndex("table")).thenReturn(Optional.of("table_staging"));
 
     @SuppressWarnings("unchecked")
     Map<String, Object> contextData =
         (Map<String, Object>)
             invokePrivate(
-                recreateWorker,
+                stagedWorker,
                 "createContextData",
                 new Class<?>[] {String.class, StageStatsTracker.class},
                 "table",
@@ -416,8 +420,29 @@ class PartitionWorkerTest {
     assertEquals("table", contextData.get("entityType"));
     assertEquals(Boolean.TRUE, contextData.get("recreateIndex"));
     assertEquals(statsTracker, contextData.get(BulkSink.STATS_TRACKER_CONTEXT_KEY));
-    assertEquals(recreateContext, contextData.get("recreateContext"));
+    assertEquals(stagedIndexContext, contextData.get("recreateContext"));
     assertEquals("table_staging", contextData.get("targetIndex"));
+  }
+
+  @Test
+  void createContextDataNormalizesLegacyEntityAliasesBeforeStagedIndexLookup() throws Exception {
+    when(stagedIndexContext.getStagedIndex(Entity.QUERY_COST_RECORD))
+        .thenReturn(Optional.of("query_cost_record_staging"));
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> contextData =
+        (Map<String, Object>)
+            invokePrivate(
+                worker,
+                "createContextData",
+                new Class<?>[] {String.class, StageStatsTracker.class},
+                SearchIndexEntityTypes.QUERY_COST_RESULT,
+                null);
+
+    assertEquals(Entity.QUERY_COST_RECORD, contextData.get("entityType"));
+    assertEquals("query_cost_record_staging", contextData.get("targetIndex"));
+    verify(stagedIndexContext).getStagedIndex(Entity.QUERY_COST_RECORD);
+    verify(stagedIndexContext, never()).getStagedIndex(SearchIndexEntityTypes.QUERY_COST_RESULT);
   }
 
   @Test
@@ -425,7 +450,7 @@ class PartitionWorkerTest {
     IndexingFailureRecorder failureRecorder = mock(IndexingFailureRecorder.class);
     StageStatsTracker statsTracker = mock(StageStatsTracker.class);
     PartitionWorker batchWorker =
-        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false, failureRecorder);
+        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, stagedIndexContext, failureRecorder);
 
     EntityInterface entityOne = mock(EntityInterface.class);
     EntityInterface entityTwo = mock(EntityInterface.class);
@@ -464,7 +489,7 @@ class PartitionWorkerTest {
     verify(bulkSink).write(entitiesCaptor.capture(), contextCaptor.capture());
     assertEquals(List.of(entityOne, entityTwo), entitiesCaptor.getValue());
     assertEquals("table", contextCaptor.getValue().get("entityType"));
-    assertEquals(Boolean.FALSE, contextCaptor.getValue().get("recreateIndex"));
+    assertEquals(Boolean.TRUE, contextCaptor.getValue().get("recreateIndex"));
     assertEquals(statsTracker, contextCaptor.getValue().get(BulkSink.STATS_TRACKER_CONTEXT_KEY));
   }
 
@@ -473,7 +498,7 @@ class PartitionWorkerTest {
     IndexingFailureRecorder failureRecorder = mock(IndexingFailureRecorder.class);
     StageStatsTracker statsTracker = mock(StageStatsTracker.class);
     PartitionWorker batchWorker =
-        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false, failureRecorder);
+        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, stagedIndexContext, failureRecorder);
 
     UUID errorEntityId = UUID.randomUUID();
     EntityInterface failingEntity = mock(EntityInterface.class);
@@ -504,7 +529,7 @@ class PartitionWorkerTest {
     IndexingFailureRecorder failureRecorder = mock(IndexingFailureRecorder.class);
     StageStatsTracker statsTracker = mock(StageStatsTracker.class);
     PartitionWorker batchWorker =
-        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false, failureRecorder);
+        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, stagedIndexContext, failureRecorder);
 
     EntityInterface failingEntity = mock(EntityInterface.class);
     when(failingEntity.getId()).thenReturn(null);
@@ -531,7 +556,7 @@ class PartitionWorkerTest {
   @Test
   void processBatchWrapsSinkFailuresAsSearchIndexException() throws Exception {
     PartitionWorker batchWorker =
-        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false);
+        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, stagedIndexContext);
     ResultList<EntityInterface> resultList = new ResultList<>();
     resultList.setData(List.of(mock(EntityInterface.class)));
 
@@ -617,7 +642,7 @@ class PartitionWorkerTest {
   void readEntitiesKeysetUsesTimeSeriesSourceWithConfiguredWindow() throws Exception {
     PartitionWorker timeSeriesWorker =
         new PartitionWorker(
-            coordinator, bulkSink, BATCH_SIZE, null, false, null, reindexingConfiguration);
+            coordinator, bulkSink, BATCH_SIZE, stagedIndexContext, null, reindexingConfiguration);
     when(reindexingConfiguration.getTimeSeriesStartTs(Entity.QUERY_COST_RECORD)).thenReturn(100L);
 
     ResultList<EntityTimeSeriesInterface> resultList = new ResultList<>();
@@ -639,6 +664,43 @@ class PartitionWorkerTest {
               "readEntitiesKeyset",
               new Class<?>[] {String.class, String.class, int.class},
               Entity.QUERY_COST_RECORD,
+              "cursor",
+              3));
+    }
+
+    assertEquals(Entity.QUERY_COST_RECORD, constructorArgs.get().get(0));
+    assertEquals(3, constructorArgs.get().get(1));
+    assertEquals(List.of(), constructorArgs.get().get(2));
+    assertEquals(100L, constructorArgs.get().get(3));
+    assertNotNull(constructorArgs.get().get(4));
+  }
+
+  @Test
+  void readEntitiesKeysetNormalizesLegacyTimeSeriesAliases() throws Exception {
+    PartitionWorker timeSeriesWorker =
+        new PartitionWorker(
+            coordinator, bulkSink, BATCH_SIZE, stagedIndexContext, null, reindexingConfiguration);
+    when(reindexingConfiguration.getTimeSeriesStartTs(Entity.QUERY_COST_RECORD)).thenReturn(100L);
+
+    ResultList<EntityTimeSeriesInterface> resultList = new ResultList<>();
+    resultList.setData(List.of(mock(EntityTimeSeriesInterface.class)));
+    AtomicReference<List<?>> constructorArgs = new AtomicReference<>();
+
+    try (MockedConstruction<PaginatedEntityTimeSeriesSource> ignored =
+        mockConstruction(
+            PaginatedEntityTimeSeriesSource.class,
+            (mock, context) -> {
+              constructorArgs.set(List.copyOf(context.arguments()));
+              doReturn(resultList).when(mock).readWithCursor("cursor");
+            })) {
+
+      assertEquals(
+          resultList,
+          invokePrivate(
+              timeSeriesWorker,
+              "readEntitiesKeyset",
+              new Class<?>[] {String.class, String.class, int.class},
+              SearchIndexEntityTypes.QUERY_COST_RESULT,
               "cursor",
               3));
     }
@@ -691,7 +753,7 @@ class PartitionWorkerTest {
   @Test
   void processPartitionKeepsProgressStatusProcessingAndCompletesSuccessfully() {
     PartitionWorker partitionWorker =
-        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false);
+        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, stagedIndexContext);
     SearchIndexPartition partition = buildPartition("table", 0, 2);
 
     ResultList<EntityInterface> resultList = new ResultList<>();
@@ -733,7 +795,7 @@ class PartitionWorkerTest {
   @Test
   void processPartitionTracksReaderFailuresAndCompletesWithFailedCounts() {
     PartitionWorker partitionWorker =
-        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false);
+        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, stagedIndexContext);
     SearchIndexPartition partition = buildPartition("table", 0, 2);
 
     SearchIndexException readerFailure =
@@ -773,7 +835,7 @@ class PartitionWorkerTest {
   @Test
   void processPartitionStopsAfterReadWhenStopRequestedMidLoop() {
     PartitionWorker partitionWorker =
-        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false);
+        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, stagedIndexContext);
     SearchIndexPartition partition = buildPartition("table", 0, 2);
 
     ResultList<EntityInterface> resultList = new ResultList<>();
@@ -817,7 +879,7 @@ class PartitionWorkerTest {
   void processPartitionRecordsSinkFailuresAndStopsWhenCursorCannotBeRebuilt() throws Exception {
     IndexingFailureRecorder failureRecorder = mock(IndexingFailureRecorder.class);
     PartitionWorker partitionWorker =
-        new PartitionWorker(coordinator, bulkSink, 2, null, false, failureRecorder);
+        new PartitionWorker(coordinator, bulkSink, 2, stagedIndexContext, failureRecorder);
     SearchIndexPartition partition = buildPartition("table", 0, 4);
 
     ResultList<EntityInterface> resultList = new ResultList<>();
@@ -867,7 +929,8 @@ class PartitionWorkerTest {
 
   @Test
   void processPartitionAdjustsSuccessCountsForProcessFailures() {
-    PartitionWorker partitionWorker = new PartitionWorker(coordinator, bulkSink, 2, null, false);
+    PartitionWorker partitionWorker =
+        new PartitionWorker(coordinator, bulkSink, 2, stagedIndexContext);
     SearchIndexPartition partition = buildPartition("table", 0, 2);
 
     ResultList<EntityInterface> resultList = new ResultList<>();
@@ -911,7 +974,8 @@ class PartitionWorkerTest {
 
   @Test
   void processPartitionFailsPartitionWhenCompletionThrows() {
-    PartitionWorker partitionWorker = new PartitionWorker(coordinator, bulkSink, 2, null, false);
+    PartitionWorker partitionWorker =
+        new PartitionWorker(coordinator, bulkSink, 2, stagedIndexContext);
     SearchIndexPartition partition = buildPartition("table", 0, 1);
 
     ResultList<EntityInterface> resultList = new ResultList<>();

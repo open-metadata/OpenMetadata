@@ -300,6 +300,8 @@ export interface ServiceConnection {
  *
  * IOMETE Connection Config
  *
+ * QuestDB Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -665,6 +667,8 @@ export interface ConfigObject {
      *
      * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
      *
+     * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
+     *
      * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
@@ -920,6 +924,8 @@ export interface ConfigObject {
      * metadata in Informix.
      *
      * Username to connect to IOMETE.
+     *
+     * Username to connect to QuestDB.
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -4765,6 +4771,8 @@ export enum ConfigScheme {
  * Recreate Indexes with updated Language
  *
  * This schema defines the language options available for search index mappings.
+ *
+ * Search index mapping language.
  */
 export enum SearchIndexMappingLanguage {
     En = "EN",
@@ -5168,6 +5176,7 @@ export enum PurpleType {
     PubSub = "PubSub",
     QlikCloud = "QlikCloud",
     QlikSense = "QlikSense",
+    QuestDB = "QuestDB",
     QuickSight = "QuickSight",
     REST = "Rest",
     Ranger = "Ranger",
@@ -6037,11 +6046,7 @@ export interface CollateAIAppConfig {
      */
     queueSize?: number;
     /**
-     * This schema publisher run modes.
-     */
-    recreateIndex?: boolean;
-    /**
-     * Recreate Indexes with updated Language
+     * Search index mapping language.
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
@@ -6055,11 +6060,6 @@ export interface CollateAIAppConfig {
      * Set to a positive value like 15 to limit to recent data only.
      */
     timeSeriesMaxDays?: number;
-    /**
-     * Enable distributed indexing to scale reindexing across multiple servers with fault
-     * tolerance and parallel processing
-     */
-    useDistributedIndexing?: boolean;
     /**
      * In multi-instance deployments, claim each entity type via Redis SETNX so only one
      * instance warms it. Disable to let every instance warm independently (idempotent but
