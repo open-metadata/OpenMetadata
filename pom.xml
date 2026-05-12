@@ -135,7 +135,7 @@
     <freemarker.version>2.3.33</freemarker.version>
     <passay.version>1.6.6</passay.version>
     <bcrypt.version>0.10.2</bcrypt.version>
-    <simplejavamail.version>8.12.2</simplejavamail.version>
+    <simplejavamail.version>8.12.6</simplejavamail.version>
     <dropwizardkafka.version>1.8.0</dropwizardkafka.version>
     <maven-release-plugin.version>3.0.1</maven-release-plugin.version>
     <unboundsdk.version>6.0.11</unboundsdk.version>
@@ -184,12 +184,19 @@
       <dependency>
         <groupId>io.projectreactor.netty</groupId>
         <artifactId>reactor-netty-http</artifactId>
-        <version>1.2.14</version>
+        <version>1.2.16</version>
       </dependency>
       <dependency>
         <groupId>org.eclipse.angus</groupId>
         <artifactId>angus-mail</artifactId>
         <version>${angus-mail.version}</version>
+      </dependency>
+      <!-- CVE-2026-43869: pin to 0.23.0. No Jena release ships the fix yet (6.0.0 still uses 0.22.0).
+           Excluding libthrift breaks RDF tests — Jena's ModelFactory statically references TException. -->
+      <dependency>
+        <groupId>org.apache.thrift</groupId>
+        <artifactId>libthrift</artifactId>
+        <version>0.23.0</version>
       </dependency>
       <dependency>
         <groupId>org.antlr</groupId>
@@ -758,7 +765,7 @@
         <enabled>false</enabled>
       </snapshots>
       <id>central</id>
-      <url>https://repo1.maven.org/maven2/</url>
+      <url>https://repo.maven.apache.org/maven2/</url>
     </repository>
     <repository>
       <releases>

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { ArrayFieldTemplateProps } from '@rjsf/utils';
 import { Plus, Trash01 } from '@untitledui/icons';
 import { Fragment, FunctionComponent } from 'react';
@@ -24,10 +24,14 @@ export const CoreArrayFieldTemplate: FunctionComponent<
 
   return (
     <Fragment>
-      <div className="tw:flex tw:items-center tw:justify-between">
-        <label className="tw:text-sm tw:font-medium tw:text-[var(--color-text-primary)]">
+      <div className="tw:flex tw:items-center tw:justify-between tw:bg-utility-gray-blue-50">
+        <Typography
+          as="label"
+          className="tw:text-primary"
+          size="text-sm"
+          weight="medium">
           {title}
-        </label>
+        </Typography>
         {canAdd && (
           <Button
             aria-label={t('label.add-entity', { entity: title })}
@@ -48,15 +52,17 @@ export const CoreArrayFieldTemplate: FunctionComponent<
           key={`${element.key}-${index}`}>
           <div className="tw:flex-1">{element.children}</div>
           {element.hasRemove && (
-            <button
+            <Button
               aria-label={t('label.remove')}
-              className="tw:ml-2 tw:flex tw:items-center tw:text-[var(--color-text-error-primary)] hover:tw:opacity-80"
+              className="tw:ml-2"
+              color="secondary"
+              size="sm"
               type="button"
-              onClick={(event) =>
+              onClick={(event: React.MouseEvent<HTMLButtonElement>) =>
                 element.onDropIndexClick(element.index)(event)
               }>
-              <Trash01 size={16} />
-            </button>
+              <Trash01 data-icon size={16} />
+            </Button>
           )}
         </div>
       ))}
