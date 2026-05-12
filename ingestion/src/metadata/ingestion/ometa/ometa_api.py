@@ -760,6 +760,25 @@ class OpenMetadata(
         url += f"&hardDelete={str(hard_delete).lower()}"
         self.client.delete(url)
 
+    def delete_async(
+        self,
+        entity: Type[T],  # noqa: UP006
+        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+        recursive: bool = False,
+        hard_delete: bool = False,
+    ) -> Optional[dict]:  # noqa: UP045
+        """Server-side async delete.
+
+        Issues ``DELETE /<entity>/<id>?recursive=...&hardDelete=...&async=true`` and returns
+        the 202 payload ``{"jobId": ..., "message": ...}``. The actual cascade runs on the
+        server's executor so ingestion can avoid blocking on large hierarchies. Caller is
+        responsible for tracking the returned ``jobId`` if it needs completion confirmation.
+        """
+        url = f"{self.get_suffix(entity)}/async/{model_str(entity_id)}"
+        url += f"?recursive={str(recursive).lower()}"
+        url += f"&hardDelete={str(hard_delete).lower()}"
+        return self.client.delete(url)
+
     def restore(
         self,
         entity: Type[T],  # noqa: UP006
@@ -793,6 +812,22 @@ class OpenMetadata(
                 err,
             )
             return None
+
+    def restore_async(
+        self,
+        entity: Type[T],  # noqa: UP006
+        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+    ) -> Optional[dict]:  # noqa: UP045
+        """Server-side async restore.
+
+        Issues ``PUT /<entity>/restore?async=true`` and returns the 202 payload
+        ``{"jobId": ..., "message": ...}``. Use this when restoring entities with large
+        subtrees so ingestion doesn't block on the cascade (issue #4003). Caller is
+        responsible for tracking the returned ``jobId`` if it needs completion confirmation.
+        """
+        url = f"{self.get_suffix(entity)}/restore?async=true"
+        data = {"id": model_str(entity_id)}
+        return self.client.put(url, json=data)
 
     def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:  # noqa: UP006, UP007
         """

@@ -72,7 +72,9 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheProvider;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -805,11 +807,24 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    // Cheap pre-check so we return 404 synchronously instead of 202 + delayed WebSocket
-    // FAILED for an entity that doesn't exist or isn't soft-deleted. Avoids spinning up
-    // an executor task for a request that can't succeed. Capturing the entity now also
-    // gives us a meaningful name for any later FAILED notification.
-    T preCheck = repository.find(id, Include.DELETED);
+    // Cheap pre-check so we return a synchronous error instead of 202 + delayed WebSocket
+    // FAILED for a request that can't succeed. Distinguish the two failure modes that the
+    // raw EntityNotFoundException would conflate: 404 if the entity truly doesn't exist
+    // (Include.ALL still finds nothing) and 400 if it exists but is already restored.
+    // Capturing the entity here also yields a meaningful name for any later FAILED
+    // notification.
+    T preCheck;
+    try {
+      preCheck = repository.find(id, Include.DELETED);
+    } catch (EntityNotFoundException notDeleted) {
+      try {
+        repository.find(id, Include.ALL);
+        throw new BadRequestException(
+            String.format("Entity %s:%s is not in deleted state", entityType, id));
+      } catch (EntityNotFoundException missing) {
+        throw notDeleted;
+      }
+    }
     String entityName = preCheck.getName() != null ? preCheck.getName() : id.toString();
     String jobId = UUID.randomUUID().toString();
     String userName = securityContext.getUserPrincipal().getName();

@@ -585,11 +585,27 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
     @_run_dispatch.register
     def delete_entity(self, record: DeleteEntity) -> Either[Entity]:
-        self.metadata.delete(
-            entity=type(record.entity),
-            entity_id=record.entity.id,
-            recursive=record.mark_deleted_entities,
-        )
+        if record.dispatch_async:
+            # Server-side async cascade — returns 202 + jobId immediately so ingestion
+            # doesn't block on large subtrees (issue #4003). The actual work runs on the
+            # server's executor; we surface the jobId in the log for operator correlation.
+            response = self.metadata.delete_async(
+                entity=type(record.entity),
+                entity_id=record.entity.id,
+                recursive=record.mark_deleted_entities,
+            )
+            job_id = (response or {}).get("jobId")
+            logger.debug(
+                "Dispatched async delete for %s (jobId=%s)",
+                record.entity.fullyQualifiedName.root,
+                job_id,
+            )
+        else:
+            self.metadata.delete(
+                entity=type(record.entity),
+                entity_id=record.entity.id,
+                recursive=record.mark_deleted_entities,
+            )
         return Either(right=record)
 
     @_run_dispatch.register

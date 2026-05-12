@@ -5596,6 +5596,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * via HAS) should implement the {@link #restoreAdditionalChildren(UUID, String)} hook —
    * the CONTAINS subtree is restored by the bulk path itself, so per-entity overrides of
    * {@code restoreChildren} are no longer invoked from inside the bulk walk.
+   *
+   * <p><b>Operational ceiling:</b> the entire walk runs inside a single JDBI
+   * {@code @Transaction}, which holds one connection from the pool for the duration. The
+   * async restore endpoint ({@code ?async=true}) moves the work onto a virtual thread but
+   * keeps the same single-transaction shape — it just lets the client get a 202 back. For
+   * databases on the order of tens of thousands of descendants this still completes well
+   * inside the JDBI default lock-wait, but operators running concurrent restores against a
+   * small DB pool should size {@code maxConcurrency} on {@link
+   * org.openmetadata.service.util.AsyncService} accordingly. Chunked-transaction support is
+   * tracked as a follow-up.
    */
   @Transaction
   public final void bulkRestoreSubtree(List<UUID> ids, String updatedBy) {
@@ -5703,6 +5713,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * hard-delete path (matches the existing per-entity {@code delete()} fallback). Subclasses
    * with non-CONTAINS linked entities should override
    * {@link #softDeleteAdditionalChildren(UUID, String)}.
+   *
+   * <p><b>Operational ceiling:</b> see {@link #bulkRestoreSubtree(List, String)} — the same
+   * single-{@code @Transaction} shape applies on the delete side. Chunked-transaction
+   * support is tracked as a follow-up.
    */
   @Transaction
   public final void bulkSoftDeleteSubtree(List<UUID> ids, String updatedBy) {
