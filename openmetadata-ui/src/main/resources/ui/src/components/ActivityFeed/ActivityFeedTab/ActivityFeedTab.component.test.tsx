@@ -235,7 +235,11 @@ describe('ActivityFeedTab', () => {
         )
       );
 
-      fireEvent.click(screen.getByTestId('closed-tasks'));
+      fireEvent.click(screen.getByTestId('user-profile-page-task-filter-icon'));
+
+      const closedItem = await screen.findByTestId('closed-tasks');
+
+      fireEvent.click(closedItem);
 
       await waitFor(() =>
         expect(screen.getByTestId('left-panel-task-count')).toHaveTextContent(
@@ -257,7 +261,15 @@ describe('ActivityFeedTab', () => {
     it('placeholder shows closed tasks message when Closed filter is selected', async () => {
       renderComponent(ActivityFeedTabs.TASKS);
 
-      fireEvent.click(screen.getByTestId('closed-tasks'));
+      await waitFor(() =>
+        expect(screen.getByTestId('user-profile-page-task-filter-icon')).toBeInTheDocument()
+      );
+
+      fireEvent.click(screen.getByTestId('user-profile-page-task-filter-icon'));
+
+      const closedItem = await screen.findByTestId('closed-tasks');
+
+      fireEvent.click(closedItem);
 
       await waitFor(() => {
         expect(
