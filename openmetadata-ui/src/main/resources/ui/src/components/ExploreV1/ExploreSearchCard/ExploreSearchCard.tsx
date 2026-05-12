@@ -31,7 +31,10 @@ import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import { TableColumnSearchSource } from '../../../interface/search.interface';
-import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
+import {
+  getEntityName,
+  highlightEntityNameAndDescription,
+} from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getUsagePercentile } from '../../../utils/TableUtils';
@@ -55,7 +58,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     {
       id,
       className,
-      source,
+      source: _source,
       matches,
       showEntityIcon,
       handleSummaryPanelDisplay,
@@ -66,8 +69,8 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       showCheckboxes = false,
       checked = false,
       onCheckboxChange,
-      searchValue,
       score,
+      highlight,
       classNameForBreadcrumb,
     },
     ref
@@ -75,6 +78,13 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const { t } = useTranslation();
     const { tab } = useRequiredParams<{ tab: string }>();
     const { isTourOpen } = useTourProvider();
+
+    const source = useMemo(() => {
+      return highlight
+        ? highlightEntityNameAndDescription(_source, highlight)
+        : _source;
+    }, [_source, highlight]);
+
     const otherDetails = useMemo(() => {
       if (source?.entityType === EntityType.TABLE_COLUMN) {
         const columnSource = source as TableColumnSearchSource;
@@ -267,15 +277,15 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         <Row gutter={[8, 8]}>
           {showCheckboxes && (
             <Col flex="25px">
-              <div onClick={(e) => e.stopPropagation()}>
-                <Checkbox
-                  checked={checked}
-                  className="assets-checkbox"
-                  onChange={(e) => {
-                    onCheckboxChange?.(e.target.checked);
-                  }}
-                />
-              </div>
+              <Checkbox
+                checked={checked}
+                className="assets-checkbox"
+                onChange={(e) => {
+                  onCheckboxChange?.(e.target.checked);
+                  e.stopPropagation();
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
             </Col>
           )}
           {!hideBreadcrumbs && (
@@ -313,12 +323,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 <Typography.Text
                   className="text-lg font-medium text-link-color"
                   data-testid="entity-header-display-name">
-                  {stringToHTML(
-                    highlightSearchText(
-                      searchClassBase.getEntityName(source),
-                      searchValue
-                    )
-                  )}
+                  {stringToHTML(searchClassBase.getEntityName(source))}
                 </Typography.Text>
               </Button>
             ) : (
@@ -340,12 +345,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                   <Typography.Text
                     className="text-lg font-medium text-link-color break-word whitespace-normal"
                     data-testid="entity-header-display-name">
-                    {stringToHTML(
-                      highlightSearchText(
-                        searchClassBase.getEntityName(source),
-                        searchValue
-                      )
-                    )}
+                    {stringToHTML(searchClassBase.getEntityName(source))}
                   </Typography.Text>
                 </Link>
 
@@ -396,10 +396,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
         <div className="p-t-sm">
           <TableDataCardBody
-            description={highlightSearchText(
-              source.description ?? '',
-              searchValue
-            )}
+            description={source.description ?? ''}
             extraInfo={otherDetails}
             tags={showTags ? source.tags : []}
           />
