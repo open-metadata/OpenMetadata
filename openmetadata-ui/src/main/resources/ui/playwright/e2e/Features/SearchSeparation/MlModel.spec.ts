@@ -11,21 +11,14 @@
  *  limitations under the License.
  */
 
-/**
- * Live-indexing + SearchIndexApp reindex parity for Table. Both paths must produce the same
- * separation: Tier on tier.tagFQN, Certification on certification.tagLabel.tagFQN, classification
- * and glossary tags in tags[]. See {@link registerFilterSeparationSuite} for the shared logic;
- * sibling specs in this folder cover other entity types via the same factory.
- */
-
 import { test } from '@playwright/test';
-import { TableClass } from '../../../support/entity/TableClass';
+import { MlModelClass } from '../../../support/entity/MlModelClass';
 import { registerFilterSeparationSuite } from '../../../utils/searchSeparation';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 registerFilterSeparationSuite({
-  suiteName: 'Table',
-  reindexEntityType: 'table',
-  entityFactory: () => new TableClass(),
+  suiteName: 'MlModel',
+  reindexEntityType: 'mlmodel',
+  entityFactory: () => new MlModelClass(),
 });
