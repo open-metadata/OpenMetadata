@@ -1083,6 +1083,50 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         "Patching entity with invalid tag should fail");
   }
 
+  /**
+   * Generic regression: adding a classification tag via PATCH must succeed for any entity
+   * regardless of which optional fields (columns, dataModel, etc.) are populated. New
+   * EntityRepository subclasses get this coverage automatically by extending BaseEntityIT.
+   */
+  @Test
+  void patch_addClassificationTag_200_OK(TestNamespace ns) {
+    if (!supportsTags || !supportsPatch) {
+      return;
+    }
+
+    T entity = createEntity(createMinimalRequest(ns));
+    TagLabel tag = personalDataTagLabel();
+    entity.setTags(List.of(tag));
+
+    T patched = patchEntity(entity.getId().toString(), entity);
+
+    T fetched = getEntityWithFields(patched.getId().toString(), "tags");
+    assertNotNull(fetched.getTags(), "tags should not be null after PATCH");
+    assertTagsContain(fetched.getTags(), List.of(tag));
+  }
+
+  /**
+   * Generic regression: adding a glossary term via PATCH must succeed for any entity. Mirrors
+   * the classification-tag test but with TagSource.GLOSSARY, which exercises a different
+   * server-side application path.
+   */
+  @Test
+  void patch_addGlossaryTerm_200_OK(TestNamespace ns) {
+    if (!supportsTags || !supportsPatch) {
+      return;
+    }
+
+    T entity = createEntity(createMinimalRequest(ns));
+    TagLabel term = glossaryTermLabel();
+    entity.setTags(List.of(term));
+
+    T patched = patchEntity(entity.getId().toString(), entity);
+
+    T fetched = getEntityWithFields(patched.getId().toString(), "tags");
+    assertNotNull(fetched.getTags(), "tags should not be null after PATCH");
+    assertTagsContain(fetched.getTags(), List.of(term));
+  }
+
   @Test
   void test_tagUpdateOptimization_PUT(TestNamespace ns) {
     if (!supportsTags) {
