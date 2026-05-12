@@ -44,6 +44,7 @@ class PowerBIUser(BaseModel):
     reportUserAccessRight: Optional[str] = None  # noqa: N815, UP045
     datasetUserAccessRight: Optional[str] = None  # noqa: N815, UP045
     dataflowUserAccessRight: Optional[str] = None  # noqa: N815, UP045
+    datamartUserAccessRight: Optional[str] = None  # noqa: N815, UP045
     dashboardUserAccessRight: Optional[str] = None  # noqa: N815, UP045
 
 
@@ -269,6 +270,27 @@ class Dataflow(BaseModel):
     upstreamDataflows: Optional[List[UpstreaDataflow]] = []  # noqa: N815, UP006, UP045
 
 
+class UpstreamDatamart(BaseModel):
+    groupId: Optional[str] = None  # noqa: N815, UP045
+    targetDatamartId: Optional[str] = None  # noqa: N815, UP045
+
+
+class Datamart(BaseModel):
+    """
+    PowerBI Datamart Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/workspace-info-get-scan-result
+    """
+
+    id: str
+    name: str
+    description: Optional[str] = None  # noqa: UP045
+    type: Optional[str] = None  # noqa: UP045
+    users: Optional[List[PowerBIUser]] = []  # noqa: UP006, UP045
+    configuredBy: Optional[str] = None  # noqa: N815, UP045
+    modifiedBy: Optional[str] = None  # noqa: N815, UP045
+    upstreamDatamarts: Optional[List[UpstreamDatamart]] = []  # noqa: N815, UP006, UP045
+
+
 class Group(BaseModel):
     """
     PowerBI Group Model
@@ -283,6 +305,7 @@ class Group(BaseModel):
     reports: Optional[List[PowerBIReport]] = []  # noqa: UP006, UP045
     datasets: Optional[List[Dataset]] = []  # noqa: UP006, UP045
     dataflows: Optional[List[Dataflow]] = []  # noqa: UP006, UP045
+    datamarts: Optional[List[Datamart]] = []  # noqa: UP006, UP045
 
 
 class GroupsResponse(BaseModel):

@@ -81,6 +81,7 @@ from metadata.ingestion.source.dashboard.powerbi.databricks_parser import (
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataflow,
     DataflowExportResponse,
+    Datamart,
     Dataset,
     Group,
     PowerBIDashboard,
@@ -373,6 +374,12 @@ class PowerbiSource(DashboardServiceSource):
             f"{workspace_id}/dataflows/{dataflow_id}?experience=power-bi"
         )
 
+    def _get_datamart_url(self, workspace_id: str, datamart_id: str) -> str:
+        """
+        Method to build the datamart url
+        """
+        return f"{clean_uri(self.service_connection.hostPort)}/groups/{workspace_id}/datamarts/{datamart_id}"
+
     def _get_chart_url(self, report_id: Optional[str], workspace_id: str, dashboard_id: str) -> str:  # noqa: UP045
         """
         Method to build the chart url
@@ -606,11 +613,15 @@ class PowerbiSource(DashboardServiceSource):
                 logger.warning(f"Error to yield dataflow entity column: {exc}")
         return datasource_columns
 
-    def _get_datamodels_list(self) -> List[Union[Dataset, Dataflow]]:  # noqa: UP006, UP007
+    def _get_datamodels_list(self) -> List[Union[Dataset, Dataflow, Datamart]]:  # noqa: UP006, UP007
         """
         Get All the Powerbi Datasets
         """
-        return self.context.get().workspace.datasets + self.context.get().workspace.dataflows
+        return (
+            self.context.get().workspace.datasets
+            + self.context.get().workspace.dataflows
+            + (self.context.get().workspace.datamarts or [])
+        )
 
     def yield_datamodel(self, dashboard_details: Group) -> Iterable[Either[CreateDashboardDataModelRequest]]:
         """
@@ -644,6 +655,13 @@ class PowerbiSource(DashboardServiceSource):
                         if dataflow_export:
                             self.dataflow_exports[dataset.id] = dataflow_export
                             datamodel_columns = self._get_dataflow_column_info(dataflow_export)
+                    elif isinstance(dataset, Datamart):
+                        data_model_type = DataModelType.PowerBIDatamart.value
+                        datamodel_columns = []
+                        source_url = self._get_datamart_url(
+                            workspace_id=self.context.get().workspace.id,
+                            datamart_id=dataset.id,
+                        )
                     else:
                         logger.warning(f"Unknown dataset type: {type(dataset)}, name: {dataset.name}")
                         continue
@@ -1982,6 +2000,55 @@ class PowerbiSource(DashboardServiceSource):
                     )
                 )
 
+    def create_datamart_upstream_datamart_lineage(
+        self, datamodel: Datamart, datamodel_entity: DashboardDataModel
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Create lineage between datamart and upstreamDatamart
+        """
+        for upstream_datamart in datamodel.upstreamDatamarts or []:
+            try:
+                if not upstream_datamart.targetDatamartId:
+                    logger.debug(
+                        f"No targetDatamartId found for upstreamDatamart in "
+                        f"datamodel [{datamodel_entity.name.root}], "
+                        f"Moving to next upstreamDatamart"
+                    )
+                    continue
+                if upstream_datamart.targetDatamartId == datamodel.id:
+                    continue
+                upstream_datamart_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=DashboardDataModel,
+                    service_name=self.context.get().dashboard_service,
+                    data_model_name=upstream_datamart.targetDatamartId,
+                )
+                upstream_datamart_entity = self.metadata.get_by_name(
+                    entity=DashboardDataModel,
+                    fqn=upstream_datamart_fqn,
+                )
+                if upstream_datamart_entity and datamodel_entity:
+                    yield self._get_add_lineage_request(
+                        from_entity=upstream_datamart_entity,
+                        to_entity=datamodel_entity,
+                    )
+                else:
+                    logger.debug(
+                        f"No upstreamDatamart entity with id={str(upstream_datamart.targetDatamartId)} "  # noqa: RUF010
+                        f"found for datamodel [{datamodel_entity.name.root}]"
+                    )
+            except Exception as exc:  # pylint: disable=broad-except
+                yield Either(
+                    left=StackTraceError(
+                        name="Datamart and UpstreamDatamart Lineage",
+                        error=(
+                            f"Error to yield datamart and upstreamDatamart lineage "
+                            f"between [{datamodel_entity.name.root}, {str(upstream_datamart.targetDatamartId)}]: {exc}"  # noqa: RUF010
+                        ),
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Group,
@@ -2065,6 +2132,9 @@ class PowerbiSource(DashboardServiceSource):
                             )
                         # 6. dataflow-upstreamDataflow lineage
                         yield from self.create_dataflow_upstream_dataflow_lineage(datamodel, datamodel_entity)
+                    elif isinstance(datamodel, Datamart):
+                        # 7. datamart-upstreamDatamart lineage
+                        yield from self.create_datamart_upstream_datamart_lineage(datamodel, datamodel_entity)
                     else:
                         logger.warning(f"Unknown datamodel type: {type(datamodel)}, name: {datamodel.name}")
             except Exception as exc:  # pylint: disable=broad-except
@@ -2145,6 +2215,8 @@ class PowerbiSource(DashboardServiceSource):
                     access_right = owner.datasetUserAccessRight
                 elif isinstance(dashboard_details, Dataflow):
                     access_right = owner.dataflowUserAccessRight
+                elif isinstance(dashboard_details, Datamart):
+                    access_right = owner.datamartUserAccessRight
                 elif isinstance(dashboard_details, PowerBIReport):
                     access_right = owner.reportUserAccessRight
                 elif isinstance(dashboard_details, PowerBIDashboard):
