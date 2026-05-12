@@ -19,6 +19,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateFolder;
 import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.services.drives.FolderService;
@@ -27,8 +28,9 @@ import org.openmetadata.sdk.services.drives.FolderService;
  * Integration tests for Folder entity operations.
  *
  * <p>Folder is a service-less drive entity at {@code /v1/drive/folders}. It supports owners,
- * tags, domains, and followers, but does not expose version history or bulk endpoints. Extends
- * BaseEntityIT so generic CRUD/tag/domain coverage runs automatically.
+ * tags, and domains, but does not expose version history, followers, custom extensions, or bulk
+ * endpoints (see the {@code supports*} flags below). Extends BaseEntityIT so generic CRUD / tag /
+ * domain coverage runs automatically.
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class FolderResourceIT extends BaseEntityIT<Folder, CreateFolder> {
@@ -96,7 +98,10 @@ public class FolderResourceIT extends BaseEntityIT<Folder, CreateFolder> {
     getFolderService().delete(id, params);
     // FolderResource hard-delete is asynchronous: it returns 200 immediately and removes
     // the row in the background. Poll with include=deleted until the entity is fully gone
-    // so BaseEntityIT.delete_entityAsAdmin_hardDelete_200 sees the post-condition.
+    // (server returns 404) so BaseEntityIT.delete_entityAsAdmin_hardDelete_200 sees the
+    // post-condition. Other exceptions (e.g., transient 500s, network errors) must propagate
+    // so the test doesn't silently pass on real failures — Awaitility re-polls on throw and
+    // surfaces the last exception when the timeout window expires.
     Awaitility.await()
         .pollInterval(Duration.ofMillis(200))
         .atMost(Duration.ofSeconds(15))
@@ -105,8 +110,11 @@ public class FolderResourceIT extends BaseEntityIT<Folder, CreateFolder> {
               try {
                 getFolderService().get(id, null, "deleted");
                 return false;
-              } catch (Exception e) {
-                return true;
+              } catch (ApiException e) {
+                if (e.getStatusCode() == 404) {
+                  return true;
+                }
+                throw e;
               }
             });
   }

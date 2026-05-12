@@ -99,7 +99,7 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @QueryParam("fields") String fieldsParam,
-      @Parameter(description = "Limit the number folders returned. (0 to 1000000, default = 10)")
+      @Parameter(description = "Limit the number of folders returned. (0 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(value = 0, message = "must be greater than or equal to 0")

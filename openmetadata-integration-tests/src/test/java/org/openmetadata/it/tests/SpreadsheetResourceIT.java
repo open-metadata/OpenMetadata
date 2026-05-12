@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -319,9 +320,14 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
     ListResponse<Spreadsheet> rootSpreadsheets =
         SdkClients.adminClient().spreadsheets().list(params);
 
+    assertTrue(
+        rootSpreadsheets.getData().stream()
+            .anyMatch(s -> s.getName().equals(ns.prefix("rootSpreadsheet1"))),
+        "Root spreadsheet we just created must appear in ?root=true results");
     assertFalse(
-        rootSpreadsheets.getData().isEmpty(),
-        "Root spreadsheets list should not be empty — we just created one");
+        rootSpreadsheets.getData().stream()
+            .anyMatch(s -> s.getName().equals(ns.prefix("childSpreadsheet1"))),
+        "Child spreadsheet must NOT appear in ?root=true results");
     for (Spreadsheet spreadsheet : rootSpreadsheets.getData()) {
       assertNull(spreadsheet.getDirectory(), "Root spreadsheet should not have directory");
     }
@@ -370,7 +376,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
     assertEquals(Integer.valueOf(1024000), updated.getSize());
   }
 
-  @org.junit.jupiter.api.Disabled(
+  @Disabled(
       "Worksheet relationship not returned in spreadsheet fields - backend setFields needs worksheets support")
   @Test
   void test_spreadsheetWithWorksheets(TestNamespace ns) {
@@ -613,8 +619,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
     }
   }
 
-  @org.junit.jupiter.api.Disabled(
-      "Root filter not working reliably with parallel tests - needs investigation")
+  @Disabled("Root filter not working reliably with parallel tests - needs investigation")
   @Test
   void test_listSpreadsheetsWithRootParameterAcrossMultipleServices(TestNamespace ns) {
     DriveService service1 = DriveServiceTestFactory.createGoogleDrive(ns, "googleSheetsService");

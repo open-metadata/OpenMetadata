@@ -191,7 +191,8 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
     assertNotNull(createdFile.getId());
     assertEquals(fileName, createdFile.getName());
     assertNotNull(createdFile.getService());
-    assertEquals(driveService.getFullyQualifiedName(), createdFile.getService().getName());
+    assertEquals(
+        driveService.getFullyQualifiedName(), createdFile.getService().getFullyQualifiedName());
 
     File retrievedFile = Files.get(createdFile.getId().toString());
     assertNotNull(retrievedFile);
@@ -339,7 +340,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
     assertNull(createdFile.getColumns());
 
     createdFile.setDescription("Updated description");
-    File patched = getFileService().update(createdFile.getId(), createdFile);
+    File patched = getFileService().update(createdFile.getId().toString(), createdFile);
 
     assertEquals("Updated description", patched.getDescription());
     assertNull(patched.getColumns());
@@ -382,6 +383,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
     assertEquals(fileName, createdFile.getName());
     assertEquals(displayName, createdFile.getDisplayName());
     assertEquals(description, createdFile.getDescription());
-    assertEquals(driveService.getFullyQualifiedName(), createdFile.getService().getName());
+    assertEquals(
+        driveService.getFullyQualifiedName(), createdFile.getService().getFullyQualifiedName());
   }
 }
