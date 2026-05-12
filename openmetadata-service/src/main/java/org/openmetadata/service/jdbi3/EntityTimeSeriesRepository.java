@@ -454,7 +454,8 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
               searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
-        T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
+        T entity =
+            setFieldsInternal(JsonUtils.readOrConvertValueLenient(json, entityClass), fields);
         setInheritedFields(entity);
         clearFieldsInternal(entity, fields);
         entityList.add(entity);
@@ -505,7 +506,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
                     Map<String, Object> source = extractAndFilterSource(hit);
                     T entity =
                         setFieldsInternal(
-                            JsonUtils.readOrConvertValue(source, entityClass), fields);
+                            JsonUtils.readOrConvertValueLenient(source, entityClass), fields);
                     if (entity != null) {
                       setInheritedFields(entity);
                       clearFieldsInternal(entity, fields);
@@ -651,7 +652,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     SearchResultListMapper results =
         searchRepository.listWithOffset(searchListFilter, 1, 0, entityType, searchSortFilter, q);
     for (Map<String, Object> json : results.getResults()) {
-      T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
+      T entity = setFieldsInternal(JsonUtils.readOrConvertValueLenient(json, entityClass), fields);
       setInheritedFields(entity);
       clearFieldsInternal(entity, fields);
       return entity;

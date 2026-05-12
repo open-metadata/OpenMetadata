@@ -23,11 +23,17 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     return testCase;
   }
 
+  @Override
   public Set<String> getRequiredReindexFields() {
     Set<String> fields = new java.util.HashSet<>(SearchIndex.super.getRequiredReindexFields());
     fields.add("testSuite");
     fields.add("testSuites");
     fields.add("testDefinition");
+    // Reindex without these two produces docs missing testCaseResult.testCaseStatus and
+    // testCaseResult.timestamp, which the DQ aggregations (e.g. dataQualityReport
+    // `entityWithTests`) and the Incident Manager listing depend on.
+    fields.add(Entity.TEST_CASE_RESULT);
+    fields.add("incidentId");
     return java.util.Collections.unmodifiableSet(fields);
   }
 

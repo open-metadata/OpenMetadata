@@ -26,6 +26,16 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
     return excludeFields;
   }
 
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(SearchIndex.super.getRequiredReindexFields());
+    // TestSuiteRepository registers a fetcher for "summary" that populates
+    // testCaseResultSummary. Without it, this Index's lastResultTimestamp drops to 0L
+    // and the DQ /data-quality/test-suites list page sorts every reindexed suite to 1970.
+    fields.add("summary");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
 
     doc.put("fqnParts", getFQNParts(testSuite.getFullyQualifiedName()));
