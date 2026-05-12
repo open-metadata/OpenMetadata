@@ -2922,8 +2922,9 @@ public class TableRepository extends EntityRepository<Table> {
               record.extensionName(), JsonUtils.readValue(record.extensionJson(), Object.class));
         } catch (Exception e) {
           LOG.warn(
-              "Failed to deserialize column extension for table {}: {}",
+              "Failed to deserialize column extension for table {} extensionKey {}: {}",
               table.getId(),
+              record.extensionName(),
               e.getMessage());
         }
       }
