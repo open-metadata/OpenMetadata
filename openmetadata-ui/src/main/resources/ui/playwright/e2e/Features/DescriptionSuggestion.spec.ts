@@ -17,8 +17,10 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { expandNestedColumn } from '../../utils/nestedColumnUpdatesUtils';
-import { createTableDescriptionSuggestions } from '../../utils/suggestions';
+import {
+  createTableDescriptionSuggestions,
+  expandTableSuggestionColumns,
+} from '../../utils/suggestions';
 import { performUserLogin } from '../../utils/user';
 
 const table = new TableClass();
@@ -74,19 +76,7 @@ test.describe.serial(
         await expect(allAvatarSuggestion).toHaveCount(1);
 
         // Expand nested struct/array columns so their suggestion cards render
-        const cols = table.entityResponseData.columns ?? [];
-        const structCol = cols[2];
-        const arrayCol = (structCol.children ?? [])[1];
-        await expandNestedColumn(
-          page,
-          structCol.fullyQualifiedName ?? '',
-          (structCol.children ?? [])[0].fullyQualifiedName ?? ''
-        );
-        await expandNestedColumn(
-          page,
-          arrayCol.fullyQualifiedName ?? '',
-          (arrayCol.children ?? [])[0].fullyQualifiedName ?? ''
-        );
+        await expandTableSuggestionColumns(page, table);
 
         // Click the first avatar
         await allAvatarSuggestion.nth(0).click();
@@ -152,19 +142,7 @@ test.describe.serial(
           .getByTestId('profile-avatar');
 
         // Expand nested columns so columnsName[5] row is accessible
-        const cols = table.entityResponseData.columns ?? [];
-        const structCol = cols[2];
-        const arrayCol = (structCol.children ?? [])[1];
-        await expandNestedColumn(
-          page,
-          structCol.fullyQualifiedName ?? '',
-          (structCol.children ?? [])[0].fullyQualifiedName ?? ''
-        );
-        await expandNestedColumn(
-          page,
-          arrayCol.fullyQualifiedName ?? '',
-          (arrayCol.children ?? [])[0].fullyQualifiedName ?? ''
-        );
+        await expandTableSuggestionColumns(page, table);
 
         // Click the first avatar
         await allAvatarSuggestion.nth(0).click();
@@ -186,19 +164,7 @@ test.describe.serial(
 
         // Re-expand after reload so columnsName[5] row is visible for verification
         // and remains expanded for subsequent test steps
-        const colsAfterReload = table.entityResponseData.columns ?? [];
-        const structColAfterReload = colsAfterReload[2];
-        const arrayColAfterReload = (structColAfterReload.children ?? [])[1];
-        await expandNestedColumn(
-          page,
-          structColAfterReload.fullyQualifiedName ?? '',
-          (structColAfterReload.children ?? [])[0].fullyQualifiedName ?? ''
-        );
-        await expandNestedColumn(
-          page,
-          arrayColAfterReload.fullyQualifiedName ?? '',
-          (arrayColAfterReload.children ?? [])[0].fullyQualifiedName ?? ''
-        );
+        await expandTableSuggestionColumns(page, table);
 
         // since we accepted two suggestions, the badge count should be total-2
         await expect(
