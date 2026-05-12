@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { ReactNode } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import { DeleteOption } from '../../DeleteWidget/DeleteWidget.interface';
 
 export interface ManageButtonProps {
+  trigger?: ReactNode;
   allowSoftDelete?: boolean;
   afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
   buttonClassName?: string;

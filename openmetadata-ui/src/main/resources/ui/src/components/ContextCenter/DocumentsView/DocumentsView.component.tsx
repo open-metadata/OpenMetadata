@@ -127,7 +127,6 @@ const FileRowSkeleton: FC = () => (
 interface FileRowProps {
   file: DocFile;
   onDownload?: (file: DocFile) => void;
-  onMoveToFolder?: (file: DocFile) => void;
   onShareFile?: (file: DocFile) => void;
   onDeleteFile?: (file: DocFile) => void;
 }
@@ -178,7 +177,7 @@ const FileRow: FC<FileRowProps> = ({
       <ButtonUtility
         color="secondary"
         icon={
-          <Download01 className="tw:text-gray-500" height={18} width={18} />
+          <Download01 className="tw:text-gray-500" height={16} width={16} />
         }
         onClick={() => onDownload?.(file)}
       />

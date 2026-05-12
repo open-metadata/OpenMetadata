@@ -64,9 +64,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
               <Typography as="h3">{title}</Typography>
             </div>
             {subtitle && (
-              <Typography className="tw:text-gray-700" size="text-xs">
-                {subtitle}
-              </Typography>
+              <Typography className="tw:text-gray-700">{subtitle}</Typography>
             )}
           </div>
           {actionsSlot ?? defaultActions}

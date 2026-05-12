@@ -23,6 +23,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  DotsVertical,
   File06,
   Globe01,
   Home02,
@@ -490,7 +491,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
               allowSoftDelete={false}
-              buttonClassName='tw:h-[32px]'
               canDelete={permissions.Delete}
               deleteButtonDescription={t(
                 'message.delete-entity-type-action-description',
@@ -506,6 +506,15 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               successMessage={t('server.entity-deleted-successfully', {
                 entity: entityType,
               })}
+              trigger={
+                <ButtonUtility
+                  icon={DotsVertical}
+                  size="sm"
+                  tooltip={t('label.manage-entity', {
+                    entity: t('label.article'),
+                  })}
+                />
+              }
             />
           </div>
         </div>

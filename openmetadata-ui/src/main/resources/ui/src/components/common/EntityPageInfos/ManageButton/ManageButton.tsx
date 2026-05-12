@@ -63,6 +63,7 @@ const ManageButton: FC<ManageButtonProps> = ({
   deleteButtonDescription,
   deleteOptions,
   onProfilerSettingUpdate,
+  trigger,
 }) => {
   const { t } = useTranslation();
   const [isDelete, setIsDelete] = useState<boolean>(false);
@@ -259,18 +260,22 @@ const ManageButton: FC<ManageButtonProps> = ({
             overlayStyle={{ width: '350px' }}
             placement="bottomRight"
             trigger={['click']}>
-            <Tooltip
-              placement="topRight"
-              title={t('label.manage-entity', {
-                entity: formattedEntityType,
-              })}>
-              <Button
-                className={classNames('flex-center px-1.5', buttonClassName)}
-                data-testid="manage-button"
-                type="default">
-                <IconDropdown className="anticon self-center manage-dropdown-icon" />
-              </Button>
-            </Tooltip>
+            {trigger ? (
+              <span data-testid="manage-button">{trigger}</span>
+            ) : (
+              <Tooltip
+                placement="topRight"
+                title={t('label.manage-entity', {
+                  entity: formattedEntityType,
+                })}>
+                <Button
+                  className={classNames('flex-center px-1.5', buttonClassName)}
+                  data-testid="manage-button"
+                  type="default">
+                  <IconDropdown className="anticon self-center manage-dropdown-icon" />
+                </Button>
+              </Tooltip>
+            )}
           </Dropdown>
         </Button>
       ) : (
