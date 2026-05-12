@@ -81,54 +81,62 @@ export const useDataAccessRequest = ({
     };
   }, [fetchExistingDar, listenForEvents]);
 
-  const isDarDisabled = useMemo(() => {
-    return existingDarTasks.some((task) => {
-      const stage = (
-        task.workflowStageDisplayName ??
-        task.workflowStageId ??
-        ''
-      ).toLowerCase();
-
-      if (
-        stage === DarWorkflowStage.Review ||
-        stage === DarWorkflowStage.Granted
-      ) {
-        return true;
-      }
-
-      if (stage === DarWorkflowStage.Approved) {
-        const payload = task.payload as
-          | { duration?: string; expirationDate?: number }
-          | undefined;
-
-        return isDarApprovalActive(
-          task.updatedAt ?? task.createdAt,
-          payload?.duration,
-          payload?.expirationDate
-        );
-      }
-
-      return false;
-    });
-  }, [existingDarTasks]);
-
-  const isDarAwaitingGrant = useMemo(
+  const isDarDisabled = useMemo(
     () =>
       existingDarTasks.some((task) => {
-        if (task.status === TaskEntityStatus.Approved) {
-          return true;
-        }
-
+        // Prefer the persisted status enum (Approved/Granted carry the workflow
+        // semantics directly); fall back to the workflow stage name for any task
+        // that pre-dates the explicit status setter and only has stage metadata.
         const stage = (
           task.workflowStageDisplayName ??
           task.workflowStageId ??
           ''
         ).toLowerCase();
+        const isApproved =
+          task.status === TaskEntityStatus.Approved ||
+          stage === DarWorkflowStage.Approved;
+        const isGranted =
+          task.status === TaskEntityStatus.Granted ||
+          stage === DarWorkflowStage.Granted;
 
-        return (
-          stage === DarWorkflowStage.Approved &&
-          task.status !== TaskEntityStatus.Granted
-        );
+        if (isApproved || isGranted) {
+          const payload = task.payload as
+            | { duration?: string; expirationDate?: number }
+            | undefined;
+
+          // Use the persisted approvedAt for the duration window so later
+          // workflow transitions (e.g. granting) don't shift the apparent
+          // approval timestamp via updatedAt. Fall back for older tasks
+          // that don't carry approvedAt yet.
+          return isDarApprovalActive(
+            task.approvedAt ?? task.updatedAt ?? task.createdAt,
+            payload?.duration,
+            payload?.expirationDate
+          );
+        }
+
+        // The fetch is scoped to statusGroup=active, so any remaining task here
+        // is Open/InProgress/Pending (or stage=review) — still in-flight, block
+        // a duplicate request.
+        return true;
+      }),
+    [existingDarTasks]
+  );
+
+  const isDarAwaitingGrant = useMemo(
+    () =>
+      existingDarTasks.some((task) => {
+        const stage = (
+          task.workflowStageDisplayName ??
+          task.workflowStageId ??
+          ''
+        ).toLowerCase();
+        const isApproved =
+          task.status === TaskEntityStatus.Approved ||
+          (stage === DarWorkflowStage.Approved &&
+            task.status !== TaskEntityStatus.Granted);
+
+        return isApproved;
       }),
     [existingDarTasks]
   );

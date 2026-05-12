@@ -34,15 +34,19 @@ CREATE INDEX IF NOT EXISTS idx_task_about_fqn_hash ON task_entity (aboutfqnhash)
 CREATE INDEX IF NOT EXISTS idx_task_status_about ON task_entity (status, aboutfqnhash);
 CREATE INDEX IF NOT EXISTS idx_task_created_by_id ON task_entity (createdbyid);
 CREATE INDEX IF NOT EXISTS idx_task_created_by_category ON task_entity (createdbyid, category);
-CREATE INDEX IF NOT EXISTS idx_task_approved_by_id ON task_entity (approvedbyid);
 
 -- For 2.0.0 environments that ran the CREATE TABLE above before the
 -- approvedbyid generated column was added inline, attach it now. CREATE TABLE
 -- IF NOT EXISTS is a no-op on those environments so the column would never
 -- appear otherwise. Postgres supports `ADD COLUMN IF NOT EXISTS` natively.
+-- The ALTER must run before idx_task_approved_by_id is created — otherwise
+-- existing-2.0.0 deployments would fail the CREATE INDEX with "column does
+-- not exist" before the ADD COLUMN ever runs.
 ALTER TABLE task_entity
     ADD COLUMN IF NOT EXISTS approvedbyid character varying(36)
         GENERATED ALWAYS AS ((json ->> 'approvedById'::text)) STORED;
+
+CREATE INDEX IF NOT EXISTS idx_task_approved_by_id ON task_entity (approvedbyid);
 
 CREATE TABLE IF NOT EXISTS new_task_sequence (
     id bigint NOT NULL DEFAULT 0
