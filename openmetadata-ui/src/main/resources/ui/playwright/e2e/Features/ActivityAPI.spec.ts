@@ -42,13 +42,14 @@ import {
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
-let entityChangesTable: TableClass;
-let entityChangesTag: TagClass;
-
 test.describe(
   'Activity API - Entity Changes',
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
+    let entityChangesTable: TableClass;
+    let entityChangesTag: TagClass;
+    let adminDisplayName: string;
+
     test.beforeAll('Setup: create table and tag', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -58,6 +59,10 @@ test.describe(
       try {
         await entityChangesTable.create(apiContext);
         await entityChangesTag.create(apiContext);
+
+        const userResponse = await apiContext.get('/api/v1/users/loggedInUser');
+        const adminUser = await userResponse.json();
+        adminDisplayName = adminUser.displayName ?? adminUser.name;
       } finally {
         await afterAction();
       }
@@ -159,9 +164,6 @@ test.describe(
       test.setTimeout(ACTIVITY_TEST_TIMEOUT);
 
       const entityFqn = getTableFqn(entityChangesTable);
-      const userResponse = await page.request.get('/api/v1/users/loggedInUser');
-      const adminUser = await userResponse.json();
-      const adminDisplayName = adminUser.displayName ?? adminUser.name;
 
       await test.step('Add the owner from the entity page', async () => {
         await entityChangesTable.visitEntityPage(page);
@@ -202,9 +204,6 @@ test.describe(
 
       const entityFqn = getTableFqn(entityChangesTable);
       const uniqueDescription = `Actor test description ${Date.now()}`;
-      const userResponse = await page.request.get('/api/v1/users/loggedInUser');
-      const adminUser = await userResponse.json();
-      const adminDisplayName = adminUser.displayName ?? adminUser.name;
 
       await test.step('Make a table change as the logged-in admin user', async () => {
         const { apiContext, afterAction } = await getApiContext(page);
