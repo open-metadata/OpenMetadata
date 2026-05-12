@@ -360,7 +360,19 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     // skipped chart-specific setup that the test in DashboardResourceIT relies on.
     for (CollectionDAO.EntityRelationshipRecord record : filteredChartRecordsToBeRestored) {
       LOG.info("Recursively restoring {} {}", record.getType(), record.getId());
-      Entity.restoreEntity(updatedBy, record.getType(), record.getId());
+      try {
+        Entity.restoreEntity(updatedBy, record.getType(), record.getId());
+      } catch (RuntimeException e) {
+        // Surface the underlying cause — Entity.restoreEntity has no try/catch wrapper of
+        // its own and silently aborts the whole dashboard restore if a single chart fails.
+        LOG.error(
+            "[ChartRestoreCascade] Failed to restore chart {} for dashboard {}: {}",
+            record.getId(),
+            dashboardId,
+            e.getMessage(),
+            e);
+        throw e;
+      }
     }
   }
 

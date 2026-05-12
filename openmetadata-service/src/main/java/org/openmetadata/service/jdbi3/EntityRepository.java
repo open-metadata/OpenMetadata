@@ -5539,6 +5539,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Finally set entity deleted flag to false
     LOG.info("Restoring the {} {}", entityType, id);
 
+    PutResponse<T> response = null;
     try {
       T original = find(id, DELETED);
       setFieldsInternal(original, putFields);
@@ -5550,14 +5551,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       updater.update();
       // Restore moves the row from deleted=true to deleted=false, changing the listing total.
       ListCountCache.invalidate(entityType);
-      // Run the same hook the bulk path runs — keeps direct-entity restore in sync with
-      // bulkRestoreSubtree for repos that link non-CONTAINS entities (e.g., dashboard charts).
-      restoreAdditionalChildren(id, updatedBy);
-      return new PutResponse<>(Status.OK, updated, ENTITY_RESTORED);
+      response = new PutResponse<>(Status.OK, updated, ENTITY_RESTORED);
     } catch (EntityNotFoundException e) {
-      LOG.info("Entity is not in deleted state {} {}", entityType, id);
-      return null;
+      LOG.info("Entity already restored or not in deleted state {} {}", entityType, id);
     }
+    // Run the per-entity hook regardless of whether this node needed flipping. A
+    // re-entered cascade where this level is already restored must still reconcile
+    // HAS-related children (e.g., dashboard charts) of nested descendants.
+    restoreAdditionalChildren(id, updatedBy);
+    return response;
   }
 
   @Transaction
@@ -5614,19 +5616,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     List<T> deletedEntities =
         entities.stream().filter(e -> Boolean.TRUE.equals(e.getDeleted())).toList();
-    if (deletedEntities.isEmpty()) {
-      return;
+    if (!deletedEntities.isEmpty()) {
+      List<EntityUpdater> updaters =
+          buildBulkUpdaters(deletedEntities, updatedBy, Operation.PUT, "bulkRestoreUpdaters", null);
+      List<EntityUpdater> changed = filterChanged(updaters);
+      if (!changed.isEmpty()) {
+        persistBulkUpdaters(changed, ENTITY_RESTORED, updatedBy, "bulkRestore");
+        ListCountCache.invalidate(entityType);
+      }
     }
-    List<EntityUpdater> updaters =
-        buildBulkUpdaters(deletedEntities, updatedBy, Operation.PUT, "bulkRestoreUpdaters", null);
-    List<EntityUpdater> changed = filterChanged(updaters);
-    if (changed.isEmpty()) {
-      runRestoreAdditionalChildren(deletedEntities, updatedBy);
-      return;
-    }
-    persistBulkUpdaters(changed, ENTITY_RESTORED, updatedBy, "bulkRestore");
-    ListCountCache.invalidate(entityType);
-    runRestoreAdditionalChildren(deletedEntities, updatedBy);
+    // Always run per-entity hooks even when nothing at THIS level needed flipping —
+    // a re-entered cascade may still have HAS-related children attached to nested
+    // descendants that require reconciliation.
+    runRestoreAdditionalChildren(entities, updatedBy);
   }
 
   private void runRestoreAdditionalChildren(List<T> entities, String updatedBy) {
@@ -5732,24 +5734,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
         "bulkSoftDeleteFindChildren",
         (childRepo, childIds) -> childRepo.bulkSoftDeleteSubtree(childIds, updatedBy));
 
-    if (entities.isEmpty()) {
-      return;
+    if (!entities.isEmpty()) {
+      List<EntityUpdater> updaters =
+          buildBulkUpdaters(
+              entities,
+              updatedBy,
+              Operation.SOFT_DELETE,
+              "bulkSoftDeleteUpdaters",
+              e -> e.setDeleted(true));
+      List<EntityUpdater> changed = filterChanged(updaters);
+      if (!changed.isEmpty()) {
+        persistBulkUpdaters(changed, ENTITY_SOFT_DELETED, updatedBy, "bulkSoftDelete");
+        ListCountCache.invalidate(entityType);
+      }
     }
-    List<EntityUpdater> updaters =
-        buildBulkUpdaters(
-            entities,
-            updatedBy,
-            Operation.SOFT_DELETE,
-            "bulkSoftDeleteUpdaters",
-            e -> e.setDeleted(true));
-    List<EntityUpdater> changed = filterChanged(updaters);
-    if (changed.isEmpty()) {
-      runSoftDeleteAdditionalChildren(entities, updatedBy);
-      return;
-    }
-    persistBulkUpdaters(changed, ENTITY_SOFT_DELETED, updatedBy, "bulkSoftDelete");
-    ListCountCache.invalidate(entityType);
-    runSoftDeleteAdditionalChildren(entities, updatedBy);
+    // Always run per-entity hooks even when nothing at THIS level needed flipping —
+    // descendants restored independently before the cascade still need to be re-deleted
+    // by the per-entity hook.
+    runSoftDeleteAdditionalChildren(allEntities, updatedBy);
   }
 
   private void runSoftDeleteAdditionalChildren(List<T> entities, String updatedBy) {

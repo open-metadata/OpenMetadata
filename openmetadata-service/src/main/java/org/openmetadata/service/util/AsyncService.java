@@ -251,20 +251,32 @@ public class AsyncService {
 
     @Override
     public void execute(Runnable command) {
-      delegate.execute(
-          () -> {
-            try {
-              semaphore.acquire();
-            } catch (InterruptedException e) {
-              Thread.currentThread().interrupt();
-              throw new RuntimeException("Interrupted waiting for concurrency permit", e);
-            }
-            try {
-              command.run();
-            } finally {
-              semaphore.release();
-            }
-          });
+      // Acquire the permit on the SUBMITTING thread so that a caller producing tasks faster
+      // than the executor can run them is back-pressured here, rather than spawning an
+      // unbounded number of virtual threads that all sit blocked on semaphore.acquire().
+      // Without this, the maxConcurrency only limits concurrent execution; submission depth
+      // is unbounded and pins JDBI connections under burst load.
+      try {
+        semaphore.acquire();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new RuntimeException("Interrupted waiting for concurrency permit", e);
+      }
+      try {
+        delegate.execute(
+            () -> {
+              try {
+                command.run();
+              } finally {
+                semaphore.release();
+              }
+            });
+      } catch (RuntimeException submitFailure) {
+        // delegate.execute itself failed (e.g., rejected) — release the permit we just
+        // acquired so the next caller can make progress.
+        semaphore.release();
+        throw submitFailure;
+      }
     }
 
     @Override
