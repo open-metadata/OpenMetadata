@@ -1,6 +1,7 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.system.EventPublisherJob;
@@ -124,8 +125,6 @@ public record ReindexingConfiguration(
         DEFAULT_FIELD_FETCH_THREADS,
         DEFAULT_DOC_BUILD_THREADS,
         DEFAULT_STATS_INTERVAL_MS,
-        // Always run in recreate since it's zero downtime
-        true,
         Boolean.TRUE.equals(jobData.getAutoTune()),
         Boolean.TRUE.equals(jobData.getForce()),
         jobData.getMaxRetries() != null ? jobData.getMaxRetries() : DEFAULT_MAX_RETRIES,
