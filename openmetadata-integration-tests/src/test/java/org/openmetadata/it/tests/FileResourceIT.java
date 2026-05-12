@@ -421,4 +421,30 @@ public class FileResourceIT {
     // PDF files should not have columns
     assertNull(createdFile.getColumns());
   }
+
+  @Test
+  void test_patchFileWithoutColumns_doesNotNpe(TestNamespace ns) {
+    // Regression: PATCH on a file without columns must not NPE in
+    // ColumnEntityUpdater.updateColumns. Reproduces the failure seen when
+    // editing tags/description on PDF/image files (no columns defined).
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    String fileName = ns.prefix("patch_no_columns");
+    File createdFile =
+        Files.create()
+            .name(fileName)
+            .withService(driveService.getFullyQualifiedName())
+            .withFileType(FileType.PDF)
+            .withMimeType("application/pdf")
+            .withDescription("Initial description")
+            .execute();
+
+    assertNull(createdFile.getColumns());
+
+    createdFile.setDescription("Updated description");
+    File patched = SdkClients.adminClient().files().update(createdFile.getId(), createdFile);
+
+    assertEquals("Updated description", patched.getDescription());
+    assertNull(patched.getColumns());
+  }
 }
