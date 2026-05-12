@@ -645,6 +645,16 @@ public class RedisCacheProvider implements CacheProvider {
               }
             }
             LOG.warn("Pipelined mget timed out after {}ms for {} keys", perCallTimeoutMs, n);
+            // Feed the partial timeout into the circuit breaker. Without this, persistent
+            // partial timeouts (Redis answering some keys, dropping others) would keep
+            // calling recordSuccess() and consecutiveSuccesses would prevent the breaker
+            // from ever opening — masking real backend slowness behind a "healthy" provider.
+            if (m != null) {
+              m.recordError();
+            }
+            recordFailure(
+                new java.util.concurrent.TimeoutException(
+                    "mget partial timeout after " + perCallTimeoutMs + "ms"));
           }
           java.util.List<java.util.Optional<String>> out = new java.util.ArrayList<>(n);
           int hits = 0;
@@ -677,7 +687,11 @@ public class RedisCacheProvider implements CacheProvider {
               m.recordMiss();
             }
           }
-          recordSuccess();
+          // Only the all-completed path is a "success" for the circuit breaker. The
+          // partial-timeout path already called recordFailure() above.
+          if (allCompleted) {
+            recordSuccess();
+          }
           return out;
         } finally {
           connection.setAutoFlushCommands(true);
