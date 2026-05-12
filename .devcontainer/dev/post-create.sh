@@ -54,9 +54,15 @@ fi
 
 # Install frontend dependencies
 echo "Installing frontend dependencies..."
-cd openmetadata-ui/src/main/resources/ui
-yarn install --frozen-lockfile
-cd -
+UI_DIR="openmetadata-ui/src/main/resources/ui"
+if [ -d "$UI_DIR" ]; then
+  cd "$UI_DIR"
+  yarn install --frozen-lockfile || { echo "ERROR: yarn install failed"; exit 1; }
+  cd -
+else
+  echo "ERROR: UI directory $UI_DIR not found"
+  exit 1
+fi
 
 # Set up Python virtual environment for ingestion
 echo "Setting up Python ingestion environment..."
@@ -75,16 +81,21 @@ echo "Running python version: $($PYTHON_BIN --version)"
 # (which is volume-mounted and likely contains platform-incompatible binaries).
 VENV_DIR=".venv-devcontainer"
 
-"$PYTHON_BIN" -m venv "$VENV_DIR"
+if ! "$PYTHON_BIN" -m venv "$VENV_DIR"; then
+  echo "ERROR: Failed to create virtual environment $VENV_DIR"
+  exit 1
+fi
+
 source "$VENV_DIR/bin/activate"
-python -m pip install --upgrade pip
+python -m pip install --upgrade pip || { echo "ERROR: pip upgrade failed"; exit 1; }
 
 # Run Make targets from repo root to ensure scripts/ and ingestion/ paths resolve correctly
-make install_dev generate
+echo "Running make install_dev generate..."
+make install_dev generate || { echo "ERROR: make install_dev or generate failed"; exit 1; }
 
 # Verify prerequisites
 echo "Verifying prerequisites..."
-make prerequisites
+make prerequisites || { echo "ERROR: make prerequisites failed"; exit 1; }
 
 echo "=== Development environment ready ==="
 echo ""
