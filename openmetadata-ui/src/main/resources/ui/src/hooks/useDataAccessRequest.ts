@@ -12,11 +12,10 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  listTasks,
+  DarWorkflowStage,
+  listDataAccessRequests,
   Task,
-  TaskCategory,
   TaskEntityStatus,
-  TaskEntityType,
 } from '../rest/tasksAPI';
 import { isDarApprovalActive } from '../utils/TasksUtils';
 import { useApplicationStore } from './useApplicationStore';
@@ -49,11 +48,9 @@ export const useDataAccessRequest = ({
     }
 
     try {
-      const res = await listTasks({
-        aboutEntity: entityFqn,
-        category: TaskCategory.DataAccess,
-        type: TaskEntityType.DataAccessRequest,
-        createdBy: currentUser.name,
+      const res = await listDataAccessRequests({
+        dataset: entityFqn,
+        requestedBy: currentUser.name,
         fields: 'about,resolution',
         limit: 10,
       });
@@ -90,11 +87,11 @@ export const useDataAccessRequest = ({
         ''
       ).toLowerCase();
 
-      if (stage === 'review') {
+      if (stage === DarWorkflowStage.Review || stage === DarWorkflowStage.Granted) {
         return true;
       }
 
-      if (stage === 'approved') {
+      if (stage === DarWorkflowStage.Approved) {
         const payload = task.payload as
           | { duration?: string; expirationDate?: number }
           | undefined;
@@ -123,7 +120,7 @@ export const useDataAccessRequest = ({
           ''
         ).toLowerCase();
 
-        return stage === 'approved' && task.status !== TaskEntityStatus.Granted;
+        return stage === DarWorkflowStage.Approved && task.status !== TaskEntityStatus.Granted;
       }),
     [existingDarTasks]
   );

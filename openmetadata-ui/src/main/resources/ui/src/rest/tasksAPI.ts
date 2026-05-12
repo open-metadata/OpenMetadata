@@ -219,6 +219,12 @@ export interface ResolveTask {
   payload?: TaskPayload;
 }
 
+export enum DarWorkflowStage {
+  Review = 'review',
+  Approved = 'approved',
+  Granted = 'granted',
+}
+
 const BASE_URL = '/tasks';
 
 export type TaskStatusGroup = 'open' | 'active' | 'closed';
