@@ -277,7 +277,7 @@ class HttpTransport:
 
     def send_notification(self, method: str, params: Optional[Dict] = None) -> None:  # noqa: UP006, UP045
         """Send a JSON-RPC notification via HTTP POST (no response expected)"""
-        notification = {"jsonrpc": "2.0", "method": method}
+        notification: Dict[str, Any] = {"jsonrpc": "2.0", "method": method}  # noqa: UP006
         if params:
             notification["params"] = params
         try:
