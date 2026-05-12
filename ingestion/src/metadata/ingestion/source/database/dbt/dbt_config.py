@@ -156,9 +156,7 @@ def _(config: DbtHttpConfig):  # noqa: C901
                     f"Access denied to '{manifest_url}'. "
                     "Check your dbtHttpHeaders contain the correct authentication headers."
                 ) from exc
-            raise DBTConfigException(
-                f"HTTP error {status_code} fetching manifest from '{manifest_url}'."
-            ) from exc
+            raise DBTConfigException(f"HTTP error {status_code} fetching manifest from '{manifest_url}'.") from exc
 
         try:
             manifest_json = dbt_manifest.json()
