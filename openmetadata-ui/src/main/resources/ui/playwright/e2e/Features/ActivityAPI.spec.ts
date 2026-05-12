@@ -49,23 +49,28 @@ test.describe(
   'Activity API - Entity Changes',
   { tag: ['@Features', '@Discovery'] },
   () => {
-    test.beforeAll('Setup: create table, tag and get admin display name', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+    test.beforeAll(
+      'Setup: create table, tag and get admin display name',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      entityChangesTable = new TableClass();
-      entityChangesTag = new TagClass({});
+        entityChangesTable = new TableClass();
+        entityChangesTag = new TagClass({});
 
-      try {
-        await entityChangesTable.create(apiContext);
-        await entityChangesTag.create(apiContext);
+        try {
+          await entityChangesTable.create(apiContext);
+          await entityChangesTag.create(apiContext);
 
-        const userResponse = await apiContext.get('/api/v1/users/loggedInUser');
-        const adminUser = await userResponse.json();
-        adminDisplayName = adminUser.displayName ?? adminUser.name;
-      } finally {
-        await afterAction();
+          const userResponse = await apiContext.get(
+            '/api/v1/users/loggedInUser'
+          );
+          const adminUser = await userResponse.json();
+          adminDisplayName = adminUser.displayName ?? adminUser.name;
+        } finally {
+          await afterAction();
+        }
       }
-    });
+    );
 
     test.afterAll('Cleanup: delete table and tag', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
