@@ -55,11 +55,12 @@ async function navigateToTasksPanel(page: import('@playwright/test').Page) {
     .getByText('Tasks');
 
   await expect(tasksMenuItem).toBeVisible();
-  await tasksMenuItem.click();
 
-  await page.waitForResponse(
+  const tasksCountResponse = page.waitForResponse(
     (r) => r.url().includes('/api/v1/tasks/count') && r.status() === 200
   );
+  await tasksMenuItem.click();
+  await tasksCountResponse;
   await waitForPageLoaded(page);
 }
 
@@ -69,18 +70,20 @@ function badge(page: import('@playwright/test').Page) {
 
 async function switchToClosedFilter(page: import('@playwright/test').Page) {
   await page.getByTestId('user-profile-page-task-filter-icon').click();
-  await page.getByTestId('closed-tasks').click();
-  await page.waitForResponse(
+  const tasksCountResponse = page.waitForResponse(
     (r) => r.url().includes('/api/v1/tasks/count') && r.status() === 200
   );
+  await page.getByTestId('closed-tasks').click();
+  await tasksCountResponse;
 }
 
 async function switchToOpenFilter(page: import('@playwright/test').Page) {
   await page.getByTestId('user-profile-page-task-filter-icon').click();
-  await page.getByTestId('open-tasks').click();
-  await page.waitForResponse(
+  const tasksCountResponse = page.waitForResponse(
     (r) => r.url().includes('/api/v1/tasks/count') && r.status() === 200
   );
+  await page.getByTestId('open-tasks').click();
+  await tasksCountResponse;
 }
 test.describe('ActivityFeedTab — task filter badge and placeholder', () => {
   const table = new TableClass();
