@@ -209,6 +209,11 @@ class SearchIndexFactoryTest {
     assertTrue(testCaseFields.contains("testSuite"));
     assertTrue(testCaseFields.contains("testSuites"));
     assertTrue(testCaseFields.contains("testDefinition"));
+    // Regression: testCaseResult/incidentId are stripped from storage JSON and
+    // only fetched by setFieldsInBulk when explicitly requested. Reindex without
+    // them produces docs missing testCaseStatus, blanking statuses in the UI.
+    assertTrue(testCaseFields.contains(Entity.TEST_CASE_RESULT));
+    assertTrue(testCaseFields.contains("incidentId"));
   }
 
   @Test

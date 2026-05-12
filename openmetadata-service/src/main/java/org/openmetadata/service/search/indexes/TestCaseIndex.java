@@ -37,6 +37,8 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
     fields.add("testSuite");
     fields.add("testSuites");
     fields.add("testDefinition");
+    fields.add(Entity.TEST_CASE_RESULT);
+    fields.add("incidentId");
     return java.util.Collections.unmodifiableSet(fields);
   }
 
