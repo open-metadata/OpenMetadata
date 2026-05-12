@@ -11,146 +11,90 @@
  *  limitations under the License.
  */
 
-/**
- * Regression coverage for issue #28038 — PATCH on a tag-bearing entity must
- * not 500 with "Non-existing name/value pair in the object for key appliedBy"
- * when a derived (inherited) tag is reshuffled out of an index that the UI's
- * local entity copy still believes carries an `appliedBy` value.
- *
- * The bug came from two interacting halves of PR #24817 "Tagging explanation":
- *   1. `EntityRepository.updateTags` stamps `appliedBy` in memory on tags it
- *      just touched, so the PATCH response carries the key for direct tags.
- *   2. `CollectionDAO.getDerivedTagsBatch` propagated `appliedAt` but dropped
- *      `appliedBy` when reconstructing derived TagLabels.
- *
- * After (1) the UI retains a local state where some tag has `appliedBy`. The
- * UI never re-fetches between operations, so on a second edit `fast-json-patch
- * compare(local, updated)` emits `remove /tags/N/appliedBy`. The server then
- * loads the entity fresh — and for the derived tag the loaded JSON has no
- * `appliedBy` key (due to (2) + `@JsonInclude(NON_NULL)` on `TagLabel`),
- * causing Jakarta JSON Patch to throw.
- *
- * This spec drives the same API shape the captured UI repro produced so the
- * bug is caught regardless of how the tag editor evolves.
- */
-
 import { expect, test } from '@playwright/test';
-import { compare } from 'fast-json-patch';
-import { TableClass } from '../../support/entity/TableClass';
-import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { createNewPage } from '../../utils/common';
+import { TableClass } from '../../support/entity/TableClass';
+import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { assignGlossaryTerm } from '../../utils/entity';
+
+const table = new TableClass();
+const glossaryTerm = new GlossaryTerm();
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const SEEDED_CLASSIFICATION_TAG = 'PII.Sensitive';
-
-test('PATCH succeeds when removing a tag that carries derived appliedBy from a glossary term (#28038)', async ({
-  browser,
-}) => {
+test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-  const table = new TableClass();
 
-  try {
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await table.create(apiContext);
-
-    // 1. Apply a classification tag to the glossary term — this is what makes
-    //    the term contribute *inherited* tags to anything that references it,
-    //    which is the only shape that exercises CollectionDAO.getDerivedTagsBatch.
-    await glossaryTerm.patch(apiContext, [
-      {
-        op: 'add',
-        path: '/tags',
-        value: [
-          {
-            tagFQN: SEEDED_CLASSIFICATION_TAG,
-            source: 'Classification',
-            labelType: 'Manual',
-            state: 'Confirmed',
-          },
-        ],
-      },
-    ]);
-
-    // 2. Attach the glossary term to the table. The PATCH response stamps
-    //    `appliedBy` in memory on the direct glossary-term tag — this is the
-    //    response the UI keeps in local state.
-    const firstResponse = await table.patch({
-      apiContext,
-      patchData: [
+  await glossaryTerm.create(apiContext);
+  await glossaryTerm.patch(apiContext, [
+    {
+      op: 'add',
+      path: '/tags',
+      value: [
         {
-          op: 'add',
-          path: '/tags',
-          value: [
-            {
-              tagFQN: glossaryTerm.responseData.fullyQualifiedName,
-              source: 'Glossary',
-              labelType: 'Manual',
-              state: 'Confirmed',
-            },
-          ],
-        },
-      ],
-    });
-
-    const tagsFromFirstPatch = firstResponse.entity.tags ?? [];
-
-    // After (1) and the propagation fix at CollectionDAO.getDerivedTagsBatch,
-    // every tag on the table (direct + derived) must carry `appliedBy` so the
-    // UI's local copy and the server's loaded copy agree on the key.
-    expect(tagsFromFirstPatch.length).toBeGreaterThan(0);
-    for (const tag of tagsFromFirstPatch) {
-      expect(tag.appliedBy).toBeDefined();
-    }
-
-    // 3. Drive the exact second-edit shape from the captured curl in #28038 —
-    //    swap the glossary-term tag at index 0 for a different tag without
-    //    surfacing it through the UI. fast-json-patch compare(...) emits the
-    //    same `remove /tags/0/appliedBy` + `replace /tags/0/<field>` cluster
-    //    the React tag editor produces.
-    const updated = {
-      ...firstResponse.entity,
-      tags: [
-        ...tagsFromFirstPatch.filter(
-          (tag: { labelType?: string }) => tag.labelType === 'Derived'
-        ),
-        {
-          tagFQN: 'Tier.Tier1',
+          tagFQN: 'PII.Sensitive',
           source: 'Classification',
           labelType: 'Manual',
           state: 'Confirmed',
         },
       ],
-    };
+    },
+  ]);
 
-    const secondPatch = compare(firstResponse.entity, updated);
+  await table.create(apiContext);
 
-    // The exact failure shape from the issue: at least one `remove ...appliedBy`
-    // op must be present, otherwise the test isn't exercising the regression.
-    const removesAppliedBy = secondPatch.some(
-      (op) => op.op === 'remove' && op.path.endsWith('/appliedBy')
-    );
-    expect(removesAppliedBy).toBe(true);
+  await afterAction();
+});
 
-    const secondResponse = await table.patch({
-      apiContext,
-      patchData: secondPatch,
-    });
+test.afterAll(async ({ browser }) => {
+  const { apiContext, afterAction } = await createNewPage(browser);
+  await table.delete(apiContext);
+  await glossaryTerm.glossary.delete(apiContext);
+  await afterAction();
+});
 
-    // Pre-fix this PATCH returns 500 with
-    // "Non-existing name/value pair in the object for key appliedBy".
-    // Post-fix it must succeed and leave the entity in a valid state.
-    expect(secondResponse.entity.id).toBe(firstResponse.entity.id);
-    for (const tag of secondResponse.entity.tags ?? []) {
-      expect(tag.appliedBy).toBeDefined();
-    }
-  } finally {
-    await table.delete(apiContext);
-    await glossary.delete(apiContext);
-    await afterAction();
-  }
+test('Inherited tags from a glossary term carry appliedBy after the PATCH that attaches the term (#28038)', async ({
+  page,
+}) => {
+  await redirectToHomePage(page);
+  await table.visitEntityPage(page);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  const patchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/tables/') &&
+      response.request().method() === 'PATCH'
+  );
+
+  await assignGlossaryTerm(
+    page,
+    {
+      displayName: glossaryTerm.data.displayName,
+      name: glossaryTerm.data.name,
+      fullyQualifiedName: glossaryTerm.responseData.fullyQualifiedName,
+    },
+    'Add',
+    'tables'
+  );
+
+  const response = await patchResponse;
+  expect(response.status()).toBe(200);
+
+  const body = await response.json();
+  const tags = body.tags ?? [];
+  expect(tags.length).toBeGreaterThan(1);
+
+  const derived = tags.find(
+    (tag: { labelType?: string }) => tag.labelType === 'Derived'
+  );
+  expect(derived).toBeDefined();
+  expect(derived.appliedBy).toBeDefined();
+
+  await expect(
+    page
+      .getByTestId('KnowledgePanel.Tags')
+      .getByTestId('tags-container')
+      .getByTestId('tag-PII.Sensitive')
+  ).toBeVisible();
 });

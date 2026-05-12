@@ -118,13 +118,6 @@ class JsonUtilsTest {
     assertTrue(jsonException.getMessage().contains("An array item index is out of range"));
   }
 
-  /**
-   * Patch ops targeting the server-managed tag audit fields (appliedBy/appliedAt) are filtered
-   * out, mirroring the existing filter for href/changeDescription. Without the filter, a
-   * `remove /tags/N/appliedBy` op against a tag whose JSON has no appliedBy key (e.g. a derived
-   * tag, or a legacy row with applied_by = NULL serialized via @JsonInclude(NON_NULL)) throws
-   * "Non-existing name/value pair in the object for key appliedBy" — see issue #28038.
-   */
   @Test
   void applyPatchFiltersTagAuditFieldOps() {
     JsonObjectBuilder tag =
