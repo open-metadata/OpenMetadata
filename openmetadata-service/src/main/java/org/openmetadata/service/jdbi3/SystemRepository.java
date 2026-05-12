@@ -50,6 +50,7 @@ import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.Google;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
@@ -766,8 +767,21 @@ public class SystemRepository {
               nlpConfig.getOpenai().getEmbeddingDimension(),
               deploymentInfo);
         }
+        case "google" -> {
+          Google googleCfg = nlpConfig.getGoogle();
+          if (googleCfg == null) {
+            yield "Google provider selected but google configuration block is missing";
+          }
+          String googleEndpoint =
+              nullOrEmpty(googleCfg.getEndpoint())
+                  ? "generativelanguage.googleapis.com"
+                  : googleCfg.getEndpoint();
+          yield String.format(
+              "Google configuration: endpoint: %s, embeddingModelId: %s, embeddingDimension: %s",
+              googleEndpoint, googleCfg.getEmbeddingModelId(), googleCfg.getEmbeddingDimension());
+        }
         default -> String.format(
-            "Unknown provider '%s'. Supported providers: djl, bedrock, openai", provider);
+            "Unknown provider '%s'. Supported providers: djl, bedrock, openai, google", provider);
       };
     } catch (Exception e) {
       LOG.error("Error getting embedding configuration", e);

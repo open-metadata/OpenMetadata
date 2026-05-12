@@ -274,7 +274,8 @@
       "domain",
       "all",
       "dataAsset",
-      "dataAssetEmbeddings"
+      "dataAssetEmbeddings",
+      "marketplace"
     ],
     "childAliases": []
   },
@@ -282,7 +283,7 @@
     "indexName": "domain_search_index",
     "indexMappingFile": "/elasticsearch/%s/domain_index_mapping.json",
     "alias": "domain",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "marketplace"],
     "childAliases": ["dataProduct"]
   },
   "metric": {
@@ -587,6 +588,27 @@
     "parentAliases": [
       "mcpServer"
     ],
+    "childAliases": []
+  },
+  "page": {
+    "indexName": "knowledge_page_search_index",
+    "indexMappingFile": "/elasticsearch/%s/knowledge_page_search_index.json",
+    "alias": "page",
+    "parentAliases": ["all", "dataAsset", "dataAssetEmbeddings"],
+    "childAliases": []
+  },
+  "folder": {
+    "indexName": "folder_search_index",
+    "indexMappingFile": "/elasticsearch/%s/folder_search_index.json",
+    "alias": "folder",
+    "parentAliases": ["all"],
+    "childAliases": []
+  },
+  "contextFile": {
+    "indexName": "context_file_search_index",
+    "indexMappingFile": "/elasticsearch/%s/context_file_search_index.json",
+    "alias": "contextFile",
+    "parentAliases": ["all"],
     "childAliases": []
   }
 }

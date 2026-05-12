@@ -28,6 +28,8 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteScheme,
 )
 from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.samplingConfig import SampleConfigType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -36,9 +38,7 @@ from metadata.profiler.orm.registry import CustomTypes
 from metadata.profiler.processor.core import Profiler
 from metadata.sampler.models import (
     ProfileSampleConfig,
-    ProfileSampleConfigType,
     SampleConfig,
-    StaticSamplingConfig,
 )
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
@@ -113,7 +113,7 @@ class SampleTest(TestCase):
                 entity=None,
                 sample_config=SampleConfig(
                     profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        sampleConfigType=SampleConfigType.STATIC,
                         config=StaticSamplingConfig(profileSample=50.0),
                     )
                 ),
@@ -364,7 +364,7 @@ class SampleTest(TestCase):
                 entity=None,
                 sample_config=SampleConfig(
                     profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        sampleConfigType=SampleConfigType.STATIC,
                         config=StaticSamplingConfig(profileSample=50.0),
                     )
                 ),
@@ -386,7 +386,7 @@ class SampleTest(TestCase):
                 entity=None,
                 sample_config=SampleConfig(
                     profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        sampleConfigType=SampleConfigType.STATIC,
                         config=StaticSamplingConfig(
                             profileSample=100,
                             profileSampleType=ProfileSampleType.PERCENTAGE,
@@ -411,7 +411,7 @@ class SampleTest(TestCase):
                 entity=None,
                 sample_config=SampleConfig(
                     profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        sampleConfigType=SampleConfigType.STATIC,
                         config=StaticSamplingConfig(
                             profileSample=100,
                             profileSampleType=ProfileSampleType.PERCENTAGE,
@@ -436,7 +436,7 @@ class SampleTest(TestCase):
                 entity=None,
                 sample_config=SampleConfig(
                     profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        sampleConfigType=SampleConfigType.STATIC,
                         config=StaticSamplingConfig(
                             profileSample=100,
                             profileSampleType=ProfileSampleType.PERCENTAGE,
@@ -461,7 +461,7 @@ class SampleTest(TestCase):
                 entity=None,
                 sample_config=SampleConfig(
                     profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        sampleConfigType=SampleConfigType.STATIC,
                         config=StaticSamplingConfig(
                             profileSample=100,
                             profileSampleType=ProfileSampleType.PERCENTAGE,
@@ -487,7 +487,7 @@ class SampleTest(TestCase):
                 entity=None,
                 sample_config=SampleConfig(
                     profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        sampleConfigType=SampleConfigType.STATIC,
                         config=StaticSamplingConfig(
                             profileSample=100,
                             profileSampleType=ProfileSampleType.PERCENTAGE,

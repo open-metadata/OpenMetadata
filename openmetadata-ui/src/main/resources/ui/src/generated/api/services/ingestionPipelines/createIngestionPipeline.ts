@@ -785,12 +785,6 @@ export interface Pipeline {
      */
     entityFullyQualifiedName?: string;
     /**
-     * Percentage of data or no. of rows we want to execute the profiler and tests on
-     */
-    profileSample?:      number;
-    profileSampleType?:  ProfileSampleType;
-    samplingMethodType?: SamplingMethodType;
-    /**
      * Service connections to be used for the logical test suite.
      */
     serviceConnections?: ServiceConnections[];
@@ -3021,6 +3015,11 @@ export interface ProfileSampleConfig {
  */
 export interface ICSamplingConfig {
     /**
+     * Set to true to dynamically determine sampling percentage based on row count thresholds.
+     * If false, the thresholds values passed will be used as the sampling configuration.
+     */
+    smartSampling?: boolean;
+    /**
      * Row count thresholds for sampling. Evaluated in order from highest to lowest threshold.
      * Tables below the lowest threshold are profiled at 100% (no sampling).
      */
@@ -3308,6 +3307,8 @@ export interface ServiceConnection {
  * IBM Informix Database Connection Config
  *
  * IOMETE Connection Config
+ *
+ * QuestDB Connection Config
  *
  * Kafka Connection Config
  *
@@ -3674,6 +3675,8 @@ export interface ConfigObject {
      *
      * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
      *
+     * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
+     *
      * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
@@ -3929,6 +3932,8 @@ export interface ConfigObject {
      * metadata in Informix.
      *
      * Username to connect to IOMETE.
+     *
+     * Username to connect to QuestDB.
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -7783,6 +7788,7 @@ export enum PurpleType {
     PubSub = "PubSub",
     QlikCloud = "QlikCloud",
     QlikSense = "QlikSense",
+    QuestDB = "QuestDB",
     QuickSight = "QuickSight",
     REST = "Rest",
     Ranger = "Ranger",
