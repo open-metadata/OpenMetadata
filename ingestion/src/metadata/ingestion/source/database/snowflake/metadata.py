@@ -688,19 +688,23 @@ class SnowflakeSource(
             **({"include_transient_tables": True} if self.service_connection.includeTransientTables else {}),
         )
 
-        self.context.get_global().deleted_tables.extend(
-            [
-                fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=schema_name,
-                    table_name=table.name,
+        deleted_fqns = []
+        for table in snowflake_tables.get_deleted():
+            try:
+                deleted_fqns.append(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=schema_name,
+                        table_name=table.name,
+                    )
                 )
-                for table in snowflake_tables.get_deleted()
-            ]
-        )
+            except Exception as err:
+                logger.warning(f"Skipping deleted-table FQN for {table.name!r} in schema {schema_name}: {err}")
+                logger.debug(traceback.format_exc())
+        self.context.get_global().deleted_tables.extend(deleted_fqns)
 
         return [TableNameAndType(name=table.name, type_=table.type_) for table in snowflake_tables.get_not_deleted()]
 
