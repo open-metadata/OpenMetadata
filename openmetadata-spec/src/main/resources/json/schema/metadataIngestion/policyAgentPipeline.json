@@ -15,7 +15,7 @@
     "policy": {
       "description": "A single access grant entry. The per-service shape lives under `config`.",
       "type": "object",
-      "javaType": "org.openmetadata.schema.metadataIngestion.policyAgent.Policy",
+      "javaType": "org.openmetadata.schema.metadataIngestion.policyagent.Policy",
       "properties": {
         "id": {
           "description": "Unique id of the policy entry.",
