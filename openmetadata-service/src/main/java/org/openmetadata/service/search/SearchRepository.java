@@ -32,7 +32,6 @@ import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENT
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_TAGS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_TEST_SUITE_CHILDREN_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.SOFT_DELETE_RESTORE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_GLOSSARY_TAGS;
 import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
@@ -129,6 +128,7 @@ import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
@@ -136,6 +136,7 @@ import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.scripts.SoftDeleteScript;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
 import org.openmetadata.service.search.vector.VectorIndexService;
@@ -2389,10 +2390,11 @@ public class SearchRepository {
       return;
     }
     IndexMapping indexMapping = entityIndexMap.get(entityType);
-    String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
+    SoftDeleteScript script = new SoftDeleteScript(delete);
     Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
     try {
-      searchClient.softDeleteOrRestoreEntity(getWriteIndexName(indexMapping), entityId, scriptTxt);
+      searchClient.softDeleteOrRestoreEntity(
+          getWriteIndexName(indexMapping), entityId, script.painless());
       softDeleteOrRestoredChildren(entity.getEntityReference(), indexMapping, delete);
 
       if (Entity.TABLE.equals(entityType)) {
@@ -2419,12 +2421,12 @@ public class SearchRepository {
       return;
     }
 
-    String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
+    SoftDeleteScript script = new SoftDeleteScript(delete);
     try {
       searchClient.updateChildren(
           List.of(columnIndexMapping.getIndexName(clusterAlias)),
           new ImmutablePair<>("table.id", table.getId().toString()),
-          new ImmutablePair<>(scriptTxt, null));
+          new ImmutablePair<>(script.painless(), null));
     } catch (Exception e) {
       LOG.error(
           "Issue soft deleting/restoring columns for table [{}]: {}",
@@ -2511,11 +2513,12 @@ public class SearchRepository {
   public void softDeleteOrRestoredChildren(
       EntityReference entityReference, IndexMapping indexMapping, boolean delete)
       throws IOException {
-    // childAliases values are entity-type names (per indexMapping.json). Drop time-series
-    // children — their docs have no top-level `deleted` field and the script would pollute them.
+    // Each childAlias is an entity-type name (per indexMapping.json). Use the typed script's
+    // capability check so we never apply soft-delete to an index whose schema lacks `deleted`.
+    SoftDeleteScript script = new SoftDeleteScript(delete);
     List<String> targets =
         indexMapping.getChildAliases().stream()
-            .filter(a -> !Entity.isTimeSeriesEntity(a))
+            .filter(a -> script.compatibleWith(EntityIndexCapabilityRegistry.get(a)))
             .map(a -> clusterAlias == null || clusterAlias.isEmpty() ? a : clusterAlias + "_" + a)
             .toList();
     if (targets.isEmpty()) {
@@ -2524,10 +2527,9 @@ public class SearchRepository {
     String entityType = entityReference.getType();
     String parentIdField =
         SERVICE_ENTITY_TYPES.contains(entityType) ? "service.id" : entityType + ".id";
-    String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
     searchClient.softDeleteOrRestoreChildren(
         targets,
-        scriptTxt,
+        script.painless(),
         List.of(new ImmutablePair<>(parentIdField, entityReference.getId().toString())));
   }
 

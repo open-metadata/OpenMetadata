@@ -67,7 +67,8 @@ test('Incident Manager renders without Jackson error after a test case is soft-d
           return res.status();
         },
         {
-          message: 'incident status endpoint must serve the test case before soft-delete',
+          message:
+            'incident status endpoint must serve the test case before soft-delete',
           timeout: 30_000,
         }
       )

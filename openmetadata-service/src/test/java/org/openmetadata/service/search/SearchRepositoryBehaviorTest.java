@@ -89,7 +89,7 @@ class SearchRepositoryBehaviorTest {
       IndexMapping.builder()
           .indexName("table_search_index")
           .alias("table")
-          .childAliases(List.of("column_search_index"))
+          .childAliases(List.of(Entity.TABLE_COLUMN))
           .indexMappingFile("/elasticsearch/%s/table_index_mapping.json")
           .build();
 
@@ -113,7 +113,7 @@ class SearchRepositoryBehaviorTest {
       IndexMapping.builder()
           .indexName("database_service_search_index")
           .alias("databaseService")
-          .childAliases(List.of("database_search_index"))
+          .childAliases(List.of(Entity.DATABASE))
           .indexMappingFile("/elasticsearch/%s/database_service_index_mapping.json")
           .build();
 
@@ -148,11 +148,13 @@ class SearchRepositoryBehaviorTest {
   private static final List<String> MOCK_ENTITY_TYPES =
       List.of(
           Entity.TABLE,
+          Entity.TABLE_COLUMN,
           Entity.GLOSSARY_TERM,
           Entity.TAG,
           Entity.PAGE,
           Entity.DOMAIN,
           Entity.DATABASE_SERVICE,
+          Entity.DATABASE,
           Entity.TEST_SUITE,
           Entity.GLOSSARY,
           Entity.CLASSIFICATION,
@@ -207,6 +209,8 @@ class SearchRepositoryBehaviorTest {
         EntityRepository<?> mockRepo = mock(EntityRepository.class);
         doReturn(descriptors).when(mockRepo).getSearchPropagationDescriptors();
         repoMap.put(entityType, mockRepo);
+        org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry.register(
+            org.openmetadata.service.search.capability.EntityIndexCapability.forEntity(entityType));
       }
     } catch (Exception e) {
       throw new RuntimeException("Failed to register mock entity repositories", e);
@@ -220,6 +224,7 @@ class SearchRepositoryBehaviorTest {
       repoMapField.setAccessible(true);
       Map<String, Object> repoMap = (Map<String, Object>) repoMapField.get(null);
       MOCK_ENTITY_TYPES.forEach(repoMap::remove);
+      org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry.clear();
     } catch (Exception e) {
       throw new RuntimeException("Failed to clear mock entity repositories", e);
     }
@@ -233,6 +238,9 @@ class SearchRepositoryBehaviorTest {
       Map<String, Object> map = (Map<String, Object>) tsMap.get(null);
       for (String entityType : MOCK_TIME_SERIES_ENTITY_TYPES) {
         map.put(entityType, mock(org.openmetadata.service.jdbi3.EntityTimeSeriesRepository.class));
+        org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry.register(
+            org.openmetadata.service.search.capability.EntityIndexCapability.forTimeSeries(
+                entityType));
       }
     } catch (Exception e) {
       throw new RuntimeException("Failed to register mock time-series repositories", e);
@@ -664,9 +672,7 @@ class SearchRepositoryBehaviorTest {
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
         .updateChildren(
-            eq(List.of("cluster_database_search_index")),
-            fieldCaptor.capture(),
-            updateCaptor.capture());
+            eq(List.of("cluster_database")), fieldCaptor.capture(), updateCaptor.capture());
     assertEquals("service.id", fieldCaptor.getValue().getLeft());
     assertEquals("service-id", fieldCaptor.getValue().getRight());
     assertEquals("New Service", updateCaptor.getValue().getRight().get(Entity.FIELD_DISPLAY_NAME));
@@ -930,7 +936,7 @@ class SearchRepositoryBehaviorTest {
         .softDeleteOrRestoreEntity(
             "cluster_table_search_index",
             entity.getId().toString(),
-            String.format(SearchClient.SOFT_DELETE_RESTORE_SCRIPT, true));
+            new org.openmetadata.service.search.scripts.SoftDeleteScript(true).painless());
 
     EntityInterface unsupported = mockEntity("unsupported", UUID.randomUUID(), "skip-me");
     spyRepository.deleteEntityIndex(unsupported);
@@ -961,7 +967,7 @@ class SearchRepositoryBehaviorTest {
 
     verify(searchClient)
         .deleteEntityByFields(
-            List.of("cluster_database_search_index"),
+            List.of("cluster_database"),
             List.of(
                 new org.apache.commons.lang3.tuple.ImmutablePair<>(
                     "service.id", service.getId().toString())));
@@ -975,7 +981,7 @@ class SearchRepositoryBehaviorTest {
 
     verify(searchClient)
         .deleteEntityByFields(
-            List.of("cluster_column_search_index"),
+            List.of("cluster_tableColumn"),
             List.of(
                 new org.apache.commons.lang3.tuple.ImmutablePair<>(
                     "table.id", table.getId().toString())));
@@ -2060,7 +2066,8 @@ class SearchRepositoryBehaviorTest {
   @Test
   void softDeleteOrRestoreEntityIndexPropagatesServiceDeletionToChildren() throws Exception {
     EntityInterface service = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "service");
-    String scriptTxt = String.format(SearchClient.SOFT_DELETE_RESTORE_SCRIPT, true);
+    String scriptTxt =
+        new org.openmetadata.service.search.scripts.SoftDeleteScript(true).painless();
 
     repository.softDeleteOrRestoreEntityIndex(service, true);
 
@@ -2069,7 +2076,7 @@ class SearchRepositoryBehaviorTest {
             "cluster_database_service_search_index", service.getId().toString(), scriptTxt);
     verify(searchClient)
         .softDeleteOrRestoreChildren(
-            List.of("cluster_database_search_index"),
+            List.of("cluster_database"),
             scriptTxt,
             List.of(
                 new org.apache.commons.lang3.tuple.ImmutablePair<>(
@@ -2079,13 +2086,14 @@ class SearchRepositoryBehaviorTest {
   @Test
   void softDeleteOrRestoredChildrenUsesEntityTypeFieldForGenericEntities() throws IOException {
     EntityReference table = new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE);
-    String scriptTxt = String.format(SearchClient.SOFT_DELETE_RESTORE_SCRIPT, false);
+    String scriptTxt =
+        new org.openmetadata.service.search.scripts.SoftDeleteScript(false).painless();
 
     repository.softDeleteOrRestoredChildren(table, TABLE_MAPPING, false);
 
     verify(searchClient)
         .softDeleteOrRestoreChildren(
-            List.of("cluster_column_search_index"),
+            List.of("cluster_tableColumn"),
             scriptTxt,
             List.of(
                 new org.apache.commons.lang3.tuple.ImmutablePair<>(
