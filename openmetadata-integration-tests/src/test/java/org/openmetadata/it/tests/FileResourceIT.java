@@ -344,4 +344,44 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
     assertEquals("Updated description", patched.getDescription());
     assertNull(patched.getColumns());
   }
+
+  @Test
+  void test_createFileWithDisplayName(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    String fileName = ns.prefix("test_file_display");
+    String displayName = "My Test File";
+
+    File createdFile =
+        Files.create()
+            .name(fileName)
+            .withDisplayName(displayName)
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+
+    assertEquals(fileName, createdFile.getName());
+    assertEquals(displayName, createdFile.getDisplayName());
+  }
+
+  @Test
+  void test_fileWithAllOptionalFields(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    String fileName = ns.prefix("test_file_full");
+    String displayName = "Complete Test File";
+    String description = "A file with all optional fields populated";
+
+    File createdFile =
+        Files.create()
+            .name(fileName)
+            .withDisplayName(displayName)
+            .withDescription(description)
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+
+    assertEquals(fileName, createdFile.getName());
+    assertEquals(displayName, createdFile.getDisplayName());
+    assertEquals(description, createdFile.getDescription());
+    assertEquals(driveService.getFullyQualifiedName(), createdFile.getService().getName());
+  }
 }

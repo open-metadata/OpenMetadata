@@ -222,4 +222,26 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
     assertTrue(created.getFullyQualifiedName().contains(driveService.getName()));
     assertTrue(created.getFullyQualifiedName().contains(directoryName));
   }
+
+  @Test
+  void test_createDirectoryWithAllFields(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    String directoryName = ns.prefix("test_directory_full");
+    Directory created =
+        Directories.create()
+            .name(directoryName)
+            .withService(driveService.getFullyQualifiedName())
+            .withDisplayName("Complete Test Directory")
+            .withDescription("A directory with all fields populated for testing")
+            .execute();
+
+    assertEquals(directoryName, created.getName());
+    assertEquals("Complete Test Directory", created.getDisplayName());
+    assertEquals("A directory with all fields populated for testing", created.getDescription());
+    assertNotNull(created.getService());
+    assertTrue(
+        created.getFullyQualifiedName().contains(directoryName),
+        "FQN should contain directory name");
+  }
 }
