@@ -12,9 +12,11 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  listDataAccessRequests,
+  listTasks,
   Task,
+  TaskCategory,
   TaskEntityStatus,
+  TaskEntityType,
 } from '../rest/tasksAPI';
 import { isDarApprovalActive } from '../utils/TasksUtils';
 import { useApplicationStore } from './useApplicationStore';
@@ -47,10 +49,11 @@ export const useDataAccessRequest = ({
     }
 
     try {
-      const res = await listDataAccessRequests({
-        dataset: entityFqn,
-        requestedBy: currentUser.name,
-        statusGroup: 'active',
+      const res = await listTasks({
+        aboutEntity: entityFqn,
+        category: TaskCategory.DataAccess,
+        type: TaskEntityType.DataAccessRequest,
+        createdBy: currentUser.name,
         fields: 'about,resolution',
         limit: 10,
       });
@@ -79,48 +82,33 @@ export const useDataAccessRequest = ({
     };
   }, [fetchExistingDar, listenForEvents]);
 
-  const isDarDisabled = useMemo(
-    () =>
-      existingDarTasks.some((task) => {
-        const approvalActiveStart =
-          task.approvedAt ?? task.updatedAt ?? task.createdAt;
+  const isDarDisabled = useMemo(() => {
+    return existingDarTasks.some((task) => {
+      const stage = (
+        task.workflowStageDisplayName ??
+        task.workflowStageId ??
+        ''
+      ).toLowerCase();
 
-        if (
-          task.status === TaskEntityStatus.Approved ||
-          task.status === TaskEntityStatus.Granted
-        ) {
-          const payload = task.payload as
-            | { duration?: string; expirationDate?: number }
-            | undefined;
-
-          return isDarApprovalActive(
-            approvalActiveStart,
-            payload?.duration,
-            payload?.expirationDate
-          );
-        }
-
-        const stage = (
-          task.workflowStageDisplayName ??
-          task.workflowStageId ??
-          ''
-        ).toLowerCase();
-        if (stage === 'approved' || stage === 'granted') {
-          const payload = task.payload as
-            | { duration?: string; expirationDate?: number }
-            | undefined;
-
-          return isDarApprovalActive(
-            approvalActiveStart,
-            payload?.duration,
-            payload?.expirationDate
-          );
-        }
-
+      if (stage === 'review') {
         return true;
-      }),
-    [existingDarTasks]
-  );
+      }
+
+      if (stage === 'approved') {
+        const payload = task.payload as
+          | { duration?: string; expirationDate?: number }
+          | undefined;
+
+        return isDarApprovalActive(
+          task.updatedAt ?? task.createdAt,
+          payload?.duration,
+          payload?.expirationDate
+        );
+      }
+
+      return false;
+    });
+  }, [existingDarTasks]);
 
   const isDarAwaitingGrant = useMemo(
     () =>
