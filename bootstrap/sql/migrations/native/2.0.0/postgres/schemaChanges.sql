@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS task_entity (
     deleted boolean GENERATED ALWAYS AS (((json ->> 'deleted'::text))::boolean) STORED,
     aboutfqnhash character varying(256) GENERATED ALWAYS AS ((json ->> 'aboutFqnHash'::text)) STORED,
     createdbyid character varying(36) GENERATED ALWAYS AS ((json ->> 'createdById'::text)) STORED,
+    approvedbyid character varying(36) GENERATED ALWAYS AS ((json ->> 'approvedById'::text)) STORED,
     PRIMARY KEY (id),
     CONSTRAINT uk_task_fqn_hash UNIQUE (fqnhash)
 );
@@ -33,6 +34,7 @@ CREATE INDEX IF NOT EXISTS idx_task_about_fqn_hash ON task_entity (aboutfqnhash)
 CREATE INDEX IF NOT EXISTS idx_task_status_about ON task_entity (status, aboutfqnhash);
 CREATE INDEX IF NOT EXISTS idx_task_created_by_id ON task_entity (createdbyid);
 CREATE INDEX IF NOT EXISTS idx_task_created_by_category ON task_entity (createdbyid, category);
+CREATE INDEX IF NOT EXISTS idx_task_approved_by_id ON task_entity (approvedbyid);
 
 CREATE TABLE IF NOT EXISTS new_task_sequence (
     id bigint NOT NULL DEFAULT 0

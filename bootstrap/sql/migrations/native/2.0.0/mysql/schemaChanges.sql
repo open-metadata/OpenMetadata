@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS task_entity (
     deleted tinyint(1) GENERATED ALWAYS AS (json_extract(`json`,_utf8mb4'$.deleted')) STORED,
     aboutFqnHash varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.aboutFqnHash'))) STORED,
     createdById varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.createdById'))) STORED,
+    approvedById varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.approvedById'))) STORED,
     PRIMARY KEY (id),
     UNIQUE KEY uk_fqn_hash (fqnHash),
     KEY idx_task_id (taskId),
@@ -30,7 +31,8 @@ CREATE TABLE IF NOT EXISTS task_entity (
     KEY idx_about_fqn_hash (aboutFqnHash),
     KEY idx_status_about (status, aboutFqnHash),
     KEY idx_created_by_id (createdById),
-    KEY idx_created_by_category (createdById, category)
+    KEY idx_created_by_category (createdById, category),
+    KEY idx_approved_by_id (approvedById)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS new_task_sequence (
