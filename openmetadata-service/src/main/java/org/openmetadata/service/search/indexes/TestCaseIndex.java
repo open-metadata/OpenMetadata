@@ -12,9 +12,11 @@ import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 
 public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
@@ -51,6 +53,25 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
         SearchIndexUtils.removeNonIndexableFields(testSuite, excludeFields);
       }
     }
+  }
+
+  /**
+   * Restore the pre-#26947 tag-array shape for test cases: the doc's {@code tags} array keeps the
+   * Tier label that {@link ParseTags} otherwise strips into the separate {@code tier} field. The DQ
+   * aggregation endpoint (/api/v1/dataQuality/testSuites/dataQualityReport) and other callers rely
+   * on filtering test cases via a nested {@code tags.tagFQN: "Tier.X"} query, which would return
+   * zero matches once the post-#26947 index shape is rebuilt by a {@code recreate=true} reindex.
+   * Other tag-derived fields (tier, classificationTags, glossaryTags) remain on the doc exactly as
+   * the {@link TaggableIndex} mixin would emit them.
+   */
+  @Override
+  public void applyTagFields(Map<String, Object> doc) {
+    List<TagLabel> entityTags = Entity.getEntityTags(getEntityTypeName(), testCase);
+    ParseTags parseTags = new ParseTags(entityTags);
+    doc.put("tags", entityTags);
+    doc.put("tier", parseTags.getTierTag());
+    doc.put("classificationTags", parseTags.getClassificationTags());
+    doc.put("glossaryTags", parseTags.getGlossaryTags());
   }
 
   @SneakyThrows
