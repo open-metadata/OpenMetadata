@@ -283,13 +283,10 @@ export const buildDataQualityDashboardFilters = (data: {
   }
 
   if (filters?.certification) {
-    const field = isTableApi
-      ? 'certification.tagLabel.tagFQN'
-      : 'testCase.certification.tagLabel.tagFQN';
     mustFilter.push({
       bool: {
         should: filters.certification.map((fqn) => ({
-          term: { [field]: fqn },
+          term: { 'certification.tagLabel.tagFQN': fqn },
         })),
       },
     });
