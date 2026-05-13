@@ -26,6 +26,15 @@ public record WorksheetIndex(Worksheet worksheet) implements ColumnIndex, DataAs
   }
 
   @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    // WorksheetRepository.clearFields actively nulls columns when not requested;
+    // also column-level tag hydration in setFields is gated on fields.contains("columns").
+    fields.add("columns");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
+  @Override
   public String getEntityTypeName() {
     return Entity.WORKSHEET;
   }
