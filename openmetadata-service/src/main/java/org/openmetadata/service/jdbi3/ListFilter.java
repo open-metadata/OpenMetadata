@@ -84,6 +84,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskApproverCondition());
     conditions.add(getTaskAboutServiceCondition());
     conditions.add(getTaskAccessTypeCondition());
+    conditions.add(getDarSearchCondition());
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition(tableName));
     conditions.add(getNameFilterCondition());
@@ -149,23 +150,31 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     String assigneeFqn = queryParams.get("assignee");
-    if (assigneeFqn == null) {
+    if (nullOrEmpty(assigneeFqn)) {
       return "";
     }
-    String assigneeFqnHash = FullyQualifiedName.buildHash(assigneeFqn);
-    queryParams.put("assigneeFqnHashParam", assigneeFqnHash);
+    String hashCsv =
+        Arrays.stream(assigneeFqn.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .map(FullyQualifiedName::buildHash)
+            .collect(Collectors.joining(","));
+    String inCondition = buildIndexedBindParams("assigneeFqnHash", hashCsv);
     return String.format(
         "(id IN (SELECT er.toId FROM entity_relationship er "
             + "INNER JOIN user_entity u ON er.fromId = u.id "
             + "WHERE er.fromEntity = 'user' "
-            + "AND u.nameHash = :assigneeFqnHashParam "
+            + "AND u.nameHash IN (%s) "
             + "AND er.relation = %d) "
             + "OR id IN (SELECT er.toId FROM entity_relationship er "
             + "INNER JOIN team_entity t ON er.fromId = t.id "
             + "WHERE er.fromEntity = 'team' "
-            + "AND t.nameHash = :assigneeFqnHashParam "
+            + "AND t.nameHash IN (%s) "
             + "AND er.relation = %d))",
-        Relationship.ASSIGNED_TO.ordinal(), Relationship.ASSIGNED_TO.ordinal());
+        inCondition,
+        Relationship.ASSIGNED_TO.ordinal(),
+        inCondition,
+        Relationship.ASSIGNED_TO.ordinal());
   }
 
   /**
@@ -175,13 +184,10 @@ public class ListFilter extends Filter<ListFilter> {
    */
   private String getAboutEntityCondition() {
     String aboutEntityFqn = queryParams.get("aboutEntity");
-    if (aboutEntityFqn == null) {
+    if (nullOrEmpty(aboutEntityFqn)) {
       return "";
     }
-    String fqnHash = FullyQualifiedName.buildHash(aboutEntityFqn);
-    queryParams.put("aboutFqnHashParam", fqnHash);
-    queryParams.put("aboutFqnHashPrefixParam", fqnHash + ".%");
-    return "(aboutFqnHash = :aboutFqnHashParam OR aboutFqnHash LIKE :aboutFqnHashPrefixParam)";
+    return buildFqnPrefixOrCondition("about", aboutEntityFqn);
   }
 
   /**
@@ -210,24 +216,29 @@ public class ListFilter extends Filter<ListFilter> {
    */
   private String getCreatedByCondition() {
     String createdById = queryParams.get("createdById");
-    if (createdById != null) {
-      queryParams.put("createdByIdParam", createdById);
-      return "createdById = :createdByIdParam";
+    if (!nullOrEmpty(createdById)) {
+      String inCondition = buildIndexedBindParams("createdById", createdById);
+      return String.format("createdById IN (%s)", inCondition);
     }
 
     String createdBy = queryParams.get("createdBy");
-    if (createdBy == null) {
+    if (nullOrEmpty(createdBy)) {
       return "";
     }
-    String createdByFqnHash = FullyQualifiedName.buildHash(createdBy);
-    queryParams.put("createdByFqnHashParam", createdByFqnHash);
+    String hashCsv =
+        Arrays.stream(createdBy.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .map(FullyQualifiedName::buildHash)
+            .collect(Collectors.joining(","));
+    String inCondition = buildIndexedBindParams("createdByFqnHash", hashCsv);
     return String.format(
         "(id IN (SELECT er.toId FROM entity_relationship er "
             + "INNER JOIN user_entity u ON er.fromId = u.id "
             + "WHERE er.fromEntity = 'user' "
-            + "AND u.nameHash = :createdByFqnHashParam "
+            + "AND u.nameHash IN (%s) "
             + "AND er.relation = %d))",
-        Relationship.CREATED.ordinal());
+        inCondition, Relationship.CREATED.ordinal());
   }
 
   private String getWorkflowDefinitionIdCondition() {
@@ -999,54 +1010,109 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     String taskStatus = queryParams.get("taskStatus");
-    if (taskStatus == null) {
+    if (nullOrEmpty(taskStatus)) {
       return "";
     }
-    String safeStatus = escapeApostrophe(taskStatus);
-    return tableName == null
-        ? String.format("status = '%s'", safeStatus)
-        : String.format("%s.status = '%s'", tableName, safeStatus);
+    String column = tableName == null ? "status" : tableName + ".status";
+    String inCondition = buildIndexedBindParams("taskStatus", taskStatus);
+    return String.format("%s IN (%s)", column, inCondition);
   }
 
   private String getTaskApproverCondition() {
     String approvedById = queryParams.get("approverId");
-    if (approvedById != null) {
-      queryParams.put("approverIdParam", approvedById);
-      return "approvedById = :approverIdParam";
+    if (!nullOrEmpty(approvedById)) {
+      String inCondition = buildIndexedBindParams("approverId", approvedById);
+      return String.format("approvedById IN (%s)", inCondition);
     }
 
     String approverFqn = queryParams.get("approver");
-    if (approverFqn == null) {
+    if (nullOrEmpty(approverFqn)) {
       return "";
     }
-    String approverFqnHash = FullyQualifiedName.buildHash(approverFqn);
-    queryParams.put("approverFqnHashParam", approverFqnHash);
-    return "(approvedById IN (SELECT u.id FROM user_entity u "
-        + "WHERE u.nameHash = :approverFqnHashParam))";
+    String hashCsv =
+        Arrays.stream(approverFqn.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .map(FullyQualifiedName::buildHash)
+            .collect(Collectors.joining(","));
+    String inCondition = buildIndexedBindParams("approverFqnHash", hashCsv);
+    return String.format(
+        "(approvedById IN (SELECT u.id FROM user_entity u WHERE u.nameHash IN (%s)))", inCondition);
   }
 
   private String getTaskAboutServiceCondition() {
     String serviceFqn = queryParams.get("aboutService");
-    if (serviceFqn == null) {
+    if (nullOrEmpty(serviceFqn)) {
       return "";
     }
-    String serviceFqnHash = FullyQualifiedName.buildHash(serviceFqn);
-    queryParams.put("aboutServiceFqnHashParam", serviceFqnHash);
-    queryParams.put("aboutServiceFqnHashPrefixParam", serviceFqnHash + ".%");
-    return "(aboutFqnHash = :aboutServiceFqnHashParam "
-        + "OR aboutFqnHash LIKE :aboutServiceFqnHashPrefixParam)";
+    return buildFqnPrefixOrCondition("aboutService", serviceFqn);
   }
 
   private String getTaskAccessTypeCondition() {
     String accessType = queryParams.get("accessType");
-    if (accessType == null) {
+    if (nullOrEmpty(accessType)) {
       return "";
     }
-    queryParams.put("accessTypeParam", accessType);
+    String inCondition = buildIndexedBindParams("accessType", accessType);
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-      return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.payload.accessType')) = :accessTypeParam";
+      return String.format(
+          "JSON_UNQUOTE(JSON_EXTRACT(json, '$.payload.accessType')) IN (%s)", inCondition);
     }
-    return "json->'payload'->>'accessType' = :accessTypeParam";
+    return String.format("json->'payload'->>'accessType' IN (%s)", inCondition);
+  }
+
+  /**
+   * Free-text search across DAR-relevant fields. Used by the {@code q} query param on
+   * {@code /v1/tasks/dataAccessRequests}. Database-only — DARs are not indexed into Elasticsearch.
+   * Matches against task name, displayName, the DAR payload.reason, and the about-entity FQN /
+   * displayName.
+   */
+  private String getDarSearchCondition() {
+    String search = queryParams.get("darSearch");
+    if (nullOrEmpty(search)) {
+      return "";
+    }
+    String escaped = "%" + escape(search.trim()) + "%";
+    queryParams.put("darSearchParam", escaped);
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return "(LOWER(name) LIKE LOWER(:darSearchParam) "
+          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')), '')) LIKE LOWER(:darSearchParam) "
+          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.payload.reason')), '')) LIKE LOWER(:darSearchParam) "
+          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.about.displayName')), '')) LIKE LOWER(:darSearchParam) "
+          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.about.fullyQualifiedName')), '')) LIKE LOWER(:darSearchParam))";
+    }
+    return "(LOWER(name) LIKE LOWER(:darSearchParam) "
+        + "OR LOWER(COALESCE(json->>'displayName', '')) LIKE LOWER(:darSearchParam) "
+        + "OR LOWER(COALESCE(json->'payload'->>'reason', '')) LIKE LOWER(:darSearchParam) "
+        + "OR LOWER(COALESCE(json->'about'->>'displayName', '')) LIKE LOWER(:darSearchParam) "
+        + "OR LOWER(COALESCE(json->'about'->>'fullyQualifiedName', '')) LIKE LOWER(:darSearchParam))";
+  }
+
+  /**
+   * Shared helper for FQN-hash-prefix multi-value filters (aboutEntity, aboutService).
+   * Splits the comma-separated input, hashes each FQN, and produces an OR-joined
+   * fragment of {@code (col = :hash OR col LIKE :hash_prefix)} groups.
+   */
+  private String buildFqnPrefixOrCondition(String prefix, String commaSeparatedFqns) {
+    List<String> tokens =
+        Arrays.stream(commaSeparatedFqns.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .toList();
+    if (tokens.isEmpty()) {
+      return "";
+    }
+    List<String> clauses = new ArrayList<>();
+    for (int i = 0; i < tokens.size(); i++) {
+      String hash = FullyQualifiedName.buildHash(tokens.get(i));
+      String hashKey = prefix + "FqnHash_" + i;
+      String prefixKey = prefix + "FqnHashPrefix_" + i;
+      queryParams.put(hashKey, hash);
+      queryParams.put(prefixKey, hash + ".%");
+      clauses.add(
+          String.format("(aboutFqnHash = :%s OR aboutFqnHash LIKE :%s)", hashKey, prefixKey));
+    }
+    return clauses.size() == 1 ? clauses.get(0) : "(" + String.join(" OR ", clauses) + ")";
   }
 
   private String getTaskTypeCondition(String tableName) {

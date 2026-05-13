@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
@@ -449,5 +450,139 @@ public class DataAccessRequestIT {
     List<String> ids = listed.getData().stream().map(t -> t.getId().toString()).toList();
     assertTrue(ids.contains(dar.getId().toString()));
     assertFalse(ids.contains(descTask.getId().toString()));
+  }
+
+  @Test
+  void darListEndpointSearchByDarSearchCondition(TestNamespace ns) throws Exception {
+    // q matches case-insensitively against name/displayName/payload.reason/about.* — verify the
+    // payload.reason path specifically, since that's what users typically search for.
+    String tableFqn = createTargetTable(ns);
+
+    CreateTask quarterly =
+        new CreateTask()
+            .withName(ns.prefix("dar-quarterly"))
+            .withCategory(TaskCategory.DataAccess)
+            .withType(TaskEntityType.DataAccessRequest)
+            .withAbout(tableEntityLink(tableFqn))
+            .withPayload(
+                Map.of(
+                    "accessType", "FullAccess",
+                    "reason", "Quarterly compliance review",
+                    "duration", "P14D"));
+    Task qDar = SdkClients.adminClient().tasks().create(quarterly);
+    Task otherDar =
+        SdkClients.adminClient().tasks().create(buildDarRequest(ns, tableFqn, "FullAccess"));
+
+    var matches =
+        SdkClients.adminClient()
+            .tasks()
+            .listDataAccessRequests(Map.of("dataset", tableFqn, "q", "quarterly", "limit", "50"));
+    List<String> ids = matches.getData().stream().map(t -> t.getId().toString()).toList();
+    assertTrue(ids.contains(qDar.getId().toString()));
+    assertFalse(ids.contains(otherDar.getId().toString()));
+  }
+
+  @Test
+  void darListEndpointMultiSelectStatus(TestNamespace ns) throws Exception {
+    // status=Approved,Granted exercises the comma-separated SQL IN(...) path.
+    String tableFqn = createTargetTable(ns);
+
+    Task openDar =
+        SdkClients.adminClient().tasks().create(buildDarRequest(ns, tableFqn, "FullAccess"));
+
+    Task approvedDar =
+        SdkClients.adminClient().tasks().create(buildDarRequest(ns, tableFqn, "FullAccess"));
+    SdkClients.adminClient()
+        .tasks()
+        .resolve(
+            approvedDar.getId().toString(),
+            new ResolveTask().withTransitionId("approve").withComment("approved"));
+
+    Task grantedDar =
+        SdkClients.adminClient().tasks().create(buildDarRequest(ns, tableFqn, "FullAccess"));
+    SdkClients.adminClient()
+        .tasks()
+        .resolve(
+            grantedDar.getId().toString(),
+            new ResolveTask().withTransitionId("approve").withComment("approved"));
+    SdkClients.adminClient()
+        .tasks()
+        .resolve(
+            grantedDar.getId().toString(),
+            new ResolveTask().withTransitionId("markAsGranted").withComment("granted"));
+
+    var matches =
+        SdkClients.adminClient()
+            .tasks()
+            .listDataAccessRequests(
+                Map.of("dataset", tableFqn, "status", "Approved,Granted", "limit", "50"));
+    List<String> ids = matches.getData().stream().map(t -> t.getId().toString()).toList();
+    assertTrue(ids.contains(approvedDar.getId().toString()));
+    assertTrue(ids.contains(grantedDar.getId().toString()));
+    assertFalse(ids.contains(openDar.getId().toString()));
+  }
+
+  @Test
+  void darListEndpointMultiSelectAccessType(TestNamespace ns) throws Exception {
+    // accessType=FullAccess,Masked exercises the JSON_EXTRACT IN(...) path.
+    String tableFqn = createTargetTable(ns);
+
+    Task fullDar =
+        SdkClients.adminClient().tasks().create(buildDarRequest(ns, tableFqn, "FullAccess"));
+    Task maskedDar =
+        SdkClients.adminClient().tasks().create(buildDarRequest(ns, tableFqn, "Masked"));
+    Task columnLevelDar =
+        SdkClients.adminClient().tasks().create(buildDarRequest(ns, tableFqn, "ColumnLevel"));
+
+    var matches =
+        SdkClients.adminClient()
+            .tasks()
+            .listDataAccessRequests(
+                Map.of(
+                    "dataset", tableFqn,
+                    "accessType", "FullAccess,Masked",
+                    "limit", "50"));
+    List<String> ids = matches.getData().stream().map(t -> t.getId().toString()).toList();
+    assertTrue(ids.contains(fullDar.getId().toString()));
+    assertTrue(ids.contains(maskedDar.getId().toString()));
+    assertFalse(ids.contains(columnLevelDar.getId().toString()));
+  }
+
+  @Test
+  void darListEndpointAssigneeFilter(TestNamespace ns) throws Exception {
+    // assignee=<userFqn> walks the entity_relationship + nameHash join already used by
+    // /v1/tasks. Multi-value (comma-separated) hits the IN-list branch.
+    String tableFqn = createTargetTable(ns);
+    String assignee1 = SharedEntities.get().USER1.getFullyQualifiedName();
+    String assignee2 = SharedEntities.get().USER2.getFullyQualifiedName();
+
+    Task dar1 =
+        SdkClients.adminClient()
+            .tasks()
+            .create(buildDarRequest(ns, tableFqn, "FullAccess").withAssignees(List.of(assignee1)));
+    Task dar2 =
+        SdkClients.adminClient()
+            .tasks()
+            .create(buildDarRequest(ns, tableFqn, "FullAccess").withAssignees(List.of(assignee2)));
+
+    var singleAssignee =
+        SdkClients.adminClient()
+            .tasks()
+            .listDataAccessRequests(
+                Map.of("dataset", tableFqn, "assignee", assignee1, "limit", "50"));
+    List<String> singleIds =
+        singleAssignee.getData().stream().map(t -> t.getId().toString()).toList();
+    assertTrue(singleIds.contains(dar1.getId().toString()));
+    assertFalse(singleIds.contains(dar2.getId().toString()));
+
+    var bothAssignees =
+        SdkClients.adminClient()
+            .tasks()
+            .listDataAccessRequests(
+                Map.of(
+                    "dataset", tableFqn, "assignee", assignee1 + "," + assignee2, "limit", "50"));
+    List<String> bothIds = bothAssignees.getData().stream().map(t -> t.getId().toString()).toList();
+    assertTrue(bothIds.contains(dar1.getId().toString()));
+    assertTrue(bothIds.contains(dar2.getId().toString()));
   }
 }

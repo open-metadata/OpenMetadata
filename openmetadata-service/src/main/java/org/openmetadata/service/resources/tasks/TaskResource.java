@@ -312,8 +312,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Filter by task status") @QueryParam("status")
-          TaskEntityStatus status,
+      @Parameter(
+              description =
+                  "Filter by task status. Accepts a comma-separated list (e.g. 'Approved,Granted') which is matched as SQL IN(...). Allowed values match TaskEntityStatus.")
+          @QueryParam("status")
+          String status,
       @Parameter(
               description =
                   "Filter by status group. 'open' = Open/InProgress/Pending only (still awaiting review). "
@@ -327,20 +330,54 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
                       allowableValues = {"open", "active", "closed"}))
           @QueryParam("statusGroup")
           String statusGroup,
-      @Parameter(description = "Filter by dataset FQN (entity the DAR is about)")
+      @Parameter(
+              description =
+                  "Filter by dataset FQN (entity the DAR is about). Accepts a comma-separated list; matches each via FQN-hash prefix and OR's the results.")
           @QueryParam("dataset")
           String dataset,
-      @Parameter(description = "Filter by parent service FQN of the dataset") @QueryParam("service")
+      @Parameter(
+              description =
+                  "Filter by parent service FQN of the dataset. Accepts a comma-separated list (OR-joined).")
+          @QueryParam("service")
           String service,
-      @Parameter(description = "Filter by requester FQN") @QueryParam("requestedBy")
+      @Parameter(
+              description = "Filter by requester FQN. Accepts a comma-separated list (OR-joined).")
+          @QueryParam("requestedBy")
           String requestedBy,
-      @Parameter(description = "Filter by requester user id") @QueryParam("requestedById")
-          UUID requestedById,
-      @Parameter(description = "Filter by approver FQN") @QueryParam("approver") String approver,
-      @Parameter(description = "Filter by approver user id") @QueryParam("approverId")
-          UUID approverId,
-      @Parameter(description = "Filter by access type") @QueryParam("accessType") String accessType,
+      @Parameter(
+              description =
+                  "Filter by requester user id. Accepts a comma-separated list of UUIDs matched via SQL IN(...).")
+          @QueryParam("requestedById")
+          String requestedById,
+      @Parameter(
+              description = "Filter by approver FQN. Accepts a comma-separated list (OR-joined).")
+          @QueryParam("approver")
+          String approver,
+      @Parameter(
+              description =
+                  "Filter by approver user id. Accepts a comma-separated list of UUIDs matched via SQL IN(...).")
+          @QueryParam("approverId")
+          String approverId,
+      @Parameter(
+              description =
+                  "Filter by access type. Accepts a comma-separated list (e.g. 'FullAccess,Masked') matched via SQL IN(...). Allowed values match DataAccessType.")
+          @QueryParam("accessType")
+          String accessType,
+      @Parameter(
+              description =
+                  "Filter by assignee FQN (user or team). Accepts a comma-separated list (OR-joined).")
+          @QueryParam("assignee")
+          String assignee,
+      @Parameter(description = "Filter by assignee user/team id (single UUID).")
+          @QueryParam("assigneeId")
+          UUID assigneeId,
       @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
+      @Parameter(
+              description =
+                  "Free-text search. Database-only (DARs are not indexed into Elasticsearch). "
+                      + "Matches case-insensitive against task name, displayName, payload.reason, about.displayName, and about.fullyQualifiedName.")
+          @QueryParam("q")
+          String q,
       @Parameter(
               description = "Sort order on createdAt",
               schema =
@@ -371,29 +408,40 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
     if (statusGroup != null) {
       filter.addQueryParam("taskStatusGroup", statusGroup);
-    } else if (status != null) {
-      filter.addQueryParam("taskStatus", status.value());
+    } else if (!nullOrEmpty(status)) {
+      validateCsvAgainstEnum("status", status, TaskEntityStatus.class);
+      filter.addQueryParam("taskStatus", status);
     }
-    if (dataset != null) {
+    if (!nullOrEmpty(dataset)) {
       filter.addQueryParam("aboutEntity", dataset);
     }
-    if (service != null) {
+    if (!nullOrEmpty(service)) {
       filter.addQueryParam("aboutService", service);
     }
-    if (requestedBy != null) {
+    if (!nullOrEmpty(requestedBy)) {
       filter.addQueryParam("createdBy", requestedBy);
     }
-    if (requestedById != null) {
-      filter.addQueryParam("createdById", requestedById.toString());
+    if (!nullOrEmpty(requestedById)) {
+      filter.addQueryParam("createdById", requestedById);
     }
-    if (approver != null) {
+    if (!nullOrEmpty(approver)) {
       filter.addQueryParam("approver", approver);
     }
-    if (approverId != null) {
-      filter.addQueryParam("approverId", approverId.toString());
+    if (!nullOrEmpty(approverId)) {
+      filter.addQueryParam("approverId", approverId);
     }
-    if (accessType != null) {
+    if (!nullOrEmpty(accessType)) {
+      validateCsvAgainstAccessType(accessType);
       filter.addQueryParam("accessType", accessType);
+    }
+    if (!nullOrEmpty(assignee)) {
+      filter.addQueryParam("assignee", assignee);
+    }
+    if (assigneeId != null) {
+      filter.addQueryParam("assigneeId", assigneeId.toString());
+    }
+    if (!nullOrEmpty(q)) {
+      filter.addQueryParam("darSearch", q);
     }
     repository.addDomainFilter(filter, domain);
 
@@ -1339,6 +1387,38 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         repository.closeTask(task, userName, comment);
       }
     }
+  }
+
+  /**
+   * Per-token validation for a comma-separated enum query param. Surfaces a 400 if any token
+   * isn't a recognized {@link Enum} value, so callers see a clear error instead of an opaque
+   * empty result set or a downstream SQL surprise.
+   */
+  private <E extends Enum<E>> void validateCsvAgainstEnum(
+      String paramName, String csv, Class<E> enumClass) {
+    java.util.Set<String> allowed =
+        java.util.Arrays.stream(enumClass.getEnumConstants())
+            .map(Enum::name)
+            .collect(java.util.stream.Collectors.toSet());
+    java.util.Arrays.stream(csv.split(","))
+        .map(String::trim)
+        .filter(s -> !s.isEmpty())
+        .forEach(
+            token -> {
+              if (!allowed.contains(token)) {
+                throw BadRequestException.of(
+                    String.format(
+                        "Invalid '%s' value '%s'. Allowed values: %s", paramName, token, allowed));
+              }
+            });
+  }
+
+  /**
+   * Per-token validation for the {@code accessType} CSV. Reuses the schema-generated
+   * {@link org.openmetadata.schema.type.DataAccessType} enum.
+   */
+  private void validateCsvAgainstAccessType(String csv) {
+    validateCsvAgainstEnum("accessType", csv, org.openmetadata.schema.type.DataAccessType.class);
   }
 
   private void validateTaskCanBeResolved(Task task) {
