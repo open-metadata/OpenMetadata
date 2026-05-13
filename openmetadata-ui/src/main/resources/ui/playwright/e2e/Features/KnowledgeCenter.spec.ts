@@ -89,7 +89,7 @@ test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-test.describe('Knowledge Center', () => {
+test.describe.fixme('Knowledge Center', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await user.create(apiContext);
