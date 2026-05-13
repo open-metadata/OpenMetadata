@@ -18,5 +18,6 @@ export interface UploadedDocumentsSectionProps {
   viewAllHref?: string;
   onViewAll?: () => void;
   onDocumentClick?: (document: UploadedDocumentItem) => void;
+  onDownload?: (document: UploadedDocumentItem) => void;
   isLoading?: boolean;
 }

@@ -16,6 +16,8 @@ import {
   Card,
   Dropdown,
   Skeleton,
+  Tooltip,
+  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Download01, Share07, Trash01 } from '@untitledui/icons';
@@ -73,7 +75,12 @@ const FileActions: FC<FileActionsProps> = ({
 
   return (
     <Dropdown.Root>
-      <Dropdown.DotsButton className="tw:flex tw:p-1 tw:rotate-z-90" />
+      <Tooltip
+        title={t('label.manage-entity', { entity: t('label.document') })}>
+        <TooltipTrigger>
+          <Dropdown.DotsButton className="tw:flex tw:p-1 tw:rotate-z-90" />
+        </TooltipTrigger>
+      </Tooltip>
       <Dropdown.Popover>
         <Dropdown.Menu
           onAction={(key) => {
@@ -148,60 +155,72 @@ const FileRow: FC<FileRowProps> = ({
   onDeleteFile,
   onDownload,
   onShareFile,
-}) => (
-  <div
-    className="tw:flex tw:items-center tw:gap-4 tw:px-4 tw:py-3 tw:border-b tw:border-secondary"
-    data-testid={`document-row-${file.id}`}>
-    <FileTypeBadge fileType={file.fileType} />
+}) => {
+  const { t } = useTranslation();
 
-    <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
-      <Typography className="tw:truncate" size="text-sm" weight="medium">
-        {file.name}
-      </Typography>
-      <div className="tw:flex tw:items-center tw:gap-1">
-        <Typography className="tw:text-gray-500" size="text-xs">
-          {file.sizeLabel}
+  return (
+    <div
+      className="tw:flex tw:items-center tw:gap-4 tw:px-4 tw:py-3 tw:border-b tw:border-secondary"
+      data-testid={`document-row-${file.id}`}>
+      <FileTypeBadge fileType={file.fileType} />
+
+      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
+        <Typography className="tw:truncate" size="text-sm" weight="medium">
+          {file.name}
         </Typography>
-        {file.uploadedBy && (
-          <>
-            <span className="tw:text-gray-500 tw:leading-none tw:select-none">
-              &middot;
-            </span>
-            <Typography className="tw:text-gray-500" size="text-xs">
-              {file.uploadedBy}
-            </Typography>
-          </>
-        )}
-        {file.uploadedAt && (
-          <>
-            <span className="tw:text-gray-500 tw:leading-none tw:select-none">
-              &middot;
-            </span>
-            <Typography className="tw:text-gray-500" size="text-xs">
-              {file.uploadedAt}
-            </Typography>
-          </>
-        )}
+        <div className="tw:flex tw:items-center tw:gap-1">
+          <Typography className="tw:text-gray-500" size="text-xs">
+            {file.sizeLabel}
+          </Typography>
+          {file.uploadedBy && (
+            <>
+              <span className="tw:text-gray-500 tw:leading-none tw:select-none">
+                &middot;
+              </span>
+              <Typography className="tw:text-gray-500" size="text-xs">
+                {file.uploadedBy}
+              </Typography>
+            </>
+          )}
+          {file.uploadedAt && (
+            <>
+              <span className="tw:text-gray-500 tw:leading-none tw:select-none">
+                &middot;
+              </span>
+              <Typography className="tw:text-gray-500" size="text-xs">
+                {file.uploadedAt}
+              </Typography>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="tw:flex tw:items-center tw:gap-2 tw:shrink-0">
+        <Tooltip title={t('label.download')}>
+          <TooltipTrigger>
+            <ButtonUtility
+              color="secondary"
+              icon={
+                <Download01
+                  className="tw:text-gray-500"
+                  height={16}
+                  width={16}
+                />
+              }
+              onClick={() => onDownload?.(file)}
+            />
+          </TooltipTrigger>
+        </Tooltip>
+        <FileActions
+          canDelete={canDelete}
+          file={file}
+          onDeleteFile={onDeleteFile}
+          onShareFile={onShareFile}
+        />
       </div>
     </div>
-
-    <div className="tw:flex tw:items-center tw:gap-2 tw:shrink-0">
-      <ButtonUtility
-        color="secondary"
-        icon={
-          <Download01 className="tw:text-gray-500" height={16} width={16} />
-        }
-        onClick={() => onDownload?.(file)}
-      />
-      <FileActions
-        canDelete={canDelete}
-        file={file}
-        onDeleteFile={onDeleteFile}
-        onShareFile={onShareFile}
-      />
-    </div>
-  </div>
-);
+  );
+};
 
 // ─── Main component ───────────────────────────────────────────────────────────
 

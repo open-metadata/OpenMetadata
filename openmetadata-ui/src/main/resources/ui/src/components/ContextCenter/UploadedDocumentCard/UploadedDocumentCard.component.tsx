@@ -11,15 +11,25 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Card,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Download01 } from '@untitledui/icons';
 import { FC, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getFileTypeIcon } from 'utils/ContextCenterUtils';
 import { UploadedDocumentCardProps } from './UploadedDocumentCard.interface';
 
 const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({
   document,
   onClick,
+  onDownload,
 }) => {
+  const { t } = useTranslation();
   const { name, fileType, sizeLabel } = document;
 
   const fileTypeIcon = useMemo(() => {
@@ -44,9 +54,26 @@ const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({
           weight="medium">
           {name}
         </Typography>
-        <Typography className="tw:text-gray-400" size="text-xs">
-          {sizeLabel}
-        </Typography>
+        <div className="tw:flex tw:items-center tw:justify-between">
+          <Typography className="tw:text-gray-400" size="text-xs">
+            {sizeLabel}
+          </Typography>
+          <Tooltip title={t('label.download')}>
+            <TooltipTrigger>
+              <ButtonUtility
+                color="tertiary"
+                icon={
+                  <Download01
+                    className="tw:text-gray-500"
+                    height={16}
+                    width={16}
+                  />
+                }
+                onClick={() => onDownload?.(document)}
+              />
+            </TooltipTrigger>
+          </Tooltip>
+        </div>
       </div>
     </Card>
   );

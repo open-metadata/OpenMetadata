@@ -264,7 +264,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             placement="bottomRight"
             trigger={['click']}
             onOpenChange={setIsDropdownOpen}>
-            <span data-testid="manage-button" />
+            <span />
           </Dropdown>
         </>
       );

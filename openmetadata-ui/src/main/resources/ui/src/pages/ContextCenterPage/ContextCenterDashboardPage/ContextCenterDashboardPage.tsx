@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 import { ArticleCardItem } from 'components/ContextCenter/ArticleCard/ArticleCard.interface';
 import ArticleListSection from 'components/ContextCenter/ArticleListSection/ArticleListSection.component';
 import ContextCenterHeader from 'components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
+import { DocFile } from 'components/ContextCenter/DocumentsView/DocumentsView.interface';
 import UploadDocumentModal from 'components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
 import { UploadedDocumentItem } from 'components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
 import UploadedDocumentsSection from 'components/ContextCenter/UploadedDocumentsSection/UploadedDocumentsSection.component';
@@ -31,6 +32,7 @@ import { KnowledgePage } from 'interface/knowledge-center.interface';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { downloadAsset } from 'rest/assetAPI';
 import { getListKnowledgePages } from 'rest/knowledgeCenterAPI';
 import {
   assetToDocumentItem,
@@ -120,6 +122,22 @@ const ContextCenterDashboardPage: FC = () => {
     setDocuments((prev) => [...prev, ...newAssets.map(assetToDocumentItem)]);
   }, []);
 
+  const handleDownload = useCallback(async (file: DocFile) => {
+    try {
+      const blob = await downloadAsset(file.id);
+      const url = URL.createObjectURL(blob);
+      const element = document.createElement('a');
+      element.href = url;
+      element.download = file.name;
+      document.body.appendChild(element);
+      element.click();
+      element.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, []);
+
   return (
     <div
       className="tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:p-5 tw:pt-0"
@@ -162,6 +180,7 @@ const ContextCenterDashboardPage: FC = () => {
         <UploadedDocumentsSection
           documents={documents}
           isLoading={isDocumentsLoading}
+          onDownload={handleDownload}
           onViewAll={() => navigate(ROUTES.CONTEXT_CENTER_DOCUMENTS)}
         />
       </div>

@@ -25,5 +25,6 @@ export interface UploadedDocumentItem {
 
 export interface UploadedDocumentCardProps {
   document: UploadedDocumentItem;
+  onDownload?: (document: UploadedDocumentItem) => void;
   onClick?: (document: UploadedDocumentItem) => void;
 }

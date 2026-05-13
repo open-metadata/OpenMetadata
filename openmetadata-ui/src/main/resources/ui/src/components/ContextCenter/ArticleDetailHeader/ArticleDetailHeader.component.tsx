@@ -314,10 +314,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       data-testid="article-detail-header">
       <TitleBreadcrumb useCustomArrow titleLinks={breadcrumbs} />
 
-      <Card className="tw:mb-0 tw:p-6 tw:pb-0">
+      <Card className="tw:mb-0 tw:p-6 tw:pb-0 tw:pr-3">
         {/* Row 1: title + meta + actions */}
-        <div className="tw:flex tw:items-start tw:justify-between tw:mb-6">
-          <div className="tw:flex tw:gap-4 tw:items-stretch tw:p-2">
+        <div className="tw:flex tw:items-center tw:justify-between tw:mb-6">
+          <div className="tw:flex tw:gap-4 tw:items-stretch tw:w-full tw:max-w-[60%] tw:pr-3">
             <div className="h:full tw:w-auto tw:shrink-0 tw:bg-gray-100 tw:rounded-xl tw:flex tw:items-center tw:p-2">
               <File06
                 className="tw:text-gray-500"
@@ -330,14 +330,14 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             <div className="tw:flex tw:flex-col tw:gap-2 tw:min-w-0">
               {/* Article name with icon */}
               <div className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap">
-                <Typography as="h3" className="tw:truncate">
+                <Typography ellipsis as="h3" className="tw:truncate">
                   {getEntityName(knowledgePage) || t('label.untitled')}
                 </Typography>
                 {entityStatusBadge}
               </div>
 
               {/* Domain · Owner row */}
-              <div className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap tw:text-sm">
+              <div className="tw:flex tw:items-center tw:gap-3 tw:flex-wrap tw:text-sm">
                 {/* Domain */}
                 <div className="tw:flex tw:items-center tw:gap-1.5">
                   <Globe01
@@ -599,18 +599,27 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           </Tabs>
 
           {activeTab !== EntityTabs.ACTIVITY_FEED && (
-            <ButtonUtility
-              className="tw:relative tw:bottom-2.5"
-              color="tertiary"
-              icon={
-                <SidebarCollapsible
-                  className={isRightPanelOpen ? undefined : 'tw:rotate-180'}
-                  height={18}
-                  width={18}
+            <Tooltip
+              title={
+                isRightPanelOpen
+                  ? t('label.hide-meta-details')
+                  : t('label.show-meta-details')
+              }>
+              <TooltipTrigger>
+                <ButtonUtility
+                  className="tw:relative tw:bottom-2.5"
+                  color="tertiary"
+                  icon={
+                    <SidebarCollapsible
+                      className={isRightPanelOpen ? undefined : 'tw:rotate-180'}
+                      height={18}
+                      width={18}
+                    />
+                  }
+                  onClick={onToggleRightPanel}
                 />
-              }
-              onClick={onToggleRightPanel}
-            />
+              </TooltipTrigger>
+            </Tooltip>
           )}
         </div>
       </Card>

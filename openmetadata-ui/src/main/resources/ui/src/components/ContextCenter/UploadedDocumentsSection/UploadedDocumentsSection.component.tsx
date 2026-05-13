@@ -44,6 +44,7 @@ const UploadedDocumentsSection: FC<UploadedDocumentsSectionProps> = ({
   viewAllHref,
   onViewAll,
   onDocumentClick,
+  onDownload,
   isLoading = false,
 }) => {
   const { t } = useTranslation();
@@ -90,6 +91,7 @@ const UploadedDocumentsSection: FC<UploadedDocumentsSectionProps> = ({
                   document={doc}
                   key={doc.id}
                   onClick={onDocumentClick}
+                  onDownload={onDownload}
                 />
               ))}
         </div>
