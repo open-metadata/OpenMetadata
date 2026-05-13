@@ -32,7 +32,7 @@ describe('TokenService', () => {
     localStorage.clear();
     jest.useFakeTimers();
     // Reset the singleton instance for each test
-     
+
     (TokenService as any)._instance = undefined;
 
     // Mock indexedDB
@@ -77,7 +77,7 @@ describe('TokenService', () => {
 
     it('should setup service worker listener if available', () => {
       // Reset instance to trigger constructor again
-       
+
       (TokenService as any)._instance = undefined;
       TokenService.getInstance();
 
@@ -89,7 +89,7 @@ describe('TokenService', () => {
 
     it('should handle TOKEN_UPDATE message', () => {
       const refreshSuccessCallback = jest.fn();
-       
+
       (TokenService as any)._instance = undefined;
       const service = TokenService.getInstance();
       service.refreshSuccessCallback = refreshSuccessCallback;
@@ -105,7 +105,7 @@ describe('TokenService', () => {
 
     it('should not trigger callback for TOKEN_CLEARED message', () => {
       const refreshSuccessCallback = jest.fn();
-       
+
       (TokenService as any)._instance = undefined;
       const service = TokenService.getInstance();
       service.refreshSuccessCallback = refreshSuccessCallback;
@@ -247,7 +247,6 @@ describe('TokenService', () => {
         newValue: 'true',
       });
 
-       
       (handler as any)(validEvent);
 
       expect(callback).toHaveBeenCalled();
@@ -269,7 +268,6 @@ describe('TokenService', () => {
         newValue: 'true',
       });
 
-       
       (handler as any)(invalidEvent);
 
       expect(callback).not.toHaveBeenCalled();

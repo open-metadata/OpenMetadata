@@ -38,7 +38,8 @@ export interface ChartFilter {
   endTs: number;
 }
 
-export interface DataInsightChartTooltipProps extends TooltipProps<number, string> {
+export interface DataInsightChartTooltipProps
+  extends TooltipProps<number, string> {
   cardStyles?: React.CSSProperties;
   customValueKey?: string;
   displayDateInHeader?: boolean;

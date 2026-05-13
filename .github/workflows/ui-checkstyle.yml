@@ -204,7 +204,6 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   tsc-src:
     needs: authorize
-    if: false  # TODO: re-enable once tsc errors are resolved
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -393,7 +392,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   tsc-playwright:
     needs: authorize
-    if: false  # TODO: re-enable once playwright tsc errors are resolved
+    if: false # TODO: re-enable once playwright tsc errors are resolved
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -470,7 +469,6 @@ jobs:
         working-directory: ${{ env.CORE_COMPONENTS_WORKING_DIRECTORY }}
         run: yarn install --frozen-lockfile
 
-
       - name: Get changed core-components files
         id: changed-files
         uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
@@ -506,7 +504,16 @@ jobs:
   # Job 9: Report — Post single consolidated summary comment
   # ──────────────────────────────────────────────────────────────────────────
   report:
-    needs: [authorize, lint-src, license-header, i18n-sync, app-docs, lint-playwright, lint-core-components]
+    needs:
+      [
+        authorize,
+        lint-src,
+        license-header,
+        i18n-sync,
+        app-docs,
+        lint-playwright,
+        lint-core-components,
+      ]
     if: ${{ always() && needs.authorize.result == 'success' && github.event_name == 'pull_request_target' }}
     runs-on: ubuntu-latest
     permissions:
@@ -518,7 +525,7 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-author: github-actions[bot]
-          body-includes: '<!-- check:ui-checkstyle-summary -->'
+          body-includes: "<!-- check:ui-checkstyle-summary -->"
 
       - name: Post or update summary comment
         uses: actions/github-script@v7

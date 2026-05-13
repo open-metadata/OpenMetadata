@@ -152,7 +152,9 @@ module.exports = {
         if (firstArg.type === 'Literal' && typeof firstArg.value === 'string') {
           signature += `("${firstArg.value}")`;
         } else if (firstArg.type === 'TemplateLiteral') {
-          const parts = firstArg.quasis.map((q) => q.value.cooked).join('${...}');
+          const parts = firstArg.quasis
+            .map((q) => q.value.cooked)
+            .join('${...}');
           signature += `(\`${parts}\`)`;
         } else if (firstArg.type === 'ObjectExpression') {
           const props = firstArg.properties
@@ -165,7 +167,9 @@ module.exports = {
               return '';
             })
             .filter(Boolean);
-          signature += `({${props.join(', ')}${firstArg.properties.length > 2 ? ', ...' : ''}})`;
+          signature += `({${props.join(', ')}${
+            firstArg.properties.length > 2 ? ', ...' : ''
+          }})`;
         }
       }
 

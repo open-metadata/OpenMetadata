@@ -18,7 +18,7 @@ import { ExtensionPointRegistry } from '../../../../utils/ExtensionPointRegistry
 import { LeftSidebarItem } from '../../../MyData/LeftSidebar/LeftSidebar.interface';
 
 export interface LeftSidebarItemExample extends LeftSidebarItem {
-  index: number;
+  index?: number;
 }
 
 /**
