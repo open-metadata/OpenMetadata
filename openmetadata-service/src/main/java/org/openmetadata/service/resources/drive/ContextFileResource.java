@@ -37,12 +37,14 @@ import java.util.UUID;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.openmetadata.schema.api.data.CreateContextFile;
+import org.openmetadata.schema.api.data.MoveContextFileRequest;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
@@ -58,8 +60,14 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.EntityUtil;
 
 @Tag(name = "Drive Files", description = "APIs for managing files in the Context Center Drive.")
 @Path("/v1/drive/files")
@@ -120,9 +128,69 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @QueryParam("limit") @DefaultValue("10") int limit,
       @QueryParam("before") String before,
       @QueryParam("after") String after,
-      @QueryParam("include") @DefaultValue("non-deleted") Include include) {
-    return super.listInternal(
-        uriInfo, securityContext, fieldsParam, new ListFilter(include), limit, before, after);
+      @QueryParam("include") @DefaultValue("non-deleted") Include include,
+      @Parameter(
+              description = "Field to sort by. Supported: name, createdAt, updatedAt.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name", "createdAt", "updatedAt"}))
+          @QueryParam("sortBy")
+          String sortBy,
+      @Parameter(
+              description =
+                  "Sort order. Supported: asc, desc. Defaults to desc when sortBy is set.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          String sortOrder,
+      @Parameter(description = "Offset for offset-based pagination when sortBy is used.")
+          @QueryParam("offset")
+          @DefaultValue("0")
+          int offset)
+      throws IOException {
+    if (sortBy == null || sortBy.isEmpty()) {
+      return super.listInternal(
+          uriInfo, securityContext, fieldsParam, new ListFilter(include), limit, before, after);
+    }
+    if (before != null || after != null) {
+      throw new IllegalArgumentException(
+          "'sortBy' cannot be combined with cursor pagination ('before'/'after'). Use 'offset' and 'limit' instead.");
+    }
+    EntityUtil.Fields fields = getFields(fieldsParam);
+    SearchListFilter searchListFilter = new SearchListFilter(include);
+    SearchSortFilter searchSortFilter =
+        new SearchSortFilter(
+            resolveSortField(sortBy), sortOrder == null ? "desc" : sortOrder, null, null);
+    List<AuthRequest> authRequests = getAuthRequestsForListOps();
+    return listInternalFromSearch(
+        uriInfo,
+        securityContext,
+        fields,
+        searchListFilter,
+        limit,
+        offset,
+        searchSortFilter,
+        null,
+        null,
+        authRequests);
+  }
+
+  private static String resolveSortField(String sortBy) {
+    return switch (sortBy) {
+      case "name" -> "name.keyword";
+      case "createdAt", "updatedAt" -> "updatedAt";
+      default -> throw new IllegalArgumentException(
+          "Unsupported sortBy value '" + sortBy + "'. Allowed: name, createdAt, updatedAt.");
+    };
+  }
+
+  private List<AuthRequest> getAuthRequestsForListOps() {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    return List.of(new AuthRequest(operationContext, getResourceContext()));
   }
 
   @GET
@@ -416,6 +484,40 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @PUT
+  @Path("/{id}/move")
+  @Operation(
+      operationId = "moveDriveFile",
+      summary = "Move a drive file to a different folder",
+      description =
+          "Move a drive file to a new parent folder. When the request body omits `folder` "
+              + "(or sets it to null), the file is moved to the drive root.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The moved drive file",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ContextFile.class)))
+      })
+  public Response moveFile(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") UUID id,
+      @Valid MoveContextFileRequest moveRequest) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContextInterface.Operation.PUT));
+    EntityReference newFolder = moveRequest == null ? null : moveRequest.getFolder();
+    ContextFile moved =
+        repository.moveContextFile(id, newFolder, securityContext.getUserPrincipal().getName());
+    return Response.ok(addHref(uriInfo, moved)).build();
   }
 
   private Asset resolveAsset(ContextFile file) {

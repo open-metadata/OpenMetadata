@@ -1,7 +1,11 @@
 package org.openmetadata.it.knowledge;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import jakarta.ws.rs.core.Response;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import org.apache.http.client.HttpResponseException;
@@ -18,6 +22,7 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.services.domains.DataProductService;
 import org.openmetadata.sdk.services.domains.DomainService;
@@ -233,5 +238,134 @@ public class KnowledgeCenterIT {
         false,
         anyDataProductInRelatedEntities,
         "No dataProducts should ever appear in relatedEntities");
+  }
+
+  // --- SortBy ---
+
+  private ResultList<Page> listPagesSorted(
+      RestClient rest, String sortBy, String sortOrder, int limit) {
+    String path = KC_PATH + "?sortBy=" + sortBy + "&sortOrder=" + sortOrder + "&limit=" + limit;
+    try (Response response = rest.rawGet(path)) {
+      assertEquals(200, response.getStatus(), "List call failed: " + response.getStatus());
+      String body = response.readEntity(String.class);
+      return JsonUtils.readValue(body, new TypeReference<ResultList<Page>>() {});
+    }
+  }
+
+  private void awaitPageIndexed(RestClient rest, UUID id) {
+    await()
+        .pollDelay(Duration.ZERO)
+        .pollInterval(Duration.ofMillis(200))
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(
+            () -> {
+              try (Response getResp =
+                  rest.rawGet("v1/search/get/knowledge_page_search_index/doc/" + id)) {
+                assertEquals(
+                    200,
+                    getResp.getStatus(),
+                    "Page " + id + " not yet indexed: " + getResp.readEntity(String.class));
+              }
+            });
+  }
+
+  @Test
+  void testListPagesSortByUpdatedAtDesc(TestNamespace ns)
+      throws HttpResponseException, InterruptedException {
+    RestClient rest = RestClient.admin();
+    EntityReference orgRef = getOrganizationRef();
+
+    Page older = createPage(rest, buildCreateRequest(ns.prefix("sort-older"), orgRef));
+    Thread.sleep(20);
+    Page middle = createPage(rest, buildCreateRequest(ns.prefix("sort-middle"), orgRef));
+    Thread.sleep(20);
+    Page newer = createPage(rest, buildCreateRequest(ns.prefix("sort-newer"), orgRef));
+
+    awaitPageIndexed(rest, older.getId());
+    awaitPageIndexed(rest, middle.getId());
+    awaitPageIndexed(rest, newer.getId());
+
+    List<UUID> ourIds = List.of(older.getId(), middle.getId(), newer.getId());
+    await()
+        .pollInterval(Duration.ofMillis(250))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<Page> result = listPagesSorted(rest, "updatedAt", "desc", 1000);
+              List<UUID> ordered =
+                  result.getData().stream().map(Page::getId).filter(ourIds::contains).toList();
+              assertEquals(
+                  List.of(newer.getId(), middle.getId(), older.getId()),
+                  ordered,
+                  "Expected newest-first ordering for our test pages");
+            });
+  }
+
+  @Test
+  void testListPagesSortByNameAsc(TestNamespace ns) throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    EntityReference orgRef = getOrganizationRef();
+
+    Page zebra = createPage(rest, buildCreateRequest(ns.prefix("zzz-name"), orgRef));
+    Page apple = createPage(rest, buildCreateRequest(ns.prefix("aaa-name"), orgRef));
+
+    awaitPageIndexed(rest, zebra.getId());
+    awaitPageIndexed(rest, apple.getId());
+
+    List<UUID> ourIds = List.of(zebra.getId(), apple.getId());
+    await()
+        .pollInterval(Duration.ofMillis(250))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<Page> result = listPagesSorted(rest, "name", "asc", 1000);
+              List<UUID> ordered =
+                  result.getData().stream().map(Page::getId).filter(ourIds::contains).toList();
+              assertEquals(
+                  List.of(apple.getId(), zebra.getId()),
+                  ordered,
+                  "Expected ascending name ordering, apple before zebra");
+            });
+  }
+
+  @Test
+  void testListPagesSortByCreatedAtAliasesUpdatedAt(TestNamespace ns)
+      throws HttpResponseException, InterruptedException {
+    RestClient rest = RestClient.admin();
+    EntityReference orgRef = getOrganizationRef();
+
+    Page first = createPage(rest, buildCreateRequest(ns.prefix("created-first"), orgRef));
+    Thread.sleep(20);
+    Page second = createPage(rest, buildCreateRequest(ns.prefix("created-second"), orgRef));
+
+    awaitPageIndexed(rest, first.getId());
+    awaitPageIndexed(rest, second.getId());
+
+    List<UUID> ourIds = List.of(first.getId(), second.getId());
+    await()
+        .pollInterval(Duration.ofMillis(250))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<Page> result = listPagesSorted(rest, "createdAt", "desc", 1000);
+              List<UUID> ordered =
+                  result.getData().stream().map(Page::getId).filter(ourIds::contains).toList();
+              assertEquals(
+                  List.of(second.getId(), first.getId()),
+                  ordered,
+                  "createdAt sort should return newest first (currently aliased to updatedAt)");
+            });
+  }
+
+  @Test
+  void testListPagesSortByRejectsCursorCombo() {
+    RestClient rest = RestClient.admin();
+    try (Response response =
+        rest.rawGet(KC_PATH + "?sortBy=updatedAt&sortOrder=desc&after=anything")) {
+      assertEquals(
+          400,
+          response.getStatus(),
+          "sortBy combined with cursor should be 400, got " + response.getStatus());
+    }
   }
 }
