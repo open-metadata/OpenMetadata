@@ -5600,12 +5600,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * <p><b>Operational ceiling:</b> the entire walk runs inside a single JDBI
    * {@code @Transaction}, which holds one connection from the pool for the duration. The
    * async restore endpoint ({@code ?async=true}) moves the work onto a virtual thread but
-   * keeps the same single-transaction shape — it just lets the client get a 202 back. For
-   * databases on the order of tens of thousands of descendants this still completes well
-   * inside the JDBI default lock-wait, but operators running concurrent restores against a
-   * small DB pool should size {@code maxConcurrency} on {@link
-   * org.openmetadata.service.util.AsyncService} accordingly. Chunked-transaction support is
-   * tracked as a follow-up.
+   * keeps the same single-transaction shape — it just lets the client get a 202 back.
+   * Back-pressure under load comes from the JDBI connection pool itself: virtual threads
+   * are cheap, so under saturation tasks queue on connection acquisition (with the pool's
+   * own timeout) rather than at the executor. Chunked-transaction support is tracked as a
+   * follow-up if this becomes a real bottleneck.
    */
   @Transaction
   public final void bulkRestoreSubtree(List<UUID> ids, String updatedBy) {
