@@ -17,7 +17,10 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { createTableDescriptionSuggestions } from '../../utils/suggestions';
+import {
+  createTableDescriptionSuggestions,
+  expandTableSuggestionColumns,
+} from '../../utils/suggestions';
 import { performUserLogin } from '../../utils/user';
 
 const table = new TableClass();
@@ -71,6 +74,9 @@ test.describe.serial(
 
         // Two users profile will be visible, 3rd one will come after AllFetch is clicked
         await expect(allAvatarSuggestion).toHaveCount(1);
+
+        // Expand nested struct/array columns so their suggestion cards render
+        await expandTableSuggestionColumns(page, table);
 
         // Click the first avatar
         await allAvatarSuggestion.nth(0).click();
@@ -135,6 +141,9 @@ test.describe.serial(
           .getByTestId('asset-description-container')
           .getByTestId('profile-avatar');
 
+        // Expand nested columns so columnsName[5] row is accessible
+        await expandTableSuggestionColumns(page, table);
+
         // Click the first avatar
         await allAvatarSuggestion.nth(0).click();
 
@@ -152,6 +161,10 @@ test.describe.serial(
 
         await page.reload();
         await waitForAllLoadersToDisappear(page);
+
+        // Re-expand after reload so columnsName[5] row is visible for verification
+        // and remains expanded for subsequent test steps
+        await expandTableSuggestionColumns(page, table);
 
         // since we accepted two suggestions, the badge count should be total-2
         await expect(

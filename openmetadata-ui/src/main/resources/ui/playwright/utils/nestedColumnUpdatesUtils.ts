@@ -136,7 +136,7 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
 
 const DUPLICATE_NAME = `name-${uuid()}`;
 
-const expandNestedColumn = async (
+export const expandNestedColumn = async (
   page: Page,
   rowKey: string,
   childKey: string
