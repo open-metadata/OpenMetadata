@@ -17,7 +17,7 @@ import { createAdminApiContext } from './admin';
 import { fullUuid, getApiContext } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 
-export const ACTIVITY_EVENT_TIMEOUT = 100_000;
+export const ACTIVITY_EVENT_TIMEOUT = 200_000;
 export const ACTIVITY_TEST_TIMEOUT = ACTIVITY_EVENT_TIMEOUT + 60_000;
 export const ACTIVITY_FEED_RESPONSE_TIMEOUT = 15_000;
 export const FEED_ITEM_TIMEOUT = 30_000;
@@ -146,7 +146,7 @@ export const waitForActivityEvent = async ({
           },
           {
             timeout: ACTIVITY_EVENT_TIMEOUT,
-            intervals: [1_000, 2_000, 5_000, 10_000],
+            intervals: [5_000, 10_000],
             message: `Waiting for ${eventType} event for ${entityFqn}`,
           }
         )

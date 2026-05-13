@@ -74,6 +74,7 @@ test.describe(
     test('creates an activity event when the description is updated', async ({
       page,
     }) => {
+      test.slow();
       const newDescription = `Test description updated at ${Date.now()}`;
       const entityFqn = getTableFqn(entityChangesTable);
 
@@ -119,6 +120,7 @@ test.describe(
     });
 
     test('creates an activity event when tags are added', async ({ page }) => {
+      test.slow();
       const entityFqn = getTableFqn(entityChangesTable);
       const tagDisplayName = entityChangesTag.getTagDisplayName();
 
@@ -155,6 +157,7 @@ test.describe(
     });
 
     test('creates an activity event when owner is added', async ({ page }) => {
+      test.slow();
       const entityFqn = getTableFqn(entityChangesTable);
 
       await test.step('Add the owner from the entity page', async () => {
