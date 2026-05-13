@@ -465,6 +465,13 @@ class TestRedshiftNumericParsing(unittest.TestCase):
         self.assertEqual(args, ())
         self.assertEqual(kwargs, {})
 
+    def test_numeric_with_space_after_comma_falls_back_to_init_args(self):
+        """numeric(P, S) with a space must still parse precision and scale."""
+        args, kwargs = _get_args_and_kwargs(None, "numeric", "numeric(10, 2)")
+
+        self.assertEqual(args, (10, 2))
+        self.assertEqual(kwargs, {})
+
 
 if __name__ == "__main__":
     unittest.main()
