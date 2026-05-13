@@ -39,15 +39,6 @@ public record TableIndex(Table table) implements ColumnIndex {
     return excludeFields;
   }
 
-  @Override
-  public Set<String> getRequiredReindexFields() {
-    Set<String> fields = new HashSet<>(ColumnIndex.super.getRequiredReindexFields());
-    // "columns" is fields-gated in TableRepository; without it column-level tags are not
-    // hydrated, breaking tag merge in the search doc.
-    fields.add("columns");
-    return java.util.Collections.unmodifiableSet(fields);
-  }
-
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
     List<String> columnsWithChildrenName = new ArrayList<>();

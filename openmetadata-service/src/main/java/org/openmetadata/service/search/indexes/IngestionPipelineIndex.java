@@ -29,13 +29,6 @@ public class IngestionPipelineIndex implements SearchIndex {
     return excludeFields;
   }
 
-  @Override
-  public Set<String> getRequiredReindexFields() {
-    Set<String> fields = new java.util.HashSet<>(SearchIndex.super.getRequiredReindexFields());
-    fields.add("pipelineStatuses");
-    return java.util.Collections.unmodifiableSet(fields);
-  }
-
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     ParseTags parseTags =
         new ParseTags(Entity.getEntityTags(Entity.INGESTION_PIPELINE, ingestionPipeline));
