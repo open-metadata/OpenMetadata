@@ -13,7 +13,9 @@
 
 import type { ComponentType, SVGAttributes } from 'react';
 
-export type IconComponent = ComponentType<SVGAttributes<SVGElement> & { size?: number; strokeWidth?: number }>;
+export type IconComponent = ComponentType<
+  SVGAttributes<SVGElement> & { size?: number; strokeWidth?: number }
+>;
 
 export interface ContextCenterNavItem {
   key: string;

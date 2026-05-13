@@ -120,7 +120,7 @@ const ContextCenterSidebar: FC<ContextCenterSidebarProps> = ({
         {title}
       </h2>
       <button
-        className="tw:p-1 tw:rounded-md tw:text-[var(--color-text-tertiary)] tw:hover:text-[var(--color-text-primary)] tw:hover:bg-[var(--color-bg-secondary)] tw:border-0 tw:bg-transparent tw:cursor-pointer"
+        className="tw:p-1 tw:rounded-md tw:hover:text-[var(--color-text-primary)] tw:hover:bg-[var(--color-bg-secondary)] tw:border-0 tw:bg-transparent tw:cursor-pointer"
         data-testid="context-center-sidebar-menu"
         type="button">
         <Menu01 className="tw:w-5 tw:h-5" />

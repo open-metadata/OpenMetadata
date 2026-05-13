@@ -12,10 +12,10 @@
  */
 
 import {
-    Button,
-    Card,
-    Skeleton,
-    Typography
+  Button,
+  Card,
+  Skeleton,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowUpRight, File06 } from '@untitledui/icons';
 import ErrorPlaceHolder from 'components/common/ErrorWithPlaceholder/ErrorPlaceHolder';

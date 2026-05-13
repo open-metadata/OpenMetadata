@@ -26,11 +26,7 @@ import {
   UploadCloud02,
   XCircle,
 } from '@untitledui/icons';
-import type {
-  ChangeEvent,
-  ComponentPropsWithRef,
-  DragEvent,
-} from 'react';
+import type { ChangeEvent, ComponentPropsWithRef, DragEvent } from 'react';
 import { useId, useRef, useState } from 'react';
 
 export const getReadableFileSize = (bytes: number): string => {
@@ -291,7 +287,10 @@ export const FileListItemProgressBar = ({
         className
       )}>
       <div className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:bg-secondary">
-        <UploadCloud02 className="tw:size-5 tw:text-tertiary" strokeWidth={1.5} />
+        <UploadCloud02
+          className="tw:size-5 tw:text-tertiary"
+          strokeWidth={1.5}
+        />
       </div>
 
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:items-start">
@@ -406,7 +405,10 @@ export const FileListItemProgressFill = ({
         )}
       />
       <div className="tw:relative tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:bg-secondary">
-        <UploadCloud02 className="tw:size-5 tw:text-tertiary" strokeWidth={1.5} />
+        <UploadCloud02
+          className="tw:size-5 tw:text-tertiary"
+          strokeWidth={1.5}
+        />
       </div>
 
       <div className="tw:relative tw:flex tw:min-w-0 tw:flex-1">
@@ -465,7 +467,10 @@ const FileUploadRoot = (props: ComponentPropsWithRef<'div'>) => (
 );
 
 const FileUploadList = (props: ComponentPropsWithRef<'ul'>) => (
-  <ul {...props} className={cx('tw:flex tw:flex-col tw:gap-3', props.className)} />
+  <ul
+    {...props}
+    className={cx('tw:flex tw:flex-col tw:gap-3', props.className)}
+  />
 );
 
 export const FileUpload = {

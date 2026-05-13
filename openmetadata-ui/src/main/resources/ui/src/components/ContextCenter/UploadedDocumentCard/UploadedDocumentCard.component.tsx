@@ -14,40 +14,7 @@
 import { Card, Typography } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { getFileTypeIcon } from 'utils/ContextCenterUtils';
-import {
-  DocumentFileType,
-  UploadedDocumentCardProps,
-} from './UploadedDocumentCard.interface';
-const FILE_TYPE_STYLES: Record<
-  DocumentFileType,
-  { label: string; labelBg: string; labelText: string }
-> = {
-  doc: {
-    label: 'DOC',
-    labelBg: 'tw:bg-blue-600',
-    labelText: 'tw:text-white',
-  },
-  pdf: {
-    label: 'PDF',
-    labelBg: 'tw:bg-red-600',
-    labelText: 'tw:text-white',
-  },
-  xls: {
-    label: 'XLS',
-    labelBg: 'tw:bg-green-600',
-    labelText: 'tw:text-white',
-  },
-  image: {
-    label: 'IMG',
-    labelBg: 'tw:bg-gray-400',
-    labelText: 'tw:text-white',
-  },
-  other: {
-    label: 'FILE',
-    labelBg: 'tw:bg-gray-500',
-    labelText: 'tw:text-white',
-  },
-};
+import { UploadedDocumentCardProps } from './UploadedDocumentCard.interface';
 
 const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({
   document,
