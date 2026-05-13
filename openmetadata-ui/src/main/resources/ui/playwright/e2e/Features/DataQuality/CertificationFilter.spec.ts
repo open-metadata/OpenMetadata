@@ -69,7 +69,9 @@ test.afterAll('cleanup', async ({ browser }) => {
   await afterAction();
 });
 
-function captureReports(page: Page): { url: string; q: string; index: string }[] {
+function captureReports(
+  page: Page
+): { url: string; q: string; index: string }[] {
   const captured: { url: string; q: string; index: string }[] = [];
   page.on('request', (req: Request) => {
     const url = req.url();
@@ -130,7 +132,9 @@ test('Certification filter narrows both table- and testCase-index queries via th
     .fill(cert.responseData.fullyQualifiedName);
   await page.getByTestId(cert.responseData.fullyQualifiedName).click();
 
-  const certFqnEncoded = encodeURIComponent(cert.responseData.fullyQualifiedName);
+  const certFqnEncoded = encodeURIComponent(
+    cert.responseData.fullyQualifiedName
+  );
   const tableReload = page.waitForResponse(
     (r) =>
       r.url().includes('/dataQualityReport') &&
@@ -164,9 +168,7 @@ test('Certification filter narrows both table- and testCase-index queries via th
 
   // And both index queries must have actually fired with the filter — otherwise
   // we'd accept a broken UI that just stopped sending the call entirely.
-  expect(
-    reportsWithCertFilter.some((c) => c.index === 'table')
-  ).toBeTruthy();
+  expect(reportsWithCertFilter.some((c) => c.index === 'table')).toBeTruthy();
   expect(
     reportsWithCertFilter.some((c) => c.index === 'testCase')
   ).toBeTruthy();
@@ -206,8 +208,7 @@ test('TagPage: Certification detail page routes through certification.tagLabel.t
 
   const reloadFired = page.waitForResponse(
     (r) =>
-      r.url().includes('/dataQualityReport') &&
-      r.url().includes(certFqnEncoded)
+      r.url().includes('/dataQualityReport') && r.url().includes(certFqnEncoded)
   );
   await page.goto(`/tag/${certFqnEncoded}/data_observability`);
   await reloadFired;
