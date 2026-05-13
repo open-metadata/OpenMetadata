@@ -88,7 +88,15 @@ export default defineConfig({
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
+        '**/SSOLogin.spec.ts',
       ],
+    },
+    {
+      name: 'sso-auth',
+      testMatch: ['**/SSOLogin.spec.ts', '**/SSORenewal.spec.ts'],
+      use: { ...devices['Desktop Chrome'] },
+      fullyParallel: false,
+      workers: 1,
     },
     {
       name: 'entity-data-teardown',
