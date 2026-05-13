@@ -407,12 +407,16 @@ class CommonDbSourceService(
         :return: tables or views, depending on config
         """
         schema_name = self.context.get().database_schema
-        try:
-            if self.source_config.includeTables:
-                for table_and_type in self.query_table_names_and_types(schema_name):
-                    table_name = self.standardize_table_name(
-                        schema_name, table_and_type.name
-                    )
+        if self.source_config.includeTables:
+            try:
+                table_iter = self.query_table_names_and_types(schema_name)
+            except Exception as err:
+                logger.warning(f"Fetching table list failed for schema {schema_name} due to - {err}")
+                logger.debug(traceback.format_exc())
+                table_iter = []
+            for table_and_type in table_iter:
+                try:
+                    table_name = self.standardize_table_name(schema_name, table_and_type.name)
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
@@ -435,13 +439,22 @@ class CommonDbSourceService(
                             "Table Filtered Out",
                         )
                         continue
-                    yield table_name, table_and_type.type_
+                except Exception as err:
+                    logger.warning(f"Skipping table {table_and_type.name!r} in schema {schema_name} due to - {err}")
+                    logger.debug(traceback.format_exc())
+                    continue
+                yield table_name, table_and_type.type_
 
-            if self.source_config.includeViews:
-                for view_and_type in self.query_view_names_and_types(schema_name):
-                    view_name = self.standardize_table_name(
-                        schema_name, view_and_type.name
-                    )
+        if self.source_config.includeViews:
+            try:
+                view_iter = self.query_view_names_and_types(schema_name)
+            except Exception as err:
+                logger.warning(f"Fetching view list failed for schema {schema_name} due to - {err}")
+                logger.debug(traceback.format_exc())
+                view_iter = []
+            for view_and_type in view_iter:
+                try:
+                    view_name = self.standardize_table_name(schema_name, view_and_type.name)
                     view_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
@@ -464,12 +477,11 @@ class CommonDbSourceService(
                             "Table Filtered Out",
                         )
                         continue
-                    yield view_name, view_and_type.type_
-        except Exception as err:
-            logger.warning(
-                f"Fetching tables names failed for schema {schema_name} due to - {err}"
-            )
-            logger.debug(traceback.format_exc())
+                except Exception as err:
+                    logger.warning(f"Skipping view {view_and_type.name!r} in schema {schema_name} due to - {err}")
+                    logger.debug(traceback.format_exc())
+                    continue
+                yield view_name, view_and_type.type_
 
     @calculate_execution_time()
     def get_schema_definition(
