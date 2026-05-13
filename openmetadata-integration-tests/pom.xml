@@ -796,11 +796,22 @@
         </plugins>
       </build>
     </profile>
-    <!-- Redis cache correctness tests — fastest profile for verifying that mutations
-         invalidate the right keys. Brings up a Redis container, runs only the cache
-         correctness ITs, skips the heavier search/DB matrix. -->
+    <!-- Full integration test suite with postgres + elasticsearch + redis cache enabled.
+         Same shape as mysql-elasticsearch (sequential + parallel) but with cacheProvider=redis
+         so every test exercises the cache code paths too — catches stale-data and
+         invalidation bugs across the whole codebase, not just cache/* tests. -->
     <profile>
       <id>cache-tests</id>
+      <!--
+        Full integration test suite with postgres + elasticsearch + redis cache enabled.
+        Mirrors the mysql-elasticsearch profile shape (sequential + parallel executions)
+        so every test that runs without the cache also runs WITH the cache. Catches
+        cache-correctness regressions across the whole codebase, not just the dedicated
+        cache/* test classes.
+
+        Locally, target only cache/* with `-Dit.test='**/cache/*IT'` on top of this
+        profile when validating cache layer changes in isolation.
+      -->
       <build>
         <plugins>
           <plugin>
@@ -808,17 +819,24 @@
             <artifactId>maven-failsafe-plugin</artifactId>
             <version>${maven.failsafe.version}</version>
             <executions>
+              <!-- Run sequential tests -->
               <execution>
-                <id>cache-correctness-tests</id>
+                <id>sequential-tests</id>
                 <goals>
                   <goal>integration-test</goal>
                 </goals>
                 <configuration>
                   <forkCount>1</forkCount>
                   <reuseForks>true</reuseForks>
-                  <argLine>-Xmx2048m -XX:+UseG1GC</argLine>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
-                    <include>**/cache/*IT.java</include>
+                    <include>**/TagRecognizerFeedbackIT.java</include>
+                    <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
+                    <include>**/VectorEmbeddingIntegrationIT.java</include>
+                    <include>**/PatchTableEmbeddingIT.java</include>
+                    <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -836,6 +854,46 @@
                   <useFile>true</useFile>
                 </configuration>
               </execution>
+              <!-- Run parallel tests -->
+              <execution>
+                <id>parallel-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/*IT.java</include>
+                    <include>**/*Test.java</include>
+                  </includes>
+                  <excludes>
+                    <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                    <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
+                    <exclude>**/PatchTableEmbeddingIT.java</exclude>
+                    <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                  </excludes>
+                  <systemPropertyVariables>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:16-alpine</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+                    <cacheProvider>redis</cacheProvider>
+                    <redisImage>redis:7-alpine</redisImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- Verify phase: Fails the build if any tests failed -->
               <execution>
                 <id>verify</id>
                 <goals>

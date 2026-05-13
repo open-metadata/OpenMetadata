@@ -237,6 +237,33 @@ class TestDatalakeUtils(TestCase):
         column_obj = Column(**column)
         assert column_obj.children is not None and len(column_obj.children) == 3
 
+    def test_fetch_col_types_majority_wins(self):
+        """Majority type wins; a handful of date-parseable tokens must not flip a string column."""
+        cases = [
+            # Overwhelmingly strings with a few month-name values — must stay STRING.
+            # This is the dvdrental last_name bug: "May" parses as a date via dateutil
+            # but the column is a string column.
+            (
+                "last_name_with_month_surnames",
+                ["Smith", "Gonzalez", "Brown", "May", "Jones", "Williams", "Davis"],
+                DataType.STRING,
+            ),
+            # Minority of ambiguous month tokens mixed in a long list of plain strings.
+            ("mostly_strings_few_month_tokens", ["foo", "bar", "baz", "May", "qux", "quux", "March"], DataType.STRING),
+            # All values are unambiguous ISO dates — must be DATETIME.
+            ("pure_iso_dates", ["2024-01-01", "2024-06-15", "2025-03-20"], DataType.DATETIME),
+            # Natural-language date phrases — all parse as dates — must be DATETIME.
+            ("natural_language_dates", ["May 2025", "June 2026", "March 2024", "January 2023"], DataType.DATETIME),
+            # Pure strings, no date-parseable values at all.
+            ("pure_strings", ["hello", "world", "foo", "bar"], DataType.STRING),
+            # All plain integers stored as strings — must be INT.
+            ("integer_strings", ["1", "2", "3", "42"], DataType.INT),
+        ]
+        for name, values, expected in cases:
+            with self.subTest(name):
+                df = pd.DataFrame({"col": values})
+                self.assertEqual(GenericDataFrameColumnParser.fetch_col_types(df, "col"), expected)
+
 
 class TestParquetDataFrameColumnParser(TestCase):
     """Test parquet dataframe column parser"""
