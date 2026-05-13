@@ -439,7 +439,7 @@ const DataQualityDashboard = ({
     if (query) {
       setCertification((prev) => ({
         ...prev,
-        options: prev.options.filter(
+        options: defaultCertificationOptions.filter(
           (value) =>
             value.label
               .toLocaleLowerCase()
