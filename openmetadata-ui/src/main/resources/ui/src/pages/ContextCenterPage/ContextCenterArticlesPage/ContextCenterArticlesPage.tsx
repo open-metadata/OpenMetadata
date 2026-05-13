@@ -223,9 +223,7 @@ const ContextCenterArticlesPage = () => {
           { activeTitle: true, name: t('label.article-plural'), url: '' },
         ]}
         hasPermission={permissions?.Create}
-        subtitle={t('message.internal-knowledge-base-agent-training', {
-          defaultValue: 'Internal knowledge base for agent training',
-        })}
+        subtitle={t('message.internal-knowledge-base-agent-training')}
         title={t('label.article-plural')}
       />
     );

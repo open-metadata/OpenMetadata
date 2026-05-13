@@ -93,14 +93,14 @@ const ArticleListSection: FC<ArticleListSectionProps> = ({
       <div className="tw:flex tw:items-center tw:justify-between tw:pb-5">
         <div className="tw:flex tw:items-center tw:gap-3">
           <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50">
-            <File06 className="tw:text-grey-600" height={20} width={20} />
+            <File06 className="tw:text-gray-600" height={20} width={20} />
           </div>
           <div className="tw:flex tw:flex-col">
             <Typography size="text-md" weight="bold">
               {title}
             </Typography>
             {subtitle && (
-              <Typography className="tw:text-grey-500" size="text-xs">
+              <Typography className="tw:text-gray-500" size="text-xs">
                 {subtitle}
               </Typography>
             )}

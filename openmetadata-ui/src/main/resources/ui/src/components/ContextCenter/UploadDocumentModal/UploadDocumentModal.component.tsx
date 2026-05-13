@@ -103,12 +103,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   };
 
   const handleSizeLimitExceed = () => {
-    setSizeError(
-      t('message.file-size-limit-exceeded', {
-        defaultValue:
-          'Some files exceed the 5 MB size limit and were not uploaded.',
-      })
-    );
+    setSizeError(t('message.file-size-limit-exceeded'));
   };
 
   const handleRemoveStaged = (id: string) => {
@@ -182,14 +177,10 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
             <FileUpload.Root>
               <FileUploadDropZone
                 allowsMultiple
-                clickToUploadLabel={t('label.click-to-upload', {
-                  defaultValue: 'Click to upload',
-                })}
+                clickToUploadLabel={t('label.click-to-upload')}
                 hint={t('message.upload-document-hint')}
                 maxSize={5 * 1024 * 1024}
-                orDragAndDropLabel={t('message.or-drag-and-drop', {
-                  defaultValue: 'or drag and drop',
-                })}
+                orDragAndDropLabel={t('label.or-drag-and-drop')}
                 onDropFiles={handleDropFiles}
                 onSizeLimitExceed={handleSizeLimitExceed}
               />

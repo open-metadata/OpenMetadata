@@ -69,9 +69,7 @@ const ContextCenterArchivePage: FC = () => {
           },
         ]}
         hasPermission={permissions?.Create}
-        subtitle={t('message.context-center-archive-subtitle', {
-          defaultValue: 'View archived articles and documents',
-        })}
+        subtitle={t('message.context-center-archive-subtitle')}
         title={t('label.archive')}
         onCreateArticle={() => navigate(ROUTES.CONTEXT_CENTER_ARTICLES)}
       />

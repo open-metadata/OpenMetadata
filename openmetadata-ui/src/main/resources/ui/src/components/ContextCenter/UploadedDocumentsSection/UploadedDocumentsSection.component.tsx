@@ -56,16 +56,14 @@ const UploadedDocumentsSection: FC<UploadedDocumentsSectionProps> = ({
       <div className="tw:flex tw:items-center tw:justify-between tw:pb-5">
         <div className="tw:flex tw:items-center tw:gap-3">
           <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50">
-            <Upload01 className="tw:text-grey-600" height={20} width={20} />
+            <Upload01 className="tw:text-gray-600" height={20} width={20} />
           </div>
           <div className="tw:flex tw:flex-col">
             <Typography size="text-md" weight="bold">
               {t('label.uploaded-document-plural')}
             </Typography>
-            <Typography className="tw:text-grey-500" size="text-xs">
-              {t('message.manual-upload-agent-context', {
-                defaultValue: 'Manual uploads for specific agent context',
-              })}
+            <Typography className="tw:text-gray-500" size="text-xs">
+              {t('message.manual-upload-agent-context')}
             </Typography>
           </div>
         </div>
@@ -86,14 +84,16 @@ const UploadedDocumentsSection: FC<UploadedDocumentsSectionProps> = ({
             ? Array.from({ length: 8 }).map((_, idx) => (
                 <DocumentCardSkeleton key={idx} />
               ))
-            : documents.map((doc: UploadedDocumentItem) => (
-                <UploadedDocumentCard
-                  document={doc}
-                  key={doc.id}
-                  onClick={onDocumentClick}
-                  onDownload={onDownload}
-                />
-              ))}
+            : documents
+                .slice(0, 25)
+                .map((doc: UploadedDocumentItem) => (
+                  <UploadedDocumentCard
+                    document={doc}
+                    key={doc.id}
+                    onClick={onDocumentClick}
+                    onDownload={onDownload}
+                  />
+                ))}
         </div>
       ) : (
         <ErrorPlaceHolder

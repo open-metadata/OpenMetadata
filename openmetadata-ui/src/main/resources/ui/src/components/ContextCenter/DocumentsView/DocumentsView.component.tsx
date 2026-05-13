@@ -94,7 +94,7 @@ const FileActions: FC<FileActionsProps> = ({
             data-testid="share-btn"
             icon={Share07}
             id="share"
-            label={t('label.share-file', { defaultValue: 'Share File' })}
+            label={t('label.share-file')}
           />
           {canDelete && (
             <Dropdown.Item

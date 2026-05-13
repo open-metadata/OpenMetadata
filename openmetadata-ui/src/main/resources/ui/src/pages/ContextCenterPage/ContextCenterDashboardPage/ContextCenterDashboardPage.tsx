@@ -158,9 +158,7 @@ const ContextCenterDashboardPage: FC = () => {
           },
         ]}
         hasPermission={hasCreatePermission}
-        subtitle={t('message.context-center-dashboard-subtitle', {
-          defaultValue: 'Overview of your knowledge base and document library',
-        })}
+        subtitle={t('message.context-center-dashboard-subtitle')}
         title={t('label.dashboard')}
         onCreateArticle={handleCreateArticle}
         onUploadFile={() => setIsUploadModalOpen(true)}
@@ -170,9 +168,7 @@ const ContextCenterDashboardPage: FC = () => {
         <ArticleListSection
           articles={articles}
           isLoading={isArticlesLoading}
-          subtitle={t('message.internal-knowledge-base-agent-training', {
-            defaultValue: 'Internal knowledge base for agent training',
-          })}
+          subtitle={t('message.internal-knowledge-base-agent-training')}
           title={t('label.article-amp-quick-link-plural')}
           onViewAll={() => navigate(ROUTES.CONTEXT_CENTER_ARTICLES)}
         />

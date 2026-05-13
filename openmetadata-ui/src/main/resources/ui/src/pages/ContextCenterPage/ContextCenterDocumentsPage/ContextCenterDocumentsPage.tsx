@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
-import { Home02, UploadCloud02 } from '@untitledui/icons';
+import { Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import DeleteModal from 'components/common/DeleteModal/DeleteModal';
 import { DocFile } from 'components/ContextCenter/DocumentsView/DocumentsView.interface';
@@ -140,17 +139,6 @@ const ContextCenterDocumentsPage: FC = () => {
       className="tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0"
       data-testid="context-center-documents-page">
       <ContextCenterHeader
-        actionsSlot={
-          <div className="tw:flex tw:items-center tw:gap-3 tw:shrink-0">
-            <Button
-              color="primary"
-              iconLeading={UploadCloud02}
-              size="sm"
-              onClick={() => setIsUploadModalOpen(true)}>
-              {t('label.upload-file', { defaultValue: 'Upload File' })}
-            </Button>
-          </div>
-        }
         breadcrumbs={[
           {
             name: '',
@@ -166,10 +154,9 @@ const ContextCenterDocumentsPage: FC = () => {
           },
         ]}
         hasPermission={hasCreatePermission}
-        subtitle={t('message.context-center-documents-subtitle', {
-          defaultValue: 'Manage and organize your uploaded documents',
-        })}
+        subtitle={t('message.context-center-documents-subtitle')}
         title={t('label.document-plural')}
+        onUploadFile={() => setIsUploadModalOpen(true)}
       />
 
       <div className="tw:flex-1 tw:overflow-hidden">

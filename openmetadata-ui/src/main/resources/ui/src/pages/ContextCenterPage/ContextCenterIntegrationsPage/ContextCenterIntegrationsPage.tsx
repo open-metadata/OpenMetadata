@@ -74,9 +74,7 @@ const ContextCenterIntegrationsPage: FC = () => {
           },
         ]}
         hasPermission={hasCreatePermission}
-        subtitle={t('message.context-center-integrations-subtitle', {
-          defaultValue: 'Connect and manage external integrations',
-        })}
+        subtitle={t('message.context-center-integrations-subtitle')}
         title={t('label.integration-plural')}
         onCreateArticle={() => navigate(ROUTES.CONTEXT_CENTER_ARTICLES)}
       />
