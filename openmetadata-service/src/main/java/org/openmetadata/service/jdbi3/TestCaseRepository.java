@@ -1009,7 +1009,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             .toList();
 
     List<TestCase> updatedTestCases = getLogicalSuiteUpdatedTestCase(testCaseReferences);
-    postUpdateMany(updatedTestCases);
+    postLogicalSuiteRelationshipUpdate(updatedTestCases);
     updateLogicalTestSuite(testSuite.getId());
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
@@ -1069,7 +1069,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     int batchSize = 100;
     for (List<EntityReference> batch : Lists.partition(newTestCaseReferences, batchSize)) {
       List<TestCase> updatedTestCases = getLogicalSuiteUpdatedTestCase(batch);
-      postUpdateMany(updatedTestCases);
+      postLogicalSuiteRelationshipUpdate(updatedTestCases);
     }
     updateLogicalTestSuite(testSuite.getId());
 
@@ -1146,6 +1146,34 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           tc.setChangeDescription(change);
         });
     return testCases;
+  }
+
+  /**
+   * Lifecycle hook for the "test case added to a logical test suite" bulk flow. Bypasses
+   * {@code postUpdateMany}'s {@code writeThroughCacheMany} because adding a CONTAINS row to the
+   * {@code test_suite ↔ test_case} relationship table does not modify the {@link TestCase}
+   * entity's stored JSON — {@code testSuites} is stripped from storage JSON (see {@link
+   * #getFieldsStrippedFromStorageJson}) and is rehydrated from {@code entity_relationship} on
+   * read. Writing the pre-read snapshot back to cache here races against any concurrent PATCH
+   * that landed on the same test case during this transaction — exactly the staleness pattern
+   * that previously caused {@code BaseEntityIT.testBulkFluentAPI} to time out for TestCase when
+   * {@code test_bulkAddAllTestCasesWithExcludeIds} executed in parallel. Invalidate the
+   * read-bundle (where {@code testSuites} is fanned out) instead so the next read picks up the
+   * new relationship without clobbering concurrent writers.
+   */
+  private void postLogicalSuiteRelationshipUpdate(List<TestCase> updatedTestCases) {
+    if (updatedTestCases == null || updatedTestCases.isEmpty()) {
+      return;
+    }
+    var cachedReadBundle = org.openmetadata.service.cache.CacheBundle.getCachedReadBundle();
+    if (cachedReadBundle != null) {
+      for (TestCase tc : updatedTestCases) {
+        cachedReadBundle.invalidate(entityType, tc.getId());
+      }
+    }
+    org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher.getInstance()
+        .onEntitiesUpdated(updatedTestCases, null, null);
+    updatedTestCases.forEach(org.openmetadata.service.rdf.RdfUpdater::updateEntity);
   }
 
   @Override
