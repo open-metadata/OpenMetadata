@@ -514,7 +514,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 TestCasePageTabs.DIMENSIONALITY
               )}>
               <div
-                className="tw:flex tw:items-center tw:gap-2 tw:rounded-md tw:bg-blue-50 tw:p-2 tw:text-primary"
+                className="tw:flex tw:min-w-13 tw:items-center tw:gap-2 tw:rounded-md tw:bg-blue-50 tw:p-2 tw:text-primary"
                 data-testid={`dimension-count-${record.name}`}>
                 <DimensionIcon height={12} width={12} />
                 <span className="tw:text-xs tw:font-medium">
