@@ -283,7 +283,7 @@ class HttpTransport:
         try:
             self.session.post(
                 f"{self.url}/mcp",
-                json=notification,
+                json=notification,  # pyright: ignore[reportArgumentType]
                 timeout=self.timeout,
             )
         except Exception as e:
@@ -302,7 +302,7 @@ class HttpTransport:
         try:
             response = self.session.post(
                 f"{self.url}/mcp",
-                json=request,
+                json=request,  # pyright: ignore[reportArgumentType]
                 timeout=self.timeout,
             )
             response.raise_for_status()
