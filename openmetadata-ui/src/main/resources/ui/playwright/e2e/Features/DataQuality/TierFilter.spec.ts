@@ -64,7 +64,9 @@ test.afterAll('cleanup', async ({ browser }) => {
   await afterAction();
 });
 
-function captureReports(page: Page): { url: string; q: string; index: string }[] {
+function captureReports(
+  page: Page
+): { url: string; q: string; index: string }[] {
   const captured: { url: string; q: string; index: string }[] = [];
   page.on('request', (req: Request) => {
     const url = req.url();
@@ -102,8 +104,7 @@ test('TagPage: Tier detail page routes every dashboard call through tier.tagFQN'
 
   const reloadFired = page.waitForResponse(
     (r) =>
-      r.url().includes('/dataQualityReport') &&
-      r.url().includes(tierFqnEncoded)
+      r.url().includes('/dataQualityReport') && r.url().includes(tierFqnEncoded)
   );
   await page.goto(`/tag/${tierFqnEncoded}/data_observability`);
   await reloadFired;
