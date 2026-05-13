@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.workflows.searchIndex;
 
-import static org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp.TIME_SERIES_ENTITIES;
+import static org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes.TIME_SERIES_ENTITIES;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 
 import com.fasterxml.jackson.databind.JsonNode;

@@ -9489,6 +9489,16 @@ public interface CollectionDAO {
         @Bind("startTime") long startTime,
         @Bind("extension") String extension);
 
+    @SqlQuery(
+        "SELECT json FROM apps_extension_time_series where appName = :appName AND extension = :extension AND timestamp >= :startTime AND timestamp < :endTime ORDER BY timestamp ASC LIMIT :limit OFFSET :offset")
+    List<String> listAppExtensionInWindowByName(
+        @Bind("appName") String appName,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset,
+        @Bind("startTime") long startTime,
+        @Bind("endTime") long endTime,
+        @Bind("extension") String extension);
+
     default List<String> listAppExtensionAfterTime(
         String appId, int limit, int offset, long startTime, String extension) {
       return listAppExtensionAfterTime(appId, limit, offset, startTime, extension, null);

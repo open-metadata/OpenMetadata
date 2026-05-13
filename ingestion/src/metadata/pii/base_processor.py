@@ -14,10 +14,9 @@ Base class for the Auto Classification Processor.
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Sequence, Type, TypeVar, cast, final  # noqa: UP035
+from typing import Any, Optional, Sequence, Type, TypeVar, cast, final  # noqa: UP035
 
-from metadata.generated.schema.entity.data.container import Container
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -33,6 +32,7 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.sampler.entity_adapters import adapter_for
 from metadata.sampler.models import SamplerResponse
 
 C = TypeVar("C", bound="AutoClassificationProcessor")
@@ -89,13 +89,9 @@ class AutoClassificationProcessor(Processor, ABC):
         return cls(config=config, metadata=metadata)
 
     @staticmethod
-    def _get_entity_columns(entity) -> Optional[List[Column]]:  # noqa: UP006, UP045
-        """Get columns from a classifiable entity"""
-        if isinstance(entity, Table):
-            return entity.columns
-        if isinstance(entity, Container):
-            return entity.dataModel.columns if entity.dataModel else None
-        return None
+    def _get_entity_columns(entity) -> list[Column] | None:
+        adapter = adapter_for(entity)
+        return adapter.get_columns(entity) if adapter else None
 
     @final
     def _run(self, record: SamplerResponse) -> Either[SamplerResponse]:
