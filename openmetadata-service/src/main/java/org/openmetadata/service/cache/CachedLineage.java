@@ -157,7 +157,16 @@ public final class CachedLineage implements Invalidatable {
   private void safeHset(String hashKey, String field, String value) {
     if (value == null) return;
     try {
-      cache.hset(hashKey, Collections.singletonMap(field, value), Duration.ofSeconds(ttlSeconds));
+      // Write the field with a plain HSET that does NOT touch the key's expiry, then claim
+      // the TTL via EXPIRE … NX. This means the first writer establishes the TTL window and
+      // subsequent variant writes don't extend it — if variant A is cached at T=0 with TTL=60
+      // and variant B writes at T=55, A's lifetime stays at 60s instead of jumping to 115s.
+      // Without this, every variant write on a hot root could keep stale data alive
+      // indefinitely. Providers that can't express EXPIRE NX (very old Redis) return false
+      // from expireIfAbsent — we accept that as a known degradation rather than fall back to
+      // the TTL-extending HSET-with-ttl shape.
+      cache.hset(hashKey, Collections.singletonMap(field, value));
+      cache.expireIfAbsent(hashKey, Duration.ofSeconds(ttlSeconds));
       recordWrite();
     } catch (Exception e) {
       LOG.debug("Lineage cache hset failed key={} field={}", hashKey, field, e);

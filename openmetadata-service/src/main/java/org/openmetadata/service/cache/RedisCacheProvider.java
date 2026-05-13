@@ -389,6 +389,44 @@ public class RedisCacheProvider implements CacheProvider {
   }
 
   @Override
+  public void hset(String key, Map<String, String> fields) {
+    if (!available || fields.isEmpty()) return;
+    CacheMetrics m = metrics();
+    Timer.Sample sample = startWriteTimer(m);
+    try {
+      // Plain HSET: leaves any existing TTL on the hash key alone. Pair with
+      // {@link #expireIfAbsent} when the caller wants TTL set only on first write.
+      syncCommands.hset(key, fields);
+      if (m != null) m.recordWrite();
+      recordSuccess();
+    } catch (Exception e) {
+      if (m != null) m.recordError();
+      recordFailure(e);
+      LOG.error("Error setting hash fields (no-ttl): {}", key, e);
+    } finally {
+      stopWriteTimer(m, sample);
+    }
+  }
+
+  @Override
+  public boolean expireIfAbsent(String key, Duration ttl) {
+    if (!available || ttl == null || ttl.getSeconds() <= 0) return false;
+    try {
+      // EXPIRE key seconds NX — only set when no prior TTL exists. Available since Redis 7.0;
+      // Lettuce exposes it via ExpireArgs.Builder.nx(). Returns true on the first writer to
+      // claim the expiry, false on subsequent writers and on missing keys.
+      return Boolean.TRUE.equals(
+          syncCommands.expire(key, ttl.getSeconds(), io.lettuce.core.ExpireArgs.Builder.nx()));
+    } catch (Exception e) {
+      // Older Redis (<7.0) doesn't support EXPIRE … NX and returns a syntax error. Treat as
+      // "couldn't claim" — caller may degrade to a plain EXPIRE if it wants. We log at DEBUG
+      // because production Redis 7+ has been the minimum for a while; this is best-effort.
+      LOG.debug("expireIfAbsent failed for key={} (Redis < 7.0?)", key, e);
+      return false;
+    }
+  }
+
+  @Override
   public void hdel(String key, String... fields) {
     if (!available || fields.length == 0) return;
 

@@ -17,6 +17,31 @@ public interface CacheProvider extends AutoCloseable {
 
   void hset(String key, Map<String, String> fields, Duration ttl);
 
+  /**
+   * HSET without an EXPIRE. Use when the caller manages the key's TTL separately (e.g.,
+   * setting it only on initial creation via {@link #expireIfAbsent}) to avoid extending a
+   * stale key's lifetime on every field write.
+   *
+   * <p>Default emulates by calling {@link #hset(String, Map, Duration)} with a very long TTL,
+   * but real implementations should override to issue a plain HSET so the key keeps any
+   * previously-set EXPIRE.
+   */
+  default void hset(String key, Map<String, String> fields) {
+    hset(key, fields, Duration.ofDays(365));
+  }
+
+  /**
+   * Set a TTL on {@code key} only if the key currently has no TTL (Redis {@code EXPIRE … NX}).
+   * Returns {@code true} when the TTL was applied (key existed and had no prior expiry),
+   * {@code false} otherwise (key missing, or already has a TTL).
+   *
+   * <p>Default implementation is a no-op returning {@code false} — providers that can't
+   * express the {@code NX} semantics cheaply just don't get the extension-avoidance benefit.
+   */
+  default boolean expireIfAbsent(String key, Duration ttl) {
+    return false;
+  }
+
   void hdel(String key, String... fields);
 
   /**
