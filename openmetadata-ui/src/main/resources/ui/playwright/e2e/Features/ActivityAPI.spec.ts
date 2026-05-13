@@ -199,31 +199,28 @@ test.describe(
     let addReactionFeedText: string;
     let removeReactionFeedText: string;
 
-    test.beforeAll(
-      'Setup: create table and feed items',
-      async () => {
-        const { apiContext, afterAction } = await createAdminApiContext();
+    test.beforeAll('Setup: create table and feed items', async () => {
+      const { apiContext, afterAction } = await createAdminApiContext();
 
-        addReactionFeedText = `Test activity for adding reaction ${uuid()}`;
-        removeReactionFeedText = `Test activity for removing reaction ${uuid()}`;
+      addReactionFeedText = `Test activity for adding reaction ${uuid()}`;
+      removeReactionFeedText = `Test activity for removing reaction ${uuid()}`;
 
-        try {
-          await reactionsTable.create(apiContext);
-          await insertActivityEventForTest(
-            apiContext,
-            reactionsTable,
-            addReactionFeedText
-          );
-          await insertActivityEventForTest(
-            apiContext,
-            reactionsTable,
-            removeReactionFeedText
-          );
-        } finally {
-          await afterAction();
-        }
+      try {
+        await reactionsTable.create(apiContext);
+        await insertActivityEventForTest(
+          apiContext,
+          reactionsTable,
+          addReactionFeedText
+        );
+        await insertActivityEventForTest(
+          apiContext,
+          reactionsTable,
+          removeReactionFeedText
+        );
+      } finally {
+        await afterAction();
       }
-    );
+    });
 
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
@@ -275,31 +272,28 @@ test.describe(
     let commentFeedText: string;
     let layoutFeedText: string;
 
-    test.beforeAll(
-      'Setup: create table and feed items',
-      async () => {
-        const { apiContext, afterAction } = await createAdminApiContext();
+    test.beforeAll('Setup: create table and feed items', async () => {
+      const { apiContext, afterAction } = await createAdminApiContext();
 
-        commentFeedText = `Test activity for comments ${uuid()}`;
-        layoutFeedText = `Test activity detail layout ${uuid()}`;
+      commentFeedText = `Test activity for comments ${uuid()}`;
+      layoutFeedText = `Test activity detail layout ${uuid()}`;
 
-        try {
-          await commentsTable.create(apiContext);
-          await insertActivityEventForTest(
-            apiContext,
-            commentsTable,
-            commentFeedText
-          );
-          await insertActivityEventForTest(
-            apiContext,
-            commentsTable,
-            layoutFeedText
-          );
-        } finally {
-          await afterAction();
-        }
+      try {
+        await commentsTable.create(apiContext);
+        await insertActivityEventForTest(
+          apiContext,
+          commentsTable,
+          commentFeedText
+        );
+        await insertActivityEventForTest(
+          apiContext,
+          commentsTable,
+          layoutFeedText
+        );
+      } finally {
+        await afterAction();
       }
-    );
+    });
 
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
