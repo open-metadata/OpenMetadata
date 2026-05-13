@@ -139,29 +139,18 @@ public class TestCaseSoftDeleteSearchIT {
     } finally {
       // Hard-delete the entire database tree so the test leaves no artefacts behind. The
       // testCase + resolution statuses are recursively cascaded with the parent table.
+      // Best-effort cleanup — assertion failures take precedence over cleanup exceptions.
       if (database != null) {
-        deleteQuietly(
-            () ->
-                client
-                    .databases()
-                    .delete(
-                        database.getId().toString(),
-                        Map.of("hardDelete", "true", "recursive", "true")));
+        try {
+          client
+              .databases()
+              .delete(
+                  database.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+        } catch (Exception ignored) {
+          // intentionally swallowed
+        }
       }
     }
-  }
-
-  private static void deleteQuietly(ThrowingRunnable action) {
-    try {
-      action.run();
-    } catch (Exception ignored) {
-      // best-effort cleanup; assertion failures take precedence
-    }
-  }
-
-  @FunctionalInterface
-  private interface ThrowingRunnable {
-    void run() throws Exception;
   }
 
   private void awaitIncidentIndexed(OpenMetadataClient client, String testCaseFqn) {
