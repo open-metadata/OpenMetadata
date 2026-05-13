@@ -15,7 +15,11 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
-import { createTableDescriptionSuggestions } from '../../utils/suggestions';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  createTableDescriptionSuggestions,
+  expandTableSuggestionColumns,
+} from '../../utils/suggestions';
 import { performUserLogin } from '../../utils/user';
 
 const table = new TableClass();
@@ -67,6 +71,9 @@ test.describe.serial('Description Suggestions Table Entity', () => {
       // Two users profile will be visible, 3rd one will come after AllFetch is clicked
       await expect(allAvatarSuggestion).toHaveCount(1);
 
+      // Expand nested struct/array columns so their suggestion cards render
+      await expandTableSuggestionColumns(page, table);
+
       // Click the first avatar
       await allAvatarSuggestion.nth(0).click();
 
@@ -113,7 +120,13 @@ test.describe.serial('Description Suggestions Table Entity', () => {
       });
 
       // since we accepted one suggestion, the badge count should be total-1
-      await expect(page.getByTestId('asset-description-container').locator(`.ant-badge [title="${table.entityLinkColumnsName.length - 1}"]`)).toBeVisible();
+      await expect(
+        page
+          .getByTestId('asset-description-container')
+          .locator(
+            `.ant-badge [title="${table.entityLinkColumnsName.length - 1}"]`
+          )
+      ).toBeVisible();
 
       await expect(
         page.locator(
@@ -126,6 +139,9 @@ test.describe.serial('Description Suggestions Table Entity', () => {
       const allAvatarSuggestion = page
         .getByTestId('asset-description-container')
         .getByTestId('profile-avatar');
+
+      // Expand nested columns so columnsName[5] row is accessible
+      await expandTableSuggestionColumns(page, table);
 
       // Click the first avatar
       await allAvatarSuggestion.nth(0).click();
@@ -143,13 +159,20 @@ test.describe.serial('Description Suggestions Table Entity', () => {
       await singleResolveResponse;
 
       await page.reload();
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
+
+      // Re-expand after reload so columnsName[5] row is visible for verification
+      // and remains expanded for subsequent test steps
+      await expandTableSuggestionColumns(page, table);
 
       // since we accepted two suggestions, the badge count should be total-2
-      await expect(page.getByTestId('asset-description-container').locator(`.ant-badge [title="${table.entityLinkColumnsName.length - 2}"]`)).toBeVisible();
+      await expect(
+        page
+          .getByTestId('asset-description-container')
+          .locator(
+            `.ant-badge [title="${table.entityLinkColumnsName.length - 2}"]`
+          )
+      ).toBeVisible();
 
       await expect(
         page.locator(
@@ -179,7 +202,13 @@ test.describe.serial('Description Suggestions Table Entity', () => {
       await singleResolveResponse;
 
       // since we accepted two suggestions and rejected one, the badge count should be total-3
-      await expect(page.getByTestId('asset-description-container').locator(`.ant-badge [title="${table.entityLinkColumnsName.length - 3}"]`)).toBeVisible();
+      await expect(
+        page
+          .getByTestId('asset-description-container')
+          .locator(
+            `.ant-badge [title="${table.entityLinkColumnsName.length - 3}"]`
+          )
+      ).toBeVisible();
 
       await expect(
         page.locator(

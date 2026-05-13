@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
+import { TableClass } from '../support/entity/TableClass';
+import { expandNestedColumn } from './nestedColumnUpdatesUtils';
 
 const SUGGESTION_DESCRIPTION_DATA = {
   description: 'this is suggested data description',
@@ -43,6 +45,25 @@ const SUGGESTION_TIER_TAGS_DATA = {
     },
   ],
   type: 'SuggestTagLabel',
+};
+
+export const expandTableSuggestionColumns = async (
+  page: Page,
+  table: TableClass
+) => {
+  const cols = table.entityResponseData.columns ?? [];
+  const structCol = cols[2];
+  const arrayCol = (structCol.children ?? [])[1];
+  await expandNestedColumn(
+    page,
+    structCol.fullyQualifiedName ?? '',
+    (structCol.children ?? [])[0].fullyQualifiedName ?? ''
+  );
+  await expandNestedColumn(
+    page,
+    arrayCol.fullyQualifiedName ?? '',
+    (arrayCol.children ?? [])[0].fullyQualifiedName ?? ''
+  );
 };
 
 export const createTableDescriptionSuggestions = async (
