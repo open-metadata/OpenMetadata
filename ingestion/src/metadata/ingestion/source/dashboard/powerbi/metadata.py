@@ -103,6 +103,23 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+_INVALID_COLUMN_NAME_FRAGMENT = "::"
+_COLUMN_NAME_REPLACEMENT = "_"
+
+
+def _clean_powerbi_column_name(name: Optional[str]) -> Optional[str]:  # noqa: UP045
+    """Sanitize a PowerBI column/measure/table name for the OpenMetadata API.
+
+    PowerBI/DAX permits ``::`` in measure and calculated-column names, but the
+    OpenMetadata ``columnName`` schema enforces ``^((?!::).)*$`` and rejects
+    such names with a 400 on the bulk PUT. Replace ``::`` with ``_`` before
+    truncating to the 256-char limit. The original value is preserved in
+    ``displayName`` at every call site.
+    """
+    if not name:
+        return name
+    return truncate_column_name(name.replace(_INVALID_COLUMN_NAME_FRAGMENT, _COLUMN_NAME_REPLACEMENT))
+
 
 class PowerbiSource(DashboardServiceSource):
     """PowerBi Source Class"""
@@ -387,6 +404,15 @@ class PowerbiSource(DashboardServiceSource):
         try:
             for dashboard in self.filtered_dashboards or []:
                 dashboard_details = self.get_dashboard_details(dashboard)
+                dashboard_display = getattr(dashboard_details, "displayName", None) or getattr(
+                    dashboard_details, "name", None
+                )
+                if not dashboard_display:
+                    logger.debug(
+                        "Skipping PowerBI dashboard with empty displayName/name "
+                        f"[id={getattr(dashboard_details, 'id', None)}]"
+                    )
+                    continue
                 if isinstance(dashboard_details, PowerBIDashboard):
                     dashboard_chart_ids = self.dashboard_charts.get(dashboard_details.id, [])
                     dashboard_request = CreateDashboardRequest(
@@ -493,6 +519,11 @@ class PowerbiSource(DashboardServiceSource):
         """
         measures = []
         for measure in table.measures or []:
+            if not measure.name:
+                logger.debug(
+                    f"Skipping PowerBI measure with empty name on table [{table.name}]"
+                )
+                continue
             try:
                 measure_type = DataType.MEASURE_VISIBLE
                 if measure.isHidden:
@@ -503,7 +534,7 @@ class PowerbiSource(DashboardServiceSource):
                 parsed_measure = PowerBiMeasureModel(
                     dataType=measure_type,
                     dataTypeDisplay=measure_type,
-                    name=truncate_column_name(measure.name),
+                    name=_clean_powerbi_column_name(measure.name),
                     displayName=measure.name,
                     description=description_field_text,
                 )
@@ -519,11 +550,16 @@ class PowerbiSource(DashboardServiceSource):
         """
         columns = []
         for column in table.columns or []:
+            if not column.name:
+                logger.debug(
+                    f"Skipping PowerBI column with empty name on table [{table.name}]"
+                )
+                continue
             try:
                 parsed_column = {
                     "dataTypeDisplay": (column.dataType if column.dataType else DataType.UNKNOWN.value),
                     "dataType": ColumnTypeParser.get_column_type(column.dataType if column.dataType else None),
-                    "name": truncate_column_name(column.name),
+                    "name": _clean_powerbi_column_name(column.name),
                     "displayName": column.name,
                     "description": column.description,
                 }
@@ -539,6 +575,11 @@ class PowerbiSource(DashboardServiceSource):
         """Build columns from dataset"""
         datasource_columns = []
         for table in dataset.tables or []:
+            if not table.name:
+                logger.debug(
+                    f"Skipping PowerBI table with empty name on dataset [id={dataset.id}]"
+                )
+                continue
             try:
                 table_display_name = None
                 if self.service_connection.displayTableNameFromSource:
@@ -550,7 +591,7 @@ class PowerbiSource(DashboardServiceSource):
                 parsed_table = {
                     "dataTypeDisplay": "PowerBI Table",
                     "dataType": DataType.TABLE,
-                    "name": truncate_column_name(table.name),
+                    "name": _clean_powerbi_column_name(table.name),
                     "displayName": table_display_name,
                     "description": table.description,
                     "children": [],
@@ -571,24 +612,32 @@ class PowerbiSource(DashboardServiceSource):
         """Build columns from dataflow export response entities"""
         datasource_columns = []
         for entity in dataflow_export.entities or []:
+            if not entity.name:
+                logger.debug("Skipping PowerBI dataflow entity with empty name")
+                continue
             try:
                 parsed_table = {
                     "dataTypeDisplay": "PowerBI Table",
                     "dataType": DataType.TABLE,
-                    "name": truncate_column_name(entity.name),
+                    "name": _clean_powerbi_column_name(entity.name),
                     "displayName": entity.name,
                     "description": entity.description,
                     "children": [],
                 }
                 child_columns = []
                 for attribute in entity.attributes or []:
+                    if not attribute.name:
+                        logger.debug(
+                            f"Skipping PowerBI dataflow attribute with empty name on entity [{entity.name}]"
+                        )
+                        continue
                     try:
                         parsed_column = {
                             "dataTypeDisplay": (attribute.dataType if attribute.dataType else DataType.UNKNOWN.value),
                             "dataType": ColumnTypeParser.get_column_type(
                                 attribute.dataType if attribute.dataType else None
                             ),
-                            "name": truncate_column_name(attribute.name),
+                            "name": _clean_powerbi_column_name(attribute.name),
                             "displayName": attribute.name,
                             "description": attribute.description,
                         }
@@ -619,6 +668,11 @@ class PowerbiSource(DashboardServiceSource):
         try:
             if self.source_config.includeDataModels:
                 for dataset in self._get_datamodels_list() or []:
+                    if not dataset.name:
+                        logger.debug(
+                            f"Skipping PowerBI data model with empty name [id={dataset.id}]"
+                        )
+                        continue
                     if filter_by_datamodel(self.source_config.dataModelFilterPattern, dataset.name):
                         self.status.filter(dataset.name, "Data model filtered out.")
                         continue

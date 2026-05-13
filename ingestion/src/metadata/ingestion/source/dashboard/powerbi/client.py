@@ -542,11 +542,11 @@ class PowerBiApiClient:
         return None
 
     def fetch_workspace_scan_result(self, scan_id: str) -> Optional[Workspaces]:  # noqa: UP045
-        """Get Workspace scan result by id method
-        Args:
-            scan_id:
-        Returns:
-            Workspaces
+        """Get Workspace scan result by id method.
+
+        Parse each workspace individually so a single malformed workspace
+        (or any nested entity that still fails validation) does not invalidate
+        the whole scan-result response and drop the entire chunk of workspaces.
         """
         try:
             logger.debug(
@@ -554,7 +554,19 @@ class PowerBiApiClient:
                 " to get workspace scan result"
             )
             response_data = self.client.get(f"/myorg/admin/workspaces/scanResult/{scan_id}")
-            return Workspaces(**response_data)
+            if not response_data:
+                return None
+            parsed_workspaces: List[Group] = []  # noqa: UP006
+            for raw_ws in response_data.get("workspaces", []) or []:
+                try:
+                    parsed_workspaces.append(Group(**raw_ws))
+                except Exception as ws_exc:  # pylint: disable=broad-except
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Skipping workspace [id={raw_ws.get('id')}] in scan "
+                        f"[{scan_id}] due to parse error: {ws_exc}"
+                    )
+            return Workspaces(workspaces=parsed_workspaces)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching workspace scan result: {exc}")
