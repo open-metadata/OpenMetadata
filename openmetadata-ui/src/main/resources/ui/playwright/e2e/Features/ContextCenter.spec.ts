@@ -14,6 +14,8 @@
 import { expect, Page } from '@playwright/test';
 import { VIEW_ONLY_RULE } from '../../constant/permission';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
+import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -71,6 +73,8 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 let articleEntity: KnowledgeCenterClass = new KnowledgeCenterClass();
+let articleTagClassification: ClassificationClass;
+let articleTags: TagClass[] = [];
 let viewOnlyUser: UserClass;
 let quickLinkId = '';
 
@@ -94,6 +98,28 @@ test.describe('Context Center', () => {
     await articleEntity.patch(apiContext, [
       { op: 'replace', path: '/displayName', value: ARTICLE_TITLE },
       { op: 'replace', path: '/description', value: ARTICLE_DESCRIPTION },
+    ]);
+
+    articleTagClassification = new ClassificationClass({
+      name: `cc_classification_${uuid()}`,
+    });
+    await articleTagClassification.create(apiContext);
+    articleTags = [1, 2, 3].map(
+      (index) =>
+        new TagClass({
+          classification: articleTagClassification.data.name,
+          name: `cc_tag_${index}_${uuid()}`,
+        })
+    );
+    await Promise.all(articleTags.map((tag) => tag.create(apiContext)));
+    await articleEntity.patch(apiContext, [
+      {
+        op: 'add',
+        path: '/tags',
+        value: articleTags.map((tag) => ({
+          tagFQN: tag.responseData.fullyQualifiedName,
+        })),
+      },
     ]);
 
     // Create a quick link via API for dashboard card detail tests
@@ -154,6 +180,9 @@ test.describe('Context Center', () => {
       await apiContext.delete(
         `/api/v1/knowledgeCenter/${quickLinkId}?hardDelete=true&recursive=true`
       );
+    }
+    if (articleTagClassification?.responseData?.id) {
+      await articleTagClassification.delete(apiContext);
     }
     if (viewOnlyUser.responseData.id) {
       await viewOnlyUser.delete(apiContext);
@@ -379,6 +408,25 @@ test.describe('Context Center', () => {
 
       // Last-edited timestamp label
       await expect(card.first().getByText(/last updated/i)).toBeVisible();
+    });
+
+    test('article card shows assigned tags with overflow count', async ({
+      page,
+    }) => {
+      await navigateToDashboard(page);
+
+      const card = page
+        .getByTestId('article-list-section')
+        .getByTestId('article-card')
+        .filter({ hasText: ARTICLE_TITLE })
+        .first();
+
+      await card.scrollIntoViewIfNeeded();
+      await expect(card).toBeVisible();
+
+      await expect(card.getByText(articleTags[0].data.name)).toBeVisible();
+      await expect(card.getByText(articleTags[1].data.name)).toBeVisible();
+      await expect(card.getByText('+1')).toBeVisible();
     });
 
     test('quick link card shows title, description and opens external url', async ({

@@ -102,7 +102,7 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
         <Col span={24}>
           <DomainLabelV2
             showDomainHeading
-            multiple={entityRules.canAddMultipleDomains}
+            multiple={entityRules?.canAddMultipleDomains}
             onUpdate={handleDomainSave}
           />
         </Col>
@@ -113,7 +113,7 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
               activeDomains={data?.domains ?? []}
               dataProducts={data?.dataProducts ?? []}
               hasPermission={hasDataProductsPermission}
-              multiple={entityRules.canAddMultipleDataProducts}
+              multiple={entityRules?.canAddMultipleDataProducts}
               onSave={handleDataProductsSave}
             />
           </div>

@@ -352,7 +352,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                     weight="regular">
                     {firstDomain
                       ? firstDomain.displayName ?? firstDomain.name
-                      : t('label.add-entity', { entity: t('label.domain') })}
+                      : t('label.no-entity', { entity: t('label.domain') })}
                   </Typography>
                   {extraDomains.length > 0 && (
                     <span className="tw:inline-flex tw:items-center tw:rounded-full tw:bg-gray-100 tw:px-1.5 tw:py-0.5 tw:text-xs tw:font-medium tw:text-gray-600">
@@ -394,7 +394,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                       className="tw:text-gray-400"
                       size="text-sm"
                       weight="regular">
-                      {t('label.add-entity', { entity: t('label.owner') })}
+                      {t('label.no-entity', { entity: t('label.owner') })}
                     </Typography>
                   )}
                 </div>

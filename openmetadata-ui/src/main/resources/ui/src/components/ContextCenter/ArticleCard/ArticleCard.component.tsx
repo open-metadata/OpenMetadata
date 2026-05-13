@@ -13,7 +13,7 @@
 
 import { Badge, Card, Typography } from '@openmetadata/ui-core-components';
 import RichTextEditorPreviewerV1 from 'components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import { FC } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFrontEndFormat } from 'utils/FeedUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
@@ -31,10 +31,20 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, onClick }) => {
   const { t } = useTranslation();
   const { title, description, badge, lastEditedAt, tags = [] } = article;
 
+  const { tagsToShow, remainingTagCount } = useMemo(() => {
+    const tagsToShow = tags.slice(0, 2);
+    const remainingTagCount = tags.length > 2 ? tags.length - 2 : 0;
+
+    return {
+      tagsToShow,
+      remainingTagCount,
+    };
+  }, [tags]);
+
   return (
     <Card
       isClickable
-      className="tw:p-4 tw:flex tw:flex-col tw:bg-gray-50 tw:border-none tw:max-w-86"
+      className="tw:p-4 tw:flex tw:flex-col tw:bg-gray-50 tw:border-none tw:max-w-86 tw:h-40"
       data-testid="article-card"
       onClick={() => onClick?.(article)}>
       <div className="tw:flex tw:items-center tw:justify-between tw:w-full tw:mb-3">
@@ -65,18 +75,32 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, onClick }) => {
         markdown={getFrontEndFormat(description)}
       />
 
-      {tags.length > 0 && (
+      {tagsToShow.length > 0 && (
         <div className="tw:flex tw:flex-wrap tw:gap-1 tw:mt-3">
-          {tags.map((tag) => (
+          {tagsToShow.map((tag) => (
+            <Badge
+              className="tw:bg-gray-200 tw:ring-0 tw:max-w-30 tw:min-w-0"
+              color="gray"
+              key={tag.label}
+              size="sm"
+              type="color">
+              <Typography ellipsis className="tw:text-gray-700" size="text-xs">
+                {tag.label}
+              </Typography>
+            </Badge>
+          ))}
+          {remainingTagCount > 0 && (
             <Badge
               className="tw:bg-gray-200 tw:ring-0"
               color="gray"
-              key={tag.label}
-              size="md"
+              key="count"
+              size="sm"
               type="color">
-              {tag.label}
+              <Typography ellipsis className="tw:text-gray-700" size="text-xs">
+                +{remainingTagCount}
+              </Typography>
             </Badge>
-          ))}
+          )}
         </div>
       )}
     </Card>
