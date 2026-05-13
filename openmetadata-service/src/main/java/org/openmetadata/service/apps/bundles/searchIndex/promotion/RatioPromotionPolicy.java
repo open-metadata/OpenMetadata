@@ -52,6 +52,16 @@ public class RatioPromotionPolicy implements PromotionPolicy {
     if (context.totalRecords() <= 0L) {
       return new Decision(true, "no records scheduled; nothing to evaluate");
     }
+    if (!context.allRecordsAccountedFor()) {
+      return new Decision(
+          false,
+          "incomplete run: only %d of %d records processed; not fully successful"
+              .formatted(
+                  Math.max(
+                      context.processedRecords(),
+                      context.successRecords() + context.failedRecords()),
+                  context.totalRecords()));
+    }
     double ratio = context.successRatio();
     if (ratio >= minSuccessRatio) {
       return new Decision(

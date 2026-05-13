@@ -21,15 +21,23 @@ import org.junit.jupiter.api.Test;
 
 class RatioPromotionPolicyTest {
 
+  private static EntityPromotionContext ctx(long total, long success, long failed, long processed) {
+    return new EntityPromotionContext("table", total, success, failed, processed);
+  }
+
+  private static EntityPromotionContext completeCtx(long total, long success, long failed) {
+    return ctx(total, success, failed, success + failed);
+  }
+
   @Test
   void fullySuccessfulAtOrAboveThreshold() {
     RatioPromotionPolicy policy = new RatioPromotionPolicy(0.95);
 
     assertTrue(
-        policy.evaluate(new EntityPromotionContext("table", 100, 95, 5)).fullySuccessful(),
+        policy.evaluate(completeCtx(100, 95, 5)).fullySuccessful(),
         "exactly at threshold must report fully successful");
     assertTrue(
-        policy.evaluate(new EntityPromotionContext("table", 100, 100, 0)).fullySuccessful(),
+        policy.evaluate(completeCtx(100, 100, 0)).fullySuccessful(),
         "100% must report fully successful");
   }
 
@@ -37,8 +45,7 @@ class RatioPromotionPolicyTest {
   void notFullySuccessfulBelowThreshold() {
     RatioPromotionPolicy policy = new RatioPromotionPolicy(0.95);
 
-    PromotionPolicy.Decision decision =
-        policy.evaluate(new EntityPromotionContext("table", 100, 40, 60));
+    PromotionPolicy.Decision decision = policy.evaluate(completeCtx(100, 40, 60));
 
     assertFalse(
         decision.fullySuccessful(),
@@ -53,8 +60,7 @@ class RatioPromotionPolicyTest {
   void zeroSuccessRecordsNotFullySuccessful() {
     RatioPromotionPolicy policy = new RatioPromotionPolicy(0.95);
 
-    assertFalse(
-        policy.evaluate(new EntityPromotionContext("table", 100, 0, 100)).fullySuccessful());
+    assertFalse(policy.evaluate(completeCtx(100, 0, 100)).fullySuccessful());
   }
 
   @Test
@@ -62,8 +68,22 @@ class RatioPromotionPolicyTest {
     RatioPromotionPolicy policy = new RatioPromotionPolicy(0.95);
 
     assertTrue(
-        policy.evaluate(new EntityPromotionContext("page", 0, 0, 0)).fullySuccessful(),
-        "empty entity types are not failures");
+        policy.evaluate(ctx(0, 0, 0, 0)).fullySuccessful(), "empty entity types are not failures");
+  }
+
+  @Test
+  void incompleteRunIsNotFullySuccessfulEvenAtHighRatio() {
+    RatioPromotionPolicy policy = new RatioPromotionPolicy(0.95);
+
+    PromotionPolicy.Decision decision = policy.evaluate(ctx(100, 96, 0, 96));
+
+    assertFalse(
+        decision.fullySuccessful(),
+        "only 96 of 100 records were processed — job stopped early; must NOT be fully"
+            + " successful regardless of ratio over the processed subset");
+    assertTrue(
+        decision.reason().contains("incomplete run"),
+        () -> "reason should call out the incomplete run explicitly; got: " + decision.reason());
   }
 
   @Test
@@ -82,8 +102,8 @@ class RatioPromotionPolicyTest {
 
   @Test
   void successRatioComputedCorrectlyOnContext() {
-    assertEquals(1.0d, new EntityPromotionContext("t", 0, 0, 0).successRatio());
-    assertEquals(0.5d, new EntityPromotionContext("t", 10, 5, 5).successRatio());
-    assertEquals(0.95d, new EntityPromotionContext("t", 100, 95, 5).successRatio());
+    assertEquals(1.0d, ctx(0, 0, 0, 0).successRatio());
+    assertEquals(0.5d, completeCtx(10, 5, 5).successRatio());
+    assertEquals(0.95d, completeCtx(100, 95, 5).successRatio());
   }
 }

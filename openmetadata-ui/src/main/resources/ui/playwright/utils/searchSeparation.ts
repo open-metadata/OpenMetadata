@@ -78,6 +78,11 @@ export function registerFilterSeparationSuite(
 
   test.describe
     .serial(`${suiteName} | live + reindex filter separation`, () => {
+    // Each test does a full PATCH + reindex cycle plus four Explore filter assertions,
+    // which is heavier than the default 60s timeout allows on slower CI runners. test.slow()
+    // is a no-op inside beforeAll, so set the per-test timeout at the describe level instead.
+    test.describe.configure({ timeout: 180_000 });
+
     let entity: FilterSeparationEntity;
     const classification = new ClassificationClass();
     const classificationTag = new TagClass({
@@ -87,7 +92,6 @@ export function registerFilterSeparationSuite(
     const glossaryTerm = new GlossaryTerm(glossary);
 
     test.beforeAll(async ({ browser }) => {
-      test.slow();
       const { apiContext, afterAction } = await createNewPage(browser);
       await classification.create(apiContext);
       await classificationTag.create(apiContext);

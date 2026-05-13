@@ -76,14 +76,18 @@ class SearchClientTagScriptSeparationTest {
   }
 
   private static void assertEndsWithReseparation(String script, String label) {
+    // Suffix match — the snippet must be the LAST thing the script does so subsequent
+    // mutations can't re-break the separation. `contains` would let a future patch append
+    // additional tag-mutation logic after the reseparation and silently re-introduce drift.
+    String trimmedScript = script.trim();
+    String trimmedSnippet = SearchClient.TAG_RESEPARATION_SCRIPT.trim();
     assertTrue(
-        script.contains(SearchClient.TAG_RESEPARATION_SCRIPT),
+        trimmedScript.endsWith(trimmedSnippet),
         () ->
             "Painless script "
                 + label
-                + " mutates tags[] but does not include TAG_RESEPARATION_SCRIPT;"
-                + " live-indexing will leave tier/classificationTags/glossaryTags stale"
-                + " while reindex produces the correct separation. Append"
-                + " TAG_RESEPARATION_SCRIPT to the script.");
+                + " must END WITH TAG_RESEPARATION_SCRIPT so no later mutation can re-introduce"
+                + " separation drift. Append TAG_RESEPARATION_SCRIPT at the very end of the"
+                + " script string.");
   }
 }

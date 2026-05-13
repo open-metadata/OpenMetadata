@@ -143,7 +143,8 @@ class DistributedReindexFinalizer {
             entityType,
             stats.getTotalRecords(),
             stats.getSuccessRecords(),
-            stats.getFailedRecords());
+            stats.getFailedRecords(),
+            stats.getProcessedRecords());
     PromotionPolicy.Decision decision = promotionPolicy.evaluate(promotionContext);
     LOG.debug(
         "Promotion decision for entity '{}': fullySuccessful={} reason={} (stats: total={}, success={}, failed={})",

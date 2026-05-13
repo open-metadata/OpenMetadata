@@ -54,7 +54,9 @@ test('Incident Manager renders without Jackson error after a test case is soft-d
     });
 
     // Wait until the incident is actually indexed before we soft-delete —
-    // otherwise the script propagation race is meaningless.
+    // otherwise the script propagation race is meaningless. CI runners can be slow on the
+    // first-time test-result + resolution-status indexing pipeline, so allow up to 2 min.
+    test.setTimeout(180_000);
     await expect
       .poll(
         async () => {
@@ -69,7 +71,7 @@ test('Incident Manager renders without Jackson error after a test case is soft-d
         {
           message:
             'incident status endpoint must serve the test case before soft-delete',
-          timeout: 30_000,
+          timeout: 120_000,
         }
       )
       .toBe(200);

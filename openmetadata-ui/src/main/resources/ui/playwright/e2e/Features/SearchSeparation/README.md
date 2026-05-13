@@ -33,9 +33,10 @@ registerFilterSeparationSuite({
 ```
 
 The entity class must expose `create(apiContext)`, `delete(apiContext)`,
-and `patch({ apiContext, patchData })`. Classes with a positional `patch`
-signature (`DatabaseClass`, `DatabaseSchemaClass` today) aren't covered yet
-— normalize their signature or add an adapter before slotting them in.
+and `patch({ apiContext, patchData })`. If a new entity class still uses
+the legacy positional `patch(apiContext, payload)` signature, normalize it
+to the object-based one (as was done for `DatabaseClass` /
+`DatabaseSchemaClass`) before slotting it in.
 
 ## Current matrix
 
@@ -67,9 +68,10 @@ one.
 
 ## Not yet covered
 
-- Service-level entities (`DatabaseService`, etc.) — covered by entity-level
-  specs through cascade; if a service-specific filter regression surfaces,
-  add an explicit spec here.
+- Service-level entities (`DatabaseService`, `DashboardService`, etc.) —
+  no entity-level Tier/Cert/Tag/Glossary surface separate from their
+  children; their docs are covered transitively when the child specs run.
+  Add an explicit spec here if a service-only filter regression surfaces.
 - Time-series entities (`testCaseResolutionStatus`, `testCaseResult`) — do
   not implement `TaggableIndex` and have no Tier/Cert/Tag/Glossary surface,
   so the separation contract doesn't apply.

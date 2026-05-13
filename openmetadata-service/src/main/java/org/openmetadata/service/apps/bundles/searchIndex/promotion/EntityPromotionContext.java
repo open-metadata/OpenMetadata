@@ -18,7 +18,11 @@ package org.openmetadata.service.apps.bundles.searchIndex.promotion;
  * should not need to reach back into the executor for additional signals.
  */
 public record EntityPromotionContext(
-    String entityType, long totalRecords, long successRecords, long failedRecords) {
+    String entityType,
+    long totalRecords,
+    long successRecords,
+    long failedRecords,
+    long processedRecords) {
 
   /**
    * Fraction of records that landed in the staged index. Defaults to {@code 1.0} when nothing
@@ -29,5 +33,19 @@ public record EntityPromotionContext(
       return 1.0;
     }
     return (double) successRecords / totalRecords;
+  }
+
+  /**
+   * Returns true if every scheduled record was accounted for (either succeeded or failed). A
+   * job that stopped early — e.g. operator stop, partition reclaimer, host crash — leaves
+   * {@code processedRecords < totalRecords} and must NOT be flagged fully successful even if
+   * the success ratio over the processed subset clears the threshold.
+   */
+  public boolean allRecordsAccountedFor() {
+    if (totalRecords <= 0) {
+      return true;
+    }
+    long accounted = Math.max(processedRecords, successRecords + failedRecords);
+    return accounted >= totalRecords;
   }
 }
