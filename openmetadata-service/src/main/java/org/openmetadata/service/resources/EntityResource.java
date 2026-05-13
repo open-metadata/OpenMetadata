@@ -795,15 +795,21 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     if (response == null) {
       // EntityRepository.restoreEntity returns null when find(id, DELETED) throws —
       // either the entity doesn't exist at all (→ 404) or it exists but isn't deleted
-      // (→ 400). Probe with Include.ALL to tell them apart so the client gets the right
-      // status code instead of a generic 400.
+      // (→ 400). Probe with Include.ALL to tell them apart. The try block deliberately
+      // ONLY traps EntityNotFoundException so unrelated failures (DB connectivity, auth,
+      // etc.) propagate as 500 rather than being mis-mapped to 400.
+      boolean entityExists;
       try {
         repository.find(id, Include.ALL);
+        entityExists = true;
+      } catch (EntityNotFoundException missing) {
+        entityExists = false;
+      }
+      if (entityExists) {
         throw new BadRequestException(
             String.format("Entity %s:%s is not in deleted state", entityType, id));
-      } catch (EntityNotFoundException missing) {
-        throw missing;
       }
+      throw new EntityNotFoundException(CatalogExceptionMessage.entityNotFound(entityType, id));
     }
     repository.restoreFromSearch(response.getEntity());
     addHref(uriInfo, response.getEntity());
@@ -835,13 +841,21 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     try {
       preCheck = repository.find(id, Include.DELETED);
     } catch (EntityNotFoundException notDeleted) {
+      // Probe with Include.ALL to distinguish 404-missing from 400-not-deleted. Narrow
+      // catch so unrelated failures (DB connectivity, auth) propagate naturally rather
+      // than being mis-mapped to 400 "not in deleted state".
+      boolean entityExists;
       try {
         repository.find(id, Include.ALL);
+        entityExists = true;
+      } catch (EntityNotFoundException missing) {
+        entityExists = false;
+      }
+      if (entityExists) {
         throw new BadRequestException(
             String.format("Entity %s:%s is not in deleted state", entityType, id));
-      } catch (EntityNotFoundException missing) {
-        throw notDeleted;
       }
+      throw notDeleted;
     }
     String entityName = preCheck.getName() != null ? preCheck.getName() : id.toString();
     String jobId = UUID.randomUUID().toString();
