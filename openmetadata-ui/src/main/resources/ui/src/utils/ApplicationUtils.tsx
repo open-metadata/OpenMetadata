@@ -13,10 +13,14 @@
 import { upperFirst } from 'lodash';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { EntityStatsData } from '../components/Settings/Applications/AppLogsViewer/AppLogsViewer.interface';
+import { CACHE_WARMUP_APPLICATION_NAME } from '../constants/constants';
 import {
   Status,
   StepStats,
 } from '../generated/entity/applications/appRunRecord';
+
+export const isCacheWarmupApplication = (appName?: string) =>
+  appName === CACHE_WARMUP_APPLICATION_NAME;
 
 export const getStatusTypeForApplication = (status: Status) => {
   switch (status) {
@@ -49,6 +53,7 @@ const VECTOR_INDEXABLE_ENTITIES = new Set([
   'glossary',
   'glossaryterm',
   'chart',
+  'container',
   'dashboard',
   'dashboarddatamodel',
   'database',

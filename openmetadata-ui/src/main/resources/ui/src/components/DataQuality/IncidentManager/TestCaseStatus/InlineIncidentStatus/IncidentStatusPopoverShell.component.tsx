@@ -21,6 +21,7 @@ export type IncidentStatusPopoverShellProps = {
   dataTestid: string;
   trigger: ReactNode;
   children: ReactNode;
+  popoverClassName?: string;
 };
 
 export const IncidentStatusPopoverShell = ({
@@ -30,10 +31,14 @@ export const IncidentStatusPopoverShell = ({
   dataTestid,
   trigger,
   children,
+  popoverClassName,
 }: IncidentStatusPopoverShellProps) => (
   <PopoverTrigger isOpen={isOpen} onOpenChange={onOpenChange}>
     {trigger}
-    <Popover containerClassName={containerClassName} data-testid={dataTestid}>
+    <Popover
+      className={popoverClassName}
+      containerClassName={containerClassName}
+      data-testid={dataTestid}>
       {children}
     </Popover>
   </PopoverTrigger>
