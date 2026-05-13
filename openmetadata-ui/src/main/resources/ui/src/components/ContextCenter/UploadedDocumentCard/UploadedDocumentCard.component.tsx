@@ -40,7 +40,10 @@ const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({
     <Card
       className="tw:flex tw:flex-col tw:gap-3 tw:max-w-42"
       data-testid="uploaded-document-card"
-      onClick={() => onClick?.(document)}>
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick?.(document);
+      }}>
       <div className="tw:flex tw:items-center tw:justify-center tw:h-15 tw:bg-gray-50">
         {fileTypeIcon}
       </div>
@@ -69,7 +72,10 @@ const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({
                     width={16}
                   />
                 }
-                onClick={() => onDownload?.(document)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDownload?.(document);
+                }}
               />
             </TooltipTrigger>
           </Tooltip>

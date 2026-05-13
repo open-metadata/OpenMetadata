@@ -15,7 +15,7 @@ import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import { ChevronDown, Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
@@ -80,11 +80,6 @@ const ContextCenterArticlesPage = () => {
   });
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
-
-  const hasCreatePermission = useMemo(
-    () => permissions.Create,
-    [permissions.Create]
-  );
 
   const handleFetchKnowledgePageHierarchy = useCallback(
     (forceRefresh?: boolean) =>
@@ -227,7 +222,7 @@ const ContextCenterArticlesPage = () => {
           { name: t('label.context-center'), url: ROUTES.CONTEXT_CENTER },
           { activeTitle: true, name: t('label.article-plural'), url: '' },
         ]}
-        hasPermission={hasCreatePermission}
+        hasPermission={permissions?.Create}
         subtitle={t('message.internal-knowledge-base-agent-training', {
           defaultValue: 'Internal knowledge base for agent training',
         })}

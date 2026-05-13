@@ -18,7 +18,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'context/PermissionProvider/PermissionProvider.interface';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
@@ -32,11 +32,6 @@ const ContextCenterArchivePage: FC = () => {
   const { getResourcePermission } = usePermissionProvider();
   const [permissions, setPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
-  );
-
-  const hasCreatePermission = useMemo(
-    () => permissions.Create,
-    [permissions.Create]
   );
 
   const fetchPermission = useCallback(async () => {
@@ -73,7 +68,7 @@ const ContextCenterArchivePage: FC = () => {
             url: '',
           },
         ]}
-        hasPermission={hasCreatePermission}
+        hasPermission={permissions?.Create}
         subtitle={t('message.context-center-archive-subtitle', {
           defaultValue: 'View archived articles and documents',
         })}

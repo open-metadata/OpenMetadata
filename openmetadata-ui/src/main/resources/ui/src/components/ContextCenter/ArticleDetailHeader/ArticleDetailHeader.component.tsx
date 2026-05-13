@@ -280,13 +280,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       permissions.EditDescription ||
       permissions.EditDisplayName);
 
-  const { hasDeletePermission } = useMemo(
-    () => ({
-      hasDeletePermission: permissions.Delete,
-    }),
-    [permissions.Delete]
-  );
-
   if (!knowledgePage && !tabs) {
     return (
       <div
@@ -542,12 +535,12 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               </TooltipTrigger>
             </Tooltip>
 
-            {hasDeletePermission && (
+            {permissions?.Delete && (
               <ManageButton
                 isRecursiveDelete
                 afterDeleteAction={afterDeleteAction}
                 allowSoftDelete={false}
-                canDelete={hasDeletePermission}
+                canDelete={permissions?.Delete}
                 deleteButtonDescription={t(
                   'message.delete-entity-type-action-description',
                   { entityType }
