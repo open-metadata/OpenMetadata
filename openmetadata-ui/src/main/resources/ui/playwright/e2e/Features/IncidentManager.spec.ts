@@ -182,7 +182,7 @@ const openIncidentReassignModal = async (page: Page, testCaseName?: string) => {
     .last();
   const incidentListRowAction = testCaseName
     ? page
-        .locator('.ant-table-tbody tr')
+        .locator('[data-testid="test-case-incident-manager-table"] tbody tr')
         .filter({ hasText: testCaseName })
         .first()
         .locator('button')
