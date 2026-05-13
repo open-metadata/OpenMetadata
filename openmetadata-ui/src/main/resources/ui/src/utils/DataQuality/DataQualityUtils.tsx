@@ -242,6 +242,16 @@ export const buildDataQualityDashboardFilters = (data: {
     });
   }
 
+  if (filters?.certification) {
+    mustFilter.push({
+      bool: {
+        should: filters.certification.map((fqn) => ({
+          term: { 'certification.tagLabel.tagFQN': fqn },
+        })),
+      },
+    });
+  }
+
   if ((filters?.tags || filters?.tier) && !isTableApi) {
     mustFilter.push(
       buildMustEsFilterForTags([
