@@ -418,11 +418,18 @@ public class RedisCacheProvider implements CacheProvider {
       return Boolean.TRUE.equals(
           syncCommands.expire(key, ttl.getSeconds(), io.lettuce.core.ExpireArgs.Builder.nx()));
     } catch (Exception e) {
-      // Older Redis (<7.0) doesn't support EXPIRE … NX and returns a syntax error. Treat as
-      // "couldn't claim" — caller may degrade to a plain EXPIRE if it wants. We log at DEBUG
-      // because production Redis 7+ has been the minimum for a while; this is best-effort.
-      LOG.debug("expireIfAbsent failed for key={} (Redis < 7.0?)", key, e);
-      return false;
+      // Older Redis (<7.0) doesn't support EXPIRE … NX and returns a syntax error. Fall back
+      // to plain EXPIRE so the key still gets a bounded lifetime — extending it on every
+      // variant write is worse than the strict NX semantics, but vastly better than letting
+      // the key live forever and accumulate in Redis memory until the next manual
+      // invalidation.
+      LOG.debug("expireIfAbsent failed for key={}; falling back to plain EXPIRE", key, e);
+      try {
+        return Boolean.TRUE.equals(syncCommands.expire(key, ttl.getSeconds()));
+      } catch (Exception fallback) {
+        LOG.debug("Plain EXPIRE fallback also failed for key={}", key, fallback);
+        return false;
+      }
     }
   }
 
