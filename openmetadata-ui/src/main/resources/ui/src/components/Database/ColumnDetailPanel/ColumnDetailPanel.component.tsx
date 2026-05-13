@@ -27,19 +27,13 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column.svg';
 import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
-import {
-  DE_ACTIVE_COLOR,
-  ENTITY_PATH,
-} from '../../../constants/constants';
+import { DE_ACTIVE_COLOR, ENTITY_PATH } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
 import { Type } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
-import {
-  getColumnByFQN,
-  updateTableColumn,
-} from '../../../rest/tableAPI';
+import { getColumnByFQN, updateTableColumn } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityUtils';
 import EntityLink from '../../../utils/EntityLink';
