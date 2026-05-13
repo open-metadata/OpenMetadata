@@ -42,7 +42,6 @@ import { Operation as PermissionOperation } from '../../generated/entity/policie
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { useLazyEntityExtension } from '../../hooks/useLazyEntityExtension';
-import { useRequiredParams } from '../../utils/useRequiredParams';
 import {
   addDriveAssetFollower,
   getDriveAssetByFqn,
@@ -62,6 +61,7 @@ import {
 } from '../../utils/PermissionsUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import { defaultFields } from '../../utils/WorksheetDetailsUtils';
 
 const WorksheetDetailsPage = () => {

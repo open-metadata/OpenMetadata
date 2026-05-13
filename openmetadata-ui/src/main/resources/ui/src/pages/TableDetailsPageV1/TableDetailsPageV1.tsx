@@ -125,6 +125,7 @@ const TableDetailsPageV1: React.FC = () => {
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
+  const [tablePermissionsLoaded, setTablePermissionsLoaded] = useState(false);
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const { customizedPage } = useCustomPages(PageType.Table);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
@@ -157,23 +158,24 @@ const TableDetailsPageV1: React.FC = () => {
     ) : undefined;
   }, [dqFailureCount, tableFqn]);
 
-  const { viewUsagePermission, viewTestCasePermission } = useMemo(
-    () => ({
-      viewUsagePermission: getPrioritizedViewPermission(
-        tablePermissions,
-        Operation.ViewUsage
-      ),
-      viewTestCasePermission: getPrioritizedViewPermission(
-        tablePermissions,
-        Operation.ViewTests
-      ),
-    }),
-    [
-      tablePermissions,
-      getPrioritizedViewPermission,
-      getPrioritizedEditPermission,
-    ]
-  );
+  const { viewUsagePermission, viewTestCasePermission, viewBasicPermission } =
+    useMemo(
+      () => ({
+        viewUsagePermission: getPrioritizedViewPermission(
+          tablePermissions,
+          Operation.ViewUsage
+        ),
+        viewTestCasePermission: getPrioritizedViewPermission(
+          tablePermissions,
+          Operation.ViewTests
+        ),
+        viewBasicPermission: getPrioritizedViewPermission(
+          tablePermissions,
+          Operation.ViewBasic
+        ),
+      }),
+      [tablePermissions]
+    );
 
   // Composed `fields=` value, derived from permissions. USAGE_SUMMARY / TESTSUITE are only
   // appended when the caller can read them — drives both the queryKey identity and the
@@ -201,17 +203,18 @@ const TableDetailsPageV1: React.FC = () => {
     [tableFqn, tableQueryFields]
   );
 
-  // Permissions are loaded asynchronously by `fetchResourcePermission`. Until that resolves,
-  // `tablePermissions` is the sentinel `DEFAULT_ENTITY_PERMISSION` reference. We use that as
-  // a "permissions still loading" signal — gates both the query and the page-level loader so
-  // the page doesn't race the permission fetch.
-  const tablePermissionsLoaded = tablePermissions !== DEFAULT_ENTITY_PERMISSION;
-
   // Main entity fetch — migrated from a hand-rolled `useState + useCallback + useEffect`
   // pattern to React Query (P3.1). Replaces `fetchTableDetails` and the `[tableDetails,
   // setTableDetails]` useState below. Existing call sites that did `setTableDetails(...)` or
   // `fetchTableDetails()` continue to work via the wrapper functions defined below — the
   // page state-shape contract is preserved.
+  //
+  // `enabled` gates on:
+  //   * `tablePermissionsLoaded` — wait for the async permission fetch before firing, so we
+  //     have an accurate fields string and don't race the permission resolve.
+  //   * `viewBasicPermission` — match legacy behaviour: don't issue a guaranteed-403 request
+  //     for users who can't view the entity. The early-return placeholder branch below
+  //     renders the permission error instead.
   const {
     data: tableDetails,
     isLoading: isTableLoading,
@@ -221,7 +224,11 @@ const TableDetailsPageV1: React.FC = () => {
     queryKey: tableQueryKey,
     queryFn: () => getTableDetailsByFQN(tableFqn, { fields: tableQueryFields }),
     enabled:
-      !isTourOpen && !isTourPage && tablePermissionsLoaded && Boolean(tableFqn),
+      !isTourOpen &&
+      !isTourPage &&
+      tablePermissionsLoaded &&
+      viewBasicPermission &&
+      Boolean(tableFqn),
   });
 
   // Bridge: existing call sites do `setTableDetails((prev) => ({...prev, ...patch}))` or
@@ -447,10 +454,16 @@ const TableDetailsPageV1: React.FC = () => {
             entity: t('label.resource-permission-lowercase'),
           })
         );
+      } finally {
+        setTablePermissionsLoaded(true);
       }
     },
     [getEntityPermissionByFqn, setTablePermissions]
   );
+
+  useEffect(() => {
+    setTablePermissionsLoaded(false);
+  }, [tableFqn]);
 
   useEffect(() => {
     if (tableFqn) {
@@ -565,7 +578,6 @@ const TableDetailsPageV1: React.FC = () => {
     viewQueriesPermission,
     viewProfilerPermission,
     viewAllPermission,
-    viewBasicPermission,
     viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
@@ -604,10 +616,6 @@ const TableDetailsPageV1: React.FC = () => {
         Operation.ViewDataProfile
       ),
       viewAllPermission: tablePermissions.ViewAll,
-      viewBasicPermission: getPrioritizedViewPermission(
-        tablePermissions,
-        Operation.ViewBasic
-      ),
       viewCustomPropertiesPermission: getPrioritizedViewPermission(
         tablePermissions,
         Operation.ViewCustomFields

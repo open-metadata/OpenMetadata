@@ -374,7 +374,7 @@ describe('WorksheetDetailsPage', () => {
         expect(getDriveAssetByFqn).toHaveBeenCalledWith(
           'test-service.test-worksheet',
           EntityType.WORKSHEET,
-          'owners,followers,tags,domains,dataProducts,votes,extension,rowCount,columns,rowCount'
+          'owners,followers,tags,domains,dataProducts,votes,rowCount,columns,rowCount'
         );
       });
     });

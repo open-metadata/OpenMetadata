@@ -367,7 +367,7 @@ describe('SpreadsheetDetailsPage', () => {
         expect(getDriveAssetByFqn).toHaveBeenCalledWith(
           'test-service.test-spreadsheet',
           EntityType.SPREADSHEET,
-          'owners,worksheets,followers,tags,domains,dataProducts,votes,extension,mimeType,createdTime,modifiedTime'
+          'owners,worksheets,followers,tags,domains,dataProducts,votes,mimeType,createdTime,modifiedTime'
         );
       });
     });

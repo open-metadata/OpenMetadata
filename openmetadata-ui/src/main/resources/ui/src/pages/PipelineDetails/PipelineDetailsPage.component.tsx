@@ -38,7 +38,6 @@ import { Paging } from '../../generated/type/paging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { useLazyEntityExtension } from '../../hooks/useLazyEntityExtension';
-import { useRequiredParams } from '../../utils/useRequiredParams';
 import {
   addFollower,
   getPipelineByFqn,
@@ -58,6 +57,7 @@ import {
 import { defaultFields } from '../../utils/PipelineDetailsUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const PipelineDetailsPage = () => {
   const { t } = useTranslation();

@@ -53,6 +53,7 @@ import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/se
 import { withDomainFilter } from '../../../hoc/withDomainFilter';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { queryClient } from '../../../queryClient';
 import axiosClient from '../../../rest';
 import {
   fetchAuthenticationConfig,
@@ -222,6 +223,10 @@ export const AuthProvider = ({
 
     // Clear the refresh flag (used after refresh is complete)
     tokenService.current.clearRefreshInProgress();
+
+    // Wipe React Query cache so cached responses from the previous user do not bleed into
+    // the next user's session on shared machines.
+    queryClient.clear();
 
     // Upon logout, redirect to the login page
     navigate(ROUTES.SIGNIN);
