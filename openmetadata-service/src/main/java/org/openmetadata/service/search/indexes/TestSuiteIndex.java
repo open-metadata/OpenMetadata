@@ -54,7 +54,7 @@ public record TestSuiteIndex(TestSuite testSuite) implements TaggableIndex {
       EntityReference testSuiteRef, Map<String, Object> doc) {
     if (testSuiteRef.getType().equals(Entity.TABLE)) {
       try {
-        Table table = Entity.getEntity(testSuiteRef, "domains", Include.ALL);
+        Table table = Entity.getEntity(testSuiteRef, "domains,certification", Include.ALL);
         doc.put("table", table.getEntityReference());
         doc.put("database", table.getDatabase());
         doc.put("databaseSchema", table.getDatabaseSchema());
