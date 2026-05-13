@@ -722,31 +722,42 @@ class PowerbiSource(DashboardServiceSource):
         resolve them via the cross-workspace registry on `WorkspaceState`
         rather than walking a global `workspace_data` list.
         """
-        dashboard_fqn = fqn.build(
-            self.metadata,
-            entity_type=Dashboard,
-            service_name=self.context.get().dashboard_service,  # pyright: ignore[reportAttributeAccessIssue]
-            dashboard_name=dashboard_details.id,
-        )
-        if not dashboard_fqn:
-            logger.warning(
-                "Cannot build Dashboard FQN for tile-pinned report lineage: dashboard=%s",
-                dashboard_details.id,
+        try:
+            dashboard_fqn = fqn.build(
+                self.metadata,
+                entity_type=Dashboard,
+                service_name=self.context.get().dashboard_service,  # pyright: ignore[reportAttributeAccessIssue]
+                dashboard_name=dashboard_details.id,
+            )
+            if not dashboard_fqn:
+                logger.warning(
+                    "Cannot build Dashboard FQN for tile-pinned report lineage: dashboard=%s",
+                    dashboard_details.id,
+                )
+                return
+            dashboard_entity = self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn)
+            if not dashboard_entity:
+                logger.debug(
+                    "Dashboard entity not found for tile-pinned report lineage: dashboard=%s",
+                    dashboard_details.id,
+                )
+                return
+            tile_report_ids = [
+                report.id
+                for chart in dashboard_details.tiles or []
+                for report in [self.state.find_report(chart.reportId)]
+                if report is not None
+            ]
+        except Exception as exc:  # pylint: disable=broad-except
+            yield Either(
+                left=StackTraceError(
+                    name="Report and Dashboard Lineage",
+                    error=f"Error resolving dashboard for tile-pinned report lineage [{dashboard_details.id}]: {exc}",
+                    stackTrace=traceback.format_exc(),
+                ),
+                right=None,
             )
             return
-        dashboard_entity = self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn)
-        if not dashboard_entity:
-            logger.debug(
-                "Dashboard entity not found for tile-pinned report lineage: dashboard=%s",
-                dashboard_details.id,
-            )
-            return
-        tile_report_ids = [
-            report.id
-            for chart in dashboard_details.tiles or []
-            for report in [self.state.find_report(chart.reportId)]
-            if report is not None
-        ]
         yield from self._emit_om_target_lineage(
             to_entity=dashboard_entity,
             target_ids=tile_report_ids,
