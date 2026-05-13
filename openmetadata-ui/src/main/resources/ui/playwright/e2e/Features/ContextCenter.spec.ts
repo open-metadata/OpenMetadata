@@ -40,6 +40,9 @@ const navigateToDashboard = async (page: Page) => {
     .getByTestId('context-center-dashboard-page')
     .waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
+  // Wait for article section to finish loading (either cards or empty state)
+  const section = page.getByTestId('article-list-section');
+  await section.waitFor({ state: 'visible' });
 };
 
 const navigateToArticles = async (page: Page) => {
@@ -66,6 +69,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 let articleEntity: KnowledgeCenterClass = new KnowledgeCenterClass();
 let quickLinkId = '';
+let uploadedDocumentId = '';
 
 test.describe('Context Center', () => {
   test.slow(true);
@@ -105,6 +109,31 @@ test.describe('Context Center', () => {
     });
     const qlData = await qlRes.json();
     quickLinkId = qlData.id;
+
+    // Upload a document via API so document-related tests have data
+    const fileContent = Buffer.from('Playwright seed document');
+    const formData = new FormData();
+    formData.append(
+      'file',
+      new Blob([fileContent], { type: 'text/plain' }),
+      'seed-document.txt'
+    );
+    formData.append('entityLink', '<#E::page::contextCenter.documents>');
+    formData.append('assetType', 'External');
+
+    const uploadRes = await apiContext.post('/api/v1/attachments/upload', {
+      multipart: {
+        file: {
+          name: 'seed-document.txt',
+          mimeType: 'text/plain',
+          buffer: fileContent,
+        },
+        entityLink: '<#E::page::contextCenter.documents>',
+        assetType: 'External',
+      },
+    });
+    const uploadData = await uploadRes.json();
+    uploadedDocumentId = uploadData.id;
 
     await afterAction();
   });

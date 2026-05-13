@@ -28,13 +28,15 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { getListKnowledgePages } from 'rest/knowledgeCenterAPI';
 import {
-    assetToDocumentItem, CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK, createArticleKnowledgePage,
-    fetchContextCenterDocuments,
-    knowledgePageToArticleItem
+  assetToDocumentItem,
+  CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
+  createArticleKnowledgePage,
+  fetchContextCenterDocuments,
+  knowledgePageToArticleItem,
 } from 'utils/ContextCenterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 
-const RECENT_ARTICLES_LIMIT = 6;
+const RECENT_ARTICLES_LIMIT = 25;
 
 const ContextCenterDashboardPage: FC = () => {
   const { t } = useTranslation();

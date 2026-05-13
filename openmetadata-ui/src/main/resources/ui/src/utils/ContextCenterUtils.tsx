@@ -122,7 +122,7 @@ export const knowledgePageToArticleItem = (
     data.pageType === PageType.QUICK_LINK
       ? (data.page as QuickLink)?.url
       : data.fullyQualifiedName
-      ? `${ROUTES.CONTEXT_CENTER_ARTICLES}/${page.fullyQualifiedName}`
+      ? `${ROUTES.CONTEXT_CENTER_ARTICLES}/${data.fullyQualifiedName}`
       : undefined,
   id: data.id,
   lastEditedAt: data.updatedAt,

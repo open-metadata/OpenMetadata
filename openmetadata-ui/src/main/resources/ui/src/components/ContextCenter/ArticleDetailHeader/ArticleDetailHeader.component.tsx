@@ -12,6 +12,7 @@
  */
 
 import {
+  Badge,
   Button,
   ButtonUtility,
   Card,
@@ -31,6 +32,7 @@ import {
   Share07,
   ThumbsDown,
   ThumbsUp,
+  UploadCloud01,
   User03,
 } from '@untitledui/icons';
 import Loader from 'components/common/Loader/Loader';
@@ -40,11 +42,10 @@ import { isEmpty, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconSaved } from '../../../assets/svg/ic-saved.svg';
+import { ReactComponent as EditorIcon } from '../../../assets/svg/ic-editor.svg';
 import { ReactComponent as SidebarCollapsible } from '../../../assets/svg/ic-sidebar-collapsible.svg';
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-star.svg';
-import { ReactComponent as IconUnSaved } from '../../../assets/svg/ic-unsaved.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
@@ -241,24 +242,30 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   const contentChangeIcon = useMemo(() => {
     if (contentChangeState === ContentChangeState.SAVED) {
       return (
-        <div
-          className="tw:flex tw:items-center tw:gap-2"
-          data-testid="content-change-state">
-          <IconSaved />{' '}
-          <Typography className="tw:text-green-600" weight="medium">
-            {t('label.saved')}
-          </Typography>
+        <div data-testid="content-change-state">
+          <Badge
+            className="tw:flex tw:items-center tw:gap-2 tw:ring-0"
+            color="success"
+            size="lg"
+            type="color">
+            <UploadCloud01 size={16} />{' '}
+            <Typography weight="medium">{t('label.saved')}</Typography>
+          </Badge>
         </div>
       );
     } else if (contentChangeState === ContentChangeState.SAVING) {
-      return <Loader />;
+      return <Loader size="x-small" />;
     } else if (contentChangeState === ContentChangeState.UN_SAVED) {
       return (
-        <div
-          className="tw:flex tw:items-center tw:gap-2"
-          data-testid="content-change-state">
-          <IconUnSaved />{' '}
-          <Typography weight="medium">{t('label.unsaved')}</Typography>
+        <div data-testid="content-change-state">
+          <Badge
+            className="tw:flex tw:items-center tw:gap-2 tw:ring-0"
+            color="gray"
+            size="lg"
+            type="color">
+            <UploadCloud01 size={16} />{' '}
+            <Typography weight="medium">{t('label.unsaved')}</Typography>
+          </Badge>
         </div>
       );
     } else {
@@ -389,14 +396,21 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 {editors.length > 0 && (
                   <>
                     <Dot className="tw:text-gray-400" size="xs" />
-                    <div className="tw:flex tw:items-center tw:gap-0.5">
-                      {editors.map((user) => (
-                        <UserPopOverCard
-                          key={user.name}
-                          profileWidth={20}
-                          userName={user.name ?? ''}
-                        />
-                      ))}
+                    <div className="tw:flex tw:items-center tw:gap-1.5">
+                      <EditorIcon
+                        className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-fg-disabled"
+                        height={16}
+                        width={16}
+                      />
+                      <div className="tw:flex tw:items-center tw:gap-0.5">
+                        {editors.map((user) => (
+                          <UserPopOverCard
+                            key={user.name}
+                            profileWidth={20}
+                            userName={user.name ?? ''}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </>
                 )}

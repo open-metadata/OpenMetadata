@@ -74,9 +74,8 @@ const ManageButton: FC<ManageButtonProps> = ({
 
   const isProfilerSupported = useMemo(
     () =>
-      [EntityType.DATABASE, EntityType.DATABASE_SCHEMA].includes(
-        entityType as EntityType
-      ) && !deleted,
+      [EntityType.DATABASE, EntityType.DATABASE_SCHEMA].includes(entityType) &&
+      !deleted,
     [entityType, deleted]
   );
 
@@ -107,7 +106,7 @@ const ManageButton: FC<ManageButtonProps> = ({
   const showAnnouncementOption = useMemo(
     () =>
       onAnnouncementClick &&
-      ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType) &&
+      ANNOUNCEMENT_ENTITIES.includes(entityType) &&
       !deleted,
     [onAnnouncementClick, entityType, deleted]
   );
@@ -140,6 +139,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             onClick: (e) => {
               if (canDelete) {
                 e.domEvent.stopPropagation();
+                setIsDropdownOpen(false);
                 setShowReactiveModal(true);
               }
             },
@@ -161,6 +161,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             ),
             onClick: (e) => {
               e.domEvent.stopPropagation();
+              setIsDropdownOpen(false);
               !isUndefined(onAnnouncementClick) && onAnnouncementClick();
             },
             key: 'announcement-button',
@@ -183,6 +184,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             ),
             onClick: (e) => {
               e.domEvent.stopPropagation();
+              setIsDropdownOpen(false);
               setIsDisplayNameEditing(true);
             },
             key: 'rename-button',
@@ -206,6 +208,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             ),
             onClick: (e) => {
               e.domEvent.stopPropagation();
+              setIsDropdownOpen(false);
               onProfilerSettingUpdate?.();
             },
             key: 'profiler-setting-button',
@@ -231,6 +234,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             onClick: (e) => {
               if (canDelete) {
                 e.domEvent.stopPropagation();
+                setIsDropdownOpen(false);
                 setIsDelete(true);
               }
             },

@@ -34,7 +34,7 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, onClick }) => {
   return (
     <Card
       isClickable
-      className="tw:p-4 tw:flex tw:flex-col tw:gap-2 tw:bg-gray-50 tw:border-none tw:max-w-86"
+      className="tw:p-4 tw:flex tw:flex-col tw:bg-gray-50 tw:border-none tw:max-w-86"
       data-testid="article-card"
       onClick={() => onClick?.(article)}>
       <div className="tw:flex tw:items-center tw:justify-between tw:w-full tw:mb-3">
