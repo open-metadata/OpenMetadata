@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Metabase source module"""
 
+import re
 import traceback
 from typing import Any, Dict, Iterable, List, Optional  # noqa: UP035
 
@@ -330,6 +331,13 @@ class MetabaseSource(DashboardServiceSource):
                     )
                 )
 
+    @staticmethod
+    def _clean_metabase_native_query(query: str) -> str:
+        """Strip [[optional]] blocks and {{variable}} params so the query is valid SQL for lineage parsing."""
+        clean = re.sub(r"\[\[.*?\]\]", "", query, flags=re.DOTALL)
+        clean = re.sub(r"\{\{[^}]+\}\}", "'__PARAM__'", clean)
+        return clean
+
     def _get_database_service(self, db_service_name: Optional[str]):  # noqa: UP045
         if not db_service_name:
             return None
@@ -376,6 +384,7 @@ class MetabaseSource(DashboardServiceSource):
         if query is None:
             return
 
+        query = self._clean_metabase_native_query(query)
         database_name = database.details.db if database and database.details else None
 
         db_service = self._get_database_service(prefix_service_name)

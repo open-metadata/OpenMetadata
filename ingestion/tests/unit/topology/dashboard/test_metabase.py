@@ -504,6 +504,95 @@ class MetabaseUnitTest(TestCase):
         for fqn in self.metabase.chart_source_state:
             assert "mock_metabase" in fqn
 
+    def test_clean_metabase_native_query_strips_optional_blocks(self):
+        """[[...]] optional clause blocks must be stripped so the query is valid SQL."""
+        query = (
+            "SELECT * FROM my_schema.my_table WHERE 1 = 1\n"
+            "  [[AND {{filter_a}}]]\n"
+            "  [[AND {{filter_b}}]]\n"
+            "  AND source != 'value'"
+        )
+        result = MetabaseSource._clean_metabase_native_query(query)
+        assert "[[" not in result
+        assert "]]" not in result
+        assert "{{filter_a}}" not in result
+        assert "my_schema.my_table" in result
+        assert "source != 'value'" in result
+
+    def test_clean_metabase_native_query_strips_multiline_optional_blocks(self):
+        """Multi-line [[...]] blocks (e.g. complex WHERE clauses) must be stripped."""
+        query = (
+            "SELECT * FROM tbl WHERE 1 = 1\n"
+            "[[ AND (\n"
+            "    ({{filter}} = 'TRUE' AND col <= CURRENT_DATE())\n"
+            "    OR ({{filter}} = NULL)\n"
+            ")]]\n"
+            "AND active = 1"
+        )
+        result = MetabaseSource._clean_metabase_native_query(query)
+        assert "[[" not in result
+        assert "]]" not in result
+        assert "{{filter}}" not in result
+        assert "tbl" in result
+        assert "active = 1" in result
+
+    def test_clean_metabase_native_query_replaces_bare_template_vars(self):
+        """{{variable}} outside [[...]] blocks are replaced with a SQL literal."""
+        query = "SELECT * FROM tbl WHERE id = {{user_id}} AND active = 1"
+        result = MetabaseSource._clean_metabase_native_query(query)
+        assert "{{user_id}}" not in result
+        assert "'__PARAM__'" in result
+        assert "tbl" in result
+        assert "active = 1" in result
+
+    def test_clean_metabase_native_query_passthrough_plain_query(self):
+        """Queries without any Metabase syntax must be returned unchanged."""
+        query = "SELECT id, name FROM my_schema.orders WHERE status = 'active'"
+        result = MetabaseSource._clean_metabase_native_query(query)
+        assert result == query
+
+    @patch.object(OpenMetadata, "search_in_any_service", return_value=EXAMPLE_TABLE)
+    @patch.object(MetabaseSource, "_get_chart_entity", return_value=EXAMPLE_CHART)
+    @patch.object(MetabaseSource, "_get_database_service", return_value=MOCK_DATABASE_SERVICE)
+    def test_yield_lineage_parameterized_query(self, *_):
+        """Lineage must be extracted from charts whose native query uses [[...]] syntax."""
+        parameterized_chart = MetabaseChart(
+            description="Parameterized chart",
+            table_id="1",
+            database_id=1,
+            name="param_chart",
+            id="99",
+            dataset_query=DatasetQuery(
+                type="native",
+                native=Native(
+                    query=(
+                        "SELECT * FROM my_schema.lineage_table WHERE 1 = 1\n"
+                        "  [[AND {{filter_a}}]]\n"
+                        "  [[AND {{filter_b}}]]\n"
+                        "  AND source != 'value'"
+                    )
+                ),
+            ),
+            display="table",
+            dashboard_ids=[],
+        )
+        self.metabase.charts_dict["99"] = parameterized_chart
+        mock_dashboard = deepcopy(MOCK_DASHBOARD_DETAILS)
+        mock_dashboard.card_ids = ["99"]
+
+        self.metabase.client.get_database = lambda *_: None
+
+        with patch.object(OpenMetadata, "get_by_name", return_value=EXAMPLE_DASHBOARD):
+            result = self.metabase.yield_dashboard_lineage_details(
+                dashboard_details=mock_dashboard,
+                db_service_prefix=str(MOCK_DATABASE_SERVICE.name),
+            )
+            lineage_results = [r.right for r in result if r.right is not None]
+
+        assert any(
+            r.edge.fromEntity.id == EXAMPLE_TABLE[0].id for r in lineage_results
+        ), "Expected lineage from parameterized query chart"
+
         # Test 8: New format with stages but no native query
         chart_with_empty_stages = MetabaseChart(
             name="test_chart_empty_stages",
