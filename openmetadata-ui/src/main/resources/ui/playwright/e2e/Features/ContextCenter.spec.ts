@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
+import { VIEW_ONLY_RULE } from '../../constant/permission';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
+import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { addTitle } from '../../utils/KnowledgeCenter';
+import { test } from '../fixtures/pages';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -68,8 +71,8 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 let articleEntity: KnowledgeCenterClass = new KnowledgeCenterClass();
+let viewOnlyUser: UserClass;
 let quickLinkId = '';
-let uploadedDocumentId = '';
 
 test.describe('Context Center', () => {
   test.slow(true);
@@ -121,7 +124,7 @@ test.describe('Context Center', () => {
     formData.append('entityLink', '<#E::page::contextCenter.documents>');
     formData.append('assetType', 'External');
 
-    const uploadRes = await apiContext.post('/api/v1/attachments/upload', {
+    await apiContext.post('/api/v1/attachments/upload', {
       multipart: {
         file: {
           name: 'seed-document.txt',
@@ -132,8 +135,14 @@ test.describe('Context Center', () => {
         assetType: 'External',
       },
     });
-    const uploadData = await uploadRes.json();
-    uploadedDocumentId = uploadData.id;
+
+    viewOnlyUser = new UserClass();
+    await viewOnlyUser.create(apiContext, false);
+    await viewOnlyUser.setCustomRulePolicy(
+      apiContext,
+      VIEW_ONLY_RULE,
+      'context-center-view-only'
+    );
 
     await afterAction();
   });
@@ -146,11 +155,72 @@ test.describe('Context Center', () => {
         `/api/v1/knowledgeCenter/${quickLinkId}?hardDelete=true&recursive=true`
       );
     }
+    if (viewOnlyUser.responseData.id) {
+      await viewOnlyUser.delete(apiContext);
+    }
     await afterAction();
   });
 
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
+  });
+
+  // ─── Permissions ────────────────────────────────────────────────────────────
+
+  test.describe('Permissions', () => {
+    test('user with only ViewAll cannot see restricted action buttons', async ({
+      viewOnlyPage,
+    }) => {
+      await test.step('dashboard actions are hidden', async () => {
+        await navigateToDashboard(viewOnlyPage);
+
+        await expect(
+          viewOnlyPage.getByRole('button', { name: /create.*article/i })
+        ).not.toBeVisible();
+        await expect(
+          viewOnlyPage.getByRole('button', { name: /upload file/i })
+        ).not.toBeVisible();
+      });
+
+      await test.step('articles create action is hidden', async () => {
+        await navigateToArticles(viewOnlyPage);
+
+        await expect(
+          viewOnlyPage.getByTestId('create-knowledge-page-btn')
+        ).not.toBeVisible();
+      });
+
+      await test.step('article detail actions are hidden', async () => {
+        await viewOnlyPage.goto(
+          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`
+        );
+        await waitForAllLoadersToDisappear(viewOnlyPage);
+
+        const header = viewOnlyPage.getByTestId('article-detail-header');
+        await expect(header).toBeVisible();
+        await expect(header.getByTestId('upvote-btn')).toBeVisible();
+        await expect(header.getByTestId('downvote-btn')).toBeVisible();
+        await expect(header.getByTestId('follow-btn')).toBeVisible();
+        await expect(header.getByTestId('conversation')).toBeVisible();
+        await expect(header.getByTestId('manage-button')).not.toBeVisible();
+      });
+
+      await test.step('documents upload and delete actions are hidden', async () => {
+        await navigateToDocuments(viewOnlyPage);
+
+        await expect(
+          viewOnlyPage.getByRole('button', { name: /upload file/i })
+        ).not.toBeVisible();
+
+        const firstRow = viewOnlyPage
+          .getByTestId('documents-view')
+          .locator('[data-testid^="document-row-"]')
+          .first();
+        await expect(firstRow).toBeVisible();
+        await firstRow.locator('button[aria-label="Open menu"]').click();
+        await expect(viewOnlyPage.getByTestId('delete-btn')).not.toBeVisible();
+      });
+    });
   });
 
   // ─── Dashboard Page ──────────────────────────────────────────────────────────

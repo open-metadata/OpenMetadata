@@ -22,6 +22,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   breadcrumbs,
   title,
   subtitle,
+  hasPermission = true,
   onCreateArticle,
   onUploadFile,
   actionsSlot,
@@ -67,7 +68,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
               <Typography className="tw:text-gray-700">{subtitle}</Typography>
             )}
           </div>
-          {actionsSlot ?? defaultActions}
+          {hasPermission ? actionsSlot ?? defaultActions : null}
         </div>
       </Card>
     </div>

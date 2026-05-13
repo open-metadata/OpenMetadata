@@ -12,15 +12,47 @@
  */
 
 import { Home02 } from '@untitledui/icons';
-import { FC } from 'react';
+import { AxiosError } from 'axios';
+import { usePermissionProvider } from 'context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'context/PermissionProvider/PermissionProvider.interface';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { showErrorToast } from 'utils/ToastUtils';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import { ROUTES } from '../../../constants/constants';
 
 const ContextCenterArchivePage: FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { getResourcePermission } = usePermissionProvider();
+  const [permissions, setPermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const hasCreatePermission = useMemo(
+    () => permissions.Create,
+    [permissions.Create]
+  );
+
+  const fetchPermission = useCallback(async () => {
+    try {
+      const response = await getResourcePermission(
+        ResourceEntity.KNOWLEDGE_PAGE
+      );
+      setPermissions(response);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, [getResourcePermission]);
+
+  useEffect(() => {
+    fetchPermission();
+  }, [fetchPermission]);
 
   return (
     <div
@@ -41,12 +73,12 @@ const ContextCenterArchivePage: FC = () => {
             url: '',
           },
         ]}
+        hasPermission={hasCreatePermission}
         subtitle={t('message.context-center-archive-subtitle', {
           defaultValue: 'View archived articles and documents',
         })}
         title={t('label.archive')}
         onCreateArticle={() => navigate(ROUTES.CONTEXT_CENTER_ARTICLES)}
-        onUploadFile={() => undefined}
       />
     </div>
   );

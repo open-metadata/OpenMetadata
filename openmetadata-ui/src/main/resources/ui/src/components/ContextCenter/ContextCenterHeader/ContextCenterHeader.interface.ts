@@ -18,6 +18,7 @@ export interface ContextCenterHeaderProps {
   breadcrumbs: TitleLink[];
   title: string;
   subtitle?: string;
+  hasPermission?: boolean;
   onCreateArticle?: () => void;
   onUploadFile?: () => void;
   /** Replaces the default action buttons with a custom slot */

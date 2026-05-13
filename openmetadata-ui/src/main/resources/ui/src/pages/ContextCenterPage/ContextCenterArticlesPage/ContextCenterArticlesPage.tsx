@@ -15,7 +15,7 @@ import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import { ChevronDown, Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
@@ -80,6 +80,11 @@ const ContextCenterArticlesPage = () => {
   });
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
+
+  const hasCreatePermission = useMemo(
+    () => permissions.Create,
+    [permissions.Create]
+  );
 
   const handleFetchKnowledgePageHierarchy = useCallback(
     (forceRefresh?: boolean) =>
@@ -183,36 +188,34 @@ const ContextCenterArticlesPage = () => {
     return (
       <ContextCenterHeader
         actionsSlot={
-          permissions.Create && (
-            <LimitWrapper resource="knowledgeCenter">
-              <Dropdown.Root>
-                <Button
-                  color="primary"
-                  data-testid="create-knowledge-page-btn"
-                  iconTrailing={ChevronDown}>
-                  {t('label.create')}
-                </Button>
+          <LimitWrapper resource="knowledgeCenter">
+            <Dropdown.Root>
+              <Button
+                color="primary"
+                data-testid="create-knowledge-page-btn"
+                iconTrailing={ChevronDown}>
+                {t('label.create')}
+              </Button>
 
-                <Dropdown.Popover placement="bottom start">
-                  <Dropdown.Menu aria-label="create knowledge page">
-                    <Dropdown.Item
-                      data-testid="create-article-btn"
-                      key={PageType.ARTICLE}
-                      onAction={addArticleKnowledgePage}>
-                      {t('label.article')}
-                    </Dropdown.Item>
+              <Dropdown.Popover placement="bottom start">
+                <Dropdown.Menu aria-label="create knowledge page">
+                  <Dropdown.Item
+                    data-testid="create-article-btn"
+                    key={PageType.ARTICLE}
+                    onAction={addArticleKnowledgePage}>
+                    {t('label.article')}
+                  </Dropdown.Item>
 
-                    <Dropdown.Item
-                      data-testid="create-quick-link-btn"
-                      key={PageType.QUICK_LINK}
-                      onAction={() => setShowAddLinkModal(true)}>
-                      {t('label.quick-link')}
-                    </Dropdown.Item>
-                  </Dropdown.Menu>
-                </Dropdown.Popover>
-              </Dropdown.Root>
-            </LimitWrapper>
-          )
+                  <Dropdown.Item
+                    data-testid="create-quick-link-btn"
+                    key={PageType.QUICK_LINK}
+                    onAction={() => setShowAddLinkModal(true)}>
+                    {t('label.quick-link')}
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
+          </LimitWrapper>
         }
         breadcrumbs={[
           {
@@ -224,6 +227,7 @@ const ContextCenterArticlesPage = () => {
           { name: t('label.context-center'), url: ROUTES.CONTEXT_CENTER },
           { activeTitle: true, name: t('label.article-plural'), url: '' },
         ]}
+        hasPermission={hasCreatePermission}
         subtitle={t('message.internal-knowledge-base-agent-training', {
           defaultValue: 'Internal knowledge base for agent training',
         })}

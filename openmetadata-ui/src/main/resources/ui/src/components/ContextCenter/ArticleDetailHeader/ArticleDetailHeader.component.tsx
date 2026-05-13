@@ -280,6 +280,13 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       permissions.EditDescription ||
       permissions.EditDisplayName);
 
+  const { hasDeletePermission } = useMemo(
+    () => ({
+      hasDeletePermission: permissions.Delete,
+    }),
+    [permissions.Delete]
+  );
+
   if (!knowledgePage && !tabs) {
     return (
       <div
@@ -452,6 +459,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                       : undefined
                   }
                   color="secondary"
+                  data-testid="upvote-btn"
                   disabled={knowledgePage?.deleted || voteLoading !== null}
                   icon={
                     <ThumbsUp
@@ -479,6 +487,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                       : undefined
                   }
                   color="secondary"
+                  data-testid="downvote-btn"
                   disabled={knowledgePage?.deleted || voteLoading !== null}
                   icon={
                     <ThumbsDown
@@ -513,6 +522,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 <ButtonUtility
                   className={isFollowing ? 'tw:text-brand-600' : undefined}
                   color="secondary"
+                  data-testid="follow-btn"
                   disabled={isFollowLoading || knowledgePage?.deleted}
                   icon={isFollowing ? StarFilledIcon : StarIcon}
                   onClick={handleFollowClick}
@@ -532,37 +542,39 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               </TooltipTrigger>
             </Tooltip>
 
-            <ManageButton
-              isRecursiveDelete
-              afterDeleteAction={afterDeleteAction}
-              allowSoftDelete={false}
-              canDelete={permissions.Delete}
-              deleteButtonDescription={t(
-                'message.delete-entity-type-action-description',
-                { entityType }
-              )}
-              deleteOptions={deleteOptions}
-              deleted={knowledgePage?.deleted}
-              entityFQN={knowledgePage?.fullyQualifiedName}
-              entityId={knowledgePage?.id}
-              entityName={knowledgePage?.displayName ?? t('label.untitled')}
-              entityType={EntityType.KNOWLEDGE_CENTER}
-              prepareType={false}
-              successMessage={t('server.entity-deleted-successfully', {
-                entity: entityType,
-              })}
-              trigger={(onClick) => (
-                <ButtonUtility
-                  data-testid="manage-button"
-                  icon={DotsVertical}
-                  size="sm"
-                  tooltip={t('label.manage-entity', {
-                    entity: t('label.article'),
-                  })}
-                  onClick={onClick}
-                />
-              )}
-            />
+            {hasDeletePermission && (
+              <ManageButton
+                isRecursiveDelete
+                afterDeleteAction={afterDeleteAction}
+                allowSoftDelete={false}
+                canDelete={hasDeletePermission}
+                deleteButtonDescription={t(
+                  'message.delete-entity-type-action-description',
+                  { entityType }
+                )}
+                deleteOptions={deleteOptions}
+                deleted={knowledgePage?.deleted}
+                entityFQN={knowledgePage?.fullyQualifiedName}
+                entityId={knowledgePage?.id}
+                entityName={knowledgePage?.displayName ?? t('label.untitled')}
+                entityType={EntityType.KNOWLEDGE_CENTER}
+                prepareType={false}
+                successMessage={t('server.entity-deleted-successfully', {
+                  entity: entityType,
+                })}
+                trigger={(onClick) => (
+                  <ButtonUtility
+                    data-testid="manage-button"
+                    icon={DotsVertical}
+                    size="sm"
+                    tooltip={t('label.manage-entity', {
+                      entity: t('label.article'),
+                    })}
+                    onClick={onClick}
+                  />
+                )}
+              />
+            )}
           </div>
         </div>
 

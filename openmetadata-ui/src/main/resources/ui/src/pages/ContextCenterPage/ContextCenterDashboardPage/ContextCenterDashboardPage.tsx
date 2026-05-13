@@ -20,10 +20,15 @@ import UploadDocumentModal from 'components/ContextCenter/UploadDocumentModal/Up
 import { UploadedDocumentItem } from 'components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
 import UploadedDocumentsSection from 'components/ContextCenter/UploadedDocumentsSection/UploadedDocumentsSection.component';
 import { ROUTES } from 'constants/constants';
+import { usePermissionProvider } from 'context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'context/PermissionProvider/PermissionProvider.interface';
 import { Asset } from 'generated/attachments/asset';
 import { useApplicationStore } from 'hooks/useApplicationStore';
 import { KnowledgePage } from 'interface/knowledge-center.interface';
-import { FC, useCallback, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { getListKnowledgePages } from 'rest/knowledgeCenterAPI';
@@ -34,6 +39,7 @@ import {
   fetchContextCenterDocuments,
   knowledgePageToArticleItem,
 } from 'utils/ContextCenterUtils';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 
 const RECENT_ARTICLES_LIMIT = 25;
@@ -42,12 +48,21 @@ const ContextCenterDashboardPage: FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
+  const { getResourcePermission } = usePermissionProvider();
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [articles, setArticles] = useState<ArticleCardItem[]>([]);
   const [documents, setDocuments] = useState<UploadedDocumentItem[]>([]);
   const [isArticlesLoading, setIsArticlesLoading] = useState(true);
   const [isDocumentsLoading, setIsDocumentsLoading] = useState(true);
+  const [permissions, setPermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const hasCreatePermission = useMemo(
+    () => permissions.Create,
+    [permissions.Create]
+  );
 
   const handleCreateArticle = useCallback(async () => {
     await createArticleKnowledgePage(currentUser?.id ?? '', navigate);
@@ -84,10 +99,22 @@ const ContextCenterDashboardPage: FC = () => {
     }
   }, []);
 
+  const fetchPermission = useCallback(async () => {
+    try {
+      const response = await getResourcePermission(
+        ResourceEntity.KNOWLEDGE_PAGE
+      );
+      setPermissions(response);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, [getResourcePermission]);
+
   useEffect(() => {
     fetchRecentArticles();
     fetchDocuments();
-  }, [fetchRecentArticles, fetchDocuments]);
+    fetchPermission();
+  }, [fetchRecentArticles, fetchDocuments, fetchPermission]);
 
   const handleUploaded = useCallback((newAssets: Asset[]) => {
     setDocuments((prev) => [...prev, ...newAssets.map(assetToDocumentItem)]);
@@ -112,6 +139,7 @@ const ContextCenterDashboardPage: FC = () => {
             url: '',
           },
         ]}
+        hasPermission={hasCreatePermission}
         subtitle={t('message.context-center-dashboard-subtitle', {
           defaultValue: 'Overview of your knowledge base and document library',
         })}

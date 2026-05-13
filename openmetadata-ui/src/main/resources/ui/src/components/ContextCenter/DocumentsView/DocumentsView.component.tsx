@@ -57,12 +57,14 @@ const FileTypeBadge: FC<{ fileType: DocFileType }> = ({ fileType }) => {
 // ─── Actions dropdown ─────────────────────────────────────────────────────────
 
 interface FileActionsProps {
+  canDelete?: boolean;
   file: DocFile;
   onShareFile?: (file: DocFile) => void;
   onDeleteFile?: (file: DocFile) => void;
 }
 
 const FileActions: FC<FileActionsProps> = ({
+  canDelete,
   file,
   onDeleteFile,
   onShareFile,
@@ -87,12 +89,14 @@ const FileActions: FC<FileActionsProps> = ({
             id="share"
             label={t('label.share-file', { defaultValue: 'Share File' })}
           />
-          <Dropdown.Item
-            data-testid="delete-btn"
-            icon={Trash01}
-            id="delete"
-            label={t('label.delete')}
-          />
+          {canDelete && (
+            <Dropdown.Item
+              data-testid="delete-btn"
+              icon={Trash01}
+              id="delete"
+              label={t('label.delete')}
+            />
+          )}
         </Dropdown.Menu>
       </Dropdown.Popover>
     </Dropdown.Root>
@@ -131,6 +135,7 @@ const FileRowSkeleton: FC = () => (
 // ─── File row ─────────────────────────────────────────────────────────────────
 
 interface FileRowProps {
+  canDelete?: boolean;
   file: DocFile;
   onDownload?: (file: DocFile) => void;
   onShareFile?: (file: DocFile) => void;
@@ -138,6 +143,7 @@ interface FileRowProps {
 }
 
 const FileRow: FC<FileRowProps> = ({
+  canDelete,
   file,
   onDeleteFile,
   onDownload,
@@ -188,6 +194,7 @@ const FileRow: FC<FileRowProps> = ({
         onClick={() => onDownload?.(file)}
       />
       <FileActions
+        canDelete={canDelete}
         file={file}
         onDeleteFile={onDeleteFile}
         onShareFile={onShareFile}
@@ -199,6 +206,7 @@ const FileRow: FC<FileRowProps> = ({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const DocumentsView: FC<DocumentsViewProps> = ({
+  canDelete,
   data,
   isLoading,
   onDeleteFile,
@@ -218,6 +226,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
               ))
             : data.map((file) => (
                 <FileRow
+                  canDelete={canDelete}
                   file={file}
                   key={file.id}
                   onDeleteFile={onDeleteFile}

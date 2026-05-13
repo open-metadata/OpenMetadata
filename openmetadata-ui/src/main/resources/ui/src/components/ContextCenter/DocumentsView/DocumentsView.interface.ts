@@ -30,6 +30,7 @@ export interface DocFolder {
 }
 
 export interface DocumentsViewProps {
+  canDelete?: boolean;
   data: DocFile[];
   isLoading: boolean;
   onDownload?: (file: DocFile) => void;
