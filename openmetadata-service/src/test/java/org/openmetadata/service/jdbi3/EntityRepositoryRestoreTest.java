@@ -184,8 +184,11 @@ class EntityRepositoryRestoreTest {
     repo.bulkRestoreSubtree(null, "user");
     repo.bulkRestoreSubtree(List.of(), "user");
 
+    // bulkRestoreSubtree loads with Include.ALL — guard that neither the DELETED nor ALL
+    // shape is invoked when the input list is empty/null.
     verify(pipelineDAO, never())
         .findEntitiesByIds(anyList(), eq(org.openmetadata.schema.type.Include.DELETED));
+    verify(pipelineDAO, never()).findEntitiesByIds(anyList(), eq(Include.ALL));
     assertEquals(0, repo.restoreAdditionalChildrenCalls);
   }
 

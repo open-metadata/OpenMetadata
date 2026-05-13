@@ -382,11 +382,10 @@ public class WebsocketNotificationHandler {
   }
 
   public static void sendRestoreOperationCompleteNotification(
-      String jobId, SecurityContext securityContext, EntityInterface entity) {
+      String jobId, UUID userId, EntityInterface entity) {
     RestoreEntityMessage message =
         new RestoreEntityMessage(jobId, "COMPLETED", entity.getName(), null);
     String jsonMessage = JsonUtils.pojoToJson(message);
-    UUID userId = getUserIdFromSecurityContext(securityContext);
     LOG.info(
         "[AsyncRestore] Restore operation completed - jobId: {}, userId: {}, entity: {}",
         jobId,
@@ -399,10 +398,9 @@ public class WebsocketNotificationHandler {
   }
 
   public static void sendRestoreOperationFailedNotification(
-      String jobId, SecurityContext securityContext, String entityName, String error) {
+      String jobId, UUID userId, String entityName, String error) {
     RestoreEntityMessage message = new RestoreEntityMessage(jobId, "FAILED", entityName, error);
     String jsonMessage = JsonUtils.pojoToJson(message);
-    UUID userId = getUserIdFromSecurityContext(securityContext);
     LOG.error(
         "[AsyncRestore] Restore operation failed - jobId: {}, userId: {}, entity: {}, error: {}",
         jobId,
@@ -413,6 +411,16 @@ public class WebsocketNotificationHandler {
       WebSocketManager.getInstance()
           .sendToOne(userId, WebSocketManager.RESTORE_ENTITY_CHANNEL, jsonMessage);
     }
+  }
+
+  /**
+   * Resolve the WebSocket user id for the given security context. Call this on the
+   * request thread (i.e., before submitting an async task) so the lookup runs while the
+   * SecurityContext is still valid — JAX-RS may invalidate request-scoped state after the
+   * response returns.
+   */
+  public static UUID resolveUserId(SecurityContext securityContext) {
+    return getUserIdFromSecurityContext(securityContext);
   }
 
   public static void sendMoveOperationCompleteNotification(

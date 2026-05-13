@@ -474,14 +474,13 @@ class BaseEntity(Generic[TEntity, TCreate]):
         try:
             return AsyncJobResponse.from_response(response)
         except ValueError as missing_job_id:
-            # EntityResource only honors ?async=true on entity types whose Resource
-            # subclass has been wired to forward the query parameter. Untriggered
-            # endpoints respond 200 + the restored entity JSON, which fails the
-            # AsyncJobResponse jobId guard. Re-raise with a hint pointing the caller at
-            # the most likely root cause.
+            # Defensive guard for older servers that don't honor ?async=true (or any
+            # future case where the resource short-circuits with a 200 + entity payload).
+            # Without this, the generic AsyncJobResponse jobId-missing error would be
+            # confusing.
             raise ValueError(
                 f"Server did not return an async job for {endpoint}/restore. "
-                f"The endpoint may not support ?async=true for this entity type."
+                f"The server may be older than the async-restore release."
             ) from missing_job_id
 
     @classmethod

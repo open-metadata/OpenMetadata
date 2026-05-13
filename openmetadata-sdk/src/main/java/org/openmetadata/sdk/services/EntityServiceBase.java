@@ -464,16 +464,15 @@ public abstract class EntityServiceBase<T> {
             restoreEntity,
             org.openmetadata.sdk.models.AsyncJobResponse.class,
             options);
-    // EntityResource only honors ?async=true on entity types that have been wired to
-    // forward the query param. Untriggered endpoints return 200 + the restored entity
-    // JSON, which Jackson silently deserializes into an AsyncJobResponse with all-null
-    // fields. Detect that and fail loudly so callers don't treat a sync restore as a
-    // dispatched async job.
+    // Defensive check for older servers that don't honor ?async=true (or for any future
+    // case where the resource short-circuits with a 200 + entity payload). Jackson would
+    // otherwise silently deserialize the entity JSON into an AsyncJobResponse with all
+    // null fields and callers would treat a sync restore as a dispatched async job.
     if (response == null || response.getJobId() == null || response.getJobId().isEmpty()) {
       throw new OpenMetadataException(
           "Server did not return an async job for "
               + basePath
-              + "/restore. The endpoint may not support ?async=true for this entity type.");
+              + "/restore. The server may be older than the async-restore release.");
     }
     return response;
   }

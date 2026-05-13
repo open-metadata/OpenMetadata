@@ -793,11 +793,17 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     PutResponse<T> response =
         repository.restoreEntity(securityContext.getUserPrincipal().getName(), id);
     if (response == null) {
-      // EntityRepository.restoreEntity returns null when find(id, DELETED) throws — i.e.,
-      // the entity doesn't exist or isn't soft-deleted. Surface as 400 so clients don't
-      // NPE on response.getEntity() downstream and get a useful error code.
-      throw new BadRequestException(
-          String.format("Entity %s:%s is not in deleted state", entityType, id));
+      // EntityRepository.restoreEntity returns null when find(id, DELETED) throws —
+      // either the entity doesn't exist at all (→ 404) or it exists but isn't deleted
+      // (→ 400). Probe with Include.ALL to tell them apart so the client gets the right
+      // status code instead of a generic 400.
+      try {
+        repository.find(id, Include.ALL);
+        throw new BadRequestException(
+            String.format("Entity %s:%s is not in deleted state", entityType, id));
+      } catch (EntityNotFoundException missing) {
+        throw missing;
+      }
     }
     repository.restoreFromSearch(response.getEntity());
     addHref(uriInfo, response.getEntity());
@@ -840,9 +846,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     String entityName = preCheck.getName() != null ? preCheck.getName() : id.toString();
     String jobId = UUID.randomUUID().toString();
     String userName = securityContext.getUserPrincipal().getName();
+    // Resolve the WebSocket user id on the request thread, while the SecurityContext is
+    // still valid. JAX-RS may invalidate request-scoped state once the 202 response is
+    // returned, so we cannot rely on securityContext.getUserPrincipal() inside the lambda.
+    UUID notifyUserId = WebsocketNotificationHandler.resolveUserId(securityContext);
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    // Intentionally don't capture uriInfo in the lambda — JAX-RS may invalidate it once the
-    // 202 response is sent. The WebSocket notification only needs name/status, not HREFs.
+    // Intentionally don't capture uriInfo in the lambda — same request-scope concern. The
+    // WebSocket notification only needs name/status, not HREFs.
     executorService.submit(
         RequestLatencyContext.wrapWithContext(
             () -> {
@@ -850,7 +860,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 PutResponse<T> response = repository.restoreEntity(userName, id);
                 if (response == null) {
                   WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
-                      jobId, securityContext, entityName, "Entity is not in deleted state");
+                      jobId, notifyUserId, entityName, "Entity is not in deleted state");
                   return;
                 }
                 repository.restoreFromSearch(response.getEntity());
@@ -860,7 +870,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                     response.getEntity().getId(),
                     jobId);
                 WebsocketNotificationHandler.sendRestoreOperationCompleteNotification(
-                    jobId, securityContext, response.getEntity());
+                    jobId, notifyUserId, response.getEntity());
               } catch (Exception e) {
                 LOG.error(
                     "[AsyncRestore] Failed to restore {}:{} (name={})",
@@ -870,7 +880,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                     e);
                 WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
                     jobId,
-                    securityContext,
+                    notifyUserId,
                     entityName,
                     e.getMessage() == null ? e.toString() : e.getMessage());
               }
