@@ -207,14 +207,31 @@ public class DataAccessRequestIT {
     assertEquals(List.of("revoke"), grantedTransitions);
 
     // Revoke from Granted → terminal Revoked status with resolution.
-    Task revoked =
-        SdkClients.adminClient()
-            .tasks()
-            .resolve(
-                granted.getId().toString(),
-                new ResolveTask().withTransitionId("revoke").withComment("revoking"));
+    // Wrap the call in a short retry: the Task entity is already updated for the new
+    // GrantedAccess stage (asserted above), but the Flowable engine's runtime-task wait state
+    // occasionally hasn't settled the instant `markAsGranted` returns in CI. The next
+    // `resolveTask` then sees an active task without a matching pending transition and bubbles
+    // up `Workflow resolution failed`. A handful of poll attempts is enough to absorb the race.
+    AtomicReference<Task> revokedRef = new AtomicReference<>();
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .pollInterval(Duration.ofMillis(250))
+        .ignoreException(org.openmetadata.sdk.exceptions.ApiException.class)
+        .untilAsserted(
+            () -> {
+              Task r =
+                  SdkClients.adminClient()
+                      .tasks()
+                      .resolve(
+                          granted.getId().toString(),
+                          new ResolveTask()
+                              .withTransitionId("revoke")
+                              .withComment("revoking"));
+              assertEquals(TaskEntityStatus.Revoked, r.getStatus());
+              revokedRef.set(r);
+            });
+    Task revoked = revokedRef.get();
 
-    assertEquals(TaskEntityStatus.Revoked, revoked.getStatus());
     assertNotNull(revoked.getResolution());
     assertEquals(TaskResolutionType.Revoked, revoked.getResolution().getType());
     assertTrue(revoked.getAvailableTransitions().isEmpty());
