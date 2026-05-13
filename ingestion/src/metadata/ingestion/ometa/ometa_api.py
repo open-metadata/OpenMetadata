@@ -769,7 +769,8 @@ class OpenMetadata(
     ) -> Optional[dict]:  # noqa: UP045
         """Server-side async delete.
 
-        Issues ``DELETE /<entity>/<id>?recursive=...&hardDelete=...&async=true`` and returns
+        Issues ``DELETE /<entity>/async/{id}?recursive=...&hardDelete=...`` (the dedicated
+        async-delete endpoint defined by ``EntityResource.deleteByIdAsync``) and returns
         the 202 payload ``{"jobId": ..., "message": ...}``. The actual cascade runs on the
         server's executor so ingestion can avoid blocking on large hierarchies. Caller is
         responsible for tracking the returned ``jobId`` if it needs completion confirmation.

@@ -774,7 +774,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public Response restoreEntity(UriInfo uriInfo, SecurityContext securityContext, UUID id) {
-    return restoreEntity(uriInfo, securityContext, id, false);
+    // Read ?async=true off uriInfo so subclass resources that haven't (yet) declared the
+    // QueryParam still honor the async contract. Lets SDK callers opt into async restore
+    // universally regardless of which Resource subclass forwarded the parameter.
+    boolean asyncFromQuery =
+        uriInfo != null && Boolean.parseBoolean(uriInfo.getQueryParameters().getFirst("async"));
+    return restoreEntity(uriInfo, securityContext, id, asyncFromQuery);
   }
 
   public Response restoreEntity(
@@ -787,6 +792,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PutResponse<T> response =
         repository.restoreEntity(securityContext.getUserPrincipal().getName(), id);
+    if (response == null) {
+      // EntityRepository.restoreEntity returns null when find(id, DELETED) throws — i.e.,
+      // the entity doesn't exist or isn't soft-deleted. Surface as 400 so clients don't
+      // NPE on response.getEntity() downstream and get a useful error code.
+      throw new BadRequestException(
+          String.format("Entity %s:%s is not in deleted state", entityType, id));
+    }
     repository.restoreFromSearch(response.getEntity());
     addHref(uriInfo, response.getEntity());
     LOG.info(

@@ -190,7 +190,9 @@ class EntityRepositoryRestoreTest {
   }
 
   @Test
-  void bulkRestoreSubtree_noDeletedEntitiesFound_isNoOp() {
+  void bulkRestoreSubtree_noEntitiesAtAll_isNoOp() {
+    // loadForBulk returns an empty list (entity doesn't exist at all): bulk path bails
+    // before children traversal or hook invocation.
     CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
     UUID id = UUID.randomUUID();
     when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of());
@@ -199,6 +201,26 @@ class EntityRepositoryRestoreTest {
 
     verify(pipelineDAO, atLeastOnce()).findEntitiesByIds(anyList(), eq(Include.ALL));
     assertEquals(0, repo.restoreAdditionalChildrenCalls);
+  }
+
+  @Test
+  void bulkRestoreSubtree_entitiesPresentButNoneDeleted_stillRunsAdditionalChildrenHook() {
+    // loadForBulk returns entities, but none are in DELETED state. Bulk path must skip
+    // the deferred-store update phase but still call runRestoreAdditionalChildren — a
+    // re-entered cascade may have HAS-related descendants that need reconciliation.
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    UUID id = UUID.randomUUID();
+    Pipeline pa =
+        new Pipeline().withId(id).withName("a").withFullyQualifiedName("svc.a").withDeleted(false);
+    when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of(pa));
+    when(relationshipDAO.findToBatchAllTypes(
+            anyList(), eq(Relationship.CONTAINS.ordinal()), eq(Include.ALL)))
+        .thenReturn(List.of());
+
+    repo.bulkRestoreSubtree(List.of(id), "user");
+
+    assertEquals(1, repo.restoreAdditionalChildrenCalls);
+    assertTrue(repo.bulkRestoreInvokedWith.contains(id));
   }
 
   @Test

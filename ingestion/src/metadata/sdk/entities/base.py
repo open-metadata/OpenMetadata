@@ -471,7 +471,18 @@ class BaseEntity(Generic[TEntity, TCreate]):
             f"{endpoint}/restore?async=true",
             json={"id": cls._stringify_identifier(entity_id)},
         )
-        return AsyncJobResponse.from_response(response)
+        try:
+            return AsyncJobResponse.from_response(response)
+        except ValueError as missing_job_id:
+            # EntityResource only honors ?async=true on entity types whose Resource
+            # subclass has been wired to forward the query parameter. Untriggered
+            # endpoints respond 200 + the restored entity JSON, which fails the
+            # AsyncJobResponse jobId guard. Re-raise with a hint pointing the caller at
+            # the most likely root cause.
+            raise ValueError(
+                f"Server did not return an async job for {endpoint}/restore. "
+                f"The endpoint may not support ?async=true for this entity type."
+            ) from missing_job_id
 
     @classmethod
     def restore_request(cls, entity_id: UuidLike) -> "RestoreOperation[TEntity]":  # noqa: UP037
