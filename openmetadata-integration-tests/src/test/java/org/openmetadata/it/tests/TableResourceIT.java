@@ -5928,7 +5928,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     client.tables().updateTableProfile(table.getId(), createProfile);
 
     // Verify the three field combinations exercised below don't regress:
-    // (a) fields=profile — profile data returned, no full-table-scan on profiler_data_time_series
+    // (a) fields=profile — completes within 30s and returns the expected column profiles
     TableColumnList withProfile =
         assertTimeout(
             Duration.ofSeconds(30),

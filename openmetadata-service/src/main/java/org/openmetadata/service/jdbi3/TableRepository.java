@@ -2195,6 +2195,21 @@ public class TableRepository extends EntityRepository<Table> {
     return null;
   }
 
+  private Map<String, List<CustomMetric>> batchFetchCustomMetricsByColumn(UUID tableId) {
+    List<ExtensionRecord> records =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensions(tableId, CUSTOM_METRICS_EXTENSION + TABLE_COLUMN_EXTENSION);
+    Map<String, List<CustomMetric>> metricsByColumn = new HashMap<>();
+    for (ExtensionRecord record : records) {
+      CustomMetric metric = JsonUtils.readValue(record.extensionJson(), CustomMetric.class);
+      if (metric != null && metric.getColumnName() != null) {
+        metricsByColumn.computeIfAbsent(metric.getColumnName(), k -> new ArrayList<>()).add(metric);
+      }
+    }
+    return metricsByColumn;
+  }
+
   private List<CustomMetric> getCustomMetrics(Table table, String columnName) {
     String extension = columnName != null ? TABLE_COLUMN_EXTENSION : TABLE_EXTENSION;
     extension = CUSTOM_METRICS_EXTENSION + extension;
@@ -2892,19 +2907,8 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     if (fieldsParam != null && fieldsParam.contains("customMetrics")) {
-      List<ExtensionRecord> allColumnMetricRecords =
-          daoCollection
-              .entityExtensionDAO()
-              .getExtensions(table.getId(), CUSTOM_METRICS_EXTENSION + TABLE_COLUMN_EXTENSION);
-      Map<String, List<CustomMetric>> metricsByColumn = new HashMap<>();
-      for (ExtensionRecord record : allColumnMetricRecords) {
-        CustomMetric metric = JsonUtils.readValue(record.extensionJson(), CustomMetric.class);
-        if (metric != null && metric.getColumnName() != null) {
-          metricsByColumn
-              .computeIfAbsent(metric.getColumnName(), k -> new ArrayList<>())
-              .add(metric);
-        }
-      }
+      Map<String, List<CustomMetric>> metricsByColumn =
+          batchFetchCustomMetricsByColumn(table.getId());
       for (Column column : paginatedColumns) {
         column.setCustomMetrics(metricsByColumn.getOrDefault(column.getName(), List.of()));
       }
@@ -3262,19 +3266,8 @@ public class TableRepository extends EntityRepository<Table> {
 
     Fields fields = getFields(fieldsParam);
     if (fields.contains("customMetrics") || fields.contains("*")) {
-      List<ExtensionRecord> allColumnMetricRecords =
-          daoCollection
-              .entityExtensionDAO()
-              .getExtensions(table.getId(), CUSTOM_METRICS_EXTENSION + TABLE_COLUMN_EXTENSION);
-      Map<String, List<CustomMetric>> metricsByColumn = new HashMap<>();
-      for (ExtensionRecord record : allColumnMetricRecords) {
-        CustomMetric metric = JsonUtils.readValue(record.extensionJson(), CustomMetric.class);
-        if (metric != null && metric.getColumnName() != null) {
-          metricsByColumn
-              .computeIfAbsent(metric.getColumnName(), k -> new ArrayList<>())
-              .add(metric);
-        }
-      }
+      Map<String, List<CustomMetric>> metricsByColumn =
+          batchFetchCustomMetricsByColumn(table.getId());
       for (Column column : paginatedResults) {
         column.setCustomMetrics(metricsByColumn.getOrDefault(column.getName(), List.of()));
       }
