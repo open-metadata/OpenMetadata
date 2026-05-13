@@ -8763,7 +8763,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           if (nullOrEmpty(addedColumn.getDescription())) {
             addedColumn.setDescription(deleted.getDescription());
           }
-          if (nullOrEmpty(addedColumn.getTags()) && !nullOrEmpty(deleted.getTags())) {
+          if (nullOrEmpty(addedColumn.getTags()) && nullOrEmpty(deleted.getTags())) {
             addedColumn.setTags(deleted.getTags());
           }
         }
