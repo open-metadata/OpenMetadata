@@ -406,7 +406,15 @@ def get_schema_columns(self, connection, schema, **kw):
         identity_increment,
         ordinal_position,
     ) in result:
-        table_name = self.normalize_name(fqn.quote_name(table_name))  # noqa: PLW2901
+        try:
+            table_name = self.normalize_name(fqn.quote_name(table_name))  # noqa: PLW2901
+        except ValueError:
+            logger.warning(
+                "Skipping column row in schema %s with unsupported table name %r",
+                schema,
+                table_name,
+            )
+            continue
         column_name = self.normalize_name(column_name)  # noqa: PLW2901
         if table_name not in ans:
             ans[table_name] = []
