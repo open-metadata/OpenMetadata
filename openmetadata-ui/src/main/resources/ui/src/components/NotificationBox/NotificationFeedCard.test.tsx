@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import { Thread } from '../../generated/entity/feed/thread';
@@ -31,21 +31,28 @@ jest.mock('../../utils/FeedUtils', () => ({
 jest.mock('../../utils/TasksUtils', () => ({
   getTaskDetailPath: (...args: any[]) => mockGetTaskDetailPath(...args),
 }));
-jest.mock('../common/ProfilePicture/ProfilePicture', () => {
-  return jest
-    .fn()
-    .mockReturnValue(<p data-testid="profile-picture">ProfilePicture</p>);
-});
+jest.mock('../common/ProfilePicture/ProfilePicture', () =>
+  jest.fn().mockReturnValue(<p data-testid="profile-picture">ProfilePicture</p>)
+);
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => ({
-  Link: jest
-    .fn()
-    .mockImplementation(
-      ({ children, to }: { children: React.ReactNode; to: string }) => (
-        <p data-testid="link" data-to={to}>
-          {children}
-        </p>
-      )
-    ),
+  Link: jest.fn().mockImplementation(
+    ({
+      children,
+      to,
+      onClick,
+    }: {
+      children: React.ReactNode;
+      to: string;
+      onClick?: (e: React.MouseEvent) => void;
+    }) => (
+      <span data-testid="link" data-to={to} onClick={onClick}>
+        {children}
+      </span>
+    )
+  ),
+  useNavigate: jest.fn(() => mockNavigate),
 }));
 jest.mock('../../utils/EntityUtils', () => ({
   getEntityLinkFromType: jest.fn().mockReturnValue('/mock-entity-link'),
@@ -110,6 +117,10 @@ const mockProps = {
 };
 
 describe('Test NotificationFeedCard Component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('Check if it has all child elements', async () => {
     await act(async () => {
       render(<NotificationFeedCard {...mockProps} />);
@@ -190,6 +201,58 @@ describe('Test NotificationFeedCard Component', () => {
     expect(screen.getByText('1692612000000')).toBeInTheDocument();
   });
 
+  it('calls navigate with tasksRefreshKey state when the task notification card is clicked', async () => {
+    const taskUrl = '/database/test.entity/activity_feed/tasks';
+    mockGetTaskDetailPath.mockReturnValue(taskUrl);
+
+    await act(async () => {
+      render(<NotificationFeedCard {...mockProps} />);
+    });
+
+    const outerLink = screen.getAllByTestId('link')[0];
+    fireEvent.click(outerLink);
+
+    expect(mockNavigate).toHaveBeenCalledWith(taskUrl, {
+      state: { tasksRefreshKey: expect.any(Number) },
+    });
+  });
+
+  it('calls navigate with tasksRefreshKey state when the inner task ID link is clicked', async () => {
+    const taskUrl = '/database/test.entity/activity_feed/tasks';
+    mockGetTaskDetailPath.mockReturnValue(taskUrl);
+
+    await act(async () => {
+      render(<NotificationFeedCard {...mockProps} />);
+    });
+
+    const links = screen.getAllByTestId('link');
+    const innerTaskLink = links[links.length - 1];
+    fireEvent.click(innerTaskLink);
+
+    expect(mockNavigate).toHaveBeenCalledWith(taskUrl, {
+      state: { tasksRefreshKey: expect.any(Number) },
+    });
+  });
+
+  it('does not call navigate when a conversation notification card is clicked', async () => {
+    mockPrepareFeedLink.mockReturnValue('/entity/activity_feed/all');
+
+    const conversationProps = {
+      ...mockProps,
+      feedType: ThreadType.Conversation,
+      isConversationFeed: true,
+    };
+
+    await act(async () => {
+      render(<NotificationFeedCard {...conversationProps} />);
+    });
+
+    const outerLink = screen.getAllByTestId('link')[0];
+    fireEvent.click(outerLink);
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
   describe('Navigation URL Tests', () => {
     beforeEach(() => {
       jest.clearAllMocks();
@@ -208,11 +271,9 @@ describe('Test NotificationFeedCard Component', () => {
         render(<NotificationFeedCard {...taskProps} />);
       });
 
-      // Verify getTaskDetailPath was called with the task
       expect(mockGetTaskDetailPath).toHaveBeenCalledWith(mockThread);
 
-      // Verify Link component has the correct URL
-      const linkElement = screen.getAllByTestId('link')[0]; // Main link
+      const linkElement = screen.getAllByTestId('link')[0];
 
       expect(linkElement).toHaveAttribute('data-to', taskUrl);
     });
@@ -231,20 +292,18 @@ describe('Test NotificationFeedCard Component', () => {
         render(<NotificationFeedCard {...conversationProps} />);
       });
 
-      // Verify prepareFeedLink was called with ActivityFeedTabs.ALL
       expect(mockPrepareFeedLink).toHaveBeenCalledWith(
         mockProps.entityType,
         mockProps.entityFQN,
-        'all' // ActivityFeedTabs.ALL value
+        'all'
       );
 
-      // Verify Link component has the correct URL
-      const linkElement = screen.getAllByTestId('link')[0]; // Main link
+      const linkElement = screen.getAllByTestId('link')[0];
 
       expect(linkElement).toHaveAttribute('data-to', conversationUrl);
     });
 
-    it('should call getTaskDetailPath for task feed entity links in mention notifications tab', async () => {
+    it('should call getTaskDetailPath once for task notifications', async () => {
       const entityLinkUrl = '/database/test.entity/activity_feed/all';
       mockPrepareFeedLink.mockReturnValue(entityLinkUrl);
 
@@ -258,8 +317,7 @@ describe('Test NotificationFeedCard Component', () => {
         render(<NotificationFeedCard {...conversationProps} />);
       });
 
-      // Should be called twice - once for main link, once for entity name link
-      expect(mockGetTaskDetailPath).toHaveBeenCalledTimes(2);
+      expect(mockGetTaskDetailPath).toHaveBeenCalledTimes(1);
       expect(mockGetTaskDetailPath).toHaveBeenCalledWith(mockThread);
     });
 
@@ -277,12 +335,11 @@ describe('Test NotificationFeedCard Component', () => {
         render(<NotificationFeedCard {...conversationProps} />);
       });
 
-      // Should be called twice - once for main link, once for entity name link
       expect(mockPrepareFeedLink).toHaveBeenCalledTimes(2);
       expect(mockPrepareFeedLink).toHaveBeenCalledWith(
         mockProps.entityType,
         mockProps.entityFQN,
-        'all' // ActivityFeedTabs.ALL value
+        'all'
       );
     });
   });
