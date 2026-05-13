@@ -574,8 +574,12 @@ public class DomainRepository extends EntityRepository<Domain> {
       // Drop cache entries for every descendant before we rewrite the DB: child domains and any
       // data product under this domain. Must happen BEFORE updateFqn so the descendant lookup
       // matches the old FQN prefix. The publish() fan-out handles peer instances.
-      invalidateCacheForRenameCascade(Entity.DOMAIN, oldFqn);
-      invalidateCacheForRenameCascade(Entity.DATA_PRODUCT, oldFqn);
+      // Capture the descendants so the post-commit pass can re-evict any entry a racing reader
+      // re-populated with the pre-rename row between this call and the DAO updateFqn below.
+      List<EntityDAO.EntityIdFqnPair> renamedDomains =
+          invalidateCacheForRenameCascade(Entity.DOMAIN, oldFqn);
+      List<EntityDAO.EntityIdFqnPair> renamedDataProducts =
+          invalidateCacheForRenameCascade(Entity.DATA_PRODUCT, oldFqn);
 
       // Update all child domains' FQNs and FQN hashes
       daoCollection.domainDAO().updateFqn(oldFqn, newFqn);
@@ -596,6 +600,9 @@ public class DomainRepository extends EntityRepository<Domain> {
       for (Domain child : getNestedDomains(updated)) {
         invalidateDomainReferencers(child.getId());
       }
+
+      finishInvalidateCacheForRenameCascade(Entity.DOMAIN, renamedDomains);
+      finishInvalidateCacheForRenameCascade(Entity.DATA_PRODUCT, renamedDataProducts);
     }
 
     private void invalidateDomainReferencers(UUID domainId) {

@@ -4313,6 +4313,11 @@ public interface CollectionDAO {
     void deleteByCreatorAndCategory(
         @Bind("createdById") String createdById, @Bind("category") String category);
 
+    @SqlQuery(
+        "SELECT id FROM task_entity WHERE createdById = :createdById AND category = :category")
+    List<String> listIdsByCreatorAndCategory(
+        @Bind("createdById") String createdById, @Bind("category") String category);
+
     @RegisterRowMapper(TaskCountSummaryMapper.class)
     @SqlQuery(
         "SELECT "

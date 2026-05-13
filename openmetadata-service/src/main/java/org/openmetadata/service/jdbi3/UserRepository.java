@@ -1281,12 +1281,32 @@ public class UserRepository extends EntityRepository<User> {
                     event.getWaitInterval().toMillis(),
                     event.getNumberOfRetryAttempts() + 1,
                     MAX_TASK_CLEANUP_RETRIES));
+    String creatorId = entity.getId().toString();
+    String category = TaskCategory.MetadataUpdate.value();
+    // Capture the task IDs *before* the bulk DELETE so we know which L1 Guava cache entries to
+    // drop. The DELETE is a direct SQL update that bypasses EntityRepository.delete and its
+    // cache-invalidate hook — without explicit eviction the next GET on a previously-read task
+    // returns the stale cached row even though the DB row is gone.
+    List<String> taskIdsToInvalidate =
+        daoCollection.taskDAO().listIdsByCreatorAndCategory(creatorId, category);
     retry.executeRunnable(
-        () ->
-            daoCollection
-                .taskDAO()
-                .deleteByCreatorAndCategory(
-                    entity.getId().toString(), TaskCategory.MetadataUpdate.value()));
+        () -> daoCollection.taskDAO().deleteByCreatorAndCategory(creatorId, category));
+    if (!taskIdsToInvalidate.isEmpty()) {
+      invalidateTaskCacheForIds(taskIdsToInvalidate);
+    }
+  }
+
+  private void invalidateTaskCacheForIds(List<String> taskIds) {
+    for (String taskIdStr : taskIds) {
+      UUID taskId;
+      try {
+        taskId = UUID.fromString(taskIdStr);
+      } catch (IllegalArgumentException e) {
+        LOG.warn("Skipping cache invalidation for non-UUID task id: {}", taskIdStr);
+        continue;
+      }
+      EntityRepository.invalidateCacheForEntity(Entity.TASK, taskId, null);
+    }
   }
 
   static long getTaskCleanupRetryDelayMillis(int attempt) {
