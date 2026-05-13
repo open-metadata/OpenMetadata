@@ -361,7 +361,7 @@ describe('KnowledgePagesHierarchy', () => {
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith({
-        pathname: '/knowledge-center/newPage',
+        pathname: '/context-center/articles/newPage',
       });
     });
   });
