@@ -132,9 +132,7 @@ public class TestCaseSoftDeleteSearchIT {
 
       client
           .testCases()
-          .delete(
-              testCase.getId().toString(),
-              Map.of("hardDelete", "false", "recursive", "true"));
+          .delete(testCase.getId().toString(), Map.of("hardDelete", "false", "recursive", "true"));
 
       assertListingApiReturnsCleanlyAfterSoftDelete(client, testCase.getFullyQualifiedName());
       assertNoTopLevelDeletedFieldOnIncidentDoc(client, testCase.getFullyQualifiedName());
