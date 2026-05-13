@@ -182,13 +182,13 @@ class SamplerProcessor(Processor):
                 database_entity=database_entity,
                 table_config=get_config_for_table(entity, self.profiler_config),
                 default_sample_config=SampleConfig(),
-                default_sample_data_count=self.source_config.sampleDataCount,
+                default_sample_data_count=self.source_config.sampleDataCount,  # pyright: ignore[reportAttributeAccessIssue]
             )
 
             sample_data = SampleData(
                 data=sampler_interface.generate_sample_data(self._sample_data_config),
                 store=bool(
-                    self.source_config.storeSampleData
+                    self.source_config.storeSampleData  # pyright: ignore[reportAttributeAccessIssue]
                     and (self._sample_data_config is None or self._sample_data_config.storeSampleData)
                 ),
             )
@@ -221,13 +221,13 @@ class SamplerProcessor(Processor):
                 database_entity=None,
                 table_config=None,
                 default_sample_config=SampleConfig(),
-                default_sample_data_count=self.source_config.sampleDataCount,
+                default_sample_data_count=self.source_config.sampleDataCount,  # pyright: ignore[reportAttributeAccessIssue]
             )
 
             sample_data = SampleData(
                 data=sampler_interface.generate_sample_data(self._sample_data_config),
                 store=bool(
-                    self.source_config.storeSampleData
+                    self.source_config.storeSampleData  # pyright: ignore[reportAttributeAccessIssue]
                     and (self._sample_data_config is None or self._sample_data_config.storeSampleData)
                 ),
             )

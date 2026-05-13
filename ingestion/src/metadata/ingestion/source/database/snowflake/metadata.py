@@ -240,7 +240,7 @@ class SnowflakeSource(
         if not isinstance(connection, SnowflakeConnection):
             raise InvalidSourceException(f"Expected SnowflakeConnection, but got {connection}")
 
-        incremental_config = IncrementalConfig.create(config.sourceConfig.config.incremental, pipeline_name, metadata)
+        incremental_config = IncrementalConfig.create(config.sourceConfig.config.incremental, pipeline_name, metadata)  # pyright: ignore[reportAttributeAccessIssue]
         return cls(config, metadata, pipeline_name, incremental_config)
 
     @property
