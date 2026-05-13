@@ -73,8 +73,8 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
   }
 
   private void setParentRelationships(Map<String, Object> doc, TestCase testCase) {
-    // Denormalize parent relationships and inherit domains from the linked table.
-    // addTestSuiteParentEntityRelations already fetches the Table with "domains",
+    // Denormalize parent relationships and inherit domains/certification from the linked table.
+    // addTestSuiteParentEntityRelations already fetches the Table with these fields,
     // so we reuse it to avoid an extra DB query per test case.
     EntityInterface linkedTable = denormalizeTestSuiteParents(doc, testCase);
 
@@ -82,6 +82,12 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
         && linkedTable != null
         && !nullOrEmpty(linkedTable.getDomains())) {
       doc.put("domains", getEntitiesWithDisplayName(linkedTable.getDomains()));
+    }
+
+    if (testCase.getCertification() == null
+        && linkedTable != null
+        && linkedTable.getCertification() != null) {
+      doc.put("certification", linkedTable.getCertification());
     }
   }
 
