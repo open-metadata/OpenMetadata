@@ -502,14 +502,17 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
 
   private boolean computeEntitySuccess(
       String entityType, Map<String, SearchIndexJob.EntityTypeStats> entityStatsMap) {
-    if (entityStatsMap == null || entityStatsMap.isEmpty()) {
-      return false;
-    }
-    SearchIndexJob.EntityTypeStats stats = entityStatsMap.get(entityType);
-    if (stats == null) {
-      // Entity not in stats means 0 records — nothing to index = success
+    if (entityStatsMap == null
+        || entityStatsMap.isEmpty()
+        || entityStatsMap.get(entityType) == null) {
+      // No stats recorded for this entity type means the reader did zero work — either
+      // the source had 0 rows, or PartitionCalculator swallowed an EntityNotFoundException
+      // and returned count=0 (e.g. for entity types not registered in ENTITY_TYPE_MAP).
+      // Treat absent stats as success so the staged index gets promoted rather than the
+      // job rolling up to FAILED on an entity that has nothing to fail on.
       return true;
     }
+    SearchIndexJob.EntityTypeStats stats = entityStatsMap.get(entityType);
     return stats.getFailedRecords() == 0
         && stats.getSuccessRecords() + stats.getFailedRecords() >= stats.getTotalRecords();
   }

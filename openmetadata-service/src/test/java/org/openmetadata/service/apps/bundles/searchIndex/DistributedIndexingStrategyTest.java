@@ -331,6 +331,57 @@ class DistributedIndexingStrategyTest {
   }
 
   @Test
+  void computeEntitySuccessTreatsAbsentStatsAsSuccess() throws Exception {
+    // Entity types that PartitionCalculator can't count (e.g. aiAgent, pipelineStatus,
+    // or any other type that throws EntityNotFoundException) end up with no entry in
+    // entityStatsMap. The reader did zero work for them, so there's nothing to fail on
+    // — finalize must promote them rather than mark the job FAILED.
+    assertTrue(
+        (Boolean)
+            invokePrivate(
+                "computeEntitySuccess",
+                new Class<?>[] {String.class, Map.class},
+                "aiAgent",
+                Map.of()));
+
+    assertTrue(
+        (Boolean)
+            invokePrivate(
+                "computeEntitySuccess",
+                new Class<?>[] {String.class, Map.class},
+                "missingEntity",
+                Map.of(
+                    "table",
+                    SearchIndexJob.EntityTypeStats.builder()
+                        .entityType("table")
+                        .totalRecords(5)
+                        .successRecords(5)
+                        .failedRecords(0)
+                        .build())));
+  }
+
+  @Test
+  void computeEntitySuccessIsFalseWhenStatsShowIncompleteProcessing() throws Exception {
+    Map<String, SearchIndexJob.EntityTypeStats> statsMap =
+        Map.of(
+            "table",
+            SearchIndexJob.EntityTypeStats.builder()
+                .entityType("table")
+                .totalRecords(10)
+                .successRecords(7)
+                .failedRecords(0)
+                .build());
+
+    assertFalse(
+        (Boolean)
+            invokePrivate(
+                "computeEntitySuccess",
+                new Class<?>[] {String.class, Map.class},
+                "table",
+                statsMap));
+  }
+
+  @Test
   void finalizeAllEntityReindexSkipsPromotedEntitiesAndUsesPerEntitySuccess() throws Exception {
     DistributedSearchIndexExecutor executor = mock(DistributedSearchIndexExecutor.class);
     EntityCompletionTracker tracker = mock(EntityCompletionTracker.class);
