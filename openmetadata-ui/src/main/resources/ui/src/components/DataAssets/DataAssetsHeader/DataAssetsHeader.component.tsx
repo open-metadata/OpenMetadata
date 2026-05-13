@@ -65,6 +65,7 @@ import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
+import { hasEditAccess } from '../../../utils/CommonUtils';
 import {
   getDataAssetsHeaderInfo,
   isDataAssetsWithServiceField,
@@ -580,8 +581,13 @@ export const DataAssetsHeader = ({
   ]);
 
   const isOwner = useMemo(
-    () => dataAsset.owners?.some((o) => o.id === USER_ID) ?? false,
-    [dataAsset.owners, USER_ID]
+    () =>
+      Boolean(
+        currentUser &&
+          dataAsset.owners?.length &&
+          hasEditAccess(dataAsset.owners, currentUser)
+      ),
+    [dataAsset.owners, currentUser]
   );
 
   const requestDataAccessButton = useMemo(() => {

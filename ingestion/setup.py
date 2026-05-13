@@ -165,6 +165,7 @@ base_requirements = {
     "sqlalchemy>=2.0.0,<3",
     "collate-sqllineage>=2.1.1",
     "tabulate==0.9.0",
+    "tenacity>=8.0,<10",
     "typing-inspect",
     "packaging",  # For version parsing
     "setuptools>=78.1.1,<81",  # <81 required: pkg_resources removed in setuptools 81+
@@ -404,6 +405,11 @@ dev = {
     "datamodel-code-generator==0.25.6",
     "boto3-stubs",
     "mypy-boto3-glue",
+    "google-api-python-client-stubs",
+    "google-auth-stubs",
+    "types-requests",
+    "pandas-stubs~=2.1.4",
+    "scipy-stubs",
     "nox",
     "pre-commit",
     "basedpyright==1.39.3",
