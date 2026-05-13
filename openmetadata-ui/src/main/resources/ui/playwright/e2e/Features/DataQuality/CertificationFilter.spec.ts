@@ -191,3 +191,33 @@ test('Certification tags are not listed in the generic Tag dropdown', async ({
     page.getByTestId(cert.responseData.fullyQualifiedName)
   ).toHaveCount(0);
 });
+
+// The TagPage Data Observability tab embeds the same dashboard. Before this
+// fix every tag detail page sent `tags: [FQN]` regardless of classification,
+// so the embedded chart on a Certification page silently reported 0 (the
+// `tags.tagFQN` term never matches assets carrying a certification). This
+// test pins the post-fix routing.
+test('TagPage: Certification detail page routes through certification.tagLabel.tagFQN', async ({
+  page,
+}) => {
+  const captured = captureReports(page);
+  const certFqn = cert.responseData.fullyQualifiedName;
+  const certFqnEncoded = encodeURIComponent(certFqn);
+
+  const reloadFired = page.waitForResponse(
+    (r) =>
+      r.url().includes('/dataQualityReport') &&
+      r.url().includes(certFqnEncoded)
+  );
+  await page.goto(`/tag/${certFqnEncoded}/data_observability`);
+  await reloadFired;
+  await waitForAllLoadersToDisappear(page);
+
+  const reportsWithCertFilter = captured.filter((c) => c.q.includes(certFqn));
+  expect(reportsWithCertFilter.length).toBeGreaterThan(0);
+  for (const r of reportsWithCertFilter) {
+    expect(r.q).toContain('certification.tagLabel.tagFQN');
+    // Pre-fix path that never matched — must not regress.
+    expect(r.q).not.toContain('tags.tagFQN');
+  }
+});
