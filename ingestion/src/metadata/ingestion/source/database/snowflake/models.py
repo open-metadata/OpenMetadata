@@ -17,7 +17,7 @@ from datetime import datetime
 from typing import List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
-from requests.utils import quote
+from requests.utils import quote  # pyright: ignore[reportPrivateImportUsage]
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
