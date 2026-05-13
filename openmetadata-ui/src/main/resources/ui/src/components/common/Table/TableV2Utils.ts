@@ -10,15 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { ColumnsType } from 'antd/es/table/interface';
-import type {
-  ColumnType,
-  FilterValue,
-  SortOrder,
-} from 'antd/lib/table/interface';
 import { isEmpty } from 'lodash';
 import React, { ReactNode } from 'react';
-import type { FlatRow } from './TableV2.interface';
+import type {
+  FlatRow,
+  TableColumnType,
+  TableColumnsType,
+  TableFilterValue,
+  TableSortOrder,
+} from './TableV2.interface';
 
 export function flattenTreeRows<T>(
   data: T[],
@@ -61,7 +61,7 @@ export function flattenTreeRows<T>(
 }
 
 export function resolveCellValue<T>(
-  col: ColumnType<T>,
+  col: TableColumnType<T>,
   record: T,
   index: number
 ): ReactNode {
@@ -94,19 +94,19 @@ export function resolveCellValue<T>(
 }
 
 export function resolveColumnTitle<T>(
-  col: ColumnType<T>,
-  propsColumns: ColumnsType<T>
+  col: TableColumnType<T>,
+  propsColumns: TableColumnsType<T>
 ): ReactNode {
   if (typeof col.title === 'function') {
     const sortedColumn = propsColumns.find(
-      (c) => (c as ColumnType<T>).sortOrder
-    ) as ColumnType<T> | undefined;
+      (c) => (c as TableColumnType<T>).sortOrder
+    ) as TableColumnType<T> | undefined;
 
     return (
       col.title as (props: {
-        sortOrder?: SortOrder;
-        sortColumn?: ColumnType<T>;
-        filters?: Record<string, FilterValue | null>;
+        sortOrder?: TableSortOrder;
+        sortColumn?: TableColumnType<T>;
+        filters?: Record<string, TableFilterValue | null>;
       }) => ReactNode
     )({
       sortOrder: col.sortOrder ?? null,
@@ -124,7 +124,7 @@ export function resolveColumnTitle<T>(
  * to the same side, offsets must be computed by the caller.
  */
 export function getColumnStickyStyle(
-  fixed: ColumnType<unknown>['fixed'],
+  fixed: TableColumnType<unknown>['fixed'],
   zIndex: number
 ): React.CSSProperties {
   if (fixed === 'left') {
