@@ -190,32 +190,50 @@ public final class CachedSearchLayer {
 
   /**
    * Build a deterministic cache key from every SearchRequest field that affects the result set,
-   * plus the principal name. Order matters — we serialize fields in a fixed order so the same
-   * logical request maps to the same key regardless of object construction order.
+   * plus the principal name. Each field is length-prefixed before concatenation so a value that
+   * happens to contain our delimiter sequence ({@code "|idx="}, {@code "|q="}, etc.) cannot
+   * collide with a different (principal, index, query, …) tuple. Without length-prefixing,
+   * an attacker (or an unlucky query) supplying {@code query="|q=foo"} would produce the same
+   * preimage as {@code query="|q="} with index "foo", and Redis would serve the wrong cached
+   * response.
    */
   String buildKey(SearchRequest request, String principalName) {
     StringBuilder sb = new StringBuilder(512);
-    sb.append("p=").append(safe(principalName)).append('|');
-    sb.append("idx=").append(safe(request.getIndex())).append('|');
-    sb.append("q=").append(safe(request.getQuery())).append('|');
-    sb.append("from=").append(request.getFrom()).append('|');
-    sb.append("size=").append(request.getSize()).append('|');
-    sb.append("qf=").append(safe(request.getQueryFilter())).append('|');
-    sb.append("pf=").append(safe(request.getPostFilter())).append('|');
-    sb.append("sf=").append(safe(request.getSortFieldParam())).append('|');
-    sb.append("so=").append(safe(request.getSortOrder())).append('|');
-    sb.append("fs=").append(request.getFetchSource()).append('|');
-    sb.append("inc=").append(joinList(request.getIncludeSourceFields())).append('|');
-    sb.append("exc=").append(joinList(request.getExcludeSourceFields())).append('|');
-    sb.append("d=").append(request.getDeleted()).append('|');
-    sb.append("h=").append(request.getIsHierarchy()).append('|');
-    sb.append("ag=").append(request.getIncludeAggregations()).append('|');
-    sb.append("ex=").append(request.getExplain()).append('|');
-    sb.append("tt=").append(request.getTrackTotalHits()).append('|');
-    sb.append("dom=").append(domainsKey(request)).append('|');
-    sb.append("adf=").append(request.getApplyDomainFilter()).append('|');
-    sb.append("sa=").append(safe(searchAfterKey(request)));
+    appendField(sb, "p", safe(principalName));
+    appendField(sb, "idx", safe(request.getIndex()));
+    appendField(sb, "q", safe(request.getQuery()));
+    appendField(sb, "from", String.valueOf(request.getFrom()));
+    appendField(sb, "size", String.valueOf(request.getSize()));
+    appendField(sb, "qf", safe(request.getQueryFilter()));
+    appendField(sb, "pf", safe(request.getPostFilter()));
+    appendField(sb, "sf", safe(request.getSortFieldParam()));
+    appendField(sb, "so", safe(request.getSortOrder()));
+    appendField(sb, "fs", String.valueOf(request.getFetchSource()));
+    appendField(sb, "inc", joinList(request.getIncludeSourceFields()));
+    appendField(sb, "exc", joinList(request.getExcludeSourceFields()));
+    appendField(sb, "d", String.valueOf(request.getDeleted()));
+    appendField(sb, "h", String.valueOf(request.getIsHierarchy()));
+    appendField(sb, "ag", String.valueOf(request.getIncludeAggregations()));
+    appendField(sb, "ex", String.valueOf(request.getExplain()));
+    appendField(sb, "tt", String.valueOf(request.getTrackTotalHits()));
+    appendField(sb, "dom", domainsKey(request));
+    appendField(sb, "adf", String.valueOf(request.getApplyDomainFilter()));
+    appendField(sb, "sa", safe(searchAfterKey(request)));
     return keyPrefix + ":" + sha256Hex(sb.toString());
+  }
+
+  /**
+   * Length-prefixed field encoding: {@code name=<utf8-byte-length>:value|}. The byte length
+   * makes the value impossible to confuse with the surrounding key structure — any sequence of
+   * delimiters inside the value is just data because the parser would have to count those bytes
+   * first to even see them. We never actually parse the resulting string (it's just hashed),
+   * but the unambiguous serialization means two distinct logical tuples can never produce the
+   * same preimage.
+   */
+  private static void appendField(StringBuilder sb, String name, String value) {
+    String v = value == null ? "" : value;
+    byte[] bytes = v.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    sb.append(name).append('=').append(bytes.length).append(':').append(v).append('|');
   }
 
   private static String safe(Object o) {

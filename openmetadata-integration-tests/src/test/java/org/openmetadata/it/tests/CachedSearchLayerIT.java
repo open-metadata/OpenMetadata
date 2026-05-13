@@ -20,6 +20,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -44,7 +45,15 @@ import org.openmetadata.sdk.network.RequestOptions;
  *       hit/miss as a proxy for now.
  * </ul>
  */
-@Execution(ExecutionMode.CONCURRENT)
+// Assertions depend on deltas in the GLOBAL /system/cache/stats counters (a single instance-
+// wide block — there is no per-test scoping). Running CONCURRENT with other ITs that issue
+// searches would inflate the counters and either make these tests flaky (false negatives,
+// the expected hit count never materializes) or silently mask broken cache keying (false
+// positives, the deltas come from someone else's hits). @Isolated + SAME_THREAD makes the
+// whole class run alone so the only writers to those counters during the test window are
+// the test methods themselves.
+@Isolated("relies on global /system/cache/stats counter deltas")
+@Execution(ExecutionMode.SAME_THREAD)
 class CachedSearchLayerIT {
 
   private static final String SEARCH_PATH = "/v1/search/query";

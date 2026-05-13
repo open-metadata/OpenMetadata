@@ -56,6 +56,14 @@ public class RedisCacheProvider implements CacheProvider {
   private StatefulRedisConnection<String, String> connection;
   private RedisCommands<String, String> syncCommands;
   private RedisAsyncCommands<String, String> asyncCommands;
+  // Dedicated Lettuce connection used ONLY for pipelined operations (currently {@link #mget}).
+  // Pipelining toggles `setAutoFlushCommands(false)` which is a property of the connection
+  // instance — if we did that on the shared `connection`, every concurrent caller using
+  // syncCommands/asyncCommands would have their commands buffered for the duration of the
+  // pipeline, producing latency spikes / apparent hangs on unrelated request paths. The
+  // dedicated connection lets us flip auto-flush freely without disturbing anyone else.
+  private StatefulRedisConnection<String, String> pipelineConnection;
+  private RedisAsyncCommands<String, String> pipelineAsyncCommands;
   private ScheduledExecutorService healthChecker;
   private volatile boolean available = false;
   private final ConcurrentLinkedDeque<Long> failureTimestamps = new ConcurrentLinkedDeque<>();
@@ -209,7 +217,12 @@ public class RedisCacheProvider implements CacheProvider {
     connection.setTimeout(Duration.ofMillis(config.redis.commandTimeoutMs));
     syncCommands = connection.sync();
     asyncCommands = connection.async();
-    LOG.info("Initialized Redis connection");
+    // Separate physical connection so mget's setAutoFlushCommands(false) window can't
+    // interfere with single-key ops running on the main connection.
+    pipelineConnection = redisClient.connect();
+    pipelineConnection.setTimeout(Duration.ofMillis(config.redis.commandTimeoutMs));
+    pipelineAsyncCommands = pipelineConnection.async();
+    LOG.info("Initialized Redis connections (primary + pipeline)");
   }
 
   private static CacheMetrics metrics() {
@@ -415,18 +428,25 @@ public class RedisCacheProvider implements CacheProvider {
       // EXPIRE key seconds NX — only set when no prior TTL exists. Available since Redis 7.0;
       // Lettuce exposes it via ExpireArgs.Builder.nx(). Returns true on the first writer to
       // claim the expiry, false on subsequent writers and on missing keys.
-      return Boolean.TRUE.equals(
-          syncCommands.expire(key, ttl.getSeconds(), io.lettuce.core.ExpireArgs.Builder.nx()));
+      boolean claimed =
+          Boolean.TRUE.equals(
+              syncCommands.expire(key, ttl.getSeconds(), io.lettuce.core.ExpireArgs.Builder.nx()));
+      recordSuccess();
+      return claimed;
     } catch (Exception e) {
       // Older Redis (<7.0) doesn't support EXPIRE … NX and returns a syntax error. Fall back
       // to plain EXPIRE so the key still gets a bounded lifetime — extending it on every
       // variant write is worse than the strict NX semantics, but vastly better than letting
       // the key live forever and accumulate in Redis memory until the next manual
-      // invalidation.
+      // invalidation. Feed each outcome into the circuit breaker so a real network failure
+      // here counts toward the failure-window detector instead of being silently swallowed.
       LOG.debug("expireIfAbsent failed for key={}; falling back to plain EXPIRE", key, e);
       try {
-        return Boolean.TRUE.equals(syncCommands.expire(key, ttl.getSeconds()));
+        boolean result = Boolean.TRUE.equals(syncCommands.expire(key, ttl.getSeconds()));
+        recordSuccess();
+        return result;
       } catch (Exception fallback) {
+        recordFailure(fallback);
         LOG.debug("Plain EXPIRE fallback also failed for key={}", key, fallback);
         return false;
       }
@@ -666,26 +686,23 @@ public class RedisCacheProvider implements CacheProvider {
     Timer.Sample sample = startReadTimer(m);
     long startNanos = System.nanoTime();
     try {
-      // Auto-flush is a property of the SHARED connection. Hold pipelineLock + auto-flush
-      // off only across the *queue + flush* window — the smallest possible critical section
-      // for the shared connection. Once flushCommands() returns, the batch is on the wire
-      // and other paths (single get/set/hget on the same connection) can resume immediately.
-      // The await happens with auto-flush already restored, so a slow Redis blocks only
-      // this thread — not every concurrent caller using the connection.
+      // Use the dedicated pipeline connection so setAutoFlushCommands(false) doesn't disturb
+      // the shared `connection` that everyone else uses. pipelineLock still serializes mget
+      // vs mget on this dedicated connection (auto-flush is per-connection but per-call
+      // toggling still needs strict ordering between concurrent mgets).
       pipelineLock.lock();
       java.util.List<io.lettuce.core.RedisFuture<String>> futures = new java.util.ArrayList<>(n);
       try {
-        connection.setAutoFlushCommands(false);
+        pipelineConnection.setAutoFlushCommands(false);
         try {
           for (String k : keys) {
-            futures.add(k == null ? null : asyncCommands.get(k));
+            futures.add(k == null ? null : pipelineAsyncCommands.get(k));
           }
-          connection.flushCommands();
+          pipelineConnection.flushCommands();
         } finally {
-          // Restore auto-flush before releasing the lock so subsequent callers (mget or
-          // anyone else) see a normal connection. The try/finally still guarantees this
-          // runs even if queue/flush throw.
-          connection.setAutoFlushCommands(true);
+          // Restore auto-flush before releasing the lock so the next mget caller sees a
+          // clean baseline; finally guarantees this runs even if queue/flush throw.
+          pipelineConnection.setAutoFlushCommands(true);
         }
       } finally {
         pipelineLock.unlock();
@@ -811,6 +828,9 @@ public class RedisCacheProvider implements CacheProvider {
     try {
       if (healthChecker != null) {
         healthChecker.shutdownNow();
+      }
+      if (pipelineConnection != null) {
+        pipelineConnection.close();
       }
       if (connection != null) {
         connection.close();

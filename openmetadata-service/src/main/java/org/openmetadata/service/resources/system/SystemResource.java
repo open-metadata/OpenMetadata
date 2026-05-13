@@ -1104,13 +1104,21 @@ public class SystemResource {
     // If the caller only supplied fqn, resolve to id so id-keyed cache layers (CachedLineage,
     // CACHE_WITH_ID, NotFoundCache id-side) can be invalidated too. Without this resolution
     // the endpoint silently misses those layers and the "invalidate every cache layer for this
-    // entity" contract isn't met. Lookup failures (entity already deleted, FQN typo) are
-    // logged but don't fail the request — we still proceed with fqn-only invalidation since
-    // fqn-keyed layers benefit and an "invalidate something that's gone" is harmless.
+    // entity" contract isn't met.
+    //
+    // Use fromCache=false: this is an admin force-invalidate path, so any stale signal from
+    // L1, NotFoundCache, or the Redis L2 entity cache must not short-circuit the resolution.
+    // The whole point of the endpoint is to recover from a poisoned cache state — going
+    // straight to the DB guarantees we'll find the entity if it actually exists, even when
+    // NotFoundCache mistakenly says it doesn't.
+    //
+    // Lookup failures (entity truly missing, FQN typo) are logged at DEBUG; the request still
+    // proceeds with fqn-only invalidation. fqn-keyed layers benefit and an "invalidate
+    // something that's gone" is harmless for the id-keyed layers.
     if (id == null && normalizedFqn != null) {
       try {
         EntityRepository<?> repository = Entity.getEntityRepository(type);
-        EntityInterface resolved = repository.findByName(normalizedFqn, Include.ALL, true);
+        EntityInterface resolved = repository.findByName(normalizedFqn, Include.ALL, false);
         if (resolved != null) {
           id = resolved.getId();
         }
