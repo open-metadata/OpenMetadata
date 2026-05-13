@@ -21,7 +21,7 @@ import {
 import { Download01 } from '@untitledui/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getFileTypeIcon } from 'utils/ContextCenterUtils';
+import { getFileTypeIcon } from '../../../utils/ContextCenterUtils';
 import { UploadedDocumentCardProps } from './UploadedDocumentCard.interface';
 
 const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({

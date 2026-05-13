@@ -13,27 +13,27 @@
 
 import { Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import DeleteModal from 'components/common/DeleteModal/DeleteModal';
-import { DocFile } from 'components/ContextCenter/DocumentsView/DocumentsView.interface';
-import { usePermissionProvider } from 'context/PermissionProvider/PermissionProvider';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
+import DocumentsView from '../../../components/ContextCenter/DocumentsView/DocumentsView.component';
+import { DocFile } from '../../../components/ContextCenter/DocumentsView/DocumentsView.interface';
+import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
+import { ROUTES } from '../../../constants/constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from 'context/PermissionProvider/PermissionProvider.interface';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { deleteAsset, downloadAsset } from 'rest/assetAPI';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
-import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
-import DocumentsView from '../../../components/ContextCenter/DocumentsView/DocumentsView.component';
-import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
-import { ROUTES } from '../../../constants/constants';
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { deleteAsset, downloadAsset } from '../../../rest/assetAPI';
 import {
   assetToDocumentItem,
   CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
   fetchContextCenterDocuments,
 } from '../../../utils/ContextCenterUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const ContextCenterDocumentsPage: FC = () => {
   const { t } = useTranslation();

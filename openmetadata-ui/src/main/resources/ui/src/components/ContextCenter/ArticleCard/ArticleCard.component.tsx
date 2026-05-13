@@ -12,10 +12,10 @@
  */
 
 import { Badge, Card, Typography } from '@openmetadata/ui-core-components';
-import RichTextEditorPreviewerV1 from 'components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getFrontEndFormat } from 'utils/FeedUtils';
+import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import { getFrontEndFormat } from '../../../utils/FeedUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { ArticleCardItem, ArticleCardProps } from './ArticleCard.interface';
 

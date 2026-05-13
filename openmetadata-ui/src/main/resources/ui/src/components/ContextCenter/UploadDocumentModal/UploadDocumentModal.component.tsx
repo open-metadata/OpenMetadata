@@ -25,7 +25,7 @@ import { AlertCircle, Trash01, UploadCloud02 } from '@untitledui/icons';
 import { Asset } from 'generated/attachments/asset';
 import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { uploadAsset } from 'rest/assetAPI';
+import { uploadAsset } from '../../../rest/assetAPI';
 import { UploadDocumentModalProps } from './UploadDocumentModal.interface';
 
 type UploadStatus = 'uploading' | 'done' | 'error';

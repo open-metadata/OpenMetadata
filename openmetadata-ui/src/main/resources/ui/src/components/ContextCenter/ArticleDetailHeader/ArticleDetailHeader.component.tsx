@@ -35,9 +35,6 @@ import {
   UploadCloud01,
   User03,
 } from '@untitledui/icons';
-import Loader from 'components/common/Loader/Loader';
-import { EntityStatusBadge } from 'components/Entity/EntityStatusBadge/EntityStatusBadge.component';
-import { EntityStatus } from 'generated/governance/workflows/elements/nodes/automatedTask/setGlossaryTermStatusTask';
 import { isEmpty, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -49,13 +46,16 @@ import { ReactComponent as StarIcon } from '../../../assets/svg/ic-star.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
+import Loader from '../../../components/common/Loader/Loader';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
+import { EntityStatusBadge } from '../../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { ROUTES } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityStatus } from '../../../generated/governance/workflows/elements/nodes/automatedTask/setGlossaryTermStatusTask';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useClipboard } from '../../../hooks/useClipBoard';

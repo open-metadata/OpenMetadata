@@ -18,10 +18,10 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowUpRight, Upload01 } from '@untitledui/icons';
-import ErrorPlaceHolder from 'components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import UploadedDocumentCard from '../UploadedDocumentCard/UploadedDocumentCard.component';
 import { UploadedDocumentItem } from '../UploadedDocumentCard/UploadedDocumentCard.interface';
 import { UploadedDocumentsSectionProps } from './UploadedDocumentsSection.interface';

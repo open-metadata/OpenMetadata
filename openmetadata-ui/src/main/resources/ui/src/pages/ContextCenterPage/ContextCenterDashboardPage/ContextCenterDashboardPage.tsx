@@ -13,36 +13,36 @@
 
 import { Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { ArticleCardItem } from 'components/ContextCenter/ArticleCard/ArticleCard.interface';
-import ArticleListSection from 'components/ContextCenter/ArticleListSection/ArticleListSection.component';
-import ContextCenterHeader from 'components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
-import { DocFile } from 'components/ContextCenter/DocumentsView/DocumentsView.interface';
-import UploadDocumentModal from 'components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
-import { UploadedDocumentItem } from 'components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
-import UploadedDocumentsSection from 'components/ContextCenter/UploadedDocumentsSection/UploadedDocumentsSection.component';
-import { ROUTES } from 'constants/constants';
-import { usePermissionProvider } from 'context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'context/PermissionProvider/PermissionProvider.interface';
 import { Asset } from 'generated/attachments/asset';
-import { useApplicationStore } from 'hooks/useApplicationStore';
-import { KnowledgePage } from 'interface/knowledge-center.interface';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { downloadAsset } from 'rest/assetAPI';
-import { getListKnowledgePages } from 'rest/knowledgeCenterAPI';
+import { ArticleCardItem } from '../../../components/ContextCenter/ArticleCard/ArticleCard.interface';
+import ArticleListSection from '../../../components/ContextCenter/ArticleListSection/ArticleListSection.component';
+import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
+import { DocFile } from '../../../components/ContextCenter/DocumentsView/DocumentsView.interface';
+import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
+import { UploadedDocumentItem } from '../../../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
+import UploadedDocumentsSection from '../../../components/ContextCenter/UploadedDocumentsSection/UploadedDocumentsSection.component';
+import { ROUTES } from '../../../constants/constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { KnowledgePage } from '../../../interface/knowledge-center.interface';
+import { downloadAsset } from '../../../rest/assetAPI';
+import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import {
   assetToDocumentItem,
   CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
   createArticleKnowledgePage,
   fetchContextCenterDocuments,
   knowledgePageToArticleItem,
-} from 'utils/ContextCenterUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../../utils/ContextCenterUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 
 const RECENT_ARTICLES_LIMIT = 25;
 
