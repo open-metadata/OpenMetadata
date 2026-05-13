@@ -110,18 +110,25 @@ public interface SearchIndex {
   Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc);
 
   /**
-   * Returns the minimal set of fields the {@code SearchIndexApp} reindex path must ask
+   * Returns the set of fields the {@code SearchIndexApp} reindex path must ask
    * {@code EntityRepository.setFields} to populate for this index to build a correct document.
    *
-   * <p>Default is {@link #COMMON_REINDEX_FIELDS} plus {@code "tags"}. Individual index classes
-   * override to add entity-specific relationships. Keep this method side-effect-free and safe to
-   * call on a probe instance whose entity is {@code null} — it is invoked without an entity to
-   * discover fields statically.
+   * <p>The default returns the wildcard {@code "*"} so reindex pulls every supported field for
+   * the entity — the same hydration shape that existed before PR&nbsp;#27723. Selective probes on
+   * 1.12.8 caused multiple silent-drop regressions (e.g. testCaseResult /
+   * testCaseResultSummary going missing after a recreate=true reindex), and the cost of a few
+   * extra fields per row is much smaller than the cost of chasing each Index for the right
+   * declaration.
+   *
+   * <p>Override this only when an entity has a fan-out relationship that would blow up the heap
+   * if loaded eagerly. {@link DatabaseSchemaIndex} is the canonical case — its {@code tables}
+   * relationship can include thousands of rows, so it returns a curated set that excludes it.
+   *
+   * <p>Keep overrides side-effect-free and safe to call on a probe instance whose entity is
+   * {@code null} — the factory invokes them without an entity to discover fields statically.
    */
   default Set<String> getRequiredReindexFields() {
-    Set<String> fields = new java.util.HashSet<>(COMMON_REINDEX_FIELDS);
-    fields.add("tags");
-    return java.util.Collections.unmodifiableSet(fields);
+    return Set.of("*");
   }
 
   default Map<String, Object> getCommonAttributesMap(EntityInterface entity, String entityType) {

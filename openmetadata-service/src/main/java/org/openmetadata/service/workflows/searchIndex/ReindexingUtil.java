@@ -248,6 +248,13 @@ public class ReindexingUtil {
           e.getMessage());
       return List.of("*");
     }
+    // The base SearchIndex default returns {"*"} so most entities reindex with full hydration.
+    // Per-entity overrides that opt out (e.g. DatabaseSchemaIndex) return a curated set without
+    // the wildcard. Short-circuit when the probe surfaces "*" so getOnlySupportedFields doesn't
+    // strip it as an unsupported field name.
+    if (allFields.contains("*")) {
+      return List.of("*");
+    }
     try {
       return new ArrayList<>(Entity.getOnlySupportedFields(entityType, allFields).getFieldList());
     } catch (Exception e) {
