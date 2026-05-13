@@ -2928,17 +2928,18 @@ public class TableRepository extends EntityRepository<Table> {
     if (fieldsParam == null) {
       return column;
     }
+    Set<String> fields = Set.of(fieldsParam.split(","));
     List<Column> singleton = new ArrayList<>(List.of(column));
-    if (fieldsParam.contains("tags")) {
+    if (fields.contains("tags")) {
       populateEntityFieldTags(entityType, singleton, table.getFullyQualifiedName(), true);
     }
-    if (fieldsParam.contains("customMetrics")) {
+    if (fields.contains("customMetrics")) {
       column.setCustomMetrics(getCustomMetrics(table, column.getName()));
     }
-    if (fieldsParam.contains("extension")) {
+    if (fields.contains("extension")) {
       column.setExtension(getColumnExtension(table.getId(), column.getFullyQualifiedName()));
     }
-    if (fieldsParam.contains("profile")) {
+    if (fields.contains("profile")) {
       setColumnProfile(singleton);
       populateEntityFieldTags(entityType, singleton, table.getFullyQualifiedName(), true);
       singleton =

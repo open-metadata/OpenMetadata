@@ -261,6 +261,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       try {
         setIsColumnDataLoading(true);
         const latestColumn = await getColumnByFQN(targetFqn, {
+          entityType,
           fields: 'tags,customMetrics,extension,profile',
         });
 
