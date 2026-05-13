@@ -1,0 +1,80 @@
+{
+    "$id": "https://open-metadata.org/schema/metadataIngestion/reverseMetadataPipeline.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ReverseMetadataPipeline",
+    "javaType": "org.openmetadata.schema.metadataIngestion.ReverseMetadataPipeline",
+    "description": "Reverse Metadata Agent Pipeline Configuration. Controls which metadata changes (descriptions, tags, owners) are propagated back to source systems.",
+    "type": "object",
+    "definitions": {
+        "reverseMetadataConfigType": {
+            "description": "Reverse Metadata Pipeline type",
+            "type": "string",
+            "enum": [
+                "ReverseMetadata"
+            ],
+            "default": "ReverseMetadata"
+        }
+    },
+    "properties": {
+        "type": {
+            "description": "Pipeline type",
+            "$ref": "#/definitions/reverseMetadataConfigType",
+            "default": "ReverseMetadata"
+        },
+        "syncDescriptions": {
+            "description": "Enable syncing description changes back to the source system.",
+            "type": "boolean",
+            "default": true,
+            "title": "Sync Descriptions"
+        },
+        "syncTags": {
+            "description": "Enable syncing tag changes back to the source system.",
+            "type": "boolean",
+            "default": true,
+            "title": "Sync Tags"
+        },
+        "syncOwners": {
+            "description": "Enable syncing owner changes back to the source system.",
+            "type": "boolean",
+            "default": false,
+            "title": "Sync Owners"
+        },
+        "databaseFilterPattern": {
+            "description": "Regex to only include/exclude databases that match the pattern.",
+            "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+            "title": "Database Filter Pattern"
+        },
+        "schemaFilterPattern": {
+            "description": "Regex to only include/exclude schemas that match the pattern.",
+            "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+            "title": "Schema Filter Pattern"
+        },
+        "tableFilterPattern": {
+            "description": "Regex to only include/exclude tables that match the pattern.",
+            "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+            "title": "Table Filter Pattern"
+        },
+        "useFqnForFiltering": {
+            "description": "Regex will be applied on fully qualified name (e.g service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name).",
+            "type": "boolean",
+            "default": false,
+            "title": "Use FQN For Filtering"
+        },
+        "service": {
+            "description": "Service to apply reverse metadata operations on.",
+            "$ref": "../type/entityReference.json"
+        },
+        "operations": {
+            "description": "List of operations to be performed on the service. Populated at runtime by the handler.",
+            "type": "array",
+            "items": {
+                "$ref": "reverseIngestionPipeline.json#/definitions/operation"
+            },
+            "default": []
+        }
+    },
+    "additionalProperties": false,
+    "required": [
+        "type"
+    ]
+}

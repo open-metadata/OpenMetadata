@@ -65,7 +65,9 @@ public interface PipelineServiceClientInterface {
           PipelineType.DATA_INSIGHT.toString(),
           "data_insight_task",
           PipelineType.APPLICATION.toString(),
-          "application_task");
+          "application_task",
+          PipelineType.REVERSE_METADATA.toString(),
+          "reverse_metadata_task");
 
   URL validateServiceURL(String serviceURL);
 
