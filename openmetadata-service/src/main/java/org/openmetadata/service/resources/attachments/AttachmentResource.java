@@ -290,12 +290,53 @@ public class AttachmentResource {
   @GET
   @Path("/fqn/{fqn}/{assetType}")
   public Response listAttachmentsByFqn(
-      @PathParam("fqn") String fqn, @PathParam("assetType") AssetType assetType) {
+      @PathParam("fqn") String fqn,
+      @PathParam("assetType") AssetType assetType,
+      @QueryParam("sortBy") String sortBy,
+      @QueryParam("sortOrder") String sortOrder,
+      @QueryParam("limit") Integer limit,
+      @QueryParam("offset") @DefaultValue("0") int offset) {
     List<Asset> assets = assetRepository.getByFQN(fqn, assetType);
     if (assets == null) {
       return Response.status(Response.Status.NOT_FOUND).build();
     }
-    return Response.ok(assets).build();
+    List<Asset> result = applySortAndPaginate(assets, sortBy, sortOrder, limit, offset);
+    return Response.ok(result).build();
+  }
+
+  private static List<Asset> applySortAndPaginate(
+      List<Asset> assets, String sortBy, String sortOrder, Integer limit, int offset) {
+    if (sortBy != null && !sortBy.isEmpty()) {
+      assets = new java.util.ArrayList<>(assets);
+      assets.sort(buildComparator(sortBy, sortOrder));
+    } else if (offset == 0 && limit == null) {
+      return assets;
+    }
+    if (offset < 0) {
+      throw new IllegalArgumentException("'offset' must be >= 0");
+    }
+    int from = Math.min(offset, assets.size());
+    int to = limit == null ? assets.size() : Math.min(from + Math.max(limit, 0), assets.size());
+    return assets.subList(from, to);
+  }
+
+  private static java.util.Comparator<Asset> buildComparator(String sortBy, String sortOrder) {
+    java.util.Comparator<Asset> comparator =
+        switch (sortBy) {
+          case "name" -> java.util.Comparator.comparing(
+              Asset::getFileName, java.util.Comparator.nullsLast(String::compareToIgnoreCase));
+          case "createdAt", "updatedAt" -> java.util.Comparator.comparing(
+              Asset::getUpdatedAt, java.util.Comparator.nullsLast(Long::compareTo));
+          default -> throw new IllegalArgumentException(
+              "Unsupported sortBy value '" + sortBy + "'. Allowed: name, createdAt, updatedAt.");
+        };
+    String direction = sortOrder == null || sortOrder.isEmpty() ? "desc" : sortOrder;
+    return switch (direction) {
+      case "asc" -> comparator;
+      case "desc" -> comparator.reversed();
+      default -> throw new IllegalArgumentException(
+          "Unsupported sortOrder value '" + sortOrder + "'. Allowed: asc, desc.");
+    };
   }
 
   private Asset buildAsset(CreateAsset createAsset, String url, String updatedBy) {

@@ -60,14 +60,10 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.search.SearchListFilter;
-import org.openmetadata.service.search.SearchSortFilter;
-import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.util.EntityUtil;
 
 @Tag(name = "Drive Files", description = "APIs for managing files in the Context Center Drive.")
 @Path("/v1/drive/files")
@@ -128,69 +124,9 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @QueryParam("limit") @DefaultValue("10") int limit,
       @QueryParam("before") String before,
       @QueryParam("after") String after,
-      @QueryParam("include") @DefaultValue("non-deleted") Include include,
-      @Parameter(
-              description = "Field to sort by. Supported: name, createdAt, updatedAt.",
-              schema =
-                  @Schema(
-                      type = "string",
-                      allowableValues = {"name", "createdAt", "updatedAt"}))
-          @QueryParam("sortBy")
-          String sortBy,
-      @Parameter(
-              description =
-                  "Sort order. Supported: asc, desc. Defaults to desc when sortBy is set.",
-              schema =
-                  @Schema(
-                      type = "string",
-                      allowableValues = {"asc", "desc"}))
-          @QueryParam("sortOrder")
-          String sortOrder,
-      @Parameter(description = "Offset for offset-based pagination when sortBy is used.")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          int offset)
-      throws IOException {
-    if (sortBy == null || sortBy.isEmpty()) {
-      return super.listInternal(
-          uriInfo, securityContext, fieldsParam, new ListFilter(include), limit, before, after);
-    }
-    if (before != null || after != null) {
-      throw new IllegalArgumentException(
-          "'sortBy' cannot be combined with cursor pagination ('before'/'after'). Use 'offset' and 'limit' instead.");
-    }
-    EntityUtil.Fields fields = getFields(fieldsParam);
-    SearchListFilter searchListFilter = new SearchListFilter(include);
-    SearchSortFilter searchSortFilter =
-        new SearchSortFilter(
-            resolveSortField(sortBy), sortOrder == null ? "desc" : sortOrder, null, null);
-    List<AuthRequest> authRequests = getAuthRequestsForListOps();
-    return listInternalFromSearch(
-        uriInfo,
-        securityContext,
-        fields,
-        searchListFilter,
-        limit,
-        offset,
-        searchSortFilter,
-        null,
-        null,
-        authRequests);
-  }
-
-  private static String resolveSortField(String sortBy) {
-    return switch (sortBy) {
-      case "name" -> "name.keyword";
-      case "createdAt", "updatedAt" -> "updatedAt";
-      default -> throw new IllegalArgumentException(
-          "Unsupported sortBy value '" + sortBy + "'. Allowed: name, createdAt, updatedAt.");
-    };
-  }
-
-  private List<AuthRequest> getAuthRequestsForListOps() {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    return List.of(new AuthRequest(operationContext, getResourceContext()));
+      @QueryParam("include") @DefaultValue("non-deleted") Include include) {
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, new ListFilter(include), limit, before, after);
   }
 
   @GET

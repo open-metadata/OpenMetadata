@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.ws.rs.core.Response;
 import java.time.Duration;
 import java.util.List;
@@ -26,7 +25,6 @@ import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.sdk.test.util.TestNamespace;
 import org.openmetadata.sdk.test.util.TestNamespaceExtension;
@@ -471,140 +469,6 @@ class ContextFileIT {
     assertTrue(
         ex.getStatusCode() == 403 || ex.getStatusCode() == 401,
         "Expected 403/401, got " + ex.getStatusCode());
-  }
-
-  // --- SortBy ---
-
-  private ResultList<ContextFile> listFilesSorted(
-      RestClient rest, String sortBy, String sortOrder, int limit) {
-    String path = FILE_PATH + "?sortBy=" + sortBy + "&sortOrder=" + sortOrder + "&limit=" + limit;
-    try (Response response = rest.rawGet(path)) {
-      assertEquals(200, response.getStatus(), "List call failed: " + response.getStatus());
-      String body = response.readEntity(String.class);
-      return JsonUtils.readValue(body, new TypeReference<ResultList<ContextFile>>() {});
-    }
-  }
-
-  private void awaitFileIndexed(RestClient rest, UUID id) {
-    await()
-        .pollDelay(Duration.ZERO)
-        .pollInterval(Duration.ofMillis(200))
-        .atMost(Duration.ofSeconds(60))
-        .untilAsserted(
-            () -> {
-              try (Response getResp =
-                  rest.rawGet("v1/search/get/context_file_search_index/doc/" + id)) {
-                assertEquals(
-                    200,
-                    getResp.getStatus(),
-                    "File " + id + " not yet indexed: " + getResp.readEntity(String.class));
-              }
-            });
-  }
-
-  @Test
-  void testListFilesSortByUpdatedAtDesc(TestNamespace ns)
-      throws HttpResponseException, InterruptedException {
-    RestClient rest = RestClient.admin();
-
-    ContextFile older =
-        createFile(
-            rest,
-            new CreateContextFile()
-                .withName(ns.prefix("sort-older"))
-                .withFileType(ContextFileType.PDF)
-                .withProcessingStatus(ProcessingStatus.Uploaded));
-    Thread.sleep(20);
-    ContextFile middle =
-        createFile(
-            rest,
-            new CreateContextFile()
-                .withName(ns.prefix("sort-middle"))
-                .withFileType(ContextFileType.PDF)
-                .withProcessingStatus(ProcessingStatus.Uploaded));
-    Thread.sleep(20);
-    ContextFile newer =
-        createFile(
-            rest,
-            new CreateContextFile()
-                .withName(ns.prefix("sort-newer"))
-                .withFileType(ContextFileType.PDF)
-                .withProcessingStatus(ProcessingStatus.Uploaded));
-
-    awaitFileIndexed(rest, older.getId());
-    awaitFileIndexed(rest, middle.getId());
-    awaitFileIndexed(rest, newer.getId());
-
-    List<UUID> ourIds = List.of(older.getId(), middle.getId(), newer.getId());
-    await()
-        .pollInterval(Duration.ofMillis(250))
-        .atMost(Duration.ofSeconds(30))
-        .untilAsserted(
-            () -> {
-              ResultList<ContextFile> result = listFilesSorted(rest, "updatedAt", "desc", 1000);
-              List<UUID> ordered =
-                  result.getData().stream()
-                      .map(ContextFile::getId)
-                      .filter(ourIds::contains)
-                      .toList();
-              assertEquals(
-                  List.of(newer.getId(), middle.getId(), older.getId()),
-                  ordered,
-                  "Expected newest-first ordering for our test files");
-            });
-  }
-
-  @Test
-  void testListFilesSortByNameAsc(TestNamespace ns) throws HttpResponseException {
-    RestClient rest = RestClient.admin();
-
-    ContextFile zebra =
-        createFile(
-            rest,
-            new CreateContextFile()
-                .withName(ns.prefix("zzz-name-sort"))
-                .withFileType(ContextFileType.PDF)
-                .withProcessingStatus(ProcessingStatus.Uploaded));
-    ContextFile apple =
-        createFile(
-            rest,
-            new CreateContextFile()
-                .withName(ns.prefix("aaa-name-sort"))
-                .withFileType(ContextFileType.PDF)
-                .withProcessingStatus(ProcessingStatus.Uploaded));
-
-    awaitFileIndexed(rest, zebra.getId());
-    awaitFileIndexed(rest, apple.getId());
-
-    List<UUID> ourIds = List.of(zebra.getId(), apple.getId());
-    await()
-        .pollInterval(Duration.ofMillis(250))
-        .atMost(Duration.ofSeconds(30))
-        .untilAsserted(
-            () -> {
-              ResultList<ContextFile> result = listFilesSorted(rest, "name", "asc", 1000);
-              List<UUID> ordered =
-                  result.getData().stream()
-                      .map(ContextFile::getId)
-                      .filter(ourIds::contains)
-                      .toList();
-              assertEquals(
-                  List.of(apple.getId(), zebra.getId()),
-                  ordered,
-                  "Expected ascending name ordering, apple before zebra");
-            });
-  }
-
-  @Test
-  void testListFilesSortByRejectsCursorCombo() {
-    RestClient rest = RestClient.admin();
-    try (Response response =
-        rest.rawGet(FILE_PATH + "?sortBy=updatedAt&sortOrder=desc&after=anything")) {
-      assertEquals(
-          400,
-          response.getStatus(),
-          "sortBy combined with cursor should be 400, got " + response.getStatus());
-    }
   }
 
   @Test
