@@ -226,6 +226,7 @@ WHERE json #>> '{pipelineType}' = 'profiler'
   AND json::jsonb #> '{sourceConfig,config,profileSampleConfig}' IS NULL;
 
 -- ingestion_pipeline_entity (profiler pipelines): remove old flat fields
+-- rerun to fix inconsistent commit on migration for 2026/05/05
 UPDATE ingestion_pipeline_entity
 SET json = (json::jsonb #- '{sourceConfig,config,profileSample}'
                         #- '{sourceConfig,config,profileSampleType}'
