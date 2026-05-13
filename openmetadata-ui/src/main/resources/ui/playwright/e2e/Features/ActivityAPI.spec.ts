@@ -198,13 +198,14 @@ test.describe(
   'Activity API - Reactions',
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
-    const reactionsTable = new TableClass();
+    let reactionsTable: TableClass;
     let addReactionFeedText: string;
     let removeReactionFeedText: string;
 
     test.beforeAll('Setup: create table and feed items', async () => {
       const { apiContext, afterAction } = await createAdminApiContext();
 
+      reactionsTable = new TableClass();
       addReactionFeedText = `Test activity for adding reaction ${uuid()}`;
       removeReactionFeedText = `Test activity for removing reaction ${uuid()}`;
 
@@ -271,13 +272,14 @@ test.describe(
   'Activity API - Comments',
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
-    const commentsTable = new TableClass();
+    let commentsTable: TableClass;
     let commentFeedText: string;
     let layoutFeedText: string;
 
     test.beforeAll('Setup: create table and feed items', async () => {
       const { apiContext, afterAction } = await createAdminApiContext();
 
+      commentsTable = new TableClass();
       commentFeedText = `Test activity for comments ${uuid()}`;
       layoutFeedText = `Test activity detail layout ${uuid()}`;
 
@@ -345,10 +347,12 @@ test.describe(
   'Activity API - Homepage Widget',
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
-    const homepageTable = new TableClass();
+    let homepageTable: TableClass;
 
     test.beforeAll('Setup: create table and activity', async () => {
       const { apiContext, afterAction } = await createAdminApiContext();
+
+      homepageTable = new TableClass();
 
       try {
         await homepageTable.create(apiContext);
