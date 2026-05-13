@@ -640,8 +640,19 @@ public class RedisCacheProvider implements CacheProvider {
    */
   @Override
   public java.util.List<java.util.Optional<String>> mget(java.util.List<String> keys) {
-    if (!available || keys == null || keys.isEmpty()) {
+    // Empty input → empty output is fine (no positions to align). For the unavailable
+    // fast-path we must still return one Optional.empty() per requested key so callers that
+    // index by position (CachedReadBundle.getBatch, etc.) stay aligned with their input list.
+    // Same shape as the error-fallback branch below — keep them consistent.
+    if (keys == null || keys.isEmpty()) {
       return java.util.Collections.emptyList();
+    }
+    if (!available) {
+      java.util.List<java.util.Optional<String>> out = new java.util.ArrayList<>(keys.size());
+      for (int i = 0; i < keys.size(); i++) {
+        out.add(java.util.Optional.empty());
+      }
+      return out;
     }
     int n = keys.size();
     CacheMetrics m = metrics();

@@ -1342,7 +1342,23 @@ public class LineageRepository {
             () ->
                 org.openmetadata.schema.utils.JsonUtils.pojoToJson(
                     computeLineage(primary, upstreamDepth, downstreamDepth)));
-    return org.openmetadata.schema.utils.JsonUtils.readValue(json, EntityLineage.class);
+    try {
+      return org.openmetadata.schema.utils.JsonUtils.readValue(json, EntityLineage.class);
+    } catch (Exception deserError) {
+      // A bad cache entry (partial write, schema drift, value rewritten by an older pod with
+      // a different EntityLineage shape) must not produce a persistent 500 until TTL expiry.
+      // Evict the affected root's hash and recompute fresh — same answer the user would have
+      // gotten with cache off. Subsequent requests will repopulate the cache from the fresh
+      // compute.
+      LOG.warn(
+          "Corrupt lineage cache entry for rootId={} up={} down={}; evicting and recomputing",
+          primary.getId(),
+          upstreamDepth,
+          downstreamDepth,
+          deserError);
+      cachedLineage.invalidate(primary.getId());
+      return computeLineage(primary, upstreamDepth, downstreamDepth);
+    }
   }
 
   private EntityLineage computeLineage(
