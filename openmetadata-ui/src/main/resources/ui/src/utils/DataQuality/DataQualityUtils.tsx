@@ -270,7 +270,7 @@ export const buildDataQualityDashboardFilters = (data: {
     });
   }
 
-  if (filters?.tier && isTableApi) {
+  if (filters?.tier) {
     mustFilter.push({
       bool: {
         should: filters.tier.map((tag) => ({
@@ -282,13 +282,8 @@ export const buildDataQualityDashboardFilters = (data: {
     });
   }
 
-  if ((filters?.tags || filters?.tier) && !isTableApi) {
-    mustFilter.push(
-      buildMustEsFilterForTags([
-        ...(filters?.tags ?? []),
-        ...(filters?.tier ?? []),
-      ])
-    );
+  if (filters?.tags && !isTableApi) {
+    mustFilter.push(buildMustEsFilterForTags(filters.tags));
   }
 
   if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
