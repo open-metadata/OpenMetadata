@@ -21,10 +21,12 @@ from metadata.generated.schema.entity.data.table import (
 )
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
 from metadata.utils.logger import profiler_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
+from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = profiler_logger()
 
@@ -38,7 +40,10 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
     def __init__(self, *args, **kwargs):
         """Init the pandas sampler"""
         super().__init__(*args, **kwargs)
-        self.partition_details = cast(PartitionProfilerConfig, self.partition_details)  # noqa: TC006
+        db_config = kwargs.get("config") or DatabaseSamplerConfig()
+        self.connection = get_ssl_connection(self.service_connection_config)
+        self.partition_details = cast(PartitionProfilerConfig, db_config.partition_details)  # noqa: TC006
+        self.sample_query: str | None = db_config.sample_query
         self._table = None
         self.client = self.get_client()
 
