@@ -46,9 +46,12 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.tasks.BulkTaskOperation;
 import org.openmetadata.schema.api.tasks.CreateTask;
@@ -61,6 +64,7 @@ import org.openmetadata.schema.type.BulkTaskOperationParams;
 import org.openmetadata.schema.type.BulkTaskOperationResult;
 import org.openmetadata.schema.type.BulkTaskOperationResultItem;
 import org.openmetadata.schema.type.BulkTaskOperationType;
+import org.openmetadata.schema.type.DataAccessType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -1396,11 +1400,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
    */
   private <E extends Enum<E>> void validateCsvAgainstEnum(
       String paramName, String csv, Class<E> enumClass) {
-    java.util.Set<String> allowed =
-        java.util.Arrays.stream(enumClass.getEnumConstants())
-            .map(Enum::name)
-            .collect(java.util.stream.Collectors.toSet());
-    java.util.Arrays.stream(csv.split(","))
+    Set<String> allowed =
+        Arrays.stream(enumClass.getEnumConstants()).map(Enum::name).collect(Collectors.toSet());
+    Arrays.stream(csv.split(","))
         .map(String::trim)
         .filter(s -> !s.isEmpty())
         .forEach(
@@ -1415,10 +1417,10 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
   /**
    * Per-token validation for the {@code accessType} CSV. Reuses the schema-generated
-   * {@link org.openmetadata.schema.type.DataAccessType} enum.
+   * {@link DataAccessType} enum.
    */
   private void validateCsvAgainstAccessType(String csv) {
-    validateCsvAgainstEnum("accessType", csv, org.openmetadata.schema.type.DataAccessType.class);
+    validateCsvAgainstEnum("accessType", csv, DataAccessType.class);
   }
 
   private void validateTaskCanBeResolved(Task task) {

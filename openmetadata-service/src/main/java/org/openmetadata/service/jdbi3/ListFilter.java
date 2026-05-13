@@ -1072,7 +1072,11 @@ public class ListFilter extends Filter<ListFilter> {
     if (nullOrEmpty(search)) {
       return "";
     }
-    String escaped = "%" + escape(search.trim()) + "%";
+    // escape() handles `'` and `_`, but leaves `%` alone (callers like
+    // getCategoryPrefixCondition want trailing `%` as a wildcard). For free-text search the
+    // anchor wildcards we add below are the only ones allowed; escape `%` inside the user
+    // input so callers can't probe rows via `q=%` or smuggle wildcards into the middle.
+    String escaped = "%" + escape(search.trim()).replace("%", "\\%") + "%";
     queryParams.put("darSearchParam", escaped);
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       return "(LOWER(name) LIKE LOWER(:darSearchParam) "
