@@ -38,6 +38,8 @@ const CERTIFICATION_FQN = 'Certification.Gold';
 test('glossary-term rename cascade keeps tags[] + glossaryTags + tier + cert consistent', async ({
   browser,
 }) => {
+  // Create + tag + rename + dual ES poll comfortably exceeds the 60s default.
+  test.setTimeout(180_000);
   const { apiContext, afterAction } = await createNewPage(browser);
 
   const table = new TableClass();

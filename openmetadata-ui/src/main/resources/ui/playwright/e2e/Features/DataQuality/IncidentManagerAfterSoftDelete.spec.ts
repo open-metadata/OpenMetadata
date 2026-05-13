@@ -57,13 +57,17 @@ test('Incident Manager renders without Jackson error after a test case is soft-d
     // otherwise the script propagation race is meaningless. CI runners can be slow on the
     // first-time test-result + resolution-status indexing pipeline, so allow up to 2 min.
     test.setTimeout(180_000);
+    // Match the production UI's call shape — the search endpoint expects offset + latest
+    // (matches `getListTestCaseIncidentStatusFromSearch` in
+    // openmetadata-ui/src/main/resources/ui/src/rest/incidentManagerAPI.ts). Without them the
+    // server rejects with 400.
     await expect
       .poll(
         async () => {
           const res = await apiContext.get(
             `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?testCaseFQN=${encodeURIComponent(
               testCaseFqn
-            )}&limit=5`
+            )}&limit=5&offset=0&latest=true`
           );
 
           return res.status();

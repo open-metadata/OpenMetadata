@@ -71,7 +71,7 @@ test.describe('Service Version pages', () => {
     for (const entity of Object.values(entities)) {
       await entity.create(apiContext);
       const domain = EntityDataClass.domain1.responseData;
-      await entity.patch(apiContext, [
+      const patchData = [
         {
           op: 'add',
           path: '/tags/0',
@@ -109,7 +109,26 @@ test.describe('Service Version pages', () => {
             },
           ],
         },
-      ]);
+      ];
+      // DatabaseClass + DatabaseSchemaClass take the object form
+      // ({apiContext, patchData}); every other entity in this map still takes the positional
+      // (apiContext, payload) signature. Dispatch by class so both shapes work.
+      if (
+        entity instanceof DatabaseClass ||
+        entity instanceof DatabaseSchemaClass
+      ) {
+        await entity.patch({
+          apiContext,
+          patchData:
+            patchData as unknown as import('fast-json-patch').Operation[],
+        });
+      } else {
+        await (
+          entity as {
+            patch: (ctx: unknown, payload: unknown[]) => Promise<unknown>;
+          }
+        ).patch(apiContext, patchData);
+      }
     }
 
     await afterAction();
