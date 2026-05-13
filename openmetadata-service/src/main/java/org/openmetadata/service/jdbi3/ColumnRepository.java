@@ -131,6 +131,41 @@ public class ColumnRepository {
                     || (group.getTags() == null || group.getTags().isEmpty()));
   }
 
+  public Column getColumnByFQN(
+      SecurityContext securityContext, String columnFQN, String entityType, String fieldsParam) {
+    Objects.requireNonNull(columnFQN, "columnFQN cannot be null");
+    validateEntityType(entityType);
+    String parentFQN = extractParentFQN(columnFQN, entityType);
+    return switch (entityType) {
+      case TABLE -> fetchTableColumnByFQN(columnFQN, parentFQN, fieldsParam, securityContext);
+      case DASHBOARD_DATA_MODEL -> fetchDataModelColumnByFQN(columnFQN, parentFQN);
+      default -> throw new IllegalStateException("Unexpected entity type: " + entityType);
+    };
+  }
+
+  private Column fetchTableColumnByFQN(
+      String columnFQN, String parentFQN, String fieldsParam, SecurityContext securityContext) {
+    TableRepository tableRepo = (TableRepository) Entity.getEntityRepository(TABLE);
+    Table table = tableRepo.findByName(parentFQN, Include.NON_DELETED);
+    ColumnUtil.setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
+    Column column =
+        findColumnInHierarchy(table.getColumns(), columnFQN)
+            .orElseThrow(
+                () -> new EntityNotFoundException("Column not found: %s".formatted(columnFQN)));
+    return tableRepo.enrichSingleColumnFields(
+        table, column, fieldsParam, authorizer, securityContext);
+  }
+
+  private Column fetchDataModelColumnByFQN(String columnFQN, String parentFQN) {
+    DashboardDataModelRepository dataModelRepo =
+        (DashboardDataModelRepository) Entity.getEntityRepository(DASHBOARD_DATA_MODEL);
+    DashboardDataModel dataModel = dataModelRepo.findByName(parentFQN, Include.NON_DELETED);
+    setDataModelColumnFQN(dataModel.getFullyQualifiedName(), dataModel.getColumns());
+    return findColumnInHierarchy(dataModel.getColumns(), columnFQN)
+        .orElseThrow(
+            () -> new EntityNotFoundException("Column not found: %s".formatted(columnFQN)));
+  }
+
   public Column updateColumnByFQN(
       UriInfo uriInfo,
       SecurityContext securityContext,

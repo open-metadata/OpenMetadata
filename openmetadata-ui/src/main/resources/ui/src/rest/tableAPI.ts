@@ -18,6 +18,7 @@ import { QueryVote } from '../components/Database/TableQueries/TableQueries.inte
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { SystemProfile } from '../generated/api/data/createTableProfile';
 import {
+  Column,
   ColumnProfile,
   Table,
   TableProfile,
@@ -352,6 +353,23 @@ export const updateTableColumn = async (
     Partial<Table['columns'][number]>,
     AxiosResponse<Table['columns'][number]>
   >(`/columns/name/${getEncodedFqn(fqn)}?entityType=table`, data);
+
+  return response.data;
+};
+
+export interface GetColumnByFQNParams {
+  entityType?: string;
+  fields?: string;
+}
+
+export const getColumnByFQN = async (
+  columnFqn: string,
+  params?: GetColumnByFQNParams
+) => {
+  const response = await APIClient.get<Column>(
+    `/columns/name/${getEncodedFqn(columnFqn)}`,
+    { params: { entityType: 'table', ...params } }
+  );
 
   return response.data;
 };

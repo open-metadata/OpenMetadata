@@ -79,6 +79,54 @@ public class ColumnResource {
         new ColumnRepository(authorizer, Entity.getSearchRepository().getSearchClient());
   }
 
+  @GET
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "getColumnByFQN",
+      summary = "Get a column by fully qualified name",
+      description =
+          "Retrieve a single column by its fully qualified name. The parent entity type must be specified. "
+              + "Supports field projection via the 'fields' parameter (e.g. tags, customMetrics, extension, profile).",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The column",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Column.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request"),
+        @ApiResponse(responseCode = "404", description = "Column not found")
+      })
+  public Response getColumnByFQN(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the column",
+              schema = @Schema(type = "string"),
+              example = "sample_data.ecommerce_db.shopify.dim_address.address_id")
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(
+              description = "Entity type of the parent entity (table or dashboardDataModel)",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"table", "dashboardDataModel"}),
+              example = "table",
+              required = true)
+          @QueryParam("entityType")
+          @NotNull
+          String entityType,
+      @Parameter(
+              description =
+                  "Fields to include in the response (comma-separated). Supported: tags, customMetrics, extension, profile",
+              schema = @Schema(type = "string", example = "tags,customMetrics,extension,profile"))
+          @QueryParam("fields")
+          String fieldsParam) {
+    Column column = repository.getColumnByFQN(securityContext, fqn, entityType, fieldsParam);
+    return Response.ok(column).build();
+  }
+
   @PUT
   @Path("/name/{fqn}")
   @Operation(

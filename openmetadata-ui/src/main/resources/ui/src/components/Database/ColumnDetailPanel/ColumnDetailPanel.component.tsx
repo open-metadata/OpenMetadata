@@ -30,7 +30,6 @@ import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
 import {
   DE_ACTIVE_COLOR,
   ENTITY_PATH,
-  PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
@@ -38,7 +37,7 @@ import { Type } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import {
-  getTableColumnsByFQN,
+  getColumnByFQN,
   updateTableColumn,
 } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
@@ -99,7 +98,6 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   onNavigate,
   tableConstraints = [],
   entityType,
-  onColumnsUpdate,
 }: ColumnDetailPanelProps<T>) => {
   const { t } = useTranslation();
   const { permissions, changeSummary } = useGenericContext();
@@ -268,44 +266,26 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     ) {
       try {
         setIsColumnDataLoading(true);
-        const response = await getTableColumnsByFQN(tableFqn, {
+        const latestColumn = await getColumnByFQN(targetFqn, {
           fields: 'tags,customMetrics,extension,profile',
-          limit: PAGE_SIZE_LARGE,
         });
 
-        const latestColumn = response.data.find(
-          (c) => c.fullyQualifiedName === targetFqn
-        );
+        setActiveColumn((prev) => {
+          if (prev?.fullyQualifiedName !== targetFqn) {
+            return prev;
+          }
 
-        if (latestColumn) {
-          setActiveColumn((prev) => {
-            // Discard stale response if column changed during fetch
-            if (prev?.fullyQualifiedName !== targetFqn) {
-              return prev;
-            }
-
-            return { ...prev, ...latestColumn } as Column;
-          });
-        }
+          return { ...prev, ...latestColumn } as Column;
+        });
 
         fetchedColumnFqnRef.current = targetFqn;
-
-        if (onColumnsUpdate) {
-          onColumnsUpdate(response.data);
-        }
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
         setIsColumnDataLoading(false);
       }
     }
-  }, [
-    column?.fullyQualifiedName,
-    isOpen,
-    entityType,
-    tableFqn,
-    onColumnsUpdate,
-  ]);
+  }, [column?.fullyQualifiedName, isOpen, entityType, tableFqn]);
 
   const handleNestedColumnClick = useCallback(
     (nestedColumn: Column) => {

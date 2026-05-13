@@ -17,6 +17,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Column, Table } from '../../../generated/entity/data/table';
 import { DataType } from '../../../generated/tests/testDefinition';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { getColumnByFQN } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
 import { ColumnDetailPanel } from './ColumnDetailPanel.component';
 
@@ -285,7 +286,12 @@ jest.mock('../../../utils/ToastUtils', () => ({
 
 jest.mock('../../../rest/tableAPI', () => ({
   updateTableColumn: jest.fn(),
-  getTableColumnsByFQN: jest.fn().mockResolvedValue({ data: [] }),
+  getColumnByFQN: jest.fn().mockResolvedValue({
+    name: 'test_column',
+    dataType: 'VARCHAR',
+    fullyQualifiedName: 'test_db.test_schema.test_table.test_column',
+    tags: [],
+  }),
 }));
 
 jest.mock('../../../rest/testAPI', () => ({
@@ -528,6 +534,35 @@ describe('ColumnDetailPanel', () => {
       expect(getByTestId('description-section')).toBeInTheDocument();
       expect(getByTestId('tags-section')).toBeInTheDocument();
       expect(getByTestId('glossary-terms-section')).toBeInTheDocument();
+    });
+  });
+
+  describe('Data Fetching', () => {
+    it('should call getColumnByFQN with column FQN when panel opens', async () => {
+      const mockGetColumnByFQN = getColumnByFQN as jest.Mock;
+      mockGetColumnByFQN.mockResolvedValueOnce({
+        ...mockColumn,
+        tags: [],
+      });
+
+      await act(async () => {
+        render(
+          <ColumnDetailPanel
+            {...mockProps}
+            isOpen
+            entityType={EntityType.TABLE}
+          />
+        );
+      });
+
+      await waitFor(() => {
+        expect(mockGetColumnByFQN).toHaveBeenCalledWith(
+          mockColumn.fullyQualifiedName,
+          expect.objectContaining({
+            fields: 'tags,customMetrics,extension,profile',
+          })
+        );
+      });
     });
   });
 

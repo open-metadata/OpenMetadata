@@ -2919,6 +2919,36 @@ public class TableRepository extends EntityRepository<Table> {
     return new ResultList<>(paginatedColumns, before, after, total);
   }
 
+  public Column enrichSingleColumnFields(
+      Table table,
+      Column column,
+      String fieldsParam,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    if (fieldsParam == null) {
+      return column;
+    }
+    List<Column> singleton = new ArrayList<>(List.of(column));
+    if (fieldsParam.contains("tags")) {
+      populateEntityFieldTags(entityType, singleton, table.getFullyQualifiedName(), true);
+    }
+    if (fieldsParam.contains("customMetrics")) {
+      column.setCustomMetrics(getCustomMetrics(table, column.getName()));
+    }
+    if (fieldsParam.contains("extension")) {
+      column.setExtension(getColumnExtension(table.getId(), column.getFullyQualifiedName()));
+    }
+    if (fieldsParam.contains("profile")) {
+      setColumnProfile(singleton);
+      populateEntityFieldTags(entityType, singleton, table.getFullyQualifiedName(), true);
+      singleton =
+          PIIMasker.getTableProfile(
+              table.getFullyQualifiedName(), singleton, authorizer, securityContext);
+      return singleton.isEmpty() ? column : singleton.get(0);
+    }
+    return column;
+  }
+
   private static void validateTableColumns(List<Column> columns) {
     if (columns == null) return;
 
