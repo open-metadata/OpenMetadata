@@ -17,7 +17,8 @@ import ast
 import json
 import random
 import traceback
-from typing import Any, Dict, List, Optional, Union, cast
+from collections import Counter
+from typing import Any, Dict, List, Optional, Union, cast  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
@@ -52,12 +53,22 @@ _TYPE_PRECEDENCE = (
 
 
 def _resolve_col_type(type_list: List[str]) -> str:  # noqa: UP006
-    """Pick the dominant type from type_list using _TYPE_PRECEDENCE instead of lexicographic max()."""
-    type_set = set(type_list)
+    """Pick the dominant type from type_list.
+
+    Frequency-first: the most common type in the sample wins.
+    Ties are broken by _TYPE_PRECEDENCE order.
+    This prevents a small number of date-parseable tokens (e.g. the surname "May")
+    from overriding a column that is overwhelmingly strings.
+    """
+    if not type_list:
+        return "str"
+    counts = Counter(type_list)
+    max_count = max(counts.values())
+    top_types = {t for t, c in counts.items() if c == max_count}
     for t in _TYPE_PRECEDENCE:
-        if t in type_set:
+        if t in top_types:
             return t
-    return type_list[0] if type_list else "str"
+    return type_list[0]
 
 
 def fetch_dataframe_generator(
