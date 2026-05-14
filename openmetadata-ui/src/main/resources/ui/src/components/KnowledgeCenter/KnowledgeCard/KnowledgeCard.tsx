@@ -316,7 +316,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           target={isQuickLink ? '_blank' : '_self'}
           to={path}
           onClick={handleQuickLinkRecentView}>
-          <Space direction="vertical" size={8}>
+          <Space className='tw:w-full' direction="vertical" size={8}>
             <div className="flex items-center gap-2">
               {isQuickLink ? (
                 <LinkIcon
