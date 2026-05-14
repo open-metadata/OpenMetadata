@@ -36,11 +36,8 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
-import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-} from '../../../utils/common';
+import { createAdminApiContext } from '../../../utils/admin';
+import { redirectToHomePage } from '../../../utils/common';
 import { checkExploreSearchFilter } from '../../../utils/entity';
 
 const TIER_FQN = 'Tier.Tier1';
@@ -90,9 +87,9 @@ export function registerFilterSeparationSuite(
     const glossary = new Glossary();
     const glossaryTerm = new GlossaryTerm(glossary);
 
-    test.beforeAll(async ({ browser }) => {
+    test.beforeAll(async () => {
       test.slow();
-      const { apiContext, afterAction } = await createNewPage(browser);
+      const { apiContext, afterAction } = await createAdminApiContext();
       await classification.create(apiContext);
       await classificationTag.create(apiContext);
       await glossary.create(apiContext);
@@ -103,8 +100,8 @@ export function registerFilterSeparationSuite(
       await afterAction();
     });
 
-    test.afterAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
+    test.afterAll(async () => {
+      const { apiContext, afterAction } = await createAdminApiContext();
       await entity.delete(apiContext);
       await glossaryTerm.delete(apiContext);
       await glossary.delete(apiContext);
@@ -128,9 +125,10 @@ export function registerFilterSeparationSuite(
     test('SearchIndexApp recreate reindex preserves searchable separation', async ({
       page,
     }) => {
-      // Reuse the already-authenticated page rather than opening a new one just to grab a
-      // token — saves a full browser navigation per entity suite.
-      const { apiContext, afterAction } = await getApiContext(page);
+      // POST /api/v1/search/reindexEntities requires admin scope. createAdminApiContext fetches
+      // a fresh admin JWT without opening a UI page; the test's `page` fixture handles the
+      // post-reindex Explore filter UI assertions.
+      const { apiContext, afterAction } = await createAdminApiContext();
 
       const reindexRes = await apiContext.post(
         '/api/v1/search/reindexEntities?recreate=true',
