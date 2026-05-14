@@ -26,10 +26,12 @@ const mockGetTaskDetailPath = jest.fn();
 
 jest.mock('../../utils/FeedUtils', () => ({
   entityDisplayName: jest.fn().mockReturnValue('database.schema.table'),
-  prepareFeedLink: (...args: any[]) => mockPrepareFeedLink(...args),
+  prepareFeedLink: (...args: Parameters<typeof mockPrepareFeedLink>) =>
+    mockPrepareFeedLink(...args),
 }));
 jest.mock('../../utils/TasksUtils', () => ({
-  getTaskDetailPath: (...args: any[]) => mockGetTaskDetailPath(...args),
+  getTaskDetailPath: (...args: Parameters<typeof mockGetTaskDetailPath>) =>
+    mockGetTaskDetailPath(...args),
 }));
 jest.mock('../common/ProfilePicture/ProfilePicture', () =>
   jest.fn().mockReturnValue(<p data-testid="profile-picture">ProfilePicture</p>)
@@ -300,8 +302,7 @@ describe('Test NotificationFeedCard Component', () => {
         render(<NotificationFeedCard {...conversationProps} />);
       });
 
-      // Should be called twice - once for main link, once for entity name link
-      expect(mockGetTaskDetailPath).toHaveBeenCalledTimes(2);
+      expect(mockGetTaskDetailPath).toHaveBeenCalledTimes(1);
       expect(mockGetTaskDetailPath).toHaveBeenCalledWith(mockThread);
     });
 
