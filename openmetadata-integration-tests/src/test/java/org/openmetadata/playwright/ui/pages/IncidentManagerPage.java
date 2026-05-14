@@ -2,18 +2,30 @@ package org.openmetadata.playwright.ui.pages;
 
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.assertions.LocatorAssertions;
+import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.microsoft.playwright.options.WaitForSelectorState;
 import org.openmetadata.playwright.ui.UiSession;
 
 /**
- * Page object for {@code /incident-manager} — the central list of test-case
- * incidents. Reindex tests compare the row set before and after a
- * {@code reindexEntities} call on the underlying test cases.
+ * Drives the Incident Manager flow used by
+ * {@code openmetadata-ui/.../playwright/e2e/Features/IncidentManager.spec.ts} —
+ * specifically the acknowledge-from-detail-page action.
+ *
+ * <p>The acknowledge flow has two anchors:
+ * <ol>
+ *   <li>{@code /incident-manager} list page — wait for the incident row to appear, then
+ *       click into the test case detail page.
+ *   <li>Test case detail (incident tab) — open resolution editor, set status to "Ack",
+ *       confirm.
+ * </ol>
  */
 public final class IncidentManagerPage extends PageObject {
 
-  private static final String PATH = "/incident-manager";
-  private static final String TESTID_TABLE = "test-case-incident-manager-table";
+  private static final String INCIDENT_LIST_PATH = "/incident-manager";
+  private static final String API_TASK_RESOLVE_REGEX = ".*/api/v1/tasks/.+/resolve";
+  private static final String API_INCIDENT_STATUS_REGEX =
+      ".*/api/v1/dataQuality/testCases/testCaseIncidentStatus.*";
 
   private IncidentManagerPage(final Page page, final UiSession session) {
     super(page, session);
@@ -21,37 +33,73 @@ public final class IncidentManagerPage extends PageObject {
 
   public static IncidentManagerPage open(final UiSession ui) {
     final Page page = ui.newPage();
-    page.navigate(ui.uiUrl(PATH));
+    page.navigate(ui.uiUrl(INCIDENT_LIST_PATH));
     final IncidentManagerPage instance = new IncidentManagerPage(page, ui);
     instance.waitForLoaded();
     return instance;
   }
 
-  public Locator table() {
-    return byTestId(TESTID_TABLE);
+  public Locator incidentTable() {
+    return byTestId("test-case-incident-manager-table");
   }
 
-  public long rowCount() {
-    return table().locator("tbody tr").count();
+  /**
+   * Asserts a row referencing the test case (by name link) is rendered. The
+   * {@code aria-label} on the link matches the test case name.
+   */
+  public IncidentManagerPage assertIncidentVisible(final String testCaseName) {
+    PlaywrightAssertions.assertThat(
+            page.getByRole(
+                com.microsoft.playwright.options.AriaRole.LINK,
+                new Page.GetByRoleOptions().setName(testCaseName)))
+        .isVisible(new LocatorAssertions.IsVisibleOptions().setTimeout(60_000));
+    return this;
   }
 
-  /** Whitespace-normalized text of the incident table — used for snapshot diffs. */
-  public String textSnapshot() {
-    final String text = table().textContent();
-    return text == null ? "" : text.replaceAll("\\s+", " ").trim();
+  /**
+   * Click the test case link to navigate to its detail page (Incident tab).
+   */
+  public IncidentManagerPage openIncidentDetail(final String testCaseName) {
+    page.getByRole(
+            com.microsoft.playwright.options.AriaRole.LINK,
+            new Page.GetByRoleOptions().setName(testCaseName))
+        .first()
+        .click();
+    page.waitForLoadState();
+    byTestId("edit-resolution-icon")
+        .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+    return this;
+  }
+
+  /**
+   * Open the resolution-status editor on the test case detail page, choose "Ack",
+   * and confirm. Awaits the status-update response so post-action assertions are
+   * race-free.
+   */
+  public IncidentManagerPage acknowledgeFromDetail() {
+    byTestId("edit-resolution-icon").click();
+    byTestId("test-case-resolution-status-type").click();
+    page.locator("[title='Ack']").click();
+    page.waitForResponse(
+        r -> r.url().matches(API_INCIDENT_STATUS_REGEX) || r.url().matches(API_TASK_RESOLVE_REGEX),
+        () -> page.locator("#update-status-button").click());
+    return this;
+  }
+
+  /**
+   * Snapshot the visible status text of the named test case's row on the incident-manager
+   * list page (e.g., "New", "Ack", "Resolved").
+   */
+  public String statusForTestCase(final String testCaseName) {
+    final Locator badge = page.locator("[data-testid='" + testCaseName + "-status']").first();
+    badge.waitFor(
+        new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(30_000));
+    final String text = badge.textContent();
+    return text == null ? "" : text.trim();
   }
 
   @Override
   protected void waitForLoaded() {
-    table().waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
-    // Wait for either at least one row OR the "no incidents" empty-state to render —
-    // otherwise a snapshot taken mid-load misses async-rendered placeholders and the
-    // text differs between two runs of the same page.
-    page.waitForFunction(
-        "() => { const t = document.querySelector('[data-testid=\"test-case-incident-manager-table\"]');"
-            + " if (!t) return false;"
-            + " const rows = t.querySelectorAll('tbody tr').length;"
-            + " const empty = t.querySelector('.ant-empty, [class*=\"empty\"]');"
-            + " return rows > 0 || empty !== null; }");
+    incidentTable().waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
   }
 }
