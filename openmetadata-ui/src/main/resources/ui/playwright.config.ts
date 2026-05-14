@@ -84,7 +84,6 @@ export default defineConfig({
       teardown: 'entity-data-teardown',
       testIgnore: [
         '**/nightly/**',
-        '**/Search/**',
         '**/Auth/**',
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
@@ -99,15 +98,6 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       fullyParallel: false,
       workers: 1,
-    },
-    {
-      name: 'search-nightly',
-      testMatch: ['**/Search/**'],
-      use: {
-        ...devices['Desktop Chrome'],
-        storageState: 'playwright/.auth/admin.json',
-      },
-      dependencies: ['setup'],
     },
     {
       name: 'entity-data-teardown',
