@@ -4446,27 +4446,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
               entitySpecificCleanup(entityInterface);
 
               UUID id = entityInterface.getId();
+              String fqn = entityInterface.getFullyQualifiedName();
+
+              // Delete all timeseries data for this entity and its children (e.g. column profiles)
+              daoCollection.entityExtensionTimeSeriesDao().deleteAllByEntityFQNPrefix(fqn);
+              daoCollection.profilerDataTimeSeriesDao().deleteAllByEntityFQNPrefix(fqn);
 
               // Delete all the relationships to other entities
               daoCollection.relationshipDAO().deleteAll(id, entityType);
 
               // Delete all the field relationships to other entities
-              daoCollection
-                  .fieldRelationshipDAO()
-                  .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+              daoCollection.fieldRelationshipDAO().deleteAllByPrefix(fqn);
 
               // Delete all the extensions of entity
               daoCollection.entityExtensionDAO().deleteAll(id);
 
               // Delete all the tag labels
-              daoCollection
-                  .tagUsageDAO()
-                  .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
+              daoCollection.tagUsageDAO().deleteTagLabelsByTargetPrefix(fqn);
 
               // when the glossary and tag is deleted, delete its usage
-              daoCollection
-                  .tagUsageDAO()
-                  .deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
+              daoCollection.tagUsageDAO().deleteTagLabelsByFqn(fqn);
               // Delete all the usage data
               daoCollection.usageDAO().delete(id);
 
