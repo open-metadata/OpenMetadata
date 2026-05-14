@@ -5,11 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.joda.time.DateTime;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -54,7 +54,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 @ExtendWith(TestNamespaceExtension.class)
 public class IngestionPipelineOwnerInheritanceIT {
 
-  private static final Date START_DATE = new DateTime("2022-06-10T15:06:47+00:00").toDate();
+  private static final Date START_DATE = Date.from(Instant.parse("2022-06-10T15:06:47Z"));
 
   @Test
   void test_inheritedOwners_fromService(TestNamespace ns) {
