@@ -153,7 +153,7 @@ class SamplerProcessor(Processor):
             sample_data = SampleData(
                 data=sampler_interface.generate_sample_data(self._sample_data_config),
                 store=bool(
-                    self.source_config.storeSampleData
+                    self.source_config.storeSampleData  # pyright: ignore[reportAttributeAccessIssue]
                     and (self._sample_data_config is None or self._sample_data_config.storeSampleData)
                 ),
             )
