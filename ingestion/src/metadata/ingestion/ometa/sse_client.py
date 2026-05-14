@@ -63,6 +63,8 @@ class SSEClient:
                 if self.config.auth_token_mode
                 else self.config.access_token
             )
+        if self.config.user_agent:
+            headers["User-Agent"] = self.config.user_agent
         opts = {
             "headers": headers,
             "allow_redirects": self.config.allow_redirects,

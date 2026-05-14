@@ -112,6 +112,7 @@ class ClientConfig(ConfigModel):
     expires_in: Optional[int] = None  # noqa: UP045
     auth_header: Optional[str] = None  # noqa: UP045
     extra_headers: Optional[dict] = None  # noqa: UP045
+    user_agent: Optional[str] = None  # noqa: UP045
     raw_data: Optional[bool] = False  # noqa: UP045
     allow_redirects: Optional[bool] = False  # noqa: UP045
     auth_token_mode: Optional[str] = "Bearer"  # noqa: UP045
@@ -134,6 +135,8 @@ class REST:
         self._base_url: URL = URL(self.config.base_url)
         self._api_version = get_api_version(self.config.api_version)
         self._session = requests.Session()
+        if self.config.user_agent:
+            self._session.headers["User-Agent"] = self.config.user_agent
         self._use_raw_data = self.config.raw_data
         self._retry = self.config.retry
         self._retry_wait = self.config.retry_wait
