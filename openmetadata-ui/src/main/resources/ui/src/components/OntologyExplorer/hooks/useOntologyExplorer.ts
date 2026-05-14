@@ -40,6 +40,7 @@ import {
 import {
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
+  inCurrentAppContext,
 } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -1467,7 +1468,7 @@ export function useOntologyExplorer({
       if (!path) {
         return;
       }
-      window.open(path, '_blank');
+      window.open(inCurrentAppContext(path), '_blank');
     },
     [getNodePath]
   );

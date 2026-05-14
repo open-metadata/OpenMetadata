@@ -14,6 +14,7 @@ import { Editor, ReactRenderer } from '@tiptap/react';
 import { isEmpty, isNil } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import tippy, { Instance, Props } from 'tippy.js';
+import { inCurrentAppContext } from '../../utils/RouterUtils';
 import { EditorSlotsProps, EditorSlotsRef } from './BlockEditor.interface';
 import BlockMenu from './BlockMenu/BlockMenu';
 import BubbleMenu from './BubbleMenu/BubbleMenu';
@@ -90,7 +91,7 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
         const href = target.getAttribute('href');
         const linkTarget = target.getAttribute('target');
         if (href && linkTarget) {
-          window.open(href, linkTarget);
+          window.open(inCurrentAppContext(href), linkTarget);
         }
 
         return;

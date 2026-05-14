@@ -459,6 +459,25 @@ export const getLogsViewerPath = (
   return path;
 };
 
+// Extension hook for escape-hatch navigation (window.open, target=_blank,
+// raw <a href>) that bypasses React Router's basename. Hosts that embed OM
+// under a sub-path register a provider; without one, input passes through.
+export type AppContextProvider = (urlOrPath: string) => string;
+
+const identityAppContextProvider: AppContextProvider = (urlOrPath) =>
+  urlOrPath;
+
+let currentAppContextProvider: AppContextProvider = identityAppContextProvider;
+
+export const registerAppContextProvider = (
+  provider: AppContextProvider | null
+): void => {
+  currentAppContextProvider = provider ?? identityAppContextProvider;
+};
+
+export const inCurrentAppContext = (urlOrPath: string): string =>
+  currentAppContextProvider(urlOrPath);
+
 export const getGlossaryPathWithAction = (
   fqn: string,
   action: EntityAction

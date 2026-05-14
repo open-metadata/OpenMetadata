@@ -38,6 +38,7 @@ import {
 import { PRIMARY_COLOR } from '../constants/Color.constants';
 import { EntityType } from '../enums/entity.enum';
 import { getEntityLinkFromType } from './EntityUtils';
+import { inCurrentAppContext } from './RouterUtils';
 import ELKLayout from './Lineage/Layout/ELKUtil/ELKUtil';
 
 // Layout: padding(8) + icon(14) + gap(8) + label + gap(8) + typeChip + padding(8)
@@ -873,7 +874,12 @@ export const setupGraphEventHandlers = (ctx: GraphInteractionCtx): void => {
     const node = graphDataNodes.find((n) => n.id === nodeId);
     if (node?.type && node?.fullyQualifiedName) {
       window.open(
-        getEntityLinkFromType(node.fullyQualifiedName, node.type as EntityType),
+        inCurrentAppContext(
+          getEntityLinkFromType(
+            node.fullyQualifiedName,
+            node.type as EntityType
+          )
+        ),
         '_blank',
         'noopener,noreferrer'
       );

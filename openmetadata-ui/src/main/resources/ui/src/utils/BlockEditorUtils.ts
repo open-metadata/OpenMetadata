@@ -21,6 +21,7 @@ import { ReactComponent as IconFormatImage } from '../assets/svg/ic-format-image
 import { ReactComponent as IconFormatVideo } from '../assets/svg/ic-format-video.svg';
 import { FileType } from '../components/BlockEditor/BlockEditor.interface';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
+import { inCurrentAppContext } from './RouterUtils';
 import blockEditorExtensionsClassBase from './BlockEditorExtensionsClassBase';
 import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
 import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtils';
@@ -66,7 +67,10 @@ const _convertMarkdownFormatToHtmlString = (markdown: string) => {
       const entityType = urlEntries.find((e) => e[1] === rawEntityType)?.[0];
 
       if (entityType) {
-        const entityLink = `<a href="${href}/${rawEntityType}/${fqn}" data-type="mention" data-entityType="${entityType}" data-fqn="${fqn}" data-label="${fqn}">@${fqn}</a>`;
+        const fullHref = inCurrentAppContext(
+          `${href}/${rawEntityType}/${fqn}`
+        );
+        const entityLink = `<a href="${fullHref}" data-type="mention" data-entityType="${entityType}" data-fqn="${fqn}" data-label="${fqn}">@${fqn}</a>`;
         updatedMessage = updatedMessage.replaceAll(key, entityLink);
       }
     }
@@ -76,7 +80,8 @@ const _convertMarkdownFormatToHtmlString = (markdown: string) => {
     if (value) {
       const [, href, rawEntityType, fqn] = value;
 
-      const entityLink = `<a href="${href}/${rawEntityType}/${fqn}" data-type="hashtag" data-entityType="${rawEntityType}" data-fqn="${fqn}" data-label="${fqn}">#${fqn}</a>`;
+      const fullHref = inCurrentAppContext(`${href}/${rawEntityType}/${fqn}`);
+      const entityLink = `<a href="${fullHref}" data-type="hashtag" data-entityType="${rawEntityType}" data-fqn="${fqn}" data-label="${fqn}">#${fqn}</a>`;
       updatedMessage = updatedMessage.replaceAll(key, entityLink);
     }
   });
