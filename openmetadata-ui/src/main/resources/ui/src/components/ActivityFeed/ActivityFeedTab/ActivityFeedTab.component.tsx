@@ -22,7 +22,14 @@ import {
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
@@ -291,9 +298,8 @@ export const ActivityFeedTab = ({
   }, [feedFilter, threadType, fqn]);
 
   useEffect(() => {
-    const refreshKey = (
-      location.state as { tasksRefreshKey?: number } | null
-    )?.tasksRefreshKey;
+    const refreshKey = (location.state as { tasksRefreshKey?: number } | null)
+      ?.tasksRefreshKey;
     if (
       refreshKey !== undefined &&
       refreshKey !== processedRefreshKeyRef.current &&
@@ -301,7 +307,14 @@ export const ActivityFeedTab = ({
       isTaskActiveTab
     ) {
       processedRefreshKeyRef.current = refreshKey;
-      getFeedData(feedFilter, undefined, threadType, entityType, fqn, taskFilter);
+      getFeedData(
+        feedFilter,
+        undefined,
+        threadType,
+        entityType,
+        fqn,
+        taskFilter
+      );
     }
   }, [
     entityType,

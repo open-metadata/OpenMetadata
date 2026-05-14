@@ -530,13 +530,10 @@ export class TableClass extends EntityClass {
     const fqn = encodeURIComponent(
       this.entityResponseData?.fullyQualifiedName ?? ''
     );
-    const response = await apiContext.patch(
-      `/api/v1/tables/name/${fqn}`,
-      {
-        data: [{ op: 'replace', path: '/owners', value: [owner] }],
-        headers: { 'Content-Type': 'application/json-patch+json' },
-      }
-    );
+    const response = await apiContext.patch(`/api/v1/tables/name/${fqn}`, {
+      data: [{ op: 'replace', path: '/owners', value: [owner] }],
+      headers: { 'Content-Type': 'application/json-patch+json' },
+    });
     this.entityResponseData = await response.json();
   }
 
