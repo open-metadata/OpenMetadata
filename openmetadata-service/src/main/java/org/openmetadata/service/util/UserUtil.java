@@ -653,6 +653,19 @@ public final class UserUtil {
                   + "Rename or delete that user, then restart the server.",
               user.getName()));
     }
+    // Short-circuit when the incoming bot user has no real change vs. what's already in the
+    // database. Without this guard every OM boot calls into addOrUpdateUser ->
+    // userRepository.createOrUpdate, and UserUpdater.entitySpecificUpdate then runs
+    // updateTeams/updateRoles/etc. with the incoming `user.getTeams() == null`, which strips
+    // the bot's stored team relationships, bumps the version, and triggers an Elasticsearch
+    // reindex of the bot user (and any team membership change ripples into the team_search
+    // index too). With many bots this is a reindex storm on every restart.
+    if (originalUser != null
+        && Objects.equals(listOrEmpty(originalUser.getRoles()), listOrEmpty(user.getRoles()))
+        && Objects.equals(originalUser.getDescription(), user.getDescription())
+        && Objects.equals(originalUser.getDisplayName(), user.getDisplayName())) {
+      return originalUser;
+    }
     AuthenticationMechanism authMechanism =
         originalUser != null ? originalUser.getAuthenticationMechanism() : null;
     // the user did not have an auth mechanism and auth config is present
@@ -683,8 +696,12 @@ public final class UserUtil {
     EntityRepository<User> userRepository =
         (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
+      // Include "roles" so the no-op short-circuit in addOrUpdateBotUser can compare it
+      // against the incoming user. description and displayName are scalar fields stored in
+      // the entity JSON column, so they're already populated by the base read without an
+      // extra field fetch.
       return userRepository.getByName(
-          null, user.getName(), new Fields(Set.of("authenticationMechanism")));
+          null, user.getName(), new Fields(Set.of("authenticationMechanism", "roles")));
     } catch (EntityNotFoundException e) {
       LOG.debug("Bot entity: {} does not exists.", user);
       return null;
