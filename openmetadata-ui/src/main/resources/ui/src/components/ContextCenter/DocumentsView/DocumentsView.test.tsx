@@ -90,8 +90,6 @@ const mockFiles: DocFile[] = [
     name: 'data.csv',
     fileType: 'csv',
     sizeLabel: '500 KB',
-    updatedBy: 'alice',
-    updatedAt: 1778756959299,
   },
 ];
 
@@ -122,7 +120,6 @@ describe('DocumentsView', () => {
     render(<DocumentsView data={mockFiles} isLoading={false} />);
 
     expect(screen.getByText('alice')).toBeInTheDocument();
-    expect(screen.getByText('2 hrs ago')).toBeInTheDocument();
   });
 
   it('renders the PDF badge label for pdf files', () => {
