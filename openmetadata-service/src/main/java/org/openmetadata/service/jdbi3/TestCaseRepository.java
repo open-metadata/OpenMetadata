@@ -94,7 +94,10 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -1165,15 +1168,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     if (updatedTestCases == null || updatedTestCases.isEmpty()) {
       return;
     }
-    var cachedReadBundle = org.openmetadata.service.cache.CacheBundle.getCachedReadBundle();
+    var cachedReadBundle = CacheBundle.getCachedReadBundle();
     if (cachedReadBundle != null) {
       for (TestCase tc : updatedTestCases) {
         cachedReadBundle.invalidate(entityType, tc.getId());
       }
     }
-    org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher.getInstance()
-        .onEntitiesUpdated(updatedTestCases, null, null);
-    updatedTestCases.forEach(org.openmetadata.service.rdf.RdfUpdater::updateEntity);
+    EntityLifecycleEventDispatcher.getInstance().onEntitiesUpdated(updatedTestCases, null, null);
+    updatedTestCases.forEach(RdfUpdater::updateEntity);
   }
 
   @Override
