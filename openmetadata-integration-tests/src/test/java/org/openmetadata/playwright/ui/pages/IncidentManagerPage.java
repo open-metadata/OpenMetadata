@@ -98,6 +98,65 @@ public final class IncidentManagerPage extends PageObject {
     return text == null ? "" : text.trim();
   }
 
+  /**
+   * Assign an incident to {@code userName} (lowercased — matches the user testid in the
+   * search popover). Triggered from the status chip on the incident-manager list page:
+   * status → "Assigned" → search user → click → submit. Mirrors {@code assignIncident}
+   * in the TS spec.
+   */
+  public IncidentManagerPage assignIncident(
+      final String testCaseName, final String userName, final String userDisplayName) {
+    page.locator("[data-testid='" + testCaseName + "-status']").click();
+    byTestId("status-item-Assigned").click();
+    byTestId(testCaseName + "-assignee-popover")
+        .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+    byTestId("assignee-search-input").click();
+    page.waitForResponse(
+        r -> r.url().contains("/api/v1/search/query") && r.url().contains("index=user"),
+        () -> page.locator("[data-testid='assignee-search-input'] input").fill(userDisplayName));
+    page.locator("[data-testid='" + userName.toLowerCase() + "']").click();
+    page.waitForResponse(
+        r -> r.url().matches(API_INCIDENT_STATUS_REGEX) || r.url().matches(API_TASK_RESOLVE_REGEX),
+        () -> byTestId("submit-assignee-popover-button").click());
+    waitForStatusText(testCaseName, "Assigned");
+    return this;
+  }
+
+  /**
+   * Resolve an incident from the list page: status → "Resolved" → choose
+   * {@code MissingData} reason chip → fill comment → submit. Mirrors the simpler
+   * resolve path in {@code IncidentManager.spec.ts → "Resolve task from incident list page"}.
+   */
+  public IncidentManagerPage resolveIncident(final String testCaseName, final String comment) {
+    page.locator("[data-testid='" + testCaseName + "-status']").click();
+    byTestId("status-item-Resolved").click();
+    byTestId("reason-chip-MissingData").click();
+    byTestId("resolved-comment-textarea").click();
+    page.locator("[data-testid='resolved-comment-textarea'] textarea").first().fill(comment);
+    page.waitForResponse(
+        r -> r.url().matches(API_INCIDENT_STATUS_REGEX) || r.url().matches(API_TASK_RESOLVE_REGEX),
+        () -> byTestId("submit-resolved-popover-button").click());
+    waitForStatusText(testCaseName, "Resolved");
+    return this;
+  }
+
+  /**
+   * Block until the status badge for the named test case shows {@code expectedText}.
+   * Necessary because the API response and the badge re-render are not synchronous —
+   * reading {@code statusForTestCase} immediately after a mutation can catch the
+   * pre-mutation text.
+   */
+  public IncidentManagerPage waitForStatusText(
+      final String testCaseName, final String expectedText) {
+    PlaywrightAssertions.assertThat(
+            page.locator("[data-testid='" + testCaseName + "-status']").first())
+        .containsText(
+            expectedText,
+            new com.microsoft.playwright.assertions.LocatorAssertions.ContainsTextOptions()
+                .setTimeout(30_000));
+    return this;
+  }
+
   @Override
   protected void waitForLoaded() {
     incidentTable().waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
