@@ -118,7 +118,9 @@ export const ActivityFeedTab = ({
     tab: EntityTabs;
     subTab: ActivityFeedTabs;
   }>();
-  const [taskFilter, setTaskFilter] = useState<TaskStatusGroup>('open');
+  const [taskFilter, setTaskFilter] = useState<TaskStatusGroup>(
+    TaskStatusGroup.Open
+  );
   const [isFullWidth, setIsFullWidth] = useState<boolean>(false);
   const [countData, setCountData] = useState<{
     loading: boolean;
@@ -209,6 +211,17 @@ export const ActivityFeedTab = ({
           {t('message.no-mentions')}
         </Typography.Text>
       );
+    } else if (taskFilter === TaskStatusGroup.Closed) {
+      return (
+        <div className="d-flex flex-col gap-4">
+          <Typography.Text className="placeholder-title">
+            {t('message.no-closed-tasks-title')}
+          </Typography.Text>
+          <Typography.Text className="placeholder-text">
+            {t('message.no-closed-tasks-description')}
+          </Typography.Text>
+        </div>
+      );
     } else {
       return (
         <div className="d-flex flex-col gap-4">
@@ -221,7 +234,7 @@ export const ActivityFeedTab = ({
         </div>
       );
     }
-  }, [activeTab]);
+  }, [activeTab, taskFilter, t]);
 
   const handleFeedCount = useCallback(
     (data: FeedCounts) => {
@@ -294,7 +307,8 @@ export const ActivityFeedTab = ({
         activeTab === ActivityFeedTabs.ALL
           ? ThreadType.Conversation
           : undefined,
-      feedFilter: activeTab === 'mentions' ? FeedFilter.MENTIONS : filter,
+      feedFilter:
+        activeTab === ActivityFeedTabs.MENTIONS ? FeedFilter.MENTIONS : filter,
     };
   }, [activeTab, isAdminUser, currentUser, fqn, isUserEntity]);
 
@@ -474,16 +488,16 @@ export const ActivityFeedTab = ({
   const taskFilterOptions = useMemo(
     () => [
       {
-        key: 'open',
+        key: TaskStatusGroup.Open,
         label: (
           <div
             className={classNames(
               'flex items-center justify-between px-4 py-2 gap-2',
-              { active: taskFilter === 'open' }
+              { active: taskFilter === TaskStatusGroup.Open }
             )}
             data-testid="open-tasks">
             <div className="flex items-center space-x-2">
-              {taskFilter === 'open' ? (
+              {taskFilter === TaskStatusGroup.Open ? (
                 <TaskOpenIcon
                   className="m-r-xs"
                   {...ICON_DIMENSION_USER_PAGE}
@@ -493,14 +507,14 @@ export const ActivityFeedTab = ({
               )}
               <span
                 className={classNames('task-tab-filter-item', {
-                  selected: taskFilter === 'open',
+                  selected: taskFilter === TaskStatusGroup.Open,
                 })}>
                 {t('label.open')}
               </span>
             </div>
             <span
               className={classNames('task-count-container d-flex flex-center', {
-                active: taskFilter === 'open',
+                active: taskFilter === TaskStatusGroup.Open,
               })}>
               <span className="task-count-text">
                 {countData?.data?.openTaskCount}
@@ -509,21 +523,21 @@ export const ActivityFeedTab = ({
           </div>
         ),
         onClick: () => {
-          handleUpdateTaskFilter('open');
+          handleUpdateTaskFilter(TaskStatusGroup.Open);
           setActiveTask();
         },
       },
       {
-        key: 'closed',
+        key: TaskStatusGroup.Closed,
         label: (
           <div
             className={classNames(
               'flex items-center justify-between px-4 py-2 gap-2',
-              { active: taskFilter === 'closed' }
+              { active: taskFilter === TaskStatusGroup.Closed }
             )}
             data-testid="closed-tasks">
             <div className="flex items-center space-x-2">
-              {taskFilter === 'closed' ? (
+              {taskFilter === TaskStatusGroup.Closed ? (
                 <TaskCloseIconBlue
                   className="m-r-xs"
                   {...ICON_DIMENSION_USER_PAGE}
@@ -536,14 +550,14 @@ export const ActivityFeedTab = ({
               )}
               <span
                 className={classNames('task-tab-filter-item', {
-                  selected: taskFilter === 'closed',
+                  selected: taskFilter === TaskStatusGroup.Closed,
                 })}>
                 {t('label.closed')}
               </span>
             </div>
             <span
               className={classNames('task-count-container d-flex flex-center', {
-                active: taskFilter === 'closed',
+                active: taskFilter === TaskStatusGroup.Closed,
               })}>
               <span className="task-count-text">
                 {countData?.data?.closedTaskCount}
@@ -552,7 +566,7 @@ export const ActivityFeedTab = ({
           </div>
         ),
         onClick: () => {
-          handleUpdateTaskFilter('closed');
+          handleUpdateTaskFilter(TaskStatusGroup.Closed);
           setActiveTask();
         },
       },
@@ -564,7 +578,6 @@ export const ActivityFeedTab = ({
     return (
       <Segmented
         className="task-toggle"
-        defaultValue={ActivityFeedTabs.TASKS}
         options={[
           {
             label: (
@@ -585,6 +598,7 @@ export const ActivityFeedTab = ({
             value: ActivityFeedTabs.MENTIONS,
           },
         ]}
+        value={activeTab}
         onChange={(value) => handleTabChange(value as ActivityFeedTabs)}
       />
     );
@@ -739,7 +753,9 @@ export const ActivityFeedTab = ({
                   </Space>
                   <span data-testid="left-panel-task-count">
                     {getCountBadge(
-                      countData?.data?.openTaskCount,
+                      taskFilter === TaskStatusGroup.Open
+                        ? countData?.data?.openTaskCount
+                        : countData?.data?.closedTaskCount,
                       '',
                       isTaskActiveTab
                     )}
@@ -787,7 +803,7 @@ export const ActivityFeedTab = ({
                   <span
                     className="text-xs font-medium"
                     style={{ lineHeight: 1 }}>
-                    {taskFilter === 'open'
+                    {taskFilter === TaskStatusGroup.Open
                       ? `${t('label.open')} (${
                           countData?.data?.openTaskCount ?? 0
                         })`
