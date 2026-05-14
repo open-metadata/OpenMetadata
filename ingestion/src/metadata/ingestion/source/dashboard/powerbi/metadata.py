@@ -740,7 +740,7 @@ class PowerbiSource(DashboardServiceSource):
                 else:
                     logger.warning(f"Unknown dataset type: {type(dataset)}, name: {dataset.name}")
                     continue
-                data_model_request = CreateDashboardDataModelRequest(
+                data_model_request = CreateDashboardDataModelRequest(  # pyright: ignore[reportCallIssue]
                     name=EntityName(dataset.id),
                     displayName=dataset.name,
                     description=(Markdown(dataset.description) if dataset.description else None),
@@ -752,11 +752,11 @@ class PowerbiSource(DashboardServiceSource):
                     owners=self.get_owner_ref(dashboard_details=dataset),
                     sourceUrl=SourceUrl(source_url),
                 )
-                yield Either(right=data_model_request)
+                yield Either(right=data_model_request)  # pyright: ignore[reportCallIssue]
                 self.register_record_datamodel(datamodel_request=data_model_request)
             except Exception as exc:
                 dataset_name = dataset.name or dataset.id or ""
-                yield Either(
+                yield Either(  # pyright: ignore[reportCallIssue]
                     left=StackTraceError(
                         name=dataset_name,
                         error=f"Error yielding Data Model [{dataset_name}]: {exc}",
