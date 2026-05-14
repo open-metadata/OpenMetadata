@@ -12,9 +12,9 @@
  */
 
 import { List, Space, Typography } from 'antd';
-import { FC, useMemo } from 'react';
+import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
 import { TaskType, ThreadType } from '../../generated/entity/feed/thread';
 import {
@@ -40,7 +40,18 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
   isConversationFeed = false,
 }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { task: taskDetails } = task ?? {};
+
+  const handleTaskLinkClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      navigate(getTaskDetailPath(task), {
+        state: { tasksRefreshKey: Date.now() },
+      });
+    },
+    [navigate, task]
+  );
 
   const taskContent = useMemo(() => {
     if (task.task?.type === TaskType.RequestApproval) {
@@ -57,7 +68,8 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
               task?.entityRef?.fullyQualifiedName ?? '',
               task?.entityRef?.type as EntityType,
               task?.entityRef as SourceType
-            )}>
+            )}
+          >
             <span className="m-r-xss">{task?.entityRef?.displayName}</span>
           </Link>
           <span>{t('label.of-lowercase')}</span>
@@ -66,7 +78,8 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
               Fqn.split(task?.entityRef?.fullyQualifiedName ?? '')[0],
               task?.entityRef?.type as EntityType,
               task?.entityRef as SourceType
-            )}>
+            )}
+          >
             <span className="m-l-xss">
               {Fqn.split(task?.entityRef?.fullyQualifiedName ?? '')[0]}
             </span>
@@ -80,12 +93,18 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
         <span className="p-x-xss">
           {t('message.assigned-you-a-new-task-lowercase')}
         </span>
-        <Link to={getTaskDetailPath(task)}>
+        <Link
+          to={getTaskDetailPath(task)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleTaskLinkClick(e);
+          }}
+        >
           {`#${taskDetails?.id}`} {taskDetails?.type}
         </Link>
       </>
     );
-  }, [entityType, task, taskDetails]);
+  }, [entityType, task, taskDetails, handleTaskLinkClick]);
 
   const entityName = useMemo(() => {
     return task?.entityRef
@@ -100,7 +119,9 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
         isConversationFeed
           ? prepareFeedLink(entityType, entityFQN, ActivityFeedTabs.ALL)
           : getTaskDetailPath(task)
-      }>
+      }
+      onClick={!isConversationFeed ? handleTaskLinkClick : undefined}
+    >
       <List.Item.Meta
         avatar={<ProfilePicture name={createdBy} width="32" />}
         className="m-0"
@@ -108,10 +129,12 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
           <Space
             data-testid={`notification-item-${entityName}`}
             direction="vertical"
-            size={0}>
+            size={0}
+          >
             <Typography.Paragraph
               className="m-0"
-              style={{ color: '#37352F', marginBottom: 0 }}>
+              style={{ color: '#37352F', marginBottom: 0 }}
+            >
               <>{createdBy}</>
               {feedType === ThreadType.Conversation ? (
                 <>
@@ -124,7 +147,8 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
                       entityType,
                       entityFQN,
                       ActivityFeedTabs.ALL
-                    )}>
+                    )}
+                  >
                     {entityName}
                   </Link>
                 </>
@@ -134,7 +158,8 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
             </Typography.Paragraph>
             <Typography.Text
               style={{ color: '#6B7280', marginTop: '8px', fontSize: '12px' }}
-              title={formatDateTime(timestamp)}>
+              title={formatDateTime(timestamp)}
+            >
               {getRelativeTime(timestamp)}
             </Typography.Text>
           </Space>
