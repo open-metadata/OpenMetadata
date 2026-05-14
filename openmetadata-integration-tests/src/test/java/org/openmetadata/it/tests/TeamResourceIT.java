@@ -1564,6 +1564,21 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
         "User should be detached when dryRun is omitted (default destructive)");
   }
 
+  @Test
+  void test_bulkAssets_omittedAssets_returnsNothingToValidate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team team = createTeam(ns, "no_assets");
+
+    String rawBody = "{\"dryRun\":true}";
+    String path = "/v1/teams/" + team.getName() + "/assets/remove";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, rawBody, BulkOperationResult.class);
+
+    assertNotNull(result, "Request with omitted assets must not NPE");
+    assertEquals(0, result.getNumberOfRowsProcessed());
+    assertEquals(0, result.getNumberOfRowsPassed());
+  }
+
   private Team createTeam(TestNamespace ns, String suffix) {
     return SdkClients.adminClient()
         .teams()

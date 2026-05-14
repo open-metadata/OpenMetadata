@@ -6533,6 +6533,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(dryRun);
     List<BulkResponse> success = new ArrayList<>();
+
+    if (nullOrEmpty(request.getAssets())) {
+      // Nothing to Validate — schema marks assets optional, so a request without it is valid
+      return result.withSuccessRequest(
+          List.of(new BulkResponse().withMessage("Nothing to Validate.")));
+    }
+
     // Validate Assets
     EntityUtil.populateEntityReferences(request.getAssets());
 
