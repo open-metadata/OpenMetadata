@@ -38,7 +38,7 @@ import {
   CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
   createArticleKnowledgePage,
   fetchContextCenterDocuments,
-  handleDownload,
+  handleAssetDownload,
   knowledgePageToArticleItem,
 } from '../../../utils/ContextCenterUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -163,7 +163,7 @@ const ContextCenterDashboardPage: FC = () => {
         <UploadedDocumentsSection
           documents={documents}
           isLoading={isDocumentsLoading}
-          onDownload={handleDownload}
+          onDownload={handleAssetDownload}
           onViewAll={() => navigate(ROUTES.CONTEXT_CENTER_DOCUMENTS)}
         />
       </div>

@@ -167,7 +167,7 @@ export const createArticleKnowledgePage = async (
   }
 };
 
-export const handleDownload = async (file: DocFile) => {
+export const handleAssetDownload = async (file: DocFile) => {
   try {
     const blob = await downloadAsset(file.id);
     const url = URL.createObjectURL(blob);

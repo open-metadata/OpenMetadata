@@ -11,19 +11,27 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
+import { AxiosError } from 'axios';
 import { ROUTES } from 'constants/constants';
 import { Asset } from 'generated/attachments/asset';
 import { PageType } from 'interface/knowledge-center.interface';
+import { downloadAsset } from 'rest/assetAPI';
 import {
   assetToDocumentItem,
   extensionToFileType,
   formatBytes,
   getFileTypeIcon,
+  handleAssetDownload,
   knowledgePageToArticleItem,
 } from './ContextCenterUtils';
+import { showErrorToast } from './ToastUtils';
 
 jest.mock('./ToastUtils', () => ({
   showErrorToast: jest.fn(),
+}));
+
+jest.mock('../rest/assetAPI', () => ({
+  downloadAsset: jest.fn(),
 }));
 
 jest.mock('./KnowledgePageUtils', () => ({
@@ -152,5 +160,61 @@ describe('getFileTypeIcon', () => {
 
   it('should render icon component for pdf type', () => {
     expect(getFileTypeIcon('pdf')).toBeTruthy();
+  });
+});
+
+describe('handleAssetDownload', () => {
+  const mockFile = {
+    id: '123',
+    name: 'sample.pdf',
+  };
+
+  const mockBlob = new Blob(['test'], { type: 'application/pdf' });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    global.URL.createObjectURL = jest.fn(() => 'blob:url');
+    global.URL.revokeObjectURL = jest.fn();
+  });
+
+  it('should download asset successfully', async () => {
+    (downloadAsset as jest.Mock).mockResolvedValue(mockBlob);
+
+    const clickMock = jest.fn();
+    const removeMock = jest.fn();
+
+    const appendChildSpy = jest
+      .spyOn(document.body, 'appendChild')
+      .mockImplementation(() => ({}) as unknown as Node);
+
+    jest.spyOn(document, 'createElement').mockReturnValue({
+      click: clickMock,
+      remove: removeMock,
+    } as unknown as HTMLAnchorElement);
+
+    await handleAssetDownload(mockFile as any);
+
+    expect(downloadAsset).toHaveBeenCalledWith('123');
+
+    expect(URL.createObjectURL).toHaveBeenCalledWith(mockBlob);
+
+    expect(appendChildSpy).toHaveBeenCalled();
+
+    expect(clickMock).toHaveBeenCalled();
+
+    expect(removeMock).toHaveBeenCalled();
+
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:url');
+  });
+
+  it('should show error toast when download fails', async () => {
+    const error = new Error('Download failed');
+
+    (downloadAsset as jest.Mock).mockRejectedValue(error);
+
+    await handleAssetDownload(mockFile as any);
+
+    expect(showErrorToast).toHaveBeenCalledWith(error as AxiosError);
   });
 });

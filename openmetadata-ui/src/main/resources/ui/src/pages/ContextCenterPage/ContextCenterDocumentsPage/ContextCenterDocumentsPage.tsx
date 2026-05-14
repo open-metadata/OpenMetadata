@@ -31,7 +31,7 @@ import {
   assetToDocumentItem,
   CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
   fetchContextCenterDocuments,
-  handleDownload,
+  handleAssetDownload,
 } from '../../../utils/ContextCenterUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -153,7 +153,7 @@ const ContextCenterDocumentsPage: FC = () => {
           data={documents}
           isLoading={isDocumentsLoading}
           onDeleteFile={handleDeleteFile}
-          onDownload={handleDownload}
+          onDownload={handleAssetDownload}
         />
       </div>
 
