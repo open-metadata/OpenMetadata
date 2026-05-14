@@ -500,7 +500,6 @@ class PowerbiSource(DashboardServiceSource):
                         if filter_by_chart(self.source_config.chartFilterPattern, chart_display_name):
                             self.status.filter(chart_display_name, "Chart Pattern not Allowed")
                             continue
-                        self.state.add_dashboard_chart(dashboard_details.id, chart.id)
                         chart_request = CreateChartRequest(
                             name=EntityName(chart.id),
                             displayName=chart_display_name,
@@ -515,6 +514,7 @@ class PowerbiSource(DashboardServiceSource):
                             service=FullyQualifiedEntityName(self.context.get().dashboard_service),  # pyright: ignore[reportAttributeAccessIssue]
                         )
                         yield Either(right=chart_request)
+                        self.state.add_dashboard_chart(dashboard_details.id, chart.id)
                         self.register_record_chart(chart_request=chart_request)
                     except Exception as exc:
                         yield Either(
@@ -1489,7 +1489,7 @@ class PowerbiSource(DashboardServiceSource):
                     if table_entity and datamodel_entity:
                         logger.debug(
                             "Creating lineage between db table=%s and datamodel=%s",
-                            table_entity.name.root,
+                            table_entity.name.root,  # pyright: ignore[reportAttributeAccessIssue]
                             datamodel_entity.name.root,
                         )
                         columns_list = [column.name for column in table.columns if column.name]
