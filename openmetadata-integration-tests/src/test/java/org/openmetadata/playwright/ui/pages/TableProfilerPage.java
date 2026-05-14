@@ -68,6 +68,72 @@ public final class TableProfilerPage extends PageObject {
     return this;
   }
 
+  /**
+   * Open the profiler settings modal via the gear button. Settings access lives on the
+   * Data Quality sub-tab, so we navigate there first.
+   */
+  public TableProfilerPage openSettingsModal() {
+    page.getByRole(AriaRole.TAB, new Page.GetByRoleOptions().setName("Data Quality")).click();
+    byTestId("profiler-setting-btn").click();
+    byTestId("profiler-settings-modal")
+        .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+    return this;
+  }
+
+  /** Set the profile sample (slider input) — the value is a percentage. */
+  public TableProfilerPage setProfileSample(final String pct) {
+    byTestId("slider-input").clear();
+    byTestId("slider-input").fill(pct);
+    return this;
+  }
+
+  /** Set the sampleDataCount input. */
+  public TableProfilerPage setSampleDataCount(final String count) {
+    byTestId("sample-data-count-input").clear();
+    byTestId("sample-data-count-input").fill(count);
+    return this;
+  }
+
+  /** Add an exclude-column entry by typing the column name + Enter. */
+  public TableProfilerPage addExcludeColumn(final String columnName) {
+    byTestId("exclude-column-select").click();
+    page.keyboard().type(columnName);
+    page.keyboard().press("Enter");
+    return this;
+  }
+
+  /** Save settings — awaits the {@code /tableProfilerConfig} PUT response. */
+  public TableProfilerPage saveSettings() {
+    page.waitForResponse(
+        r -> r.url().contains("/tableProfilerConfig") && r.request().method().equals("PUT"),
+        () -> page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Save")).click());
+    byTestId("profiler-settings-modal")
+        .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.DETACHED));
+    return this;
+  }
+
+  /**
+   * Read the slider input value (profile sample %) from the OPEN settings modal,
+   * stripping the trailing {@code %} the UI appends on display.
+   */
+  public String readProfileSample() {
+    final String raw = byTestId("slider-input").inputValue();
+    return raw == null ? null : raw.replace("%", "").trim();
+  }
+
+  /** Read the sample-data-count input value from the OPEN settings modal. */
+  public String readSampleDataCount() {
+    return byTestId("sample-data-count-input").inputValue();
+  }
+
+  /** Close the settings modal via Cancel. */
+  public TableProfilerPage cancelSettings() {
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Cancel")).click();
+    byTestId("profiler-settings-modal")
+        .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.DETACHED));
+    return this;
+  }
+
   /** Asserts all four column-profile chart widgets are rendered. */
   public TableProfilerPage assertChartsVisible() {
     final LocatorAssertions.IsVisibleOptions opts =
