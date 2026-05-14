@@ -17,7 +17,6 @@ import json
 import re
 import string
 from typing import Any, Dict, Optional, Type, TypeVar, Union  # noqa: UP035
-from urllib.parse import quote as url_quote
 
 from pydantic import BaseModel
 from requests.utils import quote as url_quote  # pyright: ignore[reportPrivateImportUsage]
