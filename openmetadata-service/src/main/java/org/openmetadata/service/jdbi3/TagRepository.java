@@ -363,15 +363,6 @@ public class TagRepository extends EntityRepository<Tag> {
     // Validation for entityReferences
     EntityUtil.populateEntityReferences(request.getAssets());
 
-    if (dryRun) {
-      for (EntityReference ref : request.getAssets()) {
-        result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
-        success.add(new BulkResponse().withRequest(ref));
-        result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
-      }
-      return result.withStatus(ApiStatus.SUCCESS).withSuccessRequest(success);
-    }
-
     TagLabel tagLabel =
         new TagLabel()
             .withTagFQN(tag.getFullyQualifiedName())
@@ -385,7 +376,7 @@ public class TagRepository extends EntityRepository<Tag> {
       // Handle column assets specially - columns don't have their own repository
       if (Entity.TABLE_COLUMN.equals(ref.getType())) {
         try {
-          addTagToColumn(ref, tagLabel, success, failures, result);
+          addTagToColumn(ref, tagLabel, dryRun, success, failures, result);
         } catch (Exception ex) {
           failures.add(new BulkResponse().withRequest(ref).withMessage(ex.getMessage()));
           result.withFailedRequest(failures);
@@ -414,8 +405,9 @@ public class TagRepository extends EntityRepository<Tag> {
         result.withFailedRequest(failures);
         result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
       }
-      // Validate and Store Tags
-      if (nullOrEmpty(result.getFailedRequest())) {
+      // Validate and Store Tags — skip the write side-effects on dryRun so the preview
+      // surfaces the same validation outcome a real call would without mutating state.
+      if (!dryRun && nullOrEmpty(result.getFailedRequest())) {
         List<TagLabel> tempList = new ArrayList<>(asset.getTags());
         tempList.add(tagLabel);
         // Apply Tags to Entities
@@ -447,6 +439,7 @@ public class TagRepository extends EntityRepository<Tag> {
   private void addTagToColumn(
       EntityReference columnRef,
       TagLabel tagLabel,
+      boolean dryRun,
       List<BulkResponse> success,
       List<BulkResponse> failures,
       BulkOperationResult result) {
@@ -479,7 +472,7 @@ public class TagRepository extends EntityRepository<Tag> {
         new ArrayList<>(Collections.singleton(tagLabel)),
         false);
 
-    if (nullOrEmpty(result.getFailedRequest())) {
+    if (!dryRun && nullOrEmpty(result.getFailedRequest())) {
       List<TagLabel> columnTags = new ArrayList<>(listOrEmpty(targetColumn.getTags()));
       columnTags.add(tagLabel);
       applyTags(getUniqueTags(columnTags), columnFqn);
