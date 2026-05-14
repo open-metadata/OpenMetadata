@@ -1,0 +1,45 @@
+@import (reference) '../../styles/variables.less';
+
+.prompt-input-container {
+  display: flex;
+  flex-direction: column;
+  background: @white;
+  border-radius: 32px;
+  border: 1px solid @border-color;
+  box-shadow: 0px 4px 6px -1px #0a0d121a;
+
+  .prompt-input-box {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 16px;
+    background: transparent;
+    padding: 8px 12px;
+
+    &:focus {
+      box-shadow: none;
+    }
+  }
+
+  .prompt-send-btn {
+    background: @blue-34;
+    color: @white;
+
+    .anticon {
+      transform: rotate(325deg);
+      font-size: 20px;
+      margin-left: 4px;
+      margin-bottom: 4px;
+    }
+  }
+
+  .prompt-stop-btn {
+    background: @blue-34;
+    color: @white;
+  }
+}
+
+.prompt-input-buttons {
+  display: flex;
+  gap: 8px;
+}
