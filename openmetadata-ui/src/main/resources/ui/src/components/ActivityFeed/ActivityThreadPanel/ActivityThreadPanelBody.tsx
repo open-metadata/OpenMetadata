@@ -32,7 +32,6 @@ import { useElementInView } from '../../../hooks/useElementInView';
 import { getAllFeeds } from '../../../rest/feedsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
@@ -55,7 +54,6 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   threadType,
 }) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<Thread>();
   const [selectedThreadId, setSelectedThreadId] = useState<string>('');
@@ -163,7 +161,6 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   const onPostThread = async (value: string) => {
     const data = {
       message: value,
-      from: currentUser?.name ?? '',
       about: threadLink,
     };
     await createThread(data);
@@ -250,7 +247,8 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           <Space
             align="center"
             className="w-full justify-end p-r-xs m-t-xs"
-            size={4}>
+            size={4}
+          >
             <Switch size="small" onChange={onSwitchChange} />
             <span>{t('label.closed-task-plural')}</span>
           </Space>
@@ -263,7 +261,8 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
               className="m-b-sm p-0"
               size="small"
               type="link"
-              onClick={onBack}>
+              onClick={onBack}
+            >
               {t('label.back')}
             </Button>
             <ActivityThread
@@ -294,7 +293,8 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                 {isTaskType && !isThreadLoading && (
                   <ErrorPlaceHolder
                     className="mt-24"
-                    type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                    type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
+                  >
                     <Typography.Paragraph>
                       {isTaskClosed
                         ? t('message.no-closed-task')
@@ -317,7 +317,8 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
             <div
               data-testid="observer-element"
               id="observer-element"
-              ref={elementRef as RefObject<HTMLDivElement>}>
+              ref={elementRef as RefObject<HTMLDivElement>}
+            >
               {getLoader()}
             </div>
           </Fragment>

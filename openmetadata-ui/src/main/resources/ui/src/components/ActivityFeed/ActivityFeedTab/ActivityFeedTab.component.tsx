@@ -299,13 +299,20 @@ export const ActivityFeedTab = ({
       isTaskActiveTab
     ) {
       processedRefreshKeyRef.current = refreshKey;
-      getTaskData(feedFilter, undefined, entityType, fqn, taskFilter);
+      getFeedData(
+        feedFilter,
+        undefined,
+        threadType,
+        entityType,
+        fqn,
+        taskFilter
+      );
     }
   }, [
     entityType,
     feedFilter,
     fqn,
-    getTaskData,
+    getFeedData,
     isTaskActiveTab,
     location.key,
     location.state,

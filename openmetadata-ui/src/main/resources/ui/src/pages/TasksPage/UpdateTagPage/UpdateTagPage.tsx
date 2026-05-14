@@ -37,7 +37,6 @@ import { Glossary } from '../../../generated/entity/data/glossary';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { withPageLayout } from '../../../hoc/withPageLayout';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
@@ -69,8 +68,6 @@ const UpdateTag = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [form] = useForm();
-  const { currentUser } = useApplicationStore();
-
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
 
   const { fqn } = useFqn();
@@ -150,7 +147,6 @@ const UpdateTag = () => {
   const onCreateTask: FormProps['onFinish'] = (value) => {
     setIsLoading(true);
     const data: CreateThread = {
-      from: currentUser?.name as string,
       message: value.title || taskMessage,
       about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
       taskDetails: {
@@ -242,7 +238,8 @@ const UpdateTag = () => {
             <div className="m-t-0 request-tags" key="update-tags">
               <Typography.Paragraph
                 className="text-base"
-                data-testid="form-title">
+                data-testid="form-title"
+              >
                 {t('label.create-entity', {
                   entity: t('label.task'),
                 })}
@@ -251,11 +248,13 @@ const UpdateTag = () => {
                 data-testid="form-container"
                 form={form}
                 layout="vertical"
-                onFinish={onCreateTask}>
+                onFinish={onCreateTask}
+              >
                 <Form.Item
                   data-testid="title"
                   label={`${t('label.title')}:`}
-                  name="title">
+                  name="title"
+                >
                   <Input
                     disabled
                     placeholder={t('label.task-entity', {
@@ -274,7 +273,8 @@ const UpdateTag = () => {
                         fieldText: t('label.assignee-plural'),
                       }),
                     },
-                  ]}>
+                  ]}
+                >
                   <Assignees
                     options={options}
                     value={assignees}
@@ -297,7 +297,8 @@ const UpdateTag = () => {
                           fieldText: t('label.tag-plural'),
                         }),
                       },
-                    ]}>
+                    ]}
+                  >
                     <TagsTabs
                       tags={currentTags}
                       value={suggestion}
@@ -310,7 +311,8 @@ const UpdateTag = () => {
                   <Space
                     className="w-full justify-end"
                     data-testid="cta-buttons"
-                    size={16}>
+                    size={16}
+                  >
                     <Button data-testid="cancel-btn" type="link" onClick={back}>
                       {t('label.back')}
                     </Button>
@@ -318,7 +320,8 @@ const UpdateTag = () => {
                       data-testid="submit-tag-request"
                       htmlType="submit"
                       loading={isLoading}
-                      type="primary">
+                      type="primary"
+                    >
                       {t('label.save')}
                     </Button>
                   </Space>
