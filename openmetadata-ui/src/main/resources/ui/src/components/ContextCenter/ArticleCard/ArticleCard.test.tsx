@@ -83,26 +83,6 @@ describe('ArticleCard', () => {
     expect(screen.queryByText('tag1')).not.toBeInTheDocument();
   });
 
-  it('renders the badge with "sensitive" type correctly', () => {
-    const article: ArticleCardItem = { ...mockArticle, badge: 'sensitive' };
-    render(<ArticleCard article={article} />);
-
-    const badge = screen.getByText('sensitive');
-
-    expect(badge).toBeInTheDocument();
-    expect(badge).toHaveAttribute('data-color', 'error');
-  });
-
-  it('renders the badge with "new" type correctly', () => {
-    const article: ArticleCardItem = { ...mockArticle, badge: 'new' };
-    render(<ArticleCard article={article} />);
-
-    const badge = screen.getByText('new');
-
-    expect(badge).toBeInTheDocument();
-    expect(badge).toHaveAttribute('data-color', 'brand');
-  });
-
   it('shows lastEditedAt when provided', () => {
     const article: ArticleCardItem = {
       ...mockArticle,

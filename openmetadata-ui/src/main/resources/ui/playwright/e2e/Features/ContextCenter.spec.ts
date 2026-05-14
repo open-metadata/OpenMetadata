@@ -455,7 +455,9 @@ test.describe('Context Center', () => {
         page.context().waitForEvent('page'),
         card.first().click(),
       ]);
-      await expect(newTab).toHaveURL(new RegExp(QUICK_LINK_URL));
+      await expect(newTab).toHaveURL(
+        new RegExp(`^${QUICK_LINK_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+      );
       await newTab.close();
     });
 
