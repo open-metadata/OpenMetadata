@@ -224,9 +224,7 @@ public class DataAccessRequestIT {
                       .tasks()
                       .resolve(
                           granted.getId().toString(),
-                          new ResolveTask()
-                              .withTransitionId("revoke")
-                              .withComment("revoking"));
+                          new ResolveTask().withTransitionId("revoke").withComment("revoking"));
               assertEquals(TaskEntityStatus.Revoked, r.getStatus());
               revokedRef.set(r);
             });
