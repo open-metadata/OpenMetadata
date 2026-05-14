@@ -17,6 +17,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -655,10 +656,13 @@ class RdfIndexAppTest {
         testApp.execute(context);
       }
 
-      verify(mockRdfRepository).clearAll();
       // CLEAR ALL wipes ontology/shapes graphs; clearRdfData() must reload them
-      // so post-wipe SPARQL queries that rely on the ontology keep working.
-      verify(mockRdfRepository).reloadOntologies();
+      // AFTER clearAll() so post-wipe SPARQL queries that rely on the ontology
+      // keep working. Use InOrder so this regression test still fails if a
+      // future change reorders the calls (a plain verify would pass either way).
+      InOrder clearThenReload = inOrder(mockRdfRepository);
+      clearThenReload.verify(mockRdfRepository).clearAll();
+      clearThenReload.verify(mockRdfRepository).reloadOntologies();
       assertEquals(EventPublisherJob.Status.COMPLETED, jobConfig.getStatus());
     }
 

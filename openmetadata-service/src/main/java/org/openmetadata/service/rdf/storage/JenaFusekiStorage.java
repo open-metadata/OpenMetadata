@@ -12,8 +12,10 @@ import java.nio.channels.ClosedChannelException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -43,6 +45,12 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
   private static final String METADATA_GRAPH = "https://open-metadata.org/graph/metadata";
 
+  // 2s caps TCP connect only. Once Fuseki accepts the connection, a stalled
+  // server can still hang the request — Jena's RDFConnection.update() doesn't
+  // expose a per-request timeout we can wire in cleanly. The circuit breaker
+  // below + the bounded pendingWrites gate in RdfUpdater contain the blast
+  // radius: after CIRCUIT_BREAKER_FAILURE_THRESHOLD slow/failed calls the
+  // breaker trips and short-circuits subsequent traffic for the cooldown.
   private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(2);
   private static final int CIRCUIT_BREAKER_FAILURE_THRESHOLD = 5;
   private static final long CIRCUIT_BREAKER_COOLDOWN_MS = 30_000L;
@@ -308,8 +316,20 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   public void storeEntity(String entityType, UUID entityId, Model entityModel) {
     throwIfCircuitOpen("storeEntity");
     String entityUri = baseUri + "entity/" + entityType + "/" + entityId;
+    // Refresh literal-valued triples (name, description, tags, etc.) from the
+    // translator, but preserve URI-valued triples — those are inter-entity edges
+    // (om:hasOwner, om:belongsToDatabase, om:UPSTREAM, om:hasLineageDetails, …)
+    // that are managed by add/removeRelationship and add/removeLineage hooks,
+    // not by the translator. A metadata-only update (e.g. PATCH description)
+    // doesn't fire relationship hooks, so a blanket DELETE-then-LOAD here would
+    // wipe relationships until the next weekly recreate-index. Filtering on
+    // !isIRI(?o) keeps every URI object intact; relationship lifecycle is owned
+    // by the dedicated hooks, and the LOAD that follows re-adds the translator's
+    // URI-typed triples (rdf:type, etc.) idempotently under RDF set semantics.
     String deleteQuery =
-        String.format("DELETE WHERE { GRAPH <%s> { <%s> ?p ?o } }", KNOWLEDGE_GRAPH, entityUri);
+        String.format(
+            "DELETE { GRAPH <%s> { <%s> ?p ?o } } WHERE { GRAPH <%s> { <%s> ?p ?o . FILTER(!isIRI(?o)) } }",
+            KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri);
 
     int maxRetries = 3;
     int retryCount = 0;
@@ -467,7 +487,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     // batch. This ensures relationships that USED to exist for the source but
     // are no longer in the batch get removed — the original implementation only
     // deleted the exact triples in the new batch, so stale edges accumulated.
-    java.util.Set<String> distinctSources = new java.util.LinkedHashSet<>();
+    Set<String> distinctSources = new LinkedHashSet<>();
     for (RelationshipData rel : relationships) {
       distinctSources.add(baseUri + "entity/" + rel.getFromType() + "/" + rel.getFromId());
     }
@@ -512,21 +532,15 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
     insertData.append("} }");
 
+    // DELETE WHERE on a source with no prior edges is a no-op, not an error,
+    // so we no longer swallow non-connect exceptions here — malformed SPARQL,
+    // authorization failures, or server-side update errors should fail the
+    // batch loudly instead of letting the insert proceed against an
+    // unreconciled graph.
     try {
       if (deleteUpdate.length() > 0) {
-        try {
-          UpdateRequest deleteRequest = UpdateFactory.create(deleteUpdate.toString());
-          connection.update(deleteRequest);
-        } catch (Exception e) {
-          if (isConnectError(e)) {
-            recordFailure();
-            throw new RuntimeException(
-                "Failed to bulk store relationships in RDF (Fuseki unreachable)", e);
-          }
-          // Tolerate non-connect delete errors — the source entities may not
-          // have any prior outgoing edges yet (first-time indexing).
-          LOG.debug("Per-source delete completed (some sources may not have had prior edges)");
-        }
+        UpdateRequest deleteRequest = UpdateFactory.create(deleteUpdate.toString());
+        connection.update(deleteRequest);
       }
 
       UpdateRequest insertRequest = UpdateFactory.create(insertData.toString());

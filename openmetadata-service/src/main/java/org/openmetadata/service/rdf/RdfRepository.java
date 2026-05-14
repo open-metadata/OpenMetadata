@@ -8,6 +8,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -34,6 +35,25 @@ import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 public class RdfRepository {
 
   private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
+
+  // Default predicate URIs that bulkAddGlossaryTermRelations may write when
+  // GlossaryTermRelationSettings doesn't override them. Kept in sync with
+  // getGlossaryTermRelationPredicate's switch arms (om:* and skos:*); used by
+  // clearAllGlossaryTermRelations as the floor of what to scrub.
+  private static final Set<String> DEFAULT_GLOSSARY_TERM_RELATION_PREDICATES =
+      Set.of(
+          "https://open-metadata.org/ontology/relatedTo",
+          "https://open-metadata.org/ontology/synonym",
+          "https://open-metadata.org/ontology/typeOf",
+          "https://open-metadata.org/ontology/hasTypes",
+          "https://open-metadata.org/ontology/componentOf",
+          "https://open-metadata.org/ontology/composedOf",
+          "https://open-metadata.org/ontology/calculatedFrom",
+          "https://open-metadata.org/ontology/usedToCalculate",
+          "https://open-metadata.org/ontology/seeAlso",
+          "http://www.w3.org/2004/02/skos/core#broader",
+          "http://www.w3.org/2004/02/skos/core#narrower",
+          "http://www.w3.org/2004/02/skos/core#related");
 
   private final RdfConfiguration config;
   private final RdfStorageInterface storageService;
@@ -75,16 +95,21 @@ public class RdfRepository {
   // that depend on the ontology don't break. Unlike loadOntologies() this skips
   // the "already loaded" guard — areOntologiesLoaded() would return false right
   // after a CLEAR, but we want to unconditionally reload.
+  //
+  // OntologyLoader.loadOntologies swallows its own exceptions, so we verify via
+  // areOntologiesLoaded() afterwards and throw on failure. Otherwise callers
+  // would silently proceed against an empty ontology graph.
   public void reloadOntologies() {
     if (!isEnabled()) {
       return;
     }
-    try {
-      new OntologyLoader(this).loadOntologies();
-      LOG.info("Reloaded OpenMetadata ontologies into RDF store");
-    } catch (Exception e) {
-      LOG.error("Failed to reload ontologies", e);
+    OntologyLoader loader = new OntologyLoader(this);
+    loader.loadOntologies();
+    if (!loader.areOntologiesLoaded()) {
+      throw new RuntimeException(
+          "Failed to reload ontologies into RDF store; ontology graph is still empty after load");
     }
+    LOG.info("Reloaded OpenMetadata ontologies into RDF store");
   }
 
   public static void initialize(RdfConfiguration config) {
@@ -283,6 +308,55 @@ public class RdfRepository {
       case "processedby" -> model.createProperty("http://www.w3.org/ns/prov#", "wasGeneratedBy");
       default -> model.createProperty("https://open-metadata.org/ontology/", relationshipType);
     };
+  }
+
+  // Source-entity reference used for reconciling outgoing entity-to-entity edges.
+  // Carries just the (type, id) tuple needed to build an entity URI; we avoid
+  // reusing EntityReference here because callers (RdfBatchProcessor) only have
+  // those two fields after a batch fetch and we don't want to populate the rest.
+  public record EntitySourceRef(String entityType, UUID entityId) {}
+
+  // Clear outgoing entity-to-entity URI edges (e.g. om:hasOwner, om:contains)
+  // for the given sources, EXCEPT lineage predicates (om:UPSTREAM /
+  // prov:wasDerivedFrom) which are managed separately by addLineageWithDetails.
+  // Used by RdfBatchProcessor before bulkAddRelationships to reconcile entities
+  // whose last outgoing relationship was removed — those produce zero
+  // RelationshipData entries, so bulkStoreRelationships' per-source DELETE
+  // would otherwise skip them and the stale edges would persist.
+  public void clearOutgoingEntityRelationships(Set<EntitySourceRef> sources) {
+    if (!isEnabled() || sources == null || sources.isEmpty()) {
+      return;
+    }
+    String base = config.getBaseUri().toString();
+    StringBuilder update = new StringBuilder();
+    boolean first = true;
+    for (EntitySourceRef ref : sources) {
+      if (!first) {
+        update.append("; ");
+      }
+      first = false;
+      String sourceUri = base + "entity/" + ref.entityType() + "/" + ref.entityId();
+      update
+          .append("DELETE { GRAPH <")
+          .append(KNOWLEDGE_GRAPH)
+          .append("> { <")
+          .append(sourceUri)
+          .append("> ?p ?o } } WHERE { GRAPH <")
+          .append(KNOWLEDGE_GRAPH)
+          .append("> { <")
+          .append(sourceUri)
+          .append("> ?p ?o . FILTER(isIRI(?o) && STRSTARTS(STR(?o), \"")
+          .append(base)
+          .append(
+              "entity/\") && ?p != <https://open-metadata.org/ontology/UPSTREAM> && ?p != <http://www.w3.org/ns/prov#wasDerivedFrom>) } }");
+    }
+    try {
+      storageService.executeSparqlUpdate(update.toString());
+      LOG.debug("Cleared outgoing entity-to-entity edges for {} sources", sources.size());
+    } catch (Exception e) {
+      LOG.error("Failed to clear outgoing entity-to-entity edges", e);
+      throw new RuntimeException("Failed to clear outgoing entity-to-entity edges", e);
+    }
   }
 
   public void bulkAddRelationships(List<EntityRelationship> relationships) {
@@ -604,11 +678,21 @@ public class RdfRepository {
               + relationship.getToEntity()
               + "/"
               + relationship.getToId();
+      // Relationships are written to the knowledge graph (see storeRelationship
+      // / bulkStoreRelationships / addRelationship) so the DELETE must target
+      // the same named graph. A bare DELETE in the default graph never matched
+      // any of the stored triples and removeRelationship was effectively a
+      // no-op. Also use getRelationshipPredicate so the predicate URI matches
+      // exactly what addRelationship wrote (e.g. UPSTREAM → prov:wasDerivedFrom),
+      // not a naive "<baseUri>ontology/<relationshipType>" concat.
+      Model tempModel = ModelFactory.createDefaultModel();
       String predicateUri =
-          config.getBaseUri().toString() + "ontology/" + relationship.getRelationshipType().value();
+          getRelationshipPredicate(relationship.getRelationshipType().value(), tempModel).getURI();
 
       String sparqlUpdate =
-          String.format("DELETE WHERE { <%s> <%s> <%s> }", fromUri, predicateUri, toUri);
+          String.format(
+              "DELETE WHERE { GRAPH <%s> { <%s> <%s> <%s> } }",
+              KNOWLEDGE_GRAPH, fromUri, predicateUri, toUri);
 
       storageService.executeSparqlUpdate(sparqlUpdate);
       LOG.debug("Removed relationship {} from RDF store", relationship);
@@ -2451,7 +2535,40 @@ public class RdfRepository {
     }
 
     try {
-      // Delete all triples where a glossaryTerm has any relation to another glossaryTerm
+      // The IN list must cover every predicate that could have been written by
+      // bulkAddGlossaryTermRelations / addGlossaryTermRelation. Those paths
+      // consult GlossaryTermRelationSettings to override the default URIs, so
+      // pulling that settings list here keeps the cleanup in sync with what
+      // was actually inserted. Without it, custom predicates would leak past
+      // the cleanup and accumulate across reindex runs.
+      Set<String> predicateUris = new LinkedHashSet<>(DEFAULT_GLOSSARY_TERM_RELATION_PREDICATES);
+      try {
+        org.openmetadata.schema.configuration.GlossaryTermRelationSettings settings =
+            org.openmetadata.service.resources.settings.SettingsCache.getSetting(
+                org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS,
+                org.openmetadata.schema.configuration.GlossaryTermRelationSettings.class);
+        if (settings != null && settings.getRelationTypes() != null) {
+          for (var configuredType : settings.getRelationTypes()) {
+            java.net.URI rdfPredicate = configuredType.getRdfPredicate();
+            if (rdfPredicate != null) {
+              predicateUris.add(expandPredicateCurie(rdfPredicate.toString()));
+            }
+          }
+        }
+      } catch (Exception e) {
+        LOG.debug("Could not load GlossaryTermRelationSettings for cleanup", e);
+      }
+
+      StringBuilder filterIn = new StringBuilder();
+      boolean first = true;
+      for (String predicateUri : predicateUris) {
+        if (!first) {
+          filterIn.append(", ");
+        }
+        first = false;
+        filterIn.append('<').append(predicateUri).append('>');
+      }
+
       String deleteQuery =
           String.format(
               "DELETE WHERE { "
@@ -2459,28 +2576,19 @@ public class RdfRepository {
                   + "?term1 ?relationType ?term2 . "
                   + "FILTER(CONTAINS(STR(?term1), '/glossaryTerm/')) "
                   + "FILTER(CONTAINS(STR(?term2), '/glossaryTerm/')) "
-                  + "FILTER(?relationType IN ("
-                  + "  <https://open-metadata.org/ontology/relatedTo>, "
-                  + "  <https://open-metadata.org/ontology/synonym>, "
-                  + "  <https://open-metadata.org/ontology/typeOf>, "
-                  + "  <https://open-metadata.org/ontology/hasTypes>, "
-                  + "  <https://open-metadata.org/ontology/componentOf>, "
-                  + "  <https://open-metadata.org/ontology/composedOf>, "
-                  + "  <https://open-metadata.org/ontology/calculatedFrom>, "
-                  + "  <https://open-metadata.org/ontology/usedToCalculate>, "
-                  + "  <https://open-metadata.org/ontology/seeAlso>, "
-                  + "  <http://www.w3.org/2004/02/skos/core#broader>, "
-                  + "  <http://www.w3.org/2004/02/skos/core#narrower>, "
-                  + "  <http://www.w3.org/2004/02/skos/core#related>"
-                  + ")) "
+                  + "FILTER(?relationType IN (%s)) "
                   + "} "
                   + "}",
-              KNOWLEDGE_GRAPH);
+              KNOWLEDGE_GRAPH, filterIn);
 
       storageService.executeSparqlUpdate(deleteQuery);
       LOG.info("Cleared all glossary term relations from RDF store");
     } catch (Exception e) {
+      // Rethrow so the indexer can surface the failure rather than proceeding
+      // with stale glossary relations still in the graph — the caller decides
+      // whether to abort or continue.
       LOG.error("Failed to clear glossary term relations from RDF", e);
+      throw new RuntimeException("Failed to clear glossary term relations from RDF", e);
     }
   }
 
@@ -2590,6 +2698,34 @@ public class RdfRepository {
     LOG.debug(
         "getGlossaryTermRelationPredicate: Using default predicate URI='{}'", defaultProp.getURI());
     return defaultProp;
+  }
+
+  // Mirror createPropertyFromUri's CURIE expansion but return a full URI as
+  // a string, so clearAllGlossaryTermRelations can build a SPARQL FILTER list.
+  // Kept private and intentionally tracking the same prefixes
+  // createPropertyFromUri handles (skos:, om:, rdfs:, owl:, prov:); if a new
+  // prefix is added there, mirror it here so cleanup stays in sync.
+  private static String expandPredicateCurie(String uri) {
+    if (uri == null || uri.isEmpty()) {
+      return "https://open-metadata.org/ontology/relatedTo";
+    }
+    String trimmed = uri.trim();
+    if (trimmed.startsWith("skos:") && trimmed.length() > 5) {
+      return "http://www.w3.org/2004/02/skos/core#" + trimmed.substring(5);
+    }
+    if (trimmed.startsWith("om:") && trimmed.length() > 3) {
+      return "https://open-metadata.org/ontology/" + trimmed.substring(3);
+    }
+    if (trimmed.startsWith("rdfs:") && trimmed.length() > 5) {
+      return "http://www.w3.org/2000/01/rdf-schema#" + trimmed.substring(5);
+    }
+    if (trimmed.startsWith("owl:") && trimmed.length() > 4) {
+      return "http://www.w3.org/2002/07/owl#" + trimmed.substring(4);
+    }
+    if (trimmed.startsWith("prov:") && trimmed.length() > 5) {
+      return "http://www.w3.org/ns/prov#" + trimmed.substring(5);
+    }
+    return trimmed;
   }
 
   private Property createPropertyFromUri(String uri, Model model) {

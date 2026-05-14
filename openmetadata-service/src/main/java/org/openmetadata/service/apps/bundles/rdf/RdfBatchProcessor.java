@@ -14,6 +14,7 @@
 package org.openmetadata.service.apps.bundles.rdf;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -206,6 +207,28 @@ public class RdfBatchProcessor {
         } else {
           allRelationships.add(convertToEntityRelationship(rel));
         }
+      }
+
+      // Reconcile EVERY entity in the batch — not just those with current
+      // outgoing relationships. An entity whose last outgoing relationship was
+      // removed in MySQL contributes zero RelationshipData entries to
+      // allRelationships, so bulkStoreRelationships' per-source DELETE never
+      // fires for it and the stale RDF edge persists. Doing the per-source
+      // clear here for the full batch handles those zero-edge cases.
+      Set<RdfRepository.EntitySourceRef> batchSources = new HashSet<>();
+      for (EntityInterface entity : entities) {
+        batchSources.add(new RdfRepository.EntitySourceRef(entityType, entity.getId()));
+      }
+      try {
+        rdfRepository.clearOutgoingEntityRelationships(batchSources);
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to clear outgoing entity edges for batch of {} {}",
+            entities.size(),
+            entityType,
+            e);
+        failures += entities.size();
+        lastError = describeBulkError(entityType, "clearOutgoingEdges", e);
       }
 
       if (!allRelationships.isEmpty()) {
