@@ -381,7 +381,9 @@ class PowerbiSource(DashboardServiceSource):
             reports_prefix = RDL_REPORTS_PREFIX
         try:
             pages: Optional[List[ReportPage]] = self.client.api_client.fetch_report_pages(workspace_id, dashboard_id)  # noqa: UP006, UP045
-            if pages and pages[0].name:  # if there are pages and page has name then only add page id in url:  # if there are pages and page has name then only add page id in url
+            if (
+                pages and pages[0].name
+            ):  # if there are pages and page has name then only add page id in url:  # if there are pages and page has name then only add page id in url
                 # get first page out of multiple pages otherwise
                 # get page if of single page
                 page_id = pages[0].name
