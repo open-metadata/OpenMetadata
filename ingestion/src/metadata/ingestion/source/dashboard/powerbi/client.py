@@ -570,10 +570,11 @@ class PowerBiApiClient:
                             ws_exc,
                         )
                 else:
+                    workspace_entry_type = type(raw_ws).__name__
                     logger.warning(
-                        "Skipping a workspace in scan [%s] due to missing 'id' field or invalid format: %s",
+                        "Skipping a workspace in scan [%s] due to missing 'id' field or invalid format. Entry type: %s",
                         scan_id,
-                        raw_ws,
+                        workspace_entry_type,
                     )
             return Workspaces(workspaces=parsed_workspaces)
         except Exception as exc:  # pylint: disable=broad-except
