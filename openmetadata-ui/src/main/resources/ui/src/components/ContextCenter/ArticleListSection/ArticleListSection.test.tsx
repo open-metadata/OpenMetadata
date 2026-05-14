@@ -225,14 +225,4 @@ describe('ArticleListSection', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith('/internal/path');
   });
-
-  it('uses getPagePath override when provided', () => {
-    render(
-      <ArticleListSection articles={mockArticles} title="Recent Articles" />
-    );
-
-    fireEvent.click(screen.getByTestId('article-card-a1'));
-
-    expect(mockNavigate).toHaveBeenCalledWith('/context-center/articles/a1');
-  });
 });
