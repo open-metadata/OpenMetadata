@@ -480,13 +480,11 @@ const ConversationSidebar = ({
                     if (e.key === 'Enter') {
                       onSelect(conversation.id);
                     }
-                  }}
-                >
+                  }}>
                   <span
                     className={`tw:flex-1 tw:truncate tw:text-sm tw:text-primary ${
                       isSelected ? 'tw:font-semibold' : ''
-                    }`}
-                  >
+                    }`}>
                     {conversation.title ??
                       `${t('label.conversation')} ${conversation.id.slice(
                         0,
@@ -499,8 +497,7 @@ const ConversationSidebar = ({
                     onClick={(e) => {
                       e.stopPropagation();
                       onDelete(conversation.id);
-                    }}
-                  >
+                    }}>
                     <TrashIcon height={14} width={14} />
                   </button>
                 </div>
@@ -549,8 +546,7 @@ const MessageList = ({
   return (
     <div
       className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:px-6 tw:py-4"
-      ref={containerRef}
-    >
+      ref={containerRef}>
       {messages.map((message) => (
         <MessageBubble key={message.id} message={message} />
       ))}
@@ -604,15 +600,13 @@ const MessageBubble = ({ message }: MessageBubbleProps) => {
     <div
       className={`tw:flex tw:mb-4 ${
         isHuman ? 'tw:justify-end' : 'tw:justify-start'
-      }`}
-    >
+      }`}>
       <div
         className={`tw:max-w-[70%] tw:px-4 tw:py-3 tw:rounded-lg ${
           isHuman
             ? 'tw:bg-brand-solid tw:text-primary_on-brand'
             : 'tw:bg-white tw:text-primary tw:border tw:border-border-secondary'
-        }`}
-      >
+        }`}>
         {isThinking && (
           <div className="tw:flex tw:items-center tw:gap-2">
             <Loader size="x-small" />
@@ -663,8 +657,7 @@ const ToolCallDisplay = ({ tool }: ToolCallDisplayProps) => {
     <div className="tw:rounded tw:border tw:border-border-secondary tw:bg-gray-50 tw:mb-1">
       <button
         className="tw:flex tw:w-full tw:items-center tw:justify-between tw:px-2 tw:py-1 tw:border-0 tw:bg-transparent tw:cursor-pointer"
-        onClick={() => setExpanded((prev) => !prev)}
-      >
+        onClick={() => setExpanded((prev) => !prev)}>
         <span className="tw:text-xs tw:text-secondary">{tool.name}</span>
         <ChevronDown
           className={`tw:size-3 tw:text-secondary tw:transition-transform ${

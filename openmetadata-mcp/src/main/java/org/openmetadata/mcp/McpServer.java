@@ -72,7 +72,7 @@ public class McpServer implements McpServerProvider {
     MutableServletContextHandler contextHandler = environment.getApplicationContext();
     List<McpSchema.Tool> tools = getTools();
     List<McpSchema.Prompt> prompts = getPrompts();
-    addStatelessTransport(contextHandler, authFilter, tools, prompts);
+    addStatelessTransport(contextHandler, tools, prompts, config);
 
     registerMcpClientToolExecutor();
   }

@@ -12,10 +12,10 @@
  */
 
 import { expect } from '@playwright/test';
-import { test } from '../fixtures/pages';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
+import { test } from '../fixtures/pages';
 
 const APP_NAME = 'McpChatApplication';
 
@@ -47,9 +47,7 @@ test.describe(
     test.afterAll('Uninstall MCP Chat app', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      await apiContext.delete(
-        `/api/v1/apps/name/${APP_NAME}?hardDelete=true`
-      );
+      await apiContext.delete(`/api/v1/apps/name/${APP_NAME}?hardDelete=true`);
 
       await afterAction();
     });

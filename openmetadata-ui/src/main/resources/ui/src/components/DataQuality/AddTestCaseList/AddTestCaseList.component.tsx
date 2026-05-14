@@ -597,14 +597,12 @@ export const AddTestCaseList = ({
             loading={{
               spinning: isLoading,
               indicator: <Loader />,
-            }}
-          >
+            }}>
             <VirtualList
               data={listSource}
               height={500}
               itemKey="id"
-              onScroll={onScroll}
-            >
+              onScroll={onScroll}>
               {(test) => {
                 const tableFqn = getEntityFQN(test.entityLink);
                 const tableName = getNameFromFQN(tableFqn);
@@ -614,14 +612,12 @@ export const AddTestCaseList = ({
                   <Space
                     className="m-b-md border rounded-4 p-sm cursor-pointer bg-white"
                     direction="vertical"
-                    onClick={() => handleCardClick(test)}
-                  >
+                    onClick={() => handleCardClick(test)}>
                     <Space className="justify-between w-full">
                       <Typography.Paragraph
                         className="m-0 font-medium text-base w-max-500"
                         data-testid={test.name}
-                        ellipsis={{ tooltip: true }}
-                      >
+                        ellipsis={{ tooltip: true }}>
                         {getEntityName(test)}
                       </Typography.Paragraph>
 
@@ -636,8 +632,7 @@ export const AddTestCaseList = ({
                     </Space>
                     <Typography.Paragraph
                       className="m-0 w-max-500"
-                      ellipsis={{ tooltip: true }}
-                    >
+                      ellipsis={{ tooltip: true }}>
                       {getEntityName(test.testDefinition)}
                     </Typography.Paragraph>
                     <Typography.Paragraph className="m-0">
@@ -648,8 +643,7 @@ export const AddTestCaseList = ({
                           tableFqn,
                           EntityTabs.PROFILER
                         )}
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                        onClick={(e) => e.stopPropagation()}>
                         {tableName}
                       </Link>
                     </Typography.Paragraph>
@@ -820,8 +814,7 @@ export const AddTestCaseList = ({
             data-testid="submit"
             loading={isLoading}
             type="primary"
-            onClick={handleSubmit}
-          >
+            onClick={handleSubmit}>
             {submitText ?? t('label.create')}
           </Button>
         </Col>
