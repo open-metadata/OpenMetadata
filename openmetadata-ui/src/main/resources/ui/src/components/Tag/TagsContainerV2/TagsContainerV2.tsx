@@ -15,7 +15,6 @@ import { Col, Form, Row, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isArray, isEmpty, isEqual } from 'lodash';
-import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -27,7 +26,7 @@ import {
 } from '../../../constants/Tag.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { LabelType } from '../../../generated/entity/data/table';
-import { State, TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { State, TagSource } from '../../../generated/type/tagLabel';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
@@ -167,9 +166,8 @@ const TagsContainerV2 = ({
     const updatedTags = (isArray(data) ? data : [data]).map((tag) => {
       const tagFQN: string =
         typeof tag === 'string' ? tag : String(tag.value ?? '');
-      const option = (
-        typeof tag === 'object' ? tag.data ?? {} : {}
-      ) as Partial<TagLabel>;
+
+      const option = typeof tag === 'object' ? tag.data ?? {} : {};
 
       return {
         tagFQN,
@@ -185,7 +183,7 @@ const TagsContainerV2 = ({
         appliedAt: option.appliedAt,
         metadata: option.metadata,
         reason: option.reason,
-      } as EntityTags;
+      };
     });
 
     const newTags = updatedTags.map((t) => t.tagFQN);
