@@ -209,18 +209,13 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         fields.contains("usageSummary") ? dashboard.getUsageSummary() : null);
   }
 
-  // Hard-delete cascade for chart HAS-links. The bulk path doesn't apply to hard delete
-  // (cleanup() removes rows directly), so this override re-creates the previous chart
-  // hard-delete behavior. Soft delete is handled by softDeleteAdditionalChildren so that
-  // it also runs when a dashboard is a descendant of a larger soft-delete cascade.
+  // Hard-delete chart links (HAS relation). The CONTAINS subtree is handled by the bulk
+  // path in EntityRepository.bulkHardDeleteSubtree; chart handling is a per-dashboard concern
+  // and lives in the per-entity extension hook so it runs both for direct dashboard deletes
+  // and when dashboards are descendants of a larger hard-delete cascade.
   @Transaction
   @Override
-  protected void deleteChildren(
-      UUID dashboardId, boolean recursive, boolean hardDelete, String updatedBy) {
-    super.deleteChildren(dashboardId, recursive, hardDelete, updatedBy);
-    if (!hardDelete) {
-      return;
-    }
+  protected void hardDeleteAdditionalChildren(UUID dashboardId, String updatedBy) {
     cascadeChartCleanup(dashboardId, updatedBy, true);
   }
 

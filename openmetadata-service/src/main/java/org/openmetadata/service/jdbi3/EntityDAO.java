@@ -608,6 +608,17 @@ public interface EntityDAO<T extends EntityInterface> {
   @SqlUpdate("DELETE FROM <table> WHERE id = :id")
   int delete(@Define("table") String table, @BindUUID("id") UUID id);
 
+  @SqlUpdate("DELETE FROM <table> WHERE id IN (<ids>)")
+  int deleteByIds(@Define("table") String table, @BindList("ids") List<String> ids);
+
+  default int deleteByIds(List<UUID> ids) {
+    if (ids == null || ids.isEmpty()) {
+      return 0;
+    }
+    List<String> stringIds = ids.stream().map(UUID::toString).toList();
+    return deleteByIds(getTableName(), stringIds);
+  }
+
   @ConnectionAwareSqlUpdate(value = "ANALYZE TABLE <table>", connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(value = "ANALYZE <table>", connectionType = POSTGRES)
   void analyze(@Define("table") String table);

@@ -15,9 +15,11 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,21 +30,28 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseTestFactory;
+import org.openmetadata.it.factories.GlossaryTermTestFactory;
+import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.models.AsyncJobResponse;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
- * End-to-end tests for the bulk + async restore introduced for issue #4003.
+ * End-to-end tests for the bulk + async restore + bulk hard-delete paths introduced for
+ * issue #4003 and #4004.
  *
  * <p>Builds a small Database → DatabaseSchemas → Tables hierarchy, soft-deletes the database
  * (which cascades), then verifies that:
@@ -51,6 +60,11 @@ import org.openmetadata.sdk.models.AsyncJobResponse;
  *   <li>The synchronous bulk restore path restores the entire subtree in a single PUT call.
  *   <li>The async restore path returns 202 with a job id and produces the same final state once
  *       the background work completes.
+ *   <li>The recursive hard-delete on a CONTAINS-shaped service hierarchy wipes every row and
+ *       every entity_relationship reference in one bulk transaction per type.
+ *   <li>The recursive hard-delete on a Glossary → GlossaryTerm hierarchy descends via the
+ *       PARENT_OF relation — confirming the bulk path's relation set covers more than just
+ *       CONTAINS.
  * </ul>
  */
 @ExtendWith(TestNamespaceExtension.class)
@@ -126,6 +140,110 @@ public class RestoreHierarchyIT {
             });
 
     assertHierarchyRestored(h);
+  }
+
+  @Test
+  void hardDelete_databaseService_cascadesEntireSubtreeAndLeavesNoOrphanRelationships(
+      TestNamespace ns) {
+    Hierarchy h = createHierarchy(ns, "harddel");
+
+    Map<String, String> params = new HashMap<>();
+    params.put("recursive", "true");
+    params.put("hardDelete", "true");
+    SdkClients.adminClient().databaseServices().delete(h.service.getId().toString(), params);
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    assertThrows(
+        Exception.class,
+        () -> client.databaseServices().get(h.service.getId().toString()),
+        "database service must be hard-deleted");
+    assertThrows(
+        Exception.class,
+        () -> client.databases().get(h.database.getId().toString()),
+        "database must be hard-deleted");
+    for (DatabaseSchema schema : h.schemas) {
+      assertThrows(
+          Exception.class,
+          () -> client.databaseSchemas().get(schema.getId().toString()),
+          "schema must be hard-deleted: " + schema.getName());
+    }
+    for (Table table : h.tables) {
+      assertThrows(
+          Exception.class,
+          () -> client.tables().get(table.getId().toString()),
+          "table must be hard-deleted: " + table.getName());
+    }
+
+    List<String> allDeletedIds = new ArrayList<>();
+    allDeletedIds.add(h.service.getId().toString());
+    allDeletedIds.add(h.database.getId().toString());
+    for (DatabaseSchema schema : h.schemas) {
+      allDeletedIds.add(schema.getId().toString());
+    }
+    for (Table table : h.tables) {
+      allDeletedIds.add(table.getId().toString());
+    }
+    assertNoOrphanRelationships(allDeletedIds);
+  }
+
+  @Test
+  void hardDelete_glossary_cascadesRecursiveTermsViaParentOf(TestNamespace ns) {
+    Glossary glossary = GlossaryTestFactory.createWithName(ns, "harddel_glossary");
+    GlossaryTerm parent = GlossaryTermTestFactory.createWithName(ns, glossary, "parent_term");
+    GlossaryTerm child = GlossaryTermTestFactory.createChild(ns, glossary, parent, "child_term");
+    GlossaryTerm grandchild =
+        GlossaryTermTestFactory.createChild(ns, glossary, child, "grandchild_term");
+
+    Map<String, String> params = new HashMap<>();
+    params.put("recursive", "true");
+    params.put("hardDelete", "true");
+    SdkClients.adminClient().glossaries().delete(glossary.getId().toString(), params);
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    assertThrows(
+        Exception.class,
+        () -> client.glossaries().get(glossary.getId().toString()),
+        "glossary must be hard-deleted");
+    for (GlossaryTerm term : List.of(parent, child, grandchild)) {
+      assertThrows(
+          Exception.class,
+          () -> client.glossaryTerms().get(term.getId().toString()),
+          "glossary term must be hard-deleted via PARENT_OF cascade: " + term.getName());
+    }
+
+    assertNoOrphanRelationships(
+        List.of(
+            glossary.getId().toString(),
+            parent.getId().toString(),
+            child.getId().toString(),
+            grandchild.getId().toString()));
+  }
+
+  private void assertNoOrphanRelationships(List<String> deletedIds) {
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        Entity.getCollectionDAO().relationshipDAO();
+    List<Integer> hierarchyRelations =
+        List.of(
+            org.openmetadata.schema.type.Relationship.CONTAINS.ordinal(),
+            org.openmetadata.schema.type.Relationship.PARENT_OF.ordinal(),
+            org.openmetadata.schema.type.Relationship.HAS.ordinal());
+    List<CollectionDAO.EntityRelationshipObject> outgoing =
+        relationshipDAO.findToBatchAllTypes(deletedIds, hierarchyRelations, Include.ALL);
+    assertTrue(
+        outgoing == null || outgoing.isEmpty(),
+        "No outgoing entity_relationship rows must reference deleted ids — found "
+            + (outgoing == null ? 0 : outgoing.size()));
+    for (Integer relation : hierarchyRelations) {
+      List<CollectionDAO.EntityRelationshipObject> incoming =
+          relationshipDAO.findFromBatch(deletedIds, relation, Include.ALL);
+      assertTrue(
+          incoming == null || incoming.isEmpty(),
+          "No incoming entity_relationship rows must reference deleted ids "
+              + "(relation="
+              + relation
+              + ") — found "
+              + (incoming == null ? 0 : incoming.size()));
+    }
   }
 
   private static class Hierarchy {

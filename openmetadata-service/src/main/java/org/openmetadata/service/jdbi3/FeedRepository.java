@@ -805,6 +805,15 @@ public class FeedRepository {
     }
   }
 
+  public void deleteByAbout(List<UUID> entityIds) {
+    if (entityIds == null || entityIds.isEmpty()) {
+      return;
+    }
+    for (UUID entityId : entityIds) {
+      deleteByAbout(entityId);
+    }
+  }
+
   private boolean isLegacyThreadStorageAvailable() {
     return getResolvedLegacyThreadTableName() != null;
   }
