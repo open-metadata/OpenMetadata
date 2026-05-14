@@ -15,7 +15,6 @@
     },
     {
       "name": "DataStewardPolicy-TriggerRule",
-      "description": "Allow data stewards to trigger ingestion pipelines. Stewards already have EditOwners on all resources and can reach trigger via an ownership rewrite; this rule makes the capability explicit for audit clarity.",
       "resources": ["all"],
       "operations": ["Trigger"],
       "effect": "allow"

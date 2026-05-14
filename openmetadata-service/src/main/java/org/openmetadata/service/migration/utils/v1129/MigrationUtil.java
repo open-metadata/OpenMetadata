@@ -70,10 +70,6 @@ public class MigrationUtil {
         Rule triggerRule =
             new Rule()
                 .withName("DataStewardPolicy-TriggerRule")
-                .withDescription(
-                    "Allow data stewards to trigger ingestion pipelines. Stewards already have "
-                        + "EditOwners on all resources and can reach trigger via an ownership "
-                        + "rewrite; this rule makes the capability explicit for audit clarity.")
                 .withResources(List.of("all"))
                 .withOperations(List.of(MetadataOperation.TRIGGER))
                 .withEffect(Rule.Effect.ALLOW);
@@ -87,8 +83,6 @@ public class MigrationUtil {
       }
     } catch (EntityNotFoundException ex) {
       LOG.warn("DataStewardPolicy not found, skipping TriggerRule addition");
-    } catch (Exception e) {
-      LOG.error("Failed to add TriggerRule to DataStewardPolicy: {}", e.getMessage(), e);
     }
   }
 }
