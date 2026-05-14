@@ -11,6 +11,7 @@
 """
 PowerBI Models
 """
+
 from datetime import datetime
 from typing import List, Optional, Union
 
@@ -53,7 +54,7 @@ class PowerBIDashboard(BaseModel):
     """
 
     id: str
-    displayName: str
+    displayName: str | None = None
     webUrl: Optional[str] = None
     embedUrl: Optional[str] = None
     tiles: Optional[List[Tile]] = []
@@ -67,7 +68,7 @@ class PowerBIReport(BaseModel):
     """
 
     id: str
-    name: str
+    name: str | None = None
     datasetId: Optional[str] = None
     users: Optional[List[PowerBIUser]] = []
     modifiedBy: Optional[str] = None
@@ -111,7 +112,7 @@ class PowerBiColumns(BaseModel):
     Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets/datasets-get-tables-in-group#column
     """
 
-    name: str
+    name: str | None = None
     dataType: Optional[str] = None
     columnType: Optional[str] = None
     description: Optional[str] = None
@@ -124,7 +125,7 @@ class PowerBiMeasureModel(BaseModel):
 
     dataType: str
     dataTypeDisplay: str
-    name: str
+    name: str | None = None
     displayName: Optional[str] = None
     description: str
 
@@ -135,7 +136,7 @@ class PowerBiMeasures(BaseModel):
     Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets/datasets-get-tables-in-group#measure
     """
 
-    name: str
+    name: str | None = None
     expression: Optional[Union[str, List[str]]] = None
     description: Optional[str] = None
     isHidden: Optional[bool] = False
@@ -179,7 +180,7 @@ class PowerBiTable(BaseModel):
     Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets/datasets-get-tables-in-group#table
     """
 
-    name: str
+    name: str | None = None
     columns: Optional[List[PowerBiColumns]] = None
     measures: Optional[List[PowerBiMeasures]] = None
     description: Optional[str] = None
@@ -211,7 +212,7 @@ class TablesResponse(BaseModel):
 
 
 class DatasetExpression(BaseModel):
-    name: str
+    name: str | None = None
     expression: Optional[Union[str, List[str]]] = None
 
     @field_validator("expression", mode="before")
@@ -239,7 +240,7 @@ class Dataset(BaseModel):
     """
 
     id: str
-    name: str
+    name: str | None = None
     tables: Optional[List[PowerBiTable]] = []
     description: Optional[str] = None
     users: Optional[List[PowerBIUser]] = []
@@ -261,7 +262,7 @@ class DatasetResponse(BaseModel):
 
 class Dataflow(BaseModel):
     id: str = Field(alias="objectId")
-    name: str
+    name: str | None = None
     description: Optional[str] = None
     users: Optional[List[PowerBIUser]] = []
     modifiedBy: Optional[str] = None
@@ -358,7 +359,7 @@ class ReportPage(BaseModel):
     single report Page object
     """
 
-    name: str
+    name: str | None = None
     displayName: Optional[str] = None
 
 
@@ -411,7 +412,7 @@ class DataflowEntityAttribute(BaseModel):
     API doc: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin
     """
 
-    name: str
+    name: str | None = None
     dataType: Optional[str] = None
     description: Optional[str] = None
 
@@ -423,7 +424,7 @@ class DataflowEntity(BaseModel):
     API doc: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin
     """
 
-    name: str
+    name: str | None = None
     description: Optional[str] = None
     attributes: Optional[List[DataflowEntityAttribute]] = []
 

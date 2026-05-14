@@ -11,6 +11,7 @@
 """
 REST Auth & Client for PowerBi
 """
+
 import json
 import math
 import traceback
@@ -60,6 +61,8 @@ GETGROUPS_DEFAULT_PARAMS = {"$top": "1", "$skip": "0"}
 API_RESPONSE_MESSAGE_KEY = "message"
 AUTH_TOKEN_MAX_RETRIES = 5
 AUTH_TOKEN_RETRY_WAIT = 120
+
+
 # Similar inner methods with mode client. That's fine.
 # pylint: disable=duplicate-code
 class PowerBiApiClient:
@@ -133,8 +136,7 @@ class PowerBiApiClient:
                     sleep(AUTH_TOKEN_RETRY_WAIT)
                 else:
                     logger.warning(
-                        "Could not generate new token after maximum retries, "
-                        "Please check provided configs"
+                        "Could not generate new token after maximum retries, Please check provided configs"
                     )
         return None
 
@@ -159,8 +161,7 @@ class PowerBiApiClient:
                     sleep(AUTH_TOKEN_RETRY_WAIT)
                 else:
                     logger.warning(
-                        "Could not get token from cache after maximum retries, "
-                        "Please check provided configs"
+                        "Could not get token from cache after maximum retries, Please check provided configs"
                     )
         return None
 
@@ -369,7 +370,6 @@ class PowerBiApiClient:
         Create a complete filter query for workspaces from filter_pattern
         """
         try:
-
             validate_regex(filter_pattern.includes)
             validate_regex(filter_pattern.excludes)
             project_to_include = filter_pattern.includes
@@ -438,8 +438,7 @@ class PowerBiApiClient:
                 logger.warning("Error fetching workspaces between results: (0, 1)")
                 if response and response.get(API_RESPONSE_MESSAGE_KEY):
                     logger.warning(
-                        "Error message from API response: "
-                        f"{str(response.get(API_RESPONSE_MESSAGE_KEY))}"
+                        f"Error message from API response: {str(response.get(API_RESPONSE_MESSAGE_KEY))}"
                     )
                 failed_indexes.append(params_data)
                 count = 0
@@ -482,8 +481,7 @@ class PowerBiApiClient:
                     )
                     if response and response.get(API_RESPONSE_MESSAGE_KEY):
                         logger.warning(
-                            "Error message from API response: "
-                            f"{str(response.get(API_RESPONSE_MESSAGE_KEY))}"
+                            f"Error message from API response: {str(response.get(API_RESPONSE_MESSAGE_KEY))}"
                         )
                     failed_indexes.append(params_data)
                     continue
@@ -513,13 +511,11 @@ class PowerBiApiClient:
                         or len(response) != len(GroupsResponse.__annotations__)
                     ):
                         logger.warning(
-                            f"Workspaces between results {str(index_range)} "
-                            "could not be fetched on multiple attempts"
+                            f"Workspaces between results {str(index_range)} could not be fetched on multiple attempts"
                         )
                         if response and response.get(API_RESPONSE_MESSAGE_KEY):
                             logger.warning(
-                                "Error message from API response: "
-                                f"{str(response.get(API_RESPONSE_MESSAGE_KEY))}"
+                                f"Error message from API response: {str(response.get(API_RESPONSE_MESSAGE_KEY))}"
                             )
                         continue
                     try:
@@ -586,11 +582,11 @@ class PowerBiApiClient:
         return None
 
     def fetch_workspace_scan_result(self, scan_id: str) -> Optional[Workspaces]:
-        """Get Workspace scan result by id method
-        Args:
-            scan_id:
-        Returns:
-            Workspaces
+        """Get Workspace scan result by id method.
+
+        Parse each workspace individually so a single malformed workspace
+        (or any nested entity that still fails validation) does not invalidate
+        the whole scan-result response and drop the entire chunk of workspaces.
         """
         try:
             logger.debug(
@@ -600,7 +596,31 @@ class PowerBiApiClient:
             response_data = self.client.get(
                 f"/myorg/admin/workspaces/scanResult/{scan_id}"
             )
-            return Workspaces(**response_data)
+            if not response_data:
+                return None
+            parsed_workspaces: List[Group] = []
+            for raw_ws in (
+                response_data.get("workspaces", []) or []
+            ):  # pyright: ignore[reportAttributeAccessIssue]
+                if isinstance(raw_ws, dict) and raw_ws.get("id") is not None:
+                    try:
+                        parsed_workspaces.append(Group(**raw_ws))
+                    except Exception as ws_exc:  # pylint: disable=broad-except
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            "Skipping workspace [id=%s] in scan [%s] due to parse error: %s",
+                            raw_ws.get("id"),
+                            scan_id,
+                            ws_exc,
+                        )
+                else:
+                    workspace_entry_type = type(raw_ws).__name__
+                    logger.warning(
+                        "Skipping a workspace in scan [%s] due to missing 'id' field or invalid format. Entry type: %s",
+                        scan_id,
+                        workspace_entry_type,
+                    )
+            return Workspaces(workspaces=parsed_workspaces)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching workspace scan result: {exc}")
