@@ -743,9 +743,7 @@ class PowerbiSource(DashboardServiceSource):
                 )
                 return
             tile_report_ids = [
-                chart.reportId
-                for chart in dashboard_details.tiles or []
-                if self.state.is_known_report(chart.reportId)
+                chart.reportId for chart in dashboard_details.tiles or [] if self.state.is_known_report(chart.reportId)
             ]
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
