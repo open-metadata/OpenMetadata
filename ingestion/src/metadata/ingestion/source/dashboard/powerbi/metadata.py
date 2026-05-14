@@ -381,7 +381,7 @@ class PowerbiSource(DashboardServiceSource):
             reports_prefix = RDL_REPORTS_PREFIX
         try:
             pages: Optional[List[ReportPage]] = self.client.api_client.fetch_report_pages(workspace_id, dashboard_id)  # noqa: UP006, UP045
-            if len(pages) >= 1:
+            if len(pages) >= 1 and pages[0].name:  # if there are pages and page has name then only add page id in url
                 # get first page out of multiple pages otherwise
                 # get page if of single page
                 page_id = pages[0].name
@@ -1934,10 +1934,20 @@ class PowerbiSource(DashboardServiceSource):
                 logger.debug(f"No table references found in dataflow [{datamodel.name}] M document")
                 return
 
-            # Build a map of entity_name -> entity attributes for column lineage
+            # Build a map of entity_name -> entity attributes for column lineage.
+            # Skip nameless entities/attributes since both are now Optional and a
+            # None entity name can never match a parsed M-document reference,
+            # while None attribute names break the List[str] contract of
+            # _get_dataflow_column_lineage and produce noisy failed lookups.
             entity_attributes_map = {}
             for entity in dataflow_export.entities or []:
-                entity_attributes_map[entity.name] = [attr.name for attr in entity.attributes or []]
+                if not entity.name:
+                    logger.debug(
+                        "Skipping nameless dataflow entity while building attributes map for dataflow [%s]",
+                        datamodel.name,
+                    )
+                    continue
+                entity_attributes_map[entity.name] = [attr.name for attr in entity.attributes or [] if attr.name]
 
             for parsed_entity in parsed_entities:
                 entity_name = parsed_entity["entity_name"]
