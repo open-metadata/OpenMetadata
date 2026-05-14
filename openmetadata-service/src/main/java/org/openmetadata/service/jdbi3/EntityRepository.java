@@ -1435,13 +1435,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final T find(UUID id, Include include, boolean fromCache) throws EntityNotFoundException {
+    var notFoundCache = CacheBundle.getNotFoundCache();
     if (!fromCache) {
+      // On the explicit-bypass path the L1 cache is being skipped entirely, so checking the
+      // negative cache before touching the DB is a clear win — short-circuits a known-missing
+      // entity without paying for the DB round-trip.
+      if (include == NON_DELETED
+          && notFoundCache != null
+          && notFoundCache.isMarkedNotFoundById(entityType, id)) {
+        throw new EntityNotFoundException(entityNotFound(entityType, id));
+      }
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
       T entity;
       try (var ignored = phase("dbFindByIdNoCache")) {
         entity = dao.findEntityById(id, include);
       }
       if (entity == null) {
+        if (include == NON_DELETED && notFoundCache != null) {
+          notFoundCache.markNotFoundById(entityType, id);
+        }
         throw new EntityNotFoundException(entityNotFound(entityType, id));
       }
       if (entity.getId() == null) {
@@ -1459,10 +1471,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return entity;
     }
 
+    // Hot path. Check L1 Guava cache FIRST — an L1 hit serves the entity with zero Redis
+    // traffic. Only on L1 miss do we consult the negative cache (one Redis GET) to avoid
+    // the much more expensive cache-loader + Redis-L2 + DB round trip. The earlier shape
+    // — check NotFoundCache unconditionally — was a hot-path regression for every L1 hit.
     try {
-      String cachedJson;
-      try (var ignored = phase("cacheGet")) {
-        cachedJson = CACHE_WITH_ID.get(new ImmutablePair<>(entityType, id));
+      ImmutablePair<String, UUID> cacheKey = new ImmutablePair<>(entityType, id);
+      String cachedJson = CACHE_WITH_ID.getIfPresent(cacheKey);
+      if (cachedJson == null) {
+        // L1 miss. Consult the negative cache so we can short-circuit before invoking the
+        // loader (which would do DB + optional Redis-L2 work).
+        if (include == NON_DELETED
+            && notFoundCache != null
+            && notFoundCache.isMarkedNotFoundById(entityType, id)) {
+          throw new EntityNotFoundException(entityNotFound(entityType, id));
+        }
+        try (var ignored = phase("cacheGet")) {
+          cachedJson = CACHE_WITH_ID.get(cacheKey);
+        }
       }
       T entity;
       try (var ignored = phase("cacheCopy")) {
@@ -1486,7 +1512,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       return entity;
     } catch (ExecutionException | UncheckedExecutionException e) {
-      throw new EntityNotFoundException(entityNotFound(entityType, id));
+      // The Guava loader can fail for several reasons; only the "entity truly doesn't exist"
+      // case is safe to negative-cache. Transient DB errors (JDBI timeout, connection reset)
+      // and structural errors (invalid-but-existing entity, JSON deserialization) would
+      // otherwise turn a brief blip into a 30s 404 storm, and would mask the real error from
+      // the caller. We only populate the negative cache on EntityNotFoundException; other
+      // causes are rethrown unchanged.
+      Throwable cause = e.getCause();
+      if (cause instanceof EntityNotFoundException notFound) {
+        if (include == NON_DELETED && notFoundCache != null) {
+          notFoundCache.markNotFoundById(entityType, id);
+        }
+        throw notFound;
+      }
+      if (cause instanceof RuntimeException re) {
+        throw re;
+      }
+      throw new RuntimeException(cause != null ? cause : e);
     }
   }
 
@@ -2026,13 +2068,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final T findByName(String fqn, Include include, boolean fromCache) {
     fqn = quoteFqn ? quoteName(fqn) : fqn;
+    var notFoundCache = CacheBundle.getNotFoundCache();
     if (!fromCache) {
+      // Explicit cache bypass — checking the negative cache before the DB still saves the
+      // DB hit on a known-missing entity. (Same reasoning as find(UUID, …).)
+      if (include == NON_DELETED
+          && notFoundCache != null
+          && notFoundCache.isMarkedNotFoundByName(entityType, fqn)) {
+        throw new EntityNotFoundException(entityNotFound(entityType, fqn));
+      }
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
       T entity;
       try (var ignored = phase("dbFindByNameNoCache")) {
         entity = dao.findEntityByName(fqn, include);
       }
       if (entity == null) {
+        if (include == NON_DELETED && notFoundCache != null) {
+          notFoundCache.markNotFoundByName(entityType, fqn);
+        }
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
       }
       if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
@@ -2042,10 +2095,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return entity;
     }
 
+    // Hot path — L1 Guava first, NotFoundCache only on L1 miss. Same shape as find(UUID,…).
     try {
-      String cachedJson;
-      try (var ignored = phase("cacheGet")) {
-        cachedJson = CACHE_WITH_NAME.get(cacheNameKey(entityType, fqn));
+      Pair<String, String> cacheKey = cacheNameKey(entityType, fqn);
+      String cachedJson = CACHE_WITH_NAME.getIfPresent(cacheKey);
+      if (cachedJson == null) {
+        if (include == NON_DELETED
+            && notFoundCache != null
+            && notFoundCache.isMarkedNotFoundByName(entityType, fqn)) {
+          throw new EntityNotFoundException(entityNotFound(entityType, fqn));
+        }
+        try (var ignored = phase("cacheGet")) {
+          cachedJson = CACHE_WITH_NAME.get(cacheKey);
+        }
       }
       T entity;
       try (var ignored = phase("cacheCopy")) {
@@ -2057,7 +2119,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       return entity;
     } catch (ExecutionException | UncheckedExecutionException e) {
-      throw new EntityNotFoundException(entityNotFound(entityType, fqn));
+      // Only negative-cache when the cause is genuinely "entity doesn't exist". Transient
+      // failures (DB timeout, deserialization error) must not poison the cache for 30s and
+      // must not be masked as 404s — same reasoning as the find(UUID, …) path above.
+      Throwable cause = e.getCause();
+      if (cause instanceof EntityNotFoundException notFound) {
+        if (include == NON_DELETED && notFoundCache != null) {
+          notFoundCache.markNotFoundByName(entityType, fqn);
+        }
+        throw notFound;
+      }
+      if (cause instanceof RuntimeException re) {
+        throw re;
+      }
+      throw new RuntimeException(cause != null ? cause : e);
     }
   }
 
@@ -2898,6 +2973,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (cachedReadBundle != null) {
         cachedReadBundle.invalidate(entityType, row.id);
       }
+      var cachedLineage = CacheBundle.getCachedLineage();
+      if (cachedLineage != null) {
+        cachedLineage.invalidate(row.id);
+      }
       if (pubsub != null) {
         pubsub.publish(entityType, row.id, row.fqn, "rename-cascade");
       }
@@ -2954,6 +3033,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     var cachedReadBundle = CacheBundle.getCachedReadBundle();
     if (cachedReadBundle != null) {
       cachedReadBundle.invalidate(entityType, id);
+    }
+    var cachedLineage = CacheBundle.getCachedLineage();
+    if (cachedLineage != null) {
+      cachedLineage.invalidate(id);
     }
     var pubsub = CacheBundle.getCacheInvalidationPubSub();
     if (pubsub != null) {
@@ -3136,6 +3219,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       var cachedReadBundle = CacheBundle.getCachedReadBundle();
       if (cachedReadBundle != null) {
         cachedReadBundle.invalidate(entityType, entity.getId());
+      }
+
+      // Invalidate cached lineage rooted at this entity. Transitive changes (entity X is a node
+      // in someone else's cached graph) fall through to the 60s TTL — see CachedLineage doc.
+      var cachedLineage = CacheBundle.getCachedLineage();
+      if (cachedLineage != null) {
+        cachedLineage.invalidate(entity.getId());
       }
 
       // Invalidate tag caches
@@ -3370,6 +3460,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     RdfUpdater.updateEntity(entity);
     ListCountCache.invalidate(entityType);
+    // Drop any negative-cache markers (P2.4) for this just-created entity. Without this, a
+    // create-then-immediately-read flow would 404 for up to notFoundTtlSeconds because a
+    // prior failed lookup poisoned the negative cache. Iterates the Invalidatable registry
+    // so future cache layers also get the create signal automatically.
+    CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
   }
 
   /**
@@ -8594,6 +8689,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       var cachedReadBundle = CacheBundle.getCachedReadBundle();
       if (cachedReadBundle != null) {
         cachedReadBundle.invalidate(entityType, id);
+      }
+      var cachedLineage = CacheBundle.getCachedLineage();
+      if (cachedLineage != null) {
+        cachedLineage.invalidate(id);
       }
 
       // Synchronous repopulate: the write path holds the request thread until Redis is updated,

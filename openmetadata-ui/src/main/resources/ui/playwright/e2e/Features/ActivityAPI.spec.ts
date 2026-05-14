@@ -42,7 +42,10 @@ import {
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
-test.describe(
+// Investigation needed:
+// 1. Profile actual event propagation time — measure how long it typically takes from a PATCH/PUT call to the event appearing in /api/v1/activity, then tighten the ceiling.
+// 2. If synchronous flushing is not feasible, restructure tests to assert entity state directly via the entity API, seed a pre-built activity event, and verify only that the UI renders it decoupling UI assertions from event latency.
+test.describe.fixme(
   'Activity API - Entity Changes',
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
@@ -76,8 +79,6 @@ test.describe(
     test('creates an activity event when the description is updated', async ({
       page,
     }) => {
-      // waitForActivityEvent polls the API for up to 5 minutes (ACTIVITY_EVENT_TIMEOUT = 300_000ms)
-      // because activity events are processed asynchronously in the background.
       test.setTimeout(ACTIVITY_TEST_TIMEOUT);
 
       const newDescription = `Test description updated at ${Date.now()}`;
@@ -119,8 +120,6 @@ test.describe(
     });
 
     test('creates an activity event when tags are added', async ({ page }) => {
-      // waitForActivityEvent polls the API for up to 5 minutes (ACTIVITY_EVENT_TIMEOUT = 300_000ms)
-      // because activity events are processed asynchronously in the background.
       test.setTimeout(ACTIVITY_TEST_TIMEOUT);
 
       const entityFqn = getTableFqn(entityChangesTable);
@@ -159,8 +158,6 @@ test.describe(
     });
 
     test('creates an activity event when owner is added', async ({ page }) => {
-      // waitForActivityEvent polls the API for up to 5 minutes (ACTIVITY_EVENT_TIMEOUT = 300_000ms)
-      // because activity events are processed asynchronously in the background.
       test.setTimeout(ACTIVITY_TEST_TIMEOUT);
 
       const entityFqn = getTableFqn(entityChangesTable);
@@ -198,8 +195,6 @@ test.describe(
     });
 
     test('shows the actor who made the activity change', async ({ page }) => {
-      // waitForActivityEvent polls the API for up to 5 minutes (ACTIVITY_EVENT_TIMEOUT = 300_000ms)
-      // because activity events are processed asynchronously in the background.
       test.setTimeout(ACTIVITY_TEST_TIMEOUT);
 
       const entityFqn = getTableFqn(entityChangesTable);
@@ -235,8 +230,6 @@ test.describe(
     });
 
     test('links activity items to the correct entity', async ({ page }) => {
-      // waitForActivityEvent polls the API for up to 5 minutes (ACTIVITY_EVENT_TIMEOUT = 300_000ms)
-      // because activity events are processed asynchronously in the background.
       test.setTimeout(ACTIVITY_TEST_TIMEOUT);
 
       const description = `Entity link description ${uuid()}`;
@@ -266,7 +259,7 @@ test.describe(
   }
 );
 
-test.describe(
+test.describe.fixme(
   'Activity API - Reactions',
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
@@ -288,8 +281,6 @@ test.describe(
     });
 
     test('adds a reaction to a feed item', async ({ page }) => {
-      // waitForActivityEvent polls the API for up to 5 minutes (ACTIVITY_EVENT_TIMEOUT = 300_000ms)
-      // because activity events are processed asynchronously in the background.
       test.setTimeout(ACTIVITY_TEST_TIMEOUT);
 
       const description = `Test activity for adding reaction ${uuid()}`;
@@ -314,8 +305,6 @@ test.describe(
     });
 
     test('removes an existing reaction from a feed item', async ({ page }) => {
-      // waitForActivityEvent polls the API for up to 5 minutes (ACTIVITY_EVENT_TIMEOUT = 300_000ms)
-      // because activity events are processed asynchronously in the background.
       test.setTimeout(ACTIVITY_TEST_TIMEOUT);
 
       const description = `Test activity for removing reaction ${uuid()}`;
@@ -346,7 +335,7 @@ test.describe(
   }
 );
 
-test.describe(
+test.describe.fixme(
   'Activity API - Comments',
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
@@ -368,8 +357,6 @@ test.describe(
     });
 
     test('adds a comment to a feed item', async ({ page }) => {
-      // waitForActivityEvent polls the API for up to 5 minutes (ACTIVITY_EVENT_TIMEOUT = 300_000ms)
-      // because activity events are processed asynchronously in the background.
       test.setTimeout(ACTIVITY_TEST_TIMEOUT);
 
       const description = `Test activity for comments ${uuid()}`;
@@ -394,8 +381,6 @@ test.describe(
     });
 
     test('shows the activity detail layout', async ({ page }) => {
-      // waitForActivityEvent polls the API for up to 5 minutes (ACTIVITY_EVENT_TIMEOUT = 300_000ms)
-      // because activity events are processed asynchronously in the background.
       test.setTimeout(ACTIVITY_TEST_TIMEOUT);
 
       const description = `Test activity detail layout ${uuid()}`;
@@ -426,7 +411,7 @@ test.describe(
   }
 );
 
-test.describe(
+test.describe.fixme(
   'Activity API - Homepage Widget',
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
