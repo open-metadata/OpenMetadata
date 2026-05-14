@@ -47,7 +47,10 @@ public record TestSuiteIndex(TestSuite testSuite) implements TaggableIndex {
   private void setParentRelationships(Map<String, Object> doc, TestSuite testSuite) {
     EntityReference entityReference = testSuite.getBasicEntityReference();
     if (entityReference == null) return;
-    addTestSuiteParentEntityRelations(entityReference, doc);
+    Table linkedTable = addTestSuiteParentEntityRelations(entityReference, doc);
+    if (linkedTable != null && linkedTable.getCertification() != null) {
+      doc.put("certification", linkedTable.getCertification());
+    }
   }
 
   static Table addTestSuiteParentEntityRelations(

@@ -850,6 +850,101 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void propagateCertificationTagsCascadesToTableChildrenOnAdd() throws IOException {
+    Table table = mock(Table.class);
+    UUID entityId = UUID.randomUUID();
+    when(table.getId()).thenReturn(entityId);
+    when(table.getEntityReference())
+        .thenReturn(new EntityReference().withId(entityId).withType(Entity.TABLE));
+    AssetCertification cert =
+        new AssetCertification()
+            .withTagLabel(
+                new TagLabel()
+                    .withName("Gold")
+                    .withDescription("Certified")
+                    .withTagFQN("Certification.Gold"));
+    when(table.getCertification()).thenReturn(cert);
+
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange().withName("certification").withOldValue("{}").withNewValue("{}")),
+            List.of());
+
+    repository.propagateCertificationTags(Entity.TABLE, table, changeDescription);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Pair<String, String>> matchCaptor = ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(
+            eq(List.of("cluster_column_search_index")),
+            matchCaptor.capture(),
+            updatesCaptor.capture());
+    assertEquals("table.id", matchCaptor.getValue().getLeft());
+    assertEquals(entityId.toString(), matchCaptor.getValue().getRight());
+    assertEquals(SearchClient.CASCADE_CERTIFICATION_SCRIPT, updatesCaptor.getValue().getLeft());
+    assertSame(cert, updatesCaptor.getValue().getRight().get("certification"));
+  }
+
+  @Test
+  void propagateCertificationTagsCascadesNullToTableChildrenOnRemove() throws IOException {
+    Table table = mock(Table.class);
+    UUID entityId = UUID.randomUUID();
+    when(table.getId()).thenReturn(entityId);
+    when(table.getEntityReference())
+        .thenReturn(new EntityReference().withId(entityId).withType(Entity.TABLE));
+    when(table.getCertification()).thenReturn(null);
+
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(),
+            List.of(new FieldChange().withName("certification").withOldValue("{}")));
+
+    repository.propagateCertificationTags(Entity.TABLE, table, changeDescription);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(
+            eq(List.of("cluster_column_search_index")), any(Pair.class), updatesCaptor.capture());
+    assertEquals(SearchClient.CASCADE_CERTIFICATION_SCRIPT, updatesCaptor.getValue().getLeft());
+    assertNull(updatesCaptor.getValue().getRight().get("certification"));
+  }
+
+  @Test
+  void propagateCertificationTagsDoesNotCascadeForNonTableEntities() throws IOException {
+    // Pipelines carry a native certification but DQ dashboard cascade is
+    // scoped to Table — children of Pipeline aren't part of the test_case
+    // family. Verify we don't blast an updateByQuery against unrelated
+    // child indices.
+    Pipeline pipeline = mock(Pipeline.class);
+    UUID entityId = UUID.randomUUID();
+    when(pipeline.getId()).thenReturn(entityId);
+    when(pipeline.getEntityReference())
+        .thenReturn(new EntityReference().withId(entityId).withType(Entity.PIPELINE));
+    when(pipeline.getCertification())
+        .thenReturn(
+            new AssetCertification().withTagLabel(new TagLabel().withTagFQN("Certification.Gold")));
+
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange().withName("certification").withOldValue("{}").withNewValue("{}")),
+            List.of());
+
+    repository.propagateCertificationTags(Entity.PIPELINE, pipeline, changeDescription);
+
+    verify(searchClient, never()).updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+  }
+
+  @Test
   void propagateCertificationTagsUsesQuotedOldNameWhenTagHasNoParentFqn() {
     Tag tag = mock(Tag.class);
     when(tag.getClassification())

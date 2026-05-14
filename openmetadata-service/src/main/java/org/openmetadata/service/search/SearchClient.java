@@ -179,6 +179,18 @@ public interface SearchClient
       }
       """;
 
+  // Cascade variant: full-object replace (handles add/update) plus removal on
+  // null params, so child docs stay in sync when a parent's cert is added,
+  // changed, or removed.
+  String CASCADE_CERTIFICATION_SCRIPT =
+      """
+      if (params.certification == null) {
+        ctx._source.remove('certification');
+      } else {
+        ctx._source.certification = params.certification;
+      }
+      """;
+
   String UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT =
       """
       if (ctx._source.containsKey('tags')) {
