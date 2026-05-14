@@ -1453,7 +1453,17 @@ class PowerbiSource(DashboardServiceSource):
             table_info_list = self._parse_table_info_from_source_exp(table, datamodel_entity)
             if not table_info_list:
                 # if tables are not found from source expression
-                # try establishing lineage using powerbi's table name
+                # try establishing lineage using powerbi's table name.
+                # PowerBiTable.name is now Optional, so skip nameless tables here
+                # to match _get_column_info and avoid build_es_fqn_search_string
+                # raising on a None table_name (which surfaces as a noisy lineage
+                # error rather than a quiet skip).
+                if not table.name:
+                    logger.debug(
+                        "Skipping PowerBI table with empty name for lineage to datamodel [%s]",
+                        datamodel_entity.name,
+                    )
+                    return
                 table_info_list = [{"table": table.name}]
             if isinstance(table_info_list, List):  # noqa: UP006
                 for table_info in table_info_list:
