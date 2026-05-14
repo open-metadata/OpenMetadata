@@ -17,12 +17,12 @@ import React, { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import Loader from '../../components/common/Loader/Loader';
-import './MessageBubble.less';
 import {
   McpMessage,
   MessageBlock,
   ToolCallInfo,
 } from '../../rest/mcpClientAPI';
+import './MessageBubble.less';
 
 export interface MessageBubbleProps {
   message: McpMessage;

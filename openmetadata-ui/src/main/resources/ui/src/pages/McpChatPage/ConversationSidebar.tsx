@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { McpConversation } from '../../rest/mcpClientAPI';
 import ChatList from './ChatList';
 import NavItem from './NavItem';
-import { Typography } from '@openmetadata/ui-core-components';
 
 export interface ConversationSidebarProps {
   conversations: McpConversation[];
