@@ -79,6 +79,14 @@ export function registerFilterSeparationSuite(
 
   test.describe
     .serial(`${suiteName} | live + reindex filter separation`, () => {
+    // Each test does entity setup + reindex + multiple ES polls + Explore UI assertions,
+    // which can legitimately exceed Playwright's default 30s per-test timeout. Configure
+    // both the per-test timeout (covers the actual tests) and the per-hook timeout (covers
+    // beforeAll's entity create + PATCH and afterAll's teardown) explicitly rather than
+    // relying on test.slow() inside a hook, which is not a supported way to extend hook
+    // timeouts.
+    test.describe.configure({ timeout: 180_000 });
+
     let entity: FilterSeparationEntity;
     const classification = new ClassificationClass();
     const classificationTag = new TagClass({
@@ -88,7 +96,7 @@ export function registerFilterSeparationSuite(
     const glossaryTerm = new GlossaryTerm(glossary);
 
     test.beforeAll(async () => {
-      test.slow();
+      test.setTimeout(180_000);
       const { apiContext, afterAction } = await createAdminApiContext();
       await classification.create(apiContext);
       await classificationTag.create(apiContext);
@@ -101,6 +109,7 @@ export function registerFilterSeparationSuite(
     });
 
     test.afterAll(async () => {
+      test.setTimeout(180_000);
       const { apiContext, afterAction } = await createAdminApiContext();
       await entity.delete(apiContext);
       await glossaryTerm.delete(apiContext);
