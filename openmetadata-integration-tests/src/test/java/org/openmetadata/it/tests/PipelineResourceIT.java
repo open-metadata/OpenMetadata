@@ -54,6 +54,7 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   // ===================================================================
@@ -392,6 +393,7 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     // List all pipelines
     ListParams params = new ListParams();
     params.setLimit(100);
+    params.setService(service.getFullyQualifiedName());
     ListResponse<Pipeline> response = listEntities(params);
     assertNotNull(response);
 

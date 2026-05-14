@@ -41,6 +41,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -69,11 +70,15 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheProvider;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.monitoring.LatencyPhase;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthRequest;
@@ -102,6 +107,7 @@ import org.openmetadata.service.util.ValidatorUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
+@LatencyPhase
 public abstract class EntityResource<T extends EntityInterface, K extends EntityRepository<T>> {
   protected final Class<T> entityClass;
   protected final String entityType;
@@ -140,14 +146,16 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected T addHref(UriInfo uriInfo, T entity) {
-    Entity.withHref(uriInfo, entity.getOwners());
-    Entity.withHref(uriInfo, entity.getFollowers());
-    Entity.withHref(uriInfo, entity.getExperts());
-    Entity.withHref(uriInfo, entity.getReviewers());
-    Entity.withHref(uriInfo, entity.getChildren());
-    Entity.withHref(uriInfo, entity.getDomains());
-    Entity.withHref(uriInfo, entity.getDataProducts());
-    return entity;
+    try (var ignored = RequestLatencyContext.phase("addHref")) {
+      Entity.withHref(uriInfo, entity.getOwners());
+      Entity.withHref(uriInfo, entity.getFollowers());
+      Entity.withHref(uriInfo, entity.getExperts());
+      Entity.withHref(uriInfo, entity.getReviewers());
+      Entity.withHref(uriInfo, entity.getChildren());
+      Entity.withHref(uriInfo, entity.getDomains());
+      Entity.withHref(uriInfo, entity.getDataProducts());
+      return entity;
+    }
   }
 
   protected List<MetadataOperation> getEntitySpecificOperations() {
@@ -155,8 +163,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public final ResultList<T> addHref(UriInfo uriInfo, ResultList<T> list) {
-    listOrEmpty(list.getData()).forEach(i -> addHref(uriInfo, i));
-    return list;
+    try (var ignored = RequestLatencyContext.phase("addHref")) {
+      listOrEmpty(list.getData()).forEach(i -> addHref(uriInfo, i));
+      return list;
+    }
   }
 
   public ResultList<T> listInternal(
@@ -234,6 +244,30 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return addHref(uriInfo, resultList);
   }
 
+  protected ResultList<T> searchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fieldsParam,
+      ListFilter filter,
+      String query,
+      int limit,
+      int offset) {
+    Fields fields = getFields(fieldsParam);
+    OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
+    ResourceContextInterface resourceContext = filter.getResourceContext(entityType);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
+
+    if (!nullOrEmpty(query)) {
+      filter.addQueryParam("nameFilter", query);
+    }
+
+    ResultList<T> resultList =
+        repository.listAfterWithOffset(uriInfo, fields, filter, limit, offset);
+    return addHref(uriInfo, resultList);
+  }
+
   public ResultList<T> listInternalFromSearch(
       UriInfo uriInfo,
       SecurityContext securityContext,
@@ -277,7 +311,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String includeRelations) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
-    RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
+    Include resolvedInclude = include != null ? include : Include.NON_DELETED;
+    RelationIncludes relationIncludes = new RelationIncludes(resolvedInclude, includeRelations);
     return getInternal(
         uriInfo,
         securityContext,
@@ -285,7 +320,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         fields,
         relationIncludes,
         operationContext,
-        getResourceContextById(id));
+        getResourceContextById(id, relationIncludes, fields));
   }
 
   public T getInternal(
@@ -315,7 +350,25 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, repository.get(uriInfo, id, fields, relationIncludes, false));
+    return addHref(
+        uriInfo,
+        repository.get(uriInfo, id, fields, relationIncludes, isDistributedCacheEnabled()));
+  }
+
+  /**
+   * REST GETs consult the entity cache only when a distributed cache (Redis) is configured *and*
+   * currently reachable. With Redis, invalidation in {@code EntityRepository.invalidateCache}
+   * keeps all instances coherent so cached reads stay fresh. If Redis isn't wired, or the
+   * provider flipped to unavailable after a connection loss, we fall back to {@code
+   * fromCache=false} to avoid serving stale reads from a per-instance Guava cache in a
+   * multi-instance deployment.
+   */
+  private static boolean isDistributedCacheEnabled() {
+    if (CacheBundle.getCachedEntityDao() == null) {
+      return false;
+    }
+    CacheProvider provider = CacheBundle.getCacheProvider();
+    return provider != null && provider.available();
   }
 
   public T getVersionInternal(SecurityContext securityContext, UUID id, String version) {
@@ -380,7 +433,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String includeRelations) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
-    RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
+    Include resolvedInclude = include != null ? include : Include.NON_DELETED;
+    RelationIncludes relationIncludes = new RelationIncludes(resolvedInclude, includeRelations);
     return getByNameInternal(
         uriInfo,
         securityContext,
@@ -388,7 +442,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         fields,
         relationIncludes,
         operationContext,
-        getResourceContextByName(name));
+        getResourceContextByName(name, relationIncludes, fields));
   }
 
   public T getByNameInternal(
@@ -418,7 +472,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, repository.getByName(uriInfo, name, fields, relationIncludes, false));
+    return addHref(
+        uriInfo,
+        repository.getByName(uriInfo, name, fields, relationIncludes, isDistributedCacheEnabled()));
   }
 
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {
@@ -428,12 +484,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, createResourceContext);
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
-    entity =
+    T createdEntity =
         addHref(
             uriInfo,
             repository.create(
                 uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
-    return Response.created(entity.getHref()).entity(entity).build();
+    return Response.created(createdEntity.getHref()).entity(createdEntity).build();
   }
 
   public Response create(
@@ -448,12 +504,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
-    entity =
+    T createdEntity =
         addHref(
             uriInfo,
             repository.create(
                 uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
-    return Response.created(entity.getHref()).entity(entity).build();
+    return Response.created(createdEntity.getHref()).entity(createdEntity).build();
   }
 
   public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity) {
@@ -468,12 +524,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           new CreateResourceContext<>(entityType, entity);
       limits.enforceLimits(securityContext, createResourceContext, operationContext);
       authorizer.authorize(securityContext, operationContext, createResourceContext);
-      entity =
+      T createdEntity =
           addHref(
               uriInfo,
               repository.create(
                   uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
-      return new PutResponse<>(Response.Status.CREATED, entity, ENTITY_CREATED).toResponse();
+      return new PutResponse<>(Response.Status.CREATED, createdEntity, ENTITY_CREATED).toResponse();
     }
     resourceContext =
         getResourceContextByName(
@@ -502,12 +558,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           new CreateResourceContext<>(entityType, entity);
       limits.enforceLimits(securityContext, createResourceContext, operationContext);
       authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
-      entity =
+      T createdEntity =
           addHref(
               uriInfo,
               repository.create(
                   uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
-      return new PutResponse<>(Response.Status.CREATED, entity, ENTITY_CREATED).toResponse();
+      return new PutResponse<>(Response.Status.CREATED, createdEntity, ENTITY_CREATED).toResponse();
     }
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
     PutResponse<T> response =
@@ -630,7 +686,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       boolean recursive,
       boolean hardDelete) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContextInterface.Operation.DELETE));
     DeleteResponse<T> response =
         repository.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
     if (hardDelete) {
@@ -651,29 +710,33 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     Response response;
 
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContextInterface.Operation.DELETE));
     entity = repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);
     String userName = securityContext.getUserPrincipal().getName();
 
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
-        () -> {
-          try {
-            DeleteResponse<T> deleteResponse =
-                repository.delete(userName, id, recursive, hardDelete);
-            if (hardDelete) {
-              limits.invalidateCache(entityType);
-            }
-            WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
-                jobId, securityContext, deleteResponse.entity());
-          } catch (Exception e) {
-            WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
-                jobId,
-                securityContext,
-                entity,
-                e.getMessage() == null ? e.toString() : e.getMessage());
-          }
-        });
+        RequestLatencyContext.wrapWithContext(
+            () -> {
+              try {
+                DeleteResponse<T> deleteResponse =
+                    repository.delete(userName, id, recursive, hardDelete);
+                if (hardDelete) {
+                  limits.invalidateCache(entityType);
+                }
+                WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                    jobId, securityContext, deleteResponse.entity());
+              } catch (Exception e) {
+                WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                    jobId,
+                    securityContext,
+                    entity,
+                    e.getMessage() == null ? e.toString() : e.getMessage());
+              }
+            }));
 
     response =
         Response.accepted()
@@ -696,7 +759,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       boolean recursive,
       boolean hardDelete) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextByName(name, ResourceContextInterface.Operation.DELETE));
     DeleteResponse<T> response =
         repository.deleteByName(
             securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
@@ -727,27 +793,28 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     String jobId = UUID.randomUUID().toString();
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
-        () -> {
-          try {
-            CsvExportProgressCallback progressCallback =
-                (exported, total, message) ->
-                    WebsocketNotificationHandler.sendCsvExportProgressNotification(
-                        jobId, securityContext, exported, total, message);
+        RequestLatencyContext.wrapWithContext(
+            () -> {
+              try {
+                CsvExportProgressCallback progressCallback =
+                    (exported, total, message) ->
+                        WebsocketNotificationHandler.sendCsvExportProgressNotification(
+                            jobId, securityContext, exported, total, message);
 
-            String csvData =
-                repository.exportToCsv(
-                    name,
-                    securityContext.getUserPrincipal().getName(),
-                    recursive,
-                    progressCallback);
-            WebsocketNotificationHandler.sendCsvExportCompleteNotification(
-                jobId, securityContext, csvData);
-          } catch (Exception e) {
-            LOG.error("Encountered Exception while exporting.", e);
-            WebsocketNotificationHandler.sendCsvExportFailedNotification(
-                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
-          }
-        });
+                String csvData =
+                    repository.exportToCsv(
+                        name,
+                        securityContext.getUserPrincipal().getName(),
+                        recursive,
+                        progressCallback);
+                WebsocketNotificationHandler.sendCsvExportCompleteNotification(
+                    jobId, securityContext, csvData);
+              } catch (Exception e) {
+                LOG.error("Encountered Exception while exporting.", e);
+                WebsocketNotificationHandler.sendCsvExportFailedNotification(
+                    jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
+              }
+            }));
     CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
@@ -788,17 +855,18 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     String jobId = UUID.randomUUID().toString();
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
-        () -> {
-          try {
-            BulkOperationResult result =
-                repository.bulkAddAndValidateTagsToAssets(entityId, request);
-            WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
-                jobId, securityContext, result);
-          } catch (Exception e) {
-            WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
-          }
-        });
+        RequestLatencyContext.wrapWithContext(
+            () -> {
+              try {
+                BulkOperationResult result =
+                    repository.bulkAddAndValidateTagsToAssets(entityId, request);
+                WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
+                    jobId, securityContext, result);
+              } catch (Exception e) {
+                WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
+                    jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
+              }
+            }));
     BulkAssetsOperationResponse response =
         new BulkAssetsOperationResponse(
             jobId, "Bulk Add tags to Asset operation initiated successfully.");
@@ -838,17 +906,18 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     String jobId = UUID.randomUUID().toString();
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
-        () -> {
-          try {
-            BulkOperationResult result =
-                repository.bulkRemoveAndValidateTagsToAssets(entityId, request);
-            WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
-                jobId, securityContext, result);
-          } catch (Exception e) {
-            WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
-          }
-        });
+        RequestLatencyContext.wrapWithContext(
+            () -> {
+              try {
+                BulkOperationResult result =
+                    repository.bulkRemoveAndValidateTagsToAssets(entityId, request);
+                WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
+                    jobId, securityContext, result);
+              } catch (Exception e) {
+                WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
+                    jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
+              }
+            }));
     BulkAssetsOperationResponse response =
         new BulkAssetsOperationResponse(
             jobId, "Bulk Remove tags to Asset operation initiated successfully.");
@@ -882,33 +951,35 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         Response.ok().entity(responseEntity).type(MediaType.APPLICATION_JSON).build();
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
-        () -> {
-          try {
-            WebsocketNotificationHandler.sendCsvImportStartedNotification(jobId, securityContext);
+        RequestLatencyContext.wrapWithContext(
+            () -> {
+              try {
+                WebsocketNotificationHandler.sendCsvImportStartedNotification(
+                    jobId, securityContext);
 
-            CsvImportProgressCallback progressCallback =
-                (rowsProcessed, totalRows, batchNumber, message) ->
-                    WebsocketNotificationHandler.sendCsvImportProgressNotification(
-                        jobId, securityContext, rowsProcessed, totalRows, message);
+                CsvImportProgressCallback progressCallback =
+                    (rowsProcessed, totalRows, batchNumber, message) ->
+                        WebsocketNotificationHandler.sendCsvImportProgressNotification(
+                            jobId, securityContext, rowsProcessed, totalRows, message);
 
-            CsvImportResult result =
-                importCsvInternal(
-                    uriInfo,
-                    securityContext,
-                    name,
-                    csv,
-                    dryRun,
-                    recursive,
-                    versioningEntityType,
-                    progressCallback);
-            WebsocketNotificationHandler.sendCsvImportCompleteNotification(
-                jobId, securityContext, result);
-          } catch (Exception e) {
-            LOG.error("Encountered Exception while importing.", e);
-            WebsocketNotificationHandler.sendCsvImportFailedNotification(
-                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
-          }
-        });
+                CsvImportResult result =
+                    importCsvInternal(
+                        uriInfo,
+                        securityContext,
+                        name,
+                        csv,
+                        dryRun,
+                        recursive,
+                        versioningEntityType,
+                        progressCallback);
+                WebsocketNotificationHandler.sendCsvImportCompleteNotification(
+                    jobId, securityContext, result);
+              } catch (Exception e) {
+                LOG.error("Encountered Exception while importing.", e);
+                WebsocketNotificationHandler.sendCsvImportFailedNotification(
+                    jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
+              }
+            }));
 
     return response;
   }
@@ -1023,6 +1094,16 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return new ResourceContext<>(entityType, id, null, operation);
   }
 
+  protected ResourceContext<T> getResourceContextById(UUID id, Include include) {
+    return new ResourceContext<>(entityType, id, null, include);
+  }
+
+  protected ResourceContext<T> getResourceContextById(
+      UUID id, RelationIncludes relationIncludes, Fields fields) {
+    Include include = relationIncludes == null ? Include.ALL : relationIncludes.getDefaultInclude();
+    return new ResourceContext<>(entityType, id, null, include, fields, relationIncludes);
+  }
+
   protected ResourceContext<T> getResourceContextByName(String name) {
     return new ResourceContext<>(entityType, null, name);
   }
@@ -1030,6 +1111,16 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected ResourceContext<T> getResourceContextByName(
       String name, ResourceContextInterface.Operation operation) {
     return new ResourceContext<>(entityType, null, name, operation);
+  }
+
+  protected ResourceContext<T> getResourceContextByName(String name, Include include) {
+    return new ResourceContext<>(entityType, null, name, include);
+  }
+
+  protected ResourceContext<T> getResourceContextByName(
+      String name, RelationIncludes relationIncludes, Fields fields) {
+    Include include = relationIncludes == null ? Include.ALL : relationIncludes.getDefaultInclude();
+    return new ResourceContext<>(entityType, null, name, include, fields, relationIncludes);
   }
 
   protected static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
@@ -1111,9 +1202,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     List<T> validEntities = new ArrayList<>();
     List<BulkResponse> failedResponses = new ArrayList<>();
 
-    // Phase 1: Validate and prepare all entities (in-memory, no DB)
-    List<T> preparedEntities = new ArrayList<>();
-    Map<String, C> entityToRequest = new HashMap<>();
+    // Phase 1a: Validate and map all requests to entities
+    List<T> mappedEntities = new ArrayList<>();
+    Map<T, C> entityToCreateRequest = new IdentityHashMap<>();
     for (C createRequest : createRequests) {
       try {
         String violations = ValidatorUtil.validate(createRequest);
@@ -1122,10 +1213,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         }
         T entity =
             mapper.createToEntity(createRequest, securityContext.getUserPrincipal().getName());
-        repository.prepareInternal(entity, false);
-        repository.setFullyQualifiedName(entity);
-        preparedEntities.add(entity);
-        entityToRequest.put(entity.getFullyQualifiedName(), createRequest);
+        mappedEntities.add(entity);
+        entityToCreateRequest.put(entity, createRequest);
       } catch (Exception e) {
         BulkResponse failedResponse = new BulkResponse();
         failedResponse.setRequest(createRequest);
@@ -1133,6 +1222,32 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         failedResponse.setStatus(400);
         failedResponses.add(failedResponse);
       }
+    }
+
+    // Phase 1b: Preload shared parent entities for all mapped entities (1 batch query per type)
+    repository.preloadParentsForBulk(mappedEntities);
+
+    // Phase 1c: Prepare each entity (uses preloaded parent cache)
+    List<T> preparedEntities = new ArrayList<>();
+    Map<String, C> entityToRequest = new HashMap<>();
+    try {
+      for (T entity : mappedEntities) {
+        try {
+          repository.prepareInternal(entity, false);
+          repository.setFullyQualifiedName(entity);
+          preparedEntities.add(entity);
+          entityToRequest.put(entity.getFullyQualifiedName(), entityToCreateRequest.get(entity));
+        } catch (Exception e) {
+          C createRequest = entityToCreateRequest.get(entity);
+          BulkResponse failedResponse = new BulkResponse();
+          failedResponse.setRequest(createRequest);
+          failedResponse.setMessage(e.getMessage());
+          failedResponse.setStatus(400);
+          failedResponses.add(failedResponse);
+        }
+      }
+    } finally {
+      repository.clearParentCache();
     }
 
     // Phase 2: Batch fetch existing entities (1 DB query instead of N)

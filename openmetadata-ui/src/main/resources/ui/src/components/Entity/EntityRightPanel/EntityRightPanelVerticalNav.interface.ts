@@ -18,12 +18,15 @@ export enum EntityRightPanelTab {
   LINEAGE = 'lineage',
   DATA_QUALITY = 'data-quality',
   CUSTOM_PROPERTIES = 'custom-properties',
+  RELATIONS = 'relations',
 }
 
 export interface EntityRightPanelVerticalNavProps {
   verticalNavConatinerclassName?: string;
   isSideDrawer?: boolean;
   isColumnDetailPanel?: boolean;
+  ontologyExplorerNav?: boolean;
+  appendOntologyRelationsTab?: boolean;
   activeTab: EntityRightPanelTab;
   entityType: EntityType;
   onTabChange: (tab: EntityRightPanelTab) => void;

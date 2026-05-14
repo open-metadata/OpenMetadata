@@ -74,12 +74,12 @@ class VectorEmbeddingIntegrationIT {
 
     try {
       embeddingClient = createTestEmbeddingClient();
-    } catch (EmbeddingInitializationException e) {
+    } catch (Exception e) {
       Assumptions.assumeTrue(false, "DJL model not available: " + e.getMessage());
       return;
     }
 
-    OpenSearchVectorService.init(openSearchClient, embeddingClient, "en");
+    OpenSearchVectorService.init(openSearchClient, embeddingClient);
     vectorService = OpenSearchVectorService.getInstance();
 
     mapper = new ObjectMapper();
@@ -128,7 +128,7 @@ class VectorEmbeddingIntegrationIT {
 
     Map<String, Object> doc = getDocumentById(testTable.getId().toString());
     assertNotNull(doc, "Entity document should exist");
-    assertNotNull(doc.get("textToEmbed"), "Document should have text_to_embed");
+    assertNotNull(doc.get("textToLLMContext"), "Document should have textToLLMContext");
     assertNotNull(doc.get("embedding"), "Document should have embedding");
     assertNotNull(doc.get("fingerprint"), "Document should have fingerprint");
     assertEquals(
@@ -252,12 +252,78 @@ class VectorEmbeddingIntegrationIT {
   }
 
   @Test
+  void testEnsureHybridSearchPipelineCreatesAndUpdates() throws Exception {
+    vectorService.ensureHybridSearchPipeline(0.4, 0.6);
+
+    Map<String, Object> pipeline = getSearchPipeline(OpenSearchVectorService.HYBRID_PIPELINE_NAME);
+    assertNotNull(pipeline, "Pipeline should exist after creation");
+    assertWeightsInPipeline(pipeline, 0.4, 0.6);
+
+    vectorService.ensureHybridSearchPipeline(0.3, 0.7);
+
+    Map<String, Object> updatedPipeline =
+        getSearchPipeline(OpenSearchVectorService.HYBRID_PIPELINE_NAME);
+    assertNotNull(updatedPipeline, "Pipeline should still exist after update");
+    assertWeightsInPipeline(updatedPipeline, 0.3, 0.7);
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> getSearchPipeline(String pipelineName) throws Exception {
+    var genericClient = openSearchClient.generic();
+    try (var response =
+        genericClient.execute(
+            os.org.opensearch.client.opensearch.generic.Requests.builder()
+                .method("GET")
+                .endpoint("/_search/pipeline/" + pipelineName)
+                .build())) {
+      if (response.getStatus() == 404) {
+        return null;
+      }
+      String body =
+          response
+              .getBody()
+              .map(
+                  b -> {
+                    try {
+                      return new String(b.bodyAsBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                    } catch (Exception e) {
+                      return "{}";
+                    }
+                  })
+              .orElse("{}");
+      JsonNode root = mapper.readTree(body);
+      return mapper.convertValue(root.path(pipelineName), Map.class);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private void assertWeightsInPipeline(
+      Map<String, Object> pipeline, double expectedKeyword, double expectedSemantic) {
+    List<Map<String, Object>> processors =
+        (List<Map<String, Object>>) pipeline.get("phase_results_processors");
+    assertNotNull(processors, "Pipeline should have phase_results_processors");
+    assertFalse(processors.isEmpty(), "phase_results_processors should not be empty");
+
+    Map<String, Object> scoreRanker =
+        (Map<String, Object>) processors.get(0).get("score-ranker-processor");
+    assertNotNull(scoreRanker, "Pipeline should have score-ranker-processor");
+
+    Map<String, Object> combination = (Map<String, Object>) scoreRanker.get("combination");
+    assertEquals("rrf", combination.get("technique"));
+
+    Map<String, Object> parameters = (Map<String, Object>) combination.get("parameters");
+    List<Number> weights = (List<Number>) parameters.get("weights");
+    assertEquals(expectedKeyword, weights.get(0).doubleValue(), 0.001);
+    assertEquals(expectedSemantic, weights.get(1).doubleValue(), 0.001);
+  }
+
+  @Test
   void testGenerateEmbeddingFields() {
     Map<String, Object> fields = vectorService.generateEmbeddingFields(testTable);
 
     assertNotNull(fields);
     assertNotNull(fields.get("embedding"));
-    assertNotNull(fields.get("textToEmbed"));
+    assertNotNull(fields.get("textToLLMContext"));
     assertNotNull(fields.get("fingerprint"));
     assertEquals(testTable.getId().toString(), fields.get("parentId"));
     assertEquals(0, fields.get("chunkIndex"));
@@ -281,7 +347,7 @@ class VectorEmbeddingIntegrationIT {
 
     Map<String, Object> initialDoc = getDocumentById(testTable.getId().toString());
     String initialFingerprint = (String) initialDoc.get("fingerprint");
-    String initialTextToEmbed = (String) initialDoc.get("textToEmbed");
+    String initialTextToEmbed = (String) initialDoc.get("textToLLMContext");
 
     String patchedDescription = "Revenue metrics for quarterly financial reporting analysis";
     testTable.setDescription(patchedDescription);
@@ -292,15 +358,16 @@ class VectorEmbeddingIntegrationIT {
 
     Map<String, Object> updatedDoc = getDocumentById(testTable.getId().toString());
     String updatedFingerprint = (String) updatedDoc.get("fingerprint");
-    String updatedTextToEmbed = (String) updatedDoc.get("textToEmbed");
+    String updatedTextToEmbed = (String) updatedDoc.get("textToLLMContext");
 
     assertFalse(
         initialFingerprint.equals(updatedFingerprint), "Fingerprint should change after PATCH");
     assertFalse(
-        initialTextToEmbed.equals(updatedTextToEmbed), "textToEmbed should change after PATCH");
+        initialTextToEmbed.equals(updatedTextToEmbed),
+        "textToLLMContext should change after PATCH");
     assertTrue(
         updatedTextToEmbed.contains("Revenue metrics"),
-        "Updated textToEmbed should reflect patched description");
+        "Updated textToLLMContext should reflect patched description");
 
     List<Map<String, Object>> results =
         executeKnnSearch("quarterly financial revenue reporting", 10);

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Box } from '@mui/material';
 import {
   Button,
   Card,
@@ -637,18 +636,12 @@ const TestDefinitionList = () => {
             bodyStyle={{
               padding: 0,
             }}>
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2,
-                p: 4,
-              }}>
-              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <div className="tw:flex tw:flex-col tw:gap-2 tw:p-4">
+              <div className="tw:flex tw:gap-2 tw:items-center">
                 {quickFilters}
-              </Box>
-              {!isEmpty(urlFilters) && <Box>{filterSelectionDisplay}</Box>}
-            </Box>
+              </div>
+              {!isEmpty(urlFilters) && <div>{filterSelectionDisplay}</div>}
+            </div>
 
             {/* Table */}
             <Table

@@ -57,17 +57,12 @@ public class SimpleMetricsTest {
     Metrics.globalRegistry
         .getMeters()
         .forEach(
-            meter -> {
-              LOG.info(
-                  "  Meter: {} type: {} tags: {}",
-                  meter.getId().getName(),
-                  meter.getClass().getSimpleName(),
-                  meter.getId().getTags());
-            });
-
-    // The normalized endpoint
-    String normalized = MetricUtils.normalizeUri(endpoint);
-    LOG.info("Normalized endpoint: {}", normalized);
+            meter ->
+                LOG.info(
+                    "  Meter: {} type: {} tags: {}",
+                    meter.getId().getName(),
+                    meter.getClass().getSimpleName(),
+                    meter.getId().getTags()));
 
     // Try different ways to find the timer
     Timer timer1 = Metrics.globalRegistry.find("request.latency.total").timer();
@@ -76,15 +71,15 @@ public class SimpleMetricsTest {
     Timer timer2 =
         Metrics.globalRegistry
             .find("request.latency.total")
-            .tag("endpoint", normalized)
+            .tag("endpoint", endpoint)
             .tag("method", "GET")
             .timer();
-    LOG.info("Timer with normalized endpoint: {}", timer2);
+    LOG.info("Timer with endpoint: {}", timer2);
 
     Timer timer3 =
         Metrics.globalRegistry
             .find("request.latency.total")
-            .tags("endpoint", normalized, "method", "GET")
+            .tags("endpoint", endpoint, "method", "GET")
             .timer();
     LOG.info("Timer with tags method: {}", timer3);
 

@@ -1,0 +1,18 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/utils/common/accessTokenConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Access Token",
+  "description": "Static access token for Airflow API authentication.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.utils.common.AccessTokenConfig",
+  "properties": {
+    "token": {
+      "title": "Token",
+      "description": "Static access token for Airflow API authentication.",
+      "type": "string",
+      "format": "password"
+    }
+  },
+  "required": ["token"],
+  "additionalProperties": false
+}

@@ -20,8 +20,6 @@ import static org.openmetadata.service.Entity.METRIC;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 
-import com.google.gson.Gson;
-import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -30,31 +28,22 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.entity.data.Metric;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TaskStatus;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
-import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.metrics.MetricResource;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
-import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class MetricRepository extends EntityRepository<Metric> {
@@ -126,30 +115,18 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("relatedMetrics");
+  }
+
+  @Override
   public void storeEntity(Metric metric, boolean update) {
-    List<EntityReference> relatedMetrics = metric.getRelatedMetrics();
-    metric.setRelatedMetrics(null);
     store(metric, update);
-    metric.setRelatedMetrics(relatedMetrics);
   }
 
   @Override
   public void storeEntities(List<Metric> entities) {
-    List<Metric> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
-
-    for (Metric metric : entities) {
-      List<EntityReference> relatedMetrics = metric.getRelatedMetrics();
-
-      metric.setRelatedMetrics(null);
-
-      String jsonCopy = gson.toJson(metric);
-      entitiesToStore.add(gson.fromJson(jsonCopy, Metric.class));
-
-      metric.setRelatedMetrics(relatedMetrics);
-    }
-
-    storeMany(entitiesToStore);
+    storeMany(entities);
   }
 
   @Override
@@ -198,22 +175,50 @@ public class MetricRepository extends EntityRepository<Metric> {
       super(original, updated, operation);
     }
 
+    @Override
+    public void updateReviewers() {
+      super.updateReviewers();
+      if (original.getReviewers() != null
+          && updated.getReviewers() != null
+          && !original.getReviewers().equals(updated.getReviewers())) {
+        updateTaskWithNewReviewers(updated);
+      }
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      recordChange("granularity", original.getGranularity(), updated.getGranularity());
-      recordChange("metricType", original.getMetricType(), updated.getMetricType());
-      recordChange(
-          "unitOfMeasurement", original.getUnitOfMeasurement(), updated.getUnitOfMeasurement());
-      recordChange(
+      compareAndUpdate(
+          "granularity",
+          () -> recordChange("granularity", original.getGranularity(), updated.getGranularity()));
+      compareAndUpdate(
+          "metricType",
+          () -> recordChange("metricType", original.getMetricType(), updated.getMetricType()));
+      compareAndUpdate(
+          "unitOfMeasurement",
+          () ->
+              recordChange(
+                  "unitOfMeasurement",
+                  original.getUnitOfMeasurement(),
+                  updated.getUnitOfMeasurement()));
+      compareAndUpdate(
           "customUnitOfMeasurement",
-          original.getCustomUnitOfMeasurement(),
-          updated.getCustomUnitOfMeasurement());
-      if (updated.getMetricExpression() != null) {
-        recordChange(
-            "metricExpression", original.getMetricExpression(), updated.getMetricExpression());
-      }
-      updateRelatedMetrics(original, updated);
+          () ->
+              recordChange(
+                  "customUnitOfMeasurement",
+                  original.getCustomUnitOfMeasurement(),
+                  updated.getCustomUnitOfMeasurement()));
+      compareAndUpdate(
+          "metricExpression",
+          () -> {
+            if (updated.getMetricExpression() != null) {
+              recordChange(
+                  "metricExpression",
+                  original.getMetricExpression(),
+                  updated.getMetricExpression());
+            }
+          });
+      compareAndUpdate("relatedMetrics", () -> updateRelatedMetrics(original, updated));
     }
 
     private void updateRelatedMetrics(Metric original, Metric updated) {
@@ -294,12 +299,20 @@ public class MetricRepository extends EntityRepository<Metric> {
     // Handle case where task goes from DRAFT to IN_REVIEW to DRAFT quickly
     // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT,
     // but there will be a task created. This handles that case scenario.
-    if (updated.getEntityStatus() == EntityStatus.DRAFT) {
+    if (original.getEntityStatus() != EntityStatus.DRAFT
+        && updated.getEntityStatus() == EntityStatus.DRAFT) {
       try {
         closeApprovalTask(updated, "Closed due to metric going back to DRAFT.");
       } catch (EntityNotFoundException ignored) {
         // No ApprovalTask is present, so we don't need to worry about this.
       }
+    }
+  }
+
+  @Override
+  protected void preDelete(Metric entity, String deletedBy) {
+    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
+      checkUpdatedByReviewer(entity, deletedBy);
     }
   }
 
@@ -338,47 +351,22 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   private void closeApprovalTask(Metric entity, String comment) {
-    EntityLink about = new EntityLink(METRIC, entity.getFullyQualifiedName());
-    FeedRepository feedRepository = Entity.getFeedRepository();
-    try {
-      Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-      feedRepository.closeTask(
-          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
-    } catch (EntityNotFoundException ex) {
-      LOG.info(
-          "{} Task not found for metric {}",
-          TaskType.RequestApproval,
-          entity.getFullyQualifiedName());
-    }
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    taskRepository.closeApprovalTaskForEntity(
+        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
   }
 
   protected void updateTaskWithNewReviewers(Metric metric) {
-    try {
-      MessageParser.EntityLink about =
-          new MessageParser.EntityLink(METRIC, metric.getFullyQualifiedName());
-      FeedRepository feedRepository = Entity.getFeedRepository();
-      Thread originalTask =
-          feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-      metric =
-          Entity.getEntityByName(
-              Entity.METRIC,
-              metric.getFullyQualifiedName(),
-              "id,fullyQualifiedName,reviewers",
-              Include.ALL);
-
-      Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
-      updatedTask.getTask().withAssignees(new ArrayList<>(metric.getReviewers()));
-      JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
-      RestUtil.PatchResponse<Thread> thread =
-          feedRepository.patchThread(null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
-
-      // Send WebSocket Notification
-      WebsocketNotificationHandler.handleTaskNotification(thread.entity());
-    } catch (EntityNotFoundException e) {
-      LOG.info(
-          "{} Task not found for metric {}",
-          TaskType.RequestApproval,
-          metric.getFullyQualifiedName());
-    }
+    metric =
+        Entity.getEntityByName(
+            Entity.METRIC,
+            metric.getFullyQualifiedName(),
+            "id,fullyQualifiedName,reviewers",
+            Include.ALL);
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    taskRepository.updateApprovalTaskAssignees(
+        metric.getFullyQualifiedName(),
+        new ArrayList<>(metric.getReviewers()),
+        metric.getUpdatedBy());
   }
 }

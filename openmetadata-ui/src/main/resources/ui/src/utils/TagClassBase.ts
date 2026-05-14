@@ -12,6 +12,7 @@
  */
 import { isEmpty } from 'lodash';
 import React from 'react';
+import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { DomainLabelV2 } from '../components/DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
@@ -19,6 +20,7 @@ import { PAGE_SIZE } from '../constants/constants';
 import {
   DESCRIPTION_WIDGET,
   GridSizes,
+  KNOWLEDGE_ARTICLE_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { queryFilterToRemoveSomeClassification } from '../constants/Tag.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -135,6 +137,7 @@ class TagClassBase {
       EntityTabs.ASSETS,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.CUSTOM_PROPERTIES,
+      EntityTabs.DATA_OBSERVABILITY,
     ].map((tab: EntityTabs) => ({
       id: tab,
       name: tab,
@@ -204,6 +207,7 @@ class TagClassBase {
           gridSizes: ['large'] as GridSizes[],
         },
       },
+      KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }
 
@@ -249,12 +253,6 @@ class TagClassBase {
     return null;
   };
 
-  public getRecognizerTabContent = (
-    _tagData: Tag
-  ): React.ReactElement | null => {
-    return null;
-  };
-
   public getRecognizerFeedbackPopup(
     _tagLabel: TagLabel,
     _entityFqn: string,
@@ -274,6 +272,13 @@ class TagClassBase {
       TabSpecificField.TERM_COUNT,
       TabSpecificField.DOMAINS,
     ];
+  }
+
+  public getAdditionalTagDetailPageTabs(
+    _tag: Tag,
+    _activeTab: string
+  ): TabProps[] {
+    return [];
   }
 }
 

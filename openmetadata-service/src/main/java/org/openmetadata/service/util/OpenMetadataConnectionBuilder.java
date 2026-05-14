@@ -77,9 +77,9 @@ public class OpenMetadataConnectionBuilder {
       initializeBotUser(getBotFromPipeline(ingestionPipeline));
     } catch (Exception e) {
       LOG.warn(
-          String.format(
-              "Could not initialize bot for pipeline [%s] due to [%s]",
-              ingestionPipeline.getPipelineType(), e));
+          "Could not initialize bot for pipeline [{}] due to ",
+          ingestionPipeline.getPipelineType(),
+          e);
       initializeBotUser(Entity.INGESTION_BOT_NAME);
     }
   }
@@ -107,7 +107,11 @@ public class OpenMetadataConnectionBuilder {
     PipelineServiceClientConfiguration pipelineServiceClientConfiguration =
         openMetadataApplicationConfig.getPipelineServiceClientConfiguration();
     openMetadataURL = pipelineServiceClientConfiguration.getMetadataApiEndpoint();
-    verifySSL = pipelineServiceClientConfiguration.getVerifySSL();
+    // Default to NO_SSL when verifySSL is not configured to avoid null handling failures.
+    verifySSL =
+        pipelineServiceClientConfiguration.getVerifySSL() == null
+            ? VerifySSL.NO_SSL
+            : pipelineServiceClientConfiguration.getVerifySSL();
 
     /*
      How this information flows:
@@ -123,8 +127,7 @@ public class OpenMetadataConnectionBuilder {
     */
     openMetadataSSLConfig =
         getOMSSLConfigFromPipelineServiceClient(
-            pipelineServiceClientConfiguration.getVerifySSL(),
-            pipelineServiceClientConfiguration.getSslConfig());
+            verifySSL, pipelineServiceClientConfiguration.getSslConfig());
 
     clusterName = openMetadataApplicationConfig.getClusterName();
     secretsManagerLoader = pipelineServiceClientConfiguration.getSecretsManagerLoader();
@@ -212,13 +215,14 @@ public class OpenMetadataConnectionBuilder {
       }
       return user;
     } catch (EntityNotFoundException ex) {
-      LOG.debug((String.format("User for bot [%s]", botName)) + " [{}] not found.", botName);
+      LOG.debug("User for bot [{}] not found.", botName);
       return null;
     }
   }
 
   protected Object getOMSSLConfigFromPipelineServiceClient(VerifySSL verifySSL, Object sslConfig) {
-    return switch (verifySSL) {
+    VerifySSL effectiveVerifySSL = verifySSL == null ? VerifySSL.NO_SSL : verifySSL;
+    return switch (effectiveVerifySSL) {
       case NO_SSL, IGNORE -> null;
       case VALIDATE -> JsonUtils.convertValue(sslConfig, ValidateSSLClientConfig.class);
     };

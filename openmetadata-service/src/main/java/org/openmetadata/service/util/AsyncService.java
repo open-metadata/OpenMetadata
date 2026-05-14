@@ -176,7 +176,7 @@ public class AsyncService {
         .orTimeout(timeoutSeconds, TimeUnit.SECONDS)
         .exceptionally(
             ex -> {
-              if (ex.getCause() instanceof TimeoutException) {
+              if (ex instanceof TimeoutException || ex.getCause() instanceof TimeoutException) {
                 throw new RuntimeException(
                     String.format(
                         "%s timeout for %s: Operation exceeded %d seconds",

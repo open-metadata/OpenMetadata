@@ -237,23 +237,95 @@ public interface SearchClient
                   """;
 
   String REMOVE_LINEAGE_SCRIPT =
-      "ctx._source.upstreamLineage.removeIf(lineage -> lineage.docUniqueId == params.docUniqueId)";
+      """
+      def removedKeys = new HashSet();
+      for (def lineage : ctx._source.upstreamLineage) {
+        if (params.docUniqueId.equals(lineage.docUniqueId) && lineage.containsKey('sqlQueryKey')) {
+          removedKeys.add(lineage.sqlQueryKey);
+        }
+      }
+      ctx._source.upstreamLineage.removeIf(lineage -> params.docUniqueId.equals(lineage.docUniqueId));
+      if (!removedKeys.isEmpty() && ctx._source.containsKey('lineageSqlQueries') && ctx._source.lineageSqlQueries != null) {
+        def sqlMap = ctx._source.lineageSqlQueries;
+        def usedKeys = new HashSet();
+        for (def lineage : ctx._source.upstreamLineage) {
+          if (lineage.containsKey('sqlQueryKey')) {
+            usedKeys.add(lineage.sqlQueryKey);
+          }
+        }
+        removedKeys.removeAll(usedKeys);
+        for (def key : removedKeys) {
+          sqlMap.remove(key);
+        }
+      }
+      """;
 
   String REMOVE_ENTITY_RELATIONSHIP =
       "ctx._source.upstreamEntityRelationship.removeIf(relationship -> relationship.docId == params.docId)";
 
   String ADD_UPDATE_LINEAGE =
       """
+      // Dedup sqlQuery into the doc-level lineageSqlQueries map.
+      // If the incoming edge carries a sqlQuery, store it once in lineageSqlQueries
+      // keyed by a sequential integer, then replace sqlQuery with sqlQueryKey on the edge.
+      def rawSql = params.lineageData['sqlQuery'];
+      Map edgeData;
+      if (rawSql != null && !rawSql.isEmpty()) {
+        if (!ctx._source.containsKey('lineageSqlQueries') || ctx._source['lineageSqlQueries'] == null) {
+          ctx._source['lineageSqlQueries'] = new HashMap();
+        }
+        def sqlMap = ctx._source['lineageSqlQueries'];
+        def sqlKey = null;
+        for (def entry : sqlMap.entrySet()) {
+          if (entry.getValue().equals(rawSql)) {
+            sqlKey = entry.getKey();
+            break;
+          }
+        }
+        if (sqlKey == null) {
+          def maxKey = 0;
+          for (def k : sqlMap.keySet()) {
+            def kInt = Integer.parseInt(k);
+            if (kInt > maxKey) maxKey = kInt;
+          }
+          sqlKey = String.valueOf(maxKey + 1);
+          sqlMap.put(sqlKey, rawSql);
+        }
+        edgeData = new HashMap();
+        edgeData.putAll(params.lineageData);
+        edgeData.put('sqlQueryKey', sqlKey);
+        edgeData.remove('sqlQuery');
+      } else {
+        edgeData = params.lineageData;
+      }
+      // Replace or add the edge, capturing the old sqlQueryKey for cleanup.
+      def oldSqlQueryKey = null;
       boolean docIdExists = false;
       for (int i = 0; i < ctx._source.upstreamLineage.size(); i++) {
         if (ctx._source.upstreamLineage[i].docUniqueId.equalsIgnoreCase(params.lineageData.docUniqueId)) {
-          ctx._source.upstreamLineage[i] = params.lineageData;
+          if (ctx._source.upstreamLineage[i].containsKey('sqlQueryKey')) {
+            oldSqlQueryKey = ctx._source.upstreamLineage[i].sqlQueryKey;
+          }
+          ctx._source.upstreamLineage[i] = edgeData;
           docIdExists = true;
           break;
         }
       }
       if (!docIdExists) {
-        ctx._source.upstreamLineage.add(params.lineageData);
+        ctx._source.upstreamLineage.add(edgeData);
+      }
+      // Prune the old SQL key if it changed and is no longer used by any edge.
+      if (oldSqlQueryKey != null && !oldSqlQueryKey.equals(edgeData.containsKey('sqlQueryKey') ? edgeData.get('sqlQueryKey') : null)) {
+        boolean stillUsed = false;
+        for (def lineage : ctx._source.upstreamLineage) {
+          if (lineage.containsKey('sqlQueryKey') && oldSqlQueryKey.equals(lineage.sqlQueryKey)) {
+            stillUsed = true;
+            break;
+          }
+        }
+        if (!stillUsed && ctx._source.containsKey('lineageSqlQueries') && ctx._source.lineageSqlQueries != null) {
+          ctx._source.lineageSqlQueries.remove(oldSqlQueryKey);
+        }
       }
       """;
 
@@ -420,15 +492,15 @@ public interface SearchClient
   // Script for removing followers from TestCases when removed from their parent tables.
   // TestCases can only have inherited followers, so when the parent loses followers,
   // we need to update the TestCase's follower list accordingly.
-  // Note: deletedFollowers contains the REMAINING followers after deletion, not the deleted ones.
+  // Note: removedFollowers contains the REMAINING followers after deletion, not the deleted ones.
   // This script only applies to TestCases - does nothing for other entity types.
   String REMOVE_FOLLOWERS_SCRIPT =
       """
       if (ctx._source.containsKey('entityType') && ctx._source.entityType == 'testCase') {
         // For TestCases, replace with the updated follower list (already has removed followers filtered out)
-        if (params.containsKey('deletedFollowers') && params.deletedFollowers != null) {
+        if (params.containsKey('removedFollowers') && params.removedFollowers != null) {
           List followerIds = new ArrayList();
-          for (def follower : params.deletedFollowers) {
+          for (def follower : params.removedFollowers) {
             if (follower != null && follower.containsKey('id')) {
               followerIds.add(follower.id.toString());
             }
@@ -645,5 +717,16 @@ public interface SearchClient
   default void initializeLineageBuilders() {
     // Default implementation does nothing - concrete implementations can override
     // This allows backward compatibility for clients that don't need lineage features
+  }
+
+  /**
+   * Evicts every cached lineage graph whose root, nodes, or edge endpoints reference
+   * the given FQN. Callers invoke this after a lineage edge involving the FQN is added
+   * or deleted so stale graphs are not served back to the UI.
+   *
+   * @param fqn Fully qualified name of the entity touched by the mutation
+   */
+  default void invalidateLineageCache(String fqn) {
+    // Default no-op; concrete clients delegate to their LineageGraphBuilder cache
   }
 }

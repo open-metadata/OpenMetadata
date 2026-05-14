@@ -1,0 +1,1 @@
+-- Placeholder for 1.12.5 PostgreSQL schema changes

@@ -152,7 +152,7 @@ final class TeamsMarkdownFormatter extends AbstractVisitor {
   private static boolean isAllowedLinkUrl(String url) {
     try {
       if (url == null) return false;
-      java.net.URI u = java.net.URI.create(url.trim());
+      java.net.URI u = java.net.URI.create(escapeMdUrl(url));
       String s = u.getScheme();
       return s != null
           && (s.equalsIgnoreCase("http")

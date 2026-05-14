@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState } from 'react';
 
 const DEFAULT_TIMEOUT = 2000;
 
@@ -20,7 +20,7 @@ type UseClipboardReturnType = {
    */
   copy: (
     text: string,
-    id?: string,
+    id?: string
   ) => Promise<{ success: boolean; error?: Error }>;
 };
 
@@ -36,15 +36,15 @@ export const useClipboard = (): UseClipboardReturnType => {
   const fallback = (text: string, id?: string) => {
     try {
       // Textarea to copy the text to the clipboard
-      const textArea = document.createElement("textarea");
+      const textArea = document.createElement('textarea');
       textArea.value = text;
-      textArea.style.position = "absolute";
-      textArea.style.left = "-99999px";
+      textArea.style.position = 'absolute';
+      textArea.style.left = '-99999px';
 
       document.body.appendChild(textArea);
       textArea.select();
 
-      const success = document.execCommand("copy");
+      const success = document.execCommand('copy');
       textArea.remove();
 
       setCopied(id || true);
@@ -52,11 +52,11 @@ export const useClipboard = (): UseClipboardReturnType => {
 
       return success
         ? { success: true }
-        : { success: false, error: new Error("execCommand returned false") };
+        : { success: false, error: new Error('execCommand returned false') };
     } catch (err) {
       return {
         success: false,
-        error: err instanceof Error ? err : new Error("Fallback copy failed"),
+        error: err instanceof Error ? err : new Error('Fallback copy failed'),
       };
     }
   };
@@ -75,6 +75,7 @@ export const useClipboard = (): UseClipboardReturnType => {
         return fallback(text, id);
       }
     }
+
     return fallback(text, id);
   }, []);
 

@@ -154,7 +154,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       String ownersList =
           Arrays.stream(owners.split(",")).collect(Collectors.joining("\", \"", "\"", "\""));
       return String.format(
-          "{\"nested\":{\"path\":\"owners\",\"query\":{\"terms\":{\"owners.id\":[%s]}}}}",
+          "{\"nested\":{\"path\":\"owners\",\"query\":{\"terms\":{\"owners.id\":[%s]}},\"ignore_unmapped\":true}}",
           ownersList);
     }
     return "";
@@ -218,18 +218,24 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String serviceName = getQueryParam("serviceName");
     String dataQualityDimension = getQueryParam("dataQualityDimension");
     String followedBy = getQueryParam("followedBy");
+    String columnName = getQueryParam("columnName");
 
     if (tags != null) {
       String tagsList =
           Arrays.stream(tags.split(","))
               .map(this::escapeDoubleQuotes)
               .collect(Collectors.joining("\", \"", "\"", "\""));
-      conditions.add(String.format("{\"terms\":{\"tags.tagFQN\":[%s]}}", tagsList));
+      conditions.add(
+          String.format(
+              "{\"nested\":{\"path\":\"tags\",\"query\":{\"terms\":{\"tags.tagFQN\":[%s]}}}}",
+              tagsList));
     }
 
     if (tier != null) {
       conditions.add(
-          String.format("{\"terms\":{\"tags.tagFQN\":[\"%s\"]}}", escapeDoubleQuotes(tier)));
+          String.format(
+              "{\"term\":{\"tier.tagFQN\":\"%s\"}}",
+              escapeDoubleQuotes(tier.toLowerCase(java.util.Locale.ROOT))));
     }
 
     if (serviceName != null) {
@@ -274,6 +280,13 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (followedBy != null) {
       conditions.add(
           String.format("{\"term\": {\"%s\": \"%s\"}}", FIELD_FOLLOWERS_KEYWORD, followedBy));
+    }
+
+    if (columnName != null) {
+      conditions.add(
+          String.format(
+              "{\"wildcard\": {\"entityLink\": \"*::columns::%s>\"}}",
+              escapeDoubleQuotes(columnName)));
     }
 
     return addCondition(conditions);
@@ -391,10 +404,12 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String originEntityFQN = getQueryParam("originEntityFQN");
     String startTimestamp = getQueryParam("startTimestamp");
     String endTimestamp = getQueryParam("endTimestamp");
+    String dateField = getQueryParam("dateField");
 
     if (startTimestamp != null && endTimestamp != null) {
-      conditions.add(getTimestampFilter("@timestamp", "gte", Long.parseLong(startTimestamp)));
-      conditions.add(getTimestampFilter("@timestamp", "lte", Long.parseLong(endTimestamp)));
+      String esDateField = "updatedAt".equals(dateField) ? "updatedAt" : "@timestamp";
+      conditions.add(getTimestampFilter(esDateField, "gte", Long.parseLong(startTimestamp)));
+      conditions.add(getTimestampFilter(esDateField, "lte", Long.parseLong(endTimestamp)));
     }
 
     if (testCaseResolutionStatusType != null) {

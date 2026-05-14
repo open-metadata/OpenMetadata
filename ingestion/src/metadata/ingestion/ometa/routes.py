@@ -11,9 +11,11 @@
 """
 OMeta API endpoints
 """
+
 from metadata.generated.schema.analytics.webAnalyticEventData import (
     WebAnalyticEventData,
 )
+from metadata.generated.schema.api.ai.createMcpServer import CreateMcpServerRequest
 from metadata.generated.schema.api.automations.createWorkflow import (
     CreateWorkflowRequest,
 )
@@ -71,7 +73,6 @@ from metadata.generated.schema.api.domains.createDataProduct import (
     CreateDataProductRequest,
 )
 from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
-from metadata.generated.schema.api.feed.createSuggestion import CreateSuggestionRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.policies.createPolicy import CreatePolicyRequest
 from metadata.generated.schema.api.services.createApiService import (
@@ -85,6 +86,9 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 )
 from metadata.generated.schema.api.services.createDriveService import (
     CreateDriveServiceRequest,
+)
+from metadata.generated.schema.api.services.createMcpService import (
+    CreateMcpServiceRequest,
 )
 from metadata.generated.schema.api.services.createMessagingService import (
     CreateMessagingServiceRequest,
@@ -121,6 +125,7 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
 from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
+from metadata.generated.schema.entity.ai.mcpServer import McpServer
 from metadata.generated.schema.entity.applications.app import App
 from metadata.generated.schema.entity.applications.createAppRequest import (
     CreateAppRequest,
@@ -165,7 +170,6 @@ from metadata.generated.schema.entity.data.worksheet import Worksheet
 from metadata.generated.schema.entity.docStore.document import Document
 from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 from metadata.generated.schema.entity.domains.domain import Domain
-from metadata.generated.schema.entity.feed.suggestion import Suggestion
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.connections.testConnectionDefinition import (
@@ -177,6 +181,7 @@ from metadata.generated.schema.entity.services.driveService import DriveService
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
+from metadata.generated.schema.entity.services.mcpService import McpService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
@@ -296,6 +301,10 @@ ROUTES = {
     CreateSearchServiceRequest.__name__: "/services/searchServices",
     SecurityService.__name__: "/services/securityServices",
     CreateSecurityServiceRequest.__name__: "/services/securityServices",
+    McpService.__name__: "/services/mcpServices",
+    CreateMcpServiceRequest.__name__: "/services/mcpServices",
+    McpServer.__name__: "/mcpServers",
+    CreateMcpServerRequest.__name__: "/mcpServers",
     IngestionPipeline.__name__: "/services/ingestionPipelines",
     CreateIngestionPipelineRequest.__name__: "/services/ingestionPipelines",
     TestConnectionDefinition.__name__: "/services/testConnectionDefinitions",
@@ -316,9 +325,6 @@ ROUTES = {
     CreateDomainRequest.__name__: "/domains",
     DataProduct.__name__: "/dataProducts",
     CreateDataProductRequest.__name__: "/dataProducts",
-    # Suggestions
-    Suggestion.__name__: "/suggestions",
-    CreateSuggestionRequest.__name__: "/suggestions",
     # Event Subscriptions
     EventSubscription.__name__: "/events/subscriptions",
     CreateEventSubscription.__name__: "/events/subscriptions",

@@ -39,7 +39,6 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import { INITIAL_PAGING_VALUE } from '../../constants/constants';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
-import { servicesDisplayName } from '../../constants/Services.constant';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
@@ -66,6 +65,7 @@ import {
   getServiceMainTabColumns,
 } from '../../utils/ServiceMainTabContentUtils';
 import {
+  getCountLabel,
   getEntityTypeFromServiceCategory,
   getSearchIndexForService,
 } from '../../utils/ServiceUtils';
@@ -314,9 +314,7 @@ function ServiceMainTabContent({
   const searchProps = useMemo(
     () => ({
       placeholder: t('label.search-for-type', {
-        type: t(servicesDisplayName[serviceCategory].key, {
-          entity: t(servicesDisplayName[serviceCategory].entity),
-        }),
+        type: getCountLabel(serviceCategory),
       }),
       typingInterval: 500,
       searchValue: searchValue,

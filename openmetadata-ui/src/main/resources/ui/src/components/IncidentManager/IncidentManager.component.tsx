@@ -10,9 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Dropdown,
+  Skeleton,
+  Table,
+} from '@openmetadata/ui-core-components';
 import { Form, Select } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEqual, isString, isUndefined, omit, parseInt, pick } from 'lodash';
@@ -21,6 +25,7 @@ import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import { ReactComponent as DropDownIcon } from '../../assets/svg/bottom-arrow.svg';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   DEFAULT_DOMAIN_VALUE,
@@ -51,9 +56,10 @@ import { TestCaseIncidentStatusData } from '../../pages/IncidentManager/Incident
 import Assignees from '../../pages/TasksPage/shared/Assignees';
 import { Option } from '../../pages/TasksPage/TasksPage.interface';
 import {
+  getListTestCaseIncidentByStateId,
   getListTestCaseIncidentStatusFromSearch,
-  postTestCaseIncidentStatus,
   TestCaseIncidentStatusParams,
+  transitionIncident,
   updateTestCaseIncidentById,
 } from '../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../rest/miscAPI';
@@ -63,19 +69,17 @@ import {
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import {
-  getEntityDetailsPath,
-  getTestCaseDetailPagePath,
-} from '../../utils/RouterUtils';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
+import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
 import DateTimeDisplay from '../common/DateTimeDisplay/DateTimeDisplay';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import MuiDatePickerMenu from '../common/MuiDatePickerMenu/MuiDatePickerMenu';
+import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
-import Table from '../common/Table/Table';
 import {
   ProfilerTabPath,
   TestCasePermission,
@@ -141,6 +145,7 @@ const IncidentManager = ({
       data: [],
       isLoading: true,
     });
+  const [isDateFilterOpen, setIsDateFilterOpen] = useState(false);
   const [users, setUsers] = useState<{
     options: Option[];
   }>({
@@ -186,6 +191,19 @@ const IncidentManager = ({
   >([]);
 
   const { t } = useTranslation();
+
+  const dateFilterOptions = useMemo(
+    () => [
+      { name: t('label.created-at'), value: 'timestamp' },
+      { name: t('label.updated-at'), value: 'updatedAt' },
+    ],
+    [t]
+  );
+
+  const selectedDateFilterKey = (filters.dateField as string) ?? 'timestamp';
+  const selectedDateFilterOption =
+    dateFilterOptions.find((o) => o.value === selectedDateFilterKey) ??
+    dateFilterOptions[0];
 
   const {
     paging,
@@ -326,31 +344,47 @@ const IncidentManager = ({
 
   const handleAssigneeUpdate = useCallback(
     async (record: TestCaseResolutionStatus, assignee?: EntityReference[]) => {
-      const assigneeData = assignee?.[0];
+      const taskId = record.stateId;
+      if (!taskId) {
+        return;
+      }
 
-      const updatedData: TestCaseResolutionStatus = {
-        ...record,
-        testCaseResolutionStatusDetails: {
-          ...record?.testCaseResolutionStatusDetails,
-          assignee: assigneeData,
-        },
-        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
-      };
+      const assigneeData = assignee?.[0];
+      const transitionId =
+        record.testCaseResolutionStatusType ===
+        TestCaseResolutionStatusTypes.Assigned
+          ? 'reassign'
+          : 'assign';
 
       try {
-        await postTestCaseIncidentStatus({
-          severity: record.severity,
-          testCaseReference: record.testCaseReference?.fullyQualifiedName ?? '',
-          testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
-          testCaseResolutionStatusDetails: {
-            assignee: assigneeData,
-          },
+        await transitionIncident(taskId, {
+          transitionId,
+          payload: assigneeData
+            ? {
+                assignees: [
+                  {
+                    id: assigneeData.id,
+                    type: assigneeData.type ?? 'user',
+                    name: assigneeData.name,
+                    fullyQualifiedName:
+                      assigneeData.fullyQualifiedName ?? assigneeData.name,
+                    displayName: assigneeData.displayName,
+                  },
+                ],
+              }
+            : undefined,
         });
+
+        const refreshed = await getListTestCaseIncidentByStateId(taskId);
+        const latest = refreshed?.data?.[0];
+        if (!latest) {
+          return;
+        }
 
         setTestCaseListData((prev) => {
           const testCaseList = prev.data.map((item) => {
-            if (item.stateId === updatedData.stateId) {
-              return updatedData;
+            if (item.stateId === latest.stateId) {
+              return latest;
             }
 
             return item;
@@ -427,12 +461,20 @@ const IncidentManager = ({
     }
   };
 
+  const handleDateFieldChange = useCallback(
+    (value: string) => {
+      updateFilters({ dateField: value as 'timestamp' | 'updatedAt' });
+    },
+    [updateFilters]
+  );
+
   const handleDateRangeClear = useCallback(() => {
     const updatedFilters = omit(allParams, [
       'startTs',
       'endTs',
       'key',
       'title',
+      'dateField',
     ]);
     navigate(
       {
@@ -448,7 +490,10 @@ const IncidentManager = ({
     (value: TestCaseResolutionStatus) => {
       setTestCaseListData((prev) => {
         const testCaseList = prev.data.map((item) => {
-          if (item.stateId === value.stateId) {
+          if (
+            item.testCaseReference?.fullyQualifiedName ===
+            value.testCaseReference?.fullyQualifiedName
+          ) {
             return value;
           }
 
@@ -551,140 +596,105 @@ const IncidentManager = ({
     );
   };
 
-  const columns: ColumnsType<TestCaseResolutionStatus> = useMemo(
+  const columns = useMemo(
     () => [
-      {
-        title: t('label.test-case-name'),
-        dataIndex: 'name',
-        key: 'name',
-        width: 300,
-        fixed: 'left',
-        render: (_, record) => {
-          return (
-            <Link
-              className="m-0 break-all text-primary"
-              data-testid={`test-case-${record.testCaseReference?.name}`}
-              to={getTestCaseDetailPagePath(
-                record.testCaseReference?.fullyQualifiedName ?? ''
-              )}>
-              {getEntityName(record.testCaseReference)}
-            </Link>
-          );
-        },
-      },
+      { id: 'name', label: t('label.test-case-name') },
       ...(isIncidentPage
-        ? [
-            {
-              title: t('label.table'),
-              dataIndex: 'testCaseReference',
-              key: 'testCaseReference',
-              width: 150,
-              render: (value: EntityReference) => {
-                const tableFqn = getPartialNameFromTableFQN(
-                  value.fullyQualifiedName ?? '',
-                  [
-                    FqnPart.Service,
-                    FqnPart.Database,
-                    FqnPart.Schema,
-                    FqnPart.Table,
-                  ],
-                  '.'
-                );
-
-                return (
-                  <Link
-                    data-testid="table-link"
-                    to={getEntityDetailsPath(
-                      EntityType.TABLE,
-                      tableFqn,
-                      EntityTabs.PROFILER,
-                      ProfilerTabPath.DATA_QUALITY
-                    )}
-                    onClick={(e) => e.stopPropagation()}>
-                    {getNameFromFQN(tableFqn) ?? value.fullyQualifiedName}
-                  </Link>
-                );
-              },
-            },
-          ]
+        ? [{ id: 'testCaseReference', label: t('label.table') }]
         : []),
-      {
-        title: t('label.last-updated'),
-        dataIndex: 'timestamp',
-        key: 'timestamp',
-        width: 150,
-        render: (value: number) => {
-          return <DateTimeDisplay timestamp={value} />;
-        },
-      },
-      {
-        title: t('label.status'),
-        dataIndex: 'testCaseResolutionStatusType',
-        key: 'testCaseResolutionStatusType',
-        width: 100,
-        render: (_, record: TestCaseResolutionStatus) => {
-          if (isPermissionLoading) {
-            return <Skeleton height={24} variant="rectangular" width={100} />;
-          }
-          const hasPermission = testCasePermissions.find(
-            (item) =>
-              item.fullyQualifiedName ===
-              record.testCaseReference?.fullyQualifiedName
-          );
+      { id: 'timestamp', label: t('label.last-updated') },
+      { id: 'testCaseResolutionStatusType', label: t('label.status') },
+      { id: 'severity', label: t('label.severity') },
+      { id: 'testCaseResolutionStatusDetails', label: t('label.assignee') },
+    ],
+    [isIncidentPage, t]
+  );
 
-          return (
+  const loadingSkeletons = useMemo(
+    () => (
+      <div className="tw:p-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton className="tw:mb-2" height={40} key={i} width="100%" />
+        ))}
+      </div>
+    ),
+    []
+  );
+
+  const renderRow = (record: TestCaseResolutionStatus) => {
+    const ref = record.testCaseReference;
+    const tableFqn = getPartialNameFromTableFQN(
+      ref?.fullyQualifiedName ?? '',
+      [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+      '.'
+    );
+    const hasPermission = testCasePermissions.find(
+      (item) => item.fullyQualifiedName === ref?.fullyQualifiedName
+    );
+
+    return (
+      <Table.Row id={record.id ?? ''} key={record.id}>
+        <Table.Cell>
+          <Link
+            className="m-0 break-all text-primary"
+            data-testid={`test-case-${ref?.name}`}
+            to={observabilityRouterClassBase.getTestCaseDetailPagePath(
+              ref?.fullyQualifiedName ?? ''
+            )}>
+            {getEntityName(ref)}
+          </Link>
+        </Table.Cell>
+        {isIncidentPage && (
+          <Table.Cell>
+            <Link
+              data-testid="table-link"
+              to={getEntityDetailsPath(
+                EntityType.TABLE,
+                tableFqn,
+                EntityTabs.PROFILER,
+                ProfilerTabPath.DATA_QUALITY
+              )}
+              onClick={(e) => e.stopPropagation()}>
+              {getNameFromFQN(tableFqn) ?? ref?.fullyQualifiedName}
+            </Link>
+          </Table.Cell>
+        )}
+        <Table.Cell>
+          <DateTimeDisplay timestamp={record.timestamp as number} />
+        </Table.Cell>
+        <Table.Cell>
+          {isPermissionLoading ? (
+            <Skeleton height={24} variant="rectangular" width={100} />
+          ) : (
             <TestCaseIncidentManagerStatus
               isInline
               data={record}
               hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
               onSubmit={handleStatusSubmit}
             />
-          );
-        },
-      },
-      {
-        title: t('label.severity'),
-        dataIndex: 'severity',
-        key: 'severity',
-        width: 100,
-        render: (value: Severities, record: TestCaseResolutionStatus) => {
-          if (isPermissionLoading) {
-            return <Skeleton height={24} variant="rectangular" width={100} />;
-          }
-
-          const hasPermission = testCasePermissions.find(
-            (item) =>
-              item.fullyQualifiedName ===
-              record.testCaseReference?.fullyQualifiedName
-          );
-
-          return (
+          )}
+        </Table.Cell>
+        <Table.Cell>
+          {isPermissionLoading ? (
+            <Skeleton height={24} variant="rectangular" width={100} />
+          ) : (
             <Severity
               isInline
               hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
-              severity={value}
+              severity={record.severity}
               onSubmit={(severity) => handleSeveritySubmit(record, severity)}
             />
-          );
-        },
-      },
-      {
-        title: t('label.assignee'),
-        dataIndex: 'testCaseResolutionStatusDetails',
-        key: 'testCaseResolutionStatusDetails',
-        width: 200,
-        render: testCaseResolutionStatusDetailsRender,
-      },
-    ],
-    [
-      tableDetails?.deleted,
-      testCaseListData.data,
-      testCasePermissions,
-      isPermissionLoading,
-      handleAssigneeUpdate,
-      handleStatusSubmit,
-    ]
-  );
+          )}
+        </Table.Cell>
+        <Table.Cell>
+          {testCaseResolutionStatusDetailsRender(
+            record.testCaseResolutionStatusDetails as Assigned | undefined,
+            record
+          )}
+        </Table.Cell>
+      </Table.Row>
+    );
+  };
 
   if (
     !commonTestCasePermission?.ViewAll &&
@@ -748,7 +758,47 @@ const IncidentManager = ({
             </Select>
           </Form.Item>
           {isDateRangePickerVisible && (
-            <Form.Item className="m-b-0" label={t('label.date')}>
+            <div className="tw:flex tw:gap-2">
+              <Dropdown.Root
+                isOpen={isDateFilterOpen}
+                onOpenChange={setIsDateFilterOpen}>
+                <Button
+                  className="tw:border-0 tw:bg-transparent tw:self-center m-r-xs sorting-dropdown tw:hover:*:data-text:decoration-transparent! tw:hover:*:data-text:no-underline!"
+                  color="link-gray"
+                  data-testid="sort-field-dropdown-trigger"
+                  iconTrailing={
+                    <DropDownIcon
+                      className="align-middle"
+                      height={16}
+                      width={16}
+                    />
+                  }>
+                  <span className="tw:text-sm">
+                    {selectedDateFilterOption.name}
+                  </span>
+                </Button>
+                <Dropdown.Popover className="tw:w-max">
+                  <Dropdown.Menu
+                    items={dateFilterOptions}
+                    selectedKeys={[selectedDateFilterKey]}
+                    selectionMode="single"
+                    onAction={(key) => {
+                      if (isString(key)) {
+                        handleDateFieldChange(key);
+                        setIsDateFilterOpen(false);
+                      }
+                    }}>
+                    {(field) => (
+                      <Dropdown.Item
+                        data-testid={`date-field-item-${field.value}`}
+                        id={field.value}
+                        key={field.value}
+                        label={field.name}
+                      />
+                    )}
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
               <MuiDatePickerMenu
                 allowClear
                 showSelectedCustomRange
@@ -757,37 +807,39 @@ const IncidentManager = ({
                 size="small"
                 onClear={handleDateRangeClear}
               />
-            </Form.Item>
+            </div>
           )}
         </div>
       </div>
 
       <Table
-        columns={columns}
-        containerClassName="test-case-table-container custom-card-with-table"
+        aria-label={t('label.incident-manager')}
         data-testid="test-case-incident-manager-table"
-        dataSource={testCaseListData.data}
-        loading={testCaseListData.isLoading}
-        {...(pagingData && showPagination
-          ? {
-              customPaginationProps: {
-                ...pagingData,
-                showPagination,
-              },
-            }
-          : {})}
-        locale={{
-          emptyText: (
-            <FilterTablePlaceHolder
-              placeholderText={t('message.no-incident-found')}
-            />
-          ),
-        }}
-        pagination={false}
-        rowKey="id"
-        scroll={testCaseListData.data.length > 0 ? { x: '100%' } : undefined}
-        size="small"
-      />
+        size="sm">
+        <Table.Header columns={columns}>
+          {(col) => <Table.Head id={col.id} key={col.id} label={col.label} />}
+        </Table.Header>
+        <Table.Body
+          dependencies={[
+            isPermissionLoading,
+            testCasePermissions,
+            testCaseListData.data,
+            tableDetails?.deleted,
+          ]}
+          items={testCaseListData.isLoading ? [] : testCaseListData.data}
+          renderEmptyState={() =>
+            testCaseListData.isLoading ? (
+              loadingSkeletons
+            ) : (
+              <FilterTablePlaceHolder
+                placeholderText={t('message.no-incident-found')}
+              />
+            )
+          }>
+          {(record) => renderRow(record)}
+        </Table.Body>
+      </Table>
+      {pagingData && showPagination && <NextPrevious {...pagingData} />}
     </div>
   );
 };

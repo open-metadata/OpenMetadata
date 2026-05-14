@@ -17,6 +17,7 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   assignRoleToUser,
   cleanupPermissions,
@@ -35,7 +36,6 @@ const test = base.extend<{
     const adminPage = await browser.newPage();
     try {
       await adminUser.login(adminPage);
-      // eslint-disable-next-line react-hooks/rules-of-hooks
       await use(adminPage);
     } finally {
       await adminPage.close();
@@ -89,6 +89,7 @@ test.describe('Glossary Permissions', () => {
     await redirectToHomePage(testUserPage);
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
+    await waitForAllLoadersToDisappear(testUserPage);
 
     // Test that glossary operation elements are visible
     const directElements = [
@@ -100,8 +101,6 @@ test.describe('Glossary Permissions', () => {
     ];
 
     const manageButtonElements = ['delete-button', 'rename-button'];
-
-    await testUserPage.waitForLoadState('networkidle');
 
     for (const testId of directElements) {
       let element;
@@ -151,6 +150,7 @@ test.describe('Glossary Permissions', () => {
     await redirectToHomePage(testUserPage);
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
+    await waitForAllLoadersToDisappear(testUserPage);
 
     // Test that glossary operation elements are visible
     const directElements = [
@@ -161,8 +161,6 @@ test.describe('Glossary Permissions', () => {
     ];
 
     const manageButtonElements = ['delete-button', 'rename-button'];
-
-    await testUserPage.waitForLoadState('networkidle');
 
     for (const testId of directElements) {
       let element;
@@ -204,8 +202,7 @@ test.describe('Glossary Permissions', () => {
     await redirectToHomePage(testUserPage);
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
-
-    await testUserPage.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(testUserPage);
 
     // Edit description button should be visible
     const editDescBtn = testUserPage.getByTestId('edit-description');
@@ -226,8 +223,7 @@ test.describe('Glossary Permissions', () => {
     await redirectToHomePage(testUserPage);
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
-
-    await testUserPage.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(testUserPage);
 
     // Add owner button should be visible
     const addOwner = testUserPage.getByTestId('add-owner');
@@ -253,8 +249,7 @@ test.describe('Glossary Permissions', () => {
     await redirectToHomePage(testUserPage);
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
-
-    await testUserPage.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(testUserPage);
 
     // Add tag button should be visible
     const addTag = testUserPage
@@ -282,8 +277,7 @@ test.describe('Glossary Permissions', () => {
     await redirectToHomePage(testUserPage);
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
-
-    await testUserPage.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(testUserPage);
 
     // Manage button should be visible with delete option
     const manageButton = testUserPage.getByTestId('manage-button');
@@ -315,8 +309,7 @@ test.describe('Glossary Permissions', () => {
     await redirectToHomePage(testUserPage);
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
-
-    await testUserPage.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(testUserPage);
 
     // Add glossary button should be visible (create permission)
     const addGlossaryBtn = testUserPage.getByTestId('add-glossary');
@@ -347,8 +340,7 @@ test.describe('Glossary Permissions', () => {
     await redirectToHomePage(testUserPage);
     await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
     await glossary.visitEntityPage(testUserPage);
-
-    await testUserPage.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(testUserPage);
 
     // User should be able to view the glossary page
     const glossaryHeader = testUserPage.getByTestId(
@@ -362,15 +354,14 @@ test.describe('Glossary Permissions', () => {
   });
 
   // P-11: Team-based permissions work correctly
-  test('Team-based permissions work correctly', async ({
-    testUserPage,
-    page,
-  }) => {
+  test('Team-based permissions work correctly', async ({ browser, page }) => {
     test.slow(true);
 
     const { apiContext } = await getApiContext(page);
 
-    // Create a team and add testUser to it
+    const teamUser = new UserClass();
+    await teamUser.create(apiContext);
+
     const teamName = `TestTeam${Date.now()}`;
     const teamResponse = await apiContext.post('/api/v1/teams', {
       data: {
@@ -383,14 +374,13 @@ test.describe('Glossary Permissions', () => {
     const teamData = await teamResponse.json();
     const teamId = teamData.id;
 
-    // Add user to team
-    await apiContext.patch(`/api/v1/teams/${teamData.id}`, {
+    await apiContext.patch(`/api/v1/teams/${teamId}`, {
       data: [
         {
           op: 'add',
           path: '/users/0',
           value: {
-            id: testUser.responseData.id,
+            id: teamUser.responseData.id,
             type: 'user',
           },
         },
@@ -400,32 +390,49 @@ test.describe('Glossary Permissions', () => {
       },
     });
 
-    // Set up permissions with team as the principal
-    await initializePermissions(page, 'allow', [
+    const { role: teamRole } = await initializePermissions(page, 'allow', [
       'EditDescription',
       'EditOwners',
     ]);
 
-    // Login as test user and verify permissions inherited from team
-    await redirectToHomePage(testUserPage);
-    await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
-    await glossary.visitEntityPage(testUserPage);
+    await apiContext.patch(`/api/v1/teams/${teamId}`, {
+      data: [
+        {
+          op: 'add',
+          path: '/defaultRoles/0',
+          value: {
+            id: teamRole.responseData.id,
+            type: 'role',
+            name: teamRole.responseData.name,
+          },
+        },
+      ],
+      headers: {
+        'Content-Type': 'application/json-patch+json',
+      },
+    });
 
-    await testUserPage.waitForLoadState('networkidle');
+    const teamUserPage = await browser.newPage();
+    try {
+      await teamUser.login(teamUserPage);
 
-    // Verify user can access the glossary page (team membership works)
-    const glossaryHeader = testUserPage.getByTestId(
-      'entity-header-display-name'
-    );
+      await expect(async () => {
+        await glossary.visitEntityPage(teamUserPage);
+        await waitForAllLoadersToDisappear(teamUserPage);
 
-    await expect(glossaryHeader).toBeVisible({ timeout: 10000 });
-    await expect(glossaryHeader).toContainText(glossary.data.displayName);
+        const glossaryHeader = teamUserPage.getByTestId(
+          'entity-header-display-name'
+        );
 
-    // Clean up
-    await cleanupPermissions(apiContext);
-
-    if (teamId) {
-      await apiContext.delete(`/api/v1/teams/${teamId}?hardDelete=true`);
+        await expect(glossaryHeader).toBeVisible({ timeout: 5_000 });
+        await expect(glossaryHeader).toContainText(glossary.data.displayName);
+      }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
+    } finally {
+      await teamUserPage.close();
     }
+
+    await cleanupPermissions(apiContext);
+    await apiContext.delete(`/api/v1/teams/${teamId}?hardDelete=true`);
+    await teamUser.delete(apiContext);
   });
 });

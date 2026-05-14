@@ -52,6 +52,13 @@
         "$ref": "../../entity/data/glossaryTerm.json#/definitions/termReference"
       }
     },
+    "conceptMappings": {
+      "description": "Optional mappings to external concepts (e.g., SKOS alignments).",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/glossaryTerm.json#/definitions/conceptMapping"
+      }
+    },
     "reviewers": {
       "description": "User or Team references of the reviewers for this glossary.",
       "$ref": "../../type/entityReferenceList.json"

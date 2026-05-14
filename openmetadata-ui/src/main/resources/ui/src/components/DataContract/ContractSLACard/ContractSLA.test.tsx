@@ -22,12 +22,23 @@ import { MOCK_DATA_CONTRACT } from '../../../mocks/DataContract.mock';
 import { mockTableData } from '../../../mocks/TableVersion.mock';
 import ContractSLA from './ContractSLA.component';
 
-jest.mock('../../../utils/CommonUtils', () => ({
-  Transi18next: ({ i18nKey, values }: any) => (
+jest.mock('../../../utils/i18next/LocalUtil', () => ({
+  Transi18next: ({
+    i18nKey,
+    values,
+  }: {
+    i18nKey: string;
+    values: Record<string, string>;
+  }) => (
     <span>
       {i18nKey} - {values?.label}: {values?.data}
     </span>
   ),
+  __esModule: true,
+  default: {
+    t: jest.fn().mockImplementation((key) => key),
+  },
+  t: jest.fn().mockImplementation((key) => key),
 }));
 
 jest.mock('../../../assets/svg/ic-check-circle-2.svg', () => ({

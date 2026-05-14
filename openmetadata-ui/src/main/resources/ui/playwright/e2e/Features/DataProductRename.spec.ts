@@ -16,7 +16,6 @@ import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
@@ -46,7 +45,6 @@ test.describe('Data Product Rename', () => {
       const { apiContext, afterAction } = await createNewPage(browser);
       await adminUser.create(apiContext);
       await adminUser.setAdminRole(apiContext);
-      await EntityDataClass.preRequisitesForTests(apiContext);
       await domain.create(apiContext);
       await dataProduct.create(apiContext);
       await table.create(apiContext);
@@ -69,6 +67,15 @@ test.describe('Data Product Rename', () => {
       await afterAction();
     }
   );
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await table.delete(apiContext);
+    await dataProduct.delete(apiContext);
+    await domain.delete(apiContext);
+    await adminUser.delete(apiContext);
+    await afterAction();
+  });
 
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
@@ -145,11 +152,8 @@ test.describe('Data Product Rename', () => {
       )
       .click();
 
-    await page.waitForLoadState('networkidle');
-
     // Navigate back to data product and verify assets tab still shows the asset
     await page.goBack();
-    await page.waitForLoadState('networkidle');
 
     await page.getByTestId('assets').click();
     await checkAssetsCount(page, 1);
@@ -323,11 +327,8 @@ test.describe('Data Product Rename', () => {
         )
         .click();
 
-      await page.waitForLoadState('networkidle');
-
       // Navigate back and verify assets still there
       await page.goBack();
-      await page.waitForLoadState('networkidle');
       await page.getByTestId('assets').click();
       await checkAssetsCount(page, 1);
     } finally {

@@ -42,6 +42,7 @@ public class APICollectionResourceIT extends BaseEntityIT<APICollection, CreateA
     supportsBulkAPI = true;
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
+    supportsDataContract = true;
   }
 
   // ===================================================================

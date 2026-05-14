@@ -64,8 +64,9 @@ public class OwnerFormatter extends DefaultFieldFormatter {
                 this.getMessageDecorator().getRemoveMarker(),
                 this.getMessageDecorator().getRemoveMarkerClose());
     if (!CommonUtil.nullOrEmpty(diff)) {
-      String field = String.format("Updated %s: %s", this.getMessageDecorator().getBold(), diff);
-      diff = String.format(field, this.getFieldChangeName());
+      diff =
+          String.format(
+              "Updated %s: %s", this.getMessageDecorator().bold(this.getFieldChangeName()), diff);
     }
     populateOwnerFeedInfo(Thread.FieldOperation.UPDATED, diff);
     return diff;

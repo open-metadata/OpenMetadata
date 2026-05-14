@@ -110,8 +110,8 @@ public class DefaultFieldFormatter implements FieldFormatter {
 
   public String formatUpdatedField() {
     String message = this.messageDecorator.getPlaintextDiff(this.fieldOldValue, this.fieldNewValue);
-    message = String.format("Updated %s: %s", this.messageDecorator.getBold(), message);
-    return String.format(message, this.fieldChangeName);
+    return String.format(
+        "Updated %s: %s", this.messageDecorator.bold(this.fieldChangeName), message);
   }
 
   public String formatDeletedField() {

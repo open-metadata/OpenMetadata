@@ -29,6 +29,7 @@ import java.util.concurrent.Executors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.AnnouncementDetails;
@@ -182,6 +183,37 @@ public class WebsocketNotificationHandler {
       mentions = MessageParser.getEntityLinks(latestPost.getMessage());
       notifyMentionedUsers(mentions, jsonThread);
     }
+  }
+
+  /**
+   * Handle WebSocket notification for new Task entity (new task system).
+   * Sends notification to all assignees of the task.
+   */
+  public static void handleTaskNotification(Task task) {
+    String jsonTask = JsonUtils.pojoToJson(task);
+    List<EntityReference> assignees = task.getAssignees();
+    if (assignees == null || assignees.isEmpty()) {
+      return;
+    }
+
+    Set<UUID> receiversList = new HashSet<>();
+    assignees.forEach(
+        e -> {
+          if (Entity.USER.equals(e.getType())) {
+            receiversList.add(e.getId());
+          } else if (Entity.TEAM.equals(e.getType())) {
+            // Fetch all users in the team
+            List<CollectionDAO.EntityRelationshipRecord> records =
+                Entity.getCollectionDAO()
+                    .relationshipDAO()
+                    .findTo(e.getId(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
+            records.forEach(eRecord -> receiversList.add(eRecord.getId()));
+          }
+        });
+
+    // Send WebSocket Notification
+    WebSocketManager.getInstance()
+        .sendToManyWithUUID(receiversList, WebSocketManager.TASK_BROADCAST_CHANNEL, jsonTask);
   }
 
   private void handleAnnouncementNotification(Thread thread) {

@@ -4,18 +4,14 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTI
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
-import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
@@ -23,7 +19,7 @@ import org.openmetadata.service.workflows.interfaces.Processor;
 
 @Slf4j
 public class ElasticSearchEntityTimeSeriesProcessor
-    implements Processor<List<BulkOperation>, ResultList<? extends EntityTimeSeriesInterface>> {
+    implements Processor<BulkOperation, EntityTimeSeriesInterface> {
   private final StepStats stats = new StepStats();
 
   public ElasticSearchEntityTimeSeriesProcessor(int total) {
@@ -31,8 +27,7 @@ public class ElasticSearchEntityTimeSeriesProcessor
   }
 
   @Override
-  public List<BulkOperation> process(
-      ResultList<? extends EntityTimeSeriesInterface> input, Map<String, Object> contextData)
+  public BulkOperation process(EntityTimeSeriesInterface entity, Map<String, Object> contextData)
       throws SearchIndexException {
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
     if (CommonUtil.nullOrEmpty(entityType)) {
@@ -40,44 +35,25 @@ public class ElasticSearchEntityTimeSeriesProcessor
           "[EsDataInsightProcessor] entityType cannot be null or empty.");
     }
 
-    LOG.debug(
-        "[EsDataInsightProcessor] Processing a Batch of Size: {}, EntityType: {} ",
-        input.getData().size(),
-        entityType);
-    List<BulkOperation> operations;
     try {
-      operations = buildBulkOperations(entityType, input.getData());
-      LOG.debug(
-          "[EsDataInsightProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
-          input.getData().size(),
-          input.getData().size(),
-          0);
-      updateStats(input.getData().size(), 0);
+      BulkOperation operation = getUpdateOperation(entityType, entity);
+      updateStats(1, 0);
+      return operation;
     } catch (Exception e) {
       IndexingError error =
           new IndexingError()
               .withErrorSource(IndexingError.ErrorSource.PROCESSOR)
-              .withSubmittedCount(input.getData().size())
-              .withFailedCount(input.getData().size())
+              .withSubmittedCount(1)
+              .withFailedCount(1)
               .withSuccessCount(0)
               .withMessage(
-                  "Data Insights Processor Encountered Failure. Converting requests to BulkOperation.")
-              .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
+                  "Data Insights Processor Encountered Failure. Converting request to BulkOperation.")
+              .withStackTrace(
+                  org.glassfish.jersey.internal.util.ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug("[EsDataInsightsProcessor] Failed. Details: {}", JsonUtils.pojoToJson(error));
-      updateStats(0, input.getData().size());
+      updateStats(0, 1);
       throw new SearchIndexException(error);
     }
-    return operations;
-  }
-
-  private List<BulkOperation> buildBulkOperations(
-      String entityType, List<? extends EntityTimeSeriesInterface> entities) {
-    List<BulkOperation> operations = new ArrayList<>();
-    for (EntityTimeSeriesInterface entity : entities) {
-      BulkOperation operation = getUpdateOperation(entityType, entity);
-      operations.add(operation);
-    }
-    return operations;
   }
 
   private BulkOperation getUpdateOperation(String entityType, EntityTimeSeriesInterface entity) {

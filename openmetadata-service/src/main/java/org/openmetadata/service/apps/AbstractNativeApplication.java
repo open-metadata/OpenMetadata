@@ -299,7 +299,6 @@ public class AbstractNativeApplication implements NativeApplication {
     App jobApp =
         appRepository.getByName(
             null, appName, appRepository.getFields("bot"), Include.NON_DELETED, true);
-    ;
     ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
     jobApp.setAppConfiguration(
         JsonUtils.getMapFromJson(
@@ -376,5 +375,16 @@ public class AbstractNativeApplication implements NativeApplication {
     String appName = (this.app != null) ? this.app.getName() : "unknown";
     LOG.info("Default stop behavior for app: {}", appName);
     // Default implementation: no-op or generic cleanup logic
+  }
+
+  /**
+   * Attempt to stop a running job when Quartz has lost track of it (e.g., JobDetail was deleted by
+   * a previous stop, or the job outlived the Quartz thread). Apps with background work that runs
+   * independently of Quartz (e.g., distributed indexing) should override this.
+   *
+   * @return true if a running job was found and stop was requested
+   */
+  public boolean tryStopOutsideQuartz() {
+    return false;
   }
 }

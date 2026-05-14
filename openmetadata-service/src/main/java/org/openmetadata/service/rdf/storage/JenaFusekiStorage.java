@@ -2,7 +2,12 @@ package org.openmetadata.service.rdf.storage;
 
 import java.io.ByteArrayOutputStream;
 import java.io.StringWriter;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -34,17 +39,26 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   private final RDFConnection connection;
   private final String baseUri;
+  private final String endpoint;
+  private final String username;
+  private final String password;
 
   public JenaFusekiStorage(RdfConfiguration config) {
     this.baseUri =
         config.getBaseUri() != null ? config.getBaseUri().toString() : "https://open-metadata.org/";
 
-    String endpoint =
+    this.endpoint =
         config.getRemoteEndpoint() != null && !config.getRemoteEndpoint().toString().isEmpty()
             ? config.getRemoteEndpoint().toString()
             : "http://openmetadata-fuseki:3030/openmetadata";
+    this.username = config.getUsername();
+    this.password = config.getPassword();
 
-    if (config.getUsername() != null && config.getPassword() != null) {
+    // Best-effort attempt to create the dataset at startup; callers should invoke
+    // ensureStorageReady() before running work to recover from later restarts of the RDF server.
+    ensureDatasetExists(endpoint, username, password);
+
+    if (username != null && password != null) {
       java.net.http.HttpClient httpClient =
           java.net.http.HttpClient.newBuilder()
               .authenticator(
@@ -64,6 +78,137 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
     LOG.info("Connected to Apache Jena Fuseki at {}", endpoint);
     loadOntology();
+  }
+
+  @Override
+  public void ensureStorageReady() {
+    if (testConnection()) {
+      LOG.debug("Fuseki dataset at {} is accessible", endpoint);
+      return;
+    }
+
+    LOG.warn(
+        "Fuseki dataset at {} is not accessible; attempting to (re)create it before running",
+        endpoint);
+    ensureDatasetExists(endpoint, username, password);
+
+    if (!testConnection()) {
+      throw new IllegalStateException(
+          String.format(
+              "RDF storage is not accessible at %s after attempting dataset creation. "
+                  + "Verify the configured RDF endpoint URL, credentials, that the Fuseki dataset "
+                  + "exists, and that the configured user has permission to create it.",
+              endpoint));
+    }
+    LOG.info("Fuseki dataset at {} is now ready", endpoint);
+    loadOntology();
+  }
+
+  /**
+   * Ensures the Fuseki dataset exists, creating it if necessary.
+   * Parses the endpoint URL to extract the server base URL and dataset name,
+   * then checks if the dataset exists and creates it if not.
+   */
+  private void ensureDatasetExists(String endpoint, String username, String password) {
+    try {
+      // Parse endpoint to extract server base URL and dataset name
+      // Expected format: http://host:port/datasetName
+      URI uri = URI.create(endpoint);
+      String path = uri.getPath();
+      if (path == null || path.isEmpty() || path.equals("/")) {
+        LOG.warn("Could not extract dataset name from endpoint: {}", endpoint);
+        return;
+      }
+
+      // Remove leading slash and get dataset name
+      String datasetName = path.startsWith("/") ? path.substring(1) : path;
+      // Handle paths like /openmetadata/sparql -> extract just openmetadata
+      if (datasetName.contains("/")) {
+        datasetName = datasetName.split("/")[0];
+      }
+
+      String serverBaseUrl =
+          uri.getScheme() + "://" + uri.getHost() + (uri.getPort() > 0 ? ":" + uri.getPort() : "");
+
+      LOG.info("Checking if Fuseki dataset '{}' exists at server {}", datasetName, serverBaseUrl);
+
+      // Check if dataset exists by querying the datasets admin endpoint
+      HttpClient httpClient = HttpClient.newHttpClient();
+      String adminUrl = serverBaseUrl + "/$/datasets/" + datasetName;
+
+      HttpRequest.Builder requestBuilder = HttpRequest.newBuilder().uri(URI.create(adminUrl)).GET();
+
+      // Add basic auth if credentials provided
+      if (username != null && password != null) {
+        String auth = username + ":" + password;
+        String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
+        requestBuilder.header("Authorization", "Basic " + encodedAuth);
+      }
+
+      HttpResponse<String> response =
+          httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+
+      if (response.statusCode() == 200) {
+        LOG.info("Fuseki dataset '{}' already exists", datasetName);
+        return;
+      }
+
+      if (response.statusCode() == 404) {
+        LOG.info("Fuseki dataset '{}' does not exist, creating it...", datasetName);
+        createDataset(serverBaseUrl, datasetName, username, password);
+      } else {
+        LOG.warn(
+            "Unexpected response checking dataset existence: {} - {}",
+            response.statusCode(),
+            response.body());
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Could not verify/create Fuseki dataset. "
+              + "If the dataset doesn't exist, you may need to create it manually. Error: {}",
+          e.getMessage());
+    }
+  }
+
+  /**
+   * Creates a new TDB2 dataset in Fuseki using the admin API.
+   */
+  private void createDataset(
+      String serverBaseUrl, String datasetName, String username, String password) {
+    try {
+      HttpClient httpClient = HttpClient.newHttpClient();
+      String adminUrl = serverBaseUrl + "/$/datasets";
+
+      String body = "dbName=" + datasetName + "&dbType=tdb2";
+
+      HttpRequest.Builder requestBuilder =
+          HttpRequest.newBuilder()
+              .uri(URI.create(adminUrl))
+              .header("Content-Type", "application/x-www-form-urlencoded")
+              .POST(HttpRequest.BodyPublishers.ofString(body));
+
+      // Add basic auth if credentials provided
+      if (username != null && password != null) {
+        String auth = username + ":" + password;
+        String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
+        requestBuilder.header("Authorization", "Basic " + encodedAuth);
+      }
+
+      HttpResponse<String> response =
+          httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+
+      if (response.statusCode() == 200 || response.statusCode() == 201) {
+        LOG.info("Successfully created Fuseki dataset '{}'", datasetName);
+      } else {
+        LOG.error(
+            "Failed to create Fuseki dataset '{}': {} - {}",
+            datasetName,
+            response.statusCode(),
+            response.body());
+      }
+    } catch (Exception e) {
+      LOG.error("Error creating Fuseki dataset '{}': {}", datasetName, e.getMessage());
+    }
   }
 
   private void loadOntology() {
@@ -113,23 +258,24 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         LOG.debug("Stored entity {} in graph {}", entityId, KNOWLEDGE_GRAPH);
         return;
       } catch (org.apache.jena.atlas.web.HttpException e) {
-        if (e.getStatusCode() == 500 && retryCount < maxRetries - 1) {
-          lastException = e;
-          retryCount++;
+        lastException = e;
+        retryCount++;
+        if (retryCount < maxRetries) {
           try {
             long waitTime = (long) (100 * Math.pow(2, retryCount - 1));
             LOG.debug(
-                "Retrying entity storage after {} ms (attempt {}/{})",
+                "Retrying entity storage after {} ms (attempt {}/{}, status: {})",
                 waitTime,
                 retryCount + 1,
-                maxRetries);
+                maxRetries,
+                e.getStatusCode());
             Thread.sleep(waitTime);
           } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Interrupted while retrying", ie);
           }
         } else {
-          LOG.error("Failed to store entity in Fuseki", e);
+          LOG.error("Failed to store entity in Fuseki after {} attempts", maxRetries, e);
           throw new RuntimeException("Failed to store entity in RDF", e);
         }
       } catch (Exception e) {
@@ -190,36 +336,33 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         LOG.debug("Stored relationship (idempotent): {} -{}- {}", fromId, relationshipType, toId);
         return; // Success
       } catch (org.apache.jena.atlas.web.HttpException e) {
-        if (e.getStatusCode() == 500 && retryCount < maxRetries - 1) {
-          lastException = e;
-          retryCount++;
+        lastException = e;
+        retryCount++;
+        if (retryCount < maxRetries) {
           try {
             long waitTime = (long) (100 * Math.pow(2, retryCount - 1));
             LOG.debug(
-                "Retrying relationship storage after {} ms (attempt {}/{})",
+                "Retrying relationship storage after {} ms (attempt {}/{}, status: {})",
                 waitTime,
                 retryCount + 1,
-                maxRetries);
+                maxRetries,
+                e.getStatusCode());
             Thread.sleep(waitTime);
           } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Interrupted while retrying", ie);
           }
         } else {
-          LOG.error("Failed to store relationship in Fuseki. Query was: {}", deleteInsertQuery, e);
+          LOG.error("Failed to store relationship in Fuseki after {} attempts", maxRetries, e);
           throw new RuntimeException("Failed to store relationship in RDF", e);
         }
       } catch (Exception e) {
-        LOG.error("Failed to store relationship in Fuseki. Query was: {}", deleteInsertQuery, e);
+        LOG.error("Failed to store relationship in Fuseki", e);
         throw new RuntimeException("Failed to store relationship in RDF", e);
       }
     }
 
-    // If we get here, all retries failed
-    LOG.error(
-        "Failed to store relationship after {} retries. Query was: {}",
-        maxRetries,
-        deleteInsertQuery);
+    LOG.error("Failed to store relationship after {} retries", maxRetries);
     throw new RuntimeException("Failed to store relationship in RDF after retries", lastException);
   }
 

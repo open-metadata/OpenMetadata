@@ -11,12 +11,12 @@ import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -249,6 +249,7 @@ public class SearchIndexFieldLimitIT {
       propNames.add(propName);
       createdCustomPropertyNames.add(propName);
     }
+    waitForCustomProperties(client, propNames);
 
     Table table = createTestTable(ns, "field_limit_test");
 
@@ -257,23 +258,8 @@ public class SearchIndexFieldLimitIT {
       extension.put(propName, "test_value_for_" + propName);
     }
     updateTableExtension(client, table.getId().toString(), extension);
-
-    Awaitility.await("Wait for table to be re-indexed after extension update")
-        .atMost(Duration.ofSeconds(60))
-        .pollDelay(Duration.ofMillis(500))
-        .pollInterval(Duration.ofSeconds(2))
-        .ignoreExceptions()
-        .until(
-            () -> {
-              String searchResponse =
-                  client
-                      .search()
-                      .query("id:" + table.getId())
-                      .index("table_search_index")
-                      .size(1)
-                      .execute();
-              return searchResponse.contains("\"id\":\"" + table.getId() + "\"");
-            });
+    waitForExtensionToBeIndexed(
+        client, table, List.of(propNames.getFirst(), propNames.get(propNames.size() - 1)));
 
     int finalFieldCount = getFieldCount(searchClient, TABLE_INDEX);
 
@@ -300,7 +286,6 @@ public class SearchIndexFieldLimitIT {
 
     int initialFieldCount = getFieldCount(searchClient, TABLE_INDEX);
 
-    String lastTableId = null;
     for (int tableNum = 0; tableNum < 3; tableNum++) {
       String propName = ns.prefix("boundedProp_" + tableNum);
       addCustomProperty(client, propName);
@@ -311,27 +296,8 @@ public class SearchIndexFieldLimitIT {
       Map<String, Object> extension = new HashMap<>();
       extension.put(propName, "value_" + tableNum);
       updateTableExtension(client, table.getId().toString(), extension);
-      lastTableId = table.getId().toString();
+      waitForExtensionToBeIndexed(client, table, List.of(propName));
     }
-
-    String finalTableId = lastTableId;
-    Awaitility.await("Wait for tables to be re-indexed after extension updates")
-        .atMost(Duration.ofSeconds(60))
-        .pollDelay(Duration.ofMillis(500))
-        .pollInterval(Duration.ofSeconds(2))
-        .ignoreExceptions()
-        .until(
-            () -> {
-              String searchResponse =
-                  client
-                      .search()
-                      .query("id:" + finalTableId)
-                      .index("table_search_index")
-                      .size(1)
-                      .execute();
-              return searchResponse.contains("\"id\":\"" + finalTableId + "\"");
-            });
-
     int finalFieldCount = getFieldCount(searchClient, TABLE_INDEX);
 
     int fieldIncrease = finalFieldCount - initialFieldCount;
@@ -394,23 +360,10 @@ public class SearchIndexFieldLimitIT {
     extension.put(timeIntervalPropName, timeInterval);
 
     updateTableExtension(client, table.getId().toString(), extension);
-
-    Awaitility.await("Wait for table to be re-indexed after complex property update")
-        .atMost(Duration.ofSeconds(60))
-        .pollDelay(Duration.ofMillis(500))
-        .pollInterval(Duration.ofSeconds(2))
-        .ignoreExceptions()
-        .until(
-            () -> {
-              String searchResponse =
-                  client
-                      .search()
-                      .query("id:" + table.getId())
-                      .index("table_search_index")
-                      .size(1)
-                      .execute();
-              return searchResponse.contains("\"id\":\"" + table.getId() + "\"");
-            });
+    waitForExtensionToBeIndexed(
+        client,
+        table,
+        List.of(stringPropName, intPropName, entityRefPropName, timeIntervalPropName));
 
     int finalFieldCount = getFieldCount(searchClient, TABLE_INDEX);
 
@@ -627,13 +580,92 @@ public class SearchIndexFieldLimitIT {
         OBJECT_MAPPER.writeValueAsString(
             List.of(Map.of("op", "add", "path", "/extension", "value", extension)));
 
-    client
-        .getHttpClient()
-        .executeForString(
-            HttpMethod.PATCH,
-            "/v1/tables/" + tableId,
-            patchJson,
-            RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+    Awaitility.await("Wait for table extension update to be accepted")
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              try {
+                client
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PATCH,
+                        "/v1/tables/" + tableId,
+                        patchJson,
+                        RequestOptions.builder()
+                            .header("Content-Type", "application/json-patch+json")
+                            .build());
+                return true;
+              } catch (Exception ignored) {
+                return false;
+              }
+            });
+  }
+
+  private void waitForCustomProperties(OpenMetadataClient client, List<String> propertyNames) {
+    Awaitility.await("Wait for type metadata cache to include custom properties")
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              Type tableType =
+                  OBJECT_MAPPER.readValue(
+                      client
+                          .getHttpClient()
+                          .executeForString(
+                              HttpMethod.GET,
+                              "/v1/metadata/types/name/"
+                                  + TABLE_TYPE_NAME
+                                  + "?fields=customProperties",
+                              null),
+                      Type.class);
+              List<String> existingPropertyNames =
+                  tableType.getCustomProperties().stream().map(CustomProperty::getName).toList();
+              for (String propertyName : propertyNames) {
+                assertTrue(
+                    existingPropertyNames.contains(propertyName),
+                    "Expected custom property to be visible in type metadata: " + propertyName);
+              }
+            });
+  }
+
+  private void waitForExtensionToBeIndexed(
+      OpenMetadataClient client, Table table, List<String> expectedExtensionKeys) {
+    String queryFilter =
+        String.format(
+            "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"fullyQualifiedName\":\"%s\"}}]}}}",
+            escapeJson(table.getFullyQualifiedName()));
+
+    Awaitility.await("Wait for table extension to be indexed")
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("*")
+                      .index("table_search_index")
+                      .queryFilter(queryFilter)
+                      .size(1)
+                      .execute();
+
+              JsonNode root = OBJECT_MAPPER.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              assertTrue(hits.isArray() && hits.size() > 0, "Expected indexed table document");
+
+              JsonNode extensionNode = hits.get(0).path("_source").path("extension");
+              assertTrue(extensionNode.isObject(), "Expected extension object in indexed document");
+
+              for (String key : expectedExtensionKeys) {
+                assertTrue(
+                    extensionNode.has(key), "Expected extension key in indexed document: " + key);
+              }
+            });
+  }
+
+  private String escapeJson(String input) {
+    return input.replace("\\", "\\\\").replace("\"", "\\\"");
   }
 
   private int getFieldCount(Rest5Client searchClient, String indexName) throws Exception {

@@ -1,7 +1,6 @@
 package org.openmetadata.service.rdf.translator;
 
 import com.apicatalog.jsonld.JsonLd;
-import com.apicatalog.jsonld.JsonLdError;
 import com.apicatalog.jsonld.document.JsonDocument;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -203,7 +202,7 @@ public class JsonLdTranslator {
     return result;
   }
 
-  public Model toRdf(EntityInterface entity) throws JsonLdError {
+  public Model toRdf(EntityInterface entity) {
     Model model = ModelFactory.createDefaultModel();
 
     model.setNsPrefix("om", "https://open-metadata.org/ontology/");
@@ -243,6 +242,16 @@ public class JsonLdTranslator {
     String omNamespace = model.getNsPrefixURI("om");
     String omType = entityType.substring(0, 1).toUpperCase() + entityType.substring(1);
     entityResource.addProperty(RDF.type, model.createResource(omNamespace + omType));
+
+    // Add PROV-O class typing (prov:Entity/Activity/Agent) so PROV-O reasoners can
+    // apply standard rules. Skipped when the primary rdfType is already a PROV-O
+    // class (e.g. pipeline → prov:Activity) to avoid duplicate triples.
+    String provType = RdfUtils.getProvType(entityType);
+    if (provType != null && !provType.equals(rdfType)) {
+      String provNamespace = model.getNsPrefixURI("prov");
+      String provLocalName = provType.substring(provType.indexOf(':') + 1);
+      entityResource.addProperty(RDF.type, model.createResource(provNamespace + provLocalName));
+    }
 
     RdfPropertyMapper propertyMapper = new RdfPropertyMapper(baseUri, objectMapper, contextCache);
     propertyMapper.mapEntityToRdf(entity, entityResource, model);

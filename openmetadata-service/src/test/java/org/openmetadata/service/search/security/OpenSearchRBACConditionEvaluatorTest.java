@@ -124,8 +124,42 @@ class OpenSearchRBACConditionEvaluatorTest {
         jsonContext, "$.bool.must[?(@.match_all)]", "match_all for hasAnyRole 'DataSteward'");
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
+        "$..bool.should[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
         "domains.id");
+  }
+
+  @Test
+  void testHasDomainWithMultipleDomains() {
+    setupMockPolicies("hasDomain()", "ALLOW");
+
+    EntityReference domain1 = new EntityReference();
+    domain1.setId(UUID.randomUUID());
+    domain1.setName("Finance");
+
+    EntityReference domain2 = new EntityReference();
+    domain2.setId(UUID.randomUUID());
+    domain2.setName("Engineering");
+
+    when(mockUser.getDomains()).thenReturn(List.of(domain1, domain2));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
+    String generatedQuery = openSearchQuery.toJsonString();
+
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.term['domains.id'].value=='" + domain1.getId() + "')]",
+        "domain1 should be in a should (OR) clause");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.term['domains.id'].value=='" + domain2.getId() + "')]",
+        "domain2 should be in a should (OR) clause");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.bool.must_not)]",
+        "should include a clause for entities with no domain");
   }
 
   @Test
@@ -181,7 +215,7 @@ class OpenSearchRBACConditionEvaluatorTest {
         jsonContext, "$.bool.must[?(@.match_all)]", "match_all for hasAnyRole 'Admin'");
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
+        "$..bool.should[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
         "domains.id");
     assertFieldExists(
         jsonContext, "$.bool.must[?(@.match_all)]", "match_all for inAnyTeam 'Analytics'");
@@ -335,5 +369,65 @@ class OpenSearchRBACConditionEvaluatorTest {
           generatedQuery.contains("must_not") && generatedQuery.contains("match_all"),
           "Query should result in match_nothing since user doesn't have Admin role");
     }
+  }
+
+  @Test
+  void testNestedQueryWorksForMappedFields() {
+    // Verifies nested query produces correct structure for indexes that have the field mapped
+    OpenSearchQueryBuilderFactory factory = new OpenSearchQueryBuilderFactory();
+
+    OMQueryBuilder nested =
+        factory.nestedQuery("owners", factory.termQuery("owners.id", "user-abc"));
+    Query query = ((OpenSearchQueryBuilder) nested).build();
+    String json = query.toJsonString();
+
+    assertTrue(json.contains("\"path\":\"owners\""), "must target correct nested path");
+    assertTrue(json.contains("\"owners.id\""), "must query the nested field");
+    assertTrue(json.contains("\"user-abc\""), "must contain the search value");
+  }
+
+  @Test
+  void testNestedQueryDoesNotFailForUnmappedFields() {
+    // Verifies ignore_unmapped=true is set so indexes without the nested field don't throw errors
+    OpenSearchQueryBuilderFactory factory = new OpenSearchQueryBuilderFactory();
+
+    OMQueryBuilder nested =
+        factory.nestedQuery("owners", factory.termQuery("owners.id", "user-abc"));
+    Query query = ((OpenSearchQueryBuilder) nested).build();
+    String json = query.toJsonString();
+
+    assertTrue(
+        json.contains("\"ignore_unmapped\":true"),
+        "must set ignore_unmapped so query works on indexes without this nested field");
+  }
+
+  @Test
+  void testStaticNestedQueryWorksForMappedFields() {
+    Query inner =
+        Query.of(q -> q.term(t -> t.field("owners.id").value(v -> v.stringValue("team-1"))));
+
+    Query nested =
+        org.openmetadata.service.search.opensearch.OpenSearchQueryBuilder.nestedQuery(
+            "owners", inner);
+    String json = nested.toJsonString();
+
+    assertTrue(json.contains("\"path\":\"owners\""), "must target correct nested path");
+    assertTrue(json.contains("\"owners.id\""), "must query the nested field");
+    assertTrue(json.contains("\"team-1\""), "must contain the search value");
+  }
+
+  @Test
+  void testStaticNestedQueryDoesNotFailForUnmappedFields() {
+    Query inner =
+        Query.of(q -> q.term(t -> t.field("owners.id").value(v -> v.stringValue("team-1"))));
+
+    Query nested =
+        org.openmetadata.service.search.opensearch.OpenSearchQueryBuilder.nestedQuery(
+            "owners", inner);
+    String json = nested.toJsonString();
+
+    assertTrue(
+        json.contains("\"ignore_unmapped\":true"),
+        "must set ignore_unmapped so query works on indexes without this nested field");
   }
 }

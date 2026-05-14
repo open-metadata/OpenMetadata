@@ -190,7 +190,7 @@ public class MigrationUtil {
     }
 
     JsonNode tagsArray = actionObj.get(TAGS_KEY);
-    if (!tagsArray.isArray() || tagsArray.size() == 0) {
+    if (!tagsArray.isArray() || tagsArray.isEmpty()) {
       updatedActions.add(actionObj);
       return false;
     }
@@ -215,8 +215,8 @@ public class MigrationUtil {
     }
 
     // Check if we need to make changes (idempotent check)
-    boolean hasGlossaryTerms = glossaryTerms.size() > 0;
-    boolean hasClassificationTags = classificationTags.size() > 0;
+    boolean hasGlossaryTerms = !glossaryTerms.isEmpty();
+    boolean hasClassificationTags = !classificationTags.isEmpty();
 
     if (!hasGlossaryTerms && hasClassificationTags) {
       // No glossary terms, only classification tags - no change needed

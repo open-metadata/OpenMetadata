@@ -30,9 +30,9 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 1 : 0,
+  retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 4 : undefined,
+  workers: process.env.CI ? 3 : undefined,
   maxFailures: 500,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
@@ -80,21 +80,34 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: ['setup', 'entity-data-setup'],
-      grepInvert: [/@data-insight/, /@ingestion/, /@sample-data/, /@basic/],
-      teardown: 'SearchRBAC',
+      grepInvert: [/@data-insight/, /@basic/, /@knowledge-graph/],
+      teardown: 'entity-data-teardown',
       testIgnore: [
         '**/nightly/**',
+        '**/Search/**',
+        '**/Auth/**',
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
+        '**/SSOLogin.spec.ts',
       ],
     },
     {
-      name: 'SearchRBAC',
-      testMatch: '**/SearchRBAC.spec.ts',
+      name: 'sso-auth',
+      testMatch: ['**/SSOLogin.spec.ts', '**/SSORenewal.spec.ts'],
       use: { ...devices['Desktop Chrome'] },
-      teardown: 'entity-data-teardown',
+      fullyParallel: false,
+      workers: 1,
+    },
+    {
+      name: 'search-nightly',
+      testMatch: ['**/Search/**'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/admin.json',
+      },
+      dependencies: ['setup'],
     },
     {
       name: 'entity-data-teardown',
@@ -110,6 +123,13 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['data-insight-application'],
       grep: /data-insight/,
+      teardown: 'entity-data-teardown',
+    },
+    {
+      name: 'Knowledge Graph',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'entity-data-setup'],
+      grep: /knowledge-graph/,
       teardown: 'entity-data-teardown',
     },
     {
@@ -134,17 +154,11 @@ export default defineConfig({
       fullyParallel: true,
     },
     {
-      name: 'ingestion',
+      name: 'SearchRBAC',
+      testMatch: '**/SearchRBAC.spec.ts',
+      dependencies: ['DataAssetRulesDisabled'],
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'entity-data-setup'],
-      grep: /@ingestion|@sample-data/,
       teardown: 'entity-data-teardown',
-      testIgnore: [
-        '**/nightly/**',
-        '**/DataAssetRulesEnabled.spec.ts',
-        '**/DataAssetRulesDisabled.spec.ts',
-        '**/SystemCertificationTags.spec.ts',
-      ],
     },
     // System Certification Tags tests modify global shared state (system tags like Gold, Silver, Bronze)
     // They must run in isolation after the main chromium project to avoid flakiness
@@ -159,6 +173,7 @@ export default defineConfig({
 
   // Increase timeout for the test
   timeout: 60000,
+  expect: { timeout: 15_000 },
 
   /* Run your local dev server before starting the tests */
   // webServer: {

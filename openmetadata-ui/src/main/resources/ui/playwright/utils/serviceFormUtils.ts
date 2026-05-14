@@ -56,28 +56,26 @@ export const fillSupersetFormDetails = async ({
       await page.fill(
         String.raw`#root\/connection\/hostPort`,
         connectionHostPort,
-        {
-          force: true,
-        }
+        { force: true } // eslint-disable-line playwright/no-force-option -- form field overlay covers input
       );
     }
 
     if (database) {
       await page.locator(String.raw`#root\/connection\/database`).clear();
       await page.fill(String.raw`#root\/connection\/database`, database, {
-        force: true,
+        force: true, // eslint-disable-line playwright/no-force-option -- form field overlay covers input
       });
     }
   }
 
   await page.locator(String.raw`#root\/connection\/username`).clear();
   await page.fill(String.raw`#root\/connection\/username`, username, {
-    force: true,
+    force: true, // eslint-disable-line playwright/no-force-option -- form field overlay covers input
   });
   if (connectionType === 'SupersetApiConnection') {
     await page.locator(String.raw`#root\/connection\/password`).clear();
     await page.fill(String.raw`#root\/connection\/password`, password, {
-      force: true,
+      force: true, // eslint-disable-line playwright/no-force-option -- form field overlay covers input
     });
   } else {
     await page
@@ -86,9 +84,7 @@ export const fillSupersetFormDetails = async ({
     await page.fill(
       String.raw`#root\/connection\/authType\/password`,
       password,
-      {
-        force: true,
-      }
+      { force: true } // eslint-disable-line playwright/no-force-option -- form field overlay covers input
     );
   }
 
@@ -97,7 +93,7 @@ export const fillSupersetFormDetails = async ({
 
   if (await runnerSelector.isVisible()) {
     await runnerSelector.click();
-    await page.waitForSelector('.ant-select-dropdown:visible', {
+    await page.locator('.ant-select-dropdown:visible').first().waitFor({
       state: 'visible',
     });
 
@@ -106,10 +102,9 @@ export const fillSupersetFormDetails = async ({
 
     // Using data-key which relies on `name` which is more reliable data in AUTs
     // instead of data-testid which depends on the `displayName` which can change
-    await page.waitForSelector(
-      '.ant-select-dropdown:visible [data-key="CollateSaaS"]',
-      { state: 'visible' }
-    );
+    await page
+      .locator('.ant-select-dropdown:visible [data-key="CollateSaaS"]')
+      .waitFor({ state: 'visible' });
     await page
       .locator('.ant-select-dropdown:visible [data-key="CollateSaaS"]')
       .click();

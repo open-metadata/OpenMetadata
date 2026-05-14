@@ -127,7 +127,10 @@ describe('TokenService', () => {
     });
 
     it('should refresh token if expired', async () => {
-      (getOidcToken as jest.Mock).mockResolvedValue('old-token');
+      jest.useRealTimers();
+      (getOidcToken as jest.Mock)
+        .mockResolvedValueOnce('old-token')
+        .mockResolvedValue('new-token');
       (extractDetailsFromToken as jest.Mock).mockReturnValue({
         isExpired: true,
         timeoutExpiry: -1,
@@ -135,21 +138,13 @@ describe('TokenService', () => {
       tokenService.updateRenewToken(mockRenewToken);
       mockRenewToken.mockResolvedValue('new-token');
 
-      const refreshPromise = tokenService.refreshToken();
-
-      // Wait for async operations to reach the setTimeout
-      // Multiple flushes to ensure we pass the awaits in code
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
-
-      jest.advanceTimersByTime(100);
-
-      const result = await refreshPromise;
+      const result = await tokenService.refreshToken();
 
       expect(mockRenewToken).toHaveBeenCalled();
       expect(result).toBe('new-token');
       expect(localStorage.getItem('tokenRefreshed')).toBe('true');
+
+      jest.useFakeTimers();
     });
 
     it('should not refresh if token is valid', async () => {

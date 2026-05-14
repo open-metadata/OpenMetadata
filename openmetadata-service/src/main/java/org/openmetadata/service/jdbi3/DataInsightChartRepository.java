@@ -3,7 +3,6 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 
-import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -105,13 +104,13 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
 
   @Override
   public void storeEntities(List<DataInsightChart> entities) {
-    List<DataInsightChart> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
+    List<String> fqns = new ArrayList<>(entities.size());
+    List<String> jsons = new ArrayList<>(entities.size());
     for (DataInsightChart entity : entities) {
-      String jsonCopy = gson.toJson(entity);
-      entitiesToStore.add(gson.fromJson(jsonCopy, DataInsightChart.class));
+      fqns.add(entity.getFullyQualifiedName());
+      jsons.add(serializeForStorage(entity));
     }
-    storeMany(entitiesToStore);
+    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
   }
 
   @Override

@@ -19,6 +19,18 @@ import VirtualColumnList, {
   VirtualColumnListProps,
 } from './VirtualColumnList.component';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(
+      ({ children, onClick, disabled, 'data-testid': testId }) => (
+        <button data-testid={testId} disabled={disabled} onClick={onClick}>
+          {children}
+        </button>
+      )
+    ),
+}));
+
 const mockUpdateColumnsInCurrentPages = jest.fn();
 const mockUseLineageStore = {
   updateColumnsInCurrentPages: mockUpdateColumnsInCurrentPages,

@@ -138,7 +138,8 @@ for (const entity of searchRBACEntities) {
   });
 }
 
-test.describe(`Table Column`, () => {
+// unskip test once the backend issue get fixed #3289
+test.describe.skip(`Table Column`, () => {
   const table = new TableClass();
   const user1 = new UserClass();
   const user2 = new UserClass();

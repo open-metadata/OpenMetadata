@@ -13,9 +13,10 @@
 
 import { MutableRefObject, useCallback } from 'react';
 import { TreeNode } from '../../atoms/asyncTreeSelect/types';
+import { TreeViewApi } from '../atoms/TreeContent/TreeContent';
 
 interface UseTreeKeyboardNavigationProps {
-  treeApiRef: MutableRefObject<any>;
+  treeApiRef: MutableRefObject<TreeViewApi | null>;
   focusedItemId: string | null;
   setFocusedItemId: (id: string | null) => void;
   getVisibleNodes: () => TreeNode[];

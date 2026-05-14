@@ -386,7 +386,7 @@ class KubernetesSecretsManagerTest {
   }
 
   @AfterEach
-  void tearDown() throws Exception {
+  void tearDown() throws NoSuchFieldException, IllegalAccessException {
     java.lang.reflect.Field instanceField =
         KubernetesSecretsManager.class.getDeclaredField("instance");
     instanceField.setAccessible(true);

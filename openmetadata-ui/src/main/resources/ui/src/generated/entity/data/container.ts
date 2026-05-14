@@ -28,6 +28,10 @@ export interface Container {
      */
     children?: EntityReference[];
     /**
+     * Reference to the data contract for this entity.
+     */
+    dataContract?: EntityReference;
+    /**
      * References to the container's data model, if data is structured, or null otherwise
      */
     dataModel?: ContainerDataModel;
@@ -122,6 +126,10 @@ export interface Container {
      * 8601 format in UTC. Example - `P23DT23H`.
      */
     retentionPeriod?: string;
+    /**
+     * Sample data for the container.
+     */
+    sampleData?: TableData;
     /**
      * Link to the storage service where this container is hosted in.
      */
@@ -261,6 +269,10 @@ export enum LabelType {
  * was applied.
  */
 export interface TagLabelMetadata {
+    /**
+     * Epoch time in milliseconds when the certification tag expires
+     */
+    expiryDate?: number;
     /**
      * Metadata about the recognizer that automatically applied this tag
      */
@@ -453,6 +465,8 @@ export interface FieldChange {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Reference to the data contract for this entity.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
@@ -932,6 +946,7 @@ export interface HistogramClass {
  */
 export enum EntityStatus {
     Approved = "Approved",
+    Archived = "Archived",
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",
@@ -996,6 +1011,22 @@ export interface AccessDetails {
      * Timestamp of data asset accessed for creation, update, read.
      */
     timestamp: number;
+}
+
+/**
+ * Sample data for the container.
+ *
+ * This schema defines the type to capture rows of sample data for a table.
+ */
+export interface TableData {
+    /**
+     * List of local column names (not fully qualified column names) of the table.
+     */
+    columns?: string[];
+    /**
+     * Data for multiple rows of the table.
+     */
+    rows?: Array<any[]>;
 }
 
 /**

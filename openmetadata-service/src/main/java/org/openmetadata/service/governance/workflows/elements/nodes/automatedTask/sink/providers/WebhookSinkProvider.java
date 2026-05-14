@@ -32,6 +32,7 @@ import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.sinkConfig.Authentication;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.sinkConfig.RetryConfig__2;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.sinkConfig.WebhookSinkConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkContext;
@@ -212,11 +213,11 @@ public class WebhookSinkProvider implements SinkProvider {
       java.util.function.Supplier<SinkResult> operation, String entityFqn) {
     int maxRetries =
         Optional.ofNullable(config.getRetryConfig())
-            .map(r -> r.getMaxRetries())
+            .map(RetryConfig__2::getMaxRetries)
             .orElse(DEFAULT_MAX_RETRIES);
     int baseDelaySeconds =
         Optional.ofNullable(config.getRetryConfig())
-            .map(r -> r.getRetryDelaySeconds())
+            .map(RetryConfig__2::getRetryDelaySeconds)
             .orElse(DEFAULT_RETRY_DELAY_SECONDS);
     int maxDelaySeconds = baseDelaySeconds * 8; // Cap at 8x base delay
 
@@ -279,6 +280,7 @@ public class WebhookSinkProvider implements SinkProvider {
 
   private Response sendRequest(String payload) {
     WebTarget target = client.target(config.getEndpoint());
+    target = addQueryParams(target);
     Invocation.Builder request = target.request(MediaType.APPLICATION_JSON);
 
     // Add custom headers
@@ -302,6 +304,20 @@ public class WebhookSinkProvider implements SinkProvider {
       case "PATCH" -> request.method("PATCH", Entity.json(payload));
       default -> request.post(Entity.json(payload));
     };
+  }
+
+  private WebTarget addQueryParams(WebTarget target) {
+    if (config.getQueryParams() == null || config.getQueryParams().isEmpty()) {
+      return target;
+    }
+
+    for (var queryParam : config.getQueryParams()) {
+      if (queryParam.getKey() != null && queryParam.getValue() != null) {
+        target = target.queryParam(queryParam.getKey(), queryParam.getValue());
+      }
+    }
+
+    return target;
   }
 
   private void addAuthentication(Invocation.Builder request, Authentication auth) {

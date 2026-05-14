@@ -18,7 +18,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.POLICIES;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 
-import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,6 +34,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.teams.RoleResource;
+import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -200,29 +200,18 @@ public class RoleRepository extends EntityRepository<Role> {
    * <p>This method ensures that the role and its policy are stored correctly.
    */
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("policies");
+  }
+
+  @Override
   public void storeEntity(Role role, boolean update) {
-    List<EntityReference> policies = role.getPolicies();
-    role.withPolicies(null);
     store(role, update);
-    role.withPolicies(policies);
   }
 
   @Override
   public void storeEntities(List<Role> entities) {
-    List<Role> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
-
-    for (Role role : entities) {
-      List<EntityReference> policies = role.getPolicies();
-      role.withPolicies(null);
-
-      String jsonCopy = gson.toJson(role);
-      entitiesToStore.add(gson.fromJson(jsonCopy, Role.class));
-
-      role.withPolicies(policies);
-    }
-
-    storeMany(entitiesToStore);
+    storeMany(entities);
   }
 
   @Override
@@ -253,6 +242,15 @@ public class RoleRepository extends EntityRepository<Role> {
     }
   }
 
+  @Override
+  protected void postDelete(Role entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
+    PolicyConditionUpdater.updateAllPolicyConditions(
+        condition ->
+            PolicyConditionUpdater.removeFromCondition(
+                condition, entity.getName(), PolicyConditionUpdater.ROLE_FUNCTIONS));
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class RoleUpdater extends EntityUpdater {
     public RoleUpdater(Role original, Role updated, Operation operation) {
@@ -262,9 +260,12 @@ public class RoleRepository extends EntityRepository<Role> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      updatePolicies(listOrEmpty(original.getPolicies()), listOrEmpty(updated.getPolicies()));
-      // Invalidate policy cache when role policies change
-      SubjectCache.invalidateAll();
+      compareAndUpdate(
+          "policies",
+          () -> {
+            updatePolicies(listOrEmpty(original.getPolicies()), listOrEmpty(updated.getPolicies()));
+            SubjectCache.invalidateAll();
+          });
     }
 
     private void updatePolicies(

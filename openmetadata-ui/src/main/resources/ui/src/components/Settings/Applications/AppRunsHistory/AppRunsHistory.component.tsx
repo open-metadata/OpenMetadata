@@ -86,6 +86,9 @@ const AppRunsHistory = forwardRef(
     >([]);
     const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
     const [isStopModalOpen, setIsStopModalOpen] = useState<boolean>(false);
+    const [selectedRunId, setSelectedRunId] = useState<string | undefined>(
+      undefined
+    );
     const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
     const [appRunRecordConfig, setAppRunRecordConfig] = useState<
       AppRunRecord['config']
@@ -115,17 +118,38 @@ const AppRunsHistory = forwardRef(
       [appData]
     );
 
+    const tableData = useMemo<AppRunRecordWithId[]>(() => {
+      if (appRunsHistoryData.length > 0 || isExternalApp || !appData) {
+        return appRunsHistoryData;
+      }
+
+      const syntheticRecord: AppRunRecordWithId = {
+        id: `${appData.id ?? appData.name ?? 'app'}-current-config`,
+        appId: appData.id,
+        appName: appData.name,
+        config: (appData.appConfiguration as { [key: string]: unknown }) ?? {},
+        isSynthetic: true,
+      };
+
+      return [syntheticRecord];
+    }, [appData, appRunsHistoryData, isExternalApp]);
+
     const handleRowExpandable = useCallback(
-      (key?: string) => {
+      (key?: string, record?: AppRunRecordWithId) => {
         if (key) {
           if (isExternalApp && appData) {
-            return navigate(
-              getLogsViewerPath(
-                GlobalSettingOptions.APPLICATIONS,
-                appData.name ?? '',
-                appData.name ?? ''
-              )
+            const basePath = getLogsViewerPath(
+              GlobalSettingOptions.APPLICATIONS,
+              appData.name ?? '',
+              appData.name ?? ''
             );
+            const rawRunId = record?.properties?.pipelineRunId;
+            const runId = typeof rawRunId === 'string' ? rawRunId : undefined;
+            const path = runId
+              ? `${basePath}?runId=${encodeURIComponent(runId)}`
+              : basePath;
+
+            return navigate(path);
           }
           if (expandedRowKeys.includes(key)) {
             setExpandedRowKeys((prev) => prev.filter((item) => item !== key));
@@ -138,6 +162,10 @@ const AppRunsHistory = forwardRef(
     );
 
     const showLogAction = useCallback((record: AppRunRecordWithId): boolean => {
+      if (record.isSynthetic) {
+        return true;
+      }
+
       if (appData?.appType === AppType.External) {
         return false;
       }
@@ -150,6 +178,9 @@ const AppRunsHistory = forwardRef(
     }, []);
 
     const showAppRunConfig = (record: AppRunRecordWithId) => {
+      if (!jsonSchema) {
+        return;
+      }
       setShowConfigModal(true);
       setAppRunRecordConfig(record.config ?? {});
     };
@@ -164,27 +195,37 @@ const AppRunsHistory = forwardRef(
               disabled={showLogAction(record)}
               size="small"
               type="link"
-              onClick={() => handleRowExpandable(record.id)}>
+              onClick={() => handleRowExpandable(record.id, record)}>
               {t('label.log-plural')}
             </Button>
             <Button
               className="m-l-xs p-0"
               data-testid="app-historical-config"
+              disabled={!jsonSchema}
               size="small"
               type="link"
               onClick={() => showAppRunConfig(record)}>
               {t('label.config')}
             </Button>
-            {/* For status running or activewitherror and supportsInterrupt is true, show stop button */}
-            {(record.status === Status.Running ||
-              record.status === Status.ActiveError) &&
+            {!record.isSynthetic &&
+              record.status !== Status.Success &&
+              record.status !== Status.Failed &&
+              record.status !== Status.Stopped &&
+              record.status !== Status.Completed &&
+              record.status !== Status.StopInProgress &&
               Boolean(appData?.supportsInterrupt) && (
                 <Button
                   className="m-l-xs p-0"
                   data-testid="stop-button"
                   size="small"
                   type="link"
-                  onClick={() => setIsStopModalOpen(true)}>
+                  onClick={() => {
+                    const rawRunId = record.properties?.pipelineRunId;
+                    setSelectedRunId(
+                      typeof rawRunId === 'string' ? rawRunId : undefined
+                    );
+                    setIsStopModalOpen(true);
+                  }}>
                   {t('label.stop')}
                 </Button>
               )}
@@ -201,6 +242,10 @@ const AppRunsHistory = forwardRef(
           dataIndex: 'timestamp',
           key: 'timestamp',
           render: (_, record) => {
+            if (record.isSynthetic) {
+              return NO_DATA_PLACEHOLDER;
+            }
+
             return isExternalApp
               ? formatDateTime(record.startTime)
               : formatDateTime(record.timestamp);
@@ -210,8 +255,12 @@ const AppRunsHistory = forwardRef(
           title: t('label.run-type'),
           dataIndex: 'runType',
           key: 'runType',
-          render: (runType) => (
-            <Typography.Text>{runType ?? NO_DATA_PLACEHOLDER}</Typography.Text>
+          render: (runType, record) => (
+            <Typography.Text>
+              {record.isSynthetic
+                ? NO_DATA_PLACEHOLDER
+                : runType ?? NO_DATA_PLACEHOLDER}
+            </Typography.Text>
           ),
         },
         {
@@ -219,6 +268,10 @@ const AppRunsHistory = forwardRef(
           dataIndex: 'executionTime',
           key: 'executionTime',
           render: (_, record: AppRunRecordWithId) => {
+            if (record.isSynthetic) {
+              return NO_DATA_PLACEHOLDER;
+            }
+
             if (isExternalApp && record.executionTime) {
               return formatDurationToHHMMSS(record.executionTime);
             }
@@ -364,6 +417,13 @@ const AppRunsHistory = forwardRef(
           }
         });
 
+        socket.on(SOCKET_EVENTS.RDF_INDEX_JOB_BROADCAST_CHANNEL, (data) => {
+          if (data) {
+            const rdfIndexJob = JSON.parse(data);
+            handleAppHistoryRecordUpdate(rdfIndexJob);
+          }
+        });
+
         socket.on(SOCKET_EVENTS.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL, (data) => {
           if (data) {
             const dataInsightJob = JSON.parse(data);
@@ -382,6 +442,7 @@ const AppRunsHistory = forwardRef(
       return () => {
         if (socket) {
           socket.off(SOCKET_EVENTS.SEARCH_INDEX_JOB_BROADCAST_CHANNEL);
+          socket.off(SOCKET_EVENTS.RDF_INDEX_JOB_BROADCAST_CHANNEL);
           socket.off(SOCKET_EVENTS.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL);
           socket.off(SOCKET_EVENTS.CACHE_WARMUP_JOB_BROADCAST_CHANNEL);
         }
@@ -403,7 +464,7 @@ const AppRunsHistory = forwardRef(
             onShowSizeChange: handlePageSizeChange,
           }}
           data-testid="app-run-history-table"
-          dataSource={appRunsHistoryData}
+          dataSource={tableData}
           expandable={{
             expandedRowRender: (record) => (
               <AppLogsViewer
@@ -429,8 +490,10 @@ const AppRunsHistory = forwardRef(
             appName={fqn}
             displayName={appData?.displayName ?? ''}
             isModalOpen={isStopModalOpen}
+            runId={selectedRunId}
             onClose={() => {
               setIsStopModalOpen(false);
+              setSelectedRunId(undefined);
             }}
             onStopWorkflowsUpdate={() => {
               fetchAppHistory();
@@ -467,22 +530,24 @@ const AppRunsHistory = forwardRef(
             </Typography.Text>
           }
           width={800}>
-          <FormBuilder
-            capitalizeOptionLabel
-            hideCancelButton
-            readonly
-            useSelectWidget
-            cancelText={t('label.back')}
-            formData={appRunRecordConfig}
-            isLoading={false}
-            okText={t('label.submit')}
-            schema={jsonSchema}
-            serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-            uiSchema={UiSchema}
-            validator={validator}
-            onCancel={noop}
-            onSubmit={noop}
-          />
+          {jsonSchema && (
+            <FormBuilder
+              capitalizeOptionLabel
+              hideCancelButton
+              readonly
+              useSelectWidget
+              cancelText={t('label.back')}
+              formData={appRunRecordConfig}
+              isLoading={false}
+              okText={t('label.submit')}
+              schema={jsonSchema}
+              serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+              uiSchema={UiSchema}
+              validator={validator}
+              onCancel={noop}
+              onSubmit={noop}
+            />
+          )}
         </Modal>
       </>
     );

@@ -1,16 +1,12 @@
 package org.openmetadata.service.search.elasticsearch.dataInsightAggregators;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import es.co.elastic.clients.elasticsearch._types.aggregations.CalendarInterval;
-import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.json.JsonData;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,7 +19,6 @@ import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
-import org.openmetadata.service.search.elasticsearch.EsUtils;
 
 public class ElasticSearchSummaryCardAggregator
     implements ElasticSearchDynamicChartAggregatorInterface {
@@ -37,35 +32,7 @@ public class ElasticSearchSummaryCardAggregator
       long end,
       List<FormulaHolder> formulas,
       Map metricFormulaMap,
-      boolean live,
-      String filter)
-      throws IOException {
-    return prepareSearchRequestInternal(
-        diChart, start, end, formulas, metricFormulaMap, live, filter);
-  }
-
-  @Override
-  public SearchRequest prepareSearchRequest(
-      @NotNull DataInsightCustomChart diChart,
-      long start,
-      long end,
-      List<FormulaHolder> formulas,
-      Map metricFormulaMap,
-      boolean live)
-      throws IOException {
-    return prepareSearchRequestInternal(
-        diChart, start, end, formulas, metricFormulaMap, live, null);
-  }
-
-  private SearchRequest prepareSearchRequestInternal(
-      @NotNull DataInsightCustomChart diChart,
-      long start,
-      long end,
-      List<FormulaHolder> formulas,
-      Map metricFormulaMap,
-      boolean live,
-      String filter)
-      throws IOException {
+      boolean live) {
 
     SummaryCard summaryCard = JsonUtils.convertValue(diChart.getChartDetails(), SummaryCard.class);
 
@@ -109,8 +76,7 @@ public class ElasticSearchSummaryCardAggregator
                                           es.co.elastic.clients.json.JsonData.of(
                                               String.valueOf(end))))));
 
-      Query finalQuery = buildQueryWithFilter(rangeQuery, filter);
-      searchRequestBuilder.query(finalQuery);
+      searchRequestBuilder.query(rangeQuery);
       searchRequestBuilder.index(DataInsightSystemChartRepository.getDataInsightsSearchIndex());
     } else {
       searchRequestBuilder.index(DataInsightSystemChartRepository.getLiveSearchIndex(null));
@@ -118,21 +84,6 @@ public class ElasticSearchSummaryCardAggregator
 
     searchRequestBuilder.aggregations(aggregationsMap);
     return searchRequestBuilder.build();
-  }
-
-  private Query buildQueryWithFilter(Query rangeQuery, String filter) {
-    if (nullOrEmpty(filter) || filter.equals("{}")) {
-      return rangeQuery;
-    }
-
-    try {
-      String queryToProcess = EsUtils.parseJsonQuery(filter);
-      Query filterQuery = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
-
-      return Query.of(q -> q.bool(BoolQuery.of(b -> b.must(rangeQuery).filter(filterQuery))));
-    } catch (Exception e) {
-      return rangeQuery;
-    }
   }
 
   @Override

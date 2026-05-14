@@ -50,6 +50,29 @@ export const getRoles = async (
   return response.data;
 };
 
+export const getAllRoles = async (
+  fields: string,
+  defaultRoles = false,
+  limit = 100
+) => {
+  const roles: Role[] = [];
+  let after: string | undefined;
+
+  do {
+    const response = await getRoles(
+      fields,
+      after,
+      undefined,
+      defaultRoles,
+      limit
+    );
+    roles.push(...response.data);
+    after = response.paging.after;
+  } while (after);
+
+  return roles;
+};
+
 export const getPolicies = async (
   fields: string,
   after?: string,
@@ -160,4 +183,22 @@ export const validateRuleCondition = async (condition: string) => {
    * Returning directly response because we will need status code as well
    */
   return response;
+};
+
+export const searchRoles = async (
+  query: string,
+  limit = 25
+): Promise<Role[]> => {
+  const response = await APIClient.get<{ data: Role[]; paging: Paging }>(
+    '/roles/search',
+    {
+      params: {
+        q: query || undefined,
+        limit,
+        offset: 0,
+      },
+    }
+  );
+
+  return response.data.data;
 };

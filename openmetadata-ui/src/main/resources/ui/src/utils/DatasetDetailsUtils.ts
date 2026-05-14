@@ -21,4 +21,4 @@ export const defaultFields = `${TabSpecificField.FOLLOWERS},${TabSpecificField.J
 // eslint-disable-next-line max-len
 export const defaultFieldsWithColumns = `${TabSpecificField.COLUMNS},${TabSpecificField.FOLLOWERS},${TabSpecificField.JOINS},${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_CONSTRAINTS},${TabSpecificField.SCHEMA_DEFINITION},${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION}`;
 
-export const commonTableFields = `${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS}`;
+export const commonTableFields = `${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.CERTIFICATION}`;

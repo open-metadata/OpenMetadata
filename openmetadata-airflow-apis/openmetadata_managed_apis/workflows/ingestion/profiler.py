@@ -11,15 +11,10 @@
 """
 Profiler DAG function builder
 """
+
 import json
 
 from airflow import DAG
-from openmetadata_managed_apis.utils.logger import set_operator_logger
-from openmetadata_managed_apis.workflows.ingestion.common import (
-    build_dag,
-    build_source,
-    execute_workflow,
-)
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -32,6 +27,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     WorkflowConfig,
 )
 from metadata.workflow.profiler import ProfilerWorkflow
+from openmetadata_managed_apis.utils.logger import set_operator_logger
+from openmetadata_managed_apis.workflows.ingestion.common import (
+    build_dag,
+    build_source,
+    execute_workflow,
+)
 
 
 def profiler_workflow(
@@ -48,9 +49,7 @@ def profiler_workflow(
 
     set_operator_logger(workflow_config)
 
-    config = json.loads(
-        workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
-    )
+    config = json.loads(workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False))
     workflow = ProfilerWorkflow.create(config)
     execute_workflow(workflow, workflow_config)
 
@@ -79,7 +78,7 @@ def build_profiler_workflow_config(
         enableStreamableLogs=ingestion_pipeline.enableStreamableLogs,
     )
 
-    return workflow_config
+    return workflow_config  # noqa: RET504
 
 
 def build_profiler_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
@@ -94,4 +93,4 @@ def build_profiler_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
         workflow_fn=profiler_workflow,
     )
 
-    return dag
+    return dag  # noqa: RET504

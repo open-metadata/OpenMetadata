@@ -63,17 +63,34 @@ RUN if [ $(uname -m) = "arm64" || $(uname -m) = "aarch64" ]; \
 ENV LD_LIBRARY_PATH=/instantclient
 
 # Install DB2 iAccess driver
-RUN if [ $(uname -m) = "x86_64" ]; \
-  then \
-  curl https://public.dhe.ibm.com/software/ibmi/products/odbc/debs/dists/1.1.0/ibmi-acs-1.1.0.list | tee /etc/apt/sources.list.d/ibmi-acs-1.1.0.list \
-  && apt update \
-  && apt install ibm-iaccess; \
-  fi
+# The IBM repository approach is unreliable in CI environments, so we download the package directly
+# Use dpkg --force-depends because the package declares old Debian package names (libodbc1, odbcinst1debian2)
+# that don't exist in Debian 12, but the actual dependencies (unixodbc, odbcinst) are already installed
+RUN if [ $(uname -m) = "x86_64" ]; then \
+  wget -q https://public.dhe.ibm.com/software/ibmi/products/odbc/debs/dists/1.1.0/main/binary-amd64/ibm-iaccess-1.1.0.13-1.0.amd64.deb \
+    -O /tmp/ibm-iaccess.deb && \
+  dpkg -i --force-depends /tmp/ibm-iaccess.deb && \
+  apt-get install -f -y --no-install-recommends && \
+  rm -f /tmp/ibm-iaccess.deb; \
+fi
 
 WORKDIR ingestion/
 
 # Required for Airflow DockerOperator, as we need to run the workflows from a `python main.py` command in the container.
 COPY ingestion/operators/docker/*.py .
+
+# Create a non-root user with a writable home directory.
+# When the container runs with securityContext runAsUser: 1000 but no
+# /etc/passwd entry for that UID, Python disables user site-packages.
+# This causes runtime failures when tools like spacy download models
+# via pip --user, as the installed packages are invisible to the import
+# system. Creating the user ensures Python recognises UID 1000 and
+# enables the standard ~/.local install path.
+RUN groupadd -g 1000 openmetadata && useradd -m -u 1000 -g 1000 openmetadata
+RUN chown -R openmetadata:openmetadata /ingestion
+ENV HOME=/home/openmetadata
+ENV PATH="/home/openmetadata/.local/bin:${PATH}"
+USER openmetadata
 
 # Disable pip cache dir
 # https://pip.pypa.io/en/stable/topics/caching/#avoiding-caching

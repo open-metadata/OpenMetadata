@@ -1,6 +1,5 @@
 package org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics;
 
-import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.REPORT_DATA_TYPE_KEY;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.TIMESTAMP_KEY;
 
 import java.util.ArrayList;
@@ -117,7 +116,7 @@ public class WebAnalyticsWorkflow {
     webAnalyticsUserActivityProcessor = new WebAnalyticsUserActivityProcessor(total);
   }
 
-  public void process() throws SearchIndexException {
+  public void process() {
     if (!webAnalyticsConfig.getEnabled()) {
       return;
     }
@@ -172,8 +171,7 @@ public class WebAnalyticsWorkflow {
   // one flow if
   // the other one errors.
   private Optional<String> processEvents(
-      PaginatedWebAnalyticEventDataSource source, Map<String, Object> contextData)
-      throws SearchIndexException {
+      PaginatedWebAnalyticEventDataSource source, Map<String, Object> contextData) {
     Optional<String> error = Optional.empty();
 
     String keysetCursor = null;
@@ -209,12 +207,11 @@ public class WebAnalyticsWorkflow {
       Map<String, Object> contextData) {
     Optional<String> error = Optional.empty();
 
-    contextData.put(
-        REPORT_DATA_TYPE_KEY, ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA);
     CreateReportDataProcessor createReportDataProcessor =
         new CreateReportDataProcessor(
-            entityViewReportData.values().size(),
-            "[WebAnalyticsWorkflow] Entity View Report Data Processor");
+            entityViewReportData.size(),
+            "[WebAnalyticsWorkflow] Entity View Report Data Processor",
+            ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA);
 
     Optional<List<ReportData>> entityViewReportDataList = Optional.empty();
 
@@ -237,10 +234,11 @@ public class WebAnalyticsWorkflow {
       ReportDataSink reportDataSink =
           new ReportDataSink(
               entityViewReportDataList.get().size(),
-              "[WebAnalyticsWorkflow] Entity View Report Data Sink");
+              "[WebAnalyticsWorkflow] Entity View Report Data Sink",
+              ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA);
 
       try {
-        reportDataSink.write(entityViewReportDataList.get(), contextData);
+        reportDataSink.write(entityViewReportDataList.get());
       } catch (SearchIndexException ex) {
         error = Optional.of(String.format("Failed Sinking Entity View Data: %s", ex.getMessage()));
         workflowStats.addFailure(error.get());
@@ -258,8 +256,6 @@ public class WebAnalyticsWorkflow {
       Map<String, Object> contextData) {
     Optional<String> error = Optional.empty();
 
-    contextData.put(
-        REPORT_DATA_TYPE_KEY, ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
     WebAnalyticsUserActivityAggregator webAnalyticsUserActivityAggregator =
         new WebAnalyticsUserActivityAggregator(userActivityData.size());
 
@@ -278,8 +274,9 @@ public class WebAnalyticsWorkflow {
 
     CreateReportDataProcessor createReportdataProcessor =
         new CreateReportDataProcessor(
-            userActivityReportData.values().size(),
-            "[WebAnalyticsWorkflow] User Activity Report Data Processor");
+            userActivityReportData.size(),
+            "[WebAnalyticsWorkflow] User Activity Report Data Processor",
+            ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
     Optional<List<ReportData>> userActivityReportDataList = Optional.empty();
 
     // Process UserActivity ReportData
@@ -303,9 +300,10 @@ public class WebAnalyticsWorkflow {
       ReportDataSink reportDataSink =
           new ReportDataSink(
               userActivityReportDataList.get().size(),
-              "[WebAnalyticsWorkflow] User Activity Report Data Sink");
+              "[WebAnalyticsWorkflow] User Activity Report Data Sink",
+              ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
       try {
-        reportDataSink.write(userActivityReportDataList.get(), contextData);
+        reportDataSink.write(userActivityReportDataList.get());
       } catch (SearchIndexException ex) {
         error =
             Optional.of(

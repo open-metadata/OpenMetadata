@@ -11,8 +11,9 @@ import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelp
  * Usage: {{truncate text maxLength}}
  * Example: {{truncate entity.description 100}}
  *
- * If the text exceeds maxLength, it will be truncated to (maxLength - 3) characters
- * and "..." will be appended.
+ * If the text exceeds maxLength, it will be truncated to (maxLength - 1) characters
+ * and the single-character ellipsis "…" (U+2026) will be appended, keeping the
+ * final string length equal to maxLength.
  */
 public class TruncateHelper implements HandlebarsHelper {
 
@@ -59,7 +60,11 @@ public class TruncateHelper implements HandlebarsHelper {
             return text;
           }
 
-          return text.substring(0, maxLength - 3) + "…";
+          if (maxLength == 1) {
+            return "…";
+          }
+
+          return text.substring(0, maxLength - 1) + "…";
         });
   }
 

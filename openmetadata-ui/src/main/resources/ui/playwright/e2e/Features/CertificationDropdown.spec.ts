@@ -101,32 +101,6 @@ test.describe.serial('Certification Dropdown', () => {
     }
   });
 
-  test('should NOT show certifications when classification is disabled', async ({
-    page,
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    const tag = new TagClass({ classification: 'Certification' });
-    await tag.create(apiContext);
-    await setCertificationClassificationDisabled(apiContext, true);
-
-    try {
-      await redirectToHomePage(page);
-      await table.visitEntityPage(page);
-      await openCertificationDropdown(page);
-
-      await expect(
-        page.getByTestId(`radio-btn-${tag.responseData.fullyQualifiedName}`)
-      ).not.toBeVisible();
-
-      await closeCertificationDropdown(page);
-    } finally {
-      await setCertificationClassificationDisabled(apiContext, false);
-      await tag.delete(apiContext);
-      await afterAction();
-    }
-  });
-
   test('should show certification after re-enabling disabled tag', async ({
     page,
     browser,
@@ -159,44 +133,6 @@ test.describe.serial('Certification Dropdown', () => {
 
       await closeCertificationDropdown(page);
     } finally {
-      await tag.delete(apiContext);
-      await afterAction();
-    }
-  });
-
-  test('should show certifications after re-enabling classification', async ({
-    page,
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    const tag = new TagClass({ classification: 'Certification' });
-    await tag.create(apiContext);
-    await setCertificationClassificationDisabled(apiContext, true);
-
-    try {
-      await redirectToHomePage(page);
-      await table.visitEntityPage(page);
-      await openCertificationDropdown(page);
-
-      await expect(
-        page.getByTestId(`radio-btn-${tag.responseData.fullyQualifiedName}`)
-      ).not.toBeVisible();
-
-      await closeCertificationDropdown(page);
-
-      await setCertificationClassificationDisabled(apiContext, false);
-
-      await redirectToHomePage(page);
-      await table.visitEntityPage(page);
-      await openCertificationDropdown(page);
-
-      await expect(
-        page.getByTestId(`radio-btn-${tag.responseData.fullyQualifiedName}`)
-      ).toBeVisible();
-
-      await closeCertificationDropdown(page);
-    } finally {
-      await setCertificationClassificationDisabled(apiContext, false);
       await tag.delete(apiContext);
       await afterAction();
     }

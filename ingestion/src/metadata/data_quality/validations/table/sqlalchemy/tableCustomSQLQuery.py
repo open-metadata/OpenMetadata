@@ -13,7 +13,8 @@
 Validator for table custom SQL Query test case
 """
 
-from typing import Optional, Tuple, cast
+import traceback
+from typing import Any, List, Optional, Tuple, cast  # noqa: UP035
 
 import sqlparse
 from sqlalchemy import text
@@ -21,6 +22,13 @@ from sqlalchemy.sql import func, select
 from sqlparse.sql import Statement, Token, Where
 from sqlparse.tokens import Keyword
 
+from metadata.data_quality.api.models import TestCaseResultResponse
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    FAILED_ROW_SAMPLE_SIZE,
+)
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
@@ -31,7 +39,8 @@ from metadata.data_quality.validations.table.base.tableCustomSQLQuery import (
     BaseTableCustomSQLQueryValidator,
     Strategy,
 )
-from metadata.generated.schema.tests.basic import TestCaseResult
+from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.functions.table_metric_computer import TableMetricComputer
 from metadata.profiler.processor.runner import QueryRunner
@@ -41,12 +50,10 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidatorMixin):
+class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQLQueryValidator, SQAValidatorMixin):
     """Validator for table custom SQL Query test case"""
 
-    def _replace_where_clause(
-        self, sql_query: str, partition_expression: str
-    ) -> Optional[str]:
+    def _replace_where_clause(self, sql_query: str, partition_expression: str) -> Optional[str]:  # noqa: UP045
         """Replace or add WHERE clause in SQL query using sqlparse.
 
         This method properly handles:
@@ -69,18 +76,12 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
         statement: Statement = parsed[0]
         tokens = list(statement.tokens)
 
-        where_idx, where_end_idx, insert_before_idx = self._find_clause_positions(
-            tokens
-        )
-        new_tokens = self._build_new_tokens(
-            tokens, where_idx, where_end_idx, insert_before_idx, partition_expression
-        )
+        where_idx, where_end_idx, insert_before_idx = self._find_clause_positions(tokens)
+        new_tokens = self._build_new_tokens(tokens, where_idx, where_end_idx, insert_before_idx, partition_expression)
 
         return "".join(str(token) for token in new_tokens)
 
-    def _find_clause_positions(
-        self, tokens: list
-    ) -> Tuple[Optional[int], Optional[int], Optional[int]]:
+    def _find_clause_positions(self, tokens: list) -> Tuple[Optional[int], Optional[int], Optional[int]]:  # noqa: UP006, UP045
         """Find positions of WHERE clause and insertion points in token list.
 
         Args:
@@ -120,15 +121,13 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
         if token.ttype is None and hasattr(token, "tokens"):
             paren_count = str(token).count("(") - str(token).count(")")
             return current_depth + paren_count
-        elif token.value == "(":
+        elif token.value == "(":  # noqa: RET505
             return current_depth + 1
         elif token.value == ")":
             return current_depth - 1
         return current_depth
 
-    def _should_insert_before_token(
-        self, token: Token, insert_before_idx: Optional[int], paren_depth: int
-    ) -> bool:
+    def _should_insert_before_token(self, token: Token, insert_before_idx: Optional[int], paren_depth: int) -> bool:  # noqa: UP045
         """Check if WHERE clause should be inserted before this token.
 
         Args:
@@ -161,9 +160,9 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
     def _build_new_tokens(
         self,
         tokens: list,
-        where_idx: Optional[int],
-        where_end_idx: Optional[int],
-        insert_before_idx: Optional[int],
+        where_idx: Optional[int],  # noqa: UP045
+        where_end_idx: Optional[int],  # noqa: UP045
+        insert_before_idx: Optional[int],  # noqa: UP045
         partition_expression: str,
     ) -> list:
         """Build new token list with WHERE clause inserted or replaced.
@@ -179,13 +178,9 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
             New list of tokens with WHERE clause
         """
         if where_idx is not None:
-            return self._replace_existing_where(
-                tokens, where_idx, where_end_idx, partition_expression
-            )
-        elif insert_before_idx is not None:
-            return self._insert_where_before_clause(
-                tokens, insert_before_idx, partition_expression
-            )
+            return self._replace_existing_where(tokens, where_idx, where_end_idx, partition_expression)
+        elif insert_before_idx is not None:  # noqa: RET505
+            return self._insert_where_before_clause(tokens, insert_before_idx, partition_expression)
         else:
             return self._append_where_clause(tokens, partition_expression)
 
@@ -219,9 +214,7 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
             + tokens[where_end_idx:]
         )
 
-    def _insert_where_before_clause(
-        self, tokens: list, insert_before_idx: int, partition_expression: str
-    ) -> list:
+    def _insert_where_before_clause(self, tokens: list, insert_before_idx: int, partition_expression: str) -> list:
         """Insert WHERE clause before specified token index.
 
         Args:
@@ -266,7 +259,7 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
         if not where_clause.split():
             return ""
 
-        last_word = where_clause.split()[-1]
+        last_word = where_clause.split()[-1]  # noqa: PLC0207
         where_content_end = where_clause.rfind(last_word) + len(last_word)
 
         if where_content_end < len(where_clause):
@@ -280,9 +273,7 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
         Returns:
             TestCaseResult:
         """
-        self.runtime_params = self.get_runtime_parameters(
-            TableCustomSQLQueryRuntimeParameters
-        )
+        self.runtime_params = self.get_runtime_parameters(TableCustomSQLQueryRuntimeParameters)
         return super().run_validation()
 
     def _run_results(self, sql_expression: str, strategy: Strategy = Strategy.ROWS):
@@ -296,7 +287,7 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
             if strategy == Strategy.COUNT:
                 result = cursor.scalar()
                 if not isinstance(result, int):
-                    raise ValueError(
+                    raise ValueError(  # noqa: TRY301
                         f"When using COUNT strategy, the result must be an integer. Received: {type(result)}\n"
                         "Example: SELECT COUNT(*) FROM table_name WHERE my_value IS NOT NULL"
                     )
@@ -304,20 +295,16 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
             return cursor.fetchall()
         except Exception as exc:
             self.runner._session.rollback()  # pylint: disable=protected-access
-            raise exc
+            raise exc  # noqa: TRY201
 
-    def compute_row_count(self) -> Optional[int]:
+    def compute_row_count(self) -> Optional[int]:  # noqa: UP045
         """Compute row count for the given column
 
         Raises:
             NotImplementedError:
         """
         partition_expression = next(
-            (
-                param.value
-                for param in self.test_case.parameterValues
-                if param.name == "partitionExpression"
-            ),
+            (param.value for param in self.test_case.parameterValues if param.name == "partitionExpression"),
             None,
         )
         if partition_expression:
@@ -328,34 +315,26 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
             )
 
             if custom_sql:
-                modified_query = self._replace_where_clause(
-                    custom_sql, partition_expression
-                )
+                modified_query = self._replace_where_clause(custom_sql, partition_expression)
                 if modified_query is None:
                     return None
                 count_query = f"SELECT COUNT(*) FROM ({modified_query}) AS test_results"
 
                 try:
                     result = self.runner.session.execute(text(count_query)).scalar()
-                    return result
+                    return result  # noqa: RET504, TRY300
                 except Exception as exc:
                     logger.error(
-                        "Failed to execute custom SQL with partition expression. "
-                        f"Query: {count_query}\n"
-                        f"Error: {exc}\n",
+                        f"Failed to execute custom SQL with partition expression. Query: {count_query}\nError: {exc}\n",
                         exc_info=True,
                     )
                     self.runner.session.rollback()
-                    raise exc
+                    raise exc  # noqa: TRY201
             else:
-                stmt = (
-                    select(func.count())
-                    .select_from(self.runner.table)
-                    .filter(text(partition_expression))
-                )
+                stmt = select(func.count()).select_from(self.runner.table).filter(text(partition_expression))
                 return self.runner.session.execute(stmt).scalar()
 
-        self.runner = cast(QueryRunner, self.runner)
+        self.runner = cast(QueryRunner, self.runner)  # noqa: TC006
         dialect = self.runner._session.get_bind().dialect.name
         table_metric_computer: TableMetricComputer = TableMetricComputer(
             dialect,
@@ -368,3 +347,49 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
         if row:
             return row._asdict().get(Metrics.rowCount.name)
         return None
+
+    def _get_strategy(self):
+        return self.get_test_case_param_value(
+            self.test_case.parameterValues,  # type: ignore
+            "strategy",
+            Strategy,
+        )
+
+    def fetch_failed_rows_sample(self):
+        cols, rows = self._get_custom_sql_failed_rows()
+        return TableData(columns=cols, rows=rows)
+
+    def _get_custom_sql_failed_rows(self) -> Tuple[List[str], List[List[Any]]]:  # noqa: UP006
+        sql_expression = self.get_test_case_param_value(
+            self.test_case.parameterValues,  # type: ignore
+            "sqlExpression",
+            str,
+        )
+        rows = self._run_results(sql_expression, self._get_strategy())[:FAILED_ROW_SAMPLE_SIZE]
+        if len(rows) == 0:
+            return [], []
+        return [str(col) for col in rows[0]._fields], [list(row) for row in rows]
+
+    def get_inspection_query(self):
+        return self.get_test_case_param_value(
+            self.test_case.parameterValues,  # type: ignore
+            "sqlExpression",
+            str,
+        )
+
+    def result_with_failed_samples(self, result: TestCaseResultResponse) -> None:
+        """Override: tableCustomSQLQuery uses ROWS strategy check instead of
+        computePassedFailedRowCount, and sets validateColumns=False."""
+        if result.testCaseResult.testCaseStatus == TestCaseStatus.Failed and self._get_strategy() == Strategy.ROWS:
+            result.validateColumns = False
+            try:
+                result.failedRowsSample = self.fetch_failed_rows_sample()
+            except Exception:
+                logger.debug(traceback.format_exc())
+                logger.error("Failed to fetch failed rows sample")
+
+            try:
+                result.inspectionQuery = self.get_inspection_query()
+            except Exception:
+                logger.debug(traceback.format_exc())
+                logger.error("Failed to get inspection query")

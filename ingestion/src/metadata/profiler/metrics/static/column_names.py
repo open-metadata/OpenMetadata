@@ -49,6 +49,14 @@ def _(element, compiler, **kw):
     return f"CAST({proc} AS VARCHAR)"
 
 
+@compiles(ColunNameFn, Dialects.Informix)
+def _(element, compiler, **kw):
+    """Informix JDBC rejects ? in SELECT expressions. literal_binds=True inlines
+    the value directly into SQL so no bind parameter placeholder is generated."""
+    kw["literal_binds"] = True
+    return compiler.process(element.clauses, **kw)
+
+
 class ColumnNames(StaticMetric):
     """
     COLUMN_NAMES Metric
@@ -82,9 +90,7 @@ class ColumnNames(StaticMetric):
     @_label
     def fn(self):
         if not hasattr(self, "table"):
-            raise AttributeError(
-                "Column Count requires a table to be set: add_props(table=...)(Metrics.columnCount)"
-            )
+            raise AttributeError("Column Count requires a table to be set: add_props(table=...)(Metrics.columnCount)")
 
         col_names = ",".join(inspect(self.table).c.keys())
         return ColunNameFn(literal(col_names, type_=sqlalchemy.types.String))

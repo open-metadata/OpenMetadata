@@ -134,7 +134,7 @@ public abstract class ExternalSecretsManagerTest {
                 secretsManager.encryptServiceConnectionConfig(
                     mysqlConnection, Mysql.value(), "test", ServiceType.DATABASE));
 
-    Assertions.assertEquals(
+    assertEquals(
         "Failed to encrypt 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
         thrown.getMessage());
     thrown =
@@ -144,7 +144,7 @@ public abstract class ExternalSecretsManagerTest {
                 secretsManager.decryptServiceConnectionConfig(
                     mysqlConnection, Mysql.value(), ServiceType.DATABASE));
 
-    Assertions.assertEquals(
+    assertEquals(
         "Failed to decrypt 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
         thrown.getMessage());
   }

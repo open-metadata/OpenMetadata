@@ -5,6 +5,8 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
 import org.openmetadata.schema.entity.ai.LLMModel;
+import org.openmetadata.schema.entity.ai.McpExecution;
+import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.ai.PromptTemplate;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -12,16 +14,19 @@ import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.data.File;
+import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MlModel;
+import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.QueryCostRecord;
@@ -33,8 +38,6 @@ import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.*;
-import org.openmetadata.schema.entity.services.ApiService;
-import org.openmetadata.schema.entity.services.LLMService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -52,6 +55,7 @@ import org.openmetadata.service.search.indexes.AiGovernancePolicyIndex;
 import org.openmetadata.service.search.indexes.ChartIndex;
 import org.openmetadata.service.search.indexes.ClassificationIndex;
 import org.openmetadata.service.search.indexes.ContainerIndex;
+import org.openmetadata.service.search.indexes.ContextFileIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
 import org.openmetadata.service.search.indexes.DashboardServiceIndex;
@@ -64,16 +68,21 @@ import org.openmetadata.service.search.indexes.DomainIndex;
 import org.openmetadata.service.search.indexes.DriveServiceIndex;
 import org.openmetadata.service.search.indexes.EntityReportDataIndex;
 import org.openmetadata.service.search.indexes.FileIndex;
+import org.openmetadata.service.search.indexes.FolderIndex;
 import org.openmetadata.service.search.indexes.GlossaryIndex;
 import org.openmetadata.service.search.indexes.GlossaryTermIndex;
 import org.openmetadata.service.search.indexes.IngestionPipelineIndex;
 import org.openmetadata.service.search.indexes.LlmModelIndex;
 import org.openmetadata.service.search.indexes.LlmServiceIndex;
+import org.openmetadata.service.search.indexes.McpExecutionIndex;
+import org.openmetadata.service.search.indexes.McpServerIndex;
+import org.openmetadata.service.search.indexes.McpServiceIndex;
 import org.openmetadata.service.search.indexes.MessagingServiceIndex;
 import org.openmetadata.service.search.indexes.MetadataServiceIndex;
 import org.openmetadata.service.search.indexes.MetricIndex;
 import org.openmetadata.service.search.indexes.MlModelIndex;
 import org.openmetadata.service.search.indexes.MlModelServiceIndex;
+import org.openmetadata.service.search.indexes.PageIndex;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.PipelineIndex;
 import org.openmetadata.service.search.indexes.PipelineServiceIndex;
@@ -104,6 +113,28 @@ import org.openmetadata.service.search.indexes.WorksheetIndex;
 @Slf4j
 public class SearchIndexFactory {
 
+  /**
+   * Returns the minimal set of fields the reindex path must request from
+   * {@code EntityRepository.setFields} for the given entity type. Probes the corresponding
+   * index class via {@link #buildIndex(String, Object)} with a {@code null} entity and calls
+   * {@link SearchIndex#getRequiredReindexFields()}. Index constructors must be safe with a null
+   * entity for this probe to work — they are today because field declarations are static.
+   */
+  public java.util.Set<String> getReindexFieldsFor(String entityType) {
+    try {
+      SearchIndex probe = buildIndex(entityType, null);
+      if (probe != null) {
+        return probe.getRequiredReindexFields();
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to probe reindex fields for entity type {}; falling back to common set: {}",
+          entityType,
+          e.getMessage());
+    }
+    return SearchIndex.COMMON_REINDEX_FIELDS;
+  }
+
   public SearchIndex buildIndex(String entityType, Object entity) {
     return switch (entityType) {
       case Entity.TABLE -> new TableIndex((Table) entity);
@@ -121,6 +152,8 @@ public class SearchIndexFactory {
       case Entity.AI_APPLICATION -> new AiApplicationIndex((AIApplication) entity);
       case Entity.PROMPT_TEMPLATE -> new PromptTemplateIndex((PromptTemplate) entity);
       case Entity.AI_GOVERNANCE_POLICY -> new AiGovernancePolicyIndex((AIGovernancePolicy) entity);
+      case Entity.MCP_SERVER -> new McpServerIndex((McpServer) entity);
+      case Entity.MCP_EXECUTION -> new McpExecutionIndex((McpExecution) entity);
       case Entity.TAG -> new TagIndex((Tag) entity);
       case Entity.CLASSIFICATION -> new ClassificationIndex((Classification) entity);
       case Entity.QUERY -> new QueryIndex((Query) entity);
@@ -139,6 +172,7 @@ public class SearchIndexFactory {
       case Entity.MESSAGING_SERVICE -> new MessagingServiceIndex((MessagingService) entity);
       case Entity.MLMODEL_SERVICE -> new MlModelServiceIndex((MlModelService) entity);
       case Entity.LLM_SERVICE -> new LlmServiceIndex((LLMService) entity);
+      case Entity.MCP_SERVICE -> new McpServiceIndex((McpService) entity);
       case Entity.SEARCH_SERVICE -> new SearchServiceIndex((SearchService) entity);
       case Entity.SECURITY_SERVICE -> new SecurityServiceIndex((SecurityService) entity);
       case Entity.API_SERVICE -> new APIServiceIndex((ApiService) entity);
@@ -153,6 +187,9 @@ public class SearchIndexFactory {
       case Entity.FILE -> new FileIndex((File) entity);
       case Entity.SPREADSHEET -> new SpreadsheetIndex((Spreadsheet) entity);
       case Entity.WORKSHEET -> new WorksheetIndex((Worksheet) entity);
+      case Entity.FOLDER -> new FolderIndex((Folder) entity);
+      case Entity.CONTEXT_FILE -> new ContextFileIndex((ContextFile) entity);
+      case Entity.PAGE -> new PageIndex((Page) entity);
       case Entity.DATA_PRODUCT -> new DataProductIndex((DataProduct) entity);
       case Entity.METADATA_SERVICE -> new MetadataServiceIndex((MetadataService) entity);
       case Entity.ENTITY_REPORT_DATA -> new EntityReportDataIndex((ReportData) entity);
@@ -171,7 +208,9 @@ public class SearchIndexFactory {
       case Entity.PIPELINE_EXECUTION -> {
         PipelineExecutionIndex.PipelineExecutionData data =
             (PipelineExecutionIndex.PipelineExecutionData) entity;
-        yield new PipelineExecutionIndex(data.getPipeline(), data.getPipelineStatus());
+        yield data == null
+            ? new PipelineExecutionIndex(null, null)
+            : new PipelineExecutionIndex(data.getPipeline(), data.getPipelineStatus());
       }
       default -> buildExternalIndexes(entityType, entity);
     };

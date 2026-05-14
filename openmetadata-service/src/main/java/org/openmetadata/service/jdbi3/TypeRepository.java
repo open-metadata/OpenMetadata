@@ -23,7 +23,7 @@ import static org.openmetadata.service.util.EntityUtil.customFieldMatch;
 import static org.openmetadata.service.util.EntityUtil.getCustomField;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.gson.Gson;
+import com.google.common.util.concurrent.Striped;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.ws.rs.core.UriInfo;
 import java.time.format.DateTimeFormatter;
@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Triple;
@@ -60,13 +60,13 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.ValidatorUtil;
 
 @Slf4j
 public class TypeRepository extends EntityRepository<Type> {
   private static final String UPDATE_FIELDS = "customProperties";
   private static final String PATCH_FIELDS = "customProperties";
-  private static final ConcurrentHashMap<UUID, Object> TYPE_PROPERTY_LOCKS =
-      new ConcurrentHashMap<>();
+  private static final Striped<Lock> TYPE_PROPERTY_LOCKS = Striped.lock(4096);
 
   public TypeRepository() {
     super(
@@ -99,30 +99,18 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("customProperties");
+  }
+
+  @Override
   public void storeEntity(Type type, boolean update) {
-    List<CustomProperty> customProperties = type.getCustomProperties();
-    type.withCustomProperties(null);
     store(type, update);
-    type.withCustomProperties(customProperties);
     updateTypeMap(type);
   }
 
   public void storeEntities(List<Type> types) {
-    List<Type> typesToStore = new ArrayList<>();
-    Gson gson = new Gson();
-
-    for (Type type : types) {
-      List<CustomProperty> customProperties = type.getCustomProperties();
-
-      type.withCustomProperties(null);
-
-      String jsonCopy = gson.toJson(type);
-      typesToStore.add(gson.fromJson(jsonCopy, Type.class));
-
-      type.withCustomProperties(customProperties);
-    }
-
-    storeMany(typesToStore);
+    storeMany(types);
 
     for (Type type : types) {
       updateTypeMap(type);
@@ -165,8 +153,9 @@ public class TypeRepository extends EntityRepository<Type> {
 
   public PutResponse<Type> addCustomProperty(
       UriInfo uriInfo, String updatedBy, UUID id, CustomProperty property) {
-    Object lock = TYPE_PROPERTY_LOCKS.computeIfAbsent(id, k -> new Object());
-    synchronized (lock) {
+    Lock lock = TYPE_PROPERTY_LOCKS.get(id);
+    lock.lock();
+    try {
       Type type = find(id, Include.NON_DELETED);
       property.setPropertyType(
           Entity.getEntityReferenceById(
@@ -192,6 +181,8 @@ public class TypeRepository extends EntityRepository<Type> {
       type.setUpdatedBy(updatedBy);
       type.setUpdatedAt(System.currentTimeMillis());
       return createOrUpdate(uriInfo, type, updatedBy);
+    } finally {
+      lock.unlock();
     }
   }
 
@@ -344,7 +335,7 @@ public class TypeRepository extends EntityRepository<Type> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      updateCustomProperties();
+      compareAndUpdate("customProperties", this::updateCustomProperties);
     }
 
     private void updateCustomProperties() {
@@ -354,6 +345,13 @@ public class TypeRepository extends EntityRepository<Type> {
       List<CustomProperty> deleted = new ArrayList<>();
       recordListChange(
           "customProperties", origProperties, updatedProperties, added, deleted, customFieldMatch);
+      // Legacy names from existing data are not re-validated; only newly added ones.
+      for (CustomProperty property : added) {
+        String violations = ValidatorUtil.validate(property);
+        if (violations != null) {
+          throw new IllegalArgumentException(violations);
+        }
+      }
       for (CustomProperty property : added) {
         storeCustomProperty(property);
       }

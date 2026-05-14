@@ -11,6 +11,7 @@
 """
 Utils module to define overrided sqlalchamy methods
 """
+
 # pylint: disable=protected-access,unused-argument
 import re
 
@@ -22,14 +23,14 @@ from sqlalchemy.sql import sqltypes
 from metadata.ingestion.source.database.oracle.queries import (
     GET_MATERIALIZED_VIEW_NAMES,
     GET_VIEW_NAMES,
-    ORACLE_ALL_CONSTRAINTS,
-    ORACLE_ALL_TABLE_COMMENTS,
-    ORACLE_ALL_TABLE_COMMENTS_PRESERVE_CASE,
-    ORACLE_ALL_VIEW_DEFINITIONS,
-    ORACLE_ALL_VIEW_DEFINITIONS_PRESERVE_CASE,
+    ORACLE_CONSTRAINTS,
     ORACLE_GET_COLUMNS,
     ORACLE_GET_TABLE_NAMES,
     ORACLE_IDENTITY_TYPE,
+    ORACLE_TABLE_COMMENTS,
+    ORACLE_TABLE_COMMENTS_PRESERVE_CASE,
+    ORACLE_VIEW_DEFINITIONS,
+    ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE,
 )
 from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
@@ -37,12 +38,20 @@ from metadata.utils.sqlalchemy_utils import (
 )
 
 
+def get_table_prefix_from_connection(service_connection) -> str:
+    return "DBA" if getattr(service_connection, "useDBATable", True) else "ALL"
+
+
+def _get_table_prefix(self) -> str:
+    return getattr(self, "table_prefix", "DBA")
+
+
 @reflection.cache
 def get_table_comment(
     self,
     connection,
     table_name: str,
-    schema: str = None,
+    schema: str = None,  # noqa: RUF013
     resolve_synonyms=False,
     dblink="",
     **kw,
@@ -52,7 +61,7 @@ def get_table_comment(
         connection,
         table_name=table_name.lower(),
         schema=schema.lower() if schema else None,
-        query=ORACLE_ALL_TABLE_COMMENTS,
+        query=ORACLE_TABLE_COMMENTS.format(prefix=_get_table_prefix(self)),
     )
 
 
@@ -61,7 +70,7 @@ def get_view_definition(
     self,
     connection,
     view_name: str,
-    schema: str = None,
+    schema: str = None,  # noqa: RUF013
     resolve_synonyms=False,
     dblink="",
     **kw,
@@ -71,7 +80,7 @@ def get_view_definition(
         connection,
         table_name=view_name.lower(),
         schema=schema.lower() if schema else None,
-        query=ORACLE_ALL_VIEW_DEFINITIONS,
+        query=ORACLE_VIEW_DEFINITIONS.format(prefix=_get_table_prefix(self)),
     )
 
 
@@ -89,9 +98,7 @@ def get_all_view_definitions(self, connection, query):
             if not view_definition and hasattr(view, "view_ddl"):
                 view_definition = view.view_ddl
             else:
-                view_definition = (
-                    f"CREATE OR REPLACE VIEW {view.view_name} AS {view_definition}"
-                )
+                view_definition = f"CREATE OR REPLACE VIEW {view.view_name} AS {view_definition}"
             self.all_view_definitions[(view.view_name, view.schema)] = view_definition
 
         elif hasattr(view, "VIEW_DEF") and hasattr(view, "SCHEMA"):
@@ -99,15 +106,11 @@ def get_all_view_definitions(self, connection, query):
             if not view_definition and hasattr(view, "VIEW_DDL"):
                 view_definition = view.VIEW_DDL
             else:
-                view_definition = (
-                    f"CREATE OR REPLACE VIEW {view.VIEW_NAME} AS {view_definition}"
-                )
+                view_definition = f"CREATE OR REPLACE VIEW {view.VIEW_NAME} AS {view_definition}"
             self.all_view_definitions[(view.VIEW_NAME, view.SCHEMA)] = view_definition
 
 
-def _get_col_type(
-    self, coltype, precision, scale, length, colname
-):  # pylint: disable=too-many-branches
+def _get_col_type(self, coltype, precision, scale, length, colname):  # pylint: disable=too-many-branches
     raw_type = coltype
     if coltype == "NUMBER":
         if precision is None and scale == 0:
@@ -143,7 +146,7 @@ def _get_col_type(
 
 # pylint: disable=too-many-locals
 @reflection.cache
-def get_columns(self, connection, table_name, schema=None, **kw):
+def get_columns(self, connection, table_name, schema=None, **kw):  # noqa: C901
     """
 
     Dialect method overridden to add raw data type
@@ -155,18 +158,36 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         dblink
 
     """
-    resolve_synonyms = kw.get("oracle_resolve_synonyms", False)
     dblink = kw.get("dblink", "")
+    resolve_synonyms = kw.get("oracle_resolve_synonyms", False)
     info_cache = kw.get("info_cache")
 
-    (table_name, schema, dblink, _) = self._prepare_reflection_args(
-        connection,
-        table_name,
-        schema,
-        resolve_synonyms,
-        dblink,
-        info_cache=info_cache,
-    )
+    if resolve_synonyms:
+        try:
+            rows = list(self._get_synonyms(connection, schema, [table_name], dblink, info_cache=info_cache))
+        except Exception:
+            rows = []
+
+        if rows:
+            row = rows[0]
+            actual_name = getattr(row, "table_name", None)
+            actual_owner = getattr(row, "table_owner", None)
+            db_link_val = getattr(row, "db_link", None)
+
+            if actual_name:
+                table_name = self.denormalize_name(actual_name)
+            if actual_owner:
+                schema = self.denormalize_name(actual_owner)
+            if db_link_val:
+                if not db_link_val.startswith("@"):
+                    dblink = "@" + db_link_val
+                else:
+                    dblink = db_link_val
+    else:
+        table_name = self.denormalize_name(table_name)
+        if schema is not None:
+            schema = self.denormalize_name(schema)
+
     columns = []
 
     char_length_col = "data_length"
@@ -175,12 +196,15 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
     identity_cols = "NULL as default_on_null, NULL as identity_options"
     if self.server_version_info >= (12,):
-        identity_cols = ORACLE_IDENTITY_TYPE.format(dblink=dblink)
+        identity_cols = ORACLE_IDENTITY_TYPE.format(dblink=dblink, prefix=_get_table_prefix(self))
 
     params = {"table_name": table_name}
 
     text = ORACLE_GET_COLUMNS.format(
-        dblink=dblink, char_length_col=char_length_col, identity_cols=identity_cols
+        dblink=dblink,
+        char_length_col=char_length_col,
+        identity_cols=identity_cols,
+        prefix=_get_table_prefix(self),
     )
     if schema is not None:
         params["owner"] = schema
@@ -203,9 +227,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         default_on_nul = row[9]
         identity_options = row[10]
 
-        coltype, raw_coltype = self._get_col_type(
-            coltype, precision, scale, length, colname
-        )
+        coltype, raw_coltype = self._get_col_type(coltype, precision, scale, length, colname)
 
         computed = None
         if generated == "YES":
@@ -252,11 +274,8 @@ def get_table_names(self, connection, schema=None, **kw):
 
     if self.exclude_tablespaces:
         exclude_tablespace = ", ".join([f"'{ts}'" for ts in self.exclude_tablespaces])
-        tablespace = (
-            "nvl(tablespace_name, 'no tablespace') "
-            f"NOT IN ({exclude_tablespace}) AND "
-        )
-    sql_str = ORACLE_GET_TABLE_NAMES.format(tablespace=tablespace)
+        tablespace = f"nvl(tablespace_name, 'no tablespace') NOT IN ({exclude_tablespace}) AND "
+    sql_str = ORACLE_GET_TABLE_NAMES.format(tablespace=tablespace, prefix=_get_table_prefix(self))
     cursor = connection.execute(sql.text(sql_str), {"owner": schema})
     return [row[0] for row in cursor]
 
@@ -276,7 +295,7 @@ def get_view_names(self, schema=None):
 @reflection.cache
 def get_view_names_dialect(self, connection, schema=None, **kw):
     schema = self.denormalize_name(schema or self.default_schema_name)
-    sql_query = sql.text(GET_VIEW_NAMES)
+    sql_query = sql.text(GET_VIEW_NAMES.format(prefix=_get_table_prefix(self)))
     cursor = connection.execute(sql_query, {"owner": self.denormalize_name(schema)})
     return [self.normalize_name(row[0]) for row in cursor]
 
@@ -296,7 +315,7 @@ def get_mview_names(self, schema=None):
 @reflection.cache
 def get_mview_names_dialect(self, connection, schema=None, **kw):
     schema = self.denormalize_name(schema or self.default_schema_name)
-    sql_query = sql.text(GET_MATERIALIZED_VIEW_NAMES)
+    sql_query = sql.text(GET_MATERIALIZED_VIEW_NAMES.format(prefix=_get_table_prefix(self)))
     cursor = connection.execute(sql_query, {"owner": self.denormalize_name(schema)})
     return [self.normalize_name(row[0]) for row in cursor]
 
@@ -305,11 +324,11 @@ def get_mview_names_dialect(self, connection, schema=None, **kw):
 def _get_constraint_data(self, connection, table_name, schema=None, dblink="", **kw):
 
     params = {"table_name": table_name, "owner": schema}
-    text = ORACLE_ALL_CONSTRAINTS.format(dblink=dblink)
+    text = ORACLE_CONSTRAINTS.format(dblink=dblink, prefix=_get_table_prefix(self))
 
     rp = connection.execute(sql.text(text), params)
     constraint_data = rp.fetchall()
-    return constraint_data
+    return constraint_data  # noqa: RET504
 
 
 # ---------------------------------------------------------------------------
@@ -343,7 +362,7 @@ def get_table_comment_preserve_case(
     self,
     connection,
     table_name: str,
-    schema: str = None,
+    schema: str = None,  # noqa: RUF013
     resolve_synonyms=False,
     dblink="",
     **kw,
@@ -357,7 +376,7 @@ def get_table_comment_preserve_case(
         connection,
         table_name=table_name,
         schema=schema,
-        query=ORACLE_ALL_TABLE_COMMENTS_PRESERVE_CASE,
+        query=ORACLE_TABLE_COMMENTS_PRESERVE_CASE.format(prefix=_get_table_prefix(self)),
     )
 
 
@@ -366,7 +385,7 @@ def get_view_definition_preserve_case(
     self,
     connection,
     view_name: str,
-    schema: str = None,
+    schema: str = None,  # noqa: RUF013
     resolve_synonyms=False,
     dblink="",
     **kw,
@@ -380,12 +399,12 @@ def get_view_definition_preserve_case(
         connection,
         table_name=view_name,
         schema=schema,
-        query=ORACLE_ALL_VIEW_DEFINITIONS_PRESERVE_CASE,
+        query=ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE.format(prefix=_get_table_prefix(self)),
     )
 
 
 @reflection.cache
-def get_indexes_preserve_case(
+def get_indexes_preserve_case(  # noqa: C901
     self,
     connection,
     table_name,
@@ -395,29 +414,59 @@ def get_indexes_preserve_case(
     **kw,
 ):
     """Override get_indexes to fix two issues when preserveIdentifierCase=True:
-    1. Use original table_name (before _prepare_reflection_args uppercases it)
+    1. Use original table_name (before denormalize_name uppercases it)
        so quoted lowercase identifiers are found in ALL_IND_COLUMNS.
     2. Access result row columns case-insensitively — Oracle thick mode returns
        INDEX_NAME (uppercase) while thin mode returns index_name (lowercase).
        A lowercased dict handles both without branching.
     """
     original_table_name = table_name
-    info_cache = kw.get("info_cache")
-    (table_name, schema, dblink, _) = self._prepare_reflection_args(
-        connection,
-        table_name,
-        schema,
-        resolve_synonyms,
-        dblink,
-        info_cache=info_cache,
-    )
+    resolve_synonyms = kw.get("oracle_resolve_synonyms", False)
+
+    # SQLAlchemy 2.0 removed _prepare_reflection_args; denormalize schema/table
+    # for the pk_constraint lookup while the index query itself uses
+    # original_table_name (preserve-case mode keeps identifiers as-is).
+    table_name = self.denormalize_name(table_name)
+    if schema is not None:
+        schema = self.denormalize_name(schema)
+    if dblink and not dblink.startswith("@"):
+        dblink = "@" + dblink
+
+    if resolve_synonyms:
+        try:
+            rows = list(
+                self._get_synonyms(
+                    connection,
+                    schema,
+                    [table_name],
+                    dblink,
+                    info_cache=kw.get("info_cache"),
+                )
+            )
+        except Exception:
+            rows = []
+        if rows:
+            row = rows[0]
+            actual_name = getattr(row, "table_name", None)
+            actual_owner = getattr(row, "table_owner", None)
+            db_link_val = getattr(row, "db_link", None)
+            if actual_name:
+                table_name = self.denormalize_name(actual_name)
+            if actual_owner:
+                schema = self.denormalize_name(actual_owner)
+            if db_link_val:
+                if not db_link_val.startswith("@"):
+                    dblink = "@" + db_link_val
+                else:
+                    dblink = db_link_val
 
     params = {"table_name": original_table_name}
+    prefix = _get_table_prefix(self)
     text = (
         "SELECT a.index_name, a.column_name, "
         "\nb.index_type, b.uniqueness, b.compression, b.prefix_length "
-        "\nFROM ALL_IND_COLUMNS%(dblink)s a, "
-        "\nALL_INDEXES%(dblink)s b "
+        "\nFROM %(prefix)s_IND_COLUMNS%(dblink)s a, "
+        "\n%(prefix)s_INDEXES%(dblink)s b "
         "\nWHERE "
         "\na.index_name = b.index_name "
         "\nAND a.table_owner = b.table_owner "
@@ -430,7 +479,7 @@ def get_indexes_preserve_case(
         text += " AND a.table_owner = :schema "
 
     text += " ORDER BY a.index_name, a.column_position"
-    text = text % {"dblink": dblink}
+    text = text % {"dblink": dblink, "prefix": prefix}
 
     rp = connection.execute(sql.text(text), params)
     indexes = []
@@ -444,8 +493,8 @@ def get_indexes_preserve_case(
         info_cache=kw.get("info_cache"),
     )
 
-    uniqueness = dict(NONUNIQUE=False, UNIQUE=True)
-    enabled = dict(DISABLED=False, ENABLED=True)
+    uniqueness = dict(NONUNIQUE=False, UNIQUE=True)  # noqa: C408
+    enabled = dict(DISABLED=False, ENABLED=True)  # noqa: C408
     oracle_sys_col = re.compile(r"SYS_NC\d+\$", re.IGNORECASE)
 
     index = None
@@ -458,7 +507,7 @@ def get_indexes_preserve_case(
             continue
 
         if raw_index_name != last_index_name:
-            index = dict(
+            index = dict(  # noqa: C408
                 name=index_name_normalized,
                 column_names=[],
                 dialect_options={},

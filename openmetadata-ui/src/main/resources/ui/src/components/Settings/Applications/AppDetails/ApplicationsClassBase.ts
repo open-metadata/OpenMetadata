@@ -11,14 +11,18 @@
  *  limitations under the License.
  */
 
-import { ComponentType, FC } from 'react';
+import { ComponentType, FC, lazy } from 'react';
 import { AppType } from '../../../../generated/entity/applications/app';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
-import ApplicationConfiguration, {
-  ApplicationConfigurationProps,
-} from '../ApplicationConfiguration/ApplicationConfiguration';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import type { ApplicationConfigurationProps } from '../ApplicationConfiguration/ApplicationConfiguration';
 import { AppPlugin } from '../plugins/AppPlugin';
 import { McpChatPlugin } from '../plugins/McpChatPlugin';
+
+const ApplicationConfiguration =
+  withSuspenseFallback<ApplicationConfigurationProps>(
+    lazy(() => import('../ApplicationConfiguration/ApplicationConfiguration'))
+  );
 
 class ApplicationsClassBase {
   public async importSchema(fqn: string) {

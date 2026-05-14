@@ -13,8 +13,9 @@
 Validator for column value to be in set test case
 """
 
+from ast import literal_eval
 from collections import defaultdict
-from typing import List, Optional, cast
+from typing import List, Optional, cast  # noqa: UP035
 
 import pandas as pd
 
@@ -27,10 +28,17 @@ from metadata.data_quality.validations.column.base.columnValuesToBeInSet import 
     BaseColumnValuesToBeInSetValidator,
 )
 from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    PandasFailedRowSamplerMixin,
+)
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_pandas,
 )
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
@@ -41,13 +49,14 @@ logger = test_suite_logger()
 
 
 class ColumnValuesToBeInSetValidator(
-    BaseColumnValuesToBeInSetValidator, PandasValidatorMixin
+    FailedSampleValidatorMixin,
+    BaseColumnValuesToBeInSetValidator,
+    PandasValidatorMixin,
+    PandasFailedRowSamplerMixin,
 ):
     """Validator for column value to be in set test case"""
 
-    def _run_results(
-        self, metric: Metrics, column: SQALikeColumn, **kwargs
-    ) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: SQALikeColumn, **kwargs) -> Optional[int]:  # noqa: UP045
         """compute result of the test case
 
         Args:
@@ -63,7 +72,7 @@ class ColumnValuesToBeInSetValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
         Follows the iterate pattern from the Mean metric's df_fn method to handle
@@ -88,15 +97,13 @@ class ColumnValuesToBeInSetValidator(
         dimension_results = []
 
         try:
-            allowed_values = test_params[
-                BaseColumnValuesToBeInSetValidator.ALLOWED_VALUES
-            ]
+            allowed_values = test_params[BaseColumnValuesToBeInSetValidator.ALLOWED_VALUES]
             match_enum = test_params[BaseColumnValuesToBeInSetValidator.MATCH_ENUM]
 
             dfs = self.runner
-            count_in_set_impl = add_props(values=allowed_values)(
-                Metrics.countInSet.value
-            )(column).get_pandas_computation()
+            count_in_set_impl = add_props(values=allowed_values)(Metrics.countInSet.value)(
+                column
+            ).get_pandas_computation()
             row_count_impl = Metrics.rowCount().get_pandas_computation()
 
             dimension_aggregates = defaultdict(
@@ -107,33 +114,27 @@ class ColumnValuesToBeInSetValidator(
             )
 
             for df in dfs:
-                df_typed = cast(pd.DataFrame, df)
+                df_typed = cast(pd.DataFrame, df)  # noqa: TC006
                 grouped = df_typed.groupby(dimension_col.name, dropna=False)
 
                 for dimension_value, group_df in grouped:
-                    dimension_value = self.format_dimension_value(dimension_value)
+                    dimension_value = self.format_dimension_value(dimension_value)  # noqa: PLW2901
 
-                    dimension_aggregates[dimension_value][
-                        Metrics.countInSet.name
-                    ] = count_in_set_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.countInSet.name],
-                        group_df,
+                    dimension_aggregates[dimension_value][Metrics.countInSet.name] = (
+                        count_in_set_impl.update_accumulator(
+                            dimension_aggregates[dimension_value][Metrics.countInSet.name],
+                            group_df,
+                        )
                     )
-                    dimension_aggregates[dimension_value][
-                        Metrics.rowCount.name
-                    ] = row_count_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.rowCount.name] = row_count_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.rowCount.name],
                         group_df,
                     )
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                count_in_set = count_in_set_impl.aggregate_accumulator(
-                    agg[Metrics.countInSet.name]
-                )
-                row_count = row_count_impl.aggregate_accumulator(
-                    agg[Metrics.rowCount.name]
-                )
+                count_in_set = count_in_set_impl.aggregate_accumulator(agg[Metrics.countInSet.name])
+                row_count = row_count_impl.aggregate_accumulator(agg[Metrics.rowCount.name])
 
                 if match_enum:
                     failed_count = row_count - count_in_set
@@ -196,3 +197,15 @@ class ColumnValuesToBeInSetValidator(
             NotImplementedError:
         """
         return self._compute_row_count(self.runner, column)
+
+    def filter(self):
+        items = self.get_test_case_param_value(
+            self.test_case.parameterValues,
+            "allowedValues",
+            literal_eval,
+        )
+        return f"~{self.get_column().name}.isin({items})"
+
+    def fetch_failed_rows_sample(self):
+        cols, rows = self._get_failed_rows_sample()
+        return TableData(columns=cols, rows=rows)

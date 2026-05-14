@@ -17,9 +17,11 @@ import {
   queryByTestId,
   queryByText,
   render,
+  waitFor,
 } from '@testing-library/react';
 import { forwardRef } from 'react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
+import { searchRoles } from '../../../../rest/rolesAPIV1';
 import CreateUser from './CreateUser.component';
 import { CreateUserProps } from './CreateUser.interface';
 
@@ -55,6 +57,24 @@ jest.mock('../../../../rest/auth-API', () => ({
   generateRandomPwd: jest.fn().mockResolvedValue('randomPassword123!'),
 }));
 
+jest.mock('../../../../rest/rolesAPIV1', () => ({
+  searchRoles: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Tooltip: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+  TooltipTrigger: jest
+    .fn()
+    .mockImplementation(({ children }) => <>{children}</>),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(({ icon, onClick, 'data-testid': testId }) => (
+      <button data-testid={testId} onClick={onClick}>
+        {icon}
+      </button>
+    )),
+}));
+
 jest.mock('../../Team/TeamsSelectable/TeamsSelectable', () => {
   return jest.fn().mockReturnValue(<p>TeamsSelectable component</p>);
 });
@@ -69,7 +89,6 @@ jest.mock('../../../common/RichTextEditor/RichTextEditor', () => {
 
 const propsValue: CreateUserProps = {
   isLoading: false,
-  roles: [],
   forceBot: false,
   onSave: jest.fn(),
   onCancel: jest.fn(),
@@ -79,6 +98,10 @@ describe('Test CreateUser component', () => {
   it('CreateUser component should render properly', async () => {
     const { container } = render(<CreateUser {...propsValue} />, {
       wrapper: MemoryRouter,
+    });
+
+    await waitFor(() => {
+      expect(searchRoles).toHaveBeenCalledWith('');
     });
 
     const email = await findByTestId(container, 'email');

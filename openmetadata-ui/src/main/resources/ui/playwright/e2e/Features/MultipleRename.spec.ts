@@ -64,7 +64,6 @@ async function performRename(
   await patchResponse;
 
   // Wait for the UI to update
-  await page.waitForLoadState('networkidle');
 }
 
 test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
@@ -213,7 +212,7 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Navigate to classification using side panel and displayName
       await sidebarClick(page, SidebarItem.TAGS);
-      await page.waitForSelector('[data-testid="side-panel-classification"]');
+      await page.getByTestId('side-panel-classification').first().waitFor();
       await page
         .locator('[data-testid="side-panel-classification"]')
         .filter({ hasText: classification.data.displayName })
@@ -235,8 +234,8 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         currentName = newName;
 
-        // Wait a bit for the UI to stabilize
-        await page.waitForTimeout(500);
+        // Wait for name to reflect in the header
+        await expect(page.getByTestId('entity-header-name')).toBeVisible();
       }
 
       // Verify the classification is still accessible
@@ -284,7 +283,7 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Navigate to tag using side panel and displayName
       await sidebarClick(page, SidebarItem.TAGS);
-      await page.waitForSelector('[data-testid="side-panel-classification"]');
+      await page.getByTestId('side-panel-classification').first().waitFor();
       await page
         .locator('[data-testid="side-panel-classification"]')
         .filter({ hasText: classification.data.displayName })
@@ -326,15 +325,14 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await patchResponse;
 
         // Wait for the UI to update
-        await page.waitForLoadState('networkidle');
 
         // Verify the header shows the new name
         await expect(page.getByTestId('entity-header-name')).toContainText(
           newName
         );
 
-        // Wait a bit for the UI to stabilize
-        await page.waitForTimeout(500);
+        // Wait for name to reflect in the header
+        await expect(page.getByTestId('entity-header-name')).toBeVisible();
       }
 
       // Verify the tag is still accessible

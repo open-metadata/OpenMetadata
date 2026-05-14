@@ -10,11 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { waitFor } from '@testing-library/react';
 import { renderHook } from '@testing-library/react-hooks';
 import { getUserByName } from '../../rest/userAPI';
 import { useUserProfile } from './useUserProfile';
 
 jest.mock('../useApplicationStore', () => {
+  const mockUpdateUserProfilePics = jest.fn();
+  (globalThis as Record<string, unknown>).__mockUpdateUserProfilePics =
+    mockUpdateUserProfilePics;
+
   const mockUserProfile = {
     profile: {
       iamge512: 'profile512',
@@ -26,7 +31,7 @@ jest.mock('../useApplicationStore', () => {
       userJohn: mockUserProfile,
       userjohn: mockUserProfile,
     },
-    updateUserProfilePics: jest.fn(),
+    updateUserProfilePics: mockUpdateUserProfilePics,
   };
 
   const mockUseApplicationStore = Object.assign(
@@ -48,6 +53,14 @@ jest.mock('../../rest/userAPI', () => ({
 }));
 
 describe('useUserProfile hook', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (
+      (globalThis as Record<string, unknown>)
+        .__mockUpdateUserProfilePics as jest.Mock
+    )?.mockClear();
+  });
+
   it('should not call api if permission is not there', () => {
     const { result } = renderHook(() =>
       useUserProfile({ permission: false, name: '' })
@@ -104,5 +117,28 @@ describe('useUserProfile hook', () => {
         iamge512: 'profile512',
       },
     });
+  });
+
+  it('should cache a placeholder user when profile fetch is forbidden', async () => {
+    (getUserByName as jest.Mock).mockRejectedValueOnce({
+      response: { status: 403 },
+    });
+
+    renderHook(() =>
+      useUserProfile({ permission: true, name: 'blocked-user' })
+    );
+
+    await waitFor(() =>
+      expect(
+        (globalThis as Record<string, unknown>).__mockUpdateUserProfilePics
+      ).toHaveBeenCalledWith({
+        id: 'blocked-user',
+        user: {
+          name: 'blocked-user',
+          id: 'blocked-user',
+          email: '',
+        },
+      })
+    );
   });
 });

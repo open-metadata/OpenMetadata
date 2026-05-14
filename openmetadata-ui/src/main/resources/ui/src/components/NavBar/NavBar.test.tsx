@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import { act } from 'react';
 import {
   LAST_VERSION_FETCH_TIME_KEY,
   ONE_HOUR_MS,
@@ -82,7 +83,6 @@ jest.mock('../../utils/FeedUtils', () => ({
 
 jest.mock('../../hooks/useDomainStore', () => ({
   useDomainStore: jest.fn().mockImplementation(() => ({
-    domainOptions: jest.fn().mockReturnValue('domainOptions'),
     activeDomain: jest.fn().mockReturnValue('activeDomain'),
     updateActiveDomain: jest.fn(),
   })),
@@ -214,6 +214,11 @@ jest.mock('./PopupAlertClassBase', () => ({
   },
 }));
 
+jest.mock('../../utils/i18next/i18nextUtil', () => ({
+  languageSelectOptions: [],
+  getInitOptions: jest.fn().mockImplementation(() => ({})),
+}));
+
 describe('Test NavBar Component', () => {
   it('Should render NavBar component', async () => {
     render(<NavBarComponent />);
@@ -288,6 +293,7 @@ describe('handleDocumentVisibilityChange one hour threshold', () => {
     jest.resetModules();
     jest.clearAllMocks();
     global.Date.now = jest.fn();
+    mockUseCustomLocation.pathname = '/';
   });
 
   afterEach(() => {

@@ -11,11 +11,10 @@ import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.models.FlattenSchemaField;
 import org.openmetadata.service.util.FullyQualifiedName;
 
-public class APIEndpointIndex implements SearchIndex {
+public class APIEndpointIndex implements DataAssetIndex {
   final Set<String> excludeAPIEndpointFields = Set.of("sampleData");
   final APIEndpoint apiEndpoint;
 
@@ -29,27 +28,32 @@ public class APIEndpointIndex implements SearchIndex {
   }
 
   @Override
+  public String getEntityTypeName() {
+    return Entity.API_ENDPOINT;
+  }
+
+  @Override
   public Set<String> getExcludedFields() {
     return excludeAPIEndpointFields;
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
-    List<String> fieldsWithChildrenName = new ArrayList<>();
+    Set<List<TagLabel>> childTags = new HashSet<>();
+
     if (apiEndpoint.getResponseSchema() != null
         && apiEndpoint.getResponseSchema().getSchemaFields() != null
         && !apiEndpoint.getResponseSchema().getSchemaFields().isEmpty()) {
       List<FlattenSchemaField> flattenFields = new ArrayList<>();
       parseSchemaFields(apiEndpoint.getResponseSchema().getSchemaFields(), flattenFields, null);
 
+      List<String> fieldsWithChildrenName = new ArrayList<>();
       for (FlattenSchemaField field : flattenFields) {
         fieldsWithChildrenName.add(field.getName());
         if (field.getTags() != null) {
-          tagsWithChildren.add(field.getTags());
+          childTags.add(field.getTags());
         }
       }
       doc.put("response_field_names", fieldsWithChildrenName);
-      // Add flat field names for fuzzy search to avoid array-based clause multiplication
       doc.put("response_field_namesFuzzy", String.join(" ", fieldsWithChildrenName));
     }
 
@@ -59,36 +63,25 @@ public class APIEndpointIndex implements SearchIndex {
       List<FlattenSchemaField> flattenFields = new ArrayList<>();
       parseSchemaFields(apiEndpoint.getRequestSchema().getSchemaFields(), flattenFields, null);
 
+      List<String> fieldsWithChildrenName = new ArrayList<>();
       for (FlattenSchemaField field : flattenFields) {
         fieldsWithChildrenName.add(field.getName());
         if (field.getTags() != null) {
-          tagsWithChildren.add(field.getTags());
+          childTags.add(field.getTags());
         }
       }
       doc.put("request_field_names", fieldsWithChildrenName);
-      // Add flat field names for fuzzy search to avoid array-based clause multiplication
       doc.put("request_field_namesFuzzy", String.join(" ", fieldsWithChildrenName));
     }
 
-    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.API_ENDPOINT, apiEndpoint));
-    tagsWithChildren.add(parseTags.getTags());
-    List<TagLabel> flattenedTagList =
-        tagsWithChildren.stream()
-            .flatMap(List::stream)
-            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
-    Map<String, Object> commonAttributes = getCommonAttributesMap(apiEndpoint, Entity.API_ENDPOINT);
-    doc.putAll(commonAttributes);
-    doc.put("tags", flattenedTagList);
-    doc.put("classificationTags", parseTags.getClassificationTags());
-    doc.put("glossaryTags", parseTags.getGlossaryTags());
-    doc.put("upstreamLineage", SearchIndex.getLineageData(apiEndpoint.getEntityReference()));
+    mergeChildTags(doc, childTags);
+
     doc.put(
         "requestSchema",
         apiEndpoint.getRequestSchema() != null ? apiEndpoint.getRequestSchema() : null);
     doc.put(
         "responseSchema",
         apiEndpoint.getResponseSchema() != null ? apiEndpoint.getResponseSchema() : null);
-    doc.put("service", getEntityWithDisplayName(apiEndpoint.getService()));
     return doc;
   }
 

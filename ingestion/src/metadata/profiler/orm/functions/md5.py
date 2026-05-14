@@ -12,6 +12,7 @@
 """
 Define MD5 hashing function
 """
+
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 
@@ -46,6 +47,4 @@ def _(element, compiler, **kw):
 def _(element, compiler, **kw):
     # There is no MD5 in Teradata or any other hashes
     # But we can use UDF function hash_md5 published by Teradata Community
-    return (
-        f"HASH_MD5(CAST({compiler.process(element.clauses, **kw)} AS VARCHAR(32000)))"
-    )
+    return f"HASH_MD5(CAST({compiler.process(element.clauses, **kw)} AS VARCHAR(32000)))"

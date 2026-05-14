@@ -12,15 +12,19 @@
   "scheduleType": "ScheduledOrManual",
   "permission": "All",
   "className": "org.openmetadata.service.apps.bundles.rdf.RdfIndexApp",
+  "allowConfiguration": true,
   "runtime": {
     "enabled": true
   },
   "supportsInterrupt": true,
   "appConfiguration": {
-    "entities": [
-      "all"
-    ],
+    "entities": [],
     "recreateIndex": false,
-    "batchSize": "100"
+    "batchSize": 100,
+    "producerThreads": 2,
+    "consumerThreads": 3,
+    "queueSize": 5000,
+    "useDistributedIndexing": true,
+    "partitionSize": 10000
   }
 }

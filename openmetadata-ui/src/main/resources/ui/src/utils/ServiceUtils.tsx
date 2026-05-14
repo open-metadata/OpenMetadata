@@ -21,6 +21,11 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import {
+  ADMONITION_BLOCK_REGEX,
+  MARKDOWN_MATCH_ID,
+  SECTION_BLOCK_REGEX,
+} from '../constants/regex.constants';
+import {
   SERVICE_TYPES_ENUM,
   SERVICE_TYPE_MAP,
 } from '../constants/Services.constant';
@@ -59,6 +64,7 @@ import {
 } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
+import { MarkdownToHTMLConverter } from './FeedUtils';
 import { t } from './i18next/LocalUtil';
 import { getBrokers } from './MessagingServiceUtils';
 import { getSettingPath } from './RouterUtils';
@@ -354,9 +360,9 @@ export const getSearchIndexForService = (type: ServiceTypes): SearchIndex => {
     case ServiceCategory.SEARCH_SERVICES:
       return SearchIndex.SEARCH_INDEX;
     case ServiceCategory.API_SERVICES:
-      return SearchIndex.API_COLLECTION_INDEX;
+      return SearchIndex.API_COLLECTION;
     case ServiceCategory.DRIVE_SERVICES:
-      return SearchIndex.DIRECTORY_SEARCH_INDEX;
+      return SearchIndex.DIRECTORY;
     default:
       return SearchIndex.DATABASE;
   }
@@ -619,7 +625,7 @@ export const getSearchIndexFromService = (serviceName: string): SearchIndex => {
     [ServiceCategory.ML_MODEL_SERVICES]: SearchIndex.ML_MODEL_SERVICE,
     [ServiceCategory.STORAGE_SERVICES]: SearchIndex.STORAGE_SERVICE,
     [ServiceCategory.SEARCH_SERVICES]: SearchIndex.SEARCH_SERVICE,
-    [ServiceCategory.API_SERVICES]: SearchIndex.API_SERVICE_INDEX,
+    [ServiceCategory.API_SERVICES]: SearchIndex.API_SERVICE,
     [ServiceCategory.DRIVE_SERVICES]: SearchIndex.DRIVE_SERVICE,
     [ServiceCategory.METADATA_SERVICES]: SearchIndex.METADATA_SERVICE,
   };
@@ -671,4 +677,61 @@ export const validateServiceName = async (
   }
 
   return null;
+};
+
+const convertAdmonitionsToHtml = (markdown: string): string => {
+  ADMONITION_BLOCK_REGEX.lastIndex = 0;
+
+  return markdown.replace(
+    ADMONITION_BLOCK_REGEX,
+    (_match, type: string, content: string) =>
+      `<div data-admonition="${type}">${MarkdownToHTMLConverter.makeHtml(
+        content.trim()
+      )}</div>`
+  );
+};
+
+/**
+ * Converts markdown with $$section and $$note/warning/etc. admonition blocks into
+ * sanitizable HTML. Used by both ServiceDocPanel and SSODocPanel.
+ */
+export const processDocMarkdown = (markdown: string): string => {
+  const withAdmonitions = convertAdmonitionsToHtml(markdown);
+
+  const parts: string[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  SECTION_BLOCK_REGEX.lastIndex = 0;
+
+  while ((match = SECTION_BLOCK_REGEX.exec(withAdmonitions)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(
+        MarkdownToHTMLConverter.makeHtml(
+          withAdmonitions.slice(lastIndex, match.index)
+        )
+      );
+    }
+
+    const sectionContent = match[1];
+    const idMatch = MARKDOWN_MATCH_ID.exec(sectionContent);
+    const id = idMatch ? idMatch[1] : '';
+    const cleanContent = sectionContent.replace(MARKDOWN_MATCH_ID, '').trim();
+
+    parts.push(
+      `<section data-id="${id}" data-highlighted="false">${MarkdownToHTMLConverter.makeHtml(
+        cleanContent
+      )}</section>`
+    );
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < withAdmonitions.length) {
+    parts.push(
+      MarkdownToHTMLConverter.makeHtml(withAdmonitions.slice(lastIndex))
+    );
+  }
+
+  return parts.join('\n');
 };

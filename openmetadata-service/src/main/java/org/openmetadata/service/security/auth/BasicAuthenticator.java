@@ -123,13 +123,13 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       String emailDomain = tokens[1];
       Set<String> allowedDomains = authorizerConfiguration.getAllowedEmailRegistrationDomains();
       if (!allowedDomains.contains("all") && !allowedDomains.contains(emailDomain)) {
-        LOG.error("Email with this Domain not allowed: " + newRegistrationRequestEmail);
+        LOG.error("Email with this Domain not allowed: {}", newRegistrationRequestEmail);
         throw new BadRequestException(
             "Email with the given domain is not allowed. Contact Administrator");
       }
       validateEmailAlreadyExists(newRegistrationRequestEmail);
       PasswordUtil.validatePassword(newRegistrationRequest.getPassword());
-      LOG.info("Trying to register new user [" + newRegistrationRequestEmail + "]");
+      LOG.info("Trying to register new user [{}]", newRegistrationRequestEmail);
       User newUser = getUserFromRegistrationRequest(newRegistrationRequest);
       // remove auth mechanism from the user
       User registeredUser = userRepository.create(null, newUser);
@@ -181,7 +181,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       UUID mailVerificationToken = UUID.randomUUID();
       EmailVerificationToken emailVerificationToken =
           TokenUtil.getEmailVerificationToken(user.getId(), mailVerificationToken);
-      LOG.info("Generated Email verification token [" + mailVerificationToken + "]");
+      LOG.info("Generated Email verification token [{}]", mailVerificationToken);
       String emailVerificationLink =
           String.format(
               "%s/users/registrationConfirmation?user=%s&token=%s",
@@ -205,7 +205,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     UUID mailVerificationToken = UUID.randomUUID();
     PasswordResetToken resetToken =
         TokenUtil.getPasswordResetToken(user.getId(), mailVerificationToken);
-    LOG.info("Generated Password Reset verification token [" + mailVerificationToken + "]");
+    LOG.info("Generated Password Reset verification token [{}]", mailVerificationToken);
     String passwordResetLink =
         String.format(
             "%s/users/password/reset?user=%s&token=%s",
@@ -264,7 +264,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       sendAccountStatus(
           storedUser.getName(), storedUser.getEmail(), "Update Password", "Change Successful");
     } catch (TemplateException ex) {
-      LOG.error("Error in sending Password Change Mail to User. Reason : " + ex.getMessage(), ex);
+      LOG.error("Error in sending Password Change Mail to User. Reason : {}", ex.getMessage(), ex);
       throw new CustomExceptionMessage(424, FAILED_SEND_EMAIL, EMAIL_SENDING_ISSUE);
     }
     LoginAttemptCache.getInstance().recordSuccessfulLogin(request.getUsername());

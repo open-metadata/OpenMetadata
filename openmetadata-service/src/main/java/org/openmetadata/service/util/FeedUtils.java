@@ -26,6 +26,7 @@ import org.openmetadata.schema.entity.feed.FeedInfo;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -140,6 +141,7 @@ public final class FeedUtils {
         .withCreatedBy(loggedInUserName)
         .withAbout(linkString)
         .withEntityRef(entityInterface.getEntityReference())
+        .withType(ThreadType.Conversation)
         .withReactions(Collections.emptyList())
         .withUpdatedBy(loggedInUserName)
         .withUpdatedAt(System.currentTimeMillis())

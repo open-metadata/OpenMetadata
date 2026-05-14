@@ -15,14 +15,14 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import { isEmpty, startCase } from 'lodash';
 import {
   ALERT_DESCRIPTION,
-  ALERT_WITH_PERMISSION_POLICY_DETAILS,
-  ALERT_WITH_PERMISSION_POLICY_NAME,
-  ALERT_WITH_PERMISSION_ROLE_DETAILS,
-  ALERT_WITH_PERMISSION_ROLE_NAME,
   ALERT_WITHOUT_PERMISSION_POLICY_DETAILS,
   ALERT_WITHOUT_PERMISSION_POLICY_NAME,
   ALERT_WITHOUT_PERMISSION_ROLE_DETAILS,
   ALERT_WITHOUT_PERMISSION_ROLE_NAME,
+  ALERT_WITH_PERMISSION_POLICY_DETAILS,
+  ALERT_WITH_PERMISSION_POLICY_NAME,
+  ALERT_WITH_PERMISSION_ROLE_DETAILS,
+  ALERT_WITH_PERMISSION_ROLE_NAME,
 } from '../constant/alert';
 import { AlertDetails, EventDetails } from '../constant/alert.interface';
 import { DELETE_TERM } from '../constant/common';
@@ -37,7 +37,11 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { getEntityDisplayName, getTextFromHtmlString } from './entity';
+import {
+  getEntityDisplayName,
+  getTextFromHtmlString,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { validateFormNameFieldInput } from './form';
 import {
   addFilterWithUsersListInput,
@@ -176,19 +180,15 @@ export const findPageWithAlert = async (
   alertDetails: AlertDetails
 ) => {
   const { id } = alertDetails;
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
-  const alertRow = page.locator(`[data-row-key="${id}"]`);
+  await waitForAllLoadersToDisappear(page);
+  // Support both core-ui Table (id attr) and legacy Ant Design Table (data-row-key)
+  const alertRow = page.locator(`[id="${id}"], [data-row-key="${id}"]`);
   const nextButton = page.locator('[data-testid="next"]');
   if ((await alertRow.isHidden()) && (await nextButton.isEnabled())) {
     const getAlerts = page.waitForResponse('/api/v1/events/subscriptions?*');
     await nextButton.click();
     await getAlerts;
-    await page.waitForSelector('.ant-table-wrapper [data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
     await findPageWithAlert(page, alertDetails);
   }
 };
@@ -248,7 +248,7 @@ export const visitEditAlertPage = async (
 
   await findPageWithAlert(page, alertDetails);
   await page.click(
-    `[data-row-key="${alertId}"] [data-testid="alert-edit-${alertDetails.name}"]`
+    `[id="${alertId}"] [data-testid="alert-edit-${alertDetails.name}"], [data-row-key="${alertId}"] [data-testid="alert-edit-${alertDetails.name}"]`
   );
 
   // Check alert name
@@ -270,7 +270,7 @@ export const visitAlertDetailsPage = async (
     '/api/v1/events/subscriptions/name/*/eventsRecord?listCountOnly=true'
   );
   await page
-    .locator(`[data-row-key="${alertDetails.id}"]`)
+    .locator(`[id="${alertDetails.id}"], [data-row-key="${alertDetails.id}"]`)
     .getByText(getEntityDisplayName(alertDetails))
     .click();
   await getAlertDetails;
@@ -297,7 +297,7 @@ export const addOwnerFilter = async ({
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
   // Wait for dropdown to be fully visible and stable
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -327,7 +327,7 @@ export const addOwnerFilter = async ({
   await ownerInput.click();
 
   // Wait for search dropdown to open
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -378,7 +378,7 @@ export const addEntityFQNFilter = async ({
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
   // Wait for dropdown to be fully visible and stable
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -408,7 +408,7 @@ export const addEntityFQNFilter = async ({
   await getSearchResult;
 
   // Wait for search dropdown to open
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -452,7 +452,7 @@ export const addEventTypeFilter = async ({
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
   // Wait for dropdown to be fully visible and stable
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -483,7 +483,7 @@ export const addEventTypeFilter = async ({
     await eventTypeInput.click();
 
     // Wait for dropdown to open
-    await page.waitForSelector('.ant-select-dropdown:visible', {
+    await page.locator('.ant-select-dropdown:visible').first().waitFor({
       state: 'visible',
     });
 
@@ -536,7 +536,7 @@ export const addDomainFilter = async ({
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
   // Wait for dropdown to be fully visible and stable
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -566,7 +566,7 @@ export const addDomainFilter = async ({
   await domainInput.click();
 
   // Wait for search dropdown to open
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -576,7 +576,7 @@ export const addDomainFilter = async ({
   const awaitResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query?q=') &&
-      response.url().includes('index=domain_search_index')
+      response.url().includes('index=domain')
   );
 
   // Fill search term and wait for API response
@@ -622,7 +622,7 @@ export const addGMEFilter = async ({
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
   // Wait for dropdown to be fully visible and stable
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -767,7 +767,7 @@ export const addGetSchemaChangesAction = async ({
   await page.click(`[data-testid="trigger-select-${filterNumber}"]`);
 
   // Wait for dropdown to be fully visible and stable
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -811,7 +811,7 @@ export const addPipelineStatusUpdatesAction = async ({
   await page.click(`[data-testid="trigger-select-${filterNumber}"]`);
 
   // Wait for dropdown to be fully visible and stable
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -841,7 +841,7 @@ export const addPipelineStatusUpdatesAction = async ({
   await pipelineStatusInput.click();
 
   // Wait for search dropdown to open
-  await page.waitForSelector('.ant-select-dropdown:visible', {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -1174,9 +1174,7 @@ export const checkRecentEventDetails = async ({
       // Open collapse
       await page.getByTestId(`event-collapse-${event.data[0].id}`).click();
 
-      await page.waitForSelector(
-        `[data-testid="event-details-${event.data[0].id}"]`
-      );
+      await page.getByTestId(`event-details-${event.data[0].id}`).waitFor();
 
       // Check if table id is present in event details
       await expect(
@@ -1201,9 +1199,9 @@ export const checkRecentEventDetails = async ({
 
   await page.getByTestId('filter-button').click();
 
-  await page.waitForSelector(
-    '.ant-dropdown-menu[role="menu"] [data-menu-id*="failed"]'
-  );
+  await page
+    .locator('.ant-dropdown-menu[role="menu"] [data-menu-id*="failed"]')
+    .waitFor();
 
   const getFailedEvents = page.waitForResponse(
     (response) =>

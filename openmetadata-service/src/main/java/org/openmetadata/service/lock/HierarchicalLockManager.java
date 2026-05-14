@@ -142,7 +142,7 @@ public class HierarchicalLockManager {
     Set<String> allFqns =
         entities.stream()
             .map(EntityInterface::getFullyQualifiedName)
-            .filter(fqn -> fqn != null)
+            .filter(Objects::nonNull)
             .collect(java.util.stream.Collectors.toSet());
 
     // Fast path: check cache for potentially locked FQNs

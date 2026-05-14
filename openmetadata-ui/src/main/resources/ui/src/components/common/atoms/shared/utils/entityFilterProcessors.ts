@@ -25,7 +25,7 @@ interface AggregationResult {
       aggregations: Record<string, { buckets: AggregationBucket[] }>;
     };
   };
-  reason?: any;
+  reason?: unknown;
 }
 
 export const processGenericOptions = (
@@ -46,7 +46,9 @@ export const processGenericOptions = (
     const aggregations = result.value?.data.aggregations || {};
     const aggregationValues = Object.values(aggregations);
     if (aggregationValues.length > 0) {
-      buckets = (aggregationValues[0] as any)?.buckets || [];
+      buckets =
+        (aggregationValues[0] as { buckets?: AggregationBucket[] })?.buckets ||
+        [];
     }
   }
 

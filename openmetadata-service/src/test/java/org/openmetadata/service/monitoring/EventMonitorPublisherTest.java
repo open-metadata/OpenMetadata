@@ -14,7 +14,6 @@
 package org.openmetadata.service.monitoring;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.util.Arrays;
@@ -79,7 +78,7 @@ class EventMonitorPublisherTest {
 
   @Test
   void testPublishWithEmptyEventList() {
-    EventList eventList = new EventList(Arrays.asList(), null, null, 0);
+    EventList eventList = new EventList(List.of(), null, null, 0);
 
     eventMonitorPublisher.publish(eventList);
 
@@ -137,37 +136,25 @@ class EventMonitorPublisherTest {
 
   @Test
   void testPublishWithNullEventList() {
-    assertThrows(
-        NullPointerException.class,
-        () -> {
-          eventMonitorPublisher.publish(null);
-        });
+    assertThrows(NullPointerException.class, () -> eventMonitorPublisher.publish(null));
   }
 
   @Test
   void testPublishWithNullEventListData() {
     EventList eventList = new EventList(null, null, null, 0);
 
-    assertThrows(
-        NullPointerException.class,
-        () -> {
-          eventMonitorPublisher.publish(eventList);
-        });
+    assertThrows(NullPointerException.class, () -> eventMonitorPublisher.publish(eventList));
   }
 
   @Test
   void testPublishWithEventMonitorException() {
     ChangeEvent ingestionEvent = createMockChangeEvent(Entity.INGESTION_PIPELINE);
-    List<ChangeEvent> events = Arrays.asList(ingestionEvent);
+    List<ChangeEvent> events = List.of(ingestionEvent);
     EventList eventList = new EventList(events, null, null, events.size());
 
     doThrow(new RuntimeException("Test exception")).when(eventMonitor).pushMetric(any());
 
-    assertThrows(
-        RuntimeException.class,
-        () -> {
-          eventMonitorPublisher.publish(eventList);
-        });
+    assertThrows(RuntimeException.class, () -> eventMonitorPublisher.publish(eventList));
   }
 
   @Test
@@ -176,7 +163,7 @@ class EventMonitorPublisherTest {
 
     for (String entityType : nonIngestionTypes) {
       ChangeEvent event = createMockChangeEvent(entityType);
-      List<ChangeEvent> events = Arrays.asList(event);
+      List<ChangeEvent> events = List.of(event);
       EventList eventList = new EventList(events, null, null, events.size());
 
       eventMonitorPublisher.publish(eventList);

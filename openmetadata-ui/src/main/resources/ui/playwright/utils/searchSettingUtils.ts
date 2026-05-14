@@ -29,6 +29,7 @@ export const mockEntitySearchConfig = {
   assetType: 'table',
   searchFields: [
     { field: 'displayName.keyword', boost: 20, matchType: 'exact' },
+    { field: 'name.keyword', boost: 20, matchType: 'exact' },
     { field: 'name', boost: 10, matchType: 'phrase' },
     { field: 'name.ngram', boost: 1, matchType: 'fuzzy' },
     { field: 'name.compound', boost: 8, matchType: 'standard' },
@@ -67,19 +68,19 @@ export const mockEntitySearchConfig = {
   fieldValueBoosts: [
     {
       field: 'usageSummary.monthlyStats.count',
-      factor: 3,
+      factor: 0.002,
       modifier: 'log1p',
       missing: 0,
     },
     {
       field: 'usageSummary.monthlyStats.percentileRank',
-      factor: 1,
+      factor: 0.0005,
       modifier: 'none',
       missing: 0,
     },
   ],
   scoreMode: 'sum',
-  boostMode: 'sum',
+  boostMode: 'multiply',
 };
 
 export async function setSliderValue(
@@ -90,7 +91,7 @@ export async function setSliderValue(
   max = 100
 ) {
   const sliderHandle = page.getByTestId(testId).locator('.ant-slider-handle');
-  const sliderTrack = page.getByTestId(testId).locator('.ant-slider-track');
+  const sliderTrack = page.getByTestId(testId).locator('.ant-slider-step');
 
   // Get slider track dimensions
   const box = await sliderTrack.boundingBox();

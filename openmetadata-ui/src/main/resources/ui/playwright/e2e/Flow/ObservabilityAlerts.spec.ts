@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import {
   INGESTION_PIPELINE_NAME,
   TEST_CASE_NAME,
@@ -20,7 +20,6 @@ import {
 import { Domain } from '../../support/domain/Domain';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { TableClass } from '../../support/entity/TableClass';
-import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -35,6 +34,7 @@ import {
   visitAlertDetailsPage,
 } from '../../utils/alert';
 import { getApiContext } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   addExternalDestination,
   checkAlertDetailsForWithPermissionUser,
@@ -44,13 +44,13 @@ import {
   getObservabilityCreationDetails,
   visitObservabilityAlertPage,
 } from '../../utils/observabilityAlert';
+import { test as base } from '../fixtures/pages';
 
 const table1 = new TableClass();
 const table2 = new TableClass();
 const pipeline = new PipelineClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
-const admin = new AdminClass();
 const domain = new Domain();
 
 const SOURCE_NAME_1 = 'container';
@@ -60,18 +60,10 @@ const SOURCE_DISPLAY_NAME_2 = 'Pipeline';
 const SOURCE_NAME_3 = 'table';
 const SOURCE_DISPLAY_NAME_3 = 'Table';
 
-// Create 2 page and authenticate 1 with admin and another with normal user
 const test = base.extend<{
-  page: Page;
   userWithPermissionsPage: Page;
   userWithoutPermissionsPage: Page;
 }>({
-  page: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await admin.login(page);
-    await use(page);
-    await page.close();
-  },
   userWithPermissionsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     await user1.login(page);
@@ -99,8 +91,6 @@ const data = {
 };
 
 test.beforeAll(async ({ browser }) => {
-  test.slow();
-
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await commonPrerequisites({
     apiContext,
@@ -137,14 +127,11 @@ test.afterAll(async ({ browser }) => {
 });
 
 test.beforeEach(async ({ page }) => {
-  test.slow();
-
   await visitObservabilityAlertPage(page);
 });
 
 test('Pipeline Alert', async ({ page }) => {
   test.slow();
-
   const ALERT_NAME = generateAlertName();
 
   await test.step('Create alert', async () => {
@@ -170,6 +157,7 @@ test('Pipeline Alert', async ({ page }) => {
     );
     await diagnosticTab.click();
     await diagnosticInfoResponse;
+    await waitForAllLoadersToDisappear(page);
   });
 
   await test.step('Check created alert details', async () => {
@@ -231,8 +219,6 @@ for (const alertDetails of OBSERVABILITY_CREATION_DETAILS) {
   test(`${sourceDisplayName} alert`, async ({ page }) => {
     const ALERT_NAME = generateAlertName();
 
-    test.slow(true);
-
     await test.step('Create alert', async () => {
       await createCommonObservabilityAlert({
         page,
@@ -261,12 +247,16 @@ for (const alertDetails of OBSERVABILITY_CREATION_DETAILS) {
     });
   });
 }
-
 test('Alert operations for a user with and without permissions', async ({
   page,
   userWithPermissionsPage,
   userWithoutPermissionsPage,
 }) => {
+  // Todo: Re-enable after fixing the https://github.com/open-metadata/openmetadata-collate/issues/3280 @sonika-shah
+  test.fixme(
+    process.env.PLAYWRIGHT_IS_OSS !== 'true',
+    'Skipping in AUT environment'
+  );
   test.slow();
 
   const ALERT_NAME = generateAlertName();
@@ -288,6 +278,9 @@ test('Alert operations for a user with and without permissions', async ({
     await userWithPermissionsPage.click(
       '.ant-select-dropdown:visible [data-testid="Table Name-filter-option"]'
     );
+    await userWithPermissionsPage
+      .locator('.ant-select-dropdown:visible')
+      .waitFor({ state: 'hidden' });
 
     // Search and select filter input value
     const searchOptions = userWithPermissionsPage.waitForResponse(
@@ -297,7 +290,7 @@ test('Alert operations for a user with and without permissions', async ({
       `[data-testid="fqn-list-select"] [role="combobox"]`,
       table1.entity.name,
       {
-        force: true,
+        force: true, // eslint-disable-line playwright/no-force-option -- Ant Select overlay covers combobox input
       }
     );
 
@@ -316,27 +309,31 @@ test('Alert operations for a user with and without permissions', async ({
       )
       .toBeAttached();
 
+    // Clicking add-trigger closes the fqn-list-select dropdown (multi-select stays open until click outside)
     await userWithPermissionsPage.click('[data-testid="add-trigger"]');
+
+    // Wait for the fqn-list-select dropdown to fully close before opening the trigger dropdown
+    await userWithPermissionsPage
+      .locator('.ant-select-dropdown:visible')
+      .waitFor({ state: 'hidden' });
 
     // Select action
     await userWithPermissionsPage.click('[data-testid="trigger-select-0"]');
 
     // Adding the dropdown visibility check to avoid flakiness here
-    await userWithPermissionsPage.waitForSelector(
-      `.ant-select-dropdown:visible`,
-      {
+    await userWithPermissionsPage
+      .locator(`.ant-select-dropdown:visible`)
+      .waitFor({
         state: 'visible',
-      }
-    );
+      });
     await userWithPermissionsPage.click(
       '.ant-select-dropdown:visible [data-testid="Get Schema Changes-filter-option"]:visible'
     );
-    await userWithPermissionsPage.waitForSelector(
-      `.ant-select-dropdown:visible`,
-      {
+    await userWithPermissionsPage
+      .locator(`.ant-select-dropdown:visible`)
+      .waitFor({
         state: 'hidden',
-      }
-    );
+      });
 
     await userWithPermissionsPage.click(
       '[data-testid="add-destination-button"]'

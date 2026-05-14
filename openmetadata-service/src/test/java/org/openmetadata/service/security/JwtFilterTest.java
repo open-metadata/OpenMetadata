@@ -21,6 +21,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.security.jwt.JWTTokenGenerator.TOKEN_TYPE;
 
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
@@ -45,6 +46,7 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.auth.ServiceTokenType;
 
 class JwtFilterTest {
 
@@ -58,7 +60,7 @@ class JwtFilterTest {
   static void before() throws Exception {
     // Create a RSA256 algorithm wth random public/private key pair
     KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-    keyPairGenerator.initialize(512);
+    keyPairGenerator.initialize(2048);
     KeyPair keyPair = keyPairGenerator.generateKeyPair();
     algorithm =
         Algorithm.RSA256((RSAPublicKey) keyPair.getPublic(), (RSAPrivateKey) keyPair.getPrivate());
@@ -216,7 +218,7 @@ class JwtFilterTest {
   @Test
   void testInvalidSignatureJwt() throws NoSuchAlgorithmException {
     KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-    keyPairGenerator.initialize(512);
+    keyPairGenerator.initialize(2048);
     KeyPair keyPair = keyPairGenerator.generateKeyPair();
     Algorithm secondaryAlgorithm =
         Algorithm.RSA256((RSAPublicKey) keyPair.getPublic(), (RSAPrivateKey) keyPair.getPrivate());
@@ -233,6 +235,22 @@ class JwtFilterTest {
         assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
     assertTrue(
         exception.getMessage().toLowerCase(Locale.ROOT).contains("token verification failed"));
+  }
+
+  @Test
+  void testPersonalAccessTokenClaimIsValidated() {
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .withClaim(TOKEN_TYPE, ServiceTokenType.PERSONAL_ACCESS.value())
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    Exception exception =
+        assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("personal access token"));
   }
 
   /**

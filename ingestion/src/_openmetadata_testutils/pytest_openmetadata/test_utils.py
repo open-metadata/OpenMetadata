@@ -1,12 +1,12 @@
 from collections import deque
-from typing import List, Union
+from typing import List, Union  # noqa: UP035
 
 from pydantic import BaseModel
 
 
 def assert_equal_pydantic_objects(
-    expected: Union[BaseModel, List[BaseModel]],
-    actual: Union[BaseModel, List[BaseModel]],
+    expected: Union[BaseModel, List[BaseModel]],  # noqa: UP006, UP007
+    actual: Union[BaseModel, List[BaseModel]],  # noqa: UP006, UP007
     ignore_none=True,
 ):
     """Compare 2 pydantic objects recursively and raise an AssertionError if they are not equal along with all
@@ -58,20 +58,14 @@ def assert_equal_pydantic_objects(
                 f"expected: [{type(expected).__name__}], actual: [{type(actual).__name__}]"
             )
             continue
-        if issubclass(expected.__class__, BaseModel) and isinstance(
-            expected.model_dump(), dict
-        ):
+        if issubclass(expected.__class__, BaseModel) and isinstance(expected.model_dump(), dict):
             for key, expected_value in expected.model_dump().items():
                 if expected_value is None and ignore_none:
                     continue
                 actual_value = actual.model_dump().get(key)
-                new_key_prefix = (
-                    f"{current_key_prefix}.{key}" if current_key_prefix else key
-                )
+                new_key_prefix = f"{current_key_prefix}.{key}" if current_key_prefix else key
                 if issubclass(getattr(expected, key).__class__, BaseModel):
-                    queue.append(
-                        (getattr(expected, key), getattr(actual, key), new_key_prefix)
-                    )
+                    queue.append((getattr(expected, key), getattr(actual, key), new_key_prefix))
                 elif expected_value != actual_value:
                     errors.append(
                         f"objects mismatched on field: [{new_key_prefix}], expected: [{expected_value}], actual: [{actual_value}]"
@@ -86,14 +80,10 @@ def assert_equal_pydantic_objects(
                     f"mismatch length at {current_key_prefix}: expected: [{len(expected)}], actual: [{len(actual)}]"
                 )
             else:
-                for i, (expected_item, actual_item) in enumerate(zip(expected, actual)):
-                    queue.append(
-                        (expected_item, actual_item, f"{current_key_prefix}[{i}]")
-                    )
-        else:
+                for i, (expected_item, actual_item) in enumerate(zip(expected, actual)):  # noqa: B905
+                    queue.append((expected_item, actual_item, f"{current_key_prefix}[{i}]"))
+        else:  # noqa: PLR5501
             if expected != actual:
-                errors.append(
-                    f"mismatch at {current_key_prefix}: expected: [{expected}], actual: [{actual}]"
-                )
+                errors.append(f"mismatch at {current_key_prefix}: expected: [{expected}], actual: [{actual}]")
     if errors:
         raise AssertionError("\n".join(errors))

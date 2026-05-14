@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from "react";
+import React from 'react';
 
 export interface TabItem {
   label: string;
@@ -28,4 +28,3 @@ export type StorybookComponent<TArgs> = React.FC<TArgs> & {
   args?: TArgs;
   argTypes?: Record<string, unknown>;
 };
-

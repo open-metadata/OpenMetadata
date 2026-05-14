@@ -10,54 +10,42 @@ import java.util.Set;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.FlattenColumn;
 
 public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
-    implements ColumnIndex {
+    implements ColumnIndex, DataAssetIndex {
 
   @Override
   public Object getEntity() {
     return dashboardDataModel;
   }
 
+  @Override
+  public String getEntityTypeName() {
+    return Entity.DASHBOARD_DATA_MODEL;
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
-    List<String> columnsWithChildrenName = new ArrayList<>();
     if (dashboardDataModel.getColumns() != null) {
       List<FlattenColumn> cols = new ArrayList<>();
       parseColumns(dashboardDataModel.getColumns(), cols, null);
+
+      List<String> columnsWithChildrenName = new ArrayList<>();
+      Set<List<TagLabel>> childTags = new HashSet<>();
       for (FlattenColumn col : cols) {
         columnsWithChildrenName.add(col.getName());
         if (col.getTags() != null) {
-          tagsWithChildren.add(col.getTags());
+          childTags.add(col.getTags());
         }
       }
       doc.put("columnNames", columnsWithChildrenName);
-      // Add flat column names field for fuzzy search to avoid array-based clause multiplication
       doc.put("columnNamesFuzzy", String.join(" ", columnsWithChildrenName));
+      mergeChildTags(doc, childTags);
 
-      // Transform column extensions to typed custom properties
       SearchIndexUtils.transformColumnExtensions(doc, Entity.DASHBOARD_DATA_MODEL_COLUMN);
     }
-    ParseTags parseTags =
-        new ParseTags(Entity.getEntityTags(Entity.DASHBOARD_DATA_MODEL, dashboardDataModel));
-    tagsWithChildren.add(parseTags.getTags());
-    List<TagLabel> flattenedTagList =
-        tagsWithChildren.stream()
-            .flatMap(List::stream)
-            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
-    Map<String, Object> commonAttributes =
-        getCommonAttributesMap(dashboardDataModel, Entity.DASHBOARD_DATA_MODEL);
-    doc.putAll(commonAttributes);
-    doc.put("tags", flattenedTagList);
-    doc.put("tier", parseTags.getTierTag());
-    doc.put("classificationTags", parseTags.getClassificationTags());
-    doc.put("glossaryTags", parseTags.getGlossaryTags());
-    doc.put("service", getEntityWithDisplayName(dashboardDataModel.getService()));
-    doc.put("upstreamLineage", SearchIndex.getLineageData(dashboardDataModel.getEntityReference()));
-    doc.put("domains", getEntitiesWithDisplayName(dashboardDataModel.getDomains()));
+
     return doc;
   }
 

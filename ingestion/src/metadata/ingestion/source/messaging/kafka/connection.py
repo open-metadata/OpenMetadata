@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Optional, Union
@@ -41,13 +42,13 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class InvalidKafkaCreds(Exception):
+class InvalidKafkaCreds(Exception):  # noqa: N818
     """
     Class to indicate invalid kafka credentials exception
     """
 
 
-class SchemaRegistryException(Exception):
+class SchemaRegistryException(Exception):  # noqa: N818
     """
     Class to indicate invalid schema registry not initialized
     """
@@ -64,9 +65,7 @@ class KafkaClient:
         self.consumer_client = consumer_client
 
 
-def get_connection(
-    connection: Union[KafkaConnection, RedpandaConnection]
-) -> KafkaClient:
+def get_connection(connection: Union[KafkaConnection, RedpandaConnection]) -> KafkaClient:  # noqa: UP007
     """
     Create connection
     """
@@ -77,22 +76,15 @@ def get_connection(
         if connection.saslUsername:
             consumer_config["sasl.username"] = connection.saslUsername
         if connection.saslPassword:
-            consumer_config[
-                "sasl.password"
-            ] = connection.saslPassword.get_secret_value()
+            consumer_config["sasl.password"] = connection.saslPassword.get_secret_value()
         if connection.saslMechanism:
             consumer_config["sasl.mechanism"] = connection.saslMechanism.value
 
-        if (
-            connection.consumerConfig.get("security.protocol") is None
-            and connection.securityProtocol
-        ):
+        if connection.consumerConfig.get("security.protocol") is None and connection.securityProtocol:
             consumer_config["security.protocol"] = connection.securityProtocol.value
 
     if connection.basicAuthUserInfo:
-        schema_registry_config[
-            "basic.auth.user.info"
-        ] = connection.basicAuthUserInfo.get_secret_value()
+        schema_registry_config["basic.auth.user.info"] = connection.basicAuthUserInfo.get_secret_value()
 
     admin_client_config = consumer_config
     admin_client_config["bootstrap.servers"] = connection.bootstrapServers
@@ -112,9 +104,7 @@ def get_connection(
             consumer_config["auto.offset.reset"] = "largest"
         consumer_config["enable.auto.commit"] = False
 
-        avro_deserializer = AvroDeserializer(
-            schema_registry_client=schema_registry_client
-        )
+        avro_deserializer = AvroDeserializer(schema_registry_client=schema_registry_client)
         consumer_config["value.deserializer"] = avro_deserializer
 
         consumer_client = DeserializingConsumer(consumer_config)
@@ -129,9 +119,9 @@ def get_connection(
 def test_connection(
     metadata: OpenMetadata,
     client: KafkaClient,
-    service_connection: Union[KafkaConnection, RedpandaConnection],
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    service_connection: Union[KafkaConnection, RedpandaConnection],  # noqa: UP007
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -140,9 +130,9 @@ def test_connection(
 
     def custom_executor():
         try:
-            client.admin_client.list_topics(timeout=TIMEOUT_SECONDS).topics
+            client.admin_client.list_topics(timeout=TIMEOUT_SECONDS).topics  # noqa: B018
         except KafkaException as err:
-            raise InvalidKafkaCreds(
+            raise InvalidKafkaCreds(  # noqa: B904
                 f"Failed to fetch topics due to: {err}. "
                 "Please validate credentials and check if you are using correct security protocol"
             )

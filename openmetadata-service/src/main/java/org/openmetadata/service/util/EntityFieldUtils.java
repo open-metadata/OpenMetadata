@@ -363,7 +363,8 @@ public class EntityFieldUtils {
       return;
     }
 
-    List<TagLabel> tags = entity.getTags() != null ? entity.getTags() : new ArrayList<>();
+    List<TagLabel> tags =
+        entity.getTags() != null ? new ArrayList<>(entity.getTags()) : new ArrayList<>();
 
     // Remove existing Tier.* tags
     tags.removeIf(tag -> tag.getTagFQN() != null && tag.getTagFQN().startsWith("Tier."));

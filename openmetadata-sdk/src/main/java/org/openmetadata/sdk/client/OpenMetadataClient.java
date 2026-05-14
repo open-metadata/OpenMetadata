@@ -1,7 +1,7 @@
 package org.openmetadata.sdk.client;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.network.HttpClient;
@@ -10,6 +10,7 @@ import org.openmetadata.sdk.network.OpenMetadataHttpClient;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.sdk.services.ai.AIApplicationService;
 import org.openmetadata.sdk.services.ai.LLMModelService;
+import org.openmetadata.sdk.services.ai.McpServerService;
 import org.openmetadata.sdk.services.ai.PromptTemplateService;
 import org.openmetadata.sdk.services.apiservice.APICollectionService;
 import org.openmetadata.sdk.services.apiservice.APIEndpointService;
@@ -38,7 +39,9 @@ import org.openmetadata.sdk.services.domains.DomainService;
 import org.openmetadata.sdk.services.events.ChangeEventService;
 import org.openmetadata.sdk.services.events.EventSubscriptionService;
 import org.openmetadata.sdk.services.events.NotificationTemplateService;
+import org.openmetadata.sdk.services.feed.AnnouncementService;
 import org.openmetadata.sdk.services.feed.FeedService;
+import org.openmetadata.sdk.services.feed.TaskFormSchemaService;
 import org.openmetadata.sdk.services.glossary.GlossaryService;
 import org.openmetadata.sdk.services.glossary.GlossaryTermService;
 import org.openmetadata.sdk.services.governance.AIGovernancePolicyService;
@@ -64,6 +67,7 @@ import org.openmetadata.sdk.services.storages.DirectoryService;
 import org.openmetadata.sdk.services.storages.FileService;
 import org.openmetadata.sdk.services.storages.SpreadsheetService;
 import org.openmetadata.sdk.services.storages.WorksheetService;
+import org.openmetadata.sdk.services.tasks.TaskService;
 import org.openmetadata.sdk.services.teams.PersonaService;
 import org.openmetadata.sdk.services.teams.RoleService;
 import org.openmetadata.sdk.services.teams.TeamService;
@@ -75,6 +79,7 @@ import org.openmetadata.sdk.services.tests.TestDefinitionService;
 import org.openmetadata.sdk.services.tests.TestSuiteService;
 
 public class OpenMetadataClient {
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private final OpenMetadataConfig config;
   private final HttpClient httpClient;
   private UUID cachedUserId = null;
@@ -184,7 +189,17 @@ public class OpenMetadataClient {
 
   // AI
   private final AIApplicationService aiApplications;
+  private final McpServerService mcpServers;
   private final PromptTemplateService promptTemplates;
+
+  // Tasks
+  private final TaskService tasks;
+
+  // Announcements
+  private final AnnouncementService announcements;
+
+  // Task Form Schemas
+  private final TaskFormSchemaService taskFormSchemas;
 
   public OpenMetadataClient(OpenMetadataConfig config) {
     this.config = config;
@@ -292,7 +307,17 @@ public class OpenMetadataClient {
 
     // Initialize AI services
     this.aiApplications = new AIApplicationService(httpClient);
+    this.mcpServers = new McpServerService(httpClient);
     this.promptTemplates = new PromptTemplateService(httpClient);
+
+    // Initialize task services
+    this.tasks = new TaskService(httpClient);
+
+    // Initialize announcement services
+    this.announcements = new AnnouncementService(httpClient);
+
+    // Initialize task form schema services
+    this.taskFormSchemas = new TaskFormSchemaService(httpClient);
 
     // Initialize feed service
     this.feed = new FeedService(httpClient);
@@ -580,8 +605,27 @@ public class OpenMetadataClient {
     return aiApplications;
   }
 
+  public McpServerService mcpServers() {
+    return mcpServers;
+  }
+
   public PromptTemplateService promptTemplates() {
     return promptTemplates;
+  }
+
+  // Task Service Getter
+  public TaskService tasks() {
+    return tasks;
+  }
+
+  // Announcement Service Getter
+  public AnnouncementService announcements() {
+    return announcements;
+  }
+
+  // Task Form Schema Service Getter
+  public TaskFormSchemaService taskFormSchemas() {
+    return taskFormSchemas;
   }
 
   /**
@@ -659,11 +703,10 @@ public class OpenMetadataClient {
               RequestOptions.builder().queryParam("fields", "profile").build());
 
       // Parse the response to get the user ID
-      JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
+      JsonNode jsonResponse = OBJECT_MAPPER.readTree(response);
 
       if (jsonResponse.has("id")) {
-        String userIdStr = jsonResponse.get("id").getAsString();
-        cachedUserId = UUID.fromString(userIdStr);
+        cachedUserId = UUID.fromString(jsonResponse.get("id").asText());
         return cachedUserId;
       }
     } catch (Exception e) {

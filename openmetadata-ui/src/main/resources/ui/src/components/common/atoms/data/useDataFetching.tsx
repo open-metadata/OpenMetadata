@@ -14,7 +14,10 @@
 import { AxiosError } from 'axios';
 import { useCallback, useState } from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
-import { Aggregations } from '../../../../interface/search.interface';
+import {
+  Aggregations,
+  SearchResponse,
+} from '../../../../interface/search.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { domainBuildESQuery } from '../../../../utils/DomainUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -23,7 +26,7 @@ export interface DataFetchingConfig<T> {
   searchIndex: SearchIndex;
   baseFilter?: string;
   pageSize?: number;
-  transform?: (data: any) => T[];
+  transform?: (data: SearchResponse<SearchIndex>) => T[];
 }
 
 export interface DataFetchingResult<T> {
@@ -53,7 +56,8 @@ export const useDataFetching = <T extends { id: string }>(
 
   // Default transform function
   const defaultTransform = useCallback(
-    (data: any) => data.hits?.hits?.map((hit: any) => hit._source) || [],
+    (data: SearchResponse<SearchIndex>) =>
+      data.hits?.hits?.map((hit) => hit._source) || [],
     []
   );
 

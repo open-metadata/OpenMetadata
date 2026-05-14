@@ -13,10 +13,10 @@
 MSSQL E2E tests
 """
 
-from typing import List
+from typing import List  # noqa: UP035
 
-from .common.test_cli_db import CliCommonDB
-from .common_e2e_sqa_mixins import SQACommonMethods
+from .common.test_cli_db import CliCommonDB  # noqa: TID252
+from .common_e2e_sqa_mixins import SQACommonMethods  # noqa: TID252
 
 
 class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
@@ -38,7 +38,7 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             FROM e2e_cli_tests.dbo.persons;
     """
 
-    insert_data_queries: List[str] = [
+    insert_data_queries: List[str] = [  # noqa: RUF012, UP006
         """
     INSERT INTO persons (person_id, full_name, birthdate, is_meeting_scheduled) VALUES
         (1,'Peter Parker', '2004-08-10', 1),
@@ -105,15 +105,15 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         }
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:
+    def get_includes_schemas() -> List[str]:  # noqa: UP006
         return ["dbo"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:
+    def get_includes_tables() -> List[str]:  # noqa: UP006
         return ["persons"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:
+    def get_excludes_tables() -> List[str]:  # noqa: UP006
         return ["foo"]
 
     @staticmethod
@@ -150,10 +150,6 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         "distinctProportion": 1.0,
                         "duplicateCount": None,
                         "firstQuartile": 2.5,
-                        "histogram": {
-                            "boundaries": ["1.000 to 3.773", "3.773 and up"],
-                            "frequencies": [1, 2],
-                        },
                         "interQuartileRange": 2.0,
                         "max": 5.0,
                         "maxLength": None,

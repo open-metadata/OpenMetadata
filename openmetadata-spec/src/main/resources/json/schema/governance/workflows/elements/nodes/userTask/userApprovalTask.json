@@ -75,6 +75,61 @@
           "type": "integer",
           "minimum": 1,
           "default": 1
+        },
+        "stageId": {
+          "title": "Stage Id",
+          "description": "Workflow stage identifier stored on the task while this user task is active.",
+          "type": "string"
+        },
+        "stageDisplayName": {
+          "title": "Stage Display Name",
+          "description": "Human-readable stage label shown to task assignees.",
+          "type": "string"
+        },
+        "taskStatus": {
+          "title": "Task Status",
+          "description": "Coarse task status mapped while this user task is active.",
+          "$ref": "../../../../../entity/tasks/task.json#/definitions/taskStatus"
+        },
+        "assigneeStrategy": {
+          "title": "Assignee Strategy",
+          "description": "Optional label describing how assignees are derived for the stage.",
+          "type": "string"
+        },
+        "transitionMetadata": {
+          "title": "Transition Metadata",
+          "description": "Transitions available from this stage. Edge conditions should match these transition ids.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "targetStageId": {
+                "type": "string"
+              },
+              "targetTaskStatus": {
+                "$ref": "../../../../../entity/tasks/task.json#/definitions/taskStatus"
+              },
+              "resolutionType": {
+                "$ref": "../../../../../entity/tasks/task.json#/definitions/resolutionType"
+              },
+              "formRef": {
+                "type": "string"
+              },
+              "requiresComment": {
+                "type": "boolean",
+                "default": false
+              }
+            },
+            "required": ["id", "label", "targetStageId", "targetTaskStatus"],
+            "additionalProperties": false
+          },
+          "default": []
         }
       },
       "required": ["assignees"],

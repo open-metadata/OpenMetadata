@@ -114,16 +114,16 @@ export const DBT = {
 };
 
 export const SERVICE_SEARCH_INDEX_MAP = {
-  [GlobalSettingOptions.DATABASES]: 'database_service_search_index',
-  [GlobalSettingOptions.MESSAGING]: 'messaging_service_search_index',
-  [GlobalSettingOptions.DASHBOARDS]: 'dashboard_service_search_index',
-  [GlobalSettingOptions.PIPELINES]: 'pipeline_service_search_index',
-  [GlobalSettingOptions.MLMODELS]: 'mlmodel_service_search_index',
-  [GlobalSettingOptions.STORAGES]: 'storage_service_search_index',
-  [GlobalSettingOptions.SEARCH]: 'search_service_search_index',
-  [GlobalSettingOptions.APIS]: 'api_service_search_index',
-  [GlobalSettingOptions.DRIVES]: 'drive_service_search_index',
-  [GlobalSettingOptions.METADATA]: 'metadata_service_search_index',
+  [GlobalSettingOptions.DATABASES]: 'databaseService',
+  [GlobalSettingOptions.MESSAGING]: 'messagingService',
+  [GlobalSettingOptions.DASHBOARDS]: 'dashboardService',
+  [GlobalSettingOptions.PIPELINES]: 'pipelineService',
+  [GlobalSettingOptions.MLMODELS]: 'mlModelService',
+  [GlobalSettingOptions.STORAGES]: 'storageService',
+  [GlobalSettingOptions.SEARCH]: 'searchService',
+  [GlobalSettingOptions.APIS]: 'apiService',
+  [GlobalSettingOptions.DRIVES]: 'driveService',
+  [GlobalSettingOptions.METADATA]: 'metadataService',
 } as const;
 
 export type ServiceSearchIndexKey = keyof typeof SERVICE_SEARCH_INDEX_MAP;
@@ -138,7 +138,7 @@ export const getServiceSearchIndexMappings = (
   (
     Object.entries(SERVICE_SEARCH_INDEX_MAP) as [
       ServiceSearchIndexKey,
-      string,
+      string
     ][]
   ).map(([settingOption, expectedIndex]) => ({
     settingOption,

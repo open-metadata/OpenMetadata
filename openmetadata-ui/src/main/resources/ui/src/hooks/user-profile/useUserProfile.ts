@@ -36,7 +36,8 @@ export const useUserProfile = ({
   name: string;
   isTeam?: boolean;
 }): [string | null, boolean, User | undefined] => {
-  const user = useApplicationStore((state) => state.userProfilePics[name]);
+  const cacheKey = name;
+  const user = useApplicationStore((state) => state.userProfilePics[cacheKey]);
 
   const updateUserProfilePics = useApplicationStore(
     (state) => state.updateUserProfilePics
@@ -62,21 +63,20 @@ export const useUserProfile = ({
   }, [user, profilePic]);
 
   const fetchProfileIfRequired = useCallback(async () => {
-    const lowerCasedName = name.toLowerCase();
     const currentUserProfilePics =
       useApplicationStore.getState().userProfilePics;
 
-    if (isTeam || currentUserProfilePics[lowerCasedName]) {
+    if (isTeam || currentUserProfilePics[cacheKey]) {
       isTeam && setProfilePic(IconTeams);
 
       return;
     }
 
-    if (userProfilePicsLoading.includes(lowerCasedName)) {
+    if (userProfilePicsLoading.includes(cacheKey)) {
       return;
     }
 
-    userProfilePicsLoading = [...userProfilePicsLoading, lowerCasedName];
+    userProfilePicsLoading = [...userProfilePicsLoading, cacheKey];
 
     try {
       let user = await getUserByName(name, {
@@ -85,30 +85,35 @@ export const useUserProfile = ({
       user = getUserWithImage(user);
 
       updateUserProfilePics({
-        id: user.name,
+        id: cacheKey,
         user,
       });
-
-      userProfilePicsLoading = userProfilePicsLoading.filter(
-        (p) => p !== lowerCasedName
-      );
     } catch (error) {
-      if ((error as AxiosError)?.response?.status === ClientErrors.NOT_FOUND) {
+      // Profile images are best-effort. Cache a placeholder on any read failure so avatar loaders
+      // can settle and we do not keep retrying a denied/missing profile forever.
+      if (
+        (error as AxiosError)?.response?.status === ClientErrors.NOT_FOUND ||
+        (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN ||
+        (error as AxiosError)?.response?.status === ClientErrors.UNAUTHORIZED ||
+        (error as AxiosError)?.response?.status === ClientErrors.BAD_REQUEST ||
+        (error as AxiosError)?.response?.status === ClientErrors.SERVER_ERROR ||
+        (error as AxiosError)?.response?.status === undefined
+      ) {
         updateUserProfilePics({
-          id: name,
+          id: cacheKey,
           user: {
             name,
-            id: name,
+            id: cacheKey,
             email: '',
           },
         });
       }
-
+    } finally {
       userProfilePicsLoading = userProfilePicsLoading.filter(
-        (p) => p !== lowerCasedName
+        (p) => p !== cacheKey
       );
     }
-  }, [name, isTeam, updateUserProfilePics]);
+  }, [cacheKey, name, isTeam, updateUserProfilePics]);
 
   useEffect(() => {
     if (!permission) {
@@ -125,7 +130,7 @@ export const useUserProfile = ({
   return [
     profilePic,
     Boolean(
-      !isTeam && isUndefined(user) && userProfilePicsLoading.includes(name)
+      !isTeam && isUndefined(user) && userProfilePicsLoading.includes(cacheKey)
     ),
     user,
   ];

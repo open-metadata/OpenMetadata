@@ -41,7 +41,7 @@ test.describe('Table Search', () => {
       await page.goto('/settings/services/databases');
       await testTableSearch(
         page,
-        'database_service_search_index',
+        'databaseService',
         service1.name,
         service2.name
       );
@@ -74,7 +74,7 @@ test.describe('Table Search', () => {
       );
       await testTableSearch(
         page,
-        'api_endpoint_search_index',
+        'apiEndpoint',
         apiEndpoint1.entity.name,
         apiEndpoint2.entity.name
       );
@@ -109,7 +109,7 @@ test.describe('Table Search', () => {
       await page.goto(`/databaseSchema/${table1.schema.fullyQualifiedName}`);
       await testTableSearch(
         page,
-        'table_search_index',
+        'table',
         table1.entity.name,
         table2.entity.name
       );
@@ -145,7 +145,7 @@ test.describe('Table Search', () => {
       );
       await testTableSearch(
         page,
-        'dashboard_data_model_search_index',
+        'dashboardDataModel',
         dataModel1.entity.name,
         dataModel2.entity.name
       );
@@ -186,7 +186,7 @@ test.describe('Table Search', () => {
       );
       await testTableSearch(
         page,
-        'dashboard_data_model_search_index',
+        'dashboardDataModel',
         displayName,
         baseDataModel.entity.name
       );
@@ -233,7 +233,7 @@ test.describe('Table Search', () => {
       await test.step('search with original mixed-case term', async () => {
         await testTableSearch(
           page,
-          'dashboard_data_model_search_index',
+          'dashboardDataModel',
           mixedCaseName,
           baseDataModel.entity.name
         );
@@ -242,7 +242,7 @@ test.describe('Table Search', () => {
       await test.step('search with all-uppercase term', async () => {
         await testTableSearch(
           page,
-          'dashboard_data_model_search_index',
+          'dashboardDataModel',
           mixedCaseName.toUpperCase(),
           baseDataModel.entity.name
         );
@@ -251,7 +251,7 @@ test.describe('Table Search', () => {
       await test.step('search with all-lowercase term', async () => {
         await testTableSearch(
           page,
-          'dashboard_data_model_search_index',
+          'dashboardDataModel',
           mixedCaseName.toLowerCase(),
           baseDataModel.entity.name
         );
@@ -296,7 +296,7 @@ test.describe('Table Search', () => {
       );
       await testTableSearch(
         page,
-        'stored_procedure_search_index',
+        'storedProcedure',
         storedProcedure1.entity.name,
         storedProcedure2.entity.name
       );
@@ -327,7 +327,7 @@ test.describe('Table Search', () => {
       );
       await testTableSearch(
         page,
-        'topic_search_index',
+        'topic',
         topic1.entity.name,
         topic2.entity.name
       );
@@ -364,7 +364,7 @@ test.describe('Table Search', () => {
       );
       await testTableSearch(
         page,
-        'directory_search_index',
+        'directory',
         directory1.entity.name,
         directory2.entity.name
       );
@@ -397,12 +397,7 @@ test.describe('Table Search', () => {
       file2.entityResponseData = await response.json();
 
       await page.goto(`/service/driveServices/${file1.service.name}/files`);
-      await testTableSearch(
-        page,
-        'file_search_index',
-        file1.entity.name,
-        file2.entity.name
-      );
+      await testTableSearch(page, 'file', file1.entity.name, file2.entity.name);
 
       await afterAction();
     });
@@ -436,7 +431,7 @@ test.describe('Table Search', () => {
       );
       await testTableSearch(
         page,
-        'spreadsheet_search_index',
+        'spreadsheet',
         spreadsheet1.entity.name,
         spreadsheet2.entity.name
       );

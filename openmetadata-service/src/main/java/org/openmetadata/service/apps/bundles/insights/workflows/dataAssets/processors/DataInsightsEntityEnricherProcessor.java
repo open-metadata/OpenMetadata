@@ -116,6 +116,20 @@ public class DataInsightsEntityEnricherProcessor
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
     Long endTimestamp = (Long) contextData.get(END_TIMESTAMP_KEY);
     Long startTimestamp = (Long) contextData.get(START_TIMESTAMP_KEY);
+
+    // Skip version history queries for entities unchanged during the window (N+1 optimization).
+    Long updatedAt = entity.getUpdatedAt();
+    if (updatedAt != null) {
+      Long entityUpdatedDay = TimestampUtils.getStartOfDayTimestamp(updatedAt);
+      if (entityUpdatedDay < startTimestamp) {
+        Map<String, Object> versionMap = new HashMap<>();
+        versionMap.put("endTimestamp", endTimestamp);
+        versionMap.put("startTimestamp", startTimestamp);
+        versionMap.put("versionEntity", entity);
+        return List.of(versionMap);
+      }
+    }
+
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
 
     Long pointerTimestamp = endTimestamp;
@@ -174,6 +188,7 @@ public class DataInsightsEntityEnricherProcessor
 
     Map<String, Object> entityMap = JsonUtils.getMap(entity);
     entityMap.keySet().retainAll((List<String>) contextData.get(ENTITY_TYPE_FIELDS_KEY));
+    stripNestedColumnChildren(entityMap);
 
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
 
@@ -231,6 +246,26 @@ public class DataInsightsEntityEnricherProcessor
     return entityMap;
   }
 
+  /**
+   * Removes the recursive {@code children} subtree from every top-level column entry in the
+   * serialized entity map. The DI data stream uses dynamic field mapping, and deeply nested
+   * STRUCT/UNION column types can expand into hundreds of unique field paths per document,
+   * pushing the index past OpenSearch's {@code index.mapping.total_fields.limit} of 1000.
+   * Top-level column metadata (name, type, description, etc.) is preserved.
+   */
+  @SuppressWarnings("unchecked")
+  private static void stripNestedColumnChildren(Map<String, Object> entityMap) {
+    Object columns = entityMap.get("columns");
+    if (!(columns instanceof List<?> columnList)) {
+      return;
+    }
+    for (Object column : columnList) {
+      if (column instanceof Map<?, ?> columnMap) {
+        ((Map<String, Object>) columnMap).remove("children");
+      }
+    }
+  }
+
   private String processTeam(EntityInterface entity) {
     String team = null;
     Optional<List<EntityReference>> oEntityOwners = Optional.ofNullable(entity.getOwners());
@@ -258,12 +293,11 @@ public class DataInsightsEntityEnricherProcessor
           // Note: If the Owner is deleted we can't infer the Teams for which the Data Asset
           // belonged.
           LOG.debug(
-              String.format(
-                  "Owner %s for %s '%s' version '%s' not found.",
-                  entityOwner.getFullyQualifiedName(),
-                  Entity.getEntityTypeFromObject(entity),
-                  entity.getFullyQualifiedName(),
-                  entity.getVersion()));
+              "Owner {} for {} '{}' version '{}' not found.",
+              entityOwner.getFullyQualifiedName(),
+              Entity.getEntityTypeFromObject(entity),
+              entity.getFullyQualifiedName(),
+              entity.getVersion());
         }
       }
     }

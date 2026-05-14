@@ -45,7 +45,7 @@ test.describe('Glossary P2 Tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
 
       await page.click('[data-testid="add-glossary"]');
-      await page.waitForSelector('[data-testid="form-heading"]');
+      await page.getByTestId('form-heading').waitFor();
 
       // Use name with underscores and hyphens
       await page.fill('[data-testid="name"]', specialName);
@@ -148,7 +148,6 @@ test.describe('Glossary P2 Tests', () => {
 
       if (await statusBadge.isVisible({ timeout: 3000 }).catch(() => false)) {
         await statusBadge.hover();
-        await page.waitForTimeout(500);
 
         // Check if popover appears
         const popover = page.locator('.ant-popover');
@@ -183,9 +182,9 @@ test.describe('Glossary P2 Tests', () => {
       await addTermButton.click();
 
       // Wait for form dialog
-      await page.waitForSelector('[role="dialog"].edit-glossary-modal', {
-        timeout: 10000,
-      });
+      await page
+        .locator('[role="dialog"].edit-glossary-modal')
+        .waitFor({ timeout: 10000 });
 
       const termName = `DraftTerm_${Date.now()}`;
       await page.fill('[data-testid="name"]', termName);

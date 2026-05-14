@@ -1,0 +1,51 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+
+.data-quality-dashboard-card-section {
+  .page-header-container {
+    margin-bottom: @margin-mlg;
+  }
+
+  .data-quality-dashboard-pie-chart {
+    background-color: @grey-26;
+    border-color: @grey-9;
+  }
+}
+
+.data-quality-governance-tab-wrapper {
+  background-color: @white;
+  padding: @padding-md;
+  border-radius: @border-rad-sm;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.data-quality-governance-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  .data-quality-governance-filter-bar {
+    flex-shrink: 0;
+    padding-bottom: @padding-sm;
+  }
+
+  .data-quality-governance-charts {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+  }
+}

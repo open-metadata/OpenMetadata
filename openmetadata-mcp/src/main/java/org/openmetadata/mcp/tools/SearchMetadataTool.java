@@ -1,7 +1,7 @@
 package org.openmetadata.mcp.tools;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.search.SearchUtil.mapEntityTypesToIndexNames;
+import static org.openmetadata.service.search.SearchUtils.mapEntityTypesToIndexNames;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import com.fasterxml.jackson.databind.JsonNode;

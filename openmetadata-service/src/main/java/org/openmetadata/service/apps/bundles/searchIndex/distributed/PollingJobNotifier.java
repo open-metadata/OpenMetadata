@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -26,28 +27,31 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
- * Database polling based job notifier as fallback when Redis is not available.
+ * Database polling based job notifier for distributed job discovery.
  *
  * <p>Uses adaptive polling intervals:
  *
  * <ul>
- *   <li>30 seconds when idle (no active jobs)
- *   <li>1 second when actively participating in a job
+ *   <li>1 second while actively participating in a job
+ *   <li>2 seconds plus jitter while recently started or after job activity
+ *   <li>30 seconds plus jitter after an extended idle period
  * </ul>
- *
- * <p>This minimizes database overhead while still providing reasonable job discovery latency.
  */
 @Slf4j
 public class PollingJobNotifier implements DistributedJobNotifier {
 
-  /** Poll interval when no job is running (30 seconds) */
-  private static final long IDLE_POLL_INTERVAL_MS = 30_000;
+  private static final long FAST_IDLE_POLL_INTERVAL_MS = 2_000;
+  private static final long BACKOFF_IDLE_POLL_INTERVAL_MS = 30_000;
 
-  /** Poll interval when actively participating (1 second) */
   private static final long ACTIVE_POLL_INTERVAL_MS = 1_000;
+  private static final long FAST_IDLE_WINDOW_MS = 60_000;
+  private static final long FAST_IDLE_JITTER_MS = 1_000;
+  private static final long BACKOFF_IDLE_JITTER_MS = 5_000;
 
   private final CollectionDAO collectionDAO;
   private final String serverId;
+  private final long fastIdleJitterMs;
+  private final long backoffIdleJitterMs;
   private final AtomicBoolean running = new AtomicBoolean(false);
   private final AtomicBoolean participating = new AtomicBoolean(false);
   private final Set<UUID> knownJobs = ConcurrentHashMap.newKeySet();
@@ -55,10 +59,13 @@ public class PollingJobNotifier implements DistributedJobNotifier {
   private ScheduledExecutorService scheduler;
   private Consumer<UUID> jobStartedCallback;
   private volatile long lastPollTime = 0;
+  private volatile long fastIdleUntil = 0;
 
   public PollingJobNotifier(CollectionDAO collectionDAO, String serverId) {
     this.collectionDAO = collectionDAO;
     this.serverId = serverId;
+    this.fastIdleJitterMs = computeJitter(FAST_IDLE_JITTER_MS, 17);
+    this.backoffIdleJitterMs = computeJitter(BACKOFF_IDLE_JITTER_MS, 31);
   }
 
   @Override
@@ -68,6 +75,10 @@ public class PollingJobNotifier implements DistributedJobNotifier {
       return;
     }
 
+    long now = System.currentTimeMillis();
+    lastPollTime = 0;
+    extendFastIdleWindow(now);
+
     scheduler =
         Executors.newSingleThreadScheduledExecutor(
             Thread.ofPlatform()
@@ -75,14 +86,14 @@ public class PollingJobNotifier implements DistributedJobNotifier {
                     "reindex-job-notifier-" + serverId.substring(0, Math.min(8, serverId.length())))
                 .factory());
 
-    // Schedule with fixed delay of 1 second, but actual polling is controlled by interval logic
     scheduler.scheduleWithFixedDelay(
         this::pollForJobs, 0, ACTIVE_POLL_INTERVAL_MS, TimeUnit.MILLISECONDS);
 
     LOG.info(
-        "PollingJobNotifier started on server {} (idle: {}s, active: {}s)",
+        "PollingJobNotifier started on server {} (fast idle: {}s, backoff idle: {}s, active: {}s)",
         serverId,
-        IDLE_POLL_INTERVAL_MS / 1000,
+        FAST_IDLE_POLL_INTERVAL_MS / 1000,
+        BACKOFF_IDLE_POLL_INTERVAL_MS / 1000,
         ACTIVE_POLL_INTERVAL_MS / 1000);
   }
 
@@ -110,9 +121,8 @@ public class PollingJobNotifier implements DistributedJobNotifier {
 
   @Override
   public void notifyJobStarted(UUID jobId, String jobType) {
-    // In polling mode, we don't actively notify - other servers will discover via polling
-    // But we track it locally to avoid re-notifying ourselves
     knownJobs.add(jobId);
+    extendFastIdleWindow(System.currentTimeMillis());
     LOG.debug(
         "Job {} (type: {}) started - other servers will discover via polling", jobId, jobType);
   }
@@ -120,6 +130,7 @@ public class PollingJobNotifier implements DistributedJobNotifier {
   @Override
   public void notifyJobCompleted(UUID jobId) {
     knownJobs.remove(jobId);
+    extendFastIdleWindow(System.currentTimeMillis());
     LOG.debug("Job {} completed - removed from known jobs", jobId);
   }
 
@@ -144,6 +155,9 @@ public class PollingJobNotifier implements DistributedJobNotifier {
    */
   public void setParticipating(boolean isParticipating) {
     this.participating.set(isParticipating);
+    if (!isParticipating) {
+      extendFastIdleWindow(System.currentTimeMillis());
+    }
   }
 
   private void pollForJobs() {
@@ -152,32 +166,23 @@ public class PollingJobNotifier implements DistributedJobNotifier {
     }
 
     long now = System.currentTimeMillis();
-    long interval = participating.get() ? ACTIVE_POLL_INTERVAL_MS : IDLE_POLL_INTERVAL_MS;
-
-    // Skip poll if not enough time has elapsed
-    if (now - lastPollTime < interval) {
+    if (now - lastPollTime < currentPollIntervalMs(now)) {
       return;
     }
     lastPollTime = now;
 
     try {
-      // Fast, lightweight query for running jobs
       List<String> runningJobIds = collectionDAO.searchIndexJobDAO().getRunningJobIds();
 
       if (runningJobIds.isEmpty()) {
-        // No jobs running - clear known jobs and stay in idle mode
-        if (!knownJobs.isEmpty()) {
-          LOG.debug("No running jobs found, clearing {} known jobs", knownJobs.size());
-          knownJobs.clear();
-        }
+        handleNoRunningJobs(now);
         return;
       }
 
-      // Check for new jobs we haven't seen
+      extendFastIdleWindow(now);
       for (String jobIdStr : runningJobIds) {
         UUID jobId = UUID.fromString(jobIdStr);
         if (!knownJobs.contains(jobId)) {
-          // New job discovered!
           LOG.info("Discovered new running job via polling: {}", jobId);
           knownJobs.add(jobId);
 
@@ -187,12 +192,38 @@ public class PollingJobNotifier implements DistributedJobNotifier {
         }
       }
 
-      // Clean up jobs that are no longer running
-      knownJobs.removeIf(
-          jobId -> runningJobIds.stream().noneMatch(id -> id.equals(jobId.toString())));
+      Set<String> runningJobIdSet = new HashSet<>(runningJobIds);
+      knownJobs.removeIf(jobId -> !runningJobIdSet.contains(jobId.toString()));
 
     } catch (Exception e) {
       LOG.error("Error polling for jobs", e);
     }
+  }
+
+  private void handleNoRunningJobs(long now) {
+    if (knownJobs.isEmpty()) {
+      return;
+    }
+    LOG.debug("No running jobs found, clearing {} known jobs", knownJobs.size());
+    knownJobs.clear();
+    extendFastIdleWindow(now);
+  }
+
+  private long currentPollIntervalMs(long now) {
+    if (participating.get()) {
+      return ACTIVE_POLL_INTERVAL_MS;
+    }
+    if (now <= fastIdleUntil) {
+      return FAST_IDLE_POLL_INTERVAL_MS + fastIdleJitterMs;
+    }
+    return BACKOFF_IDLE_POLL_INTERVAL_MS + backoffIdleJitterMs;
+  }
+
+  private void extendFastIdleWindow(long now) {
+    fastIdleUntil = now + FAST_IDLE_WINDOW_MS;
+  }
+
+  private long computeJitter(long maxJitterMs, int salt) {
+    return Math.floorMod((serverId.hashCode() * 31) + salt, (int) maxJitterMs + 1);
   }
 }

@@ -24,6 +24,8 @@ import ModelTab from '../../components/Dashboard/DataModel/DataModels/ModelTab/M
 import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
 import SchemaTable from '../../components/Database/SchemaTable/SchemaTable.component';
 import { StoredProcedureCodeCard } from '../../components/Database/StoredProcedureCodeCard/StoredProcedureCodeCard';
+import MarketplaceDataProductsWidget from '../../components/DataMarketplace/MarketplaceDataProductsWidget/MarketplaceDataProductsWidget.component';
+import MarketplaceDomainsWidget from '../../components/DataMarketplace/MarketplaceDomainsWidget/MarketplaceDomainsWidget.component';
 import DataProductsContainer from '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import { EntityUnion } from '../../components/Explore/ExplorePage.interface';
 import GlossaryTermTab from '../../components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
@@ -188,5 +190,15 @@ export const WIDGET_COMPONENTS = {
   ),
   [DetailPageWidgetKeys.PARTITIONED_KEYS]: () => (
     <PartitionedKeys renderAsExpandableCard={false} />
+  ),
+  [DetailPageWidgetKeys.MARKETPLACE_DATA_PRODUCTS]: () => (
+    <MarketplaceDataProductsWidget
+      widgetKey={DetailPageWidgetKeys.MARKETPLACE_DATA_PRODUCTS}
+    />
+  ),
+  [DetailPageWidgetKeys.MARKETPLACE_DOMAINS]: () => (
+    <MarketplaceDomainsWidget
+      widgetKey={DetailPageWidgetKeys.MARKETPLACE_DOMAINS}
+    />
   ),
 } as const;

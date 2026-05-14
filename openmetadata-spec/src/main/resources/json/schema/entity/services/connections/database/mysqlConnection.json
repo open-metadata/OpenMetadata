@@ -54,12 +54,15 @@
         },
         {
           "$ref": "./common/azureConfig.json"
+        },
+        {
+          "$ref": "./common/gcpCloudSqlConfig.json"
         }
       ]
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "Host and port of the MySQL service.",
+      "description": "Host and port of the MySQL service. For GCP CloudSQL, use the instance connection name in the format 'project_id:region:instance_name'.",
       "type": "string"
     },
     "databaseName": {

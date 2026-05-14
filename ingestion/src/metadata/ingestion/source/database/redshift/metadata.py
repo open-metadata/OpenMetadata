@@ -11,9 +11,9 @@
 """
 Redshift source ingestion
 """
-import re
+
 import traceback
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional  # noqa: UP035
 
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -36,11 +36,8 @@ from metadata.generated.schema.entity.data.storedProcedure import (
 )
 from metadata.generated.schema.entity.data.table import (
     ConstraintType,
-    PartitionColumnDetails,
-    PartitionIntervalTypes,
     Table,
     TableConstraint,
-    TablePartition,
     TableType,
 )
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
@@ -82,7 +79,6 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_DATABASE_NAMES,
     REDSHIFT_GET_STORED_PROCEDURES,
     REDSHIFT_LIFE_CYCLE_QUERY,
-    REDSHIFT_PARTITION_DETAILS,
 )
 from metadata.ingestion.source.database.redshift.utils import (
     _get_all_relation_info,
@@ -99,10 +95,7 @@ from metadata.ingestion.source.database.redshift.utils import (
     get_view_definition,
 )
 from metadata.utils import fqn
-from metadata.utils.execution_time_tracker import (
-    calculate_execution_time,
-    calculate_execution_time_generator,
-)
+from metadata.utils.execution_time_tracker import calculate_execution_time_generator
 from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
 from metadata.utils.logger import ingestion_logger
@@ -142,9 +135,7 @@ Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
 
-class RedshiftSource(
-    ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource
-):
+class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Redshift Source
@@ -157,16 +148,11 @@ class RedshiftSource(
         incremental_configuration: IncrementalConfig,
     ):
         super().__init__(config, metadata)
-        self.partition_details = {}
-        self.constraint_details: dict[
-            str, dict[str, set[str] | list[dict[str, str]]]
-        ] = {}
+        self.constraint_details: dict[str, dict[str, set[str] | list[dict[str, str]]]] = {}
         self.life_cycle_query = REDSHIFT_LIFE_CYCLE_QUERY
         self.context.get_global().deleted_tables = []
         self.incremental = incremental_configuration
-        self.incremental_table_processor: Optional[
-            RedshiftIncrementalTableProcessor
-        ] = None
+        self.incremental_table_processor: Optional[RedshiftIncrementalTableProcessor] = None  # noqa: UP045
         self.external_location_map = {}
 
         if self.incremental.enabled:
@@ -176,43 +162,19 @@ class RedshiftSource(
             )
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: RedshiftConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedshiftConnection):
-            raise InvalidSourceException(
-                f"Expected RedshiftConnection, but got {connection}"
-            )
-        incremental_config = IncrementalConfig.create(
-            config.sourceConfig.config.incremental, pipeline_name, metadata
-        )
+            raise InvalidSourceException(f"Expected RedshiftConnection, but got {connection}")
+        incremental_config = IncrementalConfig.create(config.sourceConfig.config.incremental, pipeline_name, metadata)  # pyright: ignore[reportAttributeAccessIssue]
         return cls(config, metadata, incremental_config)
 
-    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:
+    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the location path of the table
         """
-        return self.external_location_map.get(
-            (self.context.get().database, schema_name, table_name)
-        )
-
-    def get_partition_details(self, schema_name: Optional[str] = None) -> None:
-        """
-        Populate partition details for the given schema (or all schemas if None).
-        """
-        try:
-            self.partition_details.clear()
-            query = REDSHIFT_PARTITION_DETAILS
-            if schema_name:
-                query += f" AND \"schema\" = '{schema_name}'"
-            results = self.connection.execute(statement=text(query)).fetchall()
-            for row in results:
-                self.partition_details[f"{row.schema}.{row.table}"] = row.diststyle
-        except Exception as exe:
-            logger.debug(traceback.format_exc())
-            logger.debug(f"Failed to fetch partition details due: {exe}")
+        return self.external_location_map.get((self.context.get().database, schema_name, table_name))
 
     def _clear_reflection_cache(self) -> None:
         """Clear the SQLAlchemy inspector's info_cache to release
@@ -228,9 +190,7 @@ class RedshiftSource(
         except Exception as exc:
             logger.debug(f"Failed to clear reflection cache: {exc}")
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Handle custom table types
         """
@@ -238,7 +198,6 @@ class RedshiftSource(
         # prevent unbounded memory growth (issue #20649)
         self._clear_reflection_cache()
 
-        self.get_partition_details(schema_name)
         self._set_constraint_details(schema_name)
 
         result = self.connection.execute(
@@ -258,22 +217,15 @@ class RedshiftSource(
             result = [
                 (name, relkind)
                 for name, relkind in result
-                if name
-                in self.incremental_table_processor.get_not_deleted(
-                    schema_name=schema_name
-                )
+                if name in self.incremental_table_processor.get_not_deleted(schema_name=schema_name)
             ]
 
         return [
-            TableNameAndType(
-                name=name, type_=STANDARD_TABLE_TYPES.get(relkind, TableType.Regular)
-            )
+            TableNameAndType(name=name, type_=STANDARD_TABLE_TYPES.get(relkind, TableType.Regular))
             for name, relkind in result
         ]
 
-    def query_view_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Connect to the source database to get the view
         name and type. By default, use the inspector method
@@ -284,7 +236,7 @@ class RedshiftSource(
         """
         return []
 
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
         return None
@@ -323,19 +275,12 @@ class RedshiftSource(
     def set_external_location_map(self, database_name: str) -> None:
         self.external_location_map.clear()
         with self.engine.connect() as conn:
-            results = conn.execute(
-                text(
-                    REDSHIFT_EXTERNAL_TABLE_LOCATION.format(database_name=database_name)
-                )
-            ).all()
-        self.external_location_map = {
-            (database_name, row.schemaname, row.tablename): row.location
-            for row in results
-        }
+            results = conn.execute(text(REDSHIFT_EXTERNAL_TABLE_LOCATION.format(database_name=database_name))).all()
+        self.external_location_map = {(database_name, row.schemaname, row.tablename): row.location for row in results}
 
     def get_database_names(self) -> Iterable[str]:
-        if not self.config.serviceConnection.root.config.ingestAllDatabases:
-            configured_db = self.config.serviceConnection.root.config.database
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
+            configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
             self._set_incremental_table_processor(configured_db)
             self.set_external_location_map(configured_db)
             yield configured_db
@@ -350,11 +295,7 @@ class RedshiftSource(
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    (
-                        database_fqn
-                        if self.source_config.useFqnForFiltering
-                        else new_database
-                    ),
+                    (database_fqn if self.source_config.useFqnForFiltering else new_database),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
@@ -366,43 +307,9 @@ class RedshiftSource(
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(
-                        f"Error trying to connect to database {new_database}: {exc}"
-                    )
+                    logger.error(f"Error trying to connect to database {new_database}: {exc}")
 
-    def _get_partition_key(self, diststyle: str) -> Optional[str]:
-        try:
-            regex = re.match(r"KEY\((\w+)\)", diststyle)
-            if regex:
-                return regex.group(1)
-        except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(err)
-        return None
-
-    @calculate_execution_time()
-    def get_table_partition_details(
-        self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, Optional[TablePartition]]:
-        diststyle = self.partition_details.get(f"{schema_name}.{table_name}")
-        if diststyle:
-            distkey = self._get_partition_key(diststyle)
-            if distkey is not None:
-                partition_details = TablePartition(
-                    columns=[
-                        PartitionColumnDetails(
-                            columnName=distkey,
-                            intervalType=PartitionIntervalTypes.COLUMN_VALUE,
-                            interval=None,
-                        )
-                    ]
-                )
-                return True, partition_details
-        return False, None
-
-    def process_additional_table_constraints(
-        self, column: dict, table_constraints: List[TableConstraint]
-    ) -> None:
+    def process_additional_table_constraints(self, column: dict, table_constraints: List[TableConstraint]) -> None:  # noqa: UP006
         """
         Process DIST_KEY & SORT_KEY column properties
         """
@@ -479,14 +386,10 @@ class RedshiftSource(
         """
         if self.incremental.enabled:
             if not self.context.get().__dict__.get("database"):
-                raise ValueError(
-                    "No Database found in the context. We cannot run the table deletion."
-                )
+                raise ValueError("No Database found in the context. We cannot run the table deletion.")
 
             if self.source_config.markDeletedTables:
-                logger.info(
-                    f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]"
-                )
+                logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")
                 yield from delete_entity_by_name(
                     self.metadata,
                     entity_type=Table,
@@ -515,14 +418,8 @@ class RedshiftSource(
         constraints = self.constraint_details.get(f"{schema_name}.{table_name}", {})
         if not constraints:
             return [], [], []
-        pkeys = [
-            clean_up_starting_ending_double_quotes_in_string(p)
-            for p in constraints.get("pkey", set())
-        ]
-        ukeys = [
-            clean_up_starting_ending_double_quotes_in_string(p)
-            for p in constraints.get("ukey", set())
-        ]
+        pkeys = [clean_up_starting_ending_double_quotes_in_string(p) for p in constraints.get("pkey", set())]
+        ukeys = [clean_up_starting_ending_double_quotes_in_string(p) for p in constraints.get("ukey", set())]
 
         fkeys = []
         fkey_constraints: list[dict[str, str]] = constraints.get("fkey", [])
@@ -549,9 +446,7 @@ class RedshiftSource(
         Args:
             schema_name (str): schema name
         """
-        self.constraint_details = (
-            {}
-        )  # reset constraint_details dict when fetching for a new schema
+        self.constraint_details = {}  # reset constraint_details dict when fetching for a new schema
 
         rows = self.connection.execute(
             sql.text(REDSHIFT_GET_ALL_CONSTRAINTS),
@@ -569,9 +464,7 @@ class RedshiftSource(
 
         for row in rows or []:
             schema_table_name = f"{row.schema}.{row.table_name}"
-            schema_table_constraints = self.constraint_details.setdefault(
-                schema_table_name, {}
-            )
+            schema_table_constraints = self.constraint_details.setdefault(schema_table_name, {})
             if row.constraint_type == "p":
                 pkey = schema_table_constraints.setdefault("pkey", set())
                 pkey.add(row.column_name)
@@ -586,9 +479,7 @@ class RedshiftSource(
                     "database": database,
                 }
                 extracted_fkey = self._extract_fkeys(fkey_constraint)
-                fkey: list[dict[str, str]] = schema_table_constraints.setdefault(
-                    "fkey", []
-                )
+                fkey: list[dict[str, str]] = schema_table_constraints.setdefault("fkey", [])
                 fkey.extend(extracted_fkey)
             if row.constraint_type == "u":
                 ukey = schema_table_constraints.setdefault("ukey", set())

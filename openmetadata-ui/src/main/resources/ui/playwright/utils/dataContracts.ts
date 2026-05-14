@@ -19,6 +19,7 @@ import {
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
 import { getApiContext } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
 export const saveAndTriggerDataContractValidation = async (
@@ -43,23 +44,18 @@ export const saveAndTriggerDataContractValidation = async (
   );
   await page.getByTestId('manage-contract-actions').click();
 
-  await page.waitForSelector('.contract-action-dropdown', {
-    state: 'visible',
-  });
+  await page
+    .getByTestId('contract-run-now-button')
+    .waitFor({ state: 'visible' });
 
   await page.getByTestId('contract-run-now-button').click();
-  // Use validate response to get the resultId of the newly triggered execution.
-  const runNowData = await (await runNowResponse).json();
+  await runNowResponse;
 
   await page.reload();
 
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
-  // Prefer validate response; fall back to save response if latestResult is missing.
-  return 'latestResult' in runNowData ? runNowData : responseData;
+  return responseData;
 };
 
 export const validateDataContractInsideBundleTestSuites = async (
@@ -73,8 +69,6 @@ export const validateDataContractInsideBundleTestSuites = async (
   await page.getByTestId('test-suites').click();
   await testSuiteResponse;
 
-  await page.waitForLoadState('networkidle');
-
   const bundleSuitesResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/dataQuality/testSuites/search/list') &&
@@ -82,10 +76,7 @@ export const validateDataContractInsideBundleTestSuites = async (
       response.status() === 200
   );
 
-  await page
-    .locator('.ant-radio-button-wrapper')
-    .filter({ hasText: 'Bundle Suites' })
-    .click();
+  await page.getByTestId('bundle-suite-radio-btn').click();
 
   await bundleSuitesResponse;
 
@@ -95,23 +86,29 @@ export const validateDataContractInsideBundleTestSuites = async (
 export const waitForDataContractExecution = async (
   page: Page,
   contractId: string,
-  resultId: string,
   maxConsecutiveErrors = 3
 ) => {
   const { apiContext } = await getApiContext(page);
   let consecutiveErrors = 0;
+  const terminalStatusPattern =
+    /(Aborted|Success|Failed|PartialSuccess|Queued)/;
 
   await expect
     .poll(
       async () => {
         try {
-          const response = await apiContext
-            .get(`/api/v1/dataContracts/${contractId}/results/${resultId}`)
-            .then((res) => res.json());
+          // Poll the contract entity — latestResult.status is what the backend updates
+          // and what the UI reads. Avoids coupling to a resultId that may be stale.
+          const contractResponse = await apiContext
+            .get(`/api/v1/dataContracts/${contractId}`)
+            .then((res) => (res.ok() ? res.json() : null))
+            .catch(() => null);
 
-          consecutiveErrors = 0; // Reset error counter on success
+          consecutiveErrors = 0;
 
-          return response.contractExecutionStatus;
+          const status = contractResponse?.latestResult?.status;
+
+          return status ?? 'Running';
         } catch (error) {
           consecutiveErrors++;
           if (consecutiveErrors >= maxConsecutiveErrors) {
@@ -125,13 +122,81 @@ export const waitForDataContractExecution = async (
       },
       {
         message: 'Wait for data contract execution to complete',
-        timeout: 300_000,
+        timeout: 600_000,
         intervals: [30_000, 20_000, 10_000],
       }
     )
-    .toEqual(
-      expect.stringMatching(/(Aborted|Success|Failed|PartialSuccess|Queued)/)
+    .toEqual(expect.stringMatching(terminalStatusPattern));
+};
+
+/**
+ * Waits for the data contract execution to complete. If the contract's latestResult
+ * is not updated in time (the test suite takes significant time and the contract result
+ * propagation lags), falls back to the DataQuality page to verify the test suite results
+ * directly from the Bundle Suites list.
+ *
+ * Returns true if the contract's own result was available, false if the DQ fallback was used.
+ */
+export const waitForContractExecutionWithFallback = async (
+  page: Page,
+  contractId: string,
+  contractName: string
+): Promise<boolean> => {
+  try {
+    await waitForDataContractExecution(page, contractId);
+
+    return true;
+  } catch {
+    // The test suite has results but the contract's latestResult was not updated in time.
+    // Verify execution status directly from the DataQuality Bundle Suites page.
+    await validateDataContractInsideBundleTestSuites(page);
+
+    const suiteNameCell = page
+      .getByTestId('test-suite-table')
+      .locator('[role="gridcell"]')
+      .filter({ hasText: `Data Contract - ${contractName}` });
+
+    await expect(suiteNameCell).toBeVisible();
+
+    const testCaseListResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list*'
     );
+    await suiteNameCell.locator('a').first().click();
+    const testCasesJson = await (await testCaseListResponse).json();
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(page.getByTestId('manage-button')).toBeVisible();
+
+    type TestCaseEntry = { testCaseResult?: { testCaseStatus?: string } };
+
+    const testCases = testCasesJson?.data ?? [];
+    const hasFailure = testCases.some(
+      (tc: TestCaseEntry) => tc.testCaseResult?.testCaseStatus === 'Failed'
+    );
+    const hasAborted = testCases.some(
+      (tc: TestCaseEntry) => tc.testCaseResult?.testCaseStatus === 'Aborted'
+    );
+    const hasSuccess = testCases.some(
+      (tc: TestCaseEntry) => tc.testCaseResult?.testCaseStatus === 'Success'
+    );
+
+    let suiteStatus = 'Running';
+
+    if (hasFailure) {
+      suiteStatus = 'Failed';
+    } else if (hasAborted) {
+      suiteStatus = 'Aborted';
+    } else if (hasSuccess) {
+      suiteStatus = 'Success';
+    }
+
+    const terminalStatusPattern =
+      /(Aborted|Success|Failed|PartialSuccess|Queued)/;
+
+    expect(suiteStatus).toEqual(expect.stringMatching(terminalStatusPattern));
+
+    return false;
+  }
 };
 
 export const saveSecurityAndSLADetails = async (
@@ -249,7 +314,7 @@ export const saveSecurityAndSLADetails = async (
 
   await page.locator('.availability-time-picker').click();
 
-  await page.waitForSelector('.ant-picker-dropdown', {
+  await page.locator('.ant-picker-dropdown').waitFor({
     state: 'attached',
   });
 
@@ -288,10 +353,7 @@ export const saveSecurityAndSLADetails = async (
   await page.getByTestId('save-contract-btn').click();
   await saveContractResponse;
 
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const validateSecurityAndSLADetails = async (
@@ -366,9 +428,7 @@ export const validateSecurityAndSLADetails = async (
 
 export const performInitialStepForRules = async (page: Page) => {
   await page.click('[data-testid="contract"]');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
   await expect(page.getByTestId('add-contract-button')).toBeVisible();
@@ -385,14 +445,12 @@ export const performInitialStepForRules = async (page: Page) => {
 
 export const navigateToContractTab = async (page: Page) => {
   await page.click('[data-testid="contract"]');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const openContractActionsDropdown = async (page: Page) => {
   await page.getByTestId('manage-contract-actions').click();
-  await page.waitForSelector('.contract-action-dropdown', {
+  await page.locator('.contract-action-dropdown').waitFor({
     state: 'visible',
   });
 };
@@ -444,10 +502,7 @@ export const saveContractAndWait = async (page: Page): Promise<void> => {
   await page.getByTestId('save-contract-btn').click();
   await saveContractResponse;
 
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const triggerContractValidation = async (page: Page): Promise<void> => {

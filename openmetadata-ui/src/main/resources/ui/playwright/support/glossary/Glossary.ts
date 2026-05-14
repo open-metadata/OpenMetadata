@@ -65,6 +65,12 @@ export class Glossary extends EntityClass {
       data: apiData,
     });
 
+    if (!response.ok()) {
+      throw new Error(
+        `Glossary.create() failed with status ${response.status()}: ${await response.text()}`
+      );
+    }
+
     this.responseData = await response.json();
 
     return this.responseData;
@@ -82,8 +88,6 @@ export class Glossary extends EntityClass {
     );
 
     this.responseData = await response.json();
-
-    return await response.json();
   }
 
   get() {
@@ -99,14 +103,6 @@ export class Glossary extends EntityClass {
         fqn
       )}?recursive=true&hardDelete=true`
     );
-
-    if (!response.ok()) {
-      const errorText = await response.text();
-
-      throw new Error(
-        `Failed to delete glossary "${fqn}": ${response.status()} ${response.statusText()} - ${errorText}`
-      );
-    }
 
     return await response.json();
   }

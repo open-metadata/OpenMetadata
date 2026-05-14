@@ -69,12 +69,12 @@ test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
     // Click on the database name
     await page.getByTestId('column-name').getByText('default').click();
 
-    await page.waitForSelector('[data-testid="cypress_integrations_test_db"]');
+    await page.getByTestId('cypress_integrations_test_db').waitFor();
 
     // Click on the database schema name
     await page.getByTestId('cypress_integrations_test_db').click();
 
-    await page.waitForSelector('[data-testid="sensitive_customers"]');
+    await page.getByTestId('sensitive_customers').waitFor();
 
     // Click on the table name
     await page.getByTestId('sensitive_customers').click();

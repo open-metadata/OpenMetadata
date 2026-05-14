@@ -110,78 +110,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
 }));
 
-jest.mock('@mui/material', () => ({
-  ...jest.requireActual('@mui/material'),
-  Chip: jest.fn().mockImplementation(({ label, ...props }) => (
-    <div data-testid="chip" {...props}>
-      {label}
-    </div>
-  )),
-  Box: jest.fn().mockImplementation(({ children, ...props }) => (
-    <div data-testid="box" {...props}>
-      {children}
-    </div>
-  )),
-  Stack: jest.fn().mockImplementation(({ children, ...props }) => (
-    <div data-testid="stack" {...props}>
-      {children}
-    </div>
-  )),
-  Tooltip: jest.fn().mockImplementation(({ children, title, ...props }) => (
-    <div data-testid="tooltip" title={title} {...props}>
-      {children}
-    </div>
-  )),
-  Typography: jest.fn().mockImplementation(({ children, ...props }) => (
-    <div data-testid="typography" {...props}>
-      {children}
-    </div>
-  )),
-  useTheme: jest.fn().mockReturnValue({
-    spacing: (value: number) => `${value * 8}px`,
-    typography: {
-      pxToRem: (value: number) => `${value / 16}rem`,
-    },
-    palette: {
-      allShades: {
-        gray: {
-          50: '#fafafa',
-          100: '#f5f5f5',
-          600: '#757575',
-          900: '#212121',
-        },
-      },
-    },
-  }),
-}));
-
-jest.mock('@mui/material/styles', () => ({
-  ...jest.requireActual('@mui/material/styles'),
-  styled: jest.fn().mockImplementation((component) => {
-    return jest.fn().mockImplementation((props) => {
-      const Component = component;
-
-      return <Component {...props} />;
-    });
-  }),
-  useTheme: jest.fn().mockReturnValue({
-    spacing: (value: number) => `${value * 8}px`,
-    typography: {
-      pxToRem: (value: number) => `${value / 16}rem`,
-    },
-    palette: {
-      allShades: {
-        gray: {
-          50: '#fafafa',
-          100: '#f5f5f5',
-          600: '#757575',
-          900: '#212121',
-        },
-      },
-    },
-  }),
-}));
-
 jest.mock('@ant-design/icons', () => ({
   CloseOutlined: () => <div data-testid="close-icon">CloseIcon</div>,
 }));
@@ -194,7 +122,7 @@ jest.mock('../../../assets/svg/up-arrow-icon.svg', () => ({
   ReactComponent: () => <div data-testid="arrow-up-icon">ArrowUp</div>,
 }));
 
-jest.mock('../../../assets/svg/ic-column-new.svg', () => ({
+jest.mock('../../../assets/svg/ic-column.svg', () => ({
   ReactComponent: () => <div data-testid="column-icon">ColumnIcon</div>,
 }));
 

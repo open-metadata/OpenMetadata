@@ -85,7 +85,7 @@ function SpreadsheetsTable({
             serviceFqn,
             searchValue
           ),
-          searchIndex: SearchIndex.SPREADSHEET_SEARCH_INDEX,
+          searchIndex: SearchIndex.SPREADSHEET,
           includeDeleted: showDeleted,
           trackTotalHits: true,
         });

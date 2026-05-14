@@ -197,9 +197,7 @@ public class TagRepositoryUnitTest {
 
     assertThrows(
         BadCursorException.class,
-        () -> {
-          tagRepository.getRecognizersOfTag(tag, null, invalidCursor, 10);
-        });
+        () -> tagRepository.getRecognizersOfTag(tag, null, invalidCursor, 10));
   }
 
   @Test
@@ -211,9 +209,7 @@ public class TagRepositoryUnitTest {
 
     assertThrows(
         BadCursorException.class,
-        () -> {
-          tagRepository.getRecognizersOfTag(tag, null, cursorWithoutId, 10);
-        });
+        () -> tagRepository.getRecognizersOfTag(tag, null, cursorWithoutId, 10));
   }
 
   @Test

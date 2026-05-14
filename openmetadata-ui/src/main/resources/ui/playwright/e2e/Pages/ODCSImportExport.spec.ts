@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
-import { test } from '../fixtures/pages';
 import {
   generateODCSContract,
   ODCS_INVALID_EMPTY_FILE_YAML,
@@ -31,24 +30,25 @@ import {
   ODCS_VALID_MULTI_OBJECT_YAML,
   ODCS_VALID_QUALITY_RULES_BETWEEN_YAML,
   ODCS_VALID_WITH_MARKDOWN_DESCRIPTION_YAML,
-  ODCS_WITH_QUALITY_RULES_YAML,
   ODCS_VALID_WITH_TEAM_YAML,
   ODCS_VALID_WITH_TIMESTAMPS_YAML,
+  ODCS_WITH_QUALITY_RULES_YAML,
   ODCS_WITH_SLA_YAML,
 } from '../../constant/dataContracts';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-  descriptionBox,
   getApiContext,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   clickImportODCSButton,
   importODCSYaml,
   navigateToContractTab,
   openODCSImportDropdown,
 } from '../../utils/odcsImportExport';
+import { test } from '../fixtures/pages';
 
 test.describe('ODCS Import/Export', () => {
   test.slow(true);
@@ -657,9 +657,6 @@ test.describe('ODCS Import/Export', () => {
         timeout: 10000,
       });
 
-      // Wait for page to fully settle before replace operation
-      await page.waitForTimeout(2000);
-
       // Now REPLACE with basic contract (no SLA, name: "Orders Basic Contract")
       await openODCSImportDropdown(page);
       await importODCSYaml(
@@ -792,7 +789,7 @@ test.describe('ODCS Import/Export', () => {
       });
 
       // Wait for preview
-      await page.waitForSelector('.file-info-card, .contract-preview-card', {
+      await page.locator('.file-info-card, .contract-preview-card').waitFor({
         state: 'visible',
       });
 
@@ -1645,12 +1642,15 @@ version: "1.0.0"`;
         buffer: Buffer.from(ODCS_VALID_MULTI_OBJECT_YAML),
       });
 
-      // Wait for object selector to appear
+      await page.getByTestId('file-info-card').waitFor({ timeout: 30000 });
       await expect(page.locator('.object-selector-section')).toBeVisible({
-        timeout: 10000,
+        timeout: 30000,
       });
 
       // Open the dropdown to see all options
+      await page
+        .getByTestId('schema-object-select')
+        .waitFor({ state: 'visible' });
       await page.getByTestId('schema-object-select').click();
 
       // Verify all three objects from the multi-object YAML are listed
@@ -1742,7 +1742,7 @@ version: "1.0.0"`;
 
       // Step 2: Edit the contract via UI - add SLA
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('contract-edit-button').click();
@@ -1769,8 +1769,6 @@ version: "1.0.0"`;
       );
       await page.getByTestId('save-contract-btn').click();
       await saveContractResponse;
-
-      await page.waitForLoadState('networkidle');
 
       // Verify SLA card is now visible after adding SLA
       await expect(page.getByTestId('contract-sla-card')).toBeVisible({
@@ -1833,7 +1831,7 @@ version: "1.0.0"`;
 
       // Step 2: Edit the contract via UI - modify SLA values
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('contract-edit-button').click();
@@ -1858,8 +1856,6 @@ version: "1.0.0"`;
       );
       await page.getByTestId('save-contract-btn').click();
       await saveContractResponse;
-
-      await page.waitForLoadState('networkidle');
 
       // Step 3: Export as ODCS YAML
       const downloadPromise = page.waitForEvent('download');
@@ -2006,9 +2002,7 @@ version: "1.0.0"`;
         await page.getByTestId('save-contract-btn').click();
         await saveContractResponse;
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('contract-title')).toBeVisible();
         await expect(page.getByTestId('contract-title')).toContainText(
@@ -2026,7 +2020,7 @@ version: "1.0.0"`;
       await test.step('Export as OM format and modify description', async () => {
         const downloadPromise = page.waitForEvent('download');
         await page.getByTestId('manage-contract-actions').click();
-        await page.waitForSelector('.contract-action-dropdown', {
+        await page.locator('.contract-action-dropdown').waitFor({
           state: 'visible',
         });
         await page.getByTestId('export-contract-button').click();
@@ -2048,7 +2042,7 @@ version: "1.0.0"`;
 
       await test.step('Import modified OM YAML with merge option', async () => {
         await page.getByTestId('manage-contract-actions').click();
-        await page.waitForSelector('.contract-action-dropdown', {
+        await page.locator('.contract-action-dropdown').waitFor({
           state: 'visible',
         });
         await page.getByTestId('import-openmetadata-contract-button').click();
@@ -2155,7 +2149,7 @@ version: "1.0.0"`;
       // Step 2: Export as OpenMetadata (OM) format
       const omDownloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
+      await page.locator('.contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('export-contract-button').click();

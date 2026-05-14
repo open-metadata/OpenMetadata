@@ -14,19 +14,25 @@
 package org.openmetadata.schema.utils;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.fasterxml.jackson.databind.util.TokenBuffer;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
+import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import com.github.fge.jsonpatch.JsonPatchException;
 import com.github.fge.jsonpatch.diff.JsonDiff;
 import com.jayway.jsonpath.DocumentContext;
@@ -52,8 +58,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -68,7 +76,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.ExposedField;
 import org.openmetadata.annotations.IgnoreMaskedFieldAnnotationIntrospector;
@@ -78,6 +85,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.exception.JsonParsingException;
+import org.openmetadata.schema.type.TagLabel;
 
 @Slf4j
 public final class JsonUtils {
@@ -87,11 +95,18 @@ public final class JsonUtils {
   public static final String JSON_FILE_EXTENSION = ".json";
   private static final ObjectMapper OBJECT_MAPPER;
   private static final ObjectMapper OBJECT_MAPPER_LENIENT;
+  private static final ObjectMapper OBJECT_MAPPER_IGNORE_NULL;
   private static final ObjectMapper EXPOSED_OBJECT_MAPPER;
   private static final ObjectMapper MASKER_OBJECT_MAPPER;
   private static final SchemaRegistry schemaFactory =
       SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_7);
   private static final String FAILED_TO_PROCESS_JSON = "Failed to process JSON ";
+  private static final List<String> READ_ONLY_PATCH_ROOT_FIELDS =
+      List.of(
+          "/changeDescription",
+          "/incrementalChangeDescription",
+          "/testCaseResultSummary",
+          "/summary");
 
   static {
     // Quoted "Z" to indicate UTC, no timezone offset
@@ -104,15 +119,27 @@ public final class JsonUtils {
     OBJECT_MAPPER
         .getFactory()
         .setStreamReadConstraints(
-            StreamReadConstraints.builder().maxStringLength(Integer.MAX_VALUE).build());
+            StreamReadConstraints.builder()
+                .maxStringLength(50 * 1024 * 1024) // ~50M chars max per single JSON string token
+                .build());
     // Ensure the date-time fields are serialized in ISO-8601 format
     OBJECT_MAPPER.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     OBJECT_MAPPER.setDateFormat(DATE_TIME_FORMAT);
     OBJECT_MAPPER.registerModule(new JSR353Module());
+    // Java 21 optimized introspection/accessors for faster convertValue/read/write paths.
+    OBJECT_MAPPER.registerModule(new BlackbirdModule());
+
+    // Accept TagLabel.appliedAt with or without fractional seconds. Python clients
+    // serialize datetimes with microsecond=0 as "…ssZ" (no fractional), which the
+    // strict global SimpleDateFormat("…SSSSSS'Z'") rejects.
+    OBJECT_MAPPER.addMixIn(TagLabel.class, TagLabelDateMixin.class);
 
     // Lenient ObjectMapper to ignore unknown properties
     OBJECT_MAPPER_LENIENT = OBJECT_MAPPER.copy();
     OBJECT_MAPPER_LENIENT.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+    OBJECT_MAPPER_IGNORE_NULL = OBJECT_MAPPER.copy();
+    OBJECT_MAPPER_IGNORE_NULL.setSerializationInclusion(JsonInclude.Include.NON_NULL);
   }
 
   static {
@@ -149,10 +176,7 @@ public final class JsonUtils {
       return null;
     }
     try {
-      ObjectMapper objectMapperIgnoreNull = OBJECT_MAPPER.copy();
-      objectMapperIgnoreNull.setSerializationInclusion(
-          JsonInclude.Include.NON_NULL); // Ignore null values
-      return objectMapperIgnoreNull.writeValueAsString(o);
+      return OBJECT_MAPPER_IGNORE_NULL.writeValueAsString(o);
     } catch (JsonProcessingException e) {
       throw new JsonParsingException(FAILED_TO_PROCESS_JSON, e);
     }
@@ -293,6 +317,7 @@ public final class JsonUtils {
   /** Applies the patch on original object and returns the updated object */
   public static JsonValue applyPatch(Object original, JsonPatch patch) {
     JsonStructure targetJson = JsonUtils.getJsonStructure(original);
+    JsonStructure currentJson = targetJson;
 
     // ---------------------------------------------------------------------
     // JSON patch modification - Ignore operations related to read-only fields
@@ -303,48 +328,91 @@ public final class JsonUtils {
     // - incrementalChangeDescription: auto-generated incremental change tracking
     JsonArray array = patch.toJsonArray();
 
-    List<JsonObject> filteredPatchItems = new ArrayList<>();
+    for (JsonValue entry : array) {
+      JsonObject jsonObject = entry.asJsonObject();
+      String path = jsonObject.getString("path", null);
+      if (path == null) {
+        continue;
+      }
 
-    array.forEach(
-        entry -> {
-          JsonObject jsonObject = entry.asJsonObject();
-          String path = jsonObject.getString("path");
+      // Skip operations on read-only auto-generated fields
+      if (isReadOnlyPatchPath(path)) {
+        continue;
+      }
 
-          // Skip operations on read-only auto-generated fields
-          if (path.endsWith("href")
-              || path.equals("/changeDescription")
-              || path.startsWith("/changeDescription/")
-              || path.equals("/incrementalChangeDescription")
-              || path.startsWith("/incrementalChangeDescription/")) {
-            return;
-          }
+      // For copy/move operations, also check the 'from' field if present
+      if (jsonObject.containsKey("from")) {
+        String from = jsonObject.getString("from", null);
+        if (isReadOnlyPatchPath(from)) {
+          continue;
+        }
+      }
 
-          // For copy/move operations, also check the 'from' field if present
-          if (jsonObject.containsKey("from")) {
-            String from = jsonObject.getString("from");
-            if (from.equals("/changeDescription")
-                || from.startsWith("/changeDescription/")
-                || from.equals("/incrementalChangeDescription")
-                || from.startsWith("/incrementalChangeDescription/")) {
-              return;
-            }
-          }
+      // UI sometimes sends "replace" for optional fields that are absent in the persisted object.
+      // RFC-6902 "replace" requires the path to exist, while "add" supports this transition.
+      // Convert only when parent exists and target path is missing.
+      JsonObject operation =
+          shouldConvertReplaceToAdd(currentJson, jsonObject)
+              ? withOp(jsonObject, "add")
+              : jsonObject;
 
-          filteredPatchItems.add(jsonObject);
-        });
-
-    // Build new sorted patch
-    JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
-    filteredPatchItems.forEach(arrayBuilder::add);
-    JsonPatch filteredPatch = Json.createPatch(arrayBuilder.build());
-
-    // Apply sortedPatch
-    try {
-      return filteredPatch.apply(targetJson);
-    } catch (Exception e) {
-      LOG.debug("Failed to apply the json patch {}", filteredPatch);
-      throw e;
+      // Apply incrementally so each operation can reason about the materialized state from
+      // preceding operations in the same patch document.
+      JsonArrayBuilder singleOp = Json.createArrayBuilder();
+      singleOp.add(operation);
+      JsonPatch singlePatch = Json.createPatch(singleOp.build());
+      currentJson = singlePatch.apply(currentJson);
     }
+    return currentJson;
+  }
+
+  private static boolean isReadOnlyPatchPath(String path) {
+    if (path == null || path.isBlank()) {
+      return false;
+    }
+    if (path.endsWith("href")) {
+      return true;
+    }
+    return READ_ONLY_PATCH_ROOT_FIELDS.stream()
+        .anyMatch(root -> path.equals(root) || path.startsWith(root + "/"));
+  }
+
+  private static boolean shouldConvertReplaceToAdd(JsonStructure targetJson, JsonObject patchItem) {
+    if (!"replace".equals(patchItem.getString("op", null))) {
+      return false;
+    }
+    String path = patchItem.getString("path", null);
+    if (path == null || path.isBlank() || "/".equals(path)) {
+      return false;
+    }
+    if (jsonPointerExists(targetJson, path)) {
+      return false;
+    }
+    String parentPath = path.substring(0, path.lastIndexOf('/'));
+    if (parentPath.isEmpty()) {
+      // Top-level field (e.g., /displayName) — the root object always exists
+      return true;
+    }
+    return jsonPointerExists(targetJson, parentPath);
+  }
+
+  private static boolean jsonPointerExists(JsonStructure targetJson, String path) {
+    try {
+      JsonPointer pointer = Json.createPointer(path);
+      pointer.getValue(targetJson);
+      return true;
+    } catch (Exception ex) {
+      return false;
+    }
+  }
+
+  private static JsonObject withOp(JsonObject patchItem, String op) {
+    JsonObjectBuilder builder = Json.createObjectBuilder();
+    for (Entry<String, JsonValue> entry : patchItem.entrySet()) {
+      builder.add(entry.getKey(), entry.getValue());
+    }
+    builder.add("op", op);
+    return builder.build();
   }
 
   public static <T> T applyPatch(T original, JsonPatch patch, Class<T> clz) {
@@ -355,7 +423,8 @@ public final class JsonUtils {
       JsonNode jsonNode = OBJECT_MAPPER.readTree(jsonString);
       return OBJECT_MAPPER.convertValue(jsonNode, clz);
     } catch (Exception e) {
-      throw new RuntimeException("Failed to convert JsonValue to target class", e);
+      throw new RuntimeException(
+          "Failed to convert JsonValue to " + clz.getSimpleName() + ": " + e.getMessage(), e);
     }
   }
 
@@ -371,6 +440,26 @@ public final class JsonUtils {
     JsonNode dest = valueToTree(v2);
     JsonNode patchNode = JsonDiff.asJson(source, dest);
     return Json.createPatch(Json.createReader(new StringReader(patchNode.toString())).readArray());
+  }
+
+  public static Set<String> extractPatchedFields(JsonPatch patch) {
+    Set<String> fields = new HashSet<>();
+    JsonArray array = patch.toJsonArray();
+    for (JsonValue entry : array) {
+      JsonObject op = entry.asJsonObject();
+      addTopLevelField(fields, op.getString("path", null));
+      if (op.containsKey("from")) {
+        addTopLevelField(fields, op.getString("from", null));
+      }
+    }
+    return fields;
+  }
+
+  private static void addTopLevelField(Set<String> fields, String path) {
+    if (path == null || path.isEmpty() || path.equals("/")) return;
+    String stripped = path.startsWith("/") ? path.substring(1) : path;
+    int slash = stripped.indexOf('/');
+    fields.add(slash > 0 ? stripped.substring(0, slash) : stripped);
   }
 
   private static JsonNode applyJsonPatch(JsonPatch patch, JsonNode targetNode)
@@ -617,23 +706,20 @@ public final class JsonUtils {
     }
   }
 
-  @SneakyThrows
   public static <T> T deepCopy(T original, Class<T> clazz) {
-    // Serialize the original object to JSON
-    String json = pojoToJson(original);
-
-    // Deserialize the JSON back into a new object of the specified class
-    return OBJECT_MAPPER.readValue(json, clazz);
+    try {
+      TokenBuffer tb = new TokenBuffer(OBJECT_MAPPER, false);
+      OBJECT_MAPPER.writeValue(tb, original);
+      return OBJECT_MAPPER.readValue(tb.asParser(), clazz);
+    } catch (IOException e) {
+      throw new RuntimeException("Deep copy failed", e);
+    }
   }
 
-  @SneakyThrows
   public static <T> List<T> deepCopyList(List<T> original, Class<T> clazz) {
-    List<T> list = new ArrayList<>();
+    List<T> list = new ArrayList<>(original.size());
     for (T t : original) {
-      // Serialize the original object to JSON
-      String json = pojoToJson(t);
-      // Deserialize the JSON back into a new object of the specified class
-      list.add(OBJECT_MAPPER.readValue(json, clazz));
+      list.add(deepCopy(t, clazz));
     }
     return list;
   }
@@ -799,7 +885,10 @@ public final class JsonUtils {
     try (ZipFile zf = new ZipFile(file)) {
       Enumeration<? extends ZipEntry> e = zf.entries();
       while (e.hasMoreElements()) {
-        String fileName = e.nextElement().getName();
+        // CodeQL flags this as Zip Slip (java/zipslip) but this is a false positive:
+        // we only collect entry names for pattern matching, no files are extracted to disk.
+        // The JARs are from our own classpath (filtered to openmetadata/collate JARs only).
+        String fileName = e.nextElement().getName(); // lgtm[java/zipslip]
         if (pattern.matcher(fileName).matches()) {
           retval.add(fileName);
           LOG.debug("Adding file from jar {}", fileName);
@@ -809,5 +898,92 @@ public final class JsonUtils {
       // Ignored exception
     }
     return retval;
+  }
+
+  /**
+   * Tolerant Date deserializer for {@code TagLabel.appliedAt}. The global ObjectMapper uses
+   * {@code SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'")}, which strictly requires a
+   * 6-digit fractional. Python's {@code datetime.isoformat()} drops the fractional entirely
+   * when {@code microsecond == 0}, producing {@code "2026-04-24T10:27:06Z"} that the global
+   * format rejects.
+   *
+   * <p>This deserializer delegates everything to Jackson's normal path ({@link
+   * DeserializationContext#parseDate}, which uses the same global format) so all forms that
+   * worked before — JSON numbers, numeric strings, the SDF "…SSSSSSZ" form — keep working.
+   * The only addition is: if the value is the bare-second form, pad the fractional with
+   * {@code .000000} so the global format accepts it.
+   */
+  public static final class LenientIsoDateDeserializer extends JsonDeserializer<Date> {
+    @Override
+    public Date deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+      com.fasterxml.jackson.core.JsonToken t = p.currentToken();
+      if (t == com.fasterxml.jackson.core.JsonToken.VALUE_NUMBER_INT
+          || t == com.fasterxml.jackson.core.JsonToken.VALUE_NUMBER_FLOAT) {
+        return new Date(p.getLongValue());
+      }
+      if (t == com.fasterxml.jackson.core.JsonToken.VALUE_NULL) {
+        return null;
+      }
+      String value = p.getValueAsString();
+      if (value == null) {
+        return null;
+      }
+      String trimmed = value.trim();
+      if (trimmed.isEmpty()) {
+        return null;
+      }
+      if (looksLikeEpochMillis(trimmed)) {
+        try {
+          return new Date(Long.parseLong(trimmed));
+        } catch (NumberFormatException ignored) {
+          // fall through to date parsing
+        }
+      }
+      String normalized = padBareSecondIso(trimmed);
+      try {
+        return ctxt.parseDate(normalized);
+      } catch (IllegalArgumentException e) {
+        return (Date)
+            ctxt.handleWeirdStringValue(
+                Date.class, value, "Expected ISO-8601 date-time: %s", e.getMessage());
+      }
+    }
+
+    private static boolean looksLikeEpochMillis(String s) {
+      // Epoch-ms for any modern date is 13 digits; 10 digits covers ≥ year 2001.
+      // Reject shorter all-digit strings (e.g. compact "YYYYMMDD") to avoid
+      // misinterpreting them as epoch-ms. Upper bound matches Long.MAX_VALUE width.
+      int start = !s.isEmpty() && s.charAt(0) == '-' ? 1 : 0;
+      int digits = s.length() - start;
+      if (digits < 10 || digits > 19) {
+        return false;
+      }
+      for (int i = start; i < s.length(); i++) {
+        if (!Character.isDigit(s.charAt(i))) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    /**
+     * If {@code value} matches the bare-second ISO form {@code "yyyy-MM-ddTHH:mm:ssZ"}, pad
+     * the fractional with six zeros so the global SimpleDateFormat ({@code "…SSSSSS'Z'"})
+     * accepts it. Otherwise return the input unchanged.
+     */
+    private static String padBareSecondIso(String value) {
+      if (value.length() != 20 || !value.endsWith("Z")) {
+        return value;
+      }
+      if (value.charAt(10) != 'T' || value.charAt(13) != ':' || value.charAt(16) != ':') {
+        return value;
+      }
+      return value.substring(0, 19) + ".000000Z";
+    }
+  }
+
+  abstract static class TagLabelDateMixin {
+    @JsonDeserialize(using = LenientIsoDateDeserializer.class)
+    Date appliedAt;
   }
 }

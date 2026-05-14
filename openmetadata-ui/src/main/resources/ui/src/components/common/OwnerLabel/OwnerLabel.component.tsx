@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Typography, useTheme } from '@mui/material';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -48,7 +48,6 @@ export const OwnerLabel = ({
   placement,
 }: OwnerLabelProps) => {
   const { t } = useTranslation();
-  const theme = useTheme();
 
   const { isMultipleTeam, isMultipleUser, isMultipleUserAndTeam } =
     useMemo(() => {
@@ -70,22 +69,14 @@ export const OwnerLabel = ({
     if (!isCompactView) {
       if (showLabel || onUpdate) {
         return (
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              marginBottom: '8px',
-              gap: '8px',
-            }}>
+          <div className="tw:flex tw:items-center tw:mb-2 tw:gap-2">
             {showLabel && (
               <Typography
-                className={className}
-                sx={{
-                  marginBottom: 0,
-                  fontWeight: 500,
-                  fontSize: '14px',
-                  color: theme.palette.allShades.brand[700],
-                }}>
+                as="span"
+                className={classNames(
+                  className,
+                  'tw:mb-0 tw:font-medium tw:text-brand-700'
+                )}>
                 {placeHolder ?? t('label.owner-plural')}
               </Typography>
             )}
@@ -98,7 +89,7 @@ export const OwnerLabel = ({
                 onUpdate={onUpdate}
               />
             )}
-          </Box>
+          </div>
         );
       }
     }
@@ -134,21 +125,15 @@ export const OwnerLabel = ({
   }
 
   return (
-    <Box
+    <div
       className={classNames({
-        'owner-label-container d-flex flex-col items-start flex-start':
+        'owner-label-container tw:flex tw:flex-col tw:items-start tw:flex-start':
           !isCompactView,
-        'd-flex owner-label-heading gap-2 items-center': isCompactView,
+        'owner-label-heading tw:flex tw:gap-2 tw:items-center': isCompactView,
       })}
       data-testid="owner-label">
       {ownerElementsNonCompactView}
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          maxWidth: '100%',
-        }}>
+      <div className="tw:flex tw:items-center tw:justify-center tw:max-w-full">
         {isMultipleUserAndTeam && (
           <OwnerUserTeamList
             avatarSize={avatarSize}
@@ -182,7 +167,7 @@ export const OwnerLabel = ({
             owners={owners}
           />
         )}
-      </Box>
+      </div>
       {isCompactView && onUpdate && (
         <UserTeamSelectableList
           hasPermission={Boolean(hasPermission)}
@@ -192,6 +177,6 @@ export const OwnerLabel = ({
           onUpdate={onUpdate}
         />
       )}
-    </Box>
+    </div>
   );
 };

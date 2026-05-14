@@ -25,7 +25,7 @@ import { isString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-new.svg';
+import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column.svg';
 import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
 import {
   DE_ACTIVE_COLOR,
@@ -43,6 +43,7 @@ import {
 } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityUtils';
+import EntityLink from '../../../utils/EntityLink';
 import { toEntityData } from '../../../utils/EntitySummaryPanelUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getErrorText, stringToHTML } from '../../../utils/StringsUtils';
@@ -101,7 +102,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   onColumnsUpdate,
 }: ColumnDetailPanelProps<T>) => {
   const { t } = useTranslation();
-  const { permissions } = useGenericContext();
+  const { permissions, changeSummary } = useGenericContext();
 
   const previousFqnRef = useRef<string | undefined>();
   const fetchedColumnFqnRef = useRef<string | undefined>();
@@ -690,6 +691,14 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           </div>
         ) : (
           <DescriptionSection
+            changeSummaryEntry={
+              changeSummary?.[
+                `columns.${EntityLink.getTableColumnNameFromColumnFqn(
+                  activeColumn?.fullyQualifiedName ?? '',
+                  false
+                )}.description`
+              ]
+            }
             description={activeColumn?.description}
             entityFqn={activeColumn?.fullyQualifiedName}
             entityType={entityType}
@@ -945,6 +954,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             {renderCustomPropertiesTab()}
           </div>
         );
+      case EntityRightPanelTab.RELATIONS:
+        return null;
       case EntityRightPanelTab.OVERVIEW:
       default:
         return (

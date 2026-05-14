@@ -84,9 +84,7 @@ public class ReindexContext {
   public static ReindexContext fromStagedIndexMapping(Map<String, String> stagedIndexMapping) {
     ReindexContext context = new ReindexContext();
     if (stagedIndexMapping != null) {
-      for (Map.Entry<String, String> entry : stagedIndexMapping.entrySet()) {
-        context.stagedIndexByEntity.put(entry.getKey(), entry.getValue());
-      }
+      context.stagedIndexByEntity.putAll(stagedIndexMapping);
     }
     return context;
   }

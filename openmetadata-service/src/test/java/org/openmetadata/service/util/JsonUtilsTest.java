@@ -14,10 +14,12 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.Json;
 import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonException;
@@ -37,6 +39,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /** This test provides examples of how to use applyPatch */
@@ -138,8 +141,6 @@ class JsonUtilsTest {
 
   @Test
   void testPojoToMaskedJson() {
-    String expectedJson =
-        "{\"name\":\"test\",\"connection\":{},\"tags\":[],\"version\":0.1,\"deleted\":false}";
     DatabaseService databaseService =
         new DatabaseService()
             .withName("test")
@@ -148,7 +149,201 @@ class JsonUtilsTest {
                     .withConfig(
                         new MysqlConnection()
                             .withAuthType(new basicAuth().withPassword("password"))));
-    String actualJson = JsonUtils.pojoToMaskedJson(databaseService);
-    assertEquals(expectedJson, actualJson);
+
+    JsonNode actualJson = JsonUtils.readTree(JsonUtils.pojoToMaskedJson(databaseService));
+
+    assertEquals("test", actualJson.get("name").asText());
+    assertFalse(actualJson.toString().contains("password"));
+    assertTrue(actualJson.has("connection"));
+    assertTrue(actualJson.get("connection").isObject());
+    assertEquals(0, actualJson.get("connection").size());
+    assertTrue(actualJson.has("deleted"));
+    assertFalse(actualJson.get("deleted").asBoolean());
+  }
+
+  @Test
+  void testApplyPatchReplaceMissingLeafTreatsAsAdd() {
+    JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
+    patchBuilder
+        .add(
+            "/messageSchema",
+            Json.createObjectBuilder()
+                .add(
+                    "schemaFields",
+                    Json.createArrayBuilder()
+                        .add(Json.createObjectBuilder().add("name", "id").build()))
+                .build())
+        .replace("/messageSchema/schemaFields/0/description", "<p>updated</p>");
+
+    JsonNode original = JsonUtils.readTree("{}");
+    JsonNode updated = JsonUtils.applyPatch(original, patchBuilder.build(), JsonNode.class);
+
+    assertEquals(
+        "<p>updated</p>", updated.at("/messageSchema/schemaFields/0/description").asText());
+  }
+
+  @Test
+  void testApplyPatchReplaceStillFailsWhenParentMissing() {
+    JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
+    patchBuilder.replace("/messageSchema/schemaFields/0/description", "<p>updated</p>");
+
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            JsonUtils.applyPatch(
+                JsonUtils.readTree("{\"messageSchema\":[]}"),
+                patchBuilder.build(),
+                JsonNode.class));
+  }
+
+  @Test
+  void testApplyPatchReplaceUnchangedWhenPathExists() {
+    JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
+    patchBuilder.replace("/messageSchema/schemaFields/0/description", "<p>updated</p>");
+    JsonNode original =
+        JsonUtils.readTree(
+            "{\"messageSchema\":{\"schemaFields\":[{\"name\":\"id\",\"description\":\"old\"}]}}");
+
+    JsonNode updated = JsonUtils.applyPatch(original, patchBuilder.build(), JsonNode.class);
+    assertEquals(
+        "<p>updated</p>", updated.at("/messageSchema/schemaFields/0/description").asText());
+  }
+
+  @Test
+  void testApplyPatchAddToArrayStillFailsForOutOfRangeIndex() {
+    JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
+    patchBuilder.replace("/messageSchema/schemaFields/2/description", "<p>updated</p>");
+
+    RuntimeException exception =
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                JsonUtils.applyPatch(
+                    JsonUtils.readTree(
+                        "{\"messageSchema\":{\"schemaFields\":[{\"name\":\"id\"}]}}"),
+                    patchBuilder.build(),
+                    JsonNode.class));
+    assertTrue(exception.getMessage() != null && !exception.getMessage().isBlank());
+  }
+
+  /**
+   * Companion to {@link #testApplyPatchReplaceMissingLeafTreatsAsAdd()} which tests nested paths.
+   * This test covers top-level paths where the parent is the root object. The bug was that
+   * parentPath="" was converted to "/" and Json.createPointer("/") matches the empty-string key, not
+   * the root, so the conversion was skipped.
+   */
+  @Test
+  void testApplyPatchReplaceTopLevelMissingField_treatsAsAdd() {
+    // Plain JSON: {"name":"test"} — no "displayName" key
+    JsonNode original = JsonUtils.readTree("{\"name\":\"test\"}");
+
+    JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
+    patchBuilder.replace("/displayName", "New Display Name");
+
+    JsonNode updated = JsonUtils.applyPatch(original, patchBuilder.build(), JsonNode.class);
+
+    assertEquals("New Display Name", updated.get("displayName").asText());
+    assertEquals("test", updated.get("name").asText());
+  }
+
+  /**
+   * End-to-end test with a real entity that has {@code @JsonInclude(NON_NULL)}. When displayName is
+   * null, it's excluded from serialization. A PATCH with op:replace on /displayName must succeed
+   * (converted to add). This is the exact scenario the UI triggers when the search index enriches
+   * displayName but the DB entity has it as null.
+   */
+  @Test
+  void testApplyPatchReplaceOnNullDisplayName_entityWithNonNullAnnotation() {
+    org.openmetadata.schema.tests.TestCase testCase = new org.openmetadata.schema.tests.TestCase();
+    testCase.setId(UUID.randomUUID());
+    testCase.setName("my_test_case");
+    testCase.setFullyQualifiedName("svc.db.schema.table.my_test_case");
+    testCase.setEntityLink("<#E::table::svc.db.schema.table>");
+    // displayName is null — excluded by @JsonInclude(NON_NULL)
+
+    String json = JsonUtils.pojoToJson(testCase);
+    assertFalse(json.contains("\"displayName\""), "NON_NULL should exclude null displayName");
+
+    JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
+    patchBuilder.replace("/displayName", "New Display Name");
+
+    org.openmetadata.schema.tests.TestCase result =
+        JsonUtils.applyPatch(
+            testCase, patchBuilder.build(), org.openmetadata.schema.tests.TestCase.class);
+
+    assertEquals("New Display Name", result.getDisplayName());
+  }
+
+  /**
+   * The PR's original goal: Python clients drop fractional seconds when {@code microsecond == 0},
+   * sending {@code "...ssZ"} instead of {@code "...ss.SSSSSSZ"}. The global SimpleDateFormat
+   * rejected that form; the lenient deserializer must accept it.
+   */
+  @Test
+  void testTagLabelAppliedAtAcceptsBareSecondPrecision() {
+    String json = "{\"tagFQN\":\"x.y\",\"appliedAt\":\"2026-04-24T10:27:06Z\"}";
+    TagLabel parsed = JsonUtils.readValue(json, TagLabel.class);
+    assertEquals(0L, parsed.getAppliedAt().getTime() % 1000, "bare-second form parses to ms=0");
+  }
+
+  /**
+   * Server-side round-trip must preserve millisecond precision. The global SimpleDateFormat
+   * emits {@code ".000918Z"} for a Date with ms=918 (left-padded ms). An earlier iteration of
+   * the deserializer used {@code Instant.parse}, which read that as 918µs=0ms and silently
+   * dropped precision on every PATCH that touched a TagLabel.
+   */
+  @Test
+  void testTagLabelAppliedAtRoundTripPreservesMillis() {
+    TagLabel original =
+        new TagLabel().withTagFQN("x.y").withAppliedAt(new java.util.Date(1714000000918L));
+    String serialized = JsonUtils.pojoToJson(original);
+    LOG.info("Server-emitted appliedAt JSON: {}", serialized);
+    TagLabel roundTripped = JsonUtils.readValue(serialized, TagLabel.class);
+    assertEquals(
+        original.getAppliedAt().getTime(),
+        roundTripped.getAppliedAt().getTime(),
+        "appliedAt must survive ObjectMapper round-trip; serialized=" + serialized);
+  }
+
+  /**
+   * JSON Patch payloads (e.g. produced by JS {@code Date.getTime()}) carry appliedAt as a
+   * numeric epoch-millis value, sometimes as a JSON number, sometimes stringified by an
+   * intermediate JSON-Patch hop. Jackson's default Date deserializer accepted both; the
+   * lenient deserializer must too — otherwise PATCH operations that touch tags 4xx server-side
+   * and the UI never sees the change.
+   */
+  @Test
+  void testTagLabelAppliedAtAcceptsEpochMillis() {
+    String numberForm = "{\"tagFQN\":\"x.y\",\"appliedAt\":1777976050918}";
+    String stringForm = "{\"tagFQN\":\"x.y\",\"appliedAt\":\"1777976050918\"}";
+
+    assertEquals(
+        1777976050918L,
+        JsonUtils.readValue(numberForm, TagLabel.class).getAppliedAt().getTime(),
+        "JSON number epoch-ms");
+    assertEquals(
+        1777976050918L,
+        JsonUtils.readValue(stringForm, TagLabel.class).getAppliedAt().getTime(),
+        "stringified epoch-ms");
+  }
+
+  /**
+   * Malformed ISO strings surface through the public API as JsonParsingException, with the
+   * underlying Jackson cause carrying the field path or the deserializer's message.
+   */
+  @Test
+  void testTagLabelAppliedAtMalformedRaisesMappingException() {
+    String malformed = "{\"tagFQN\":\"x.y\",\"appliedAt\":\"not-a-date\"}";
+    org.openmetadata.schema.exception.JsonParsingException ex =
+        assertThrows(
+            org.openmetadata.schema.exception.JsonParsingException.class,
+            () -> JsonUtils.readValue(malformed, TagLabel.class));
+    Throwable cause = ex.getCause();
+    assertTrue(
+        cause instanceof com.fasterxml.jackson.databind.JsonMappingException,
+        "cause should be JsonMappingException, was: " + cause);
+    assertTrue(
+        cause.getMessage().contains("appliedAt") || cause.getMessage().contains("ISO-8601"),
+        "error should mention the field or expected format: " + cause.getMessage());
   }
 }

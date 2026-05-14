@@ -119,7 +119,7 @@ public class TagFormatter extends DefaultFieldFormatter {
               diff);
     }
     populateTagFeedInfo(Thread.FieldOperation.UPDATED, message);
-    return String.format(message, this.getFieldChangeName());
+    return message;
   }
 
   @Override

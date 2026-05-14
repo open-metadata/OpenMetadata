@@ -12,6 +12,7 @@
 """
 Test Metrics behavior
 """
+
 import os
 import sys
 from unittest import TestCase, mock
@@ -43,7 +44,7 @@ BUCKET_NAME = "MyBucket"
 REGION = "us-west-1"
 
 
-if sys.version_info < (3, 9):
+if sys.version_info < (3, 9):  # noqa: UP036
     pytest.skip(
         "requires python 3.9+ due to incompatibility with object patch",
         allow_module_level=True,
@@ -65,8 +66,8 @@ class MetricsTest(TestCase):
     Run checks on different metrics
     """
 
-    current_dir = os.path.dirname(__file__)
-    resources_dir = os.path.join(current_dir, "resources")
+    current_dir = os.path.dirname(__file__)  # noqa: PTH120
+    resources_dir = os.path.join(current_dir, "resources")  # noqa: PTH118
 
     datalake_conn = DatalakeConnection(
         configSource=S3Config(
@@ -78,9 +79,7 @@ class MetricsTest(TestCase):
         )
     )
 
-    dfs = [
-        pd.read_csv(os.path.join(resources_dir, "profiler_test_.csv"), parse_dates=[5])
-    ]
+    dfs = [pd.read_csv(os.path.join(resources_dir, "profiler_test_.csv"), parse_dates=[5])]  # noqa: PTH118, RUF012
 
     table_entity = Table(
         id=uuid4(),
@@ -165,9 +164,7 @@ class MetricsTest(TestCase):
         table_entity = Table(
             id=uuid4(),
             name="user",
-            databaseSchema=EntityReference(
-                id=uuid4(), type="databaseSchema", name="name"
-            ),
+            databaseSchema=EntityReference(id=uuid4(), type="databaseSchema", name="name"),
             columns=[
                 EntityColumn(
                     name=ColumnName("id"),
@@ -239,7 +236,7 @@ class MetricsTest(TestCase):
                 profiler_interface=datalake_profiler_interface,
             )
             metrics = profiler.compute_metrics()
-            for k, v in metrics._table_results.items():
+            for k, v in metrics._table_results.items():  # noqa: B007, PERF102
                 for metric in v:
                     if metric.name == "LastNameFilter":
                         assert metric.value == 1
@@ -258,9 +255,7 @@ class MetricsTest(TestCase):
         table_entity = Table(
             id=uuid4(),
             name="user",
-            databaseSchema=EntityReference(
-                id=uuid4(), type="databaseSchema", name="name"
-            ),
+            databaseSchema=EntityReference(id=uuid4(), type="databaseSchema", name="name"),
             columns=[
                 EntityColumn(
                     name=ColumnName("id"),
@@ -310,7 +305,7 @@ class MetricsTest(TestCase):
                 profiler_interface=datalake_profiler_interface,
             )
             metrics = profiler.compute_metrics()
-            for k, v in metrics._column_results.items():
+            for k, v in metrics._column_results.items():  # noqa: B007, PERF102
                 for metric in v.get("customMetrics", []):
                     if metric.name == "CustomerBornAfter1991":
                         assert metric.value == 1

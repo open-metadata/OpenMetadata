@@ -2,7 +2,7 @@ package org.openmetadata.mcp;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import io.modelcontextprotocol.json.McpJsonMapper;
-import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
+import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.BufferedReader;

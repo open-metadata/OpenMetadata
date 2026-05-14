@@ -4,17 +4,15 @@ import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_V
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.governance.WorkflowInstanceResource;
-import org.openmetadata.service.util.EntityUtil;
 
 public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<WorkflowInstance> {
   public WorkflowInstanceRepository() {
@@ -58,42 +56,18 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
 
     workflowInstance.setEndedAt(endedAt);
 
-    WorkflowDefinitionRepository workflowDefinitionRepository =
-        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-    WorkflowDefinition workflowDefinition =
-        workflowDefinitionRepository.get(
-            null, workflowInstance.getWorkflowDefinitionId(), EntityUtil.Fields.EMPTY_FIELDS);
-
     WorkflowInstanceStateRepository workflowInstanceStateRepository =
         (WorkflowInstanceStateRepository)
             Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
 
-    String offset = null;
+    List<WorkflowInstanceState> states =
+        workflowInstanceStateRepository.listAllStatesForInstance(workflowInstanceId);
+
     WorkflowInstance.WorkflowStatus workflowStatus = WorkflowInstance.WorkflowStatus.FINISHED;
-
-    do {
-      ResultList<WorkflowInstanceState> workflowInstanceStates =
-          workflowInstanceStateRepository.listWorkflowInstanceStateForInstance(
-              workflowDefinition.getName(),
-              workflowInstanceId,
-              offset,
-              workflowInstance.getStartedAt(),
-              workflowInstance.getEndedAt(),
-              100,
-              false);
-
-      if (workflowInstanceStates.getData().stream()
-          .anyMatch(
-              workflowInstanceState ->
-                  workflowInstanceState
-                      .getStatus()
-                      .equals(WorkflowInstance.WorkflowStatus.FAILURE))) {
-        workflowStatus = WorkflowInstance.WorkflowStatus.FAILURE;
-        break;
-      }
-
-      offset = workflowInstanceStates.getPaging().getAfter();
-    } while (offset != null);
+    if (states.stream()
+        .anyMatch(s -> s.getStatus().equals(WorkflowInstance.WorkflowStatus.FAILURE))) {
+      workflowStatus = WorkflowInstance.WorkflowStatus.FAILURE;
+    }
 
     workflowInstance.setStatus(workflowStatus);
 

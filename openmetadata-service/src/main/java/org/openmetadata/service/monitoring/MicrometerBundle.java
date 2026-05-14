@@ -73,6 +73,7 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
 
     // Register metrics filter for HTTP requests
     environment.jersey().register(new MetricsRequestFilter(openMetadataMetrics));
+    environment.jersey().register(LatencyPhaseFilter.class);
 
     // Register for dependency injection
     environment

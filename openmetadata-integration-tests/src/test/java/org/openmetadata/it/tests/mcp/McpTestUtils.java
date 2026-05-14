@@ -174,4 +174,21 @@ public class McpTestUtils {
 
     return createToolCallRequest("root_cause_analysis", arguments);
   }
+
+  public static Map<String, Object> createMetricToolCall(
+      String name,
+      String description,
+      String metricExpressionLanguage,
+      String metricExpressionCode) {
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("name", name);
+    if (description != null) {
+      arguments.put("description", description);
+    }
+    arguments.put("metricExpressionLanguage", metricExpressionLanguage);
+    arguments.put("metricExpressionCode", metricExpressionCode);
+    arguments.put("Authorization", createAuthorizationHeader("test-token"));
+
+    return createToolCallRequest("create_metric", arguments);
+  }
 }

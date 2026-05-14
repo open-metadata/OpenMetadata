@@ -11,6 +11,7 @@
 """
 Unit tests for OpenMetadata restore functionality
 """
+
 from unittest import TestCase
 from unittest.mock import MagicMock
 
@@ -116,9 +117,7 @@ class OMetaRestoreTest(TestCase):
         metadata = OpenMetadata(self.server_config)
 
         entity_id = Uuid("b67eac63-9e43-41f5-afb9-387c85df1d8b")
-        metadata.client.put = MagicMock(
-            side_effect=APIError({"code": 404, "message": "Entity not found"})
-        )
+        metadata.client.put = MagicMock(side_effect=APIError({"code": 404, "message": "Entity not found"}))
 
         result = metadata.restore(entity=Table, entity_id=entity_id)
 

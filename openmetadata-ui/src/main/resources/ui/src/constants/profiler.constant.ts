@@ -439,6 +439,13 @@ export const TEST_CASE_STATUS_LABELS: Record<TestCaseStatus, string> = {
   [TestCaseStatus.Success]: t('label.success'),
 };
 
+export const TEST_CASE_STATUS_FILTER_OPTIONS = values(TestCaseStatus).map(
+  (status) => ({
+    label: TEST_CASE_STATUS_LABELS[status],
+    value: status,
+  })
+);
+
 export const TEST_CASE_DIMENSIONS_OPTION = values(DataQualityDimensions).map(
   (value) => ({
     label: TEST_CASE_DIMENSION_LABELS[value],
@@ -468,13 +475,11 @@ export const PROFILER_METRICS_TYPE_OPTIONS = [
 ];
 
 export const DEFAULT_PROFILER_CONFIG_VALUE = {
-  metricConfiguration: [
-    {
-      dataType: undefined,
-      metrics: undefined,
-      disabled: false,
-    },
-  ],
+  metricConfiguration: [],
+  sampleDataConfig: {
+    storeSampleData: true,
+    readSampleData: true,
+  },
 };
 
 export const DEFAULT_SORT_ORDER = {

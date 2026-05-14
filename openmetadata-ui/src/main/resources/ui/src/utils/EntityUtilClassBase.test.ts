@@ -277,6 +277,16 @@ describe('EntityUtilClassBase', () => {
       });
     });
 
+    it('should return full FQN for CONTAINER (variable depth, no column split)', () => {
+      const fqn = 'service.container1.container2.container3.container4';
+      const result = entityUtil.getFqnParts(fqn, EntityType.CONTAINER);
+
+      expect(result).toEqual({
+        entityFqn: fqn,
+        columnFqn: undefined,
+      });
+    });
+
     it('should return original FQN if parts are insufficient for TABLE', () => {
       const fqn = 'service.database.schema';
       const result = entityUtil.getFqnParts(fqn, EntityType.TABLE);

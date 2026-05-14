@@ -124,6 +124,33 @@ export class ContainerClass extends EntityClass {
             tags: [],
             ordinalPosition: 3,
           },
+          {
+            name: `details${uuid()}`,
+            dataType: DataType.Struct,
+            dataTypeDisplay: 'struct',
+            description: 'Nested details for container.',
+            tags: [],
+            ordinalPosition: 4,
+            children: [
+              {
+                name: `address${uuid()}`,
+                dataType: DataType.Struct,
+                dataTypeDisplay: 'struct',
+                description: 'Address details.',
+                tags: [],
+                children: [
+                  {
+                    name: 'street',
+                    dataType: DataType.Varchar,
+                    dataLength: 200,
+                    dataTypeDisplay: 'varchar',
+                    description: 'Street name.',
+                    tags: [],
+                  },
+                ],
+              },
+            ],
+          },
         ],
       },
     };

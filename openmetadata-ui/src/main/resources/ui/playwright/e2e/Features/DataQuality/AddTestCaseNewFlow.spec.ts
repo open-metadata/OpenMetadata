@@ -17,13 +17,19 @@ import {
 } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { visitDataQualityTab } from '../../../utils/testCases';
-import { test } from '../../fixtures/pages';
 import {
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from '../../../utils/dataQuality';
+import {
+  getEntityDisplayName,
+  waitForAllLoadersToDisappear,
+} from '../../../utils/entity';
+import {
+  visitDataQualityTab,
+  waitForTestSuiteIngestionPipelinesListResponse,
+} from '../../../utils/testCases';
+import { test } from '../../fixtures/pages';
 
 /**
  * Data Quality: Add Test Case (New Flow)
@@ -42,7 +48,7 @@ test.describe(
     const selectTable = async (page: Page, table: TableClass) => {
       await page.click('[id="root\\/table"]');
       const tableResponse = page.waitForResponse(
-        '/api/v1/search/query?*index=table_search_index*'
+        '/api/v1/search/query?*index=table*'
       );
       await page.fill('[id="root\\/table"]', table.entity.name);
       await tableResponse;
@@ -52,7 +58,7 @@ test.describe(
         )
         .click();
 
-      await page.waitForSelector(`[data-id="selected-entity"]`, {
+      await page.locator('[data-id="selected-entity"]').waitFor({
         state: 'visible',
       });
 
@@ -61,14 +67,11 @@ test.describe(
 
     const selectColumn = async (page: Page, columnName: string) => {
       await page.click('[id="root\\/column"]');
-      // appearing dropdown takes bit time and its not based on API call so adding manual wait to prevent flakiness.
-      await page.waitForTimeout(2000);
-      await page.waitForSelector(
-        `.ant-select-dropdown [title="${columnName}"]`,
-        {
+      await page
+        .locator(`.ant-select-dropdown [title="${columnName}"]`)
+        .waitFor({
           state: 'visible',
-        }
-      );
+        });
       await page
         .locator(`.ant-select-dropdown [title="${columnName}"]`)
         .click();
@@ -90,7 +93,7 @@ test.describe(
         expectSchedulerCard = true,
       } = data;
       await page.getByTestId('test-case-name').click();
-      await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
+      await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
 
       await expect(page.locator('[data-id="name"]')).toBeVisible();
 
@@ -98,7 +101,7 @@ test.describe(
       const invalidTestCaseNames = ['test::case', 'test"case', 'test>case'];
       for (const name of invalidTestCaseNames) {
         await page.getByTestId('test-case-name').fill(name);
-        await page.waitForSelector(`#testCaseFormV1_testName_help`, {
+        await page.locator('#testCaseFormV1_testName_help').waitFor({
           state: 'visible',
         });
 
@@ -111,14 +114,14 @@ test.describe(
 
       await page.getByTestId('test-case-name').fill(`${testTypeId}_test_case`);
       await page.click('[id="root\\/testType"]');
-      await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
+      await page.locator('[data-id="testType"]').waitFor({ state: 'visible' });
 
       await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
       await page.fill('[id="root\\/testType"]', testType);
       await page.getByTestId(testTypeId).click();
 
-      await page.waitForSelector(`[data-id="${testTypeId}"]`, {
+      await page.locator(`[data-id="${testTypeId}"]`).waitFor({
         state: 'visible',
       });
 
@@ -187,21 +190,19 @@ test.describe(
         '/locales/en-US/OpenMetadata/TestCaseForm.md'
       );
       const tableEntityResponse = page.waitForResponse(
-        '/api/v1/search/query?q=*&index=table_search_index*'
+        '/api/v1/search/query?q=*&index=table*'
       );
       await page.getByTestId('add-test-case-btn').click();
       await tableEntityResponse;
-      await page.waitForSelector('[data-testid="test-case-form-v1"]', {
+      await page.getByTestId('test-case-form-v1').waitFor({
         state: 'visible',
       });
       await testCaseDoc;
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
     };
 
     const visitDataQualityPage = async (page: Page) => {
       await page.goto('/data-quality/test-cases');
-      await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
     };
 
@@ -243,10 +244,7 @@ test.describe(
           page,
           ...tableTestCaseDetails,
         });
-        await page.waitForLoadState('networkidle');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('entity-header-name')).toHaveText(
           `${tableTestCaseDetails.testTypeId}_test_case`
@@ -259,12 +257,10 @@ test.describe(
         await expect(
           page.getByTestId('tableRowCountToEqual_test_case')
         ).toBeVisible();
-
-        const pipelineApi = page.waitForResponse(
-          '/api/v1/services/ingestionPipelines?*'
-        );
+        const ingestionPipelinesListResponse =
+          waitForTestSuiteIngestionPipelinesListResponse(page);
         await page.getByTestId('pipeline').click();
-        await pipelineApi;
+        await ingestionPipelinesListResponse;
 
         await expect(
           page
@@ -319,12 +315,11 @@ test.describe(
         await expect(
           page.getByTestId('columnValuesToBeUnique_test_case')
         ).toBeVisible();
+        const ingestionPipelinesListResponse =
+          waitForTestSuiteIngestionPipelinesListResponse(page);
 
-        const pipelineApi = page.waitForResponse(
-          '/api/v1/services/ingestionPipelines?*'
-        );
         await page.getByTestId('pipeline').click();
-        await pipelineApi;
+        await ingestionPipelinesListResponse;
 
         await expect(
           page
@@ -361,14 +356,16 @@ test.describe(
         })
         .click();
 
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await page.click('[data-testid="profiler-add-table-test-btn"]');
       await selectAddObservabilityFeature(page, ObservabilityFeature.TEST_CASE);
-      await page.waitForLoadState('networkidle');
+
+      await expect(
+        page
+          .getByTestId('entity-summary-panel-container')
+          .getByTestId('entity-link')
+      ).toContainText(getEntityDisplayName(table.entityResponseData));
 
       await createTestCase({
         page,
@@ -381,7 +378,6 @@ test.describe(
         .getByTestId('select-table-card')
         .getByText('Column Level')
         .click();
-      await page.waitForLoadState('networkidle');
 
       await selectColumn(page, table.entity.columns[0].name);
 
@@ -391,7 +387,7 @@ test.describe(
         expectSchedulerCard: false,
       });
 
-      await page.waitForSelector('[data-testid="test-case-form-v1"]', {
+      await page.getByTestId('test-case-form-v1').waitFor({
         state: 'detached',
       });
 
@@ -402,42 +398,38 @@ test.describe(
       await expect(
         page.getByTestId('pipeline').getByTestId('count')
       ).toHaveText('1');
+      const ingestionPipelinesListResponse =
+        waitForTestSuiteIngestionPipelinesListResponse(page);
 
-      const pipelineApi = page.waitForResponse(
-        '/api/v1/services/ingestionPipelines?*pipelineType=TestSuite*'
-      );
       await page.getByTestId('pipeline').click();
-      await pipelineApi;
+      await ingestionPipelinesListResponse;
 
       await page.getByTestId('more-actions').first().click();
-      await page.waitForSelector('[data-testid="actions-dropdown"]', {
+      await page.getByTestId('actions-dropdown').waitFor({
         state: 'visible',
       });
 
-      await page.waitForSelector(
-        '[data-testid="actions-dropdown"] [data-testid="edit-button"]',
-        {
+      await page
+        .getByTestId('actions-dropdown')
+        .getByTestId('edit-button')
+        .waitFor({
           state: 'visible',
-        }
-      );
+        });
 
       await page
         .getByTestId('actions-dropdown')
         .getByTestId('edit-button')
         .click();
 
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
+      await page.locator('[data-testid="loader"]').waitFor({
         state: 'detached',
       });
-      await page.waitForSelector('[data-testid="select-all-test-cases"]', {
-        state: 'visible',
-      });
+      const selectAllSwitch = page
+        .getByRole('switch')
+        .and(page.getByTestId('select-all-test-cases'));
+      await selectAllSwitch.waitFor({ state: 'visible' });
 
-      await expect(page.getByTestId('select-all-test-cases')).toHaveAttribute(
-        'aria-checked',
-        'true'
-      );
+      await expect(selectAllSwitch).toHaveAttribute('aria-checked', 'true');
     });
 
     /**

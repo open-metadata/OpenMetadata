@@ -218,6 +218,7 @@ public class DomainAccessTest {
         createDomain("team1-domain", "12345678-1234-1234-1234-123456789012");
     inheritedDomain.setInherited(true);
     when(resourceContext.getDomains()).thenReturn(List.of(inheritedDomain));
+    when(subjectContext.hasDomains(anyList())).thenReturn(true);
 
     boolean hasAccess = ruleEvaluator.hasDomain();
 
@@ -235,6 +236,7 @@ public class DomainAccessTest {
         createDomain("parent-domain", "12345678-1234-1234-1234-123456789012");
     inheritedDomain.setInherited(true);
     when(resourceContext.getDomains()).thenReturn(List.of(inheritedDomain));
+    when(subjectContext.hasDomains(anyList())).thenReturn(true);
 
     boolean hasAccess = ruleEvaluator.hasDomain();
 
@@ -262,6 +264,7 @@ public class DomainAccessTest {
         createDomain("sales-domain", "55555555-5555-5555-5555-555555555555");
     when(resourceContext.getDomains())
         .thenReturn(Arrays.asList(resourceDomain1, resourceDomain2, resourceDomain3));
+    when(subjectContext.hasDomains(anyList())).thenReturn(true);
 
     boolean hasAccess = ruleEvaluator.hasDomain();
 

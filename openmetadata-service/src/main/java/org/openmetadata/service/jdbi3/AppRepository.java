@@ -6,11 +6,11 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.util.UserUtil.getUser;
 
-import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -176,29 +176,18 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("bot");
+  }
+
+  @Override
   public void storeEntity(App entity, boolean update) {
-    List<EntityReference> ownerRefs = entity.getOwners();
-    EntityReference bot = entity.getBot();
-    entity.withOwners(null);
-    entity.withBot(null);
     store(entity, update);
-    entity.withOwners(ownerRefs);
-    entity.setBot(bot);
   }
 
   @Override
   public void storeEntities(List<App> entities) {
-    List<App> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
-    for (App entity : entities) {
-      List<EntityReference> ownerRefs = entity.getOwners();
-      EntityReference bot = entity.getBot();
-      String jsonCopy = gson.toJson(entity.withOwners(null).withBot(null));
-      entitiesToStore.add(gson.fromJson(jsonCopy, App.class));
-      entity.withOwners(ownerRefs);
-      entity.setBot(bot);
-    }
-    storeMany(entitiesToStore);
+    storeMany(entities);
   }
 
   public EntityReference getBotUser(App application) {
@@ -293,6 +282,16 @@ public class AppRepository extends EntityRepository<App> {
 
   public AppRunRecord getLatestAppRuns(App app, UUID service) {
     return getLatestExtensionById(
+        app, AppRunRecord.class, AppExtension.ExtensionType.STATUS, service);
+  }
+
+  public Optional<AppRunRecord> getLatestAppRunsOptional(App app) {
+    return getLatestExtensionByIdOptional(
+        app, AppRunRecord.class, AppExtension.ExtensionType.STATUS, null);
+  }
+
+  public Optional<AppRunRecord> getLatestAppRunsOptional(App app, UUID service) {
+    return getLatestExtensionByIdOptional(
         app, AppRunRecord.class, AppExtension.ExtensionType.STATUS, service);
   }
 
@@ -398,6 +397,43 @@ public class AppRepository extends EntityRepository<App> {
     }
   }
 
+  /**
+   * Page through extensions inside a half-open {@code [startTime, endTime)} window. Unlike
+   * {@link #listAppExtensionAfterTimeByName}, the SQL filter excludes rows at or after
+   * {@code endTime} so OFFSET pagination stays correct even when new rows are inserted
+   * concurrently. Useful for any counter that aggregates across multiple pages.
+   *
+   * <p><b>Known limitation:</b> the {@code apps_extension_time_series} table has no surrogate
+   * primary key, so the ORDER BY tie-breaker is limited to {@code timestamp}. Two writes that
+   * land in the same millisecond can be ordered non-deterministically across separate page
+   * queries, causing one row near a page boundary to be skipped or counted twice. At
+   * {@link org.openmetadata.service.resources.mcp.McpUsageResource}'s page size (1000) the risk
+   * is bounded and acceptable for a growth-metric dashboard. Adding a deterministic
+   * tie-breaker would require a schema migration to introduce a surrogate id column.
+   */
+  public <T> List<T> listAppExtensionInWindowByName(
+      App app,
+      long startTime,
+      long endTime,
+      int limitParam,
+      int offset,
+      Class<T> clazz,
+      AppExtension.ExtensionType extensionType) {
+    if (limitParam <= 0) {
+      return new ArrayList<>();
+    }
+    List<String> jsons =
+        daoCollection
+            .appExtensionTimeSeriesDao()
+            .listAppExtensionInWindowByName(
+                app.getName(), limitParam, offset, startTime, endTime, extensionType.toString());
+    List<T> entities = new ArrayList<>(jsons.size());
+    for (String json : jsons) {
+      entities.add(JsonUtils.readValue(json, clazz));
+    }
+    return entities;
+  }
+
   public <T> ResultList<T> listAppExtensionAfterTimeById(
       App app,
       long startTime,
@@ -443,14 +479,20 @@ public class AppRepository extends EntityRepository<App> {
 
   public <T> T getLatestExtensionById(
       App app, Class<T> clazz, AppExtension.ExtensionType extensionType, UUID service) {
+    return getLatestExtensionByIdOptional(app, clazz, extensionType, service)
+        .orElseThrow(() -> AppException.byExtension(extensionType));
+  }
+
+  public <T> Optional<T> getLatestExtensionByIdOptional(
+      App app, Class<T> clazz, AppExtension.ExtensionType extensionType, UUID service) {
     List<String> result =
         daoCollection
             .appExtensionTimeSeriesDao()
             .listAppExtension(app.getId().toString(), 1, 0, extensionType.toString(), service);
     if (nullOrEmpty(result)) {
-      throw AppException.byExtension(extensionType);
+      return Optional.empty();
     }
-    return JsonUtils.readValue(result.get(0), clazz);
+    return Optional.of(JsonUtils.readValue(result.get(0), clazz));
   }
 
   public <T> T getLatestExtensionAfterStartTimeByName(
@@ -555,12 +597,24 @@ public class AppRepository extends EntityRepository<App> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      recordChange(
-          "appConfiguration", original.getAppConfiguration(), updated.getAppConfiguration());
-      recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule());
-      recordChange("bot", original.getBot(), updated.getBot());
-      recordChange(
-          "eventSubscriptions", original.getEventSubscriptions(), updated.getEventSubscriptions());
+      compareAndUpdate(
+          "appConfiguration",
+          () ->
+              recordChange(
+                  "appConfiguration",
+                  original.getAppConfiguration(),
+                  updated.getAppConfiguration()));
+      compareAndUpdate(
+          "appSchedule",
+          () -> recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule()));
+      compareAndUpdate("bot", () -> recordChange("bot", original.getBot(), updated.getBot()));
+      compareAndUpdate(
+          "eventSubscriptions",
+          () ->
+              recordChange(
+                  "eventSubscriptions",
+                  original.getEventSubscriptions(),
+                  updated.getEventSubscriptions()));
     }
   }
 }

@@ -95,7 +95,8 @@ final class SlackMarkdownFormatter extends AbstractVisitor {
 
   @Override
   public void visit(Image image) {
-    String alt = renderInlineChildren(image).trim();
+    SlackMarkdownFormatter tmp = new SlackMarkdownFormatter();
+    String alt = tmp.renderInlineChildren(image).trim();
     if (alt.isEmpty()) {
       String title = image.getTitle();
       alt = title == null ? "" : title;

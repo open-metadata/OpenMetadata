@@ -20,6 +20,8 @@ import { useAirflowStatus } from '../../../context/AirflowStatusProvider/Airflow
 import { ServiceCategory } from '../../../enums/service.enum';
 import { PipelineServiceType } from '../../../generated/entity/data/pipeline';
 import LimitWrapper from '../../../hoc/LimitWrapper';
+import { getServices, searchService } from '../../../rest/serviceAPI';
+import { ListView } from '../../common/ListView/ListView.component';
 import Services from './Services';
 
 let isDescription = true;
@@ -382,5 +384,110 @@ describe('Services', () => {
     const addServiceButton = screen.getByTestId('add-service-button');
 
     expect(addServiceButton).toBeInTheDocument();
+  });
+
+  describe('search and filter behavior', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      (getServices as jest.Mock).mockResolvedValue({
+        data: mockGetServicesData,
+        paging: {},
+      });
+    });
+
+    it('should call getServices when there is no searchTerm or filter', async () => {
+      await act(async () => {
+        render(<Services serviceName={ServiceCategory.DATABASE_SERVICES} />);
+      });
+
+      expect(getServices).toHaveBeenCalled();
+      expect(searchService).not.toHaveBeenCalled();
+    });
+
+    it('should call searchService with name and displayName wildcard queryFilter when searchTerm is set', async () => {
+      (searchService as jest.Mock).mockResolvedValue({
+        hits: { hits: [], total: { value: 0 } },
+      });
+
+      await act(async () => {
+        render(<Services serviceName={ServiceCategory.DATABASE_SERVICES} />);
+      });
+
+      const listViewProps = (ListView as jest.Mock).mock.calls[
+        (ListView as jest.Mock).mock.calls.length - 1
+      ][0];
+
+      await act(async () => {
+        listViewProps.searchProps.onSearch('myService');
+      });
+
+      expect(searchService).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryFilter: expect.objectContaining({
+            query: expect.objectContaining({
+              bool: expect.objectContaining({
+                must: expect.arrayContaining([
+                  expect.objectContaining({
+                    bool: expect.objectContaining({
+                      should: expect.arrayContaining([
+                        { wildcard: { 'name.keyword': '*myService*' } },
+                        { wildcard: { 'displayName.keyword': '*myService*' } },
+                      ]),
+                      minimum_should_match: 1,
+                    }),
+                  }),
+                ]),
+              }),
+            }),
+          }),
+        })
+      );
+    });
+
+    it('should include serviceType term clause when serviceTypeFilter is combined with searchTerm', async () => {
+      (searchService as jest.Mock).mockResolvedValue({
+        hits: { hits: [], total: { value: 0 } },
+      });
+
+      await act(async () => {
+        render(<Services serviceName={ServiceCategory.DATABASE_SERVICES} />);
+      });
+
+      const listViewProps = (ListView as jest.Mock).mock.calls[
+        (ListView as jest.Mock).mock.calls.length - 1
+      ][0];
+
+      await act(async () => {
+        listViewProps.tableProps.onChange({}, { serviceType: ['Glue'] });
+        listViewProps.searchProps.onSearch('glue');
+      });
+
+      expect(searchService).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryFilter: expect.objectContaining({
+            query: expect.objectContaining({
+              bool: expect.objectContaining({
+                must: expect.arrayContaining([
+                  expect.objectContaining({
+                    bool: expect.objectContaining({
+                      should: expect.arrayContaining([
+                        { wildcard: { 'name.keyword': '*glue*' } },
+                        { wildcard: { 'displayName.keyword': '*glue*' } },
+                      ]),
+                    }),
+                  }),
+                  expect.objectContaining({
+                    bool: expect.objectContaining({
+                      should: [{ term: { serviceType: 'Glue' } }],
+                      minimum_should_match: 1,
+                    }),
+                  }),
+                ]),
+              }),
+            }),
+          }),
+        })
+      );
+    });
   });
 });

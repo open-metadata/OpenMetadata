@@ -807,7 +807,8 @@ public class DataProductDomainMigrationIT {
   }
 
   private void waitForSearchIndexUpdate() {
-    // Verification methods use Awaitility with polling, so no explicit wait needed
+    // Verification methods use Awaitility polling with explicit assertions.
+    // No fixed sleeps are needed here.
   }
 
   /**

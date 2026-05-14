@@ -64,8 +64,6 @@ const test = base.extend<{ page: Page }>({
 
 test.describe('Service Version pages', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.slow();
-
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
@@ -118,8 +116,6 @@ test.describe('Service Version pages', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow();
-
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.delete(apiContext);
 
@@ -249,7 +245,7 @@ test.describe('Service Version pages', () => {
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="delete-button"]');
 
-        await page.waitForSelector('[role="dialog"].ant-modal');
+        await page.locator('[role="dialog"].ant-modal').waitFor();
 
         await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 

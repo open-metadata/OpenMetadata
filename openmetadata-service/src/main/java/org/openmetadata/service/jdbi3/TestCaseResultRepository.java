@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
@@ -25,12 +26,16 @@ import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.resources.dqtests.TestCaseResultResource;
 import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.tasks.TaskWorkflowHandler;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 
@@ -38,6 +43,8 @@ import org.openmetadata.service.util.RestUtil;
 public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCaseResult> {
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
+  private static final String TEST_CASE_INDEX_FIELDS =
+      "testDefinition,testSuite,testSuites,owners,tags,followers";
   private final TestCaseRepository testCaseRepository;
   private final TestCaseDimensionResultRepository dimensionResultRepository;
   public static String INCLUDE_SEARCH_FIELDS =
@@ -86,6 +93,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     TestCase testCase = Entity.getEntityByName(TEST_CASE, fqn, "", Include.ALL);
     if (testCaseResult.getTestCaseStatus() == TestCaseStatus.Success) {
       testCaseRepository.deleteTestCaseFailedRowsSample(testCase.getId());
+      autoResolveIncidentOnSuccess(testCase);
     }
     setTestCaseResultIncidentId(testCaseResult, testCase, updatedBy);
 
@@ -108,6 +116,46 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     // Post create actions
     postCreate(testCaseResult);
     return Response.created(uriInfo.getRequestUri()).entity(testCaseResult).build();
+  }
+
+  private void autoResolveIncidentOnSuccess(TestCase testCase) {
+    if (!isAutoCloseIncidentEnabled(testCase) || testCase.getIncidentId() == null) {
+      return;
+    }
+
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    Task incidentTask =
+        taskRepository.findTaskByEntityTypeAndStatuses(
+            testCase.getFullyQualifiedName(),
+            TaskEntityType.TestCaseResolution,
+            TaskRepository.OPEN_TASK_STATUSES);
+
+    if (incidentTask == null) {
+      LOG.debug(
+          "Skipping auto-close for test case '{}' because no open incident task was found",
+          testCase.getFullyQualifiedName());
+      return;
+    }
+
+    // Rehydrate the full task before resolving it so workflow transitions are available.
+    // The lightweight lookup path is enough to find the row, but not enough to advance the
+    // workflow stage to `resolved`, which is what drives legacy TCRS mirroring.
+    incidentTask = taskRepository.get(null, incidentTask.getId(), taskRepository.getFields("*"));
+
+    TaskWorkflowHandler.getInstance()
+        .resolveTask(
+            incidentTask,
+            "resolve",
+            TaskResolutionType.Completed,
+            null,
+            null,
+            "AutoResolved",
+            WorkflowEventConsumer.GOVERNANCE_BOT);
+  }
+
+  private boolean isAutoCloseIncidentEnabled(TestCase testCase) {
+    return testCase != null
+        && JsonUtils.valueToTree(testCase).path("autoCloseIncident").asBoolean(false);
   }
 
   public ResultList<TestCaseResult> listLastTestCaseResultsForTestSuite(UUID testSuiteId) {
@@ -227,9 +275,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   }
 
   private TestCase getTestCaseReference(String testCaseFQN) {
-    TestCase testCase =
-        Entity.getEntityByName(TEST_CASE, testCaseFQN, TEST_DEFINITION, Include.ALL);
-    return testCase;
+    return Entity.getEntityByName(TEST_CASE, testCaseFQN, TEST_DEFINITION, Include.ALL);
   }
 
   private EntityReference getTestDefinitionReference(TestCase testCase, String testCaseFQN) {
@@ -241,8 +287,12 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   }
 
   private void updateTestCaseStatus(TestCaseResult testCaseResult, OperationType operationType) {
+    // Load the index-relevant relationship fields, but avoid the hydrated "*" view. The "*"
+    // path now reads the latest result/incident back from the time-series table, which masks the
+    // denormalized change we need to persist into the entity row and search document.
     TestCase original =
-        Entity.getEntityByName(TEST_CASE, testCaseResult.getTestCaseFQN(), "*", Include.ALL);
+        Entity.getEntityByName(
+            TEST_CASE, testCaseResult.getTestCaseFQN(), TEST_CASE_INDEX_FIELDS, Include.ALL);
     TestCase updated = JsonUtils.deepCopy(original, TestCase.class);
 
     if (original.getTestCaseResult() == null) {
@@ -264,7 +314,9 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
           Thread.currentThread().getId());
       return;
     }
-    updated.setTestCaseStatus(testCaseResult.getTestCaseStatus());
+    updated.setTestCaseStatus(
+        testCaseResult != null ? testCaseResult.getTestCaseStatus() : original.getTestCaseStatus());
+    updated.setIncidentId(testCaseResult != null ? testCaseResult.getIncidentId() : null);
 
     EntityRepository.EntityUpdater entityUpdater =
         testCaseRepository.getUpdater(original, updated, EntityRepository.Operation.PATCH, null);

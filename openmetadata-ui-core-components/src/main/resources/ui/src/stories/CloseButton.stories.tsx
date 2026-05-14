@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Meta, StoryObj } from "@storybook/react";
-import { CloseButton } from "../components/base/buttons/close-button";
+import type { Meta, StoryObj } from '@storybook/react';
+import { CloseButton } from '../components/base/buttons/close-button';
 
 const meta = {
-  title: "Components/CloseButton",
+  title: 'Components/CloseButton',
   component: CloseButton,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof CloseButton>;
 
 export default meta;
@@ -27,14 +27,14 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    size: "sm",
-    theme: "light",
+    size: 'sm',
+    theme: 'light',
   },
 };
 
 export const Sizes: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
       <CloseButton size="xs" />
       <CloseButton size="sm" />
       <CloseButton size="md" />
@@ -45,11 +45,11 @@ export const Sizes: StoryObj = {
 
 export const Themes: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 8 }}>
-      <div style={{ padding: 8, background: "white", borderRadius: 8 }}>
+    <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ padding: 8, background: 'white', borderRadius: 8 }}>
         <CloseButton theme="light" />
       </div>
-      <div style={{ padding: 8, background: "#1a1a2e", borderRadius: 8 }}>
+      <div style={{ padding: 8, background: '#1a1a2e', borderRadius: 8 }}>
         <CloseButton theme="dark" />
       </div>
     </div>

@@ -4,8 +4,12 @@ import static org.openmetadata.service.util.EntityUtil.getEntityReference;
 import static org.openmetadata.service.util.EntityUtil.getEntityReferenceByName;
 import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
 
@@ -17,9 +21,21 @@ public class GlossaryTermMapper implements EntityMapper<GlossaryTerm, CreateGlos
         .withStyle(create.getStyle())
         .withGlossary(getEntityReferenceByName(Entity.GLOSSARY, create.getGlossary()))
         .withParent(getEntityReference(Entity.GLOSSARY_TERM, create.getParent()))
-        .withRelatedTerms(getEntityReferences(Entity.GLOSSARY_TERM, create.getRelatedTerms()))
+        .withRelatedTerms(
+            toTermRelations(getEntityReferences(Entity.GLOSSARY_TERM, create.getRelatedTerms())))
         .withReferences(create.getReferences())
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());
+  }
+
+  private List<TermRelation> toTermRelations(List<EntityReference> entityReferences) {
+    if (entityReferences == null) {
+      return null;
+    }
+    List<TermRelation> termRelations = new ArrayList<>();
+    for (EntityReference ref : entityReferences) {
+      termRelations.add(new TermRelation().withTerm(ref).withRelationType("relatedTo"));
+    }
+    return termRelations;
   }
 }

@@ -36,8 +36,8 @@ import { AxiosError } from 'axios';
 import { useSnackbar } from 'notistack';
 import { FC, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Loader from '../Loader/Loader';
 import { showNotistackError } from '../../../utils/NotistackUtils';
+import Loader from '../Loader/Loader';
 import { MUIFileUploadProps } from './MUIFileUpload.interface';
 
 const DEFAULT_MAX_SIZE_MB = 5;

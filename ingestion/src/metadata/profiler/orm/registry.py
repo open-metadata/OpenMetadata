@@ -13,12 +13,13 @@
 Custom types' registry for easy access
 without having an import mess
 """
+
 import math
 from enum import Enum
 
 import sqlalchemy
 from sqlalchemy import Date, DateTime, Integer, Numeric, Time
-from sqlalchemy.sql.sqltypes import Concatenable
+from sqlalchemy.sql.sqltypes import Concatenable, LargeBinary, Text
 
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.source import sqa_types
@@ -69,12 +70,14 @@ class PythonDialects(Enum):
     StarRocks = "starrocks"
     Druid = "druid"
     DynamoDB = "dynamoDB"
+    Exasol = "exasol"
     Glue = "glue"
     Hana = "hana"
     Hive = "hive"
     Impala = "impala"
     IbmDbSa = "ibm_db_sa"
     Ibmi = "ibmi"
+    Informix = "informix"
     MariaDB = "mariadb"
     MSSQL = "mssql"
     MySQL = "mysql"
@@ -87,6 +90,7 @@ class PythonDialects(Enum):
     SQLite = "sqlite"
     Snowflake = "snowflake"
     Teradata = "teradatasql"
+    Timescale = "timescale"
     Trino = "trino"
     UnityCatalog = "unitycatalog"
     Vertica = "vertica"
@@ -193,9 +197,7 @@ def is_quantifiable(_type) -> bool:
     """
     if isinstance(_type, DataType):
         return _type.value in QUANTIFIABLE_SET
-    return (
-        is_numeric(_type) or is_integer(_type) or getattr(_type, "quantifiable", False)
-    )
+    return is_numeric(_type) or is_integer(_type) or getattr(_type, "quantifiable", False)
 
 
 def is_concatenable(_type) -> bool:
@@ -210,9 +212,9 @@ def is_concatenable(_type) -> bool:
 
 def is_value_non_numeric(value) -> bool:
     try:
-        if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+        if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):  # noqa: SIM103
             return True
-        return False
+        return False  # noqa: TRY300
     except Exception:
         return False
 
@@ -221,3 +223,17 @@ def is_enum(_type) -> bool:
     if isinstance(_type, DataType):
         return _type.value == DataType.ENUM.value
     return issubclass(_type.__class__, Enum)
+
+
+def is_blob(_type) -> bool:
+    """Check if the type is a binary large object (BLOB/CLOB).
+    On Informix, these types cannot be used in most SQL expressions
+    (COUNT, DISTINCT, GROUP BY, CASE WHEN, etc.), so all profiler
+    metrics are skipped for blob columns via InformixProfilerInterface."""
+    if isinstance(_type, DataType):
+        return _type.value in {
+            DataType.BYTES.value,
+            DataType.BYTEA.value,
+            DataType.TEXT.value,
+        }
+    return isinstance(_type, (HexByteString, LargeBinary, Text))

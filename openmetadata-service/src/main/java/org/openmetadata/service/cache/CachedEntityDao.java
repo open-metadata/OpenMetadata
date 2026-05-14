@@ -20,16 +20,28 @@ public class CachedEntityDao {
   private final CacheConfig config;
 
   public String getBase(UUID entityId, String entityType) {
+    // Reindex worker threads opt out of the cache via EntityCacheBypass so a 580k-entity reindex
+    // doesn't generate millions of pointless Redis writes (cache hit rate during reindex ≈ 0)
+    // and isn't held hostage to Redis health (300ms timeouts add up fast at this volume). Go
+    // straight to DB; skip the write-through.
+    if (EntityCacheBypass.isSkipped()) {
+      String entityJson = fetchEntityFromDatabase(entityId, entityType);
+      return entityJson != null ? entityJson : "{}";
+    }
+
     String cacheKey = keys.entity(entityType, entityId);
 
     // Try to get from cache first
     Optional<String> cached = cache.hget(cacheKey, "base");
+    CacheMetrics m = CacheMetrics.getInstance();
     if (cached.isPresent()) {
       LOG.debug("Cache hit for entity: {} -> {}", entityType, entityId);
+      if (m != null) m.recordLayerHit(entityType);
       return cached.get();
     }
 
     LOG.debug("Cache miss for entity: {} -> {}", entityType, entityId);
+    if (m != null) m.recordLayerMiss(entityType);
 
     // Fetch from database
     String entityJson = fetchEntityFromDatabase(entityId, entityType);
@@ -39,6 +51,7 @@ public class CachedEntityDao {
       try {
         cache.hset(
             cacheKey, Map.of("base", entityJson), Duration.ofSeconds(config.entityTtlSeconds));
+        if (m != null) m.recordLayerWrite(entityType);
         LOG.debug("Cached entity: {} -> {}", entityType, entityId);
       } catch (Exception e) {
         LOG.warn("Failed to cache entity: {} -> {}", entityType, entityId, e);
@@ -72,6 +85,9 @@ public class CachedEntityDao {
    * Write-through cache: Store entity in cache (called after DB write)
    */
   public void putBase(String entityType, UUID entityId, String entityJson) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     if (entityJson == null || entityJson.isEmpty() || "{}".equals(entityJson)) {
       LOG.warn(
           "CACHE: Skipping cache write for empty entity JSON - Type: {}, ID: {}",
@@ -97,6 +113,9 @@ public class CachedEntityDao {
    * Write-through cache: Store entity by name for fast name-based lookups
    */
   public void putByName(String entityType, String fqn, String entityJson) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     if (entityJson == null || entityJson.isEmpty() || "{}".equals(entityJson)) {
       LOG.warn(
           "CACHE: Skipping cache write by name for empty entity JSON - Type: {}, FQN: {}",
@@ -129,7 +148,7 @@ public class CachedEntityDao {
    * Write-through cache: Store entity reference for fast reference lookups
    */
   public void putReference(String entityType, UUID entityId, String refJson) {
-    if (refJson == null || refJson.isEmpty()) {
+    if (refJson == null || refJson.isEmpty() || EntityCacheBypass.isSkipped()) {
       return;
     }
 
@@ -146,7 +165,7 @@ public class CachedEntityDao {
    * Write-through cache: Store entity reference by name
    */
   public void putReferenceByName(String entityType, String fqn, String refJson) {
-    if (refJson == null || refJson.isEmpty()) {
+    if (refJson == null || refJson.isEmpty() || EntityCacheBypass.isSkipped()) {
       return;
     }
 
@@ -164,33 +183,66 @@ public class CachedEntityDao {
    * Get entity by name from cache
    */
   public Optional<String> getByName(String entityType, String fqn) {
+    if (EntityCacheBypass.isSkipped()) {
+      return Optional.empty();
+    }
     String cacheKey = keys.entityByName(entityType, fqn);
-    return cache.get(cacheKey);
+    Optional<String> result = cache.get(cacheKey);
+    CacheMetrics m = CacheMetrics.getInstance();
+    if (m != null) {
+      if (result.isPresent()) m.recordLayerHit(entityType);
+      else m.recordLayerMiss(entityType);
+    }
+    return result;
   }
 
   /**
    * Get entity reference by ID from cache
    */
   public Optional<String> getReference(String entityType, UUID entityId) {
+    if (EntityCacheBypass.isSkipped()) {
+      return Optional.empty();
+    }
     String cacheKey = keys.entity(entityType, entityId);
-    return cache.hget(cacheKey, "ref");
+    Optional<String> result = cache.hget(cacheKey, "ref");
+    CacheMetrics m = CacheMetrics.getInstance();
+    if (m != null) {
+      if (result.isPresent()) m.recordLayerHit(entityType);
+      else m.recordLayerMiss(entityType);
+    }
+    return result;
   }
 
   /**
    * Get entity reference by name from cache
    */
   public Optional<String> getReferenceByName(String entityType, String fqn) {
+    if (EntityCacheBypass.isSkipped()) {
+      return Optional.empty();
+    }
     String cacheKey = keys.refByName(entityType, fqn);
-    return cache.get(cacheKey);
+    Optional<String> result = cache.get(cacheKey);
+    CacheMetrics m = CacheMetrics.getInstance();
+    if (m != null) {
+      if (result.isPresent()) m.recordLayerHit(entityType);
+      else m.recordLayerMiss(entityType);
+    }
+    return result;
   }
 
   public void invalidate(UUID entityId, String entityType) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     String cacheKey = keys.entity(entityType, entityId);
     cache.del(cacheKey);
     LOG.debug("Invalidated cache for entity: {} -> {}", entityType, entityId);
   }
 
   public void invalidateByName(String entityType, String fqn) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     String cacheKeyEntity = keys.entityByName(entityType, fqn);
     String cacheKeyRef = keys.refByName(entityType, fqn);
     cache.del(cacheKeyEntity);
@@ -200,12 +252,18 @@ public class CachedEntityDao {
 
   // Additional invalidation methods for delete operations
   public void invalidateBase(String entityType, UUID entityId) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     String cacheKey = keys.entity(entityType, entityId);
     cache.del(cacheKey);
     LOG.debug("Invalidated base cache for entity: {} -> {}", entityType, entityId);
   }
 
   public void invalidateReference(String entityType, UUID entityId) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     String cacheKey = keys.entity(entityType, entityId);
     // Remove just the reference field from the hash
     cache.hdel(cacheKey, "ref");
@@ -214,12 +272,18 @@ public class CachedEntityDao {
 
   // Delete methods for evicting corrupted cache entries
   public void deleteBase(String entityType, UUID entityId) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     String cacheKey = keys.entity(entityType, entityId);
     cache.del(cacheKey);
     LOG.debug("Deleted corrupted cache entry for entity: {} -> {}", entityType, entityId);
   }
 
   public void deleteByName(String entityType, String fqn) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     String entityCacheKey = keys.entityByName(entityType, fqn);
     String refCacheKey = keys.refByName(entityType, fqn);
     cache.del(entityCacheKey);
@@ -228,6 +292,9 @@ public class CachedEntityDao {
   }
 
   public void invalidateReferenceByName(String entityType, String fqn) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
     String cacheKey = keys.refByName(entityType, fqn);
     cache.del(cacheKey);
     LOG.debug("Invalidated reference cache by name: {} -> {}", entityType, fqn);

@@ -29,7 +29,7 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
     .mockReturnValue([
       { id: 1, name: 'glossary-1', fullyQualifiedName: 'value1' },
     ]),
-  convertGlossaryTermsToTreeOptions: jest.fn(),
+  convertGlossaryTermsToTreeOptions: jest.fn().mockReturnValue([]),
   findGlossaryTermByFqn: jest.fn(),
   filterTreeNodeOptions: jest.fn().mockReturnValue([]),
 }));

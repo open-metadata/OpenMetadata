@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@mui/material';
+import { Avatar, Typography } from '@openmetadata/ui-core-components';
 import { useCallback, useMemo } from 'react';
 import { TABLE_CARD_PAGE_SIZE } from '../../../constants/constants';
 import {
@@ -20,34 +20,24 @@ import {
 } from '../../../constants/DataProduct.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { TagSource } from '../../../generated/type/tagLabel';
+import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityAvatarProps } from '../../../utils/IconUtils';
+import {
+  getClassificationTags,
+  getGlossaryTags,
+} from '../../../utils/TagsUtils';
 import { useListingData } from '../../common/atoms/compositions/useListingData';
 import {
   CellRenderer,
   ColumnConfig,
   ListingData,
 } from '../../common/atoms/shared/types';
-import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
 
 export const useDataProductListingData = (): ListingData<DataProduct> => {
+  const { dataProductBasePath } = useMarketplaceStore();
   const filterKeys = useMemo(() => DATAPRODUCT_DEFAULT_QUICK_FILTERS, []);
   const filterConfigs = useMemo(() => DATAPRODUCT_FILTERS, []);
-
-  const getGlossaryTags = useCallback(
-    (dataProduct: DataProduct) =>
-      dataProduct.tags?.filter((tag) => tag.source === TagSource.Glossary) ||
-      [],
-    []
-  );
-
-  const getClassificationTags = useCallback(
-    (dataProduct: DataProduct) =>
-      dataProduct.tags?.filter(
-        (tag) => tag.source === TagSource.Classification
-      ) || [],
-    []
-  );
 
   const getDomains = useCallback(
     (dataProduct: DataProduct) => dataProduct.domains || [],
@@ -67,7 +57,7 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
         key: 'glossaryTerms',
         labelKey: 'label.glossary-term-plural',
         render: 'tags',
-        getValue: getGlossaryTags,
+        getValue: (dp: DataProduct) => getGlossaryTags(dp.tags),
       },
       {
         key: 'domains',
@@ -79,11 +69,11 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
         key: 'classificationTags',
         labelKey: 'label.tag-plural',
         render: 'tags',
-        getValue: getClassificationTags,
+        getValue: (dp: DataProduct) => getClassificationTags(dp.tags),
       },
       { key: 'experts', labelKey: 'label.expert-plural', render: 'owners' },
     ],
-    [getGlossaryTags, getClassificationTags, getDomains]
+    [getDomains]
   );
 
   const renderers: CellRenderer<DataProduct> = useMemo(
@@ -96,30 +86,21 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
           entity.displayName !== entity.name;
 
         return (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <EntityAvatar entity={entity} size={40} />
-            <Box>
-              <Typography
-                sx={{
-                  fontWeight: 500,
-                  color: 'text.primary',
-                  fontSize: '1rem',
-                  lineHeight: '24px',
-                }}>
+          <div className="tw:flex tw:items-center tw:gap-1.5">
+            <Avatar size="lg" {...getEntityAvatarProps(entity)} />
+            <div>
+              <Typography className="tw:leading-5" weight="medium">
                 {entityName}
               </Typography>
               {showName && (
                 <Typography
-                  sx={{
-                    fontSize: '0.75rem',
-                    color: 'text.secondary',
-                    lineHeight: '16px',
-                  }}>
+                  className="tw:leading-4 tw:text-gray-700"
+                  size="text-xs">
                   {entity.name}
                 </Typography>
               )}
-            </Box>
-          </Box>
+            </div>
+          </div>
         );
       },
     }),
@@ -134,7 +115,7 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
     filterConfigs,
     columns,
     renderers,
-    basePath: '/dataProduct',
+    basePath: dataProductBasePath,
   });
 
   return listingData;

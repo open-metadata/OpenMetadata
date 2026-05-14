@@ -11,6 +11,87 @@
         "adapter_type": "redshift"
     },
     "nodes": {
+        "test.jaffle_shop.relationships_un_rueckerstattungen_medis_base_PersonNr__ref_un_person_base_": {
+            "test_metadata": {
+                "name": "relationships",
+                "kwargs": {
+                    "column_name": "PersonNr",
+                    "model": "{{ ref('un_rueckerstattungen_medis_base') }}",
+                    "to": "{{ ref('un_person_base') }}",
+                    "field": "PartnerNr"
+                },
+                "namespace": null
+            },
+            "compiled": true,
+            "resource_type": "test",
+            "depends_on": {
+                "macros": [
+                    "macro.dbt.test_relationships"
+                ],
+                "nodes": [
+                    "model.jaffle_shop.un_rueckerstattungen_medis_base",
+                    "model.jaffle_shop.un_person_base"
+                ]
+            },
+            "config": {
+                "enabled": true,
+                "alias": null,
+                "schema": "dbt_test__audit",
+                "database": null,
+                "tags": [],
+                "meta": {},
+                "materialized": "test",
+                "severity": "ERROR",
+                "store_failures": null,
+                "where": null,
+                "limit": null
+            },
+            "database": "dev",
+            "schema": "dbt_test__audit",
+            "fqn": [
+                "jaffle_shop",
+                "relationships_un_rueckerstattungen_medis_base_PersonNr__ref_un_person_base_"
+            ],
+            "unique_id": "test.jaffle_shop.relationships_un_rueckerstattungen_medis_base_PersonNr__ref_un_person_base_",
+            "raw_code": "{{ test_relationships(**_dbt_generic_test_kwargs) }}",
+            "language": "sql",
+            "package_name": "jaffle_shop",
+            "root_path": "/Users/onkarravgan/Desktop/project/jaffle_shop",
+            "path": "relationships_test.sql",
+            "original_file_path": "models/schema.yml",
+            "name": "relationships_un_rueckerstattungen_medis_base_PersonNr__ref_un_person_base_",
+            "alias": "relationships_test",
+            "checksum": {
+                "name": "none",
+                "checksum": ""
+            },
+            "tags": [],
+            "refs": [
+                ["un_rueckerstattungen_medis_base"],
+                ["un_person_base"]
+            ],
+            "sources": [],
+            "metrics": [],
+            "description": "",
+            "columns": {},
+            "meta": {},
+            "docs": {
+                "show": true,
+                "node_color": null
+            },
+            "patch_path": null,
+            "compiled_path": "target/compiled/jaffle_shop/models/schema.yml/relationships_test.sql",
+            "build_path": null,
+            "deferred": false,
+            "unrendered_config": {},
+            "created_at": 1673982251.748683,
+            "compiled_code": "select count(*) from table where PersonNr not in (select PartnerNr from other_table)",
+            "extra_ctes_injected": true,
+            "extra_ctes": [],
+            "relation_name": null,
+            "column_name": "PersonNr",
+            "file_key_name": "models.un_rueckerstattungen_medis_base"
+        },
         "test.jaffle_shop.unique_orders_order_id.fed79b3a6e": {
             "test_metadata": {
                 "name": "unique",

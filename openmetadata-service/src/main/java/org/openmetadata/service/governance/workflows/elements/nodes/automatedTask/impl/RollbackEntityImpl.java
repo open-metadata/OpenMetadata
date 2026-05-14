@@ -211,8 +211,7 @@ public class RollbackEntityImpl implements JavaDelegate {
         return null;
       }
 
-      if (statusObj instanceof EntityStatus) {
-        EntityStatus status = (EntityStatus) statusObj;
+      if (statusObj instanceof EntityStatus status) {
         LOG.debug(
             "[RollbackEntity] Checking status: '{}' for version {}", status, entity.getVersion());
 

@@ -12,10 +12,12 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
-import { act } from 'react';
+import React, { act } from 'react';
 import { Table } from '../../generated/entity/data/table';
+import { TestCasePageTabs } from '../../pages/IncidentManager/IncidentManager.interface';
 import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';
 import '../../test/unit/mocks/mui.mock';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import IncidentManager from './IncidentManager.component';
 
 jest.mock('../common/NextPrevious/NextPrevious', () => {
@@ -97,6 +99,138 @@ jest.mock('../common/MuiDatePickerMenu/MuiDatePickerMenu', () => {
     </div>
   ));
 });
+jest.mock('@openmetadata/ui-core-components', () => {
+  const DropdownRoot = ({
+    children,
+    isOpen,
+    onOpenChange,
+  }: {
+    children: { [key: number]: React.ReactNode };
+    isOpen: boolean;
+    onOpenChange: (v: boolean) => void;
+  }) => (
+    <div data-testid="date-field-dropdown-root">
+      {/* Trigger element */}
+      <button
+        data-testid="date-field-dropdown-trigger"
+        type="button"
+        onClick={() => onOpenChange(!isOpen)}>
+        {children[0]}
+      </button>
+      {/* Popover (only rendered when open) */}
+      {isOpen && children[1]}
+    </div>
+  );
+
+  const DropdownMenu = ({
+    items,
+    onAction,
+  }: {
+    items?: { name: string; value: string }[];
+    onAction?: (key: string) => void;
+  }) => {
+    if (!items) {
+      return <div data-testid="date-field-dropdown-menu" />;
+    }
+
+    return (
+      <div data-testid="date-field-dropdown-menu">
+        {items.map((item) => (
+          <button
+            data-testid={`date-field-option-${item.value}`}
+            key={item.value}
+            type="button"
+            onClick={() => onAction?.(item.value)}>
+            {item.name}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  const TableMock = Object.assign(
+    ({
+      children,
+      'data-testid': testId,
+      'aria-label': ariaLabel,
+    }: {
+      children?: React.ReactNode;
+      'data-testid'?: string;
+      'aria-label'?: string;
+    }) => (
+      <table aria-label={ariaLabel} data-testid={testId}>
+        {children}
+      </table>
+    ),
+    {
+      Header: ({
+        columns,
+        children,
+      }: {
+        columns?: { id: string; label: string }[];
+        children: (col: { id: string; label: string }) => React.ReactNode;
+      }) => (
+        <thead>
+          <tr>
+            {columns?.map((col) => (
+              <th key={col.id}>{children(col)}</th>
+            ))}
+          </tr>
+        </thead>
+      ),
+      Head: ({ label }: { label?: string }) => <span>{label}</span>,
+      Body: ({
+        items,
+        children,
+        renderEmptyState,
+      }: {
+        items?: unknown[];
+        children: (item: unknown) => React.ReactNode;
+        renderEmptyState?: () => React.ReactNode;
+        dependencies?: unknown[];
+      }) => (
+        <tbody>
+          {!items || items.length === 0
+            ? renderEmptyState?.()
+            : items.map((item) => children(item))}
+        </tbody>
+      ),
+      Row: ({ children, id }: { children?: React.ReactNode; id?: string }) => (
+        <tr data-rowid={id}>{children}</tr>
+      ),
+      Cell: ({ children }: { children?: React.ReactNode }) => (
+        <td>{children}</td>
+      ),
+    }
+  );
+
+  return {
+    Dropdown: {
+      Root: DropdownRoot,
+      Popover: jest
+        .fn()
+        .mockImplementation(({ children }) => (
+          <div data-testid="date-field-dropdown-popover">{children}</div>
+        )),
+      Menu: DropdownMenu,
+      Item: jest
+        .fn()
+        .mockImplementation(({ label, id }) => (
+          <div data-testid={`date-field-item-${id}`}>{label}</div>
+        )),
+    },
+    Skeleton: jest
+      .fn()
+      .mockImplementation(() => <div data-testid="skeleton" />),
+    Button: jest
+      .fn()
+      .mockImplementation(({ children, className }) => (
+        <button className={className}>{children}</button>
+      )),
+    Table: TableMock,
+  };
+});
+
 jest.mock('../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
 }));
@@ -129,7 +263,11 @@ jest.mock('../common/AsyncSelect/AsyncSelect', () => ({
 }));
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  Link: jest.fn().mockImplementation(() => <div>Link</div>),
+  Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (
+    <a data-to={typeof to === 'string' ? to : JSON.stringify(to)} {...rest}>
+      {children}
+    </a>
+  )),
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
@@ -499,6 +637,133 @@ describe('IncidentManagerPage', () => {
     expect(screen.getByText('label.table')).toBeInTheDocument();
   });
 
+  it('should render date field dropdown with Created At selected by default', async () => {
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    const dropdownRoot = await screen.findByTestId('date-field-dropdown-root');
+
+    expect(dropdownRoot).toBeInTheDocument();
+
+    // Dropdown menu should NOT be visible by default (closed)
+    expect(
+      screen.queryByTestId('date-field-dropdown-menu')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should open date field dropdown on trigger click', async () => {
+    const mockUseNavigate = require('react-router-dom').useNavigate;
+    const navigate = jest.fn();
+    mockUseNavigate.mockReturnValue(navigate);
+
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    const triggerDiv = await screen.findByTestId('date-field-dropdown-trigger');
+    await act(async () => {
+      fireEvent.click(triggerDiv);
+    });
+
+    // Now the dropdown menu should be visible since isOpen = true
+    const dropdownMenu = await screen.findByTestId('date-field-dropdown-menu');
+
+    expect(dropdownMenu).toBeInTheDocument();
+  });
+
+  it('should update URL with dateField=updatedAt when Updated At option is selected', async () => {
+    const mockUseNavigate = require('react-router-dom').useNavigate;
+    const navigate = jest.fn();
+    mockUseNavigate.mockReturnValue(navigate);
+
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    // Open the dropdown
+    const triggerDiv = await screen.findByTestId('date-field-dropdown-trigger');
+    await act(async () => {
+      fireEvent.click(triggerDiv);
+    });
+
+    const updatedAtBtn = await screen.findByTestId(
+      'date-field-option-updatedAt'
+    );
+    await act(async () => {
+      fireEvent.click(updatedAtBtn);
+    });
+
+    expect(navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: expect.stringContaining('dateField=updatedAt'),
+      }),
+      expect.anything()
+    );
+  });
+
+  it('should close dropdown after selecting an option', async () => {
+    const mockUseNavigate = require('react-router-dom').useNavigate;
+    const navigate = jest.fn();
+    mockUseNavigate.mockReturnValue(navigate);
+
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    // Open the dropdown
+    const triggerDiv = await screen.findByTestId('date-field-dropdown-trigger');
+    await act(async () => {
+      fireEvent.click(triggerDiv);
+    });
+
+    const dropdownMenu = await screen.findByTestId('date-field-dropdown-menu');
+
+    expect(dropdownMenu).toBeInTheDocument();
+
+    // Select an option — mock calls onOpenChange(false)
+    const updatedAtBtn = await screen.findByTestId(
+      'date-field-option-updatedAt'
+    );
+    await act(async () => {
+      fireEvent.click(updatedAtBtn);
+    });
+
+    // Menu should be gone after selection
+    expect(
+      screen.queryByTestId('date-field-dropdown-menu')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should fetch incidents with dateField from URL params', async () => {
+    const mockUseCustomLocation = require('../../hooks/useCustomLocation/useCustomLocation');
+    mockUseCustomLocation.mockImplementation(() => ({
+      search: QueryString.stringify({
+        endTs: 1710161424255,
+        startTs: 1709556624254,
+        dateField: 'updatedAt',
+      }),
+    }));
+
+    const mockGetListTestCaseIncidentStatus =
+      getListTestCaseIncidentStatusFromSearch as jest.Mock;
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    expect(mockGetListTestCaseIncidentStatus).toHaveBeenCalledWith({
+      endTs: 1710161424255,
+      latest: true,
+      limit: 10,
+      offset: 0,
+      startTs: 1709556624254,
+      dateField: 'updatedAt',
+      include: 'non-deleted',
+      domain: undefined,
+      originEntityFQN: undefined,
+    });
+  });
+
   describe('pagination', () => {
     beforeEach(() => {
       const usePagingModule = require('../../hooks/paging/usePaging');
@@ -626,6 +891,46 @@ describe('IncidentManagerPage', () => {
       });
 
       expect(mockHandlePageSizeChange).toHaveBeenCalledWith(25);
+    });
+  });
+
+  describe('observabilityRouterClassBase migration', () => {
+    it('test case name link should use observabilityRouterClassBase.getTestCaseDetailPagePath', async () => {
+      const fqn = 'svc.db.schema.table.test_case_1';
+      const { getTestCaseDetailPagePath } = require('../../utils/RouterUtils');
+      (getTestCaseDetailPagePath as jest.Mock).mockClear();
+
+      (getListTestCaseIncidentStatusFromSearch as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 'tcr-1',
+            testCaseReference: {
+              fullyQualifiedName: fqn,
+              name: 'test_case_1',
+            },
+            testCaseResolutionStatusType: 'New',
+          },
+        ],
+        paging: { total: 1 },
+      });
+
+      await act(async () => {
+        render(<IncidentManager />);
+      });
+
+      const link = await screen.findByTestId('test-case-test_case_1');
+
+      expect(link.tagName).toBe('A');
+      expect(link.getAttribute('data-to')).toBe(
+        observabilityRouterClassBase.getTestCaseDetailPagePath(
+          fqn,
+          TestCasePageTabs.TEST_CASE_RESULTS
+        )
+      );
+      expect(getTestCaseDetailPagePath).toHaveBeenCalledWith(
+        fqn,
+        TestCasePageTabs.TEST_CASE_RESULTS
+      );
     });
   });
 });

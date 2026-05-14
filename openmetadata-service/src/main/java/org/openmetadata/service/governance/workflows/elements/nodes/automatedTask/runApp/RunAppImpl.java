@@ -59,7 +59,7 @@ public class RunAppImpl {
       app =
           appRepository.getByName(null, appName, new EntityUtil.Fields(Set.of("bot", "pipelines")));
     } catch (EntityNotFoundException ex) {
-      LOG.warn(String.format("App: '%s' is not Installed. Skipping", appName));
+      LOG.warn("App: '{}' is not Installed. Skipping", appName);
       return wasSuccessful;
     }
 

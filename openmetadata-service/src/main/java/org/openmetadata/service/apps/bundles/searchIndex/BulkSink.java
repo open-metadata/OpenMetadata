@@ -1,6 +1,5 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.system.StepStats;
@@ -12,7 +11,7 @@ public interface BulkSink {
 
   StepStats getStats();
 
-  void close() throws IOException;
+  void close();
 
   /**
    * Flush any pending bulk requests and wait for them to complete. Unlike close(), this does not

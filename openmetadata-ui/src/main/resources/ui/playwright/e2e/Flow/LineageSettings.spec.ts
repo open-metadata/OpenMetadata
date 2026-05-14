@@ -291,8 +291,6 @@ test.describe.serial('Lineage Settings Tests', () => {
     // Select pipeline from Modal
     await applyPipelineFromModal(dataStewardPage, table, topic, pipeline);
     await editLineageClick(dataStewardPage);
-    // wait till canvas gets ready
-    await page.waitForTimeout(500);
     await verifyPipelineDataInDrawer(
       dataStewardPage,
       table,
@@ -321,7 +319,6 @@ test.describe.serial('Lineage Settings Tests', () => {
     await settingsUpdate;
 
     await dataStewardPage.reload();
-    await dataStewardPage.waitForLoadState('networkidle');
     await waitForAllLoadersToDisappear(dataStewardPage);
 
     // Pipeline should be shown as Node and not as Edge

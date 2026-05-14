@@ -29,11 +29,9 @@ import { ConfirmState } from './ActivityFeedCard.interface';
 
 interface Props {
   isAuthor: boolean;
-  isAnnouncement?: boolean;
   isThread?: boolean;
   threadId?: string;
   postId?: string;
-  editAnnouncementPermission?: boolean;
   reactions: Post['reactions'];
   onReactionSelect: (
     reactionType: ReactionType,
@@ -56,8 +54,6 @@ const PopoverContent: FC<Props> = ({
   onReactionSelect,
   onPopoverHide,
   onEdit,
-  isAnnouncement,
-  editAnnouncementPermission,
 }) => {
   const { currentUser } = useApplicationStore();
   const [visible, setVisible] = useState<boolean>(false);
@@ -77,12 +73,8 @@ const PopoverContent: FC<Props> = ({
   }, [threadId, postId, onConfirmation, isAuthor, currentUser]);
 
   const editCheck = useMemo(() => {
-    if (isAnnouncement) {
-      return editAnnouncementPermission;
-    } else {
-      return isAuthor || currentUser?.isAdmin;
-    }
-  }, [isAuthor, currentUser, isAnnouncement, editAnnouncementPermission]);
+    return isAuthor || currentUser?.isAdmin;
+  }, [isAuthor, currentUser]);
 
   const handleDelete = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();

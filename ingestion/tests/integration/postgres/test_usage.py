@@ -15,9 +15,7 @@ def usage_config(sink_config, workflow_config, db_service):
         "source": {
             "type": "postgres-usage",
             "serviceName": db_service.fullyQualifiedName.root,
-            "sourceConfig": {
-                "config": {"type": DatabaseUsageConfigType.DatabaseUsage.value}
-            },
+            "sourceConfig": {"config": {"type": DatabaseUsageConfigType.DatabaseUsage.value}},
         },
         "processor": {"type": "query-parser", "config": {}},
         "stage": {

@@ -30,11 +30,11 @@ class MockSSEResponse:
         self,
         lines: list[str],
         status_code: int = 200,
-        raise_error: Optional[Exception] = None,
+        raise_error: Optional[Exception] = None,  # noqa: UP045
     ):
         self.lines: list[str] = lines
         self.status_code: int = status_code
-        self.raise_error: Optional[Exception] = raise_error
+        self.raise_error: Optional[Exception] = raise_error  # noqa: UP045
 
     def raise_for_status(self):
         if self.status_code >= 400:
@@ -66,9 +66,9 @@ class MockHTTPXClient:
         self,
         method: str,
         url: str,
-        headers: Optional[dict[str, str]] = None,
-        json: Optional[dict[str, Any]] = None,
-        params: Optional[dict[str, Any]] = None,
+        headers: Optional[dict[str, str]] = None,  # noqa: UP045
+        json: Optional[dict[str, Any]] = None,  # noqa: UP045
+        params: Optional[dict[str, Any]] = None,  # noqa: UP045
     ) -> MockSSEResponse:
         return self.response
 
@@ -213,7 +213,7 @@ def test_stream_with_post_method_and_data(sse_client, mock_client_config):
     mock_response = MockSSEResponse(sse_lines)
 
     captured_method = None
-    captured_data = None
+    captured_data = None  # noqa: F841
 
     def mock_stream(method, url, headers=None, json=None, params=None):
         nonlocal captured_method
@@ -253,7 +253,7 @@ def test_stream_http_error_raises_immediately(sse_client):
     mock_response = MockSSEResponse([], status_code=404)
     mock_http_client = MockHTTPXClient(mock_response)
 
-    with patch("httpx.Client", return_value=mock_http_client):
+    with patch("httpx.Client", return_value=mock_http_client):  # noqa: SIM117
         with pytest.raises(httpx.HTTPStatusError):
             list(sse_client.stream("GET", "/events"))
 
@@ -267,9 +267,7 @@ def test_stream_connection_error_with_retries(sse_client):
         call_count += 1
 
         if call_count < 3:
-            mock_response = MockSSEResponse(
-                [], raise_error=httpx.ConnectError("Connection failed")
-            )
+            mock_response = MockSSEResponse([], raise_error=httpx.ConnectError("Connection failed"))
         else:
             mock_response = MockSSEResponse(
                 [
@@ -284,7 +282,7 @@ def test_stream_connection_error_with_retries(sse_client):
 
         return MockHTTPXClient(mock_response)
 
-    with patch("httpx.Client", side_effect=create_mock_client):
+    with patch("httpx.Client", side_effect=create_mock_client):  # noqa: SIM117
         with patch("time.sleep"):
             events = list(sse_client.stream("GET", "/events"))
 
@@ -298,12 +296,10 @@ def test_stream_connection_error_with_retries(sse_client):
 
 def test_stream_max_retries_exceeded(sse_client):
     """Test that max retries are respected and exception is raised"""
-    mock_response = MockSSEResponse(
-        [], raise_error=httpx.ConnectError("Connection failed")
-    )
+    mock_response = MockSSEResponse([], raise_error=httpx.ConnectError("Connection failed"))
     mock_http_client = MockHTTPXClient(mock_response)
 
-    with patch("httpx.Client", return_value=mock_http_client):
+    with patch("httpx.Client", return_value=mock_http_client):  # noqa: SIM117
         with patch("time.sleep"):
             with pytest.raises(httpx.ConnectError):
                 list(sse_client.stream("GET", "/events"))
@@ -349,9 +345,7 @@ def test_stream_resets_retry_count_on_success(sse_client):
         call_count += 1
 
         if call_count == 1:
-            mock_response = MockSSEResponse(
-                [], raise_error=httpx.ConnectError("Connection failed")
-            )
+            mock_response = MockSSEResponse([], raise_error=httpx.ConnectError("Connection failed"))
         else:
             mock_response = MockSSEResponse(
                 [
@@ -366,7 +360,7 @@ def test_stream_resets_retry_count_on_success(sse_client):
 
         return MockHTTPXClient(mock_response)
 
-    with patch("httpx.Client", side_effect=create_mock_client):
+    with patch("httpx.Client", side_effect=create_mock_client):  # noqa: SIM117
         with patch("time.sleep"):
             events = list(sse_client.stream("GET", "/events"))
 
@@ -561,9 +555,7 @@ def test_stream_exponential_backoff_on_retries(sse_client):
         call_count += 1
 
         if call_count < 3:
-            mock_response = MockSSEResponse(
-                [], raise_error=httpx.ReadError("Read failed")
-            )
+            mock_response = MockSSEResponse([], raise_error=httpx.ReadError("Read failed"))
         else:
             mock_response = MockSSEResponse(
                 [
@@ -578,9 +570,9 @@ def test_stream_exponential_backoff_on_retries(sse_client):
 
         return MockHTTPXClient(mock_response)
 
-    with patch("httpx.Client", side_effect=create_mock_client):
+    with patch("httpx.Client", side_effect=create_mock_client):  # noqa: SIM117
         with patch("time.sleep", side_effect=mock_sleep):
-            events = list(sse_client.stream("GET", "/events"))
+            events = list(sse_client.stream("GET", "/events"))  # noqa: F841
 
     assert len(sleep_delays) == 2
     assert sleep_delays[0] < sleep_delays[1]
@@ -676,10 +668,7 @@ def test_stream_with_realistic_message_event(sse_client):
     data_json = json.loads(event["data"])
     assert data_json["streamId"] == "stream-123"
     assert data_json["data"]["message"]["sender"] == "system"
-    assert (
-        data_json["data"]["message"]["content"][0]["textMessage"]["message"]
-        == "Test message"
-    )
+    assert data_json["data"]["message"]["content"][0]["textMessage"]["message"] == "Test message"
 
 
 def test_stream_with_stream_completed_event_terminates(sse_client):

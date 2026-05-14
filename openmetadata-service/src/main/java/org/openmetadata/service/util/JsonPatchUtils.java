@@ -161,8 +161,7 @@ public class JsonPatchUtils {
     String path;
 
     // Handle jakarta JSON patch objects efficiently
-    if (jsonPatchObject instanceof JsonObject) {
-      JsonObject jsonPatchObj = (JsonObject) jsonPatchObject;
+    if (jsonPatchObject instanceof JsonObject jsonPatchObj) {
       JsonValue pathValue = jsonPatchObj.get("path");
       if (pathValue instanceof JsonString) {
         path = ((JsonString) pathValue).getString();

@@ -3,7 +3,6 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CUSTOM_CHART;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -99,7 +98,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   public static final String FORMULA_FUNC_REGEX =
       "\\b(count|sum|min|max|avg|unique)+\\((k='([^']*)')?,?\\s*(q='([^']*)')?\\)?";
 
-  public static final String NUMERIC_VALIDATION_REGEX = "[\\d\\.+-\\/\\*\\(\\)\s]+";
+  public static final String NUMERIC_VALIDATION_REGEX = "[\\d\\.+-\\/\\*\\(\\) ]+";
 
   public DataInsightSystemChartRepository() {
     super(
@@ -157,6 +156,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
    */
   private List<Map> getIngestionPipelineStatus(String serviceName) {
     List<Map> combinedStatus = new ArrayList<>();
+    final int pageSize = 100;
+    final int maxResults = 5000;
 
     try {
       if (serviceName == null || serviceName.trim().isEmpty()) {
@@ -172,25 +173,31 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         return combinedStatus;
       }
 
-      // Get current timestamp for recent pipeline status
-      long currentTime = System.currentTimeMillis();
-      long startTime = currentTime - (24 * 60 * 60 * 1000); // Last 24 hours
-      long endTime = currentTime;
-
       // Search for ingestion pipelines by service name using search
       SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
       if (searchClient != null) {
         try {
-          // Search for ingestion pipelines with the service name
-          String searchIndex = INGESTION_PIPELINE;
-          var response =
-              searchClient.searchByField("service.name.keyword", serviceName, searchIndex, false);
+          // Search for ingestion pipelines with the service name, paging through all results.
+          for (int from = 0; from < maxResults; from += pageSize) {
+            var response =
+                searchClient.searchByField(
+                    "service.name.keyword", serviceName, INGESTION_PIPELINE, false, from, pageSize);
 
-          if (response != null && response.getStatus() == 200) {
-            // Parse the response to extract pipeline information
+            if (response == null || response.getStatus() != 200) {
+              break;
+            }
+
             String responseBody =
                 (String) ((OutboundJaxrsResponse) response).getContext().getEntity();
-            combinedStatus.addAll(parseIngestionPipelineResponse(responseBody));
+            List<Map> pageStatuses = parseIngestionPipelineResponse(responseBody);
+            if (pageStatuses.isEmpty()) {
+              break;
+            }
+
+            combinedStatus.addAll(pageStatuses);
+            if (pageStatuses.size() < pageSize) {
+              break;
+            }
           }
         } catch (Exception e) {
           LOG.error("Error searching for ingestion pipelines for service: {}", serviceName, e);
@@ -555,8 +562,13 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
               case SUCCESS -> AppRunRecord.Status.SUCCESS;
               case FAILED, PARTIAL_SUCCESS -> AppRunRecord.Status.FAILED;
               case RUNNING -> AppRunRecord.Status.RUNNING;
+              case STOPPED -> AppRunRecord.Status.STOPPED;
             })
-        .withConfig(pipelineStatus.getConfig());
+        .withConfig(pipelineStatus.getConfig())
+        .withProperties(
+            pipelineStatus.getRunId() != null
+                ? Map.of("pipelineRunId", pipelineStatus.getRunId())
+                : null);
   }
 
   /**
@@ -666,13 +678,13 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
 
   @Override
   public void storeEntities(List<DataInsightCustomChart> entities) {
-    List<DataInsightCustomChart> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
+    List<String> fqns = new ArrayList<>(entities.size());
+    List<String> jsons = new ArrayList<>(entities.size());
     for (DataInsightCustomChart entity : entities) {
-      String jsonCopy = gson.toJson(entity);
-      entitiesToStore.add(gson.fromJson(jsonCopy, DataInsightCustomChart.class));
+      fqns.add(entity.getFullyQualifiedName());
+      jsons.add(serializeForStorage(entity));
     }
-    storeMany(entitiesToStore);
+    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
   }
 
   @Override
@@ -770,9 +782,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           HashMap chartDetails = (HashMap) chart.getChartDetails();
           chartDetails.put("includeXAxisFiled", serviceName.toLowerCase());
         }
-        // Pass filter to buildDIChart so it's applied at query level (not just inside aggregations)
         DataInsightCustomChartResultList data =
-            searchClient.buildDIChart(chart, startTimestamp, endTimestamp, live, filter);
+            searchClient.buildDIChart(chart, startTimestamp, endTimestamp, live);
         result.put(chartName, data);
       }
     }
@@ -1265,7 +1276,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       this.serviceName = serviceName;
       this.filter = filter;
       this.entityLink = entityLink;
-      this.userIds = new ConcurrentHashMap().newKeySet(); // Thread-safe set
+      this.userIds = ConcurrentHashMap.newKeySet(); // Thread-safe set
       this.userIds.add(userId);
       this.startTime = System.currentTimeMillis(); // Session start time
       this.dataStartTime = dataStartTime; // Data range start time

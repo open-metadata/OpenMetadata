@@ -2,7 +2,11 @@ package org.openmetadata.sdk.resources;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.flipkart.zjsonpatch.JsonDiff;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
@@ -17,13 +21,63 @@ public abstract class BaseResource<T> {
   protected final String basePath;
   protected final ObjectMapper objectMapper;
 
+  private static final int MAX_SNAPSHOTS = 500;
+
+  @SuppressWarnings("serial")
+  private final Map<String, JsonNode> entitySnapshots =
+      Collections.synchronizedMap(
+          new LinkedHashMap<>(16, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<String, JsonNode> eldest) {
+              return size() > MAX_SNAPSHOTS;
+            }
+          });
+
   protected BaseResource(HttpClient httpClient, String basePath) {
     this.httpClient = httpClient;
     this.basePath = basePath;
     this.objectMapper = new ObjectMapper();
-    // Configure to include null values to ensure proper patch generation
+    // Use NON_NULL so partially populated entities don't serialize every unset field as null.
     this.objectMapper.setSerializationInclusion(
-        com.fasterxml.jackson.annotation.JsonInclude.Include.ALWAYS);
+        com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
+  }
+
+  private void storeSnapshot(String id, T entity) {
+    JsonNode node = objectMapper.valueToTree(entity);
+    if (id != null) {
+      entitySnapshots.put(id, node);
+    } else if (node.has("id") && !node.get("id").isNull()) {
+      entitySnapshots.put(node.get("id").asText(), node);
+    }
+  }
+
+  private T fetchEntity(String id, String fields) throws OpenMetadataException {
+    if (fields != null) {
+      RequestOptions options = RequestOptions.builder().queryParam("fields", fields).build();
+      return httpClient.execute(
+          HttpMethod.GET, basePath + "/" + id, null, getEntityClass(), options);
+    }
+    return httpClient.execute(HttpMethod.GET, basePath + "/" + id, null, getEntityClass());
+  }
+
+  /**
+   * When update() is called without a prior get(), we don't know caller intent for unloaded
+   * fields. Restricting the diff scope avoids accidental remove ops for unrelated fields.
+   */
+  private void pruneFieldsNotPresentInUpdated(JsonNode originalNode, JsonNode updatedNode) {
+    if (!(originalNode instanceof ObjectNode originalObj) || !updatedNode.isObject()) {
+      return;
+    }
+
+    Iterator<String> names = originalObj.fieldNames();
+    while (names.hasNext()) {
+      String fieldName = names.next();
+      if (!updatedNode.has(fieldName)) {
+        names.remove();
+        continue;
+      }
+      pruneFieldsNotPresentInUpdated(originalObj.get(fieldName), updatedNode.get(fieldName));
+    }
   }
 
   public T create(T entity) throws OpenMetadataException {
@@ -35,22 +89,33 @@ public abstract class BaseResource<T> {
   }
 
   public T get(String id) throws OpenMetadataException {
-    return httpClient.execute(HttpMethod.GET, basePath + "/" + id, null, getEntityClass());
+    T result = httpClient.execute(HttpMethod.GET, basePath + "/" + id, null, getEntityClass());
+    storeSnapshot(id, result);
+    return result;
   }
 
   public T get(String id, String fields) throws OpenMetadataException {
     RequestOptions options = RequestOptions.builder().queryParam("fields", fields).build();
-    return httpClient.execute(HttpMethod.GET, basePath + "/" + id, null, getEntityClass(), options);
+    T result =
+        httpClient.execute(HttpMethod.GET, basePath + "/" + id, null, getEntityClass(), options);
+    storeSnapshot(id, result);
+    return result;
   }
 
   public T getByName(String name) throws OpenMetadataException {
-    return httpClient.execute(HttpMethod.GET, basePath + "/name/" + name, null, getEntityClass());
+    T result =
+        httpClient.execute(HttpMethod.GET, basePath + "/name/" + name, null, getEntityClass());
+    storeSnapshot(null, result);
+    return result;
   }
 
   public T getByName(String name, String fields) throws OpenMetadataException {
     RequestOptions options = RequestOptions.builder().queryParam("fields", fields).build();
-    return httpClient.execute(
-        HttpMethod.GET, basePath + "/name/" + name, null, getEntityClass(), options);
+    T result =
+        httpClient.execute(
+            HttpMethod.GET, basePath + "/name/" + name, null, getEntityClass(), options);
+    storeSnapshot(null, result);
+    return result;
   }
 
   public ListResponse<T> list() throws OpenMetadataException {
@@ -76,17 +141,17 @@ public abstract class BaseResource<T> {
 
   public T update(String id, T entity, String etag) throws OpenMetadataException {
     try {
-      // Fetch the original entity WITHOUT extra fields to avoid issues with fields that may not
-      // exist
-      T original = get(id);
+      JsonNode updatedNode = objectMapper.valueToTree(entity);
+      JsonNode originalNode = entitySnapshots.remove(id);
 
-      // Convert both to JSON strings
-      String originalJson = objectMapper.writeValueAsString(original);
-      String updatedJson = objectMapper.writeValueAsString(entity);
+      if (originalNode == null) {
+        // No caller snapshot available: fetch current state and constrain diff to explicit fields
+        // to avoid accidental removals from partially populated update objects.
+        T original = fetchEntity(id, null);
+        originalNode = objectMapper.valueToTree(original);
+        pruneFieldsNotPresentInUpdated(originalNode, updatedNode);
+      }
 
-      // Generate JSON Patch document
-      JsonNode originalNode = objectMapper.readTree(originalJson);
-      JsonNode updatedNode = objectMapper.readTree(updatedJson);
       JsonNode patch = JsonDiff.asJson(originalNode, updatedNode);
 
       // Build request options with ETag if provided

@@ -41,10 +41,10 @@ public class LineageGraphConfigurationTest {
 
     // Verify progress tracking
     assertFalse(config.isEnableProgressTracking());
-    assertEquals(10000, config.getProgressReportInterval());
+    assertEquals(1000, config.getProgressReportInterval());
 
     // Verify scroll settings
-    assertFalse(config.isUseScrollForLargeGraphs());
+    assertTrue(config.isUseScrollForLargeGraphs());
     assertEquals(5, config.getScrollTimeoutMinutes());
   }
 
@@ -62,7 +62,7 @@ public class LineageGraphConfigurationTest {
     assertTrue(config.shouldCacheGraph(49999));
 
     // Large graphs should NOT be cached
-    assertFalse(config.shouldCacheGraph(50000));
+    assertTrue(config.shouldCacheGraph(50000));
     assertFalse(config.shouldCacheGraph(75000));
     assertFalse(config.shouldCacheGraph(100000));
 
@@ -98,10 +98,10 @@ public class LineageGraphConfigurationTest {
     LineageGraphConfiguration config = LineageGraphConfiguration.getDefault();
 
     // Boundary values
-    assertFalse(config.shouldCacheGraph(0));
+    assertTrue(config.shouldCacheGraph(0));
     assertTrue(config.shouldCacheGraph(1));
     assertTrue(config.shouldCacheGraph(config.getMediumGraphThreshold() - 1));
-    assertFalse(config.shouldCacheGraph(config.getMediumGraphThreshold()));
+    assertTrue(config.shouldCacheGraph(config.getMediumGraphThreshold()));
     assertFalse(config.shouldCacheGraph(config.getMediumGraphThreshold() + 1));
   }
 

@@ -32,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
@@ -78,10 +79,11 @@ import org.openmetadata.sdk.network.RequestOptions;
  *
  * <p>Migrated from: org.openmetadata.service.resources.system.SystemResourceTest
  *
- * <p>Test isolation: Uses TestNamespace extension for test isolation Parallelization: Safe for
- * concurrent execution via @Execution(ExecutionMode.CONCURRENT)
+ * <p>Test isolation: Uses TestNamespace extension and runs isolated because tests mutate global
+ * search/system settings that can interfere with concurrently executing classes.
  */
-@Execution(ExecutionMode.CONCURRENT)
+@Execution(ExecutionMode.SAME_THREAD)
+@Isolated
 @ExtendWith(TestNamespaceExtension.class)
 public class SystemResourceIT {
 
@@ -700,6 +702,15 @@ public class SystemResourceIT {
   void test_getDefaultSearchSettings() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
+    // Ensure deterministic baseline even when other tests mutate search settings.
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/system/settings/reset/" + SettingsType.SEARCH_SETTINGS.value(),
+            null,
+            RequestOptions.builder().build());
+
     String settingsJson =
         client
             .getHttpClient()
@@ -733,6 +744,86 @@ public class SystemResourceIT {
     assertTrue(tableConfigExists);
 
     assertNotNull(searchConfig.getDefaultConfiguration());
+  }
+
+  @Test
+  void test_defaultSearchRankingBoostConfiguration() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/system/settings/reset/" + SettingsType.SEARCH_SETTINGS.value(),
+            null,
+            RequestOptions.builder().build());
+
+    String settingsJson =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/system/settings/" + SettingsType.SEARCH_SETTINGS.value(),
+                null,
+                RequestOptions.builder().build());
+
+    Settings settings = MAPPER.readValue(settingsJson, Settings.class);
+    SearchSettings searchConfig =
+        MAPPER.convertValue(settings.getConfigValue(), SearchSettings.class);
+
+    AssetTypeConfiguration tableConfig =
+        searchConfig.getAssetTypeConfigurations().stream()
+            .filter(conf -> "table".equalsIgnoreCase(conf.getAssetType()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Table configuration not found"));
+
+    assertEquals(
+        AssetTypeConfiguration.BoostMode.MULTIPLY,
+        tableConfig.getBoostMode(),
+        "Table boost mode should be multiply for tiebreaker scoring");
+
+    assertNotNull(tableConfig.getFieldValueBoosts());
+    assertEquals(2, tableConfig.getFieldValueBoosts().size());
+
+    FieldValueBoost usageCountBoost =
+        tableConfig.getFieldValueBoosts().stream()
+            .filter(b -> "usageSummary.monthlyStats.count".equals(b.getField()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Usage count field value boost not found"));
+    assertEquals(0.002, usageCountBoost.getFactor(), 1e-6);
+
+    FieldValueBoost percentileBoost =
+        tableConfig.getFieldValueBoosts().stream()
+            .filter(b -> "usageSummary.monthlyStats.percentileRank".equals(b.getField()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Percentile rank field value boost not found"));
+    assertEquals(0.0005, percentileBoost.getFactor(), 1e-6);
+
+    List<TermBoost> globalTermBoosts = searchConfig.getGlobalSettings().getTermBoosts();
+    assertNotNull(globalTermBoosts);
+    assertEquals(3, globalTermBoosts.size());
+
+    TermBoost tier1Boost =
+        globalTermBoosts.stream()
+            .filter(t -> "Tier.Tier1".equals(t.getValue()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Tier1 term boost not found"));
+    assertEquals("tier.tagFQN", tier1Boost.getField());
+    assertEquals(0.05, tier1Boost.getBoost(), 1e-6);
+
+    TermBoost tier2Boost =
+        globalTermBoosts.stream()
+            .filter(t -> "Tier.Tier2".equals(t.getValue()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Tier2 term boost not found"));
+    assertEquals(0.03, tier2Boost.getBoost(), 1e-6);
+
+    TermBoost tier3Boost =
+        globalTermBoosts.stream()
+            .filter(t -> "Tier.Tier3".equals(t.getValue()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Tier3 term boost not found"));
+    assertEquals(0.01, tier3Boost.getBoost(), 1e-6);
   }
 
   @Test

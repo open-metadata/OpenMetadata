@@ -14,10 +14,10 @@
 import pytest
 
 from metadata.generated.schema.entity.data.table import DataType, Table
-from metadata.ingestion.ometa.models import EntityList
+from metadata.ingestion.ometa.models import EntityList  # noqa: TC001
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
-from .conftest import BUCKET_NAME
+from .conftest import BUCKET_NAME  # noqa: TID252
 
 
 class TestDatalake:

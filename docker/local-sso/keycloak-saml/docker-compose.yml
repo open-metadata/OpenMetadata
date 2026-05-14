@@ -1,0 +1,23 @@
+name: openmetadata-keycloak-saml
+
+services:
+  keycloak:
+    image: ${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.3.3}
+    container_name: openmetadata-keycloak-saml
+    command: ['start-dev', '--import-realm']
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD:-admin123}
+      KC_HEALTH_ENABLED: 'true'
+      KC_HTTP_ENABLED: 'true'
+      KC_HTTP_PORT: '8080'
+    ports:
+      - '${KEYCLOAK_SAML_PORT:-8080}:8080'
+    volumes:
+      - ./realms:/opt/keycloak/data/import:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'exec 3<>/dev/tcp/localhost/8080']
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 20s

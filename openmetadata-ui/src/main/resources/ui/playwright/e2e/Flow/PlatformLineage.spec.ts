@@ -48,9 +48,9 @@ test('Verify Platform Lineage View', async ({ page }) => {
 
   await page.getByTestId('lineage-layer-btn').click();
 
-  await page.waitForSelector(
-    '[data-testid="lineage-layer-domain-btn"]:not(.MUI-selected)'
-  );
+  await page
+    .locator('[data-testid="lineage-layer-domain-btn"]:not(.MUI-selected)')
+    .waitFor();
 
   const domainRes = page.waitForResponse(
     '/api/v1/lineage/getPlatformLineage?view=domain*'

@@ -131,9 +131,9 @@ public class MigrationUtil {
         }
       } catch (Exception exc) {
         LOG.error(
-            String.format(
-                "Error trying to migrate tests from Table [%s] due to [%s]",
-                tableFQN, exc.getMessage()));
+            "Error trying to migrate tests from Table [{}] due to [{}]",
+            tableFQN,
+            exc.getMessage());
       }
     }
   }

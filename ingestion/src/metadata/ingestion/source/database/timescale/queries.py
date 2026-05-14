@@ -70,6 +70,39 @@ ORDER BY range_start DESC
 LIMIT 5
 """
 
+TIMESCALE_IS_HYPERTABLE = """
+SELECT 1
+FROM timescaledb_information.hypertables
+WHERE hypertable_schema = :schema
+  AND hypertable_name = :table
+"""
+
+TIMESCALE_GET_APPROXIMATE_METRICS = """
+SELECT
+    approximate_row_count(:fqn) AS row_count,
+    hypertable_size(:fqn) AS size_bytes
+"""
+
+TIMESCALE_GET_TIME_DIMENSION = """
+SELECT dim.column_name
+FROM timescaledb_information.hypertables ht
+JOIN timescaledb_information.dimensions dim
+    ON ht.hypertable_schema = dim.hypertable_schema
+    AND ht.hypertable_name = dim.hypertable_name
+    AND dim.dimension_number = 1
+WHERE ht.hypertable_schema = :schema
+  AND ht.hypertable_name = :table
+"""
+
+TIMESCALE_GET_COMPRESSION_INFO = """
+SELECT
+    bool_or(is_compressed) AS has_compressed,
+    MIN(range_start::timestamptz) FILTER (WHERE NOT is_compressed) AS uncompressed_boundary
+FROM timescaledb_information.chunks
+WHERE hypertable_schema = :schema
+  AND hypertable_name = :table
+"""
+
 TIMESCALE_CHECK_EXTENSION = """
 SELECT EXISTS (
     SELECT 1

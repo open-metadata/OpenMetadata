@@ -134,7 +134,7 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
    * Handles special cases for different entity types.
    */
   private String buildEntityUrl(String entityType, String fqn, Map<String, Object> entityMap) {
-    String baseUrl = EmailUtil.getOMBaseURL();
+    String baseUrl = getBaseUrl();
     if (nullOrEmpty(baseUrl)) {
       LOG.warn("Base URL is null or empty, cannot build entity URL");
       return null;
@@ -205,6 +205,10 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
     return url;
   }
 
+  protected String getBaseUrl() {
+    return EmailUtil.getOMBaseURL();
+  }
+
   /**
    * Builds a standard entity URL with optional additional parameters
    * Format: {baseUrl}/{prefix}/{encodedFqn}[/{additionalParams}]
@@ -241,21 +245,20 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
       String pipelineType = getTrimmed(entityMap, KEY_PIPELINE_TYPE).orElse("");
       return switch (PipelineType.fromValue(pipelineType)) {
         case TEST_SUITE ->
-        // TEST_SUITE: /testSuite/{serviceFqn}/logs
-        buildUrl(baseUrl, "testSuite", pipelineFqn, "logs");
+        // TEST_SUITE: redirect to the source table's profiler tab
+        buildUrl(
+            baseUrl,
+            "table",
+            serviceFqn.replaceFirst("\\.testSuite$", ""),
+            "profiler?activeTab=Data%20Quality");
 
         case APPLICATION ->
         // APPLICATION: /automations/{serviceFqn}/automator-details
         buildUrl(baseUrl, "automations", serviceFqn, "automator-details");
 
-        case PROFILER, LINEAGE, USAGE, METADATA, AUTO_CLASSIFICATION ->
-        // DEFAULT: /databaseServices/{serviceFqn}/logs
-        buildUrl(baseUrl, "databaseServices", pipelineFqn, "logs");
-
         default -> {
           // DEFAULT: /service/{serviceType}s/{serviceFqn}/ingestions
-          String prefix = "service/" + serviceType + "s";
-          yield buildUrl(baseUrl, prefix, serviceFqn, "ingestions");
+          yield buildUrl(baseUrl, "service/" + serviceType + "s", serviceFqn, "ingestions");
         }
       };
 

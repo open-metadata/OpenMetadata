@@ -141,6 +141,11 @@
       "description": "If true, multiple instances of this app can run concurrently. This is useful for apps like QueryRunner that support parallel executions with different configurations.",
       "type": "boolean",
       "default": false
+    },
+    "allowBotImpersonation": {
+      "description": "When true, the bot created for this application will have allowImpersonation enabled, allowing it to act on behalf of users.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false,

@@ -11,10 +11,14 @@
  *  limitations under the License.
  */
 
-import { FC } from 'react';
-import AuthenticatedAppRouter from '../components/AppRouter/AuthenticatedAppRouter';
+import { FC, lazy } from 'react';
 import { UnAuthenticatedAppRouter } from '../components/AppRouter/UnAuthenticatedAppRouter';
-import { ROUTES } from '../constants/constants';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import { UNPROTECTED_ROUTES } from '../constants/router.constants';
+
+const AuthenticatedAppRouter = withSuspenseFallback(
+  lazy(() => import('../components/AppRouter/AuthenticatedAppRouter'))
+);
 
 class ApplicationRoutesClassBase {
   public getRouteElements(): FC {
@@ -26,22 +30,7 @@ class ApplicationRoutesClassBase {
   }
 
   public isProtectedRoute(pathname: string): boolean {
-    return (
-      [
-        ROUTES.SIGNUP,
-        ROUTES.SIGNIN,
-        ROUTES.FORGOT_PASSWORD,
-        ROUTES.CALLBACK,
-        ROUTES.SILENT_CALLBACK,
-        ROUTES.REGISTER,
-        ROUTES.RESET_PASSWORD,
-        ROUTES.ACCOUNT_ACTIVATION,
-        ROUTES.HOME,
-        ROUTES.AUTH_CALLBACK,
-        ROUTES.NOT_FOUND,
-        ROUTES.LOGOUT,
-      ].indexOf(pathname) === -1
-    );
+    return !UNPROTECTED_ROUTES.has(pathname);
   }
 }
 

@@ -33,6 +33,31 @@ jest.mock('../../utils/useRequiredParams', () => ({
   useRequiredParams: jest.fn(() => ({ tab: mockTab() })),
 }));
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, onClick, 'data-testid': testId }) => (
+      <button data-testid={testId} onClick={onClick}>
+        {children}
+      </button>
+    )),
+  Card: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
+  Tooltip: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+  TooltipTrigger: jest
+    .fn()
+    .mockImplementation(({ children }) => <>{children}</>),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(({ icon, onClick, 'data-testid': testId }) => (
+      <button data-testid={testId} onClick={onClick}>
+        {icon}
+      </button>
+    )),
+}));
+
 jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );

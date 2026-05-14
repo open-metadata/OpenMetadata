@@ -1,5 +1,6 @@
 {
   "name": "RecognizerFeedbackReviewWorkflow",
+  "fullyQualifiedName": "RecognizerFeedbackReviewWorkflow",
   "displayName": "Recognizer Feedback Review Workflow",
   "description": "When feedback is submitted on auto-applied tags, check if tag has reviewers and either auto-apply or create approval task",
   "config": {
@@ -10,7 +11,7 @@
     "config": {
       "entityTypes": ["recognizerFeedback"],
       "events": ["Created", "Updated"],
-      "exclude": [],
+      "exclude": ["reviewers"],
       "include": [],
       "filter": {}
     },
@@ -31,8 +32,7 @@
       "config": {
         "assignees": {
           "addReviewers": true,
-          "addOwners": false,
-          "candidates": []
+          "addOwners": false
         },
         "approvalThreshold": 1,
         "rejectionThreshold": 1

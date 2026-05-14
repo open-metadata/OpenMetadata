@@ -12,6 +12,7 @@
 """
 OpenMetadata utils tests
 """
+
 import base64
 import json
 from unittest import TestCase
@@ -66,9 +67,7 @@ MOCK_TABLE = Table(
             dataType="STRING",
         ),
     ],
-    databaseSchema=EntityReference(
-        id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="databaseSchema"
-    ),
+    databaseSchema=EntityReference(id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="databaseSchema"),
 )
 
 
@@ -142,10 +141,7 @@ class OMetaUtilsTest(TestCase):
         self.assertEqual(model_str(basic.FullyQualifiedEntityName("FQDN")), "FQDN")
 
     def test_render_query_headers_builds_the_right_string(self) -> None:
-        assert (
-            render_query_header("0.0.1")
-            == '/* {"app": "OpenMetadata", "version": "0.0.1"} */'
-        )
+        assert render_query_header("0.0.1") == '/* {"app": "OpenMetadata", "version": "0.0.1"} */'
 
     def test_build_entity_reference(self) -> None:
         """Check we're building the right class"""
@@ -165,11 +161,7 @@ class OMetaUtilsTest(TestCase):
         }
 
         # Encode the payload
-        payload_encoded = (
-            base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8"))
-            .decode("utf-8")
-            .rstrip("=")
-        )
+        payload_encoded = base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8")).decode("utf-8").rstrip("=")
 
         # Create a mock JWT token (header.payload.signature)
         jwt_token = f"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.{payload_encoded}.signature"
@@ -187,11 +179,7 @@ class OMetaUtilsTest(TestCase):
         payload = {"sub": "admin", "email": "admin@openmetadata.org"}
 
         # Encode without padding
-        payload_encoded = (
-            base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8"))
-            .decode("utf-8")
-            .rstrip("=")
-        )
+        payload_encoded = base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8")).decode("utf-8").rstrip("=")
 
         jwt_token = f"header.{payload_encoded}.signature"
 
@@ -223,9 +211,7 @@ class OMetaUtilsTest(TestCase):
         """Test decoding a JWT token with invalid JSON in payload"""
         # Create invalid JSON payload
         invalid_json = "invalid json content"
-        payload_encoded = base64.urlsafe_b64encode(invalid_json.encode("utf-8")).decode(
-            "utf-8"
-        )
+        payload_encoded = base64.urlsafe_b64encode(invalid_json.encode("utf-8")).decode("utf-8")
 
         jwt_token = f"header.{payload_encoded}.signature"
 
@@ -235,9 +221,7 @@ class OMetaUtilsTest(TestCase):
     def test_decode_jwt_token_empty_payload(self):
         """Test decoding a JWT token with empty payload"""
         # Create empty payload
-        payload_encoded = base64.urlsafe_b64encode(
-            json.dumps({}).encode("utf-8")
-        ).decode("utf-8")
+        payload_encoded = base64.urlsafe_b64encode(json.dumps({}).encode("utf-8")).decode("utf-8")
 
         jwt_token = f"header.{payload_encoded}.signature"
 
@@ -266,11 +250,7 @@ class OMetaUtilsTest(TestCase):
             "isBot": False,
         }
 
-        payload_encoded = (
-            base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8"))
-            .decode("utf-8")
-            .rstrip("=")
-        )
+        payload_encoded = base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8")).decode("utf-8").rstrip("=")
 
         jwt_token = f"eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.{payload_encoded}.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
 
@@ -371,12 +351,8 @@ class OMetaUtilsTest(TestCase):
 
         for entity_type, depth in hierarchy.items():
             with self.subTest(entity_type=entity_type.__name__):
-                self.assertIsInstance(
-                    depth, int, f"{entity_type.__name__} depth should be an integer"
-                )
-                self.assertGreaterEqual(
-                    depth, 0, f"{entity_type.__name__} depth should be non-negative"
-                )
+                self.assertIsInstance(depth, int, f"{entity_type.__name__} depth should be an integer")
+                self.assertGreaterEqual(depth, 0, f"{entity_type.__name__} depth should be non-negative")
 
     def test_get_entity_hierarchy_services_at_root(self):
         """Test that all service types are at depth 0 (root level)"""

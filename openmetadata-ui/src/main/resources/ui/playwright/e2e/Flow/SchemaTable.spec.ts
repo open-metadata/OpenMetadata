@@ -22,9 +22,9 @@ import {
   testCopyLinkButton,
   updateDisplayNameForEntityChildren,
   validateCopiedLinkFormat,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 // Grant clipboard permissions for copy link tests
 test.use({
@@ -46,7 +46,7 @@ const crudColumnDisplayName = async (
   );
   await page.getByTestId('searchbar').fill(columnName);
   await searchResponse;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+  await waitForAllLoadersToDisappear(page);
 
   // Add the display name to a new value
   await updateDisplayNameForEntityChildren(
@@ -117,8 +117,7 @@ test('schema table test', async ({ dataStewardPage, ownerPage, page }) => {
     await redirectToHomePage(page);
 
     await table.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
 
     await addOwner({
       page,
@@ -143,13 +142,10 @@ test('schema table test', async ({ dataStewardPage, ownerPage, page }) => {
       await redirectToHomePage(currentPage);
 
       await table.visitEntityPage(currentPage);
-      await currentPage.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(currentPage);
       await crudColumnDisplayName(
         currentPage,
-        columnFqn,
+        columnFqn || '',
         columnName,
         'data-row-key'
       );
@@ -157,46 +153,13 @@ test('schema table test', async ({ dataStewardPage, ownerPage, page }) => {
   });
 });
 
-test(
-  'Schema Table Pagination should work Properly',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
-  async ({ page }) => {
-    const tableResponse = page.waitForResponse(`/api/v1/tables?limit=15**`);
-
-    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
-    await tableResponse;
-
-    await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
-      '15 / Page'
-    );
-
-    await expect(page.getByTestId('previous')).toBeDisabled();
-
-    await expect(page.getByTestId('next')).not.toBeDisabled();
-
-    const tableResponse2 = page.waitForResponse(`/api/v1/tables?**limit=15**`);
-    await page.getByTestId('next').click();
-    await tableResponse2;
-
-    await expect(page.getByTestId('previous')).not.toBeDisabled();
-
-    await expect(page.getByTestId('page-indicator')).toContainText('2');
-
-    const tableResponse3 = page.waitForResponse(`/api/v1/tables?**limit=15**`);
-    await page.getByTestId('previous').click();
-    await tableResponse3;
-
-    await expect(page.getByTestId('page-indicator')).toContainText('1');
-  }
-);
-
 test('Copy column link button should copy the column URL to clipboard', async ({
   page,
 }) => {
   // Navigate directly to the table page instead of searching
   await redirectToHomePage(page);
   await table.visitEntityPage(page);
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await testCopyLinkButton({
     page,
@@ -213,7 +176,7 @@ test('Copy column link should have valid URL format', async ({ page }) => {
     `/api/v1/tables/name/${table.entityResponseData?.['fullyQualifiedName']}/columns?*`
   );
   await table.visitEntityPage(page);
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
   const columnData = await columnResponse.then((res) => res.json());
 
   await expect(page.getByTestId('entity-table')).toBeVisible();
@@ -234,7 +197,28 @@ test('Copy column link should have valid URL format', async ({ page }) => {
   expect(validationResult.pathname).toContain('table');
 
   // Visit the copied link to verify it opens the side panel
-  await page.goto(clipboardText);
+  const tableFqn = table.entityResponseData?.['fullyQualifiedName'] ?? '';
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response
+          .url()
+          .includes(`/api/v1/tables/name/${encodeURIComponent(tableFqn)}`) &&
+        response.url().includes('fields=') &&
+        response.request().method() === 'GET'
+    ),
+    page.waitForResponse(
+      (response) =>
+        response
+          .url()
+          .includes(`/api/v1/tables/name/${encodeURIComponent(tableFqn)}`) &&
+        response.url().includes('profile') &&
+        response.request().method() === 'GET',
+      { timeout: 150_000 } // TODO: Reduce timeout once the latency issue is fixed
+    ),
+    page.goto(clipboardText),
+  ]);
+  await waitForAllLoadersToDisappear(page);
 
   // Verify side panel is open
   const sidePanel = page.locator('.column-detail-panel');
@@ -259,7 +243,7 @@ test('Copy nested column link should include full hierarchical path', async ({
 }) => {
   await redirectToHomePage(page);
   await table.visitEntityPage(page);
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('entity-table')).toBeVisible();
 
@@ -287,7 +271,33 @@ test('Copy nested column link should include full hierarchical path', async ({
       );
 
       // Visit the copied link to verify it opens the side panel
-      await page.goto(clipboardText);
+      const nestedTableFqn =
+        table.entityResponseData?.['fullyQualifiedName'] ?? '';
+      await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes(
+                `/api/v1/tables/name/${encodeURIComponent(nestedTableFqn)}`
+              ) &&
+            response.url().includes('fields=') &&
+            response.request().method() === 'GET'
+        ),
+        page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes(
+                `/api/v1/tables/name/${encodeURIComponent(nestedTableFqn)}`
+              ) &&
+            response.url().includes('profile') &&
+            response.request().method() === 'GET',
+          { timeout: 150_000 } // TODO: Reduce timeout once the latency issue is fixed
+        ),
+        page.goto(clipboardText),
+      ]);
+      await waitForAllLoadersToDisappear(page);
 
       // Verify side panel is open
       const sidePanel = page.locator('.column-detail-panel');

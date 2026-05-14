@@ -195,6 +195,10 @@ public final class CommonUtil {
     return list == null || list.isEmpty();
   }
 
+  public static boolean nullOrEmpty(Collection<?> collection) {
+    return collection == null || collection.isEmpty();
+  }
+
   public static boolean nullOrEmpty(Map<?, ?> m) {
     return m == null || m.isEmpty();
   }
@@ -213,6 +217,11 @@ public final class CommonUtil {
     } else {
       return object;
     }
+  }
+
+  public static String capitalizeFirst(String str) {
+    if (str == null || str.isEmpty()) return str;
+    return Character.toUpperCase(str.charAt(0)) + str.substring(1);
   }
 
   public static <T> List<T> collectionOrDefault(List<T> c, List<T> defaultValue) {

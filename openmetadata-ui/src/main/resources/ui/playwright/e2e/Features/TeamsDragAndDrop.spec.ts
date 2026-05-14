@@ -23,8 +23,9 @@ import {
   dragAndDropElement,
   openDragDropDropdown,
 } from '../../utils/dragDrop';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
-import { addTeamHierarchy, hardDeleteTeam } from '../../utils/team';
+import { addTeamHierarchy } from '../../utils/team';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -92,28 +93,29 @@ test.describe(
       await redirectToHomePage(page);
 
       const getOrganizationResponse = page.waitForResponse(
-        '/api/v1/teams/name/*'
+        (response) =>
+          response.url().includes('/api/v1/teams/name/') &&
+          response.status() === 200
       );
       const permissionResponse = page.waitForResponse(
-        '/api/v1/permissions/team/name/*'
+        (response) =>
+          response.url().includes('/api/v1/permissions/team/name/') &&
+          response.status() === 200
       );
 
       await settingClick(page, GlobalSettingOptions.TEAMS);
       await permissionResponse;
       await getOrganizationResponse;
+      await waitForAllLoadersToDisappear(page);
     });
 
     test('Add teams in hierarchy', async ({ page }) => {
       for (const teamDetails of DRAG_AND_DROP_TEAM_DETAILS) {
         await addTeamHierarchy(page, teamDetails);
-        await page.waitForLoadState('networkidle');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
 
         await expect(
           page.locator(`[data-row-key="${teamDetails.name}"]`)
-        ).toContainText(teamDetails.description);
+        ).toContainText(teamDetails.description, { timeout: 60000 });
       }
     });
 
@@ -196,33 +198,6 @@ test.describe(
       await movedTeam.scrollIntoViewIfNeeded();
 
       await expect(movedTeam).toBeVisible();
-    });
-
-    test('Delete Teams', async ({ page }) => {
-      for (const teamName of [
-        teamNameBusiness,
-        teamNameDivision,
-        teamNameDepartment,
-        teamNameGroup,
-      ]) {
-        const getTeamResponse = page.waitForResponse(
-          `/api/v1/teams/name/${teamName}*`
-        );
-
-        await page.getByRole('link', { name: teamName }).click();
-        await getTeamResponse;
-
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-
-        await hardDeleteTeam(page);
-
-        // Validate the deleted team
-        await expect(
-          page.getByRole('cell', { name: teamName })
-        ).not.toBeVisible();
-      }
     });
   }
 );
