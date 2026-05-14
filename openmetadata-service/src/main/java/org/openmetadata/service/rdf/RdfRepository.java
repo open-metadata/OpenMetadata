@@ -70,6 +70,23 @@ public class RdfRepository {
     }
   }
 
+  // CLEAR ALL (called by clearAll()) wipes the ontology and shapes graphs too.
+  // Callers that wipe the dataset must invoke this afterwards so SPARQL queries
+  // that depend on the ontology don't break. Unlike loadOntologies() this skips
+  // the "already loaded" guard — areOntologiesLoaded() would return false right
+  // after a CLEAR, but we want to unconditionally reload.
+  public void reloadOntologies() {
+    if (!isEnabled()) {
+      return;
+    }
+    try {
+      new OntologyLoader(this).loadOntologies();
+      LOG.info("Reloaded OpenMetadata ontologies into RDF store");
+    } catch (Exception e) {
+      LOG.error("Failed to reload ontologies", e);
+    }
+  }
+
   public static void initialize(RdfConfiguration config) {
     if (INSTANCE != null) {
       throw new IllegalStateException("RdfRepository already initialized");
@@ -127,24 +144,6 @@ public class RdfRepository {
           entity.getName(),
           entity.getId());
       Model rdfModel = translator.toRdf(entity);
-
-      // Preserve existing relationship triples before updating
-      // This prevents postCreate() from overwriting relationships added by storeRelationships()
-      Model existingModel = storageService.getEntity(entityType, entity.getId());
-      if (existingModel != null && !existingModel.isEmpty()) {
-        String entityUri =
-            config.getBaseUri().toString() + "entity/" + entityType + "/" + entity.getId();
-        // Extract and preserve relationship triples (where entity is subject and object is a URI)
-        Model relationshipTriples = extractRelationshipTriples(existingModel, entityUri);
-        if (!relationshipTriples.isEmpty()) {
-          rdfModel.add(relationshipTriples);
-          LOG.debug(
-              "Preserved {} relationship triples for entity {}",
-              relationshipTriples.size(),
-              entity.getId());
-        }
-      }
-
       storageService.storeEntity(entityType, entity.getId(), rdfModel);
       LOG.debug("Created/Updated entity {} in RDF store", entity.getId());
     } catch (Exception e) {
@@ -154,31 +153,8 @@ public class RdfRepository {
           entity.getEntityReference().getType(),
           entity.getFullyQualifiedName(),
           e);
-      // Rethrow so callers (e.g. RdfBatchProcessor) can count this as a failure instead of
-      // reporting a false success. Entity-hook callers (RdfUpdater) already wrap in try/catch.
       throw new RuntimeException("Failed to create/update entity in RDF", e);
     }
-  }
-
-  private Model extractRelationshipTriples(Model model, String entityUri) {
-    Model relationshipTriples = ModelFactory.createDefaultModel();
-    Resource entityResource = model.createResource(entityUri);
-
-    // Find all triples where entity is subject and object is a URI resource (relationships)
-    model
-        .listStatements(entityResource, null, (org.apache.jena.rdf.model.RDFNode) null)
-        .forEachRemaining(
-            stmt -> {
-              if (stmt.getObject().isURIResource()) {
-                String objectUri = stmt.getObject().asResource().getURI();
-                // Only preserve triples that link to other entities (not type/label predicates)
-                if (objectUri.contains("/entity/")) {
-                  relationshipTriples.add(stmt);
-                }
-              }
-            });
-
-    return relationshipTriples;
   }
 
   public void delete(EntityReference entityReference) {
