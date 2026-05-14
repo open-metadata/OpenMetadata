@@ -1545,6 +1545,13 @@ public interface CollectionDAO {
     List<ExtensionRecord> getExtensions(
         @BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
 
+    @RegisterRowMapper(ExtensionMapper.class)
+    @SqlQuery(
+        "SELECT extension, json FROM entity_extension WHERE id = :id AND jsonschema = :jsonSchema "
+            + "ORDER BY extension")
+    List<ExtensionRecord> getExtensionsByJsonSchema(
+        @BindUUID("id") UUID id, @Bind("jsonSchema") String jsonSchema);
+
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
@@ -9550,7 +9557,8 @@ public interface CollectionDAO {
             + "  GROUP BY entityFQNHash"
             + ") latest "
             + "ON p.entityFQNHash = latest.entityFQNHash AND p.timestamp = latest.latestTs "
-            + "WHERE p.extension = :extension")
+            + "WHERE p.extension = :extension "
+            + "AND p.entityFQNHash IN (<entityFQNHashes>)")
     @RegisterRowMapper(LatestExtensionRecordMapper.class)
     List<LatestExtensionRecord> getLatestExtensionsBatch(
         @Define("table") String table,
