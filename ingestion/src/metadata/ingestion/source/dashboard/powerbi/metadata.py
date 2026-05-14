@@ -1487,6 +1487,11 @@ class PowerbiSource(DashboardServiceSource):
                         fqn_search_string=fqn_search_string,
                     )
                     if table_entity and datamodel_entity:
+                        logger.debug(
+                            "Creating lineage between db table=%s and datamodel=%s",
+                            table_entity.name.root,
+                            datamodel_entity.name.root,
+                        )
                         columns_list = [column.name for column in table.columns if column.name]
                         column_lineage = self._get_column_lineage(table_entity, datamodel_entity, columns_list)
                         yield self._get_add_lineage_request(
