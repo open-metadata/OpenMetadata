@@ -351,7 +351,9 @@ class TestAnyLanguageRecognizerPassthrough:
             ],
         )
 
-    def test_any_language_recognizer_included_when_agent_is_en(self, any_language_tag, sample_column, mock_nlp_engine):
+    def test_any_language_recognizer_included_when_agent_is_en(
+        self, any_language_tag, sample_column, mock_nlp_engine
+    ):
         analyzer = TagAnalyzer(
             tag=any_language_tag,
             column=sample_column,
@@ -364,7 +366,9 @@ class TestAnyLanguageRecognizerPassthrough:
         assert len(recognizers) == 1
         assert recognizers[0].supported_language == ClassificationLanguage.any.value
 
-    def test_any_language_recognizer_included_when_agent_is_any(self, any_language_tag, sample_column, mock_nlp_engine):
+    def test_any_language_recognizer_included_when_agent_is_any(
+        self, any_language_tag, sample_column, mock_nlp_engine
+    ):
         analyzer = TagAnalyzer(
             tag=any_language_tag,
             column=sample_column,

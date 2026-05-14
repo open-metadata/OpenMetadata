@@ -116,7 +116,8 @@ AZURE_SQL_CLEANUP = os.environ.get("AZURE_SQL_CLEANUP", "true").lower() == "true
 
 pytestmark = pytest.mark.skipif(
     not all(os.environ.get(v) for v in REQUIRED_ENV_VARS),
-    reason="AzureSQL temporal table integration tests require environment variables: " + ", ".join(REQUIRED_ENV_VARS),
+    reason="AzureSQL temporal table integration tests require environment variables: "
+    + ", ".join(REQUIRED_ENV_VARS),
 )
 
 
@@ -148,7 +149,11 @@ def create_service_request():
 def ensure_temporal_table(db_service, table_suffix):
     conn_config = db_service.connection.config
     driver = (conn_config.driver or AZURE_SQL_DRIVER).replace(" ", "+")
-    password = conn_config.password.get_secret_value() if conn_config.password else os.environ["AZURE_SQL_PASSWORD"]
+    password = (
+        conn_config.password.get_secret_value()
+        if conn_config.password
+        else os.environ["AZURE_SQL_PASSWORD"]
+    )
     connection_url = (
         f"mssql+pyodbc://{conn_config.username}:{password}"
         f"@{conn_config.hostPort}/{conn_config.database}"
@@ -161,7 +166,8 @@ def ensure_temporal_table(db_service, table_suffix):
 
     with engine.connect() as conn:
         conn.execute(
-            text(f"""
+            text(
+                f"""
             IF OBJECT_ID('dbo.[{table_name}]', 'U') IS NULL
             BEGIN
                 CREATE TABLE dbo.[{table_name}] (
@@ -173,11 +179,13 @@ def ensure_temporal_table(db_service, table_suffix):
                     PERIOD FOR SYSTEM_TIME (ValidFrom, ValidTo)
                 ) WITH (SYSTEM_VERSIONING = ON (HISTORY_TABLE = dbo.[{history_name}]))
             END
-            """)
+            """
+            )
         )
         conn.commit()
         conn.execute(
-            text(f"""
+            text(
+                f"""
             IF NOT EXISTS (SELECT 1 FROM dbo.[{table_name}] WHERE id IN (1, 2, 3))
             BEGIN
                 INSERT INTO dbo.[{table_name}] (id, name, email) VALUES
@@ -185,7 +193,8 @@ def ensure_temporal_table(db_service, table_suffix):
                 (2, 'Bob',   'bob@example.com'),
                 (3, 'Carol', 'carol@example.com')
             END
-            """)
+            """
+            )
         )
         conn.commit()
 
@@ -262,12 +271,22 @@ def autoclassification_config(db_service, workflow_config, sink_config, table_na
 
 
 @pytest.fixture(scope="module")
-def load_metadata(run_workflow, ingestion_config, ensure_temporal_table, patch_passwords_for_db_services):
+def load_metadata(
+    run_workflow,
+    ingestion_config,
+    ensure_temporal_table,
+    patch_passwords_for_db_services,
+):
     return run_workflow(MetadataWorkflow, ingestion_config)
 
 
 @pytest.fixture(scope="module")
-def run_classification(run_workflow, autoclassification_config, load_metadata, patch_passwords_for_db_services):
+def run_classification(
+    run_workflow,
+    autoclassification_config,
+    load_metadata,
+    patch_passwords_for_db_services,
+):
     return run_workflow(AutoClassificationWorkflow, autoclassification_config)
 
 
@@ -289,8 +308,12 @@ class TestAzureSQLTemporalTableFullWorkflow:
         assert len(result.sampleData.rows) > 0
 
         column_names = [col.root for col in result.sampleData.columns]
-        assert "ValidFrom" not in column_names, "ValidFrom must be excluded from sample data"
-        assert "ValidTo" not in column_names, "ValidTo must be excluded from sample data"
+        assert (
+            "ValidFrom" not in column_names
+        ), "ValidFrom must be excluded from sample data"
+        assert (
+            "ValidTo" not in column_names
+        ), "ValidTo must be excluded from sample data"
         assert "id" in column_names
         assert "name" in column_names
         assert "email" in column_names

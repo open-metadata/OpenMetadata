@@ -14,7 +14,16 @@ Defines the topology for ingesting sources
 import queue
 import threading
 from functools import cache, singledispatchmethod
-from typing import Annotated, Any, Dict, Generic, List, Optional, Type, TypeVar  # noqa: UP035
+from typing import (  # noqa: UP035
+    Annotated,
+    Any,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+)
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
@@ -126,7 +135,9 @@ class TopologyNode(BaseModel):
     ] = None
     threads: Annotated[
         bool,
-        Field(description="Flag that defines if a node is open to MultiThreading processing."),
+        Field(
+            description="Flag that defines if a node is open to MultiThreading processing."
+        ),
     ] = False
 
 

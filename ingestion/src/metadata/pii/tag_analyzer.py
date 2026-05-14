@@ -83,10 +83,14 @@ class TagAnalyzer:
         )
 
     def _supports_language(self, created: EntityRecognizer) -> bool:
-        return self._language is ClassificationLanguage.any or created.supported_language in {
-            ClassificationLanguage.any.value,
-            self._language.value,
-        }
+        return (
+            self._language is ClassificationLanguage.any
+            or created.supported_language
+            in {
+                ClassificationLanguage.any.value,
+                self._language.value,
+            }
+        )
 
     def get_recognizers_by(self, target: recognizer.Target) -> list[EntityRecognizer]:
         if self.tag.autoClassificationEnabled is False:
