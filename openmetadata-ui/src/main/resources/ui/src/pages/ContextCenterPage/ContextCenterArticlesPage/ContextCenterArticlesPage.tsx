@@ -312,7 +312,7 @@ const ContextCenterArticlesPage = () => {
       {renderHeader()}
 
       <KnowledgeCenterLayout
-        centerNoPadding={isActivityFeedTab}
+        centerNoPadding={isActivityFeedTab && !version}
         className={layoutClassName}
         leftSidebar={leftSidebar}
         pageTitle={page.title || t('label.article-plural')}

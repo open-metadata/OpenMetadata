@@ -32,7 +32,7 @@ let ARTICLE_TITLE: string;
 const ARTICLE_DESCRIPTION =
   'Playwright article description for card detail check';
 let QUICK_LINK_TITLE: string;
-const QUICK_LINK_URL = 'https://docs.open-metadata.org';
+const QUICK_LINK_URL = 'https://example.com';
 const QUICK_LINK_DESCRIPTION =
   'Playwright quick link description for card detail check';
 let QUICK_LINK_NAME: string;
