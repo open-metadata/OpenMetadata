@@ -17,6 +17,7 @@ import { diffWordsWithSpace } from 'diff';
 import { isEmpty, map, toString } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import BlockEditor from '../../../components/BlockEditor/BlockEditor';
 import Loader from '../../../components/common/Loader/Loader';
@@ -39,7 +40,6 @@ import {
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import { getFrontEndFormat } from '../../../utils/FeedUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
-import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 
 interface KnowledgePageVersionProps {
@@ -128,7 +128,9 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
   );
 
   const handleVersionClick = () => {
-    navigate(getKnowledgePagePath(knowledgePage.fullyQualifiedName));
+    navigate(
+      contextCenterClassBase.getArticlePath(knowledgePage.fullyQualifiedName)
+    );
   };
 
   if (loading) {

@@ -15,12 +15,12 @@ import { Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import DocumentsView from '../../../components/ContextCenter/DocumentsView/DocumentsView.component';
 import { DocFile } from '../../../components/ContextCenter/DocumentsView/DocumentsView.interface';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
-import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -121,7 +121,7 @@ const ContextCenterDocumentsPage: FC = () => {
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0"
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-documents-page">
       <ContextCenterHeader
         breadcrumbs={[
@@ -131,7 +131,10 @@ const ContextCenterDocumentsPage: FC = () => {
             url: '/',
             activeTitle: true,
           },
-          { name: t('label.context-center'), url: ROUTES.CONTEXT_CENTER },
+          {
+            name: t('label.context-center'),
+            url: contextCenterClassBase.getContextCenterPath(),
+          },
           {
             activeTitle: true,
             name: t('label.document-plural'),

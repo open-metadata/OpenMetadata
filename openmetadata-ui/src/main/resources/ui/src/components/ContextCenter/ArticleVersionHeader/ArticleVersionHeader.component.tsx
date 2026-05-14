@@ -15,8 +15,8 @@ import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { File06, Home02 } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { ROUTES } from '../../../constants/constants';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { getEntityName } from '../../../utils/EntityUtils';
 
@@ -36,10 +36,13 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
       url: '/',
       activeTitle: true,
     },
-    { name: t('label.context-center'), url: ROUTES.CONTEXT_CENTER },
+    {
+      name: t('label.context-center'),
+      url: contextCenterClassBase.getContextCenterPath(),
+    },
     {
       name: t('label.article-plural'),
-      url: ROUTES.CONTEXT_CENTER_ARTICLES,
+      url: contextCenterClassBase.getArticlesListPath(),
     },
     {
       activeTitle: true,
@@ -61,13 +64,32 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
     );
   }
 
+  const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
+  const cardStyle = contextCenterClassBase.getCardStyle();
+  const breadcrumbClassName = contextCenterClassBase.getBreadcrumbClassName();
+
   return (
     <div
       className="tw:flex tw:flex-col tw:gap-3 tw:mb-5"
       data-testid="article-version-header">
-      <TitleBreadcrumb useCustomArrow titleLinks={breadcrumbs} />
+      {!breadcrumbInsideCard && (
+        <TitleBreadcrumb
+          useCustomArrow
+          className={breadcrumbClassName}
+          titleLinks={breadcrumbs}
+        />
+      )}
 
-      <Card className="tw:mb-0 tw:p-6">
+      <Card className="tw:mb-0 tw:p-6" style={cardStyle}>
+        {breadcrumbInsideCard && (
+          <div className="tw:mb-4">
+            <TitleBreadcrumb
+              useCustomArrow
+              className={breadcrumbClassName}
+              titleLinks={breadcrumbs}
+            />
+          </div>
+        )}
         <div className="tw:flex tw:gap-4 tw:items-center">
           <div className="tw:w-auto tw:shrink-0 tw:bg-gray-100 tw:rounded-xl tw:flex tw:items-center tw:p-2">
             <File06

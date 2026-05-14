@@ -52,6 +52,7 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { compare } from 'fast-json-patch';
 import { isUndefined, uniq } from 'lodash';
 import { useTranslation } from 'react-i18next';
+import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import { ReactComponent as DragIcon } from '../../../assets/svg/drag.svg';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
@@ -83,7 +84,6 @@ import {
   findPageAndParentInTreeData,
   findPageInTreeData,
   getExpandedNodeKeys,
-  getKnowledgePagePath,
   getPageAllChildren,
   getUpdatePageHierarchy,
   getUpdatePageHierarchyForDelete,
@@ -433,7 +433,9 @@ const KnowledgePagesHierarchy = forwardRef<
 
           // push to the newly created page
           navigate({
-            pathname: getKnowledgePagePath(response.fullyQualifiedName),
+            pathname: contextCenterClassBase.getArticlePath(
+              response.fullyQualifiedName
+            ),
           });
         } catch (error) {
           showErrorToast(error as AxiosError);
@@ -454,7 +456,7 @@ const KnowledgePagesHierarchy = forwardRef<
             data-testid={`page-node-${node.title}`}>
             <Link
               className="anchor-no-underline"
-              to={getKnowledgePagePath(nodeKey)}>
+              to={contextCenterClassBase.getArticlePath(nodeKey)}>
               <div
                 className={classNames(
                   'knowledge-hierarchy-page-title-wrapper',

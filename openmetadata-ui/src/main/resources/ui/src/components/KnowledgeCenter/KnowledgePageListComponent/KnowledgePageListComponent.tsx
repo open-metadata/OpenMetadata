@@ -35,6 +35,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -67,7 +68,6 @@ import {
   updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
-import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import KnowledgeCard from '../KnowledgeCard/KnowledgeCard';
 import KnowledgePageListRightPanel from '../KnowledgePageListRightPanel/KnowledgePageListRightPanel';
@@ -167,7 +167,9 @@ const KnowledgePageListComponent = forwardRef<
         const response = await postKnowledgePage(data);
         getResourceLimit('knowledgeCenter', true, true);
         navigate({
-          pathname: getKnowledgePagePath(response.fullyQualifiedName),
+          pathname: contextCenterClassBase.getArticlePath(
+            response.fullyQualifiedName
+          ),
           hash: CREATE_PAGE_HASH,
         });
       } catch (error) {

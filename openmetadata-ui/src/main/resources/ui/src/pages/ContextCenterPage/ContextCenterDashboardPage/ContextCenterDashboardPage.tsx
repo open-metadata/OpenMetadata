@@ -17,6 +17,7 @@ import { Asset } from 'generated/attachments/asset';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import { ArticleCardItem } from '../../../components/ContextCenter/ArticleCard/ArticleCard.interface';
 import ArticleListSection from '../../../components/ContextCenter/ArticleListSection/ArticleListSection.component';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
@@ -123,7 +124,7 @@ const ContextCenterDashboardPage: FC = () => {
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:p-5 tw:pt-0"
+      className={`tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-dashboard-page">
       <ContextCenterHeader
         breadcrumbs={[
@@ -133,7 +134,10 @@ const ContextCenterDashboardPage: FC = () => {
             url: '/',
             activeTitle: true,
           },
-          { name: t('label.context-center'), url: ROUTES.CONTEXT_CENTER },
+          {
+            name: t('label.context-center'),
+            url: contextCenterClassBase.getContextCenterPath(),
+          },
           {
             activeTitle: true,
             name: t('label.dashboard'),

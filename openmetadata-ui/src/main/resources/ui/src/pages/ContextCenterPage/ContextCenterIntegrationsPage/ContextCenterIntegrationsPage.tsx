@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -66,7 +67,10 @@ const ContextCenterIntegrationsPage: FC = () => {
             url: '/',
             activeTitle: true,
           },
-          { name: t('label.context-center'), url: ROUTES.CONTEXT_CENTER },
+          {
+            name: t('label.context-center'),
+            url: contextCenterClassBase.getContextCenterPath(),
+          },
           {
             activeTitle: true,
             name: t('label.integration-plural'),

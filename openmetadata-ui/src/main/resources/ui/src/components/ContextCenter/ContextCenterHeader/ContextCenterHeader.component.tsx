@@ -15,6 +15,7 @@ import { Button, Card, Typography } from '@openmetadata/ui-core-components';
 import { Plus, UploadCloud02 } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ContextCenterHeaderProps } from './ContextCenterHeader.interface';
 
@@ -28,6 +29,9 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   actionsSlot,
 }) => {
   const { t } = useTranslation();
+  const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
+  const cardStyle = contextCenterClassBase.getCardStyle();
+  const breadcrumbClassName = contextCenterClassBase.getBreadcrumbClassName();
 
   const defaultActions = (
     <div className="tw:flex tw:items-center tw:gap-3 tw:shrink-0">
@@ -56,9 +60,24 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
     <div
       className="tw:flex tw:flex-col tw:gap-3"
       data-testid="context-center-header">
-      <TitleBreadcrumb useCustomArrow titleLinks={breadcrumbs} />
+      {!breadcrumbInsideCard && (
+        <TitleBreadcrumb
+          useCustomArrow
+          className={breadcrumbClassName}
+          titleLinks={breadcrumbs}
+        />
+      )}
 
-      <Card className="tw:mb-5 tw:p-5">
+      <Card className="tw:mb-5 tw:p-5" style={cardStyle}>
+        {breadcrumbInsideCard && (
+          <div className="tw:mb-4">
+            <TitleBreadcrumb
+              useCustomArrow
+              className={breadcrumbClassName}
+              titleLinks={breadcrumbs}
+            />
+          </div>
+        )}
         <div className="tw:flex tw:items-center tw:justify-between">
           <div>
             <div className="tw:mb-0.5 tw:flex tw:items-center tw:gap-2">

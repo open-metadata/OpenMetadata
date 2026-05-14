@@ -18,6 +18,7 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import ArticleDetailHeader from '../../../components/ContextCenter/ArticleDetailHeader/ArticleDetailHeader.component';
 import ArticleVersionHeader from '../../../components/ContextCenter/ArticleVersionHeader/ArticleVersionHeader.component';
@@ -218,7 +219,10 @@ const ContextCenterArticlesPage = () => {
             url: '/',
             activeTitle: true,
           },
-          { name: t('label.context-center'), url: ROUTES.CONTEXT_CENTER },
+          {
+            name: t('label.context-center'),
+            url: contextCenterClassBase.getContextCenterPath(),
+          },
           { activeTitle: true, name: t('label.article-plural'), url: '' },
         ]}
         hasPermission={permissions?.Create}
@@ -303,7 +307,7 @@ const ContextCenterArticlesPage = () => {
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:w-full tw:h-full tw:p-5 tw:pt-0"
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-articles-page">
       {renderHeader()}
 

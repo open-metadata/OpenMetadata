@@ -24,6 +24,7 @@ import {
   useState,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import { useActivityFeedProvider } from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -82,7 +83,6 @@ import { getFeedCounts } from '../../../utils/CommonUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import {
   addToKnowledgeCenterRecentViewed,
-  getKnowledgePagePath,
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -529,7 +529,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      navigate(getKnowledgePagePath(fqn, activeKey));
+      navigate(contextCenterClassBase.getArticlePath(fqn, activeKey));
       setActiveTab(activeKey);
     }
   };

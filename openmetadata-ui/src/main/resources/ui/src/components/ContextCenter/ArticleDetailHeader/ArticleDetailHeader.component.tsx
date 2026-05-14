@@ -39,6 +39,7 @@ import { isEmpty, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import { ReactComponent as EditorIcon } from '../../../assets/svg/ic-editor.svg';
 import { ReactComponent as SidebarCollapsible } from '../../../assets/svg/ic-sidebar-collapsible.svg';
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
@@ -52,7 +53,6 @@ import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component'
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { EntityStatusBadge } from '../../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
-import { ROUTES } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { EntityStatus } from '../../../generated/governance/workflows/elements/nodes/automatedTask/setGlossaryTermStatusTask';
@@ -67,10 +67,7 @@ import {
 import deleteWidgetClassBase from '../../../utils/DeleteWidget/DeleteWidgetClassBase';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityUtils';
-import {
-  getContextCenterArticleVersionsPath,
-  updateKnowledgeCenterRecentViewed,
-} from '../../../utils/KnowledgePageUtils';
+import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
 
 const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
@@ -113,10 +110,13 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         url: '/',
         activeTitle: true,
       },
-      { name: t('label.context-center'), url: ROUTES.CONTEXT_CENTER },
+      {
+        name: t('label.context-center'),
+        url: contextCenterClassBase.getContextCenterPath(),
+      },
       {
         name: t('label.article-plural'),
-        url: ROUTES.CONTEXT_CENTER_ARTICLES,
+        url: contextCenterClassBase.getArticlesListPath(),
       },
       {
         activeTitle: true,
@@ -201,12 +201,12 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     if (isSoftDelete) {
       onToggleDelete();
     } else {
-      navigate(ROUTES.CONTEXT_CENTER_ARTICLES);
+      navigate(contextCenterClassBase.getArticlesListPath());
     }
   };
 
   const handleVersionClick = () => {
-    navigate(getContextCenterArticleVersionsPath(fqn, version));
+    navigate(contextCenterClassBase.getArticleVersionPath(fqn, version));
   };
 
   const handleShare = async () => {
@@ -294,6 +294,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       permissions.EditDescription ||
       permissions.EditDisplayName);
 
+  const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
+  const cardStyle = contextCenterClassBase.getCardStyle();
+  const breadcrumbClassName = contextCenterClassBase.getBreadcrumbClassName();
+
   if (!knowledgePage && !tabs) {
     return (
       <div
@@ -319,9 +323,24 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     <div
       className="tw:flex tw:flex-col tw:gap-3 tw:mb-5"
       data-testid="article-detail-header">
-      <TitleBreadcrumb useCustomArrow titleLinks={breadcrumbs} />
+      {!breadcrumbInsideCard && (
+        <TitleBreadcrumb
+          useCustomArrow
+          className={breadcrumbClassName}
+          titleLinks={breadcrumbs}
+        />
+      )}
 
-      <Card className="tw:mb-0 tw:p-6 tw:pb-0 tw:pr-3">
+      <Card className="tw:mb-0 tw:p-6 tw:pb-0 tw:pr-3" style={cardStyle}>
+        {breadcrumbInsideCard && (
+          <div className="tw:mb-4">
+            <TitleBreadcrumb
+              useCustomArrow
+              className={breadcrumbClassName}
+              titleLinks={breadcrumbs}
+            />
+          </div>
+        )}
         {/* Row 1: title + meta + actions */}
         <div className="tw:flex tw:items-center tw:justify-between tw:mb-6">
           <div className="tw:flex tw:gap-4 tw:items-stretch tw:w-full tw:max-w-[60%] tw:pr-3">

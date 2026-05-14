@@ -16,6 +16,7 @@ import { isEmpty, map } from 'lodash';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import { ReactComponent as IconArticle } from '../../../assets/svg/ic-articles.svg';
 import { ReactComponent as LinkIcon } from '../../../assets/svg/ic-link.svg';
 import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
@@ -31,7 +32,6 @@ import {
 } from '../../../interface/knowledge-center.interface';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';
 
 const KnowledgePages: FC = () => {
   const { t } = useTranslation();
@@ -128,7 +128,7 @@ const KnowledgePages: FC = () => {
                   isQuickLink
                     ? quickLink.url
                     : {
-                        pathname: getKnowledgePagePath(
+                        pathname: contextCenterClassBase.getArticlePath(
                           knowledgePage.fullyQualifiedName
                         ),
                       }

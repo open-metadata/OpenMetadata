@@ -21,9 +21,9 @@ import { ArrowUpRight, File06 } from '@untitledui/icons';
 import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';
 import ArticleCard from '../ArticleCard/ArticleCard.component';
 import { ArticleCardItem } from '../ArticleCard/ArticleCard.interface';
 import { ArticleListSectionProps } from './ArticleListSection.interface';
@@ -79,7 +79,7 @@ const ArticleListSection: FC<ArticleListSectionProps> = ({
 
       const path = getPagePath
         ? getPagePath(article.id)
-        : getKnowledgePagePath(article.id);
+        : contextCenterClassBase.getArticlePath(article.id);
 
       navigate(path);
     },
