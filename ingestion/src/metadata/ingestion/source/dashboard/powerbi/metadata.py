@@ -1494,7 +1494,7 @@ class PowerbiSource(DashboardServiceSource):
                             table_entity.name.root,  # pyright: ignore[reportAttributeAccessIssue]
                             datamodel_entity.name.root,
                         )
-                        columns_list = [column.name for column in table.columns if column.name]
+                        columns_list = [column.name for column in (table.columns or []) if column.name]
                         column_lineage = self._get_column_lineage(table_entity, datamodel_entity, columns_list)
                         yield self._get_add_lineage_request(
                             to_entity=datamodel_entity,
