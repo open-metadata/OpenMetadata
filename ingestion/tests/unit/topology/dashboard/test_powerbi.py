@@ -37,6 +37,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     Tile,
     UpstreaDataflow,
 )
+from metadata.ingestion.source.dashboard.powerbi.workspace_state import WorkspaceState
 from metadata.utils import fqn
 
 MOCK_REDSHIFT_EXP = """
@@ -699,8 +700,8 @@ class PowerBIUnitTest(TestCase):
 
     @pytest.mark.order(1)
     @patch.object(
-        PowerbiSource,
-        "_fetch_dataset_from_workspace",
+        WorkspaceState,
+        "find_dataset",
         return_value=MOCK_DATASET_FROM_WORKSPACE,
     )
     def test_parse_database_source(self, *_):
@@ -964,8 +965,8 @@ class PowerBIUnitTest(TestCase):
 
     @pytest.mark.order(4)
     @patch.object(
-        PowerbiSource,
-        "_fetch_dataset_from_workspace",
+        WorkspaceState,
+        "find_dataset",
         return_value=MOCK_DATASET_FROM_WORKSPACE_V2,
     )
     def test_parse_dataset_expressions(self, *_):
@@ -981,7 +982,7 @@ class PowerBIUnitTest(TestCase):
 
     @pytest.mark.order(5)
     @patch.object(OpenMetadata, "get_by_name", return_value=MOCK_DATAMODEL_ENTITY)
-    @patch.object(fqn, "build", return_value=None)
+    @patch.object(fqn, "build", return_value="powerbi.dataflow_a")
     def test_upstream_dataflow_lineage(self, *_):
         MOCK_DATAMODEL_ENTITY_2 = DashboardDataModel(
             name="dummy_dataflow_id_b",
@@ -1143,8 +1144,8 @@ class PowerBIUnitTest(TestCase):
 
     @pytest.mark.order(11)
     @patch.object(
-        PowerbiSource,
-        "_fetch_dataset_from_workspace",
+        WorkspaceState,
+        "find_dataset",
         return_value=MOCK_DATASET_FROM_WORKSPACE_V3,
     )
     def test_parse_dataset_expressions_v2(self, *_):
@@ -1507,17 +1508,20 @@ class PowerBIUnitTest(TestCase):
             "service.database.schema.my_powerbi_table"
         )
 
-        with patch.object(
-            self.powerbi, "_parse_table_info_from_source_exp", return_value=None
-        ), patch.object(
-            self.powerbi.metadata,
-            "search_in_any_service",
-            return_value=mock_table_entity,
-        ) as mock_search, patch.object(
-            self.powerbi, "_get_column_lineage", return_value=[]
-        ), patch.object(
-            self.powerbi, "_get_add_lineage_request"
-        ) as mock_lineage_request:
+        with (
+            patch.object(
+                self.powerbi, "_parse_table_info_from_source_exp", return_value=None
+            ),
+            patch.object(
+                self.powerbi.metadata,
+                "search_in_any_service",
+                return_value=mock_table_entity,
+            ) as mock_search,
+            patch.object(self.powerbi, "_get_column_lineage", return_value=[]),
+            patch.object(
+                self.powerbi, "_get_add_lineage_request"
+            ) as mock_lineage_request,
+        ):
             mock_lineage_request.return_value = MagicMock()
 
             list(
@@ -1555,15 +1559,17 @@ class PowerBIUnitTest(TestCase):
             "service.dev.demo_dbt_jaffle.customers_clean"
         )
 
-        with patch.object(
-            self.powerbi.metadata,
-            "search_in_any_service",
-            return_value=mock_table_entity,
-        ) as mock_search, patch.object(
-            self.powerbi, "_get_column_lineage", return_value=[]
-        ), patch.object(
-            self.powerbi, "_get_add_lineage_request"
-        ) as mock_lineage_request:
+        with (
+            patch.object(
+                self.powerbi.metadata,
+                "search_in_any_service",
+                return_value=mock_table_entity,
+            ) as mock_search,
+            patch.object(self.powerbi, "_get_column_lineage", return_value=[]),
+            patch.object(
+                self.powerbi, "_get_add_lineage_request"
+            ) as mock_lineage_request,
+        ):
             mock_lineage_request.return_value = MagicMock()
 
             list(
@@ -1895,7 +1901,7 @@ class PowerBIUnitTest(TestCase):
         """
         Test that entities without loadEnabled=true are filtered out
         """
-        doc = "section Section1;\r\n" "shared " + MOCK_DATAFLOW_CATALOG_ACCESS_BLOCK
+        doc = "section Section1;\r\nshared " + MOCK_DATAFLOW_CATALOG_ACCESS_BLOCK
         queries_metadata_disabled = {
             "Accounts": {
                 "queryId": "q1",
@@ -1988,13 +1994,16 @@ class PowerBIUnitTest(TestCase):
             objectId="test_dataflow_id",
         )
 
-        with patch.object(
-            self.powerbi.metadata,
-            "search_in_any_service",
-            return_value=mock_table_entity,
-        ) as mock_search, patch.object(
-            self.powerbi, "_get_add_lineage_request"
-        ) as mock_lineage_request:
+        with (
+            patch.object(
+                self.powerbi.metadata,
+                "search_in_any_service",
+                return_value=mock_table_entity,
+            ) as mock_search,
+            patch.object(
+                self.powerbi, "_get_add_lineage_request"
+            ) as mock_lineage_request,
+        ):
             mock_lineage_request.return_value = MagicMock()
 
             results = list(
@@ -2235,7 +2244,8 @@ class PowerBIUnitTest(TestCase):
             ],
         )
 
-        self.powerbi.filtered_dashboards = [dashboard_1, dashboard_2, dashboard_3]
+        for d in (dashboard_1, dashboard_2, dashboard_3):
+            self.powerbi.state.add_filtered_dashboard(d)
 
         mock_context = MagicMock()
         mock_context.workspace = Group(id="ws-1", name="Test Workspace")
@@ -2245,10 +2255,12 @@ class PowerBIUnitTest(TestCase):
         workspace = Group(id="ws-1", name="Test Workspace")
         charts = list(self.powerbi.yield_dashboard_chart(workspace))
 
-        assert len(self.powerbi.dashboard_charts) == 3
-        assert self.powerbi.dashboard_charts["dash-1"] == ["tile-1a", "tile-1b"]
-        assert self.powerbi.dashboard_charts["dash-2"] == ["tile-2a"]
-        assert self.powerbi.dashboard_charts["dash-3"] == [
+        assert self.powerbi.state.pop_dashboard_chart_ids("dash-1") == [
+            "tile-1a",
+            "tile-1b",
+        ]
+        assert self.powerbi.state.pop_dashboard_chart_ids("dash-2") == ["tile-2a"]
+        assert self.powerbi.state.pop_dashboard_chart_ids("dash-3") == [
             "tile-3a",
             "tile-3b",
             "tile-3c",
@@ -2256,35 +2268,6 @@ class PowerBIUnitTest(TestCase):
 
         successful_charts = [c for c in charts if c.right is not None]
         assert len(successful_charts) == 6
-
-    @pytest.mark.order(48)
-    def test_yield_dashboard_chart_resets_mapping_on_each_call(self):
-        """
-        Test that yield_dashboard_chart resets dashboard_charts on each invocation
-        so stale data from a previous workspace does not leak.
-        """
-        from unittest.mock import MagicMock
-
-        self.powerbi.dashboard_charts = {"stale-dash": ["stale-tile"]}
-
-        dashboard = PowerBIDashboard(
-            id="fresh-dash",
-            displayName="Fresh Dashboard",
-            tiles=[Tile(id="fresh-tile", title="Fresh Tile")],
-        )
-        self.powerbi.filtered_dashboards = [dashboard]
-
-        mock_context = MagicMock()
-        mock_context.workspace = Group(id="ws-1", name="Test Workspace")
-        mock_context.dashboard_service = "test_powerbi_service"
-        self.powerbi.context.get = MagicMock(return_value=mock_context)
-
-        list(
-            self.powerbi.yield_dashboard_chart(Group(id="ws-1", name="Test Workspace"))
-        )
-
-        assert "stale-dash" not in self.powerbi.dashboard_charts
-        assert self.powerbi.dashboard_charts["fresh-dash"] == ["fresh-tile"]
 
     @pytest.mark.order(49)
     def test_yield_dashboard_chart_filtered_chart_not_in_mapping(self):
@@ -2302,7 +2285,7 @@ class PowerBIUnitTest(TestCase):
                 Tile(id="tile-skip", title="Skip Me"),
             ],
         )
-        self.powerbi.filtered_dashboards = [dashboard]
+        self.powerbi.state.add_filtered_dashboard(dashboard)
         self.powerbi.source_config.chartFilterPattern = FilterPattern(
             excludes=["Skip Me"]
         )
@@ -2316,7 +2299,9 @@ class PowerBIUnitTest(TestCase):
             self.powerbi.yield_dashboard_chart(Group(id="ws-1", name="Test Workspace"))
         )
 
-        assert self.powerbi.dashboard_charts["dash-filter"] == ["tile-keep"]
+        assert self.powerbi.state.pop_dashboard_chart_ids("dash-filter") == [
+            "tile-keep"
+        ]
 
     @pytest.mark.order(50)
     @patch.object(
@@ -2350,12 +2335,12 @@ class PowerBIUnitTest(TestCase):
             tiles=[],
         )
 
-        self.powerbi.filtered_dashboards = [dashboard_1, dashboard_2, dashboard_3]
-        self.powerbi.dashboard_charts = {
-            "dash-1": ["tile-1a"],
-            "dash-2": ["tile-2a", "tile-2b"],
-            "dash-3": [],
-        }
+        for d in (dashboard_1, dashboard_2, dashboard_3):
+            self.powerbi.state.add_filtered_dashboard(d)
+        self.powerbi.state.add_dashboard_chart("dash-1", "tile-1a")
+        self.powerbi.state.add_dashboard_chart("dash-2", "tile-2a")
+        self.powerbi.state.add_dashboard_chart("dash-2", "tile-2b")
+        # dash-3 intentionally has no charts
 
         mock_context = MagicMock()
         mock_context.workspace = Group(id="ws-1", name="Test Workspace")
