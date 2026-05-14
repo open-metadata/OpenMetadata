@@ -98,6 +98,8 @@ def _get_backend_engine_from_session() -> Optional[Engine]:  # noqa: UP045
     Try to get the Airflow metadata engine via airflow.settings.Session.
     This is allowed on Airflow 2.x but raises a RuntimeError on Airflow 3.x.
     """
+    if settings.Session is None:
+        return None
     try:
         with settings.Session() as session:
             return session.get_bind()

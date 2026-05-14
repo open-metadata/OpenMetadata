@@ -15,6 +15,7 @@ ES indexes definitions
 """
 
 from typing import Any, List, Optional, TypeVar  # noqa: UP035
+from urllib.parse import unquote_plus
 
 from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
