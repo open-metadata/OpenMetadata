@@ -19,6 +19,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -31,8 +32,10 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.springframework.expression.EvaluationContext;
@@ -179,6 +182,230 @@ public class AlertsRuleEvaluatorResourceIT {
     assertTrue(
         evaluateExpression("matchAnyEntityFqn({'" + testSuiteFqn + "'})", evaluationContext));
     assertFalse(evaluateExpression("matchAnyEntityFqn({'unrelated.fqn'})", evaluationContext));
+  }
+
+  @Test
+  void test_filterByTableNameTestCaseBelongsTo_happyPath() {
+    String tableFqn = "service.db.schema.orders";
+    TestCase testCase = new TestCase().withName("tc").withEntityFQN(tableFqn);
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TEST_CASE);
+    changeEvent.setEntity(testCase);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertTrue(
+        evaluateExpression(
+            "filterByTableNameTestCaseBelongsTo({'" + tableFqn + "'})", evaluationContext));
+    assertFalse(
+        evaluateExpression(
+            "filterByTableNameTestCaseBelongsTo({'unrelated.fqn'})", evaluationContext));
+  }
+
+  @Test
+  void test_filterByTableNameTestCaseBelongsTo_rejectsPrefixCollision() {
+    TestCase testCase =
+        new TestCase().withName("tc").withEntityFQN("service.db.schema.customer_archive");
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TEST_CASE);
+    changeEvent.setEntity(testCase);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertFalse(
+        evaluateExpression(
+            "filterByTableNameTestCaseBelongsTo({'service.db.schema.customer'})",
+            evaluationContext));
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "service.db.schema.[bracketed].t",
+        "service.db.schema.t+plus",
+        "service.db.schema.t?question",
+        "service.db.schema.t|pipe",
+        "service.db.schema.t*star",
+        "service.db.schema.t(paren)",
+      })
+  void test_filterByTableNameTestCaseBelongsTo_treatsRegexMetacharsAsLiteral(String tableFqn) {
+    TestCase testCase = new TestCase().withName("tc").withEntityFQN(tableFqn);
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TEST_CASE);
+    changeEvent.setEntity(testCase);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertTrue(
+        evaluateExpression(
+            "filterByTableNameTestCaseBelongsTo({'" + tableFqn + "'})", evaluationContext));
+    assertFalse(
+        evaluateExpression(
+            "filterByTableNameTestCaseBelongsTo({'unrelated.fqn'})", evaluationContext));
+  }
+
+  @Test
+  void test_filterByTableNameTestCaseBelongsTo_fallbackToEntityLink() {
+    String tableFqn = "service.db.schema.fallback";
+    TestCase testCase =
+        new TestCase().withName("tc").withEntityLink("<#E::table::" + tableFqn + ">");
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TEST_CASE);
+    changeEvent.setEntity(testCase);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertTrue(
+        evaluateExpression(
+            "filterByTableNameTestCaseBelongsTo({'" + tableFqn + "'})", evaluationContext));
+  }
+
+  @Test
+  void test_filterByTableNameTestCaseBelongsTo_nonTestCaseEntityPassesThrough() {
+    Table table = new Table().withName("t").withFullyQualifiedName("service.db.schema.t");
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TABLE);
+    changeEvent.setEntity(table);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertTrue(
+        evaluateExpression(
+            "filterByTableNameTestCaseBelongsTo({'unrelated.fqn'})", evaluationContext));
+  }
+
+  @Test
+  void test_filterByEntityNameDataContractBelongsTo_happyPath() {
+    String entityFqn = "service.db.schema.orders";
+    ChangeEvent changeEvent = dataContractChangeEvent(entityFqn);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertTrue(
+        evaluateExpression(
+            "filterByEntityNameDataContractBelongsTo({'" + entityFqn + "'})", evaluationContext));
+    assertFalse(
+        evaluateExpression(
+            "filterByEntityNameDataContractBelongsTo({'unrelated.fqn'})", evaluationContext));
+  }
+
+  /**
+   * Regression: previous implementation used String.contains, so a filter on a substring of the
+   * target entity's FQN would return true (false positive). The fix uses literal equality.
+   */
+  @Test
+  void test_filterByEntityNameDataContractBelongsTo_rejectsSubstring() {
+    ChangeEvent changeEvent = dataContractChangeEvent("service.db.schema.customer");
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertFalse(
+        evaluateExpression(
+            "filterByEntityNameDataContractBelongsTo({'service.db.schema'})", evaluationContext));
+    assertFalse(
+        evaluateExpression(
+            "filterByEntityNameDataContractBelongsTo({'customer'})", evaluationContext));
+  }
+
+  @Test
+  void test_filterByEntityNameDataContractBelongsTo_rejectsPrefixCollision() {
+    ChangeEvent changeEvent = dataContractChangeEvent("service.db.schema.customer_archive");
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertFalse(
+        evaluateExpression(
+            "filterByEntityNameDataContractBelongsTo({'service.db.schema.customer'})",
+            evaluationContext));
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "service.db.schema.[bracketed]",
+        "service.db.schema.t+plus",
+        "service.db.schema.t?question",
+        "service.db.schema.t|pipe",
+        "service.db.schema.t*star",
+      })
+  void test_filterByEntityNameDataContractBelongsTo_treatsRegexMetacharsAsLiteral(
+      String entityFqn) {
+    ChangeEvent changeEvent = dataContractChangeEvent(entityFqn);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertTrue(
+        evaluateExpression(
+            "filterByEntityNameDataContractBelongsTo({'" + entityFqn + "'})", evaluationContext));
+  }
+
+  @Test
+  void test_filterByEntityNameDataContractBelongsTo_nonDataContractEntityReturnsFalse() {
+    Table table = new Table().withName("t").withFullyQualifiedName("service.db.schema.t");
+
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TABLE);
+    changeEvent.setEntity(table);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertFalse(
+        evaluateExpression(
+            "filterByEntityNameDataContractBelongsTo({'unrelated.fqn'})", evaluationContext));
+  }
+
+  private ChangeEvent dataContractChangeEvent(String targetEntityFqn) {
+    DataContract dataContract = new DataContract();
+    dataContract.setEntity(new EntityReference().withFullyQualifiedName(targetEntityFqn));
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.DATA_CONTRACT);
+    changeEvent.setEntity(JsonUtils.pojoToJson(dataContract));
+    return changeEvent;
   }
 
   @Test

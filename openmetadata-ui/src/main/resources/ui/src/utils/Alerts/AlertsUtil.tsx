@@ -104,6 +104,9 @@ import { getTermQuery } from '../SearchUtils';
 import { showErrorToast } from '../ToastUtils';
 import './alerts-util.less';
 
+const UUID_PATTERN =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {
     case SubscriptionType.Slack:
@@ -1056,6 +1059,49 @@ export const getFieldByArgumentType = (
       showDisplayNameAsLabel: false,
     });
   };
+
+  const getEntityByIdSuggestions = async (searchText?: string) => {
+    const searchIndexMapping =
+      searchClassBase.getEntityTypeSearchIndexMapping();
+    const trimmed = (searchText ?? '').trim();
+    const isUuidInput = UUID_PATTERN.test(trimmed);
+
+    try {
+      const response = await searchQuery({
+        query: trimmed,
+        pageNumber: 1,
+        pageSize: PAGE_SIZE_LARGE,
+        queryFilter: isUuidInput ? getTermQuery({ id: trimmed }) : undefined,
+        searchIndex: searchIndexMapping[selectedTrigger],
+      });
+
+      return uniqBy(
+        response.hits.hits.map((d) => {
+          const id = d._source.id ?? '';
+          const fqn = d._source.fullyQualifiedName ?? '';
+
+          return {
+            uuid: id,
+            value: id,
+            label: (
+              <div className="entity-id-option">
+                <div>{id}</div>
+                <div className="entity-id-option-fqn">{fqn}</div>
+              </div>
+            ),
+          };
+        }),
+        'value'
+      );
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', { entity: t('label.search') })
+      );
+
+      return [];
+    }
+  };
   const translatedContractStatusOptions = DATA_CONTRACT_STATUS_OPTIONS.map(
     (option) => ({
       ...option,
@@ -1071,12 +1117,11 @@ export const getFieldByArgumentType = (
           className="w-full"
           data-testid="fqn-list-select"
           maxTagTextLength={45}
-          mode="tags"
+          mode="multiple"
           optionFilterProp="label"
           placeholder={t('label.search-by-type', {
             type: t('label.fqn-uppercase'),
           })}
-          showArrow={false}
         />
       );
 
@@ -1104,7 +1149,7 @@ export const getFieldByArgumentType = (
           className="w-full"
           data-testid="table-name-select"
           maxTagTextLength={45}
-          mode="tags"
+          mode="multiple"
           optionFilterProp="label"
           placeholder={t('label.search-by-type', {
             type: t('label.table-lowercase'),
@@ -1121,7 +1166,7 @@ export const getFieldByArgumentType = (
           className="w-full"
           data-testid="entity-name-select"
           maxTagTextLength={45}
-          mode="tags"
+          mode="multiple"
           optionFilterProp="label"
           placeholder={t('label.search-by-type', {
             type: t('label.entity-lowercase'),
@@ -1183,11 +1228,13 @@ export const getFieldByArgumentType = (
 
     case 'entityIdList':
       field = (
-        <Select
+        <AsyncSelect
+          api={getEntityByIdSuggestions}
           className="w-full"
           data-testid="entity-id-select"
-          mode="tags"
-          open={false}
+          maxTagTextLength={45}
+          mode="multiple"
+          optionLabelProp="uuid"
           placeholder={t('label.search-by-type', {
             type: t('label.entity-id', {
               entity: t('label.data-asset'),

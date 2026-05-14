@@ -114,6 +114,8 @@ public class ExpressionValidator {
               "matchPipelineState",
               "matchAnyDomain",
               "matchConversationUser",
+              "matchDataContractStatus",
+              "filterByEntityNameDataContractBelongsTo",
               "isBot"));
       LOG.info("Using fallback list of {} allowed functions", allowedFunctions.size());
     }

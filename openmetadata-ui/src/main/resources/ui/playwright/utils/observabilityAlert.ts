@@ -589,6 +589,13 @@ export const createCommonObservabilityAlert = async ({
       `.ant-select-dropdown:visible [data-testid="${filter.name}-filter-option"]`
     );
 
+    // Focus the combobox first. Ant Design Select with mode="multiple" renders the
+    // search input as readonly until focused, which makes page.fill() fail. Click also
+    // opens the dropdown so the search query fires when we fill.
+    await page.click(
+      `[data-testid="${filter.inputSelector}"] [role="combobox"]`
+    );
+
     // Search and select filter input value
     const searchOptions = page.waitForResponse('/api/v1/search/query?q=*');
     await page.fill(
