@@ -5484,6 +5484,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final PutResponse<T> restoreEntity(String updatedBy, UUID id) {
+    // Confirm the entity exists at all (in any state). If the row is truly gone
+    // (e.g., hard-deleted), propagate EntityNotFoundException so the caller surfaces
+    // a clean 404 instead of running children / hooks against a non-existent id and
+    // potentially surfacing a 500 from a hook side-effect.
+    find(id, ALL);
+
     // If an entity being restored contains other **deleted** children entities, restore them
     restoreChildren(id, updatedBy);
 
@@ -5504,11 +5510,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ListCountCache.invalidate(entityType);
       response = new PutResponse<>(Status.OK, updated, ENTITY_RESTORED);
     } catch (EntityNotFoundException e) {
+      // Entity exists (verified above) but is not in DELETED state — already restored.
       LOG.info("Entity already restored or not in deleted state {} {}", entityType, id);
     }
-    // Run the per-entity hook regardless of whether this node needed flipping. A
-    // re-entered cascade where this level is already restored must still reconcile
-    // HAS-related children (e.g., dashboard charts) of nested descendants.
+    // Run the per-entity hook because the entity exists (the find(ALL) guard ensures
+    // that). A re-entered cascade where this level is already restored must still
+    // reconcile HAS-related children (e.g., dashboard charts) of nested descendants.
     restoreAdditionalChildren(id, updatedBy);
     return response;
   }
@@ -5682,8 +5689,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
     if (!supportsSoftDelete) {
+      // This type can't be soft-deleted, so each entity at this level must be hard
+      // deleted instead. Pass hardDelete=false through to the per-entity delete so
+      // descendant levels that *do* support soft delete remain soft-deleted — the
+      // per-entity flow handles the asymmetry by inspecting each level's own
+      // supportsSoftDelete flag. Using hardDelete=true here would propagate hard
+      // deletion to the entire subtree, breaking that contract.
       for (UUID id : ids) {
-        Entity.deleteEntity(updatedBy, entityType, id, true, true);
+        Entity.deleteEntity(updatedBy, entityType, id, true, false);
       }
       return;
     }
