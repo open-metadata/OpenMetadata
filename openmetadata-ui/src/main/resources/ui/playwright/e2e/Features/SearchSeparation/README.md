@@ -21,7 +21,7 @@ pass fails and the offending facet is named in the assertion message.
 ```ts
 import { test } from '@playwright/test';
 import { MyEntityClass } from '../../../support/entity/MyEntityClass';
-import { registerFilterSeparationSuite } from '../../../utils/searchSeparation';
+import { registerFilterSeparationSuite } from './searchSeparationSuite';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
