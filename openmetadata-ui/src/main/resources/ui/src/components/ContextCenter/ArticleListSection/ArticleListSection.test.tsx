@@ -21,10 +21,6 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn(() => mockNavigate),
 }));
 
-jest.mock('utils/KnowledgePageUtils', () => ({
-  getKnowledgePagePath: jest.fn((id: string) => `/knowledge/${id}`),
-}));
-
 jest.mock('../ArticleCard/ArticleCard.component', () =>
   jest.fn(
     ({

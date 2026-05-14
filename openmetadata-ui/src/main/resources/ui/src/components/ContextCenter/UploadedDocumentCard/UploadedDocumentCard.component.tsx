@@ -19,7 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Download01 } from '@untitledui/icons';
-import { FC, useMemo } from 'react';
+import React, { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFileTypeIcon } from '../../../utils/ContextCenterUtils';
 import { UploadedDocumentCardProps } from './UploadedDocumentCard.interface';
@@ -38,11 +38,20 @@ const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({
 
   return (
     <Card
+      isClickable
       className="tw:flex tw:flex-col tw:gap-3 tw:max-w-42"
       data-testid="uploaded-document-card"
+      role="button"
+      tabIndex={0}
       onClick={(e) => {
         e.stopPropagation();
         onClick?.(document);
+      }}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.(document);
+        }
       }}>
       <div className="tw:flex tw:items-center tw:justify-center tw:h-15 tw:bg-gray-50">
         {fileTypeIcon}
@@ -61,7 +70,7 @@ const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({
           <Typography className="tw:text-gray-400" size="text-xs">
             {sizeLabel}
           </Typography>
-          <Tooltip title={t('label.download')}>
+          {onDownload && <Tooltip title={t('label.download')}>
             <TooltipTrigger>
               <ButtonUtility
                 color="tertiary"
@@ -78,7 +87,7 @@ const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({
                 }}
               />
             </TooltipTrigger>
-          </Tooltip>
+          </Tooltip>}
         </div>
       </div>
     </Card>

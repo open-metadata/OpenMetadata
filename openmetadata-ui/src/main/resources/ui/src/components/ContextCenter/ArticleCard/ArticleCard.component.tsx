@@ -38,7 +38,15 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, onClick }) => {
       isClickable
       className="tw:p-4 tw:flex tw:flex-col tw:bg-gray-50 tw:border-none tw:max-w-86 tw:h-40 tw:justify-between tw:hover:shadow-xl"
       data-testid="article-card"
-      onClick={() => onClick?.(article)}>
+      role="button"
+      tabIndex={0}
+      onClick={() => onClick?.(article)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.(article);
+        }
+      }}>
       <div>
         <Typography ellipsis weight="bold">
           {title}

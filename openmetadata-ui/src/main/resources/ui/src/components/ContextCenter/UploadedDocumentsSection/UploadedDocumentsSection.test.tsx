@@ -69,6 +69,8 @@ const mockDocuments: UploadedDocumentItem[] = [
     fileType: 'pdf',
     sizeLabel: '1 MB',
     status: 'processed',
+    updatedBy: 'alice',
+    updatedAt: 1778756959299,
   },
   {
     id: 'd2',
@@ -76,6 +78,8 @@ const mockDocuments: UploadedDocumentItem[] = [
     fileType: 'xls',
     sizeLabel: '200 KB',
     status: 'analyzing',
+    updatedBy: 'alice',
+    updatedAt: 1778756959299,
   },
 ];
 
@@ -88,7 +92,7 @@ describe('UploadedDocumentsSection', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders a card for each documenisLoating d', () => {
+  it('renders a card for each documenisLoading', () => {
     render(<UploadedDocumentsSection documents={mockDocuments} />);
 
     expect(screen.getByTestId('uploaded-doc-card-d1')).toBeInTheDocument();
@@ -120,16 +124,6 @@ describe('UploadedDocumentsSection', () => {
     expect(screen.getByText(/view-all/i)).toBeInTheDocument();
   });
 
-  it('shows the view-all button when viewAllHref is provided', () => {
-    render(
-      <UploadedDocumentsSection
-        documents={mockDocuments}
-        viewAllHref="/documents"
-      />
-    );
-
-    expect(screen.getByText(/view-all/i)).toBeInTheDocument();
-  });
 
   it('does not show the view-all button when neither viewAllHref nor onViewAll is provided', () => {
     render(<UploadedDocumentsSection documents={mockDocuments} />);

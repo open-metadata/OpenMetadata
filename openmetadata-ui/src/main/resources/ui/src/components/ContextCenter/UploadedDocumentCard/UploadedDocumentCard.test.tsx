@@ -59,6 +59,8 @@ const mockDocument: UploadedDocumentItem = {
   fileType: 'pdf',
   sizeLabel: '1.2 MB',
   status: 'processed',
+  updatedBy: 'alice',
+  updatedAt: 1778756959299,
 };
 
 describe('UploadedDocumentCard', () => {

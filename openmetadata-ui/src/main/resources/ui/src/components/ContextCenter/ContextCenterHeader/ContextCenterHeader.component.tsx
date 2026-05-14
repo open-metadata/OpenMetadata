@@ -50,7 +50,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
           iconLeading={UploadCloud02}
           size="sm"
           onClick={onUploadFile}>
-          {t('message.upload-file')}
+          {t('label.upload-file')}
         </Button>
       )}
     </div>

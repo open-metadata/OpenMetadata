@@ -90,6 +90,8 @@ const mockFiles: DocFile[] = [
     name: 'data.csv',
     fileType: 'csv',
     sizeLabel: '500 KB',
+    updatedBy: 'alice',
+    updatedAt: 1778756959299,
   },
 ];
 

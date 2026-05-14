@@ -49,7 +49,6 @@ const UploadedDocumentSectionLoading = () =>
 
 const UploadedDocumentsSection: FC<UploadedDocumentsSectionProps> = ({
   documents,
-  viewAllHref,
   onViewAll,
   onDocumentClick,
   onDownload,
@@ -78,14 +77,12 @@ const UploadedDocumentsSection: FC<UploadedDocumentsSectionProps> = ({
           </div>
         </div>
 
-        {(viewAllHref || onViewAll) && (
-          <Button
-            color="link-color"
-            iconTrailing={<ArrowUpRight className="tw:w-4 tw:h-4" />}
-            onClick={onViewAll}>
-            {t('label.view-all')}
-          </Button>
-        )}
+        <Button
+          color="link-color"
+          iconTrailing={<ArrowUpRight className="tw:w-4 tw:h-4" />}
+          onClick={onViewAll}>
+          {t('label.view-all')}
+        </Button>
       </div>
 
       {documents.length > 0 || isLoading ? (

@@ -15,7 +15,6 @@ import { UploadedDocumentItem } from '../UploadedDocumentCard/UploadedDocumentCa
 
 export interface UploadedDocumentsSectionProps {
   documents: UploadedDocumentItem[];
-  viewAllHref?: string;
   onViewAll?: () => void;
   onDocumentClick?: (document: UploadedDocumentItem) => void;
   onDownload?: (document: UploadedDocumentItem) => void;
