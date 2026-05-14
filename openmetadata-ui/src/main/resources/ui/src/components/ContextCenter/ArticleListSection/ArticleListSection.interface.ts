@@ -18,7 +18,6 @@ export interface ArticleListSectionProps {
   subtitle?: string;
   articles: ArticleCardItem[];
   viewAllHref?: string;
-  getPagePath?: (fqn: string) => string;
   onViewAll?: () => void;
   onArticleClick?: (article: ArticleCardItem) => void;
   isLoading?: boolean;

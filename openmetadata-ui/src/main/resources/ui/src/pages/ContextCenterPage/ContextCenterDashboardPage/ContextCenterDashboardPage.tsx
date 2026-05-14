@@ -23,7 +23,6 @@ import ContextCenterHeader from '../../../components/ContextCenter/ContextCenter
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
 import { UploadedDocumentItem } from '../../../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
 import UploadedDocumentsSection from '../../../components/ContextCenter/UploadedDocumentsSection/UploadedDocumentsSection.component';
-import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -157,14 +156,18 @@ const ContextCenterDashboardPage: FC = () => {
           isLoading={isArticlesLoading}
           subtitle={t('message.internal-knowledge-base-agent-training')}
           title={t('label.article-amp-quick-link-plural')}
-          onViewAll={() => navigate(ROUTES.CONTEXT_CENTER_ARTICLES)}
+          onViewAll={() =>
+            navigate(contextCenterClassBase.getArticlesListPath())
+          }
         />
 
         <UploadedDocumentsSection
           documents={documents}
           isLoading={isDocumentsLoading}
           onDownload={handleAssetDownload}
-          onViewAll={() => navigate(ROUTES.CONTEXT_CENTER_DOCUMENTS)}
+          onViewAll={() =>
+            navigate(contextCenterClassBase.getDocumentsListPath())
+          }
         />
       </div>
 

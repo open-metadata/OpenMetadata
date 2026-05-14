@@ -44,6 +44,7 @@ import {
 import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../hooks/useApplicationStore';
 import { arraySorterByKey } from './CommonUtils';
+import contextCenterClassBase from './ContextCenterClassBase';
 import { getEntityName } from './EntityUtils';
 import Fqn from './Fqn';
 import i18n, { t } from './i18next/LocalUtil';
@@ -424,7 +425,7 @@ export const getLink = (knowledgePage: KnowledgePage, testIdPrefix: string) => {
   const isQuickLink = knowledgePage.pageType === PageType.QUICK_LINK;
   const path = isQuickLink
     ? (knowledgePage.page as QuickLink).url
-    : getKnowledgePagePath(knowledgePage.fullyQualifiedName);
+    : contextCenterClassBase.getArticlePath(knowledgePage.fullyQualifiedName);
 
   return (
     <Link

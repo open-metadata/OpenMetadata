@@ -57,7 +57,6 @@ const ArticleListSection: FC<ArticleListSectionProps> = ({
   subtitle,
   articles,
   viewAllHref,
-  getPagePath,
   onViewAll,
   onArticleClick,
   isLoading = false,
@@ -85,13 +84,11 @@ const ArticleListSection: FC<ArticleListSectionProps> = ({
         return;
       }
 
-      const path = getPagePath
-        ? getPagePath(article.id)
-        : contextCenterClassBase.getArticlePath(article.id);
+      const path = contextCenterClassBase.getArticlePath(article.id);
 
       navigate(path);
     },
-    [onArticleClick, getPagePath, navigate]
+    [onArticleClick, navigate]
   );
 
   return (

@@ -21,7 +21,7 @@ import { ReactComponent as PDFIcon } from '../assets/svg/ic-pdf.svg';
 import { ReactComponent as XLSIcon } from '../assets/svg/ic-xls.svg';
 import { ArticleCardItem } from '../components/ContextCenter/ArticleCard/ArticleCard.interface';
 import { UploadedDocumentItem } from '../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
-import { CREATE_PAGE_HASH, ROUTES } from '../constants/constants';
+import { CREATE_PAGE_HASH } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { Asset, AssetType } from '../generated/attachments/asset';
 import {
@@ -31,9 +31,9 @@ import {
 } from '../interface/knowledge-center.interface';
 import { downloadAsset, listAssetsByFqn } from '../rest/assetAPI';
 import { postKnowledgePage } from '../rest/knowledgeCenterAPI';
+import contextCenterClassBase from './ContextCenterClassBase';
 import EntityLink from './EntityLink';
 import { getEntityName } from './EntityUtils';
-import { getContextCenterArticlePath } from './KnowledgePageUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const CONTEXT_CENTER_DOCUMENTS_FQN = 'contextCenter.documents';
@@ -125,7 +125,7 @@ export const knowledgePageToArticleItem = (
     data.pageType === PageType.QUICK_LINK
       ? (data.page as QuickLink)?.url
       : data.fullyQualifiedName
-      ? `${ROUTES.CONTEXT_CENTER_ARTICLES}/${data.fullyQualifiedName}`
+      ? contextCenterClassBase.getArticlePath(data.fullyQualifiedName)
       : undefined,
   id: data.id,
   lastEditedAt: data.updatedAt,
@@ -160,7 +160,9 @@ export const createArticleKnowledgePage = async (
     onResourceLimit?.();
     navigate({
       hash: CREATE_PAGE_HASH,
-      pathname: getContextCenterArticlePath(response.fullyQualifiedName),
+      pathname: contextCenterClassBase.getArticlePath(
+        response.fullyQualifiedName
+      ),
     });
   } catch (error) {
     showErrorToast(error as AxiosError);
