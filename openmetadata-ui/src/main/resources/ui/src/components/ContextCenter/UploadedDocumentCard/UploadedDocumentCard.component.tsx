@@ -70,24 +70,26 @@ const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({
           <Typography className="tw:text-gray-400" size="text-xs">
             {sizeLabel}
           </Typography>
-          {onDownload && <Tooltip title={t('label.download')}>
-            <TooltipTrigger>
-              <ButtonUtility
-                color="tertiary"
-                icon={
-                  <Download01
-                    className="tw:text-gray-500"
-                    height={16}
-                    width={16}
-                  />
-                }
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDownload?.(document);
-                }}
-              />
-            </TooltipTrigger>
-          </Tooltip>}
+          {onDownload && (
+            <Tooltip title={t('label.download')}>
+              <TooltipTrigger>
+                <ButtonUtility
+                  color="tertiary"
+                  icon={
+                    <Download01
+                      className="tw:text-gray-500"
+                      height={16}
+                      width={16}
+                    />
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDownload?.(document);
+                  }}
+                />
+              </TooltipTrigger>
+            </Tooltip>
+          )}
         </div>
       </div>
     </Card>

@@ -124,7 +124,6 @@ describe('UploadedDocumentsSection', () => {
     expect(screen.getByText(/view-all/i)).toBeInTheDocument();
   });
 
-
   it('does not show the view-all button when neither viewAllHref nor onViewAll is provided', () => {
     render(<UploadedDocumentsSection documents={mockDocuments} />);
 
