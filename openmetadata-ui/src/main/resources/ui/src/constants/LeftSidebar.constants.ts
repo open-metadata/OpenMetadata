@@ -50,16 +50,6 @@ type UntitledIconType = React.ComponentType<{
 
 const DataProductIcon = createIconWithStroke(Cube01 as UntitledIconType, 1.2);
 
-const ContextCenterArticlesIcon = createIconWithStroke(
-  File06 as UntitledIconType,
-  1.5
-);
-
-// const ContextCenterArchiveIcon = createIconWithStroke(
-//   Archive as UntitledIconType,
-//   1.5
-// );
-
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
   [ROUTES.ONTOLOGY_EXPLORER]: ROUTES.ONTOLOGY_EXPLORER,
@@ -235,7 +225,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         key: ROUTES.CONTEXT_CENTER_ARTICLES,
         title: 'label.article-plural',
         redirect_url: ROUTES.CONTEXT_CENTER_ARTICLES,
-        icon: ContextCenterArticlesIcon,
+        icon: File06,
         dataTestId: `app-bar-item-${SidebarItem.ARTICLES}`,
       },
       {
