@@ -186,7 +186,7 @@ describe('handleAssetDownload', () => {
 
     const appendChildSpy = jest
       .spyOn(document.body, 'appendChild')
-      .mockImplementation(() => ({}) as unknown as Node);
+      .mockImplementation(() => ({} as unknown as Node));
 
     jest.spyOn(document, 'createElement').mockReturnValue({
       click: clickMock,

@@ -44,6 +44,14 @@ const ArticleCardSkeleton: FC = () => (
   </Card>
 );
 
+const ARTICLE_SKELETON_KEYS = Array.from(
+  { length: 6 },
+  (_, i) => `article-skeleton-${i}`
+);
+
+const ArticleLoading = () =>
+  ARTICLE_SKELETON_KEYS.map((key) => <ArticleCardSkeleton key={key} />);
+
 const ArticleListSection: FC<ArticleListSectionProps> = ({
   title,
   subtitle,
@@ -85,11 +93,6 @@ const ArticleListSection: FC<ArticleListSectionProps> = ({
     },
     [onArticleClick, getPagePath, navigate]
   );
-
-  const ArticleLoading = () =>
-    Array.from({ length: 6 }).map((_, idx) => (
-      <ArticleCardSkeleton key={idx} />
-    ));
 
   return (
     <Card

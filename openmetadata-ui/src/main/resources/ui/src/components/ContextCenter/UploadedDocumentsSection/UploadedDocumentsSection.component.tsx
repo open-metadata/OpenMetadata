@@ -39,6 +39,14 @@ const DocumentCardSkeleton: FC = () => (
   </Card>
 );
 
+const DOCUMENT_SKELETON_KEYS = Array.from(
+  { length: 8 },
+  (_, i) => `doc-skeleton-${i}`
+);
+
+const UploadedDocumentSectionLoading = () =>
+  DOCUMENT_SKELETON_KEYS.map((key) => <DocumentCardSkeleton key={key} />);
+
 const UploadedDocumentsSection: FC<UploadedDocumentsSectionProps> = ({
   documents,
   viewAllHref,
@@ -48,11 +56,6 @@ const UploadedDocumentsSection: FC<UploadedDocumentsSectionProps> = ({
   isLoading = false,
 }) => {
   const { t } = useTranslation();
-
-  const UploadedDocumentSectionLoading = () =>
-    Array.from({ length: 8 }).map((_, idx) => (
-      <DocumentCardSkeleton key={idx} />
-    ));
 
   const documentsToShow = useMemo(() => documents.slice(0, 25), [documents]);
 
