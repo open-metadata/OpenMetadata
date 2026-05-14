@@ -563,8 +563,10 @@ class PowerBiApiClient:
                 except Exception as ws_exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
                     logger.warning(
-                        f"Skipping workspace [id={raw_ws.get('id')}] in scan "
-                        f"[{scan_id}] due to parse error: {ws_exc}"
+                        "Skipping workspace [id=%s] in scan [%s] due to parse error: %s",
+                        raw_ws.get("id"),
+                        scan_id,
+                        ws_exc,
                     )
             return Workspaces(workspaces=parsed_workspaces)
         except Exception as exc:  # pylint: disable=broad-except

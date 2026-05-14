@@ -13,13 +13,7 @@ Covers two production failure modes:
 from unittest.mock import MagicMock
 
 import pytest
-from pydantic import BaseModel
 
-from metadata.ingestion.source.dashboard.powerbi.metadata import (
-    _COLUMN_NAME_REPLACEMENT,
-    _INVALID_COLUMN_NAME_FRAGMENT,
-    _clean_powerbi_column_name,
-)
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataflow,
     DataflowEntity,
@@ -56,7 +50,7 @@ _LOOSENED_MODELS_NAME_FIELD = [
 def test_loosened_name_field_accepts_none(model_cls, base_payload, field):
     """Every loosened model parses cleanly when its ``name`` is null."""
     payload = {**base_payload, field: None}
-    instance: BaseModel = model_cls(**payload)
+    instance = model_cls(**payload)
     assert getattr(instance, field) is None
 
 
@@ -123,36 +117,6 @@ def test_fetch_workspace_scan_result_handles_empty_response(monkeypatch):
     api_client.client.get.return_value = None
 
     assert api_client.fetch_workspace_scan_result(scan_id="scan-1") is None
-
-
-@pytest.mark.parametrize(
-    "raw_name, expected",
-    [
-        ("Sales::YTD", "Sales_YTD"),
-        ("A::B::C", "A_B_C"),
-        ("NoColons", "NoColons"),
-        ("", ""),
-        (None, None),
-        (":single_colon_ok", ":single_colon_ok"),
-    ],
-)
-def test_clean_powerbi_column_name(raw_name, expected):
-    assert _clean_powerbi_column_name(raw_name) == expected
-
-
-def test_clean_powerbi_column_name_truncates_after_replacement():
-    """Long names with ``::`` are sanitized AND truncated to 256 chars."""
-    raw = ("a::b" * 100)  # 400 chars
-    cleaned = _clean_powerbi_column_name(raw)
-    assert _INVALID_COLUMN_NAME_FRAGMENT not in cleaned
-    assert _COLUMN_NAME_REPLACEMENT in cleaned
-    assert len(cleaned) == 256
-
-
-def test_clean_powerbi_column_name_uses_well_known_constants():
-    """The constants used by the sanitizer match the spec contract."""
-    assert _INVALID_COLUMN_NAME_FRAGMENT == "::"
-    assert _COLUMN_NAME_REPLACEMENT == "_"
 
 
 def test_loosened_models_preserve_provided_name():
