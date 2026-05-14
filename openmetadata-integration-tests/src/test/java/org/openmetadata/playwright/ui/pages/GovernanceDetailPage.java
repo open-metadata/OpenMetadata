@@ -40,26 +40,30 @@ public final class GovernanceDetailPage extends PageObject {
   }
 
   /**
-   * Whitespace-normalized text of the top entity-header region — stable across
-   * Tag / Domain / GlossaryTerm pages and sufficient for pre/post reindex shape
-   * comparison (description, owners, tags, child counts).
+   * Whitespace-normalized text of the entity-detail container — stable across
+   * Tag (data-testid="data-classification") and adequate for Domain / GlossaryTerm
+   * pages via their root containers.
    */
   public String headerSnapshot() {
-    final Locator header =
-        page.locator(".ant-tabs, .domain-details, [data-testid='entity-header-name']").first();
-    if (header.count() == 0) {
+    final Locator container = rootContainer();
+    if (container.count() == 0) {
       return "";
     }
-    final String text = header.textContent();
+    final String text = container.textContent();
     return text == null ? "" : text.replaceAll("\\s+", " ").trim();
+  }
+
+  private Locator rootContainer() {
+    return page.locator(
+            "[data-testid='data-classification'],"
+                + " [data-testid='domain-details'],"
+                + " [data-testid='glossary-details']")
+        .first();
   }
 
   @Override
   protected void waitForLoaded() {
     page.waitForLoadState();
-    page.locator(
-            ".ant-page-header, [data-testid='entity-header-name'], [data-testid='domain-details']")
-        .first()
-        .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+    rootContainer().waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
   }
 }

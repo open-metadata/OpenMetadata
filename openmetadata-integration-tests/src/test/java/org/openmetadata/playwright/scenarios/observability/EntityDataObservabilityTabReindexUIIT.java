@@ -9,8 +9,7 @@ import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
-import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.factories.ShortStackFactory;
 import org.openmetadata.it.search.ReindexEntitiesClient;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -20,7 +19,6 @@ import org.openmetadata.playwright.ui.UiSession;
 import org.openmetadata.playwright.ui.UiSessionExtension;
 import org.openmetadata.playwright.ui.pages.EntityDataObservabilityTabPage;
 import org.openmetadata.playwright.ui.pages.EntityDataObservabilityTabPage.SubTab;
-import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.fluent.TestCases;
@@ -46,8 +44,7 @@ class EntityDataObservabilityTabReindexUIIT {
 
   @ParameterizedTest
   @EnumSource(SubTab.class)
-  void profilerSubTabSnapshotSurvivesRecreateReindex(
-      final SubTab subTab, final UiSession ui, final TestNamespace ns) {
+  void subTabSurvivesRecreate(final SubTab subTab, final UiSession ui, final TestNamespace ns) {
     final Table table = seedTable(ns);
 
     final EntityDataObservabilityTabPage before =
@@ -56,7 +53,7 @@ class EntityDataObservabilityTabReindexUIIT {
     assertThat(snapshotBefore).isNotBlank();
     before.rawPage().close();
 
-    reindex.recreateAndAwait(List.of(table.getEntityReference()));
+    reindex.recreateAndAwait("table", List.of(table));
 
     final EntityDataObservabilityTabPage after =
         EntityDataObservabilityTabPage.open(ui, table.getFullyQualifiedName(), subTab);
@@ -68,10 +65,9 @@ class EntityDataObservabilityTabReindexUIIT {
   }
 
   private static Table seedTable(final TestNamespace ns) {
-    final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
-    final Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    final Table table = ShortStackFactory.table(ns);
     TestCases.create()
-        .name(ns.prefix("obsRowCount"))
+        .name("tc_" + ns.uniqueShortId())
         .forTable(table)
         .testDefinition("tableRowCountToEqual")
         .parameter("value", "10")

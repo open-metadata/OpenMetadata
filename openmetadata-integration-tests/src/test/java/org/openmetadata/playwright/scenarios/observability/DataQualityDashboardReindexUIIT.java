@@ -8,8 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
-import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
-import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.factories.ShortStackFactory;
 import org.openmetadata.it.search.ReindexEntitiesClient;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -18,10 +17,8 @@ import org.openmetadata.it.util.UiTestServer;
 import org.openmetadata.playwright.ui.UiSession;
 import org.openmetadata.playwright.ui.UiSessionExtension;
 import org.openmetadata.playwright.ui.pages.DataQualityDashboardPage;
-import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.fluent.TestCases;
 
@@ -47,10 +44,11 @@ class DataQualityDashboardReindexUIIT {
   }
 
   @Test
-  void dashboardSnapshotSurvivesRecreateReindexOfTestCases(
-      final UiSession ui, final TestNamespace ns) {
+  void dashboardSurvivesRecreate(final UiSession ui, final TestNamespace ns) {
     final List<TestCase> seeded = seedTestCases(ns);
-    final List<EntityReference> refs = seeded.stream().map(TestCase::getEntityReference).toList();
+    // Pre-warm via the recreate path so the pre-snapshot reflects fully indexed state
+    // — DQ aggregations lag the testCase index without it.
+    reindex.recreateAndAwait("testCase", seeded);
 
     final DataQualityDashboardPage before = DataQualityDashboardPage.open(ui);
     final String snapshotBefore = before.widgetTextSnapshot();
@@ -59,7 +57,7 @@ class DataQualityDashboardReindexUIIT {
         .isNotBlank();
     before.rawPage().close();
 
-    reindex.recreateAndAwait(refs);
+    reindex.recreateAndAwait("testCase", seeded);
 
     final DataQualityDashboardPage after = DataQualityDashboardPage.open(ui);
     final String snapshotAfter = after.widgetTextSnapshot();
@@ -69,18 +67,18 @@ class DataQualityDashboardReindexUIIT {
   }
 
   private static List<TestCase> seedTestCases(final TestNamespace ns) {
-    final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
-    final Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    final Table table = ShortStackFactory.table(ns);
+    final String shortId = ns.uniqueShortId();
     return List.of(
         TestCases.create()
-            .name(ns.prefix("rowCountEq50"))
+            .name("tc_row_" + shortId)
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "50")
             .description("UIIT seed")
             .execute(),
         TestCases.create()
-            .name(ns.prefix("colNotNull"))
+            .name("tc_col_" + shortId)
             .forColumn(table, table.getColumns().get(0).getName())
             .testDefinition("columnValuesToBeNotNull")
             .description("UIIT seed")

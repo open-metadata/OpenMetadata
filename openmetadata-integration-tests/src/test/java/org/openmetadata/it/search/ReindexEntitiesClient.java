@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.openmetadata.it.server.ServerHandle;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.network.HttpMethod;
 
@@ -56,15 +57,64 @@ public final class ReindexEntitiesClient {
     awaitAllPresent(refs, maxWait);
   }
 
+  /**
+   * Convenience overload — builds {@link EntityReference}s from the entities with an
+   * explicit {@code entityType}. Avoids the gotcha where {@code Entity.getEntityReference()}
+   * may return a reference whose {@code type} field is null (the API doesn't always
+   * populate it on the response), which makes the endpoint reject the body with
+   * "type must not be null".
+   */
+  public void recreateAndAwait(
+      final String entityType, final List<? extends EntityInterface> entities) {
+    if (entities == null || entities.isEmpty()) {
+      throw new IllegalArgumentException("entity list must not be empty");
+    }
+    final List<EntityReference> refs =
+        entities.stream()
+            .map(
+                e ->
+                    new EntityReference()
+                        .withId(e.getId())
+                        .withType(entityType)
+                        .withFullyQualifiedName(e.getFullyQualifiedName()))
+            .toList();
+    recreateAndAwait(refs, DEFAULT_WAIT);
+  }
+
+  /**
+   * Wait (without triggering anything) for the given entities to be present in their
+   * alias. Useful as a pre-test gate so the "before" UI snapshot doesn't race the
+   * live-index path that runs after entity creation.
+   */
+  public void awaitIndexed(
+      final String entityType, final List<? extends EntityInterface> entities) {
+    awaitIndexed(entityType, entities, DEFAULT_WAIT);
+  }
+
+  public void awaitIndexed(
+      final String entityType,
+      final List<? extends EntityInterface> entities,
+      final Duration maxWait) {
+    final List<EntityReference> refs =
+        entities.stream()
+            .map(
+                e ->
+                    new EntityReference()
+                        .withId(e.getId())
+                        .withType(entityType)
+                        .withFullyQualifiedName(e.getFullyQualifiedName()))
+            .toList();
+    awaitAllPresent(refs, maxWait);
+  }
+
   private void trigger(final List<EntityReference> refs) {
+    // The endpoint returns a plain-text "Reindex process started for N..." message,
+    // not JSON — use executeForString so the SDK doesn't try to parse it as JSON.
     server
         .sdk()
         .getHttpClient()
-        .execute(
-            HttpMethod.POST,
-            "/v1/search/reindexEntities?recreate=true&timeoutMinutes=5",
-            refs,
-            String.class);
+        .executeForString(
+            HttpMethod.POST, "/v1/search/reindexEntities?recreate=true&timeoutMinutes=5", refs);
   }
 
   /**

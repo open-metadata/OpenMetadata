@@ -44,6 +44,16 @@ public final class EntityDataObservabilityTabPage extends PageObject {
   @Override
   protected void waitForLoaded() {
     container().waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+    // Wait for async sub-tab content to settle: either rows have rendered or the
+    // empty-state placeholder is up. Without this, snapshots taken mid-load on the
+    // INCIDENTS / DATA_QUALITY sub-tabs catch a header-only state.
+    page.waitForFunction(
+        "() => { const c = document.querySelector('[data-testid=\"table-profiler-container\"]');"
+            + " if (!c) return false;"
+            + " const rows = c.querySelectorAll('tbody tr').length;"
+            + " const empty = c.querySelector('.ant-empty, [class*=\"empty\"]');"
+            + " const cards = c.querySelectorAll('[class*=\"card\"], [class*=\"chart\"]').length;"
+            + " return rows > 0 || empty !== null || cards > 2; }");
   }
 
   public enum SubTab {

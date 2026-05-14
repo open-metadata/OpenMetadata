@@ -44,5 +44,14 @@ public final class IncidentManagerPage extends PageObject {
   @Override
   protected void waitForLoaded() {
     table().waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+    // Wait for either at least one row OR the "no incidents" empty-state to render —
+    // otherwise a snapshot taken mid-load misses async-rendered placeholders and the
+    // text differs between two runs of the same page.
+    page.waitForFunction(
+        "() => { const t = document.querySelector('[data-testid=\"test-case-incident-manager-table\"]');"
+            + " if (!t) return false;"
+            + " const rows = t.querySelectorAll('tbody tr').length;"
+            + " const empty = t.querySelector('.ant-empty, [class*=\"empty\"]');"
+            + " return rows > 0 || empty !== null; }");
   }
 }
