@@ -205,6 +205,12 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
         if keep_alive := self._get_client_session_keep_alive():
             connection.connectionArguments.root["client_session_keep_alive"] = keep_alive
 
+        # Safe defaults: prevent indefinite hangs when the Snowflake socket is
+        # silently severed (NAT/LB idle reaping in K8s/hybrid runners). Any
+        # value the user supplied via connectionArguments wins via setdefault.
+        connection.connectionArguments.root.setdefault("client_session_keep_alive", True)
+        connection.connectionArguments.root.setdefault("network_timeout", 600)
+
         engine = create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=self.get_connection_url,

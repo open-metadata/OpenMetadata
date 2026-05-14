@@ -154,6 +154,9 @@ base_requirements = {
     "kubernetes>=21.0.0",  # Kubernetes client for secrets manager
     "memory-profiler",
     "mypy_extensions>=0.4.3",
+    # Ships in every container so a hung worker can be sampled in place
+    # (`py-spy dump --pid <pid>`) without first installing anything.
+    "py-spy>=0.3.14",
     VERSIONS["pydantic"],
     VERSIONS["pydantic-settings"],
     VERSIONS["pymysql"],
