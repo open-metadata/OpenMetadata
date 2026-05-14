@@ -3355,7 +3355,7 @@
     "update-profiler-settings": "更新分析器设置",
     "update-tag-message": "请求更新标签",
     "updating-existing-not-possible-can-add-new-values": "无法更新现有值, 只能添加新值",
-    "upload-document-hint": "SVG、PNG、JPG 或 GIF、PNG、JPG（最大 5MB）",
+    "upload-document-hint": "PDF、DOC、XLS、CSV、PNG、JPG 或 SVG（最大 5MB）",
     "upload-failed": "上传失败，请重试",
     "upload-file": "上传文件",
     "upload-file-description": "将合约文件上传到此资产。",

@@ -3355,7 +3355,7 @@
     "update-profiler-settings": "प्रोफाइलर सेटिंग अद्यतनित करा.",
     "update-tag-message": "साठी टॅग अद्यतनित करण्याची विनंती",
     "updating-existing-not-possible-can-add-new-values": "विद्यमान मूल्ये अद्यतनित करणे शक्य नाही, फक्त नवीन मूल्ये जोडणे अनुमत आहे.",
-    "upload-document-hint": "SVG, PNG, JPG किंवा GIF, PNG, JPG (कमाल 5MB)",
+    "upload-document-hint": "PDF, DOC, XLS, CSV, PNG, JPG किंवा SVG (कमाल 5MB)",
     "upload-failed": "अपलोड अयशस्वी झाले, कृपया पुन्हा प्रयत्न करा",
     "upload-file": "फाइल अपलोड करा",
     "upload-file-description": "या मालमत्तेत करार फाइल्स अपलोड करा.",

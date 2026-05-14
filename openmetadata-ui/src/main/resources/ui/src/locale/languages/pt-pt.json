@@ -3355,7 +3355,7 @@
     "update-profiler-settings": "Atualizar configurações do examinador.",
     "update-tag-message": "Solicitar atualização de tags para",
     "updating-existing-not-possible-can-add-new-values": "Não é possível atualizar valores existentes, apenas a adição de novos valores é permitida.",
-    "upload-document-hint": "SVG, PNG, JPG ou GIF, PNG, JPG (máx. 5MB)",
+    "upload-document-hint": "PDF, DOC, XLS, CSV, PNG, JPG ou SVG (máx. 5MB)",
     "upload-failed": "Falha no carregamento, tente novamente",
     "upload-file": "Carregar Ficheiro",
     "upload-file-description": "Carregar ficheiros de contrato para este ativo.",

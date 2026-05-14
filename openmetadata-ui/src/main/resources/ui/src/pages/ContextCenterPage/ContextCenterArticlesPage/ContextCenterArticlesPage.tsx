@@ -260,7 +260,7 @@ const ContextCenterArticlesPage = () => {
   );
 
   const rightSidebar = useMemo(() => {
-    if (isActivityFeedTab || contextCenterClassBase.isRightPanelHidden()) {
+    if (isActivityFeedTab) {
       return null;
     }
 
@@ -292,6 +292,9 @@ const ContextCenterArticlesPage = () => {
         hideAddButton
         permissions={permissions}
         ref={knowledgeCenterPageRef}
+        rightPanelSlot={
+          contextCenterClassBase.isEmbeddedMode() ? null : undefined
+        }
         onPageChange={handlePageChange}
       />
     );

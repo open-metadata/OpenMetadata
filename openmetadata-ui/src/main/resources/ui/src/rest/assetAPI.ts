@@ -26,8 +26,7 @@ export const uploadAsset = async (
 
   const response = await APIClient.post<FormData, AxiosResponse<Asset>>(
     '/attachments/upload',
-    formData,
-    { headers: { 'Content-Type': 'multipart/form-data' } }
+    formData
   );
 
   return response.data;

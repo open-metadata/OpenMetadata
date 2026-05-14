@@ -3355,7 +3355,7 @@
     "update-profiler-settings": "プロファイラー設定を更新",
     "update-tag-message": "タグの更新をリクエスト中:",
     "updating-existing-not-possible-can-add-new-values": "既存の値の更新はできません。新しい値の追加のみ可能です。",
-    "upload-document-hint": "SVG、PNG、JPG または GIF、PNG、JPG（最大 5MB）",
+    "upload-document-hint": "PDF、DOC、XLS、CSV、PNG、JPG または SVG（最大 5MB）",
     "upload-failed": "アップロードに失敗しました。もう一度お試しください",
     "upload-file": "ファイルをアップロード",
     "upload-file-description": "このアセットに契約ファイルをアップロードします。",

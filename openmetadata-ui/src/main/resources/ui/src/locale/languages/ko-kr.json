@@ -3355,7 +3355,7 @@
     "update-profiler-settings": "프로파일러 설정을 업데이트합니다.",
     "update-tag-message": "다음에 대한 태그 업데이트 요청:",
     "updating-existing-not-possible-can-add-new-values": "기존 값을 업데이트할 수 없으며, 새 값만 추가할 수 있습니다.",
-    "upload-document-hint": "SVG, PNG, JPG 또는 GIF, PNG, JPG (최대 5MB)",
+    "upload-document-hint": "PDF, DOC, XLS, CSV, PNG, JPG 또는 SVG (최대 5MB)",
     "upload-failed": "업로드 실패, 다시 시도해 주세요",
     "upload-file": "파일 업로드",
     "upload-file-description": "이 자산에 계약 파일을 업로드하세요.",

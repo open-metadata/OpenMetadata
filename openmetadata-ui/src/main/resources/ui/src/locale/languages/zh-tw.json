@@ -3355,7 +3355,7 @@
     "update-profiler-settings": "更新分析器設定。",
     "update-tag-message": "請求更新標籤",
     "updating-existing-not-possible-can-add-new-values": "無法更新現有值，只允許新增新值。",
-    "upload-document-hint": "SVG、PNG、JPG 或 GIF、PNG、JPG（最大 5MB）",
+    "upload-document-hint": "PDF、DOC、XLS、CSV、PNG、JPG 或 SVG（最大 5MB）",
     "upload-failed": "上傳失敗，請重試",
     "upload-file": "上傳檔案",
     "upload-file-description": "將合約檔案上傳到此資產。",

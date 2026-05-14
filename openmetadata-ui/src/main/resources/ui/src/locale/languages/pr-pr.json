@@ -3355,7 +3355,7 @@
     "update-profiler-settings": "به‌روزرسانی تنظیمات پروفایلر.",
     "update-tag-message": "درخواست برای به‌روزرسانی برچسب‌ها برای",
     "updating-existing-not-possible-can-add-new-values": "به‌روزرسانی مقادیر موجود امکان‌پذیر نیست، فقط افزودن مقادیر جدید مجاز است.",
-    "upload-document-hint": "SVG, PNG, JPG ou GIF, PNG, JPG (máx. 5MB)",
+    "upload-document-hint": "PDF, DOC, XLS, CSV, PNG, JPG ou SVG (máx. 5MB)",
     "upload-failed": "Carregamento falhou, tente de novo",
     "upload-file": "بارگذاری فایل",
     "upload-file-description": "Carregue ficheiros de contrato para este ativo.",

@@ -58,10 +58,6 @@ class ContextCenterClassBase {
     return ROUTES.CONTEXT_CENTER_DOCUMENTS;
   }
 
-  public isRightPanelHidden(): boolean {
-    return false;
-  }
-
   public getArticlePath(
     pageName: string,
     tab?: string,

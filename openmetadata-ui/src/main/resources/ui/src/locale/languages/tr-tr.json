@@ -3355,7 +3355,7 @@
     "update-profiler-settings": "Profilleyici ayarını güncelle.",
     "update-tag-message": "için etiketleri güncelleme isteği",
     "updating-existing-not-possible-can-add-new-values": "Mevcut değerleri güncellemek mümkün değil, yalnızca yeni değerlerin eklenmesine izin verilir.",
-    "upload-document-hint": "SVG, PNG, JPG veya GIF, PNG, JPG (maks. 5MB)",
+    "upload-document-hint": "PDF, DOC, XLS, CSV, PNG, JPG veya SVG (maks. 5MB)",
     "upload-failed": "Yükleme başarısız, lütfen tekrar deneyin",
     "upload-file": "Dosya Yükle",
     "upload-file-description": "Bu varlık için sözleşme dosyalarını yükleyin.",

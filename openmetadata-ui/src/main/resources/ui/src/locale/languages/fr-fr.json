@@ -3355,7 +3355,7 @@
     "update-profiler-settings": "Mettre à jour les réglages du profiler.",
     "update-tag-message": "Demander la mise à jour des tags pour",
     "updating-existing-not-possible-can-add-new-values": "Mettre à jour les valeurs actuelles n'est pas possible, seul l'ajout de nouvelles valeurs et permis.",
-    "upload-document-hint": "SVG, PNG, JPG ou GIF, PNG, JPG (max. 5Mo)",
+    "upload-document-hint": "PDF, DOC, XLS, CSV, PNG, JPG ou SVG (max. 5Mo)",
     "upload-failed": "Échec du téléversement, veuillez réessayer",
     "upload-file": "Télécharger Fichier",
     "upload-file-description": "Téléchargez des fichiers de contrat vers cet actif.",

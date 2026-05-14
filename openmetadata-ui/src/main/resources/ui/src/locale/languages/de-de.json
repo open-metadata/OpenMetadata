@@ -3355,7 +3355,7 @@
     "update-profiler-settings": "Profiler Einstellungen updaten.",
     "update-tag-message": "Anfrage zur Aktualisierung der Tags für",
     "updating-existing-not-possible-can-add-new-values": "Die Aktualisierung bestehender Werte ist nicht möglich, nur das Hinzufügen neuer Werte ist erlaubt.",
-    "upload-document-hint": "SVG, PNG, JPG oder GIF, PNG, JPG (max. 5MB)",
+    "upload-document-hint": "PDF, DOC, XLS, CSV, PNG, JPG oder SVG (max. 5MB)",
     "upload-failed": "Upload fehlgeschlagen, bitte erneut versuchen",
     "upload-file": "Datei hochladen",
     "upload-file-description": "Laden Sie Vertragsdateien zu diesem Asset hoch.",

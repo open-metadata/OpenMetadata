@@ -3355,7 +3355,7 @@
     "update-profiler-settings": "עדכן הגדרות הפרופיילר.",
     "update-tag-message": "בקשה לעדכון תגיות עבור",
     "updating-existing-not-possible-can-add-new-values": "Updating existing values is not possible,only the addition of new values is allowed.",
-    "upload-document-hint": "SVG, PNG, JPG או GIF, PNG, JPG (מקס. 5MB)",
+    "upload-document-hint": "PDF, DOC, XLS, CSV, PNG, JPG או SVG (מקס. 5MB)",
     "upload-failed": "ההעלאה נכשלה, אנא נסה שנית",
     "upload-file": "העלה קובץ",
     "upload-file-description": "העלה קבצי חוזה לנכס זה.",

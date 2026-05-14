@@ -3355,7 +3355,7 @@
     "update-profiler-settings": "อัปเดตการตั้งค่าโปรไฟล์เลอร์",
     "update-tag-message": "คำขอเพื่ออัปเดตแท็กสำหรับ",
     "updating-existing-not-possible-can-add-new-values": "ไม่สามารถปรับปรุงค่าที่มีอยู่ได้เท่านั้นสามารถเพิ่มค่าใหม่ได้",
-    "upload-document-hint": "SVG, PNG, JPG หรือ GIF, PNG, JPG (สูงสุด 5MB)",
+    "upload-document-hint": "PDF, DOC, XLS, CSV, PNG, JPG หรือ SVG (สูงสุด 5MB)",
     "upload-failed": "อัปโหลดล้มเหลว กรุณาลองอีกครั้ง",
     "upload-file": "อัปโหลดไฟล์",
     "upload-file-description": "อัปโหลดไฟล์สัญญาไปยังสินทรัพย์นี้",
