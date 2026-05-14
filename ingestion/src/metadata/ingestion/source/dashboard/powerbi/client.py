@@ -558,15 +558,22 @@ class PowerBiApiClient:
                 return None
             parsed_workspaces: List[Group] = []  # noqa: UP006
             for raw_ws in response_data.get("workspaces", []) or []:  # pyright: ignore[reportAttributeAccessIssue]
-                try:
-                    parsed_workspaces.append(Group(**raw_ws))
-                except Exception as ws_exc:  # pylint: disable=broad-except
-                    logger.debug(traceback.format_exc())
+                if isinstance(raw_ws, dict) and raw_ws.get("id") is not None:
+                    try:
+                        parsed_workspaces.append(Group(**raw_ws))
+                    except Exception as ws_exc:  # pylint: disable=broad-except
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            "Skipping workspace [id=%s] in scan [%s] due to parse error: %s",
+                            raw_ws.get("id"),
+                            scan_id,
+                            ws_exc,
+                        )
+                else:
                     logger.warning(
-                        "Skipping workspace [id=%s] in scan [%s] due to parse error: %s",
-                        raw_ws.get("id"),
+                        "Skipping a workspace in scan [%s] due to missing 'id' field or invalid format: %s",
                         scan_id,
-                        ws_exc,
+                        raw_ws,
                     )
             return Workspaces(workspaces=parsed_workspaces)
         except Exception as exc:  # pylint: disable=broad-except

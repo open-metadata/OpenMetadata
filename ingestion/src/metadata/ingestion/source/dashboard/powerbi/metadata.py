@@ -427,15 +427,6 @@ class PowerbiSource(DashboardServiceSource):
         try:
             for dashboard in self.state.filtered_dashboards:
                 dashboard_details = self.get_dashboard_details(dashboard)
-                dashboard_display = getattr(dashboard_details, "displayName", None) or getattr(
-                    dashboard_details, "name", None
-                )
-                if not dashboard_display:
-                    logger.debug(
-                        "Skipping PowerBI dashboard with empty displayName/name [id=%s]",
-                        getattr(dashboard_details, "id", None),
-                    )
-                    continue
                 if isinstance(dashboard_details, PowerBIDashboard):
                     dashboard_chart_ids = self.state.pop_dashboard_chart_ids(dashboard_details.id)
                     dashboard_request = CreateDashboardRequest(
@@ -710,55 +701,68 @@ class PowerbiSource(DashboardServiceSource):
         """
         Get All the Powerbi Datasets
         """
+        if not self.source_config.includeDataModels:
+            return
         try:
-            if self.source_config.includeDataModels:
-                for dataset in self._filtered_datamodels():
-                    if isinstance(dataset, Dataset):
-                        data_model_type = DataModelType.PowerBIDataModel.value
-                        datamodel_columns = self._get_column_info(dataset)
-                        source_url = self._get_dataset_url(
-                            workspace_id=self.context.get().workspace.id,  # pyright: ignore[reportAttributeAccessIssue]
-                            dataset_id=dataset.id,
-                        )
-                    elif isinstance(dataset, Dataflow):
-                        data_model_type = DataModelType.PowerBIDataFlow.value
-                        datamodel_columns = []
-                        source_url = self._get_dataflow_url(
-                            workspace_id=self.context.get().workspace.id,  # pyright: ignore[reportAttributeAccessIssue]
-                            dataflow_id=dataset.id,
-                        )
-                        # dataflow export api for detailed metadata
-                        # api: https://api.powerbi.com/v1.0/myorg/admin/dataflows/DATAFLOW_ID/export
-                        # doc: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin
-                        dataflow_export = self.client.api_client.fetch_dataflow_export(dataflow_id=dataset.id)
-                        if dataflow_export:
-                            self.state.cache_dataflow_export(dataset.id, dataflow_export)
-                            datamodel_columns = self._get_dataflow_column_info(dataflow_export)
-                    else:
-                        logger.warning(f"Unknown dataset type: {type(dataset)}, name: {dataset.name}")
-                        continue
-                    data_model_request = CreateDashboardDataModelRequest(
-                        name=EntityName(dataset.id),
-                        displayName=dataset.name,
-                        description=(Markdown(dataset.description) if dataset.description else None),
-                        service=FullyQualifiedEntityName(self.context.get().dashboard_service),  # pyright: ignore[reportAttributeAccessIssue]
-                        dataModelType=data_model_type,
-                        serviceType=DashboardServiceType.PowerBI.value,
-                        columns=datamodel_columns,
-                        project=self.get_project_name(dashboard_details=dataset),
-                        owners=self.get_owner_ref(dashboard_details=dataset),
-                        sourceUrl=SourceUrl(source_url),
-                    )
-                    yield Either(right=data_model_request)
-                    self.register_record_datamodel(datamodel_request=data_model_request)
+            datasets = self._filtered_datamodels()
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
-                    name=dataset.name if dataset.name else "",  # pyright: ignore[reportPossiblyUnboundVariable]
-                    error="Error yielding Data Model [{}]: {}".format(dataset.name or "", exc),  # pyright: ignore[reportPossiblyUnboundVariable]
+                    name="datamodels",
+                    error=f"Error fetching PowerBI data models: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )
+            return
+        for dataset in datasets:
+            try:
+                if isinstance(dataset, Dataset):
+                    data_model_type = DataModelType.PowerBIDataModel.value
+                    datamodel_columns = self._get_column_info(dataset)
+                    source_url = self._get_dataset_url(
+                        workspace_id=self.context.get().workspace.id,  # pyright: ignore[reportAttributeAccessIssue]
+                        dataset_id=dataset.id,
+                    )
+                elif isinstance(dataset, Dataflow):
+                    data_model_type = DataModelType.PowerBIDataFlow.value
+                    datamodel_columns = []
+                    source_url = self._get_dataflow_url(
+                        workspace_id=self.context.get().workspace.id,  # pyright: ignore[reportAttributeAccessIssue]
+                        dataflow_id=dataset.id,
+                    )
+                    # dataflow export api for detailed metadata
+                    # api: https://api.powerbi.com/v1.0/myorg/admin/dataflows/DATAFLOW_ID/export
+                    # doc: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin
+                    dataflow_export = self.client.api_client.fetch_dataflow_export(dataflow_id=dataset.id)
+                    if dataflow_export:
+                        self.state.cache_dataflow_export(dataset.id, dataflow_export)
+                        datamodel_columns = self._get_dataflow_column_info(dataflow_export)
+                else:
+                    logger.warning(f"Unknown dataset type: {type(dataset)}, name: {dataset.name}")
+                    continue
+                data_model_request = CreateDashboardDataModelRequest(
+                    name=EntityName(dataset.id),
+                    displayName=dataset.name,
+                    description=(Markdown(dataset.description) if dataset.description else None),
+                    service=FullyQualifiedEntityName(self.context.get().dashboard_service),  # pyright: ignore[reportAttributeAccessIssue]
+                    dataModelType=data_model_type,
+                    serviceType=DashboardServiceType.PowerBI.value,
+                    columns=datamodel_columns,
+                    project=self.get_project_name(dashboard_details=dataset),
+                    owners=self.get_owner_ref(dashboard_details=dataset),
+                    sourceUrl=SourceUrl(source_url),
+                )
+                yield Either(right=data_model_request)
+                self.register_record_datamodel(datamodel_request=data_model_request)
+            except Exception as exc:
+                dataset_name = dataset.name or dataset.id or ""
+                yield Either(
+                    left=StackTraceError(
+                        name=dataset_name,
+                        error=f"Error yielding Data Model [{dataset_name}]: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
 
     def create_report_dashboard_lineage(
         self,
@@ -1483,8 +1487,8 @@ class PowerbiSource(DashboardServiceSource):
                         fqn_search_string=fqn_search_string,
                     )
                     if table_entity and datamodel_entity:
-                        columns_list = [column.name for column in table.columns]
-                        column_lineage = self._get_column_lineage(table_entity, datamodel_entity, columns_list)  # pyright: ignore[reportArgumentType]
+                        columns_list = [column.name for column in table.columns if column.name]
+                        column_lineage = self._get_column_lineage(table_entity, datamodel_entity, columns_list)
                         yield self._get_add_lineage_request(
                             to_entity=datamodel_entity,
                             from_entity=table_entity,
