@@ -159,25 +159,39 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     return list.slice(0, 5);
   }, [knowledgePage]);
 
-  const domains = knowledgePage?.domains ?? [];
-  const owners = knowledgePage?.owners ?? [];
-  const firstDomain = domains[0];
-  const extraDomains = domains.slice(1);
+  const { deleteOptions, owners, firstDomain, extraDomains, entityType } =
+    useMemo(() => {
+      const domains = knowledgePage?.domains ?? [];
+      const owners = knowledgePage?.owners ?? [];
+      const firstDomain = domains[0];
+      const extraDomains = domains.slice(1);
 
-  const entityName = getEntityName(knowledgePage);
-  const entityType = t('label.article');
+      const entityName = getEntityName(knowledgePage);
+      const entityType = t('label.article');
 
-  const deleteOptions = [
-    {
-      description: deleteWidgetClassBase.getDeleteMessage(
-        entityName,
-        entityType
-      ),
-      isAllowed: true,
-      title: `${t('label.permanently-delete')} ${entityType} "${entityName}"`,
-      type: DeleteType.HARD_DELETE,
-    },
-  ];
+      const deleteOptions = [
+        {
+          description: deleteWidgetClassBase.getDeleteMessage(
+            entityName,
+            entityType
+          ),
+          isAllowed: true,
+          title: `${t(
+            'label.permanently-delete'
+          )} ${entityType} "${entityName}"`,
+          type: DeleteType.HARD_DELETE,
+        },
+      ];
+
+      return {
+        deleteOptions,
+        owners,
+        firstDomain,
+        extraDomains,
+        domains,
+        entityType,
+      };
+    }, [knowledgePage]);
 
   const afterDeleteAction = async (isSoftDelete?: boolean) => {
     updateKnowledgeCenterRecentViewed(

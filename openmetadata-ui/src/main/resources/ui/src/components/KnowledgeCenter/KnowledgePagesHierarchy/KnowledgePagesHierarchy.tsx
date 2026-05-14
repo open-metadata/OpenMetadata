@@ -47,7 +47,6 @@ import {
 } from '../../../rest/knowledgeCenterAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
-import { PlusOutlined } from '@ant-design/icons';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { compare } from 'fast-json-patch';
@@ -103,8 +102,6 @@ interface KnowledgePagesHierarchyProps {
   isPageHeaderAvailable: boolean;
   activeKey?: DirectoryTreeProps['activeKey'];
   activePage?: KnowledgePage;
-  hideAddPageButton?: boolean;
-  getPagePath?: (fqn: string) => string;
   homeRoute?: string;
   onPageDelete?: (id: string | string[]) => void;
   onLoading?: (isLoading: boolean) => void;
@@ -118,8 +115,6 @@ const KnowledgePagesHierarchy = forwardRef<
     {
       activeKey,
       activePage,
-      hideAddPageButton,
-      getPagePath,
       homeRoute,
       onPageDelete,
       onLoading,
@@ -438,9 +433,7 @@ const KnowledgePagesHierarchy = forwardRef<
 
           // push to the newly created page
           navigate({
-            pathname: getPagePath
-              ? getPagePath(response.fullyQualifiedName)
-              : getKnowledgePagePath(response.fullyQualifiedName),
+            pathname: getKnowledgePagePath(response.fullyQualifiedName),
           });
         } catch (error) {
           showErrorToast(error as AxiosError);
@@ -461,11 +454,7 @@ const KnowledgePagesHierarchy = forwardRef<
             data-testid={`page-node-${node.title}`}>
             <Link
               className="anchor-no-underline"
-              to={
-                getPagePath
-                  ? getPagePath(nodeKey)
-                  : getKnowledgePagePath(nodeKey)
-              }>
+              to={getKnowledgePagePath(nodeKey)}>
               <div
                 className={classNames(
                   'knowledge-hierarchy-page-title-wrapper',
@@ -499,17 +488,6 @@ const KnowledgePagesHierarchy = forwardRef<
                   width={12}
                 />
               </Button>
-              {!hideAddPageButton && (
-                <Button
-                  className="knowledge-hierarchy-action-btn-item"
-                  data-testid={`${node.title}-add-page-btn`}
-                  disabled={!permissions.Create}
-                  title="Quickly add a page inside"
-                  type="text"
-                  onClick={() => handleAddPage(node)}>
-                  <PlusOutlined className="text-grey-muted" />
-                </Button>
-              )}
             </div>
           </div>
         );

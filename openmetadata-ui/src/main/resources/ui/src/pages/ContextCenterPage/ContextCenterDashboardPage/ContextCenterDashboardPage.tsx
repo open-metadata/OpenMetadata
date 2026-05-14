@@ -20,7 +20,6 @@ import { useNavigate } from 'react-router-dom';
 import { ArticleCardItem } from '../../../components/ContextCenter/ArticleCard/ArticleCard.interface';
 import ArticleListSection from '../../../components/ContextCenter/ArticleListSection/ArticleListSection.component';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
-import { DocFile } from '../../../components/ContextCenter/DocumentsView/DocumentsView.interface';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
 import { UploadedDocumentItem } from '../../../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
 import UploadedDocumentsSection from '../../../components/ContextCenter/UploadedDocumentsSection/UploadedDocumentsSection.component';
@@ -32,13 +31,13 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
-import { downloadAsset } from '../../../rest/assetAPI';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import {
   assetToDocumentItem,
   CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
   createArticleKnowledgePage,
   fetchContextCenterDocuments,
+  handleDownload,
   knowledgePageToArticleItem,
 } from '../../../utils/ContextCenterUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -120,22 +119,6 @@ const ContextCenterDashboardPage: FC = () => {
 
   const handleUploaded = useCallback((newAssets: Asset[]) => {
     setDocuments((prev) => [...prev, ...newAssets.map(assetToDocumentItem)]);
-  }, []);
-
-  const handleDownload = useCallback(async (file: DocFile) => {
-    try {
-      const blob = await downloadAsset(file.id);
-      const url = URL.createObjectURL(blob);
-      const element = document.createElement('a');
-      element.href = url;
-      element.download = file.name;
-      document.body.appendChild(element);
-      element.click();
-      element.remove();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    }
   }, []);
 
   return (

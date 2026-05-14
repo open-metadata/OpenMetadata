@@ -26,11 +26,12 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { deleteAsset, downloadAsset } from '../../../rest/assetAPI';
+import { deleteAsset } from '../../../rest/assetAPI';
 import {
   assetToDocumentItem,
   CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
   fetchContextCenterDocuments,
+  handleDownload,
 } from '../../../utils/ContextCenterUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -85,22 +86,6 @@ const ContextCenterDocumentsPage: FC = () => {
   useEffect(() => {
     fetchPermission();
   }, [fetchPermission]);
-
-  const handleDownload = useCallback(async (file: DocFile) => {
-    try {
-      const blob = await downloadAsset(file.id);
-      const url = URL.createObjectURL(blob);
-      const element = document.createElement('a');
-      element.href = url;
-      element.download = file.name;
-      document.body.appendChild(element);
-      element.click();
-      element.remove();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    }
-  }, []);
 
   const handleDeleteFile = useCallback((file: DocFile) => {
     setFileToDelete(file);

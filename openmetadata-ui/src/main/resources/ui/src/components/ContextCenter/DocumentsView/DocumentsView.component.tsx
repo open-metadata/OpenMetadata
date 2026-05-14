@@ -21,8 +21,10 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Download01, Share07, Trash01 } from '@untitledui/icons';
+import { FILE_TYPE_STYLES } from 'constants/ContextCenter.constants';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getShortRelativeTime } from 'utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import {
@@ -30,20 +32,6 @@ import {
   DocFileType,
   DocumentsViewProps,
 } from './DocumentsView.interface';
-
-// ─── File type badge ──────────────────────────────────────────────────────────
-
-const FILE_TYPE_STYLES: Record<
-  DocFileType,
-  { label: string; bg: string; text: string }
-> = {
-  csv: { bg: 'tw:bg-green-100', label: 'CSV', text: 'tw:text-green-700' },
-  doc: { bg: 'tw:bg-blue-100', label: 'DOC', text: 'tw:text-blue-700' },
-  image: { bg: 'tw:bg-gray-100', label: 'IMG', text: 'tw:text-gray-600' },
-  other: { bg: 'tw:bg-gray-100', label: 'FILE', text: 'tw:text-gray-600' },
-  pdf: { bg: 'tw:bg-red-100', label: 'PDF', text: 'tw:text-red-700' },
-  xls: { bg: 'tw:bg-green-100', label: 'XLSX', text: 'tw:text-green-700' },
-};
 
 const FileTypeBadge: FC<{ fileType: DocFileType }> = ({ fileType }) => {
   const { bg, label, text } = FILE_TYPE_STYLES[fileType || 'other'];
@@ -172,23 +160,23 @@ const FileRow: FC<FileRowProps> = ({
           <Typography className="tw:text-gray-500" size="text-xs">
             {file.sizeLabel}
           </Typography>
-          {file.uploadedBy && (
+          {file.updatedBy && (
             <>
               <span className="tw:text-gray-500 tw:leading-none tw:select-none">
                 &middot;
               </span>
               <Typography className="tw:text-gray-500" size="text-xs">
-                {file.uploadedBy}
+                {file.updatedBy}
               </Typography>
             </>
           )}
-          {file.uploadedAt && (
+          {file.updatedAt && (
             <>
               <span className="tw:text-gray-500 tw:leading-none tw:select-none">
                 &middot;
               </span>
               <Typography className="tw:text-gray-500" size="text-xs">
-                {file.uploadedAt}
+                {getShortRelativeTime(file.updatedAt)}
               </Typography>
             </>
           )}
@@ -222,6 +210,9 @@ const FileRow: FC<FileRowProps> = ({
   );
 };
 
+const DocumentViewLoading = () =>
+  Array.from({ length: 8 }).map((_, idx) => <FileRowSkeleton key={idx} />);
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const DocumentsView: FC<DocumentsViewProps> = ({
@@ -239,20 +230,20 @@ const DocumentsView: FC<DocumentsViewProps> = ({
       {/* Right: file list */}
       {data.length > 0 || isLoading ? (
         <div className="tw:flex tw:flex-1 tw:flex-col tw:overflow-y-auto">
-          {isLoading
-            ? Array.from({ length: 8 }).map((_, idx) => (
-                <FileRowSkeleton key={idx} />
-              ))
-            : data.map((file) => (
-                <FileRow
-                  canDelete={canDelete}
-                  file={file}
-                  key={file.id}
-                  onDeleteFile={onDeleteFile}
-                  onDownload={onDownload}
-                  onShareFile={onShareFile}
-                />
-              ))}
+          {isLoading ? (
+            <DocumentViewLoading />
+          ) : (
+            data.map((file) => (
+              <FileRow
+                canDelete={canDelete}
+                file={file}
+                key={file.id}
+                onDeleteFile={onDeleteFile}
+                onDownload={onDownload}
+                onShareFile={onShareFile}
+              />
+            ))
+          )}
         </div>
       ) : (
         <div className="tw:flex tw:flex-1 tw:items-center tw:justify-center tw:p-12">

@@ -82,7 +82,6 @@ interface KnowledgePageListComponentProps {
   permissions: OperationPermission;
   hideAddButton?: boolean;
   rightPanelSlot?: React.ReactNode;
-  getPagePath?: (fqn: string) => string;
 }
 
 const KnowledgePageListComponent = forwardRef<
@@ -90,13 +89,7 @@ const KnowledgePageListComponent = forwardRef<
   KnowledgePageListComponentProps
 >(
   (
-    {
-      onPageChange,
-      permissions,
-      hideAddButton = false,
-      rightPanelSlot,
-      getPagePath,
-    },
+    { onPageChange, permissions, hideAddButton = false, rightPanelSlot },
     ref
   ) => {
     const { currentUser, theme } = useApplicationStore();
@@ -174,9 +167,7 @@ const KnowledgePageListComponent = forwardRef<
         const response = await postKnowledgePage(data);
         getResourceLimit('knowledgeCenter', true, true);
         navigate({
-          pathname: (getPagePath ?? getKnowledgePagePath)(
-            response.fullyQualifiedName
-          ),
+          pathname: getKnowledgePagePath(response.fullyQualifiedName),
           hash: CREATE_PAGE_HASH,
         });
       } catch (error) {

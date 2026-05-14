@@ -22,25 +22,16 @@ import {
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
 import { AlertCircle, Trash01, UploadCloud02 } from '@untitledui/icons';
+import { DOCUMENT_MAX_FILE_SIZE } from 'constants/ContextCenter.constants';
 import { Asset } from 'generated/attachments/asset';
 import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { uploadAsset } from '../../../rest/assetAPI';
-import { UploadDocumentModalProps } from './UploadDocumentModal.interface';
-
-type UploadStatus = 'uploading' | 'done' | 'error';
-
-interface StagedFile {
-  id: string;
-  file: File;
-}
-
-interface QueuedFile {
-  id: string;
-  file: File;
-  progress: number;
-  status: UploadStatus;
-}
+import {
+  QueuedFile,
+  StagedFile,
+  UploadDocumentModalProps,
+} from './UploadDocumentModal.interface';
 
 const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   isOpen,
@@ -140,7 +131,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
       file,
       id,
       progress: 0,
-      status: 'uploading' as UploadStatus,
+      status: 'uploading',
     }));
 
     setStagedFiles([]);
@@ -179,7 +170,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
                 allowsMultiple
                 clickToUploadLabel={t('label.click-to-upload')}
                 hint={t('message.upload-document-hint')}
-                maxSize={5 * 1024 * 1024}
+                maxSize={DOCUMENT_MAX_FILE_SIZE}
                 orDragAndDropLabel={t('label.or-drag-and-drop')}
                 onDropFiles={handleDropFiles}
                 onSizeLimitExceed={handleSizeLimitExceed}
@@ -236,9 +227,9 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
                       tryAgainLabel={t('label.try-again')}
                       uploadingLabel={t('label.uploading')}
                       onDelete={
-                        status !== 'uploading'
-                          ? () => handleRemoveQueued(id)
-                          : undefined
+                        status === 'uploading'
+                          ? undefined
+                          : () => handleRemoveQueued(id)
                       }
                       onRetry={
                         status === 'error' ? () => handleRetry(id) : undefined

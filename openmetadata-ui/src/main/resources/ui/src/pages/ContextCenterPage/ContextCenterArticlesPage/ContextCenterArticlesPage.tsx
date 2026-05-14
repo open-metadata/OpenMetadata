@@ -15,7 +15,7 @@ import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import { ChevronDown, Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
@@ -51,7 +51,6 @@ import {
 } from '../../../interface/knowledge-center.interface';
 import { postKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import { createArticleKnowledgePage } from '../../../utils/ContextCenterUtils';
-import { getContextCenterArticlePath } from '../../../utils/KnowledgePageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -104,7 +103,7 @@ const ContextCenterArticlesPage = () => {
   const fetchPermission = async () => {
     try {
       const response = await getResourcePermission(
-        ResourceEntity.KNOWLEDGE_PAGE as unknown as ResourceEntity
+        ResourceEntity.KNOWLEDGE_PAGE
       );
       setPermissions(response);
     } catch (error) {
@@ -232,18 +231,22 @@ const ContextCenterArticlesPage = () => {
   const isActivityFeedTab =
     Boolean(fqn) && page.activeTab === EntityTabs.ACTIVITY_FEED;
 
-  const layoutClassName = version
-    ? 'knowledge-version-page'
-    : fqn
-    ? 'knowledge-details-page'
-    : undefined;
+  const layoutClassName = useMemo(() => {
+    if (version) {
+      return 'knowledge-version-page';
+    }
+
+    if (fqn) {
+      return 'knowledge-details-page';
+    }
+
+    return undefined;
+  }, [version, fqn]);
 
   const leftSidebar = isActivityFeedTab ? null : (
     <KnowledgePagesHierarchy
-      hideAddPageButton
       activeKey={fqn}
       activePage={page.data}
-      getPagePath={getContextCenterArticlePath}
       homeRoute={ROUTES.CONTEXT_CENTER_ARTICLES}
       isPageHeaderAvailable={Boolean(fqn)}
       permissions={permissions}
@@ -252,33 +255,51 @@ const ContextCenterArticlesPage = () => {
     />
   );
 
-  const rightSidebar = isActivityFeedTab
-    ? null
-    : version
-    ? page.rightPanel
-    : isRightPanelOpen
-    ? page.rightPanel
-    : null;
+  const rightSidebar = useMemo(() => {
+    if (isActivityFeedTab) {
+      return null;
+    }
 
-  const centerContent = version ? (
-    <KnowledgePageVersionPage onPageChange={handlePageChange} />
-  ) : fqn ? (
-    <KnowledgePageDetailComponent
-      fetchKnowledgePageHierarchy={handleFetchKnowledgePageHierarchy}
-      getArticlePath={getContextCenterArticlePath}
-      isRightPanelOpen={isRightPanelOpen}
-      onPageChange={handlePageChange}
-      onToggleRightPanel={handleToggleRightPanel}
-    />
-  ) : (
-    <KnowledgePageListComponent
-      hideAddButton
-      getPagePath={getContextCenterArticlePath}
-      permissions={permissions}
-      ref={knowledgeCenterPageRef}
-      onPageChange={handlePageChange}
-    />
-  );
+    if (version || isRightPanelOpen) {
+      return page.rightPanel;
+    }
+
+    return null;
+  }, [isActivityFeedTab, version, isRightPanelOpen, page.rightPanel]);
+
+  const centerContent = useMemo(() => {
+    if (version) {
+      return <KnowledgePageVersionPage onPageChange={handlePageChange} />;
+    }
+
+    if (fqn) {
+      return (
+        <KnowledgePageDetailComponent
+          fetchKnowledgePageHierarchy={handleFetchKnowledgePageHierarchy}
+          isRightPanelOpen={isRightPanelOpen}
+          onPageChange={handlePageChange}
+          onToggleRightPanel={handleToggleRightPanel}
+        />
+      );
+    }
+
+    return (
+      <KnowledgePageListComponent
+        hideAddButton
+        permissions={permissions}
+        ref={knowledgeCenterPageRef}
+        onPageChange={handlePageChange}
+      />
+    );
+  }, [
+    version,
+    fqn,
+    isRightPanelOpen,
+    permissions,
+    handlePageChange,
+    handleFetchKnowledgePageHierarchy,
+    handleToggleRightPanel,
+  ]);
 
   return (
     <div

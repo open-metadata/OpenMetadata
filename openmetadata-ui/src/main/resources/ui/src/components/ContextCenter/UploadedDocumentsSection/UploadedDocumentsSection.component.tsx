@@ -18,7 +18,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowUpRight, Upload01 } from '@untitledui/icons';
-import { FC } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -48,6 +48,13 @@ const UploadedDocumentsSection: FC<UploadedDocumentsSectionProps> = ({
   isLoading = false,
 }) => {
   const { t } = useTranslation();
+
+  const UploadedDocumentSectionLoading = () =>
+    Array.from({ length: 8 }).map((_, idx) => (
+      <DocumentCardSkeleton key={idx} />
+    ));
+
+  const documentsToShow = useMemo(() => documents.slice(0, 25), [documents]);
 
   return (
     <Card
@@ -80,20 +87,18 @@ const UploadedDocumentsSection: FC<UploadedDocumentsSectionProps> = ({
 
       {documents.length > 0 || isLoading ? (
         <div className="tw:grid tw:grid-cols-[repeat(auto-fill,168px)] tw:gap-4">
-          {isLoading
-            ? Array.from({ length: 8 }).map((_, idx) => (
-                <DocumentCardSkeleton key={idx} />
-              ))
-            : documents
-                .slice(0, 25)
-                .map((doc: UploadedDocumentItem) => (
-                  <UploadedDocumentCard
-                    document={doc}
-                    key={doc.id}
-                    onClick={onDocumentClick}
-                    onDownload={onDownload}
-                  />
-                ))}
+          {isLoading ? (
+            <UploadedDocumentSectionLoading />
+          ) : (
+            documentsToShow.map((doc: UploadedDocumentItem) => (
+              <UploadedDocumentCard
+                document={doc}
+                key={doc.id}
+                onClick={onDocumentClick}
+                onDownload={onDownload}
+              />
+            ))
+          )}
         </div>
       ) : (
         <ErrorPlaceHolder

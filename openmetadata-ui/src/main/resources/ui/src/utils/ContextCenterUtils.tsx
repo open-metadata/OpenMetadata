@@ -13,6 +13,7 @@
 
 import { File06 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import { DocFile } from 'components/ContextCenter/DocumentsView/DocumentsView.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { ReactComponent as DOCIcon } from '../assets/svg/ic-doc.svg';
 import { ReactComponent as ImageIcon } from '../assets/svg/ic-image.svg';
@@ -28,7 +29,7 @@ import {
   PageType,
   QuickLink,
 } from '../interface/knowledge-center.interface';
-import { listAssetsByFqn } from '../rest/assetAPI';
+import { downloadAsset, listAssetsByFqn } from '../rest/assetAPI';
 import { postKnowledgePage } from '../rest/knowledgeCenterAPI';
 import EntityLink from './EntityLink';
 import { getEntityName } from './EntityUtils';
@@ -102,6 +103,8 @@ export const assetToDocumentItem = (asset: Asset): UploadedDocumentItem => ({
   name: asset.fileName,
   sizeLabel: formatBytes(asset.size),
   status: 'processed',
+  updatedBy: asset.updatedBy ?? '',
+  updatedAt: asset.updatedAt ?? 0,
 });
 
 export const knowledgePageToArticleItem = (
@@ -161,5 +164,21 @@ export const createArticleKnowledgePage = async (
     });
   } catch (error) {
     showErrorToast(error as AxiosError);
+  }
+};
+
+export const handleDownload = async (file: DocFile) => {
+  try {
+    const blob = await downloadAsset(file.id);
+    const url = URL.createObjectURL(blob);
+    const element = document.createElement('a');
+    element.href = url;
+    element.download = file.name;
+    document.body.appendChild(element);
+    element.click();
+    element.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    showErrorToast(err as AxiosError);
   }
 };

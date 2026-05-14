@@ -86,6 +86,11 @@ const ArticleListSection: FC<ArticleListSectionProps> = ({
     [onArticleClick, getPagePath, navigate]
   );
 
+  const ArticleLoading = () =>
+    Array.from({ length: 6 }).map((_, idx) => (
+      <ArticleCardSkeleton key={idx} />
+    ));
+
   return (
     <Card
       className="tw:p-6 tw:overflow-y-scroll tw:h-[calc(50vh-138px)]"
@@ -119,17 +124,17 @@ const ArticleListSection: FC<ArticleListSectionProps> = ({
 
       {articles.length > 0 || isLoading ? (
         <div className="tw:grid tw:grid-cols-[repeat(auto-fill,320px)]  tw:gap-4">
-          {isLoading
-            ? Array.from({ length: 6 }).map((_, idx) => (
-                <ArticleCardSkeleton key={idx} />
-              ))
-            : articles.map((article: ArticleCardItem) => (
-                <ArticleCard
-                  article={article}
-                  key={article.id}
-                  onClick={handleArticleClick}
-                />
-              ))}
+          {isLoading ? (
+            <ArticleLoading />
+          ) : (
+            articles.map((article: ArticleCardItem) => (
+              <ArticleCard
+                article={article}
+                key={article.id}
+                onClick={handleArticleClick}
+              />
+            ))
+          )}
         </div>
       ) : (
         <ErrorPlaceHolder

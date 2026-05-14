@@ -32,6 +32,7 @@ import {
 } from '../interface/knowledge-center.interface';
 
 import { Space } from 'antd';
+import { RecentlyViewedData } from 'Models';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
 import { ReactComponent as IconArticle } from '../assets/svg/ic-articles.svg';
@@ -42,7 +43,6 @@ import {
 } from '../constants/CustomizeWidgets.constants';
 import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../hooks/useApplicationStore';
-import { RecentlyViewedData } from '../Models';
 import { arraySorterByKey } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
 import Fqn from './Fqn';

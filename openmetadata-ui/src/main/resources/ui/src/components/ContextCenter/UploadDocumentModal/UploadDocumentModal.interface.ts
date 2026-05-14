@@ -19,3 +19,17 @@ export interface UploadDocumentModalProps {
   onClose: () => void;
   onUploaded?: (assets: Asset[]) => void;
 }
+
+export type UploadStatus = 'uploading' | 'done' | 'error';
+
+export interface StagedFile {
+  id: string;
+  file: File;
+}
+
+export interface QueuedFile {
+  id: string;
+  file: File;
+  progress: number;
+  status: UploadStatus;
+}

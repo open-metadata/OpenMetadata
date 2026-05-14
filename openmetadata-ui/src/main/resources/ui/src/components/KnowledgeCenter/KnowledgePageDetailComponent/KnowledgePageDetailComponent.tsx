@@ -13,6 +13,7 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
+import { EntityTags } from 'Models';
 import {
   FC,
   KeyboardEvent,
@@ -69,7 +70,6 @@ import {
   KnowledgePage,
   RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
-import { EntityTags } from '../../../Models';
 import { postThread } from '../../../rest/feedsAPI';
 import {
   followKnowledgePage,
@@ -100,7 +100,6 @@ interface KnowledgePageDetailComponentProps {
   fetchKnowledgePageHierarchy?: (forceRefresh?: boolean) => Promise<void>;
   isRightPanelOpen?: boolean;
   onToggleRightPanel?: () => void;
-  getArticlePath?: (fqn: string, tab?: string) => string;
 }
 
 const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
@@ -108,7 +107,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   fetchKnowledgePageHierarchy,
   isRightPanelOpen = true,
   onToggleRightPanel,
-  getArticlePath,
 }) => {
   const { t } = i18n;
   const { hash } = useCustomLocation();
@@ -531,11 +529,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      navigate(
-        getArticlePath
-          ? getArticlePath(fqn, activeKey)
-          : getKnowledgePagePath(fqn, activeKey)
-      );
+      navigate(getKnowledgePagePath(fqn, activeKey));
       setActiveTab(activeKey);
     }
   };

@@ -18,8 +18,8 @@ export interface DocFile {
   name: string;
   fileType: DocFileType;
   sizeLabel: string;
-  uploadedBy?: string;
-  uploadedAt?: string;
+  updatedBy?: string;
+  updatedAt?: number;
   folderId?: string;
 }
 

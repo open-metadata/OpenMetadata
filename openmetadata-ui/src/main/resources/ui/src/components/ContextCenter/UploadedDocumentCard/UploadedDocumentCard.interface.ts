@@ -21,6 +21,8 @@ export interface UploadedDocumentItem {
   fileType: DocumentFileType;
   sizeLabel: string;
   status: DocumentProcessingStatus;
+  updatedBy: string;
+  updatedAt: number;
 }
 
 export interface UploadedDocumentCardProps {
