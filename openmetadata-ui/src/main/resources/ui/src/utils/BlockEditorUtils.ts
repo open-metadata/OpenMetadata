@@ -21,7 +21,6 @@ import { ReactComponent as IconFormatImage } from '../assets/svg/ic-format-image
 import { ReactComponent as IconFormatVideo } from '../assets/svg/ic-format-video.svg';
 import { FileType } from '../components/BlockEditor/BlockEditor.interface';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
-import { inCurrentAppContext } from './RouterUtils';
 import blockEditorExtensionsClassBase from './BlockEditorExtensionsClassBase';
 import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
 import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtils';
@@ -61,16 +60,17 @@ const _convertMarkdownFormatToHtmlString = (markdown: string) => {
     hashTagList.map((hashTag) => [hashTag, getEntityDetail(hashTag)])
   );
 
+  // hrefs are stored unprefixed; EditorSlots.tsx applies `inCurrentAppContext`
+  // at click time. Baking the prefix in here would (a) compound when the click
+  // handler re-applies it for non-idempotent providers, and (b) persist a
+  // host-specific prefix into stored content (descriptions, feed comments).
   mentionMap.forEach((value, key) => {
     if (value) {
       const [, href, rawEntityType, fqn] = value;
       const entityType = urlEntries.find((e) => e[1] === rawEntityType)?.[0];
 
       if (entityType) {
-        const fullHref = inCurrentAppContext(
-          `${href}/${rawEntityType}/${fqn}`
-        );
-        const entityLink = `<a href="${fullHref}" data-type="mention" data-entityType="${entityType}" data-fqn="${fqn}" data-label="${fqn}">@${fqn}</a>`;
+        const entityLink = `<a href="${href}/${rawEntityType}/${fqn}" data-type="mention" data-entityType="${entityType}" data-fqn="${fqn}" data-label="${fqn}">@${fqn}</a>`;
         updatedMessage = updatedMessage.replaceAll(key, entityLink);
       }
     }
@@ -80,8 +80,7 @@ const _convertMarkdownFormatToHtmlString = (markdown: string) => {
     if (value) {
       const [, href, rawEntityType, fqn] = value;
 
-      const fullHref = inCurrentAppContext(`${href}/${rawEntityType}/${fqn}`);
-      const entityLink = `<a href="${fullHref}" data-type="hashtag" data-entityType="${rawEntityType}" data-fqn="${fqn}" data-label="${fqn}">#${fqn}</a>`;
+      const entityLink = `<a href="${href}/${rawEntityType}/${fqn}" data-type="hashtag" data-entityType="${rawEntityType}" data-fqn="${fqn}" data-label="${fqn}">#${fqn}</a>`;
       updatedMessage = updatedMessage.replaceAll(key, entityLink);
     }
   });

@@ -764,29 +764,36 @@ describe('KnowledgeGraph.utils', () => {
       openSpy.mockRestore();
     });
 
-    it('node:dblclick routes the URL through the registered AppContextProvider', () => {
-      // OM core must not hard-code any embed prefix; hosts register a provider
-      // to rewrite escape-hatch URLs. Here we simulate a host that prefixes
-      // every internal path and verify window.open receives the rewritten form.
-      const provider = jest.fn((p: string) => `/host${p}`);
-      registerAppContextProvider(provider);
+    describe('AppContextProvider integration', () => {
+      afterEach(() => {
+        registerAppContextProvider(null);
+      });
 
-      const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
-      const { ctx, graph } = buildCtx();
-      setupGraphEventHandlers(ctx);
+      it('node:dblclick routes the URL through the registered AppContextProvider', () => {
+        // OM core must not hard-code any embed prefix; hosts register a provider
+        // to rewrite escape-hatch URLs. Here we simulate a host that prefixes
+        // every internal path and verify window.open receives the rewritten form.
+        const provider = jest.fn((p: string) => `/host${p}`);
+        registerAppContextProvider(provider);
 
-      const dblClickHandler = getHandler(graph, 'node:dblclick');
-      dblClickHandler?.({ target: { id: 'B' } });
+        const openSpy = jest
+          .spyOn(window, 'open')
+          .mockImplementation(() => null);
+        const { ctx, graph } = buildCtx();
+        setupGraphEventHandlers(ctx);
 
-      expect(provider).toHaveBeenCalledWith('/test/entity/path');
-      expect(openSpy).toHaveBeenCalledWith(
-        '/host/test/entity/path',
-        '_blank',
-        'noopener,noreferrer'
-      );
+        const dblClickHandler = getHandler(graph, 'node:dblclick');
+        dblClickHandler?.({ target: { id: 'B' } });
 
-      registerAppContextProvider(null);
-      openSpy.mockRestore();
+        expect(provider).toHaveBeenCalledWith('/test/entity/path');
+        expect(openSpy).toHaveBeenCalledWith(
+          '/host/test/entity/path',
+          '_blank',
+          'noopener,noreferrer'
+        );
+
+        openSpy.mockRestore();
+      });
     });
   });
 });

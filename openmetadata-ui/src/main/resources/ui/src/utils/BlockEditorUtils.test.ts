@@ -164,12 +164,16 @@ describe('formatContent', () => {
     );
   });
 
-  describe('mention/hashtag href routing via AppContextProvider', () => {
+  describe('mention/hashtag href storage', () => {
     afterEach(() => {
       registerAppContextProvider(null);
     });
 
-    it('routes markdown mention hrefs through the registered AppContextProvider', () => {
+    // Prefixing happens at click time in EditorSlots.tsx so stored content
+    // stays canonical and portable across embedding contexts. Hrefs in the
+    // generated HTML must not be rewritten regardless of whether a provider
+    // is registered.
+    it('stores canonical hrefs even when a provider is registered', () => {
       registerAppContextProvider((u) => `/host${u}`);
 
       const input =
@@ -177,13 +181,13 @@ describe('formatContent', () => {
 
       const result = formatContent(input, 'client');
 
-      // The mention's anchor href should reflect provider rewriting.
       expect(result).toContain(
-        'href="/hosthttp://localhost:3000/settings/members/teams/Infrastructure"'
+        'href="http://localhost:3000/settings/members/teams/Infrastructure"'
       );
+      expect(result).not.toContain('/host');
     });
 
-    it('leaves markdown mention hrefs unchanged when no provider is registered', () => {
+    it('stores canonical hrefs when no provider is registered', () => {
       const input =
         'hi [@Infrastructure](http://localhost:3000/settings/members/teams/Infrastructure)';
 
