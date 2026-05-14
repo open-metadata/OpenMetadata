@@ -287,7 +287,7 @@ class PowerbiSource(DashboardServiceSource):
                 if not dashboard_name:
                     logger.debug(
                         "Skipping PowerBI dashboard with empty name on workspace [%s]",
-                        workspace.name,
+                        workspace.name,  # pyright: ignore[reportOptionalMemberAccess]
                     )
                     continue
                 if filter_by_dashboard(
@@ -310,7 +310,7 @@ class PowerbiSource(DashboardServiceSource):
         """
         return self.context.get().workspace.reports + self.context.get().workspace.dashboards
 
-    def get_dashboard_name(self, dashboard: Union[PowerBIDashboard, PowerBIReport]) -> str | None:  # noqa: UP007
+    def get_dashboard_name(self, dashboard: Union[PowerBIDashboard, PowerBIReport]) -> str | None:  # noqa: UP007  # pyright: ignore[reportIncompatibleMethodOverride]
         """
         Get Dashboard Name
         """
@@ -712,8 +712,8 @@ class PowerbiSource(DashboardServiceSource):
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
-                    name=dataset.name if dataset.name else "",
-                    error="Error yielding Data Model [{}]: {}".format(dataset.name or "", exc),
+                    name=dataset.name if dataset.name else "",  # pyright: ignore[reportPossiblyUnboundVariable]
+                    error="Error yielding Data Model [{}]: {}".format(dataset.name or "", exc),  # pyright: ignore[reportPossiblyUnboundVariable]
                     stackTrace=traceback.format_exc(),
                 )
             )
@@ -1454,7 +1454,7 @@ class PowerbiSource(DashboardServiceSource):
                     )
                     if table_entity and datamodel_entity:
                         columns_list = [column.name for column in table.columns]
-                        column_lineage = self._get_column_lineage(table_entity, datamodel_entity, columns_list)
+                        column_lineage = self._get_column_lineage(table_entity, datamodel_entity, columns_list)  # pyright: ignore[reportArgumentType]
                         yield self._get_add_lineage_request(
                             to_entity=datamodel_entity,
                             from_entity=table_entity,
