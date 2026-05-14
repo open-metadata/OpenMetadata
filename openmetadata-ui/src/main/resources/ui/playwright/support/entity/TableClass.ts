@@ -523,6 +523,23 @@ export class TableClass extends EntityClass {
     };
   }
 
+  async setOwner(
+    apiContext: APIRequestContext,
+    owner: { id: string; type: string }
+  ) {
+    const fqn = encodeURIComponent(
+      this.entityResponseData?.fullyQualifiedName ?? ''
+    );
+    const response = await apiContext.patch(
+      `/api/v1/tables/name/${fqn}`,
+      {
+        data: [{ op: 'replace', path: '/owners', value: [owner] }],
+        headers: { 'Content-Type': 'application/json-patch+json' },
+      }
+    );
+    this.entityResponseData = await response.json();
+  }
+
   async followTable(apiContext: APIRequestContext, userId: string) {
     await apiContext.put(
       `/api/v1/tables/${this.entityResponseData?.id}/followers`,
