@@ -59,6 +59,34 @@ class SearchClientTagScriptSeparationTest {
   }
 
   @Test
+  void tagReseparationScriptSkipsDocsWithoutTagsField() {
+    // UPDATE_FQN_PREFIX_SCRIPT is invoked against GLOBAL_SEARCH_ALIAS, which includes
+    // tag_search_index. Tag docs have no `tags` field; if the four reseparation writes
+    // run unconditionally they pollute the doc with empty tags / null tier /
+    // empty classificationTags / empty glossaryTags. Guard the writes inside the
+    // containsKey('tags') block.
+    String snippet = SearchClient.TAG_RESEPARATION_SCRIPT;
+    int guardIndex = snippet.indexOf("if (ctx._source.containsKey('tags')");
+    assertTrue(guardIndex >= 0, "snippet must guard on ctx._source.containsKey('tags')");
+    String beforeGuard = snippet.substring(0, guardIndex);
+    for (String forbidden :
+        new String[] {
+          "ctx._source.tags =",
+          "ctx._source.tier =",
+          "ctx._source.classificationTags =",
+          "ctx._source.glossaryTags ="
+        }) {
+      assertTrue(
+          !beforeGuard.contains(forbidden),
+          () ->
+              "Reseparation write '"
+                  + forbidden
+                  + "' must live inside the containsKey('tags') guard so docs without a"
+                  + " tags field (e.g., tag_search_index) are not polluted.");
+    }
+  }
+
+  @Test
   void tagReseparationScriptLiftsTierAndPopulatesDenormalizations() {
     String snippet = SearchClient.TAG_RESEPARATION_SCRIPT;
     assertTrue(

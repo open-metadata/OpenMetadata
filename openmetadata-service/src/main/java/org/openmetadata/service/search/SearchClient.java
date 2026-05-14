@@ -116,11 +116,11 @@ public interface SearchClient
             else if (t.source == 'Glossary') { glossTags.add(t.tagFQN); }
           }
         }
+        ctx._source.tags = newTags;
+        ctx._source.tier = tier;
+        ctx._source.classificationTags = classTags;
+        ctx._source.glossaryTags = glossTags;
       }
-      ctx._source.tags = newTags;
-      ctx._source.tier = tier;
-      ctx._source.classificationTags = classTags;
-      ctx._source.glossaryTags = glossTags;
       """;
 
   String REMOVE_TAGS_CHILDREN_SCRIPT =
