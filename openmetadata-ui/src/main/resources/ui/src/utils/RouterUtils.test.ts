@@ -17,7 +17,12 @@ import {
   PLACEHOLDER_SETTING_CATEGORY,
   ROUTES,
 } from '../constants/constants';
-import { getSettingPath, getSettingsPathWithFqn } from './RouterUtils';
+import {
+  getSettingPath,
+  getSettingsPathWithFqn,
+  inCurrentAppContext,
+  registerAppContextProvider,
+} from './RouterUtils';
 
 describe('Global Setting routes', () => {
   describe('getSettingPath', () => {
@@ -119,5 +124,58 @@ describe('Global Setting routes', () => {
 
       expect(path).toEqual(expectedPath);
     });
+  });
+});
+
+describe('AppContextProvider extension hook', () => {
+  afterEach(() => {
+    registerAppContextProvider(null);
+  });
+
+  it('returns input unchanged when no provider is registered (identity default)', () => {
+    expect(inCurrentAppContext('/glossary/foo')).toBe('/glossary/foo');
+    expect(inCurrentAppContext('https://example.com/page')).toBe(
+      'https://example.com/page'
+    );
+    expect(inCurrentAppContext('')).toBe('');
+  });
+
+  it('delegates to a registered provider', () => {
+    const provider = jest.fn((url: string) => `/prefix${url}`);
+    registerAppContextProvider(provider);
+
+    const result = inCurrentAppContext('/glossary/foo');
+
+    expect(provider).toHaveBeenCalledWith('/glossary/foo');
+    expect(result).toBe('/prefix/glossary/foo');
+  });
+
+  it('replaces a previously registered provider when a new one registers', () => {
+    registerAppContextProvider(() => 'first');
+
+    expect(inCurrentAppContext('/anything')).toBe('first');
+
+    registerAppContextProvider(() => 'second');
+
+    expect(inCurrentAppContext('/anything')).toBe('second');
+  });
+
+  it('restores identity behavior when null is registered', () => {
+    registerAppContextProvider((u) => `rewritten${u}`);
+
+    expect(inCurrentAppContext('/x')).toBe('rewritten/x');
+
+    registerAppContextProvider(null);
+
+    expect(inCurrentAppContext('/x')).toBe('/x');
+  });
+
+  it('does not assume any product-specific prefix in OM core (stays product-agnostic)', () => {
+    // OM must NOT hard-code /askCollate or any embed prefix. The identity
+    // default proves that the open-source build leaves URLs alone.
+    expect(inCurrentAppContext('/askCollate/foo')).toBe('/askCollate/foo');
+    expect(inCurrentAppContext('/observability/data-quality')).toBe(
+      '/observability/data-quality'
+    );
   });
 });

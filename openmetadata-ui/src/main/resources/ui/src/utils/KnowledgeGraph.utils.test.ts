@@ -34,6 +34,7 @@ import {
   transformToG6Format,
 } from './KnowledgeGraph.utils';
 import ELKLayout from './Lineage/Layout/ELKUtil/ELKUtil';
+import { registerAppContextProvider } from './RouterUtils';
 
 const makeNode = (id: string, extra: Record<string, unknown> = {}) => ({
   id,
@@ -760,6 +761,31 @@ describe('KnowledgeGraph.utils', () => {
         'noopener,noreferrer'
       );
 
+      openSpy.mockRestore();
+    });
+
+    it('node:dblclick routes the URL through the registered AppContextProvider', () => {
+      // OM core must not hard-code any embed prefix; hosts register a provider
+      // to rewrite escape-hatch URLs. Here we simulate a host that prefixes
+      // every internal path and verify window.open receives the rewritten form.
+      const provider = jest.fn((p: string) => `/host${p}`);
+      registerAppContextProvider(provider);
+
+      const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
+      const { ctx, graph } = buildCtx();
+      setupGraphEventHandlers(ctx);
+
+      const dblClickHandler = getHandler(graph, 'node:dblclick');
+      dblClickHandler?.({ target: { id: 'B' } });
+
+      expect(provider).toHaveBeenCalledWith('/test/entity/path');
+      expect(openSpy).toHaveBeenCalledWith(
+        '/host/test/entity/path',
+        '_blank',
+        'noopener,noreferrer'
+      );
+
+      registerAppContextProvider(null);
       openSpy.mockRestore();
     });
   });

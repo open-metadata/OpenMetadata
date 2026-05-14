@@ -21,6 +21,7 @@ import {
   setEditorContent,
   transformImgTagsToFileAttachment,
 } from './BlockEditorUtils';
+import { registerAppContextProvider } from './RouterUtils';
 
 describe('getTextFromHtmlString', () => {
   it('should return empty string when input is undefined', () => {
@@ -161,6 +162,37 @@ describe('formatContent', () => {
     expect(result).toContain(
       '<p>This <a data-type="mention" data-label="Infrastructure" href="http://localhost:3000/settings/members/teams/Infrastructure" data-entitytype="team" data-fqn="Infrastructure"><#E::team::Infrastructure|[@Infrastructure](http://localhost:3000/settings/members/teams/Infrastructure)></a> team</p>'
     );
+  });
+
+  describe('mention/hashtag href routing via AppContextProvider', () => {
+    afterEach(() => {
+      registerAppContextProvider(null);
+    });
+
+    it('routes markdown mention hrefs through the registered AppContextProvider', () => {
+      registerAppContextProvider((u) => `/host${u}`);
+
+      const input =
+        'hi [@Infrastructure](http://localhost:3000/settings/members/teams/Infrastructure)';
+
+      const result = formatContent(input, 'client');
+
+      // The mention's anchor href should reflect provider rewriting.
+      expect(result).toContain(
+        'href="/hosthttp://localhost:3000/settings/members/teams/Infrastructure"'
+      );
+    });
+
+    it('leaves markdown mention hrefs unchanged when no provider is registered', () => {
+      const input =
+        'hi [@Infrastructure](http://localhost:3000/settings/members/teams/Infrastructure)';
+
+      const result = formatContent(input, 'client');
+
+      expect(result).toContain(
+        'href="http://localhost:3000/settings/members/teams/Infrastructure"'
+      );
+    });
   });
 });
 
