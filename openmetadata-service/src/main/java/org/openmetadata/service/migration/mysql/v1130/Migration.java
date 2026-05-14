@@ -1,5 +1,7 @@
 package org.openmetadata.service.migration.mysql.v1130;
 
+import static org.openmetadata.service.migration.utils.v1129.MigrationUtil.addTriggerOperationToDefaultPolicies;
+
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
@@ -31,5 +33,6 @@ public class Migration extends MigrationProcessImpl {
       LOG.error("v1130 glossaryTerm version relatedTerms transform failed; re-run to retry.", e);
     }
     MigrationUtil.addTableColumnSearchSettings();
+    addTriggerOperationToDefaultPolicies(collectionDAO);
   }
 }
