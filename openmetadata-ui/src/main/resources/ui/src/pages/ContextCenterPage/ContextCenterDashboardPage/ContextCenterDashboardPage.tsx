@@ -17,7 +17,6 @@ import { Asset } from 'generated/attachments/asset';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import { ArticleCardItem } from '../../../components/ContextCenter/ArticleCard/ArticleCard.interface';
 import ArticleListSection from '../../../components/ContextCenter/ArticleListSection/ArticleListSection.component';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
@@ -33,6 +32,7 @@ import {
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
   assetToDocumentItem,
   CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,

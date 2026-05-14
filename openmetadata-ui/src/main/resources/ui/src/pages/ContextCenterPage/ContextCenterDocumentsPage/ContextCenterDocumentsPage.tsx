@@ -15,7 +15,6 @@ import { Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import DocumentsView from '../../../components/ContextCenter/DocumentsView/DocumentsView.component';
@@ -27,6 +26,7 @@ import {
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { deleteAsset } from '../../../rest/assetAPI';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
   assetToDocumentItem,
   CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,

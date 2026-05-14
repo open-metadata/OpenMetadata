@@ -17,7 +17,6 @@ import { diffWordsWithSpace } from 'diff';
 import { isEmpty, map, toString } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import BlockEditor from '../../../components/BlockEditor/BlockEditor';
 import Loader from '../../../components/common/Loader/Loader';
@@ -27,6 +26,7 @@ import { LayoutType } from '../../../components/Tag/TagsViewer/TagsViewer.interf
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {

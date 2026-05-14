@@ -15,9 +15,9 @@ import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { File06, Home02 } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 
 interface ArticleVersionHeaderProps {

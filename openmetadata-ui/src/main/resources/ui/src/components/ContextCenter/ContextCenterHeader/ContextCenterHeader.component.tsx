@@ -15,7 +15,7 @@ import { Button, Card, Typography } from '@openmetadata/ui-core-components';
 import { Plus, UploadCloud02 } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import contextCenterClassBase from 'utils/ContextCenterClassBase';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ContextCenterHeaderProps } from './ContextCenterHeader.interface';
 

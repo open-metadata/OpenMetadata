@@ -21,12 +21,12 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Download01, Share07, Trash01 } from '@untitledui/icons';
-import { FILE_TYPE_STYLES } from 'constants/ContextCenter.constants';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getShortRelativeTime } from 'utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { FILE_TYPE_STYLES } from '../../../constants/ContextCenter.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import {
   DocFile,
   DocFileType,

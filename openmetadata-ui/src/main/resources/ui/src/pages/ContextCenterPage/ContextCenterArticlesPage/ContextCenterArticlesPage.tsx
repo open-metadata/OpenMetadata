@@ -18,7 +18,6 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import ArticleDetailHeader from '../../../components/ContextCenter/ArticleDetailHeader/ArticleDetailHeader.component';
 import ArticleVersionHeader from '../../../components/ContextCenter/ArticleVersionHeader/ArticleVersionHeader.component';
@@ -51,6 +50,7 @@ import {
   PageType,
 } from '../../../interface/knowledge-center.interface';
 import { postKnowledgePage } from '../../../rest/knowledgeCenterAPI';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { createArticleKnowledgePage } from '../../../utils/ContextCenterUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';

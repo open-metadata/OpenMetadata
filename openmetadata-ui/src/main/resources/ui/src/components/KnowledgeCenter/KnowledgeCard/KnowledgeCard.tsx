@@ -65,8 +65,8 @@ import {
   QuickLinkFormModalFormData,
 } from '../QuickLinkFormModal/QuickLinkFormModal';
 
-import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import './knowledge-card.less';
 
 export interface KnowledgeCardProps {

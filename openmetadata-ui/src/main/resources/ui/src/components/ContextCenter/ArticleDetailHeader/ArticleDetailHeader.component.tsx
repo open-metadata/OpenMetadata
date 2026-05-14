@@ -39,7 +39,6 @@ import { isEmpty, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import { ReactComponent as EditorIcon } from '../../../assets/svg/ic-editor.svg';
 import { ReactComponent as SidebarCollapsible } from '../../../assets/svg/ic-sidebar-collapsible.svg';
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
@@ -64,6 +63,7 @@ import {
   ContentChangeState,
   RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import deleteWidgetClassBase from '../../../utils/DeleteWidget/DeleteWidgetClassBase';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityUtils';

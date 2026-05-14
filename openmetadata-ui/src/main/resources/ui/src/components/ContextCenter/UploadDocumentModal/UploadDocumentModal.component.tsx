@@ -22,10 +22,10 @@ import {
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
 import { AlertCircle, Trash01, UploadCloud02 } from '@untitledui/icons';
-import { DOCUMENT_MAX_FILE_SIZE } from 'constants/ContextCenter.constants';
 import { Asset } from 'generated/attachments/asset';
 import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DOCUMENT_MAX_FILE_SIZE } from '../../../constants/ContextCenter.constants';
 import { uploadAsset } from '../../../rest/assetAPI';
 import {
   QueuedFile,

@@ -24,7 +24,6 @@ import {
   useState,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import contextCenterClassBase from 'utils/ContextCenterClassBase';
 import { useActivityFeedProvider } from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -80,6 +79,7 @@ import {
   updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import i18n from '../../../utils/i18next/LocalUtil';
 import {
   addToKnowledgeCenterRecentViewed,
