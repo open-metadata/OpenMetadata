@@ -33,12 +33,15 @@ public class CachedEntityDao {
 
     // Try to get from cache first
     Optional<String> cached = cache.hget(cacheKey, "base");
+    CacheMetrics m = CacheMetrics.getInstance();
     if (cached.isPresent()) {
       LOG.debug("Cache hit for entity: {} -> {}", entityType, entityId);
+      if (m != null) m.recordLayerHit(entityType);
       return cached.get();
     }
 
     LOG.debug("Cache miss for entity: {} -> {}", entityType, entityId);
+    if (m != null) m.recordLayerMiss(entityType);
 
     // Fetch from database
     String entityJson = fetchEntityFromDatabase(entityId, entityType);
@@ -48,6 +51,7 @@ public class CachedEntityDao {
       try {
         cache.hset(
             cacheKey, Map.of("base", entityJson), Duration.ofSeconds(config.entityTtlSeconds));
+        if (m != null) m.recordLayerWrite(entityType);
         LOG.debug("Cached entity: {} -> {}", entityType, entityId);
       } catch (Exception e) {
         LOG.warn("Failed to cache entity: {} -> {}", entityType, entityId, e);
@@ -183,7 +187,13 @@ public class CachedEntityDao {
       return Optional.empty();
     }
     String cacheKey = keys.entityByName(entityType, fqn);
-    return cache.get(cacheKey);
+    Optional<String> result = cache.get(cacheKey);
+    CacheMetrics m = CacheMetrics.getInstance();
+    if (m != null) {
+      if (result.isPresent()) m.recordLayerHit(entityType);
+      else m.recordLayerMiss(entityType);
+    }
+    return result;
   }
 
   /**
@@ -194,7 +204,13 @@ public class CachedEntityDao {
       return Optional.empty();
     }
     String cacheKey = keys.entity(entityType, entityId);
-    return cache.hget(cacheKey, "ref");
+    Optional<String> result = cache.hget(cacheKey, "ref");
+    CacheMetrics m = CacheMetrics.getInstance();
+    if (m != null) {
+      if (result.isPresent()) m.recordLayerHit(entityType);
+      else m.recordLayerMiss(entityType);
+    }
+    return result;
   }
 
   /**
@@ -205,7 +221,13 @@ public class CachedEntityDao {
       return Optional.empty();
     }
     String cacheKey = keys.refByName(entityType, fqn);
-    return cache.get(cacheKey);
+    Optional<String> result = cache.get(cacheKey);
+    CacheMetrics m = CacheMetrics.getInstance();
+    if (m != null) {
+      if (result.isPresent()) m.recordLayerHit(entityType);
+      else m.recordLayerMiss(entityType);
+    }
+    return result;
   }
 
   public void invalidate(UUID entityId, String entityType) {

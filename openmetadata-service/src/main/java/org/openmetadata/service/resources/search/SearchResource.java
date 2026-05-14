@@ -254,6 +254,63 @@ public class SearchResource {
             .withSearchAfter(SearchUtils.searchAfter(searchAfter))
             .withExplain(explain)
             .withIncludeAggregations(includeAggregations);
+
+    // Auth-aware response cache (Item 1). Bots bypass — they do bulk indexing reads with
+    // cardinalities that would pollute the user-keyed cache. Uses the layer's loadOrCompute
+    // to get single-flight semantics: 100 concurrent users hitting the same uncached query
+    // collapse to one ES call instead of 100 (P2.3).
+    org.openmetadata.service.cache.CachedSearchLayer searchCache =
+        org.openmetadata.service.cache.CacheBundle.getCachedSearchLayer();
+    String principal = subjectContext.user() != null ? subjectContext.user().getName() : null;
+    boolean cacheable = searchCache != null && searchCache.enabled() && !subjectContext.isBot();
+    if (!cacheable) {
+      return searchRepository.search(request, subjectContext);
+    }
+
+    // Buffer the upstream response body once so the cache stores exactly what we return. The
+    // single-flight wrapper holds the stripe lock around the supplier; we keep the supplier
+    // tight to minimize lock-hold time.
+    //
+    // The supplier captures the Response object into `capturedResponse[0]` so a non-cacheable
+    // outcome (non-200 or non-String body) can be returned directly without a SECOND call to
+    // searchRepository.search() — the previous implementation re-called search() on the error
+    // path, doubling backend load for every error / non-200 response.
+    final Response[] capturedResponse = new Response[1];
+    final java.io.IOException[] thrown = new java.io.IOException[1];
+    String body =
+        searchCache.loadOrCompute(
+            request,
+            principal,
+            () -> {
+              try {
+                Response upstream = searchRepository.search(request, subjectContext);
+                capturedResponse[0] = upstream;
+                if (upstream.getStatus() != 200) {
+                  return null; // don't cache non-200; loadOrCompute treats null as "no cache write"
+                }
+                Object entity = upstream.getEntity();
+                return entity instanceof String s ? s : null;
+              } catch (java.io.IOException ioe) {
+                thrown[0] = ioe;
+                return null;
+              }
+            });
+    if (thrown[0] != null) {
+      throw thrown[0];
+    }
+    if (body != null) {
+      // Cache hit OR fresh write succeeded — return the cached/just-computed body.
+      return Response.ok(body, MediaType.APPLICATION_JSON_TYPE).build();
+    }
+    if (capturedResponse[0] != null) {
+      // The supplier ran for this caller and produced a non-cacheable response (non-200 or
+      // non-String entity). Return it directly — no second backend call.
+      return capturedResponse[0];
+    }
+    // Edge case: single-flight wait — another caller ran the supplier for our key and its
+    // response was non-cacheable, so the cache stayed empty and we received body=null. Fall
+    // through to a live call (this is rare and only affects the second+ caller of a query
+    // that's currently returning errors).
     return searchRepository.search(request, subjectContext);
   }
 

@@ -1,13 +1,7 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.Entity.QUERY_COST_RECORD;
-import static org.openmetadata.service.Entity.TEST_CASE_RESOLUTION_STATUS;
-import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
-
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -20,7 +14,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
@@ -39,19 +32,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
-public class DistributedIndexingStrategy implements IndexingStrategy {
-
-  private static final Set<String> TIME_SERIES_ENTITIES =
-      Set.of(
-          ReportData.ReportDataType.ENTITY_REPORT_DATA.value(),
-          ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA.value(),
-          ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA.value(),
-          ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA.value(),
-          ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA.value(),
-          TEST_CASE_RESOLUTION_STATUS,
-          TEST_CASE_RESULT,
-          QUERY_COST_RECORD);
-
+public class DistributedIndexingStrategy {
   private static final long MONITOR_POLL_INTERVAL_MS = 2000;
 
   private final CollectionDAO collectionDAO;
@@ -60,6 +41,7 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
   private final UUID appId;
   private final Long appStartTime;
   private final String createdBy;
+  private final DistributedReindexStatsMapper statsMapper;
 
   private final CompositeProgressListener listeners = new CompositeProgressListener();
   private final AtomicBoolean stopped = new AtomicBoolean(false);
@@ -82,14 +64,13 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
     this.appId = appId;
     this.appStartTime = appStartTime;
     this.createdBy = createdBy;
+    this.statsMapper = new DistributedReindexStatsMapper(collectionDAO);
   }
 
-  @Override
   public void addListener(ReindexingProgressListener listener) {
     listeners.addListener(listener);
   }
 
-  @Override
   public ExecutionResult execute(ReindexingConfiguration config, ReindexingJobContext context) {
     long startTime = System.currentTimeMillis();
     try {
@@ -113,9 +94,10 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
       ReindexingConfiguration config, ReindexingJobContext context, long startTime) {
 
     this.config = config;
-    LOG.info("Starting distributed reindexing for entities: {}", config.entities());
+    Set<String> entityTypes = SearchIndexEntityTypes.normalizeEntityTypes(config.entities());
+    LOG.info("Starting distributed reindexing for entities: {}", entityTypes);
 
-    Stats stats = initializeTotalRecords(config.entities());
+    Stats stats = initializeTotalRecords(entityTypes);
     currentStats.set(stats);
 
     int partitionSize = jobData.getPartitionSize() != null ? jobData.getPartitionSize() : 10000;
@@ -125,7 +107,7 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
     distributedExecutor.addListener(listeners);
 
     SearchIndexJob distributedJob =
-        distributedExecutor.createJob(config.entities(), jobData, createdBy, config);
+        distributedExecutor.createJob(entityTypes, jobData, createdBy, config);
 
     LOG.info(
         "Created distributed job {} with {} total records",
@@ -136,21 +118,19 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
         searchRepository.createBulkSink(
             config.batchSize(), config.maxConcurrentRequests(), config.payloadSize());
 
-    RecreateIndexHandler recreateIndexHandler = searchRepository.createReindexHandler();
-    if (recreateIndexHandler instanceof DefaultRecreateHandler defaultHandler) {
+    RecreateIndexHandler stagedIndexHandler = searchRepository.createReindexHandler();
+    if (stagedIndexHandler instanceof DefaultRecreateHandler defaultHandler) {
       defaultHandler.withJobData(jobData);
     }
-    ReindexContext recreateContext = null;
-
-    if (config.recreateIndex()) {
-      recreateContext = recreateIndexHandler.reCreateIndexes(config.entities());
-      if (recreateContext != null && !recreateContext.isEmpty()) {
-        distributedExecutor.updateStagedIndexMapping(recreateContext.getStagedIndexMapping());
-      }
+    ReindexContext stagedIndexContext = stagedIndexHandler.reCreateIndexes(entityTypes);
+    if (stagedIndexContext == null || stagedIndexContext.isEmpty()) {
+      throw new IllegalStateException(
+          "Staged index preparation did not produce any target indexes");
     }
+    distributedExecutor.updateStagedIndexMapping(stagedIndexContext.getStagedIndexMapping());
 
     distributedExecutor.setAppContext(appId, appStartTime);
-    distributedExecutor.execute(searchIndexSink, recreateContext, config.recreateIndex(), config);
+    distributedExecutor.execute(searchIndexSink, stagedIndexContext, config);
 
     monitorDistributedJob(distributedJob.getId());
 
@@ -181,8 +161,8 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
 
     boolean success =
         finalizeAllEntityReindex(
-            recreateIndexHandler,
-            recreateContext,
+            stagedIndexHandler,
+            stagedIndexContext,
             !stopped.get() && !hasIncompleteProcessing(stats));
 
     ExecutionResult.Status resultStatus = determineStatus(stats);
@@ -290,166 +270,7 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
 
   private void updateStatsFromDistributedJob(
       Stats stats, SearchIndexJob distributedJob, StepStats actualSinkStats) {
-    if (stats == null) {
-      return;
-    }
-
-    CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats serverStatsAggr = null;
-    try {
-      serverStatsAggr =
-          Entity.getCollectionDAO()
-              .searchIndexServerStatsDAO()
-              .getAggregatedStats(distributedJob.getId().toString());
-    } catch (Exception e) {
-      LOG.debug("Could not fetch aggregated server stats for job {}", distributedJob.getId(), e);
-    }
-
-    long successRecords;
-    long failedRecords;
-    String statsSource;
-
-    if (serverStatsAggr != null && serverStatsAggr.sinkSuccess() > 0) {
-      successRecords = serverStatsAggr.sinkSuccess();
-      failedRecords =
-          serverStatsAggr.readerFailed()
-              + serverStatsAggr.sinkFailed()
-              + serverStatsAggr.processFailed();
-      statsSource = "serverStatsTable";
-    } else if (actualSinkStats != null) {
-      successRecords = actualSinkStats.getSuccessRecords();
-      failedRecords = actualSinkStats.getFailedRecords();
-      statsSource = "localSink";
-    } else {
-      successRecords = distributedJob.getSuccessRecords();
-      failedRecords = distributedJob.getFailedRecords();
-      statsSource = "partition-based";
-    }
-
-    LOG.debug(
-        "Stats source: {}, success={}, failed={}", statsSource, successRecords, failedRecords);
-
-    StepStats jobStats = stats.getJobStats();
-    if (jobStats != null) {
-      jobStats.setSuccessRecords(saturatedToInt(successRecords));
-      jobStats.setFailedRecords(saturatedToInt(failedRecords));
-    }
-
-    StepStats readerStats = stats.getReaderStats();
-    if (readerStats != null) {
-      readerStats.setTotalRecords(saturatedToInt(distributedJob.getTotalRecords()));
-      long readerFailed = serverStatsAggr != null ? serverStatsAggr.readerFailed() : 0;
-      long readerWarnings = serverStatsAggr != null ? serverStatsAggr.readerWarnings() : 0;
-      long readerSuccess =
-          serverStatsAggr != null
-              ? serverStatsAggr.readerSuccess()
-              : distributedJob.getTotalRecords() - readerFailed - readerWarnings;
-      readerStats.setSuccessRecords(saturatedToInt(readerSuccess));
-      readerStats.setFailedRecords(saturatedToInt(readerFailed));
-      readerStats.setWarningRecords(saturatedToInt(readerWarnings));
-      // Carry stage timing forward into the final ExecutionResult stats. Without this the
-      // periodic aggregator's totalTimeMs (visible while running) gets clobbered to 0 here,
-      // and OmAppJobListener picks up the zero on the SUCCESS transition.
-      if (serverStatsAggr != null) {
-        readerStats.setTotalTimeMs(serverStatsAggr.readerTimeMs());
-      }
-    }
-
-    StepStats processStats = stats.getProcessStats();
-    if (processStats != null && serverStatsAggr != null) {
-      long processSuccess = serverStatsAggr.processSuccess();
-      long processFailed = serverStatsAggr.processFailed();
-      processStats.setTotalRecords(saturatedToInt(processSuccess + processFailed));
-      processStats.setSuccessRecords(saturatedToInt(processSuccess));
-      processStats.setFailedRecords(saturatedToInt(processFailed));
-      processStats.setTotalTimeMs(serverStatsAggr.processTimeMs());
-    }
-
-    StepStats sinkStats = stats.getSinkStats();
-    if (sinkStats != null) {
-      if (serverStatsAggr != null) {
-        long sinkSuccess = serverStatsAggr.sinkSuccess();
-        long sinkFailed = serverStatsAggr.sinkFailed();
-        long actualSinkTotal = sinkSuccess + sinkFailed;
-        sinkStats.setTotalRecords(saturatedToInt(actualSinkTotal));
-        sinkStats.setSuccessRecords(saturatedToInt(sinkSuccess));
-        sinkStats.setFailedRecords(saturatedToInt(sinkFailed));
-        sinkStats.setTotalTimeMs(serverStatsAggr.sinkTimeMs());
-      } else {
-        long sinkTotal = distributedJob.getTotalRecords();
-        sinkStats.setTotalRecords(saturatedToInt(sinkTotal));
-        sinkStats.setSuccessRecords(saturatedToInt(successRecords));
-        sinkStats.setFailedRecords(saturatedToInt(failedRecords));
-      }
-    }
-
-    StepStats vectorStats = stats.getVectorStats();
-    if (vectorStats != null && serverStatsAggr != null) {
-      long vectorSuccess = serverStatsAggr.vectorSuccess();
-      long vectorFailed = serverStatsAggr.vectorFailed();
-      vectorStats.setTotalRecords(saturatedToInt(vectorSuccess + vectorFailed));
-      vectorStats.setSuccessRecords(saturatedToInt(vectorSuccess));
-      vectorStats.setFailedRecords(saturatedToInt(vectorFailed));
-      vectorStats.setTotalTimeMs(serverStatsAggr.vectorTimeMs());
-    }
-
-    if (distributedJob.getEntityStats() != null && stats.getEntityStats() != null) {
-      for (Map.Entry<String, SearchIndexJob.EntityTypeStats> entry :
-          distributedJob.getEntityStats().entrySet()) {
-        StepStats entityStats =
-            stats.getEntityStats().getAdditionalProperties().get(entry.getKey());
-        if (entityStats != null) {
-          entityStats.setSuccessRecords(saturatedToInt(entry.getValue().getSuccessRecords()));
-          entityStats.setFailedRecords(saturatedToInt(entry.getValue().getFailedRecords()));
-          // Surface all four stage timings on the entity-level StepStats so the UI per-entity
-          // table can show Reader / Process / Sink / Vector avg latencies side-by-side.
-          entityStats.setReaderTimeMs(entry.getValue().getReaderTimeMs());
-          entityStats.setProcessTimeMs(entry.getValue().getProcessTimeMs());
-          entityStats.setSinkTimeMs(entry.getValue().getSinkTimeMs());
-          entityStats.setVectorTimeMs(entry.getValue().getVectorTimeMs());
-        }
-      }
-    }
-
-    updateColumnStatsFromSink(stats);
-
-    StatsReconciler.reconcile(stats);
-  }
-
-  private void updateColumnStatsFromSink(Stats jobDataStats) {
-    if (searchIndexSink == null || jobDataStats == null || jobDataStats.getEntityStats() == null) {
-      return;
-    }
-    StepStats columnStats = searchIndexSink.getColumnStats();
-    if (columnStats != null) {
-      StepStats existingColumnStats =
-          jobDataStats.getEntityStats().getAdditionalProperties().get(Entity.TABLE_COLUMN);
-      if (existingColumnStats != null) {
-        existingColumnStats.setTotalRecords(columnStats.getTotalRecords());
-        existingColumnStats.setSuccessRecords(columnStats.getSuccessRecords());
-        existingColumnStats.setFailedRecords(columnStats.getFailedRecords());
-      }
-    }
-  }
-
-  private void promoteColumnIndex(
-      RecreateIndexHandler recreateIndexHandler,
-      ReindexContext recreateContext,
-      boolean tableSuccess) {
-    Optional<String> columnStagedIndex = recreateContext.getStagedIndex(Entity.TABLE_COLUMN);
-    if (columnStagedIndex.isEmpty()) {
-      return;
-    }
-    try {
-      finalizeEntityReindex(
-          recreateIndexHandler, recreateContext, Entity.TABLE_COLUMN, tableSuccess);
-      LOG.info("Promoted column index (tableSuccess={})", tableSuccess);
-    } catch (Exception ex) {
-      LOG.error("Failed to promote column index", ex);
-    }
-  }
-
-  private static int saturatedToInt(long value) {
-    return (int) Math.min(value, Integer.MAX_VALUE);
+    statsMapper.updateStats(stats, distributedJob, actualSinkStats, getColumnStats());
   }
 
   private ExecutionResult.Status determineStatus(Stats stats) {
@@ -474,121 +295,83 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
   }
 
   private boolean finalizeAllEntityReindex(
-      RecreateIndexHandler recreateIndexHandler,
-      ReindexContext recreateContext,
+      RecreateIndexHandler indexPromotionHandler,
+      ReindexContext stagedIndexContext,
       boolean finalSuccess) {
-    if (recreateIndexHandler == null || recreateContext == null) {
+    if (indexPromotionHandler == null || stagedIndexContext == null) {
       return finalSuccess;
     }
 
-    Set<String> promotedEntities = Collections.emptySet();
+    return new DistributedReindexFinalizer(indexPromotionHandler, stagedIndexContext)
+        .finalizeRemainingEntities(getPromotedEntities(), getFinalEntityStats(), finalSuccess);
+  }
+
+  private StepStats getColumnStats() {
+    return searchIndexSink != null ? searchIndexSink.getColumnStats() : null;
+  }
+
+  private Set<String> getPromotedEntities() {
     if (distributedExecutor != null && distributedExecutor.getEntityTracker() != null) {
-      promotedEntities = distributedExecutor.getEntityTracker().getPromotedEntities();
+      return distributedExecutor.getEntityTracker().getPromotedEntities();
     }
-
-    // Get per-entity stats for determining per-entity success
-    Map<String, SearchIndexJob.EntityTypeStats> entityStatsMap = Collections.emptyMap();
-    if (distributedExecutor != null) {
-      SearchIndexJob finalJob = distributedExecutor.getJobWithFreshStats();
-      if (finalJob != null && finalJob.getEntityStats() != null) {
-        entityStatsMap = finalJob.getEntityStats();
-      }
-    }
-
-    LOG.debug(
-        "Finalization: finalSuccess={}, promotedEntities={}, allEntities={}",
-        finalSuccess,
-        promotedEntities,
-        recreateContext.getEntities());
-
-    Set<String> entitiesToFinalize = new HashSet<>(recreateContext.getEntities());
-    entitiesToFinalize.removeAll(promotedEntities);
-
-    if (promotedEntities.contains(Entity.TABLE)
-        && !promotedEntities.contains(Entity.TABLE_COLUMN)) {
-      boolean tableSuccess = computeEntitySuccess(Entity.TABLE, entityStatsMap);
-      promoteColumnIndex(recreateIndexHandler, recreateContext, tableSuccess);
-      entitiesToFinalize.remove(Entity.TABLE_COLUMN);
-    }
-
-    LOG.debug("Entities to finalize={}, already promoted={}", entitiesToFinalize, promotedEntities);
-
-    try {
-      if (!entitiesToFinalize.isEmpty()) {
-        LOG.info(
-            "Finalizing {} remaining entities (already promoted: {})",
-            entitiesToFinalize.size(),
-            promotedEntities.size());
-
-        for (String entityType : entitiesToFinalize) {
-          try {
-            boolean entitySuccess = computeEntitySuccess(entityType, entityStatsMap);
-            LOG.debug(
-                "Finalizing entity '{}' with perEntitySuccess={} (globalSuccess={})",
-                entityType,
-                entitySuccess,
-                finalSuccess);
-            finalizeEntityReindex(recreateIndexHandler, recreateContext, entityType, entitySuccess);
-            if (Entity.TABLE.equals(entityType)) {
-              promoteColumnIndex(recreateIndexHandler, recreateContext, entitySuccess);
-            }
-          } catch (Exception ex) {
-            LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
-          }
-        }
-      }
-    } catch (Exception e) {
-      LOG.error("Error during entity finalization", e);
-    }
-
-    return finalSuccess;
+    return Collections.emptySet();
   }
 
-  private boolean computeEntitySuccess(
-      String entityType, Map<String, SearchIndexJob.EntityTypeStats> entityStatsMap) {
-    if (entityStatsMap == null || entityStatsMap.isEmpty()) {
-      return false;
+  private Map<String, SearchIndexJob.EntityTypeStats> getFinalEntityStats() {
+    Map<String, SearchIndexJob.EntityTypeStats> finalEntityStats = new HashMap<>();
+    if (distributedExecutor == null) {
+      mergeInitializedEntityStats(finalEntityStats);
+      return finalEntityStats;
     }
-    SearchIndexJob.EntityTypeStats stats = entityStatsMap.get(entityType);
-    if (stats == null) {
-      // Entity not in stats means 0 records — nothing to index = success
-      return true;
+    SearchIndexJob finalJob = distributedExecutor.getJobWithFreshStats();
+    if (finalJob != null && finalJob.getEntityStats() != null) {
+      finalEntityStats.putAll(finalJob.getEntityStats());
     }
-    return stats.getFailedRecords() == 0
-        && stats.getSuccessRecords() + stats.getFailedRecords() >= stats.getTotalRecords();
+    mergeInitializedEntityStats(finalEntityStats);
+    return finalEntityStats;
   }
 
-  private void finalizeEntityReindex(
-      RecreateIndexHandler recreateIndexHandler,
-      ReindexContext recreateContext,
-      String entityType,
-      boolean success) {
-    try {
-      var entityReindexContext =
-          org.openmetadata.service.search.EntityReindexContext.builder()
-              .entityType(entityType)
-              .originalIndex(recreateContext.getOriginalIndex(entityType).orElse(null))
-              .canonicalIndex(recreateContext.getCanonicalIndex(entityType).orElse(null))
-              .activeIndex(recreateContext.getOriginalIndex(entityType).orElse(null))
-              .stagedIndex(recreateContext.getStagedIndex(entityType).orElse(null))
-              .canonicalAliases(recreateContext.getCanonicalAlias(entityType).orElse(null))
-              .existingAliases(recreateContext.getExistingAliases(entityType))
-              .parentAliases(
-                  new HashSet<>(listOrEmpty(recreateContext.getParentAliases(entityType))))
-              .build();
-
-      recreateIndexHandler.finalizeReindex(entityReindexContext, success);
-    } catch (Exception ex) {
-      LOG.error("Failed to finalize index recreation flow for {}", entityType, ex);
+  private void mergeInitializedEntityStats(
+      Map<String, SearchIndexJob.EntityTypeStats> finalEntityStats) {
+    Stats stats = currentStats.get();
+    if (stats == null
+        || stats.getEntityStats() == null
+        || stats.getEntityStats().getAdditionalProperties() == null) {
+      return;
     }
+
+    stats
+        .getEntityStats()
+        .getAdditionalProperties()
+        .forEach(
+            (entityType, stepStats) ->
+                finalEntityStats.computeIfAbsent(
+                    entityType, key -> toEntityTypeStats(key, stepStats)));
   }
 
-  @Override
+  private SearchIndexJob.EntityTypeStats toEntityTypeStats(String entityType, StepStats stepStats) {
+    long success = stepStats != null ? statValue(stepStats.getSuccessRecords()) : 0L;
+    long failed = stepStats != null ? statValue(stepStats.getFailedRecords()) : 0L;
+    return SearchIndexJob.EntityTypeStats.builder()
+        .entityType(entityType)
+        .totalRecords(stepStats != null ? statValue(stepStats.getTotalRecords()) : 0L)
+        .processedRecords(success + failed)
+        .successRecords(success)
+        .failedRecords(failed)
+        .totalPartitions(0)
+        .completedPartitions(0)
+        .failedPartitions(0)
+        .build();
+  }
+
+  private long statValue(Number value) {
+    return value != null ? value.longValue() : 0L;
+  }
+
   public Optional<Stats> getStats() {
     return Optional.ofNullable(currentStats.get());
   }
 
-  @Override
   public void stop() {
     if (stopped.compareAndSet(false, true)) {
       LOG.info("Stopping distributed indexing strategy");
@@ -606,7 +389,6 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
     }
   }
 
-  @Override
   public boolean isStopped() {
     return stopped.get();
   }
@@ -667,9 +449,9 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
 
   private int getEntityTotal(String entityType) {
     try {
-      String correctedType = "queryCostResult".equals(entityType) ? QUERY_COST_RECORD : entityType;
+      String correctedType = SearchIndexEntityTypes.normalizeEntityType(entityType);
 
-      if (!TIME_SERIES_ENTITIES.contains(correctedType)) {
+      if (!SearchIndexEntityTypes.isTimeSeriesEntity(correctedType)) {
         return Entity.getEntityRepository(correctedType)
             .getDao()
             .listCount(new ListFilter(Include.ALL));
@@ -677,7 +459,7 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
         ListFilter listFilter = new ListFilter(null);
         EntityTimeSeriesRepository<?> repository;
 
-        if (isDataInsightIndex(correctedType)) {
+        if (SearchIndexEntityTypes.isDataInsightEntity(correctedType)) {
           listFilter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(correctedType));
           repository = Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA);
         } else {
@@ -697,10 +479,6 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
       LOG.debug("Error getting total for '{}'", entityType, e);
       return 0;
     }
-  }
-
-  private boolean isDataInsightIndex(String entityType) {
-    return entityType.endsWith("ReportData");
   }
 
   DistributedSearchIndexExecutor getDistributedExecutor() {
