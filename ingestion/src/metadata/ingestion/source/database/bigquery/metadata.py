@@ -265,7 +265,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         connection: BigQueryConnection = config.serviceConnection.root.config
         if not isinstance(connection, BigQueryConnection):
             raise InvalidSourceException(f"Expected BigQueryConnection, but got {connection}")
-        incremental_config = IncrementalConfig.create(config.sourceConfig.config.incremental, pipeline_name, metadata)
+        incremental_config = IncrementalConfig.create(config.sourceConfig.config.incremental, pipeline_name, metadata)  # pyright: ignore[reportAttributeAccessIssue]
         return cls(config, metadata, incremental_config)
 
     @staticmethod

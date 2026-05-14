@@ -181,38 +181,26 @@ public class IndexTemplateIT {
   @Test
   void testDocUpdateOnDeletedIndexUsesTemplateNotAutoInference(TestNamespace ns) throws Exception {
     Rest5Client searchClient = TestSuiteBootstrap.createSearchClient();
-    String canonicalIndex = CLUSTER_ALIAS + "_tag_search_index";
+    String testIndexName = CLUSTER_ALIAS + "_tag_search_index_rebuild_it_doc_update";
 
-    assertNotNull(
-        getMappingsForIndex(searchClient, canonicalIndex), "Original index should have mappings");
-
-    String realIndexName = resolveActualIndexName(searchClient, canonicalIndex);
-    deleteIndexIfExists(searchClient, realIndexName);
-
-    try {
-      Request existsRequest = new Request("HEAD", "/" + canonicalIndex);
-      Response existsResponse = searchClient.performRequest(existsRequest);
-      assertEquals(404, existsResponse.getStatusCode(), "Index should not exist after deletion");
-    } catch (Exception e) {
-      assertTrue(e.getMessage().contains("404"), "Index/alias should not exist after deletion");
-    }
+    deleteIndexIfExists(searchClient, testIndexName);
 
     try {
       String doc =
           "{\"name\":\"test_tag\",\"fullyQualifiedName\":\"Classification.test_tag\","
               + "\"entityType\":\"tag\",\"deleted\":false,"
               + "\"classification\":{\"name\":\"Classification\"}}";
-      Request indexRequest = new Request("POST", "/" + canonicalIndex + "/_doc/test-tag-id-1");
+      Request indexRequest = new Request("POST", "/" + testIndexName + "/_doc/test-tag-id-1");
       indexRequest.setEntity(new StringEntity(doc, ContentType.APPLICATION_JSON));
       Response indexResponse = searchClient.performRequest(indexRequest);
       int status = indexResponse.getStatusCode();
       assertTrue(status == 200 || status == 201, "Document indexing should trigger index creation");
 
-      JsonNode recreatedMappings = getMappingsForIndex(searchClient, canonicalIndex);
-      assertNotNull(recreatedMappings, "Recreated index should have mappings");
+      JsonNode recreatedMappings = getMappingsForIndex(searchClient, testIndexName);
+      assertNotNull(recreatedMappings, "Auto-created index should have mappings");
 
       JsonNode properties = recreatedMappings.get("properties");
-      assertNotNull(properties, "Recreated index should have properties from template");
+      assertNotNull(properties, "Auto-created index should have properties from template");
 
       JsonNode nameField = properties.get("name");
       assertNotNull(nameField, "name field should exist from template");
@@ -246,17 +234,15 @@ public class IndexTemplateIT {
           "entityType should be keyword type from template, not text (which ES would infer"
               + " from a string value)");
 
-      JsonNode settings = getSettingsForIndex(searchClient, canonicalIndex);
-      assertNotNull(settings, "Recreated index should have settings");
+      JsonNode settings = getSettingsForIndex(searchClient, testIndexName);
+      assertNotNull(settings, "Auto-created index should have settings");
       JsonNode analysis = settings.get("analysis");
-      assertNotNull(analysis, "Recreated index should have analysis settings from template");
+      assertNotNull(analysis, "Auto-created index should have analysis settings from template");
       assertNotNull(
           analysis.get("analyzer").get("om_analyzer"),
-          "Recreated index should have om_analyzer from template");
+          "Auto-created index should have om_analyzer from template");
     } finally {
-      deleteIndexIfExists(searchClient, canonicalIndex);
-      Request recreateRequest = new Request("PUT", "/" + canonicalIndex);
-      searchClient.performRequest(recreateRequest);
+      deleteIndexIfExists(searchClient, testIndexName);
     }
   }
 
@@ -391,15 +377,6 @@ public class IndexTemplateIT {
       indexNode = root.fields().next().getValue();
     }
     return indexNode.get("settings").get("index");
-  }
-
-  private String resolveActualIndexName(Rest5Client client, String indexOrAlias) throws Exception {
-    Request request = new Request("GET", "/" + indexOrAlias + "/_settings");
-    Response response = client.performRequest(request);
-    String body =
-        new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
-    JsonNode root = MAPPER.readTree(body);
-    return root.fieldNames().next();
   }
 
   private void deleteIndexIfExists(Rest5Client client, String indexName) {

@@ -300,6 +300,8 @@ export interface ServiceConnection {
  *
  * IOMETE Connection Config
  *
+ * QuestDB Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -665,6 +667,8 @@ export interface ConfigObject {
      *
      * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
      *
+     * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
+     *
      * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
@@ -920,6 +924,8 @@ export interface ConfigObject {
      * metadata in Informix.
      *
      * Username to connect to IOMETE.
+     *
+     * Username to connect to QuestDB.
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -4765,6 +4771,8 @@ export enum ConfigScheme {
  * Recreate Indexes with updated Language
  *
  * This schema defines the language options available for search index mappings.
+ *
+ * Search index mapping language.
  */
 export enum SearchIndexMappingLanguage {
     En = "EN",
@@ -5168,6 +5176,7 @@ export enum PurpleType {
     PubSub = "PubSub",
     QlikCloud = "QlikCloud",
     QlikSense = "QlikSense",
+    QuestDB = "QuestDB",
     QuickSight = "QuickSight",
     REST = "Rest",
     Ranger = "Ranger",
@@ -5258,6 +5267,8 @@ export interface SourceConfig {
  * Apply a set of operations on a service
  *
  * McpService Metadata Pipeline Configuration.
+ *
+ * Policy Agent Pipeline Configuration. Applies access grants against the source system.
  */
 export interface Pipeline {
     /**
@@ -5767,12 +5778,6 @@ export interface Pipeline {
      */
     entityFullyQualifiedName?: string;
     /**
-     * Percentage of data or no. of rows we want to execute the profiler and tests on
-     */
-    profileSample?:      number;
-    profileSampleType?:  ProfileSampleType;
-    samplingMethodType?: SamplingMethodType;
-    /**
      * Service connections to be used for the logical test suite.
      */
     serviceConnections?: ServiceConnections[];
@@ -5883,6 +5888,10 @@ export interface Pipeline {
      * Regex to only fetch MCP servers with names matching the pattern.
      */
     serverFilterPattern?: FilterPattern;
+    /**
+     * List of access grants to apply on the source.
+     */
+    policies?: Policy[];
 }
 
 /**
@@ -6043,11 +6052,7 @@ export interface CollateAIAppConfig {
      */
     queueSize?: number;
     /**
-     * This schema publisher run modes.
-     */
-    recreateIndex?: boolean;
-    /**
-     * Recreate Indexes with updated Language
+     * Search index mapping language.
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
@@ -6061,11 +6066,6 @@ export interface CollateAIAppConfig {
      * Set to a positive value like 15 to limit to recent data only.
      */
     timeSeriesMaxDays?: number;
-    /**
-     * Enable distributed indexing to scale reindexing across multiple servers with fault
-     * tolerance and parallel processing
-     */
-    useDistributedIndexing?: boolean;
     /**
      * In multi-instance deployments, claim each entity type via Redis SETNX so only one
      * instance warms it. Disable to let every instance warm independently (idempotent but
@@ -6081,6 +6081,12 @@ export interface CollateAIAppConfig {
      * deploy doesn't fan out to the DB. Disable for very large installs.
      */
     warmBundles?: boolean;
+    /**
+     * Optionally pre-warm common relationship fields in the read bundle cache. Requires Warm
+     * Read Bundles. This adds extra relationship-table and entity-reference reads during
+     * warmup, so enable it only when first-read relationship latency matters.
+     */
+    warmRelationships?: boolean;
     /**
      * Enter the retention period for Activity Threads of type = 'Conversation' records in days
      * (e.g., 30 for one month, 60 for two months).
@@ -7530,6 +7536,71 @@ export interface OwnerConfiguration {
 }
 
 /**
+ * A single access grant entry. The per-service shape lives under `config`.
+ */
+export interface Policy {
+    /**
+     * Per-service-type policy configuration.
+     */
+    config: DatabasePolicyConfig;
+    /**
+     * Unique id of the policy entry.
+     */
+    id: string;
+}
+
+/**
+ * Per-service-type policy configuration.
+ *
+ * Policy config for database service connectors (snowflake, postgres, etc.).
+ */
+export interface DatabasePolicyConfig {
+    /**
+     * Column on which the grant is applied. Requires tableName. Supported only by connectors
+     * that allow column-level grants; ignored otherwise.
+     */
+    columnName?: string;
+    /**
+     * Database on which the grant is applied.
+     */
+    databaseName: string;
+    /**
+     * Grantee identifier. For USER this is typically the email/username; for ROLE the role name.
+     */
+    principal:      string;
+    principalType?: PrincipalType;
+    privilege:      Privilege;
+    /**
+     * Schema on which the grant is applied. If omitted, the grant is scoped to the database.
+     */
+    schemaName?: string;
+    /**
+     * Table on which the grant is applied. Requires schemaName.
+     */
+    tableName?: string;
+}
+
+/**
+ * Type of principal the grant is issued to.
+ */
+export enum PrincipalType {
+    Role = "ROLE",
+    User = "USER",
+}
+
+/**
+ * Privilege to grant.
+ */
+export enum Privilege {
+    All = "ALL",
+    Delete = "DELETE",
+    Insert = "INSERT",
+    Select = "SELECT",
+    Update = "UPDATE",
+    Usage = "USAGE",
+}
+
+/**
  * Processing Engine Configuration. If not provided, the Native Engine will be used by
  * default.
  *
@@ -7587,6 +7658,11 @@ export interface ProfileSampleConfig {
  * Configuration for static sampling based on table row count.
  */
 export interface ICSamplingConfig {
+    /**
+     * Set to true to dynamically determine sampling percentage based on row count thresholds.
+     * If false, the thresholds values passed will be used as the sampling configuration.
+     */
+    smartSampling?: boolean;
     /**
      * Row count thresholds for sampling. Evaluated in order from highest to lowest threshold.
      * Tables below the lowest threshold are profiled at 100% (no sampling).
@@ -7765,6 +7841,8 @@ export interface StorageMetadataBucketDetails {
  * Reverse Ingestion Config Pipeline type
  *
  * MCP Source Config Metadata Pipeline type
+ *
+ * Policy Agent Pipeline type
  */
 export enum FluffyType {
     APIMetadata = "ApiMetadata",
@@ -7782,6 +7860,7 @@ export enum FluffyType {
     MetadataToElasticSearch = "MetadataToElasticSearch",
     MlModelMetadata = "MlModelMetadata",
     PipelineMetadata = "PipelineMetadata",
+    PolicyAgent = "PolicyAgent",
     Profiler = "Profiler",
     ReverseIngestion = "ReverseIngestion",
     SearchMetadata = "SearchMetadata",
