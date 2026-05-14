@@ -284,6 +284,12 @@ class PowerbiSource(DashboardServiceSource):
             for dashboard in self.get_dashboards_list() or []:
                 dashboard_details = self.get_dashboard_details(dashboard)
                 dashboard_name = self.get_dashboard_name(dashboard_details)
+                if not dashboard_name:
+                    logger.debug(
+                        "Skipping PowerBI dashboard with empty name on workspace [%s]",
+                        workspace.name,
+                    )
+                    continue
                 if filter_by_dashboard(
                     self.source_config.dashboardFilterPattern,
                     dashboard_name,
@@ -304,7 +310,7 @@ class PowerbiSource(DashboardServiceSource):
         """
         return self.context.get().workspace.reports + self.context.get().workspace.dashboards
 
-    def get_dashboard_name(self, dashboard: Union[PowerBIDashboard, PowerBIReport]) -> str:  # noqa: UP007
+    def get_dashboard_name(self, dashboard: Union[PowerBIDashboard, PowerBIReport]) -> str | None:  # noqa: UP007
         """
         Get Dashboard Name
         """
@@ -706,8 +712,8 @@ class PowerbiSource(DashboardServiceSource):
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
-                    name=dataset.name,
-                    error=f"Error yielding Data Model [{dataset.name}]: {exc}",
+                    name=dataset.name if dataset.name else "",
+                    error="Error yielding Data Model [{}]: {}".format(dataset.name or "", exc),
                     stackTrace=traceback.format_exc(),
                 )
             )

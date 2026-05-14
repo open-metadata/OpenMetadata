@@ -557,7 +557,7 @@ class PowerBiApiClient:
             if not response_data:
                 return None
             parsed_workspaces: List[Group] = []  # noqa: UP006
-            for raw_ws in response_data.get("workspaces", []) or []:
+            for raw_ws in response_data.get("workspaces", []) or []:  # pyright: ignore[reportAttributeAccessIssue]
                 try:
                     parsed_workspaces.append(Group(**raw_ws))
                 except Exception as ws_exc:  # pylint: disable=broad-except
