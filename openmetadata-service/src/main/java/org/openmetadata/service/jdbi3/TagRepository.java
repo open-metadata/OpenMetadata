@@ -353,7 +353,7 @@ public class TagRepository extends EntityRepository<Tag> {
     List<BulkResponse> failures = new ArrayList<>();
     List<BulkResponse> success = new ArrayList<>();
 
-    if (dryRun || nullOrEmpty(request.getAssets())) {
+    if (nullOrEmpty(request.getAssets())) {
       // Nothing to Validate
       return result
           .withStatus(ApiStatus.SUCCESS)
@@ -362,6 +362,15 @@ public class TagRepository extends EntityRepository<Tag> {
 
     // Validation for entityReferences
     EntityUtil.populateEntityReferences(request.getAssets());
+
+    if (dryRun) {
+      for (EntityReference ref : request.getAssets()) {
+        result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+        success.add(new BulkResponse().withRequest(ref));
+        result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+      }
+      return result.withStatus(ApiStatus.SUCCESS).withSuccessRequest(success);
+    }
 
     TagLabel tagLabel =
         new TagLabel()

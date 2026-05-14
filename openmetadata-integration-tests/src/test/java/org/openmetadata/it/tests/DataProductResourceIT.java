@@ -3059,6 +3059,34 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Test
+  void test_bulkAddAssets_dryRunTrue_doesNotAttach(TestNamespace ns) throws Exception {
+    Domain domain = createTestDomain(ns, "add_dr_true_domain");
+    DataProduct dataProduct = createDataProductInDomain(ns, domain, "add_dr_true");
+    Table table = createTestTable(ns, "add_dr_true_tbl", domain);
+
+    BulkAssets dryRunAdd =
+        new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(true);
+    String addPath = "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add";
+    BulkOperationResult result =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, addPath, dryRunAdd, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertTrue(result.getDryRun(), "Result must propagate dryRun=true");
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    Table refreshed =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts");
+    assertTrue(
+        refreshed.getDataProducts() == null
+            || refreshed.getDataProducts().stream()
+                .noneMatch(d -> dataProduct.getId().equals(d.getId())),
+        "Table must NOT be attached to the data product on dryRun=true add");
+  }
+
+  @Test
   void test_bulkRemoveAssets_dryRunOmitted_defaultsToDetach(TestNamespace ns) throws Exception {
     Domain domain = createTestDomain(ns, "dr_omit_domain");
     DataProduct dataProduct = createDataProductInDomain(ns, domain, "dr_omit");

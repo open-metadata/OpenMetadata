@@ -3310,6 +3310,30 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   }
 
   @Test
+  void test_bulkAddGlossaryToAssets_dryRunTrue_doesNotApply(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = createGlossaryTermForBulk(ns, "add_dr_true");
+    Table table = createBareTable(ns, "add_dr_true");
+
+    AddGlossaryToAssetsRequest dryRunAdd =
+        new AddGlossaryToAssetsRequest()
+            .withDryRun(true)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/glossaryTerms/" + term.getId() + "/assets/add";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, dryRunAdd, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertTrue(result.getDryRun(), "Result must propagate dryRun=true");
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    assertFalse(
+        tableHasTag(client, table.getId(), term.getFullyQualifiedName()),
+        "Glossary tag should NOT be applied to table on dryRun=true add");
+  }
+
+  @Test
   void test_bulkRemoveGlossaryFromAssets_dryRunOmitted_defaultsToPreview(TestNamespace ns)
       throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -3349,7 +3373,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
                 .withDescription("Term for bulk remove dryRun test"));
   }
 
-  private Table createTableTaggedWithTerm(TestNamespace ns, GlossaryTerm term, String suffix) {
+  private Table createBareTable(TestNamespace ns, String suffix) {
     OpenMetadataClient client = SdkClients.adminClient();
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     Database database =
@@ -3364,7 +3388,12 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withName(ns.shortPrefix("br_tbl_" + suffix))
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)));
-    Table table = client.tables().create(createTable);
+    return client.tables().create(createTable);
+  }
+
+  private Table createTableTaggedWithTerm(TestNamespace ns, GlossaryTerm term, String suffix) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createBareTable(ns, suffix);
 
     TagLabel termLabel =
         new TagLabel()

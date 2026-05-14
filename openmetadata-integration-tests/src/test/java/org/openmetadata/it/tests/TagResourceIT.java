@@ -1948,6 +1948,29 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   }
 
   @Test
+  void test_bulkAddTagToAssets_dryRunTrue_doesNotApply(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createTagForBulk(ns, "add_dr_true");
+    Table table = createBareTable(ns, "add_dr_true");
+
+    AddTagToAssetsRequest dryRunAdd =
+        new AddTagToAssetsRequest()
+            .withDryRun(true)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/tags/" + tag.getId() + "/assets/add";
+    client.getHttpClient().execute(HttpMethod.PUT, path, dryRunAdd, Void.class);
+
+    UUID tableId = table.getId();
+    String tagFqn = tag.getFullyQualifiedName();
+    Awaitility.await("Tag must NOT be applied to asset throughout dryRun window")
+        .pollDelay(Duration.ofSeconds(1))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(45))
+        .during(Duration.ofSeconds(20))
+        .until(() -> !tableHasTag(client, tableId, tagFqn));
+  }
+
+  @Test
   void test_bulkRemoveTagFromAssets_dryRunOmitted_defaultsToPreview(TestNamespace ns)
       throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -1977,7 +2000,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     return createEntity(createTag);
   }
 
-  private Table createTableTaggedWith(TestNamespace ns, Tag tag, String suffix) {
+  private Table createBareTable(TestNamespace ns, String suffix) {
     OpenMetadataClient client = SdkClients.adminClient();
     org.openmetadata.schema.entity.services.DatabaseService dbService =
         createDatabaseService(ns, "br_svc_" + suffix);
@@ -1994,7 +2017,12 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
             new org.openmetadata.schema.type.Column()
                 .withName("id")
                 .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
-    Table table = client.tables().create(createTable);
+    return client.tables().create(createTable);
+  }
+
+  private Table createTableTaggedWith(TestNamespace ns, Tag tag, String suffix) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createBareTable(ns, suffix);
 
     TagLabel tagLabel =
         new TagLabel()

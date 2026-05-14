@@ -1515,6 +1515,28 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   }
 
   @Test
+  void test_bulkAddAssets_dryRunTrue_doesNotAttachUser(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team team = createTeam(ns, "add_dr_true");
+    User user = createTestUser(ns, "add_dr_true_user");
+
+    BulkAssets dryRunAdd =
+        new BulkAssets().withAssets(List.of(user.getEntityReference())).withDryRun(true);
+    BulkOperationResult result = bulkAddAssetsWithResult(client, team.getName(), dryRunAdd);
+
+    assertNotNull(result);
+    assertTrue(result.getDryRun(), "Result must propagate dryRun=true");
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    User refreshed = client.users().get(user.getId().toString(), "teams");
+    assertTrue(
+        refreshed.getTeams() == null
+            || refreshed.getTeams().stream().noneMatch(t -> team.getId().equals(t.getId())),
+        "User must NOT belong to the team on dryRun=true add");
+  }
+
+  @Test
   void test_bulkRemoveAssets_dryRunOmitted_defaultsToDetachUser(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Team team = createTeam(ns, "dr_omit");
