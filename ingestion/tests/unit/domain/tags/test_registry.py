@@ -62,7 +62,9 @@ class TestAttachAndLabelsFor:
         labels = registry.labels_for("svc.db.schema.table")
         assert len(labels) == 2
 
-    def test_labels_for_unattached_entity_returns_empty_list(self, registry: TagRegistry):
+    def test_labels_for_unattached_entity_returns_empty_list(
+        self, registry: TagRegistry
+    ):
         assert registry.labels_for("svc.db.schema.unknown") == []
 
     def test_labels_for_is_idempotent(self, registry: TagRegistry):
@@ -97,7 +99,9 @@ class TestDrain:
         pending = list(registry.drain())
         assert len(pending) == 1
 
-    def test_drain_yields_distinct_payloads_for_distinct_tags(self, registry: TagRegistry):
+    def test_drain_yields_distinct_payloads_for_distinct_tags(
+        self, registry: TagRegistry
+    ):
         registry.attach(**_attach_kwargs("svc.db", "svc.db.schema.tbl_1", tag="TagA"))
         registry.attach(**_attach_kwargs("svc.db", "svc.db.schema.tbl_2", tag="TagB"))
         pending = list(registry.drain())
@@ -122,7 +126,9 @@ class TestDrain:
             label_type=LabelType.Automated,
         )
         pending = list(registry.drain())
-        assert len(pending) == 1, "fqn-level dedup must collapse PUTs across label_type variants"
+        assert (
+            len(pending) == 1
+        ), "fqn-level dedup must collapse PUTs across label_type variants"
 
 
 class TestClearScope:
@@ -148,7 +154,9 @@ class TestClearScope:
     def test_clear_scope_no_false_prefix_match(self, registry: TagRegistry):
         # 'schema_a' is NOT a prefix of 'schema_alpha' once the FQN
         # separator is taken into account.
-        registry.attach(**_attach_kwargs("svc.db.schema_alpha", "svc.db.schema_alpha.tbl"))
+        registry.attach(
+            **_attach_kwargs("svc.db.schema_alpha", "svc.db.schema_alpha.tbl")
+        )
         registry.clear_scope("svc.db.schema_a")
         assert len(registry.labels_for("svc.db.schema_alpha.tbl")) == 1
 
@@ -189,7 +197,9 @@ class TestEnsureKnown:
         assert registry.is_known("Class.Tag") is True
         assert registry.is_known("class.tag") is False  # different tag server-side
 
-    def test_ensure_known_cache_hit_skips_io(self, registry: TagRegistry, mock_metadata: MagicMock):
+    def test_ensure_known_cache_hit_skips_io(
+        self, registry: TagRegistry, mock_metadata: MagicMock
+    ):
         registry.attach(
             **_attach_kwargs(
                 "svc.db",
@@ -201,20 +211,26 @@ class TestEnsureKnown:
         assert registry.ensure_known("Class.Tag") is True
         mock_metadata.get_by_name.assert_not_called()
 
-    def test_ensure_known_cache_miss_calls_get_by_name_once(self, registry: TagRegistry, mock_metadata: MagicMock):
+    def test_ensure_known_cache_miss_calls_get_by_name_once(
+        self, registry: TagRegistry, mock_metadata: MagicMock
+    ):
         mock_metadata.get_by_name.return_value = MagicMock()
         assert registry.ensure_known("Other.Tag") is True
         assert registry.ensure_known("Other.Tag") is True  # cached now
         assert mock_metadata.get_by_name.call_count == 1
 
-    def test_ensure_known_404_returns_false_and_does_not_cache(self, registry: TagRegistry, mock_metadata: MagicMock):
+    def test_ensure_known_404_returns_false_and_does_not_cache(
+        self, registry: TagRegistry, mock_metadata: MagicMock
+    ):
         mock_metadata.get_by_name.return_value = None
         assert registry.ensure_known("Missing.Tag") is False
         assert registry.ensure_known("Missing.Tag") is False
         # Re-queries on each miss; not cached.
         assert mock_metadata.get_by_name.call_count == 2
 
-    def test_ensure_known_swallows_exception(self, registry: TagRegistry, mock_metadata: MagicMock):
+    def test_ensure_known_swallows_exception(
+        self, registry: TagRegistry, mock_metadata: MagicMock
+    ):
         mock_metadata.get_by_name.side_effect = RuntimeError("network down")
         assert registry.ensure_known("Crashed.Tag") is False
 

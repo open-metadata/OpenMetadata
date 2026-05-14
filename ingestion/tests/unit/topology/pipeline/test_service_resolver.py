@@ -2,9 +2,7 @@
 Tests for the OpenLineage service resolver module.
 """
 
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineServiceType,

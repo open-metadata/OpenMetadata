@@ -50,10 +50,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import (
-    EntityName,
-    SourceUrl,
-)
+from metadata.generated.schema.type.basic import EntityName, SourceUrl
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_by_name
@@ -578,13 +575,17 @@ class SnowflakeSource(
                     )
                     continue
 
-                entity_fqn = fqn._build(self.context.get().database_service, *fqn_elements)  # pyright: ignore[reportAttributeAccessIssue]
+                entity_fqn = fqn._build(
+                    self.context.get().database_service, *fqn_elements
+                )  # pyright: ignore[reportAttributeAccessIssue]
                 try:
                     classification = self.tag_canonicalizer.classification(
                         row[0], default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION
                     )
                     tag = self.tag_canonicalizer.tag(
-                        classification.name, row[1], default_tag_description=SNOWFLAKE_TAG_DESCRIPTION
+                        classification.name,
+                        row[1],
+                        default_tag_description=SNOWFLAKE_TAG_DESCRIPTION,
                     )
 
                     self.tags_registry.attach(
@@ -611,7 +612,8 @@ class SnowflakeSource(
                 for tag_info in self.schema_tags_map[schema_name]:
                     try:
                         classification = self.tag_canonicalizer.classification(
-                            tag_info["tag_name"], default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION
+                            tag_info["tag_name"],
+                            default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
                         )
                         tag = self.tag_canonicalizer.tag(
                             classification.name,
@@ -637,9 +639,13 @@ class SnowflakeSource(
                             ),
                             right=None,
                         )
-            yield from (Either(left=None, right=record) for record in self.tags_registry.drain())
+            yield from (
+                Either(left=None, right=record) for record in self.tags_registry.drain()
+            )
 
-    def yield_database_tag(self, database_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_database_tag(
+        self, database_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """Yield database-level tags for the topology."""
         if not self.source_config.includeTags:
             return
@@ -659,10 +665,13 @@ class SnowflakeSource(
         for tag_info in self.database_tags_map[database_name]:
             try:
                 classification = self.tag_canonicalizer.classification(
-                    tag_info["tag_name"], default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION
+                    tag_info["tag_name"],
+                    default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
                 )
                 tag = self.tag_canonicalizer.tag(
-                    classification.name, tag_info["tag_value"], default_tag_description=SNOWFLAKE_TAG_DESCRIPTION
+                    classification.name,
+                    tag_info["tag_value"],
+                    default_tag_description=SNOWFLAKE_TAG_DESCRIPTION,
                 )
 
                 self.tags_registry.attach(
@@ -683,7 +692,9 @@ class SnowflakeSource(
                     ),
                     right=None,
                 )
-        yield from (Either(left=None, right=record) for record in self.tags_registry.drain())
+        yield from (
+            Either(left=None, right=record) for record in self.tags_registry.drain()
+        )
 
     def _get_table_names_and_types(
         self, schema_name: str, table_type: TableType = TableType.Regular
@@ -702,7 +713,11 @@ class SnowflakeSource(
         )
 
         deleted_fqns = []
-        for table in snowflake_tables.get_deleted():  # pyright: ignore[reportAttributeAccessIssue]
+        for (
+            table
+        ) in (
+            snowflake_tables.get_deleted()
+        ):  # pyright: ignore[reportAttributeAccessIssue]
             try:
                 deleted_fqns.append(
                     fqn.build(
@@ -715,11 +730,16 @@ class SnowflakeSource(
                     )
                 )
             except Exception as err:
-                logger.warning(f"Skipping deleted-table FQN for {table.name!r} in schema {schema_name}: {err}")
+                logger.warning(
+                    f"Skipping deleted-table FQN for {table.name!r} in schema {schema_name}: {err}"
+                )
                 logger.debug(traceback.format_exc())
         self.context.get_global().deleted_tables.extend(deleted_fqns)
 
-        return [TableNameAndType(name=table.name, type_=table.type_) for table in snowflake_tables.get_not_deleted()]  # pyright: ignore[reportAttributeAccessIssue]
+        return [
+            TableNameAndType(name=table.name, type_=table.type_)
+            for table in snowflake_tables.get_not_deleted()
+        ]  # pyright: ignore[reportAttributeAccessIssue]
 
     def _get_stream_names_and_types(self, schema_name: str) -> List[TableNameAndType]:
         table_type = TableType.Stream
@@ -902,8 +922,8 @@ class SnowflakeSource(
                         f"Missing ownership permissions on procedure {stored_procedure.name}."
                         " Trying to fetch description via DESCRIBE."
                     )
-                    stored_procedure.definition = (
-                        self.describe_procedure_definition(stored_procedure)
+                    stored_procedure.definition = self.describe_procedure_definition(
+                        stored_procedure
                     )
                 if self.is_stored_procedure_filtered(stored_procedure.name):
                     continue
@@ -1160,14 +1180,18 @@ class SnowflakeSource(
         parts = fqn.split(tag_fqn) if tag_fqn else []
         return parts[0] if parts else tag_fqn
 
-    def _has_classification(self, classification_name: str, tag_list: List[TagLabel]) -> bool:  # noqa: UP006
+    def _has_classification(
+        self, classification_name: str, tag_list: List[TagLabel]
+    ) -> bool:  # noqa: UP006
         """Check if a tag with the given classification name already exists"""
         for tag in tag_list:  # noqa: SIM110
             if self._get_classification_name(tag) == classification_name:
                 return True
         return False
 
-    def get_database_tag_labels(self, database_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+    def get_database_tag_labels(
+        self, database_name: str
+    ) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """Return tags for the database entity from registry."""
         database_fqn = cast(
             "str",
@@ -1180,7 +1204,9 @@ class SnowflakeSource(
         )
         return self.tags_registry.labels_for(database_fqn) or None
 
-    def get_column_tag_labels(self, table_name: str, column: dict) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+    def get_column_tag_labels(
+        self, table_name: str, column: dict
+    ) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """Return tags for a column entity from the registry.
 
         Column tags don't inherit from parent entities (table/schema/database)
@@ -1201,7 +1227,9 @@ class SnowflakeSource(
         )
         return self.tags_registry.labels_for(col_fqn) or None
 
-    def get_schema_tag_labels(self, schema_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+    def get_schema_tag_labels(
+        self, schema_name: str
+    ) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """
         Return tags for schema entity including:
         1. Snowflake schema-level tags
@@ -1231,7 +1259,9 @@ class SnowflakeSource(
 
         # Add inherited database tags (only if classification doesn't already exist)
         for label in self.tags_registry.labels_for(database_fqn):
-            if not self._has_classification(self._get_classification_name(label), schema_tags):
+            if not self._has_classification(
+                self._get_classification_name(label), schema_tags
+            ):
                 schema_tags.append(label)
 
         return schema_tags if schema_tags else None
@@ -1282,12 +1312,16 @@ class SnowflakeSource(
 
         # Add inherited schema tags (only if classification doesn't already exist)
         for label in self.tags_registry.labels_for(schema_fqn):
-            if not self._has_classification(self._get_classification_name(label), table_tags):
+            if not self._has_classification(
+                self._get_classification_name(label), table_tags
+            ):
                 table_tags.append(label)
 
         # Add inherited database tags (only if classification doesn't already exist)
         for label in self.tags_registry.labels_for(database_fqn):
-            if not self._has_classification(self._get_classification_name(label), table_tags):
+            if not self._has_classification(
+                self._get_classification_name(label), table_tags
+            ):
                 table_tags.append(label)
 
         return table_tags if table_tags else None

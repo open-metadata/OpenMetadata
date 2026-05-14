@@ -166,7 +166,9 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
     def get_schema_description(self, schema_name: str) -> Optional[str]:
         return self.schema_description_map.get(schema_name)
 
-    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
         """Return tables with proper type detection using a single Glue API pass."""
         if self.glue_client:
             try:
@@ -176,13 +178,19 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
                     for table in page.get("TableList", []):
                         params = table.get("Parameters", {})
                         table_type = (
-                            TableType.Iceberg if params.get("table_type") == ICEBERG_TABLE_TYPE else TableType.External
+                            TableType.Iceberg
+                            if params.get("table_type") == ICEBERG_TABLE_TYPE
+                            else TableType.External
                         )
-                        results.append(TableNameAndType(name=table["Name"], type_=table_type))
+                        results.append(
+                            TableNameAndType(name=table["Name"], type_=table_type)
+                        )
                 return results  # noqa: TRY300
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Failed to fetch Glue table metadata for schema [{schema_name}]: {exc}")
+                logger.warning(
+                    f"Failed to fetch Glue table metadata for schema [{schema_name}]: {exc}"
+                )
         return [
             TableNameAndType(name=name, type_=TableType.External)
             for name in self.inspector.get_table_names(schema_name)
@@ -335,9 +343,9 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         try:
             table_info: dict = inspector.get_table_comment(table_name, schema_name)
             table_option = inspector.get_table_options(table_name, schema_name)
-            self.external_location_map[(self.context.get().database, schema_name, table_name)] = table_option.get(
-                "awsathena_location"
-            )
+            self.external_location_map[
+                (self.context.get().database, schema_name, table_name)
+            ] = table_option.get("awsathena_location")
         # Catch any exception without breaking the ingestion
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
@@ -368,7 +376,9 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             glue_client=self.glue_client,
         )
 
-    def get_table_extensions(self, table_name: str, table_type: TableType | None = None) -> dict[str, str] | None:
+    def get_table_extensions(
+        self, table_name: str, table_type: TableType | None = None
+    ) -> dict[str, str] | None:
         if not getattr(self.source_config, "includeCustomProperties", False):
             return None
         if not self._string_property_type_ref:
@@ -383,9 +393,13 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         for prop_name, prop_value in tbl_properties.items():
             if not prop_value:
                 continue
-            sanitized_name = PROPERTY_NAME_INVALID_CHARS_PATTERN.sub(PROPERTY_NAME_REPLACEMENT, prop_name)
+            sanitized_name = PROPERTY_NAME_INVALID_CHARS_PATTERN.sub(
+                PROPERTY_NAME_REPLACEMENT, prop_name
+            )
             if len(sanitized_name) > PROPERTY_NAME_MAX_LENGTH:
-                sanitized_name = hashlib.md5(prop_name.encode("utf-8"), usedforsecurity=False).hexdigest()
+                sanitized_name = hashlib.md5(
+                    prop_name.encode("utf-8"), usedforsecurity=False
+                ).hexdigest()
             if sanitized_name not in self._processed_prop:
                 try:
                     self.metadata.create_or_update_custom_property(  # pyright: ignore[reportUnknownMemberType, reportUnusedCallResult]
@@ -410,14 +424,24 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             registered_properties[sanitized_name] = prop_value
         return registered_properties or None
 
-    def _fetch_iceberg_properties(self, schema_name: str, table_name: str) -> dict[str, str]:
+    def _fetch_iceberg_properties(
+        self, schema_name: str, table_name: str
+    ) -> dict[str, str]:
         """Read Iceberg native properties from Athena's `<table>$properties` metatable."""
-        query = text(f'SELECT key, value FROM "{schema_name}"."{table_name}$properties"')
+        query = text(
+            f'SELECT key, value FROM "{schema_name}"."{table_name}$properties"'
+        )
         try:
             with self.engine.connect() as conn:
                 result = conn.execute(query)
-                return {str(row[0]): str(row[1]) for row in result if row[0] is not None and row[1] is not None}
+                return {
+                    str(row[0]): str(row[1])
+                    for row in result
+                    if row[0] is not None and row[1] is not None
+                }
         except Exception as exc:
-            logger.debug(f"Unable to read Iceberg $properties for [{schema_name}.{table_name}]: {exc}")
+            logger.debug(
+                f"Unable to read Iceberg $properties for [{schema_name}.{table_name}]: {exc}"
+            )
             logger.debug(traceback.format_exc())
             return {}

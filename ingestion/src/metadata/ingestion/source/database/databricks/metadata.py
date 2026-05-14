@@ -150,13 +150,17 @@ def _fetch_nested_descriptions_via_describe_json(
         return {}
     try:
         result = connection.execute(
-            text(f"DESCRIBE TABLE EXTENDED `{db_name}`.`{schema}`.`{table_name}` AS JSON")
+            text(
+                f"DESCRIBE TABLE EXTENDED `{db_name}`.`{schema}`.`{table_name}` AS JSON"
+            )
         ).fetchone()
         if not result or not result[0]:
             return {}
         payload = json.loads(result[0])
     except Exception as err:  # pylint: disable=broad-except
-        logger.debug(f"DESCRIBE AS JSON unavailable or unparseable for {db_name}.{schema}.{table_name}: {err}")
+        logger.debug(
+            f"DESCRIBE AS JSON unavailable or unparseable for {db_name}.{schema}.{table_name}: {err}"
+        )
         return {}
 
     return _build_column_descriptions_map(payload)
@@ -341,7 +345,9 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                     sub_rows = {
                         r[0]: r[1]
                         for r in connection.execute(
-                            text(f"DESCRIBE TABLE `{kw.get('db_name')}`.`{schema}`.`{table_name}` `{col_name}`")
+                            text(
+                                f"DESCRIBE TABLE `{kw.get('db_name')}`.`{schema}`.`{table_name}` `{col_name}`"
+                            )
                         ).fetchall()
                     }
                     col_info["system_data_type"] = sub_rows["data_type"]
@@ -361,10 +367,14 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                     )
                     if supports_nested_descriptions:
                         if nested_descriptions_by_column is None:
-                            nested_descriptions_by_column = _fetch_nested_descriptions_via_describe_json(
-                                connection, kw.get("db_name"), schema, table_name
+                            nested_descriptions_by_column = (
+                                _fetch_nested_descriptions_via_describe_json(
+                                    connection, kw.get("db_name"), schema, table_name
+                                )
                             )
-                        nested_descriptions = nested_descriptions_by_column.get(col_name)
+                        nested_descriptions = nested_descriptions_by_column.get(
+                            col_name
+                        )
                         if nested_descriptions:
                             col_info["nested_descriptions"] = nested_descriptions
                 except (DatabaseError, KeyError) as err:
@@ -374,7 +384,9 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                     logger.debug(traceback.format_exc())
             result.append(col_info)
         except Exception as err:  # pylint: disable=broad-except
-            logger.warning(f"Skipping column '{col_name}' in {schema}.{table_name} due to unexpected error: {err}")
+            logger.warning(
+                f"Skipping column '{col_name}' in {schema}.{table_name} due to unexpected error: {err}"
+            )
             logger.debug(traceback.format_exc())
     return result
 

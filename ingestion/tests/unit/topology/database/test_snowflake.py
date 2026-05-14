@@ -574,7 +574,9 @@ class SnowflakeUnitTest(TestCase):
             schema_labels = source.get_schema_tag_labels(schema_name="TEST_SCHEMA")
             self.assertIsNotNone(schema_labels)
             self.assertEqual(len(schema_labels), 1)
-            self.assertEqual(schema_labels[0].tagFQN.root, "SCHEMA_CLASSIFICATION.SCHEMA_TAG")
+            self.assertEqual(
+                schema_labels[0].tagFQN.root, "SCHEMA_CLASSIFICATION.SCHEMA_TAG"
+            )
 
             table_labels = source.get_tag_labels(table_name="TEST_TABLE")
             self.assertEqual(len(table_labels), 2)
@@ -835,7 +837,9 @@ class TestSnowflakeGetDatabaseNamesRawEagerFetch:
         mock_conn = MagicMock()
         mock_conn.execute.return_value = result
 
-        with patch.object(SnowflakeSource, "connection", new_callable=PropertyMock) as mocked_conn_prop:
+        with patch.object(
+            SnowflakeSource, "connection", new_callable=PropertyMock
+        ) as mocked_conn_prop:
             mocked_conn_prop.return_value = mock_conn
             list(source.get_database_names_raw())
 
@@ -848,7 +852,9 @@ class TestSnowflakeGetDatabaseNamesRawEagerFetch:
         mock_conn = MagicMock()
         mock_conn.execute.return_value = result
 
-        with patch.object(SnowflakeSource, "connection", new_callable=PropertyMock) as mocked_conn_prop:
+        with patch.object(
+            SnowflakeSource, "connection", new_callable=PropertyMock
+        ) as mocked_conn_prop:
             mocked_conn_prop.return_value = mock_conn
             names = list(source.get_database_names_raw())
 
@@ -909,7 +915,9 @@ class SnowflakeBadNameIsolationTest(TestCase):
         mock_connection = Mock()
         mock_connection.execute = Mock(return_value=iter(rows))
 
-        result = get_schema_columns(dialect, mock_connection, schema="SCHEMA", info_cache={})
+        result = get_schema_columns(
+            dialect, mock_connection, schema="SCHEMA", info_cache={}
+        )
 
         # The good table's columns were populated even though a bad-named row
         # appeared between them — fault isolation at the per-row level.
@@ -937,8 +945,12 @@ class SnowflakeBadNameIsolationTest(TestCase):
         deleted_at = datetime(2026, 1, 1)
         snowflake_tables = SnowflakeTableList(
             tables=[
-                SnowflakeTable(name="GOOD_GONE", deleted=deleted_at, type_=TableType.Regular),
-                SnowflakeTable(name='BAD"GONE', deleted=deleted_at, type_=TableType.Regular),
+                SnowflakeTable(
+                    name="GOOD_GONE", deleted=deleted_at, type_=TableType.Regular
+                ),
+                SnowflakeTable(
+                    name='BAD"GONE', deleted=deleted_at, type_=TableType.Regular
+                ),
                 SnowflakeTable(name="ALIVE_TBL", deleted=None, type_=TableType.Regular),
             ]
         )
@@ -949,7 +961,16 @@ class SnowflakeBadNameIsolationTest(TestCase):
         source.context.get().__dict__["database"] = "db"
         source.context.get_global().deleted_tables = []
 
-        def fake_fqn_build(*, metadata, entity_type, service_name, database_name, schema_name, table_name, **_kw):
+        def fake_fqn_build(
+            *,
+            metadata,
+            entity_type,
+            service_name,
+            database_name,
+            schema_name,
+            table_name,
+            **_kw,
+        ):
             from metadata.utils.fqn import quote_name
 
             # quote_name still rejects names with embedded `"`; let that drive the failure.

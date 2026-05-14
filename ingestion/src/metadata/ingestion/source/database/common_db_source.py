@@ -385,12 +385,16 @@ class CommonDbSourceService(
             try:
                 table_iter = self.query_table_names_and_types(schema_name)
             except Exception as err:
-                logger.warning(f"Fetching table list failed for schema {schema_name} due to - {err}")
+                logger.warning(
+                    f"Fetching table list failed for schema {schema_name} due to - {err}"
+                )
                 logger.debug(traceback.format_exc())
                 table_iter = []
             for table_and_type in table_iter:
                 try:
-                    table_name = self.standardize_table_name(schema_name, table_and_type.name)
+                    table_name = self.standardize_table_name(
+                        schema_name, table_and_type.name
+                    )
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
@@ -414,7 +418,9 @@ class CommonDbSourceService(
                         )
                         continue
                 except Exception as err:
-                    logger.warning(f"Skipping table {table_and_type.name!r} in schema {schema_name} due to - {err}")
+                    logger.warning(
+                        f"Skipping table {table_and_type.name!r} in schema {schema_name} due to - {err}"
+                    )
                     logger.debug(traceback.format_exc())
                     continue
                 yield table_name, table_and_type.type_
@@ -423,12 +429,16 @@ class CommonDbSourceService(
             try:
                 view_iter = self.query_view_names_and_types(schema_name)
             except Exception as err:
-                logger.warning(f"Fetching view list failed for schema {schema_name} due to - {err}")
+                logger.warning(
+                    f"Fetching view list failed for schema {schema_name} due to - {err}"
+                )
                 logger.debug(traceback.format_exc())
                 view_iter = []
             for view_and_type in view_iter:
                 try:
-                    view_name = self.standardize_table_name(schema_name, view_and_type.name)
+                    view_name = self.standardize_table_name(
+                        schema_name, view_and_type.name
+                    )
                     view_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
@@ -452,7 +462,9 @@ class CommonDbSourceService(
                         )
                         continue
                 except Exception as err:
-                    logger.warning(f"Skipping view {view_and_type.name!r} in schema {schema_name} due to - {err}")
+                    logger.warning(
+                        f"Skipping view {view_and_type.name!r} in schema {schema_name} due to - {err}"
+                    )
                     logger.debug(traceback.format_exc())
                     continue
                 yield view_name, view_and_type.type_
@@ -634,8 +646,12 @@ class CommonDbSourceService(
                     table_type=table_type,
                 ),
                 owners=self.get_owner_ref(table_name=table_name),
-                locationPath=self.get_location_path(table_name=table_name, schema_name=schema_name),
-                extension=self.get_table_extensions(table_name=table_name, table_type=table_type),
+                locationPath=self.get_location_path(
+                    table_name=table_name, schema_name=schema_name
+                ),
+                extension=self.get_table_extensions(
+                    table_name=table_name, table_type=table_type
+                ),
             )
 
             is_partitioned, partition_details = self.get_table_partition_details(

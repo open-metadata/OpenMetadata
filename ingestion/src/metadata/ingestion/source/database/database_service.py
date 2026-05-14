@@ -247,7 +247,9 @@ class DatabaseServiceSource(
         cached = instance_dict.get("tags_registry")
         if cached is not None:
             return cached
-        return instance_dict.setdefault("tags_registry", TagRegistry(metadata=self.metadata))
+        return instance_dict.setdefault(
+            "tags_registry", TagRegistry(metadata=self.metadata)
+        )
 
     @property
     def tag_canonicalizer(self) -> TagCanonicalizer:
@@ -256,7 +258,9 @@ class DatabaseServiceSource(
         cached = instance_dict.get("tag_canonicalizer")
         if cached is not None:
             return cached
-        return instance_dict.setdefault("tag_canonicalizer", TagCanonicalizer(metadata=self.metadata))
+        return instance_dict.setdefault(
+            "tag_canonicalizer", TagCanonicalizer(metadata=self.metadata)
+        )
 
     @property
     def name(self) -> str:
@@ -926,7 +930,9 @@ class DatabaseServiceSource(
 
     def clear_schema_tag_scope(self):
         """Drop tag-registry state for the current schema scope."""
-        schema_name = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
+        schema_name = (
+            self.context.get().database_schema
+        )  # pyright: ignore[reportAttributeAccessIssue]
         if schema_name:
             schema_fqn = cast(
                 "str",
@@ -943,7 +949,9 @@ class DatabaseServiceSource(
 
     def clear_database_tag_scope(self):
         """Drop tag-registry state for the current database scope."""
-        database_name = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        database_name = (
+            self.context.get().database
+        )  # pyright: ignore[reportAttributeAccessIssue]
         if database_name:
             database_fqn = cast(
                 "str",

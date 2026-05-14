@@ -25,7 +25,9 @@ from metadata.sampler.models import SampleData
 table = Table(
     id=Uuid(root=uuid.uuid4()),
     name=EntityName(root="customers_temporal"),
-    fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.customers_temporal"),
+    fullyQualifiedName=FullyQualifiedEntityName(
+        root="Service.database.schema.customers_temporal"
+    ),
     columns=[
         Column(
             name=ColumnName(root="id"),
@@ -36,7 +38,9 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="int",
-            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.customers_temporal.id"),
+            fullyQualifiedName=FullyQualifiedEntityName(
+                root="Service.database.schema.customers_temporal.id"
+            ),
         ),
         Column(
             name=ColumnName(root="name"),
@@ -47,7 +51,9 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="string",
-            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.customers_temporal.name"),
+            fullyQualifiedName=FullyQualifiedEntityName(
+                root="Service.database.schema.customers_temporal.name"
+            ),
         ),
         Column(
             name=ColumnName(root="email"),
@@ -58,7 +64,9 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="string",
-            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.customers_temporal.email"),
+            fullyQualifiedName=FullyQualifiedEntityName(
+                root="Service.database.schema.customers_temporal.email"
+            ),
         ),
         Column(
             name=ColumnName(root="ValidFrom"),
@@ -69,7 +77,9 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="datetime",
-            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.customers_temporal.ValidFrom"),
+            fullyQualifiedName=FullyQualifiedEntityName(
+                root="Service.database.schema.customers_temporal.ValidFrom"
+            ),
         ),
         Column(
             name=ColumnName(root="ValidTo"),
@@ -80,7 +90,9 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="datetime",
-            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.customers_temporal.ValidTo"),
+            fullyQualifiedName=FullyQualifiedEntityName(
+                root="Service.database.schema.customers_temporal.ValidTo"
+            ),
         ),
     ],
 )
