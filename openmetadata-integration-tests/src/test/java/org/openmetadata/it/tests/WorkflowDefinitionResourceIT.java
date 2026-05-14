@@ -5642,7 +5642,38 @@ public class WorkflowDefinitionResourceIT {
         metric.getId(),
         testCase.getId());
 
-    // Step 11: Delete the unified workflow
+    // Step 11: Verify inputPorts and outputPorts changes trigger the approval workflow
+    // "inputPorts" and "outputPorts" are WorkflowTriggerFields, so bulk port operations
+    // must produce a ChangeEvent with the correct field name that the workflow filter recognises.
+    LOG.info("Step 11: Verifying inputPorts/outputPorts changes trigger the approval workflow");
+
+    org.openmetadata.schema.type.api.BulkAssets portAssets =
+        new org.openmetadata.schema.type.api.BulkAssets()
+            .withAssets(List.of(table.getEntityReference()));
+
+    // Add table as input port — fires ChangeEvent with fieldsAdded[inputPorts]
+    client.dataProducts().bulkAddInputPorts(dataProduct.getFullyQualifiedName(), portAssets);
+    LOG.debug("Added table as inputPort to data product");
+    waitAndResolveTask.accept(dataProduct.getFullyQualifiedName(), "DataProduct");
+    LOG.info("inputPorts add correctly triggered approval workflow");
+
+    // Remove from inputPorts — fires ChangeEvent with fieldsDeleted[inputPorts]
+    // (mutual exclusion: a table cannot be in both inputPorts and outputPorts, so remove first)
+    client.dataProducts().bulkRemoveInputPorts(dataProduct.getFullyQualifiedName(), portAssets);
+    LOG.debug("Removed table from inputPort");
+    waitAndResolveTask.accept(dataProduct.getFullyQualifiedName(), "DataProduct");
+    LOG.info("inputPorts remove correctly triggered approval workflow");
+
+    // Add table as output port — fires ChangeEvent with fieldsAdded[outputPorts]
+    // (table is already a data product asset from Step 5, satisfying the output-port prerequisite)
+    client.dataProducts().bulkAddOutputPorts(dataProduct.getFullyQualifiedName(), portAssets);
+    LOG.debug("Added table as outputPort to data product");
+    waitAndResolveTask.accept(dataProduct.getFullyQualifiedName(), "DataProduct");
+    LOG.info("outputPorts add correctly triggered approval workflow");
+
+    LOG.info("Step 11 completed: inputPorts/outputPorts changes trigger the approval workflow");
+
+    // Step 12: Delete the unified workflow
     try {
       WorkflowDefinition wd =
           client.workflowDefinitions().getByName(unifiedWorkflow.getName(), null);
@@ -5650,8 +5681,8 @@ public class WorkflowDefinitionResourceIT {
           () -> {
             try {
               client.workflowDefinitions().delete(wd.getId());
-            } catch (Exception e) {
-              throw new RuntimeException("Failed to delete workflow", e);
+            } catch (Exception ex) {
+              throw new RuntimeException("Failed to delete workflow", ex);
             }
           },
           "delete-workflow-" + wd.getName());
