@@ -509,7 +509,6 @@ class PowerbiSource(DashboardServiceSource):
                             service=FullyQualifiedEntityName(self.context.get().dashboard_service),  # pyright: ignore[reportAttributeAccessIssue]
                         )
                         yield Either(right=chart_request)
-                        self.register_record_chart(chart_request=chart_request)
                     except Exception as exc:
                         yield Either(
                             left=StackTraceError(
