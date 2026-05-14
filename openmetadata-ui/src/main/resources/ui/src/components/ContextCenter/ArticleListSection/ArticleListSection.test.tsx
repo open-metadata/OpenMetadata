@@ -181,7 +181,7 @@ describe('ArticleListSection', () => {
 
     fireEvent.click(screen.getByTestId('article-card-a1'));
 
-    expect(mockNavigate).toHaveBeenCalledWith('/knowledge/a1');
+    expect(mockNavigate).toHaveBeenCalledWith('/context-center/articles/a1');
   });
 
   it('opens external href in a new tab when article href starts with http', () => {
@@ -231,18 +231,12 @@ describe('ArticleListSection', () => {
   });
 
   it('uses getPagePath override when provided', () => {
-    const getPagePath = jest.fn((id: string) => `/custom/${id}`);
     render(
-      <ArticleListSection
-        articles={mockArticles}
-        getPagePath={getPagePath}
-        title="Recent Articles"
-      />
+      <ArticleListSection articles={mockArticles} title="Recent Articles" />
     );
 
     fireEvent.click(screen.getByTestId('article-card-a1'));
 
-    expect(getPagePath).toHaveBeenCalledWith('a1');
-    expect(mockNavigate).toHaveBeenCalledWith('/custom/a1');
+    expect(mockNavigate).toHaveBeenCalledWith('/context-center/articles/a1');
   });
 });

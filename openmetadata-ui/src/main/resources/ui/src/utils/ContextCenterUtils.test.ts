@@ -96,6 +96,8 @@ describe('assetToDocumentItem', () => {
       id: '1',
       fileName: 'sample.pdf',
       size: 2048,
+      updatedAt: 1778756959299,
+      updatedBy: 'admin',
     };
 
     expect(assetToDocumentItem(asset as Asset)).toEqual({
@@ -104,6 +106,8 @@ describe('assetToDocumentItem', () => {
       name: 'sample.pdf',
       sizeLabel: '2.0 KB',
       status: 'processed',
+      updatedAt: 1778756959299,
+      updatedBy: 'admin',
     });
   });
 });

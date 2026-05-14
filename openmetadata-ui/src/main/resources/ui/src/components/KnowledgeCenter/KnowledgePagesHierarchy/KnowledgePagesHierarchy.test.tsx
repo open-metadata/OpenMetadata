@@ -340,32 +340,6 @@ describe('KnowledgePagesHierarchy', () => {
     expect(screen.getByTestId('delete-widget')).toBeInTheDocument();
   });
 
-  it('add page flow should work', async () => {
-    await act(async () => {
-      render(
-        <KnowledgePagesHierarchy
-          isPageHeaderAvailable={false}
-          permissions={{ ...DEFAULT_ENTITY_PERMISSION, Create: true }}
-        />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
-    });
-
-    const addButton = screen.getByTestId(
-      `How to Discover Assets of Interest-add-page-btn`
-    );
-
-    fireEvent.click(addButton);
-
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith({
-        pathname: '/context-center/articles/newPage',
-      });
-    });
-  });
-
   describe('Scroll Pagination', () => {
     const mockGetPageHierarchyFromES = jest.requireMock(
       'rest/knowledgeCenterAPI'

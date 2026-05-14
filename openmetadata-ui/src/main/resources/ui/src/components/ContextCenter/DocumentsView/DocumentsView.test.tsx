@@ -82,8 +82,8 @@ const mockFiles: DocFile[] = [
     name: 'report.pdf',
     fileType: 'pdf',
     sizeLabel: '2 MB',
-    uploadedBy: 'alice',
-    uploadedAt: '2024-01-01',
+    updatedBy: 'alice',
+    updatedAt: 1778756959299,
   },
   {
     id: 'file-2',
@@ -120,7 +120,7 @@ describe('DocumentsView', () => {
     render(<DocumentsView data={mockFiles} isLoading={false} />);
 
     expect(screen.getByText('alice')).toBeInTheDocument();
-    expect(screen.getByText('2024-01-01')).toBeInTheDocument();
+    expect(screen.getByText('2 hrs ago')).toBeInTheDocument();
   });
 
   it('renders the PDF badge label for pdf files', () => {
