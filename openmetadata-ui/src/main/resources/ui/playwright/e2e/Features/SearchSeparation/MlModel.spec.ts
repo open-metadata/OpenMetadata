@@ -13,7 +13,7 @@
 
 import { test } from '@playwright/test';
 import { MlModelClass } from '../../../support/entity/MlModelClass';
-import { registerFilterSeparationSuite } from '../../../utils/searchSeparation';
+import { registerFilterSeparationSuite } from './searchSeparationSuite';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 

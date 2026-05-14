@@ -31,13 +31,17 @@
 
 import { APIRequestContext, expect, Page, test } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
-import { EntityClass } from '../support/entity/EntityClass';
-import { Glossary } from '../support/glossary/Glossary';
-import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
-import { ClassificationClass } from '../support/tag/ClassificationClass';
-import { TagClass } from '../support/tag/TagClass';
-import { createNewPage, redirectToHomePage } from './common';
-import { checkExploreSearchFilter } from './entity';
+import { EntityClass } from '../../../support/entity/EntityClass';
+import { Glossary } from '../../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
+import { ClassificationClass } from '../../../support/tag/ClassificationClass';
+import { TagClass } from '../../../support/tag/TagClass';
+import {
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+} from '../../../utils/common';
+import { checkExploreSearchFilter } from '../../../utils/entity';
 
 const TIER_FQN = 'Tier.Tier1';
 const CERTIFICATION_FQN = 'Certification.Gold';
@@ -78,11 +82,6 @@ export function registerFilterSeparationSuite(
 
   test.describe
     .serial(`${suiteName} | live + reindex filter separation`, () => {
-    // Each test does a full PATCH + reindex cycle plus four Explore filter assertions,
-    // which is heavier than the default 60s timeout allows on slower CI runners. test.slow()
-    // is a no-op inside beforeAll, so set the per-test timeout at the describe level instead.
-    test.describe.configure({ timeout: 180_000 });
-
     let entity: FilterSeparationEntity;
     const classification = new ClassificationClass();
     const classificationTag = new TagClass({
@@ -92,6 +91,7 @@ export function registerFilterSeparationSuite(
     const glossaryTerm = new GlossaryTerm(glossary);
 
     test.beforeAll(async ({ browser }) => {
+      test.slow();
       const { apiContext, afterAction } = await createNewPage(browser);
       await classification.create(apiContext);
       await classificationTag.create(apiContext);
@@ -127,12 +127,10 @@ export function registerFilterSeparationSuite(
 
     test('SearchIndexApp recreate reindex preserves searchable separation', async ({
       page,
-      browser,
     }) => {
-      // POST /api/v1/search/reindexEntities requires the admin-bot scope; getApiContext(page)
-      // extracts a token from the page's session that the reindex endpoint rejects with 401,
-      // so we open a fresh authenticated context for this call.
-      const { apiContext, afterAction } = await createNewPage(browser);
+      // Reuse the already-authenticated page rather than opening a new one just to grab a
+      // token — saves a full browser navigation per entity suite.
+      const { apiContext, afterAction } = await getApiContext(page);
 
       const reindexRes = await apiContext.post(
         '/api/v1/search/reindexEntities?recreate=true',
@@ -234,7 +232,7 @@ async function assertReindexedDocPreservesSeparation(
     .poll(
       async () => {
         const res = await apiContext.get(
-          `/api/v1/search/query?q=fullyQualifiedName.keyword:%22${encodeURIComponent(
+          `/api/v1/search/query?q=fullyQualifiedName:%22${encodeURIComponent(
             entity.entityResponseData.fullyQualifiedName ?? ''
           )}%22&index=dataAsset`
         );

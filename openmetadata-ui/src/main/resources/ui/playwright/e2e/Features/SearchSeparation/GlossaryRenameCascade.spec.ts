@@ -143,7 +143,7 @@ async function assertDocShape(opts: {
     .poll(
       async () => {
         const res = await apiContext.get(
-          `/api/v1/search/query?q=fullyQualifiedName.keyword:%22${encodeURIComponent(
+          `/api/v1/search/query?q=fullyQualifiedName:%22${encodeURIComponent(
             tableFqn
           )}%22&index=table_search_index`
         );

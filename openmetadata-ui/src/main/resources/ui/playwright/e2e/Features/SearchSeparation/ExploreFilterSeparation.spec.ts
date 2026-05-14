@@ -20,7 +20,7 @@
 
 import { test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
-import { registerFilterSeparationSuite } from '../../../utils/searchSeparation';
+import { registerFilterSeparationSuite } from './searchSeparationSuite';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
