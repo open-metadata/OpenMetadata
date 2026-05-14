@@ -3058,6 +3058,37 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         "Table should no longer be attached to the data product when dryRun=false");
   }
 
+  @Test
+  void test_bulkRemoveAssets_dryRunOmitted_defaultsToDetach(TestNamespace ns) throws Exception {
+    Domain domain = createTestDomain(ns, "dr_omit_domain");
+    DataProduct dataProduct = createDataProductInDomain(ns, domain, "dr_omit");
+    Table table = createTestTable(ns, "dr_omit_tbl", domain);
+
+    addTableToDataProduct(dataProduct, table);
+
+    String rawBody = "{\"assets\":[{\"id\":\"" + table.getId() + "\",\"type\":\"table\"}]}";
+    String removePath =
+        "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/remove";
+    BulkOperationResult result =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, removePath, rawBody, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertFalse(
+        Boolean.TRUE.equals(result.getDryRun()),
+        "Omitted dryRun must deserialize to schema default=false (destructive)");
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    Table refreshed =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts");
+    assertTrue(
+        refreshed.getDataProducts() == null
+            || refreshed.getDataProducts().stream()
+                .noneMatch(d -> dataProduct.getId().equals(d.getId())),
+        "Table should be detached when dryRun is omitted (default destructive)");
+  }
+
   private DataProduct createDataProductInDomain(TestNamespace ns, Domain domain, String suffix) {
     return SdkClients.adminClient()
         .dataProducts()

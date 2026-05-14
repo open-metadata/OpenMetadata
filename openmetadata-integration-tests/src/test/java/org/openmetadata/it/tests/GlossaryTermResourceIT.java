@@ -3309,6 +3309,28 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         "Glossary tag should be removed from table when dryRun=false");
   }
 
+  @Test
+  void test_bulkRemoveGlossaryFromAssets_dryRunOmitted_defaultsToPreview(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = createGlossaryTermForBulk(ns, "dr_omit");
+    Table table = createTableTaggedWithTerm(ns, term, "dr_omit");
+
+    String rawBody = "{\"assets\":[{\"id\":\"" + table.getId() + "\",\"type\":\"table\"}]}";
+    String path = "/v1/glossaryTerms/" + term.getId() + "/assets/remove";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, rawBody, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertTrue(
+        result.getDryRun(), "Omitted dryRun must deserialize to schema default=true (preview)");
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+    assertTrue(
+        tableHasTag(client, table.getId(), term.getFullyQualifiedName()),
+        "Glossary tag must remain on table when dryRun is omitted (default preview)");
+  }
+
   private GlossaryTerm createGlossaryTermForBulk(TestNamespace ns, String suffix) {
     OpenMetadataClient client = SdkClients.adminClient();
     Glossary glossary =

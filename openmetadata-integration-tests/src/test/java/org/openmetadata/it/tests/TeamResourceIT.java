@@ -1514,6 +1514,34 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
         "User should no longer belong to the team when dryRun=false");
   }
 
+  @Test
+  void test_bulkRemoveAssets_dryRunOmitted_defaultsToDetachUser(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team team = createTeam(ns, "dr_omit");
+    User user = createTestUser(ns, "dr_omit_user");
+
+    BulkAssets addRequest =
+        new BulkAssets().withAssets(List.of(user.getEntityReference())).withDryRun(false);
+    bulkAddAssetsWithResult(client, team.getName(), addRequest);
+
+    String rawBody = "{\"assets\":[{\"id\":\"" + user.getId() + "\",\"type\":\"user\"}]}";
+    String path = "/v1/teams/" + team.getName() + "/assets/remove";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, rawBody, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertFalse(
+        Boolean.TRUE.equals(result.getDryRun()),
+        "Omitted dryRun must deserialize to schema default=false (destructive)");
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    User refreshed = client.users().get(user.getId().toString(), "teams");
+    assertTrue(
+        refreshed.getTeams() == null
+            || refreshed.getTeams().stream().noneMatch(t -> team.getId().equals(t.getId())),
+        "User should be detached when dryRun is omitted (default destructive)");
+  }
+
   private Team createTeam(TestNamespace ns, String suffix) {
     return SdkClients.adminClient()
         .teams()

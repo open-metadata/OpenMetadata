@@ -1947,6 +1947,27 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         .untilAsserted(() -> assertFalse(tableHasTag(client, tableId, tagFqn)));
   }
 
+  @Test
+  void test_bulkRemoveTagFromAssets_dryRunOmitted_defaultsToPreview(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createTagForBulk(ns, "dr_omit");
+    Table table = createTableTaggedWith(ns, tag, "dr_omit");
+
+    String rawBody = "{\"assets\":[{\"id\":\"" + table.getId() + "\",\"type\":\"table\"}]}";
+    String path = "/v1/tags/" + tag.getId() + "/assets/remove";
+    client.getHttpClient().execute(HttpMethod.PUT, path, rawBody, Void.class);
+
+    UUID tableId = table.getId();
+    String tagFqn = tag.getFullyQualifiedName();
+    Awaitility.await("Tag must remain on asset when dryRun is omitted (default preview)")
+        .pollDelay(Duration.ofSeconds(1))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(45))
+        .during(Duration.ofSeconds(20))
+        .until(() -> tableHasTag(client, tableId, tagFqn));
+  }
+
   private Tag createTagForBulk(TestNamespace ns, String suffix) {
     Classification classification = createClassification(ns);
     CreateTag createTag = new CreateTag();
