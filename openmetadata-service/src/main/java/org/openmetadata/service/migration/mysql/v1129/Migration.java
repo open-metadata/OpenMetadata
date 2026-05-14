@@ -1,6 +1,7 @@
 package org.openmetadata.service.migration.mysql.v1129;
 
-import static org.openmetadata.service.migration.utils.v1129.MigrationUtil.addTriggerOperationToDefaultPolicies;
+import static org.openmetadata.service.migration.utils.v1129.MigrationUtil.addTriggerOperationToDefaultBotPolicies;
+import static org.openmetadata.service.migration.utils.v1129.MigrationUtil.addTriggerRuleToDataStewardPolicy;
 
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
@@ -15,6 +16,7 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
-    addTriggerOperationToDefaultPolicies(collectionDAO);
+    addTriggerOperationToDefaultBotPolicies(collectionDAO);
+    addTriggerRuleToDataStewardPolicy(collectionDAO);
   }
 }
