@@ -111,12 +111,14 @@ const ArticleListSection: FC<ArticleListSectionProps> = ({
           </div>
         </div>
 
-        {onViewAll && <Button
-          color="link-color"
-          iconTrailing={<ArrowUpRight className="tw:w-4 tw:h-4" />}
-          onClick={onViewAll}>
-          {t('label.view-all')} {t('label.article-plural')}
-        </Button>}
+        {onViewAll && (
+          <Button
+            color="link-color"
+            iconTrailing={<ArrowUpRight className="tw:w-4 tw:h-4" />}
+            onClick={onViewAll}>
+            {t('label.view-all')} {t('label.article-plural')}
+          </Button>
+        )}
       </div>
 
       {articles.length > 0 || isLoading ? (

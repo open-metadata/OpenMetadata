@@ -77,12 +77,14 @@ const UploadedDocumentsSection: FC<UploadedDocumentsSectionProps> = ({
           </div>
         </div>
 
-        {onViewAll && <Button
-          color="link-color"
-          iconTrailing={<ArrowUpRight className="tw:w-4 tw:h-4" />}
-          onClick={onViewAll}>
-          {t('label.view-all')}
-        </Button>}
+        {onViewAll && (
+          <Button
+            color="link-color"
+            iconTrailing={<ArrowUpRight className="tw:w-4 tw:h-4" />}
+            onClick={onViewAll}>
+            {t('label.view-all')}
+          </Button>
+        )}
       </div>
 
       {documents.length > 0 || isLoading ? (
