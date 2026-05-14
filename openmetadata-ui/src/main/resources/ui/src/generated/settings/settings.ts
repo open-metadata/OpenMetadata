@@ -2161,10 +2161,6 @@ export interface NaturalLanguageSearch {
      */
     enabled?: boolean;
     /**
-     * Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)
-     */
-    keywordWeight?: number;
-    /**
      * Maximum number of concurrent embedding API requests. Controls the semaphore used to
      * throttle calls to the embedding provider and prevent overwhelming HTTP/2 connection
      * limits.
