@@ -81,7 +81,7 @@ class DataQualityTableTestCaseCrudReindexUIIT {
         .assertTestCaseVisible(testCaseName);
 
     // --- EDIT via UI ---
-    dqPage.openEditDrawer(testCaseName).updateColumnNameParam(updatedColumn);
+    dqPage.openEditDrawer(testCaseName).updateParamAndSave("columnName", updatedColumn);
 
     // --- REINDEX #2 (post-edit) ---
     reindex.recreateAndAwait("testCase", List.of(createdCase));
@@ -89,7 +89,7 @@ class DataQualityTableTestCaseCrudReindexUIIT {
     // Reload and assert the edited value persisted through the reindex.
     final String columnAfter =
         TableDataQualityPage.open(ui, table.getFullyQualifiedName())
-            .readColumnNameParam(testCaseName);
+            .readParam(testCaseName, "columnName");
     Assertions.assertThat(columnAfter)
         .as("columnName param must equal the UI-edited value after recreate reindex")
         .isEqualTo(updatedColumn);

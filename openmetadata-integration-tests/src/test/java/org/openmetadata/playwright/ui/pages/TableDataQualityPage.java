@@ -64,6 +64,64 @@ public final class TableDataQualityPage extends PageObject {
     return this;
   }
 
+  /** Switch the form drawer into Column Level mode and select the target column. */
+  public TableDataQualityPage selectColumnLevel(final String columnName) {
+    byTestId("select-table-card").getByText("Column Level").click();
+    page.waitForResponse(
+        r ->
+            r.url().contains("/api/v1/dataQuality/testDefinitions")
+                && r.url().contains("entityType=COLUMN"),
+        () -> {
+          page.locator("[id='root\\/column']").click();
+          page.locator("[title='" + columnName + "']").click();
+        });
+    return this;
+  }
+
+  /**
+   * Fill the column-level form for {@code columnValueLengthsToBeBetween} and submit.
+   * Drawer detaches when create completes.
+   */
+  public TableDataQualityPage submitColumnValueLengthsToBeBetween(
+      final String testCaseName, final String minLength, final String maxLength) {
+    byTestId("test-case-name").fill(testCaseName);
+    page.locator("[id='root\\/testType']").click();
+    byTestId("columnValueLengthsToBeBetween").click();
+    page.locator("#testCaseFormV1_params_minLength").fill(minLength);
+    page.locator("#testCaseFormV1_params_maxLength").fill(maxLength);
+
+    page.waitForResponse(
+        r -> r.url().contains(API_TEST_CASE_CREATE) && r.request().method().equals("POST"),
+        () -> byTestId("create-btn").click());
+    byTestId("test-case-form-v1")
+        .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.DETACHED));
+    return this;
+  }
+
+  /**
+   * Fill the column-level form for {@code columnValuesToBeInSet} and submit. The form
+   * exposes an "allowedValues" array param — entries added via the {@code +} button.
+   */
+  public TableDataQualityPage submitColumnValuesToBeInSet(
+      final String testCaseName, final java.util.List<String> allowedValues) {
+    byTestId("test-case-name").fill(testCaseName);
+    page.locator("[id='root\\/testType']").click();
+    byTestId("columnValuesToBeInSet").click();
+    // Fill each allowed-value row. UI renders one row by default; click "+" for extras.
+    for (int i = 0; i < allowedValues.size(); i++) {
+      if (i > 0) {
+        page.locator("[data-testid='add-allowed-value-button']").click();
+      }
+      page.locator("[data-testid='allowedValues-" + i + "']").fill(allowedValues.get(i));
+    }
+    page.waitForResponse(
+        r -> r.url().contains(API_TEST_CASE_CREATE) && r.request().method().equals("POST"),
+        () -> byTestId("create-btn").click());
+    byTestId("test-case-form-v1")
+        .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.DETACHED));
+    return this;
+  }
+
   /**
    * Fills the minimal required fields and submits — name, test type
    * ({@code tableColumnNameToExist}), and the {@code columnName} parameter. Returns when
@@ -103,36 +161,78 @@ public final class TableDataQualityPage extends PageObject {
     return this;
   }
 
-  /** Opens the action-dropdown for the named test case and clicks Edit. */
+  /**
+   * Opens the action-dropdown for the named test case and clicks Edit. Waits for
+   * the edit drawer title — works regardless of test type (table or column).
+   */
   public TableDataQualityPage openEditDrawer(final String testCaseName) {
     byTestId("action-dropdown-" + testCaseName).click();
     page.waitForResponse(
         r -> r.url().matches(API_TEST_DEFINITION_REGEX),
         () -> byTestId("edit-" + testCaseName).click());
-    page.locator("#tableTestForm_params_columnName")
+    byTestId("edit-test-case-drawer-title")
         .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
     return this;
   }
 
-  /** Changes the columnName parameter through the edit drawer and saves. */
-  public TableDataQualityPage updateColumnNameParam(final String newValue) {
-    page.locator("#tableTestForm_params_columnName").clear();
-    page.locator("#tableTestForm_params_columnName").fill(newValue);
+  /** Update a single param field (id starts with {@code tableTestForm_params_}) and save. */
+  public TableDataQualityPage updateParamAndSave(final String paramName, final String newValue) {
+    final String selector = "#tableTestForm_params_" + paramName;
+    page.locator(selector).clear();
+    page.locator(selector).fill(newValue);
     page.waitForResponse(
         r ->
             r.url().matches(API_TEST_CASE_UPDATE_REGEX)
                 && (r.request().method().equals("PUT") || r.request().method().equals("PATCH")),
         () -> byTestId("update-btn").click());
-    // Drawer closes after save.
     byTestId("test-case-form-v1")
         .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.DETACHED));
     return this;
   }
 
-  /** Re-opens the edit drawer and reads back the columnName parameter. */
-  public String readColumnNameParam(final String testCaseName) {
+  /**
+   * Read an array-shaped param at a given index from the OPEN edit drawer (caller
+   * already invoked {@link #openEditDrawer}). Form field id pattern:
+   * {@code #tableTestForm_params_<name>_<idx>_value}.
+   */
+  public String readArrayParamValue(final String paramName, final int index) {
+    final String selector = "#tableTestForm_params_" + paramName + "_" + index + "_value";
+    page.locator(selector)
+        .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+    return page.locator(selector).inputValue();
+  }
+
+  /** Update an array-shaped param at a given index in the OPEN edit drawer and save. */
+  public TableDataQualityPage updateArrayParamAndSave(
+      final String paramName, final int index, final String newValue) {
+    final String selector = "#tableTestForm_params_" + paramName + "_" + index + "_value";
+    page.locator(selector).clear();
+    page.locator(selector).fill(newValue);
+    page.waitForResponse(
+        r ->
+            r.url().matches(API_TEST_CASE_UPDATE_REGEX)
+                && (r.request().method().equals("PUT") || r.request().method().equals("PATCH")),
+        () -> byTestId("update-btn").click());
+    byTestId("test-case-form-v1")
+        .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.DETACHED));
+    return this;
+  }
+
+  /** Click Cancel to close the OPEN edit drawer. */
+  public TableDataQualityPage cancelEditDrawer() {
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Cancel")).click();
+    byTestId("test-case-form-v1")
+        .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.DETACHED));
+    return this;
+  }
+
+  /** Re-open the edit drawer, read a param input value, then close (Cancel). */
+  public String readParam(final String testCaseName, final String paramName) {
     openEditDrawer(testCaseName);
-    final String value = page.locator("#tableTestForm_params_columnName").inputValue();
+    final String selector = "#tableTestForm_params_" + paramName;
+    page.locator(selector)
+        .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+    final String value = page.locator(selector).inputValue();
     page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Cancel")).click();
     byTestId("test-case-form-v1")
         .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.DETACHED));
