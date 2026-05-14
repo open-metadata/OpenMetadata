@@ -73,8 +73,6 @@ def test_powerbi_dashboard_display_name_accepts_none():
 
 def test_workspaces_round_trip_survives_nullable_nested_name():
     """A null ``Dataflow.name`` no longer breaks the parent ``Workspaces`` parse.
-
-    This is the exact failure mode observed in the Novartis log:
     ``workspaces.83.dataflows.17.name: Input should be a valid string``.
     """
     raw = {
