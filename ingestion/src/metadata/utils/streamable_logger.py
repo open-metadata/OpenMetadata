@@ -56,6 +56,7 @@ handler = setup_streamable_logging_for_workflow(
 import logging
 import os
 import queue
+import sys
 import threading
 import time
 from enum import Enum
@@ -67,6 +68,25 @@ from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import BASE_LOGGING_FORMAT, METADATA_LOGGER, ingestion_logger
 
 logger = ingestion_logger()
+
+# Internal logger used by this handler's own diagnostics. It MUST NOT propagate
+# to the root logger because `StreamableLogHandler` is attached there — logging
+# through `logger` from inside `emit()` or its callees re-enters this handler
+# and recurses until the Python recursion limit is hit. A separate logger with
+# `propagate=False` writing straight to stderr is the safe channel for any
+# message originating inside this module's hot path.
+_internal_logger = logging.getLogger("metadata.utils.streamable_logger.internal")
+_internal_logger.propagate = False
+if not _internal_logger.handlers:
+    _internal_handler = logging.StreamHandler(sys.stderr)
+    _internal_handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s [streamable-log-handler] %(levelname)s %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
+    _internal_logger.addHandler(_internal_handler)
+    _internal_logger.setLevel(logging.INFO)
 
 
 class CircuitBreakerError(Exception):
@@ -302,7 +322,9 @@ class StreamableLogHandler(logging.Handler):
                 time.sleep(1.0)
 
             except Exception as e:
-                logger.error(f"Error in log shipping worker: {e}")
+                # NEVER use `logger` here — this handler is attached to it and
+                # logging through `logger` would re-enter our own emit().
+                _internal_logger.error("error in log shipping worker: %s", e)
                 # Continue processing to avoid blocking
 
         # Final cleanup - drain ALL remaining items from the queue
@@ -328,18 +350,21 @@ class StreamableLogHandler(logging.Handler):
             self.metrics["circuit_trips"] += 1
             self.metrics["fallback_count"] += 1
 
-            logger.debug("Circuit breaker is OPEN, falling back to local logging")
+            # NEVER use `logger` here — this handler is attached to it.
+            _internal_logger.debug("circuit breaker is OPEN, falling back to local logging")
             for log in logs:
-                logger.info(f"[FALLBACK] {log}")
+                _internal_logger.info("[FALLBACK] %s", log)
         except (ServiceCallError, Exception) as e:
             # Service call failed, update metrics
             self.metrics["logs_failed"] += len(logs)
             self.metrics["fallback_count"] += 1
 
-            # Fallback to local logging
-            logger.debug(f"Failed to ship logs to server: {e}")
+            # Fallback to local logging via the internal (non-propagating)
+            # logger. Using `logger` here would dispatch the message back into
+            # this handler, re-entering shipping and ultimately recursing.
+            _internal_logger.debug("failed to ship logs to server: %s", e)
             for log in logs:
-                logger.info(f"[FALLBACK] {log}")
+                _internal_logger.info("[FALLBACK] %s", log)
 
     def _send_logs_to_server(self, log_content: str):
         """Send logs to the OpenMetadata server using the logs mixin"""
@@ -375,13 +400,21 @@ class StreamableLogHandler(logging.Handler):
             try:
                 self.log_queue.put_nowait(log_entry)
             except queue.Full:
-                # Queue is full, fallback to local logging
-                logger.warning("Log queue is full, falling back to local logging")
+                # Queue is full. CRITICAL: do not call `logger.warning(...)`
+                # here — this handler is attached to `logger`, so any log call
+                # from inside emit() re-enters emit(), recurses against the
+                # still-full queue, and eventually hits the Python recursion
+                # limit. This was the root cause of the production hang where
+                # MainThread sat in 900+ frames of alternating warning/error
+                # emit calls while every other thread was blocked on the
+                # logging module's internal lock.
+                _internal_logger.warning("log queue is full, falling back to local logging")
                 self.fallback_handler.emit(record)
 
         except Exception as e:
-            # Any error, fallback to local logging
-            logger.error(f"Error in emit: {e}")
+            # Any error, fallback to local logging. Same recursion hazard as
+            # above — must use the non-propagating internal logger.
+            _internal_logger.error("error in emit: %s", e)
             try:  # noqa: SIM105
                 self.fallback_handler.emit(record)
             except Exception:
@@ -407,8 +440,9 @@ class StreamableLogHandler(logging.Handler):
     def close(self):
         """Close the handler and cleanup resources"""
         if self.enable_streaming and self.worker_thread:
-            # Log final metrics
-            logger.info(f"StreamableLogHandler metrics: {self.get_metrics()}")
+            # Log final metrics via the non-propagating internal logger so
+            # close() cannot trigger a final round of self-recursion.
+            _internal_logger.info("StreamableLogHandler metrics: %s", self.get_metrics())
 
             # Signal worker to stop AFTER ensuring any pending flush is processed
             self.stop_event.set()

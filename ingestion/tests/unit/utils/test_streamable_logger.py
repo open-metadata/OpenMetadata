@@ -845,5 +845,134 @@ class TestStreamableLoggingSetup(unittest.TestCase):
         mock_metadata_logger.removeHandler.assert_called_once_with(mock_handler)
 
 
+class TestStreamableLogHandlerRecursionRegression(unittest.TestCase):
+    """
+    Regression test for the production hang where StreamableLogHandler.emit()
+    called logger.warning() / logger.error() from inside the handler's own
+    dispatch path. Because the handler is attached to that very same logger,
+    every internal log call re-entered emit(), recursing against a still-full
+    queue until the Python recursion limit was hit on MainThread while every
+    other thread was blocked on the logging module's internal lock.
+
+    The fix is to use a dedicated `_internal_logger` with `propagate=False`
+    for any message originating inside this module's hot path. These tests
+    fail if anyone re-introduces a `logger.*` call inside emit / _ship_logs /
+    _worker_loop.
+    """
+
+    def setUp(self):
+        self.mock_metadata = Mock(spec=OpenMetadata)
+        self.test_logger = logging.getLogger(f"test_streamable_recursion_{id(self)}")
+        self.test_logger.handlers = []
+        self.test_logger.setLevel(logging.DEBUG)
+        self.test_logger.propagate = False
+
+    def tearDown(self):
+        self.test_logger.handlers = []
+
+    def _make_handler(self, max_queue_size=2):
+        handler = StreamableLogHandler(
+            metadata=self.mock_metadata,
+            pipeline_fqn="test.pipeline",
+            run_id=uuid4(),
+            max_queue_size=max_queue_size,
+            enable_streaming=True,
+        )
+        # Stop the background worker so the queue cannot drain during the test.
+        handler.stop_event.set()
+        if handler.worker_thread:
+            handler.worker_thread.join(timeout=2.0)
+        # Make the local fallback a Mock so we can assert it was called once.
+        handler.fallback_handler = Mock()
+        return handler
+
+    def test_emit_does_not_recurse_when_queue_full(self):
+        """
+        emit() must complete in a single call when the queue is full.
+        Before the fix this exploded into ~1000 recursive emit() calls.
+        """
+        handler = self._make_handler(max_queue_size=2)
+        handler.log_queue.put_nowait("entry-1")
+        handler.log_queue.put_nowait("entry-2")
+        self.assertTrue(handler.log_queue.full())
+
+        self.test_logger.addHandler(handler)
+
+        call_count = {"n": 0}
+        real_emit = handler.emit
+
+        def counting_emit(record):
+            call_count["n"] += 1
+            if call_count["n"] > 5:
+                raise AssertionError(
+                    "emit() recursed — regression of the streamable_logger hang. "
+                    "Check that nothing inside emit / _ship_logs / _worker_loop "
+                    "calls the module-level `logger`; use `_internal_logger` instead."
+                )
+            real_emit(record)
+
+        handler.emit = counting_emit
+
+        start = time.monotonic()
+        # Before the fix this call would never return — MainThread would sit
+        # recursing until Python raised RecursionError, then the outer except
+        # would log.error() which would recurse again.
+        self.test_logger.warning("trigger the overflow path")
+        elapsed = time.monotonic() - start
+
+        self.assertEqual(
+            call_count["n"], 1, "emit() must be invoked exactly once per log call"
+        )
+        self.assertLess(elapsed, 1.0, "emit() must return in bounded time when queue is full")
+        handler.fallback_handler.emit.assert_called_once()
+
+    def test_emit_does_not_recurse_when_format_raises(self):
+        """
+        If self.format(record) raises, the outer except in emit() must NOT
+        route the error back through `logger` (which would recurse).
+        """
+        handler = self._make_handler(max_queue_size=10)
+        handler.format = Mock(side_effect=ValueError("boom"))
+
+        self.test_logger.addHandler(handler)
+
+        call_count = {"n": 0}
+        real_emit = handler.emit
+
+        def counting_emit(record):
+            call_count["n"] += 1
+            if call_count["n"] > 5:
+                raise AssertionError(
+                    "emit() recursed via the outer except branch — regression."
+                )
+            real_emit(record)
+
+        handler.emit = counting_emit
+
+        start = time.monotonic()
+        self.test_logger.error("trigger the format-failure path")
+        elapsed = time.monotonic() - start
+
+        self.assertEqual(call_count["n"], 1)
+        self.assertLess(elapsed, 1.0)
+
+    def test_internal_logger_is_isolated_from_root(self):
+        """
+        The `_internal_logger` must not propagate, otherwise its messages
+        would still reach the root logger (and therefore re-enter this
+        handler if it is attached there).
+        """
+        from metadata.utils.streamable_logger import _internal_logger
+
+        self.assertFalse(
+            _internal_logger.propagate,
+            "_internal_logger.propagate must be False to prevent recursion",
+        )
+        self.assertTrue(
+            _internal_logger.handlers,
+            "_internal_logger must have its own handler so messages still reach stderr",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
