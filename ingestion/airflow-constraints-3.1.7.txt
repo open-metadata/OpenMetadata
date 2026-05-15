@@ -678,7 +678,7 @@ tzlocal==5.3.1
 uc-micro-py==1.0.3
 universal_pathlib==0.2.6
 uritemplate==4.2.0
-urllib3==2.6.3
+urllib3==2.7.0
 uuid6==2025.0.1
 uv==0.9.28
 uvicorn==0.40.0

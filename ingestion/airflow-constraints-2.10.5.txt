@@ -731,7 +731,7 @@ tzlocal==5.2
 uc-micro-py==1.0.3
 universal_pathlib==0.2.6
 uritemplate==4.1.1
-urllib3==2.3.0
+urllib3==2.7.0
 userpath==1.9.2
 uv==0.5.24
 validators==0.34.0
