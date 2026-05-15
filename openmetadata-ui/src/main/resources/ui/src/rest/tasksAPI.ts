@@ -25,10 +25,14 @@ import { Task, TaskStatus } from '../generated/entity/tasks/task';
 import { Include } from '../generated/type/include';
 import APIClient from './index';
 
-export { TaskCategory, TaskPriority, TaskType as TaskEntityType } from '../generated/api/tasks/createTask';
+export {
+  TaskCategory,
+  TaskPriority,
+  TaskType as TaskEntityType,
+} from '../generated/api/tasks/createTask';
 export { ResolutionType as TaskResolutionType } from '../generated/api/tasks/resolveTask';
-export type { TaskComment } from '../generated/entity/tasks/task';
 export { TaskStatus as TaskEntityStatus } from '../generated/entity/tasks/task';
+export type { TaskComment } from '../generated/entity/tasks/task';
 export type { GenericTaskPayload as TaskPayload } from '../generated/type/genericTaskPayload';
 
 // Data access type enum - matches backend DataAccessType
