@@ -15,47 +15,6 @@ import { SearchIndex } from '../enums/search.enum';
 
 /* eslint-disable max-len */
 
-export const mockFeedData = [
-  {
-    id: '52d52eb1-b990-497f-bf80-47e52c106f85',
-    href: 'http://localhost:8585/api/v1/feed/52d52eb1-b990-497f-bf80-47e52c106f85',
-    threadTs: 1646631348958,
-    about:
-      '<#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::comments::description>',
-    entityId: '96e80f92-b8ce-456c-8f3c-ee7855e76f43',
-    createdBy: 'aaron_johnson0',
-    updatedAt: 1646631348959,
-    updatedBy: 'anonymous',
-    resolved: false,
-    message:
-      'This dimension table contains information about the staff accounts in the store. It contains one row per staff account. Use this table to generate a list of your staff accounts, or join it with the sales, API clients and locations tables to analyze staff performance at Shopify POS locations.',
-    postsCount: 0,
-    posts: [],
-  },
-  {
-    id: '60df2514-3bea-4337-a5a2-f0fe5c65237f',
-    href: 'http://localhost:8585/api/v1/feed/60df2514-3bea-4337-a5a2-f0fe5c65237f',
-    threadTs: 1646631340215,
-    about:
-      '<#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::comments::description>',
-    entityId: '96e80f92-b8ce-456c-8f3c-ee7855e76f43',
-    createdBy: 'aaron_johnson0',
-    updatedAt: 1646631340215,
-    updatedBy: 'anonymous',
-    resolved: false,
-    message: 'Can you add a description?',
-    postsCount: 0,
-    posts: [],
-  },
-];
-
-export const mockTablePermission = {
-  Create: true,
-  Delete: true,
-  ViewAll: true,
-  EditAll: true,
-};
-
 export const mockDatasetData = {
   datasetFQN: 'sample_data.ecommerce_db.shopify.dim_address',
   tableProfile: {

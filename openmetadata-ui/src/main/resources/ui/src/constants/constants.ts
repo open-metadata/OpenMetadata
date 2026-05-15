@@ -50,13 +50,11 @@ export const REFRESH_TOKEN_KEY = 'refreshToken';
 export const USER_DATA_SIZE = 5;
 export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
-export const KNOWLEDGE_LIST_LENGTH = 8;
 export const PAGE_SIZE = 10;
 export const TABLE_CARD_PAGE_SIZE = 9;
 export const PAGE_SIZE_BASE = 15;
 export const PAGE_SIZE_MEDIUM = 25;
 export const PAGE_SIZE_LARGE = 50;
-export const PAGE_SIZE_EXTRA_LARGE = 100;
 export const AGGREGATE_PAGE_SIZE_LARGE = 1000;
 export const ES_MAX_PAGE_SIZE = 10000;
 export const API_RES_MAX_SIZE = 100000;
@@ -65,7 +63,6 @@ export const LINEAGE_CHILD_ITEMS_PER_PAGE = 10;
 export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
 export const MAX_NAME_LENGTH = 256;
-export const EXPORT_ALL_ASSETS_LIMIT = 200000;
 export const INGESTION_PROGRESS_START_VAL = 20;
 export const INGESTION_PROGRESS_END_VAL = 80;
 export const DEPLOYED_PROGRESS_VAL = 100;
@@ -83,8 +80,6 @@ export const INITIAL_PAGING_STATE = {
 };
 
 export const LAST_VERSION_FETCH_TIME_KEY = 'versionFetchTime';
-export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData`;
-export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData`;
 export const VERSION = 'VERSION';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
@@ -128,8 +123,6 @@ export const PLACEHOLDER_ROUTE_DIMENSION_KEY = ':dimensionKey';
 export const pagingObject = { after: '', before: '', total: 0 };
 
 export const ES_UPDATE_DELAY = 500;
-
-export const DESCRIPTION_LENGTH = 100;
 
 export const CHART_WIDGET_DAYS_DURATION = 14;
 
@@ -393,60 +386,6 @@ export const ENTITY_PATH = {
   dataProductsTab: 'dataProductsTab',
   column: 'tableColumn',
 };
-
-export const CUSTOM_PROPERTIES_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/admin-guide/custom-properties';
-
-export const SUPPORTED_FORMAT_MAP = {
-  date: ['yyyy-MM-dd', 'dd-MM-yyyy', 'MM-dd-yyyy', 'yyyy/MM/dd', 'dd/MM/yyyy'],
-  dateTime: [
-    'yyyy-MM-dd HH:mm:ss',
-    'dd-MM-yyyy HH:mm:ss',
-    'MM-dd-yyyy HH:mm:ss',
-    'yyyy/MM/dd HH:mm:ss',
-    'dd/MM/yyyy HH:mm:ss',
-  ],
-  time: ['HH:mm:ss', 'HH:mm', 'mm:ss'],
-};
-
-export const ENTITY_REFERENCE_OPTIONS = [
-  {
-    label: i18n.t('label.table'),
-    value: 'table',
-  },
-  {
-    label: i18n.t('label.topic'),
-    value: 'topic',
-  },
-  {
-    label: i18n.t('label.dashboard'),
-    value: 'dashboard',
-  },
-  {
-    label: i18n.t('label.pipeline'),
-    value: 'pipeline',
-  },
-  {
-    label: i18n.t('label.ml-model'),
-    value: 'mlmodel',
-  },
-  {
-    label: i18n.t('label.container'),
-    value: 'container',
-  },
-  {
-    label: i18n.t('label.search-index'),
-    value: 'searchIndex',
-  },
-  {
-    label: i18n.t('label.stored-procedure'),
-    value: 'storedProcedure',
-  },
-  {
-    label: i18n.t('label.glossary-term'),
-    value: 'glossaryTerm',
-  },
-];
 
 export const VALIDATION_MESSAGES = {
   required: i18n.t('message.field-text-is-required', {

@@ -16,7 +16,8 @@ import {
   WarningOutlined,
 } from '@ant-design/icons';
 import { AxiosError } from 'axios';
-import { get, isEmpty, isString } from 'lodash';
+import get from 'lodash/get';
+import isString from 'lodash/isString';
 import React from 'react';
 import { ReactComponent as SuccessIcon } from '../assets/svg/ic-alert-success.svg';
 import { AlertBarProps } from '../components/AlertBar/AlertBar.interface';
@@ -69,22 +70,6 @@ export const getIconAndClassName = (type: AlertBarProps['type']) => {
         type: 'info',
       };
   }
-};
-
-export const hashCode = (str: string) => {
-  let hash = 0,
-    i,
-    chr;
-  if (isEmpty(str)) {
-    return hash;
-  }
-  for (i = 0; i < str.length; i++) {
-    chr = str.charCodeAt(i);
-    hash = (hash << 5) - hash + chr;
-    hash |= 0; // Convert to 32bit integer
-  }
-
-  return hash;
 };
 
 /**
@@ -147,17 +132,6 @@ export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
   useAlertStore
     .getState()
     .addAlert({ type: 'success', message }, autoCloseTimer);
-};
-
-/**
- * Display a warning toast message.
- * @param message warning message.
- * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
- */
-export const showWarningToast = (message: string, autoCloseTimer = 5000) => {
-  useAlertStore
-    .getState()
-    .addAlert({ type: 'warning', message }, autoCloseTimer);
 };
 
 /**
