@@ -40,10 +40,11 @@ const ApplicationCard = ({
       bordered={false}
       className={classNames(
         className,
-        'application-card card-body-border-none tw:transition-shadow tw:hover:shadow-xl',
+        'application-card card-body-border-none',
         {
           'application-card-disabled': isUnavailable,
-          'tw:cursor-pointer': !isUnavailable && Boolean(onClick),
+          'tw:cursor-pointer tw:transition-shadow tw:hover:shadow-xl':
+            !isUnavailable && Boolean(onClick),
         }
       )}
       data-testid={`${kebabCase(appName)}-card`}
@@ -72,10 +73,7 @@ const ApplicationCard = ({
               markdown={description}
             />
           )}
-          <Button
-            className="p-0"
-            data-testid="config-btn"
-            type="link">
+          <Button className="p-0" data-testid="config-btn" type="link">
             {linkTitle}
           </Button>
         </div>
