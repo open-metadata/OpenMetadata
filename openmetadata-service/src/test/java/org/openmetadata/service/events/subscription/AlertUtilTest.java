@@ -131,7 +131,7 @@ class AlertUtilTest {
             .withId(UUID.randomUUID())
             .withType(ThreadType.Task)
             .withEntityRef(glossaryTermRef());
-    ChangeEvent event = threadChangeEvent(thread, EventType.TASK_CREATED);
+    ChangeEvent event = threadChangeEvent(thread, EventType.TASK_RESOLVED);
     FilteringRules config = filteringRules("conversation");
     assertFalse(AlertUtil.shouldTriggerAlert(event, config));
   }
@@ -143,7 +143,7 @@ class AlertUtilTest {
             .withId(UUID.randomUUID())
             .withType(ThreadType.Task)
             .withEntityRef(glossaryTermRef());
-    ChangeEvent event = threadChangeEvent(thread, EventType.TASK_CREATED);
+    ChangeEvent event = threadChangeEvent(thread, EventType.TASK_RESOLVED);
     FilteringRules config = filteringRules("task");
     assertTrue(AlertUtil.shouldTriggerAlert(event, config));
   }
