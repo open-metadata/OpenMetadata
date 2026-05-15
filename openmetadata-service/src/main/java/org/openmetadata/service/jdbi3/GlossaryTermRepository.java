@@ -1072,9 +1072,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     List<BulkResponse> failures = new ArrayList<>();
     List<BulkResponse> success = new ArrayList<>();
 
-    if (dryRun
-        && (CommonUtil.nullOrEmpty(glossary.getTags())
-            || CommonUtil.nullOrEmpty(request.getAssets()))) {
+    if (CommonUtil.nullOrEmpty(request.getAssets())) {
       // Nothing to Validate
       return result
           .withStatus(ApiStatus.SUCCESS)
