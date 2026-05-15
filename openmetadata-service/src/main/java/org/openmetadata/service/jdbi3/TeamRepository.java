@@ -430,8 +430,8 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   public BulkOperationResult bulkRemoveAssets(
-      String domainName, BulkAssets request, String userName) {
-    Team team = getByName(null, domainName, getFields("id"));
+      String teamName, BulkAssets request, String userName) {
+    Team team = getByName(null, teamName, getFields("id"));
     validateAllRefUsers(request.getAssets());
     return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, false, userName);
   }
