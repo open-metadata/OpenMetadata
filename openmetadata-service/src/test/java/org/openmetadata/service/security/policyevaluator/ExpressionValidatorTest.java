@@ -595,4 +595,21 @@ public class ExpressionValidatorTest {
         () -> ExpressionValidator.validateExpressionSafety("'unterminated"),
         "Unterminated string should throw");
   }
+
+  /**
+   * Arithmetic is not in the policy/alert allowlist. Data Insight evaluates it via {@link
+   * org.openmetadata.service.util.DataInsightFormulaEvaluator#evaluate}, which bypasses
+   * this validator.
+   */
+  @Test
+  void testArithmeticIsRejectedByPolicyValidator() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ExpressionValidator.validateExpressionSafety("1 + 2"),
+        "Addition should be rejected by the policy/alert validator");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ExpressionValidator.validateExpressionSafety("((0.0 / 1500.0) * 100)"),
+        "Substituted DI chart formula shape should be rejected by the policy/alert validator");
+  }
 }
