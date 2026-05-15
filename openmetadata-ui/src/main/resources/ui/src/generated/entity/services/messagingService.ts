@@ -567,6 +567,7 @@ export enum MessagingServiceType {
     CustomMessaging = "CustomMessaging",
     Kafka = "Kafka",
     Kinesis = "Kinesis",
+    Nats = "Nats",
     PubSub = "PubSub",
     Redpanda = "Redpanda",
 }
