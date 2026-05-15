@@ -244,6 +244,9 @@ class ZipArchiveReader(ArchiveReader):
         for entry_info in self._zip_file.infolist():
             if entry_info.is_dir():
                 continue
+            if not _is_safe_archive_path(entry_info.filename):
+                logger.warning(f"Skipping suspicious path {entry_info.filename!r}")
+                continue
             if entry_info.file_size > _MAX_INNER_FILE_BYTES:
                 logger.warning(
                     f"Skipping {entry_info.filename!r}: uncompressed size {entry_info.file_size} exceeds limit"
@@ -319,6 +322,9 @@ class ZipRangeReader(ArchiveReader):
         for zip_entry in self._cd_entries:
             if zip_entry.name.endswith("/"):
                 continue
+            if not _is_safe_archive_path(zip_entry.name):
+                logger.warning(f"Skipping suspicious path {zip_entry.name!r}")
+                continue
             if zip_entry.uncomp_size > _MAX_INNER_FILE_BYTES:
                 logger.warning(f"Skipping {zip_entry.name!r}: uncompressed size {zip_entry.uncomp_size} exceeds limit")
                 continue
@@ -334,6 +340,11 @@ class ZipRangeReader(ArchiveReader):
                     data = compressed
                 elif zip_entry.compress_method == 8:
                     data = zlib.decompress(compressed, -15)
+                    if len(data) > _MAX_INNER_FILE_BYTES:
+                        logger.warning(
+                            f"Skipping {zip_entry.name!r}: actual decompressed size {len(data)} exceeds limit"
+                        )
+                        continue
                 else:
                     logger.warning(
                         f"Unsupported ZIP compression method {zip_entry.compress_method} for {zip_entry.name!r}"
@@ -472,6 +483,9 @@ class RarArchiveReader(ArchiveReader):
         for entry_info in self._rar_file.infolist():
             if entry_info.is_dir():
                 continue
+            if not _is_safe_archive_path(entry_info.filename):
+                logger.warning(f"Skipping suspicious path {entry_info.filename!r}")
+                continue
             if entry_info.file_size > _MAX_INNER_FILE_BYTES:
                 logger.warning(f"Skipping {entry_info.filename!r}: size {entry_info.file_size} exceeds limit")
                 continue
@@ -485,6 +499,12 @@ class RarArchiveReader(ArchiveReader):
 
     def close(self) -> None:
         self._rar_file.close()
+
+
+def _is_safe_archive_path(name: str) -> bool:
+    """Return False for paths that could cause traversal or metadata pollution."""
+    parts = name.replace("\\", "/").split("/")
+    return not name.startswith("/") and ".." not in parts
 
 
 def get_archive_reader(structure_format: str, data: bytes) -> ArchiveReader:
