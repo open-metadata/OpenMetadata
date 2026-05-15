@@ -15,7 +15,7 @@ import { DataNode } from 'antd/es/tree';
 import { AntTreeNodeProps, DirectoryTreeProps, TreeProps } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
 import { ReactComponent as KnowledgeCenterIcon } from '../../../assets/svg/ic-knowledge-page.svg';
-import { CREATE_PAGE_HASH, ROUTES } from '../../../constants/constants';
+import { CREATE_PAGE_HASH } from '../../../constants/constants';
 import {
   CreateKnowledgePage,
   KnowledgePage,
@@ -357,7 +357,7 @@ const KnowledgePagesHierarchy = forwardRef<
           activeKey === deletedPageData.fullyQualifiedName ||
           isActivePageParent
         ) {
-          navigate(homeRoute ?? ROUTES.KNOWLEDGE_CENTER);
+          navigate(homeRoute ?? contextCenterClassBase.getArticlesListPath());
         }
       },
       [knowledgePageHierarchy, onPageDelete, activeKey, activePage]

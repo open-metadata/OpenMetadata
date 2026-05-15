@@ -42,6 +42,15 @@ const ContextCenterDocumentsPage = withSuspenseFallback(
       )
   )
 );
+
+const KnowledgeCenterFilterPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../../pages/KnowledgeCenterFilterPage/KnowledgeCenterFilterPage'
+      )
+  )
+);
 {
   /* TODO: In progress */
 }
@@ -97,6 +106,10 @@ const ContextCenterRouter = () => {
           ROUTES.CONTEXT_CENTER,
           ''
         )}
+      />
+      <Route
+        element={<KnowledgeCenterFilterPage />}
+        path={ROUTES.CONTEXT_CENTER_FILTER.replace(ROUTES.CONTEXT_CENTER, '')}
       />
       {/* TODO: In progress */}
       {/* <Route

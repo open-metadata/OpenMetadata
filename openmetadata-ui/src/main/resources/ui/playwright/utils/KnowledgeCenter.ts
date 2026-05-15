@@ -115,7 +115,14 @@ export const updateTags = async (
   await page.waitForSelector('[data-testid="tag-selector"] input', {
     state: 'visible',
   });
+  const searchTagResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(`q=*${data.tag}*`) &&
+      response.request().method() === 'GET'
+  );
   await page.fill('[data-testid="tag-selector"] input', data.tag);
+  await searchTagResponse;
   await page.click(`[data-testid='tag-${data.tagFqn}']`);
 
   await expect(

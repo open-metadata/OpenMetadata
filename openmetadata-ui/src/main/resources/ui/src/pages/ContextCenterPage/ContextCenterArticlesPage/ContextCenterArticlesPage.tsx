@@ -30,7 +30,6 @@ import {
   QuickLinkFormModal,
   QuickLinkFormModalFormData,
 } from '../../../components/KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
-import { ROUTES } from '../../../constants/constants';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -251,7 +250,7 @@ const ContextCenterArticlesPage = () => {
     <KnowledgePagesHierarchy
       activeKey={fqn}
       activePage={page.data}
-      homeRoute={ROUTES.CONTEXT_CENTER_ARTICLES}
+      homeRoute={contextCenterClassBase.getArticlesListPath()}
       isPageHeaderAvailable={Boolean(fqn)}
       permissions={permissions}
       ref={knowledgePagesHierarchyRef}

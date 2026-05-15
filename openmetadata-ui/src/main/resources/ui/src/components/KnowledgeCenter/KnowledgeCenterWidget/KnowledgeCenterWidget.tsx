@@ -42,7 +42,7 @@ import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './KnowledgeCenterWidget.less';
 
-import { ROUTES } from '../../../constants/constants';
+import contextCenterClassBase from 'utils/ContextCenterClassBase';
 const KnowledgeCenterWidget = ({
   isEditView = false,
   widgetKey,
@@ -86,8 +86,8 @@ const KnowledgeCenterWidget = ({
   const emptyState = useMemo(() => {
     return (
       <WidgetEmptyState
-        actionButtonLink={ROUTES.KNOWLEDGE_CENTER}
-        actionButtonText={t('label.create-articles')}
+        actionButtonLink={contextCenterClassBase.getArticlesListPath()}
+        actionButtonText={t('label.create-entity', {entity: t('label.article')})}
         description={t('message.no-article-data')}
         icon={
           <KnowledgeCenterNoDataPlaceholder
@@ -171,7 +171,7 @@ const KnowledgeCenterWidget = ({
   const footer = useMemo(() => {
     return (
       <WidgetFooter
-        moreButtonLink={ROUTES.KNOWLEDGE_CENTER}
+        moreButtonLink={contextCenterClassBase.getArticlesListPath()}
         moreButtonText={t('label.view-more')}
         showMoreButton={showWidgetFooterMoreButton}
       />
@@ -189,7 +189,7 @@ const KnowledgeCenterWidget = ({
         isEditView={isEditView}
         title={t('label.knowledge-center')}
         widgetKey={widgetKey}
-        onTitleClick={() => navigate(ROUTES.KNOWLEDGE_CENTER)}
+        onTitleClick={() => navigate(contextCenterClassBase.getArticlesListPath())}
       />
     );
   }, [
