@@ -535,25 +535,27 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     throwIfCircuitOpen("bulkStoreRelationships");
 
     // Per-source-entity reconciliation: for each (fromType, fromId) in this
-    // batch, wipe every outgoing entity-to-entity edge from that source first,
-    // EXCEPT lineage edges (UPSTREAM / wasDerivedFrom / hasLineageDetails) which
-    // are managed separately by addLineageWithDetails. Then insert the current
-    // batch. This ensures relationships that USED to exist for the source but
-    // are no longer in the batch get removed — the original implementation only
-    // deleted the exact triples in the new batch, so stale edges accumulated.
+    // batch, wipe every outgoing relationship-hook edge from that source first,
+    // then insert the current batch. This ensures relationships that USED to
+    // exist but are no longer in the batch get removed — the original
+    // implementation only deleted the exact triples in the new batch, so
+    // stale edges accumulated.
     //
-    // The lineage predicate URIs in the FILTER are literal-hardcoded so they
-    // match what addLineageWithDetails actually writes — that method emits
-    // `https://open-metadata.org/ontology/UPSTREAM` and
-    // `.../hasLineageDetails` as literal strings rather than deriving from
-    // `baseUri`. Switching this filter to be `baseUri`-derived would stop
-    // matching the stored lineage triples on non-default baseUri deployments
-    // and incorrectly delete them. See RdfRepository.clearOutgoingEntityRelationships
-    // for the same exclusion rationale.
+    // The DELETE filter is scoped to RELATIONSHIP_HOOK_PREDICATES (derived
+    // from the Relationship enum, see RdfRepository) so it ONLY touches
+    // predicates that addRelationship / bulkAddRelationships actually write.
+    // Lineage predicates (managed by addLineageWithDetails) and
+    // translator-managed predicates (om:hasOwner / om:hasTag / etc., managed
+    // by storeEntity's predicate-scoped DELETE) are NOT in the set and are
+    // therefore preserved across reconciliation.
     Set<String> distinctSources = new LinkedHashSet<>();
     for (RelationshipData rel : relationships) {
       distinctSources.add(baseUri + "entity/" + rel.getFromType() + "/" + rel.getFromId());
     }
+
+    String hookPredicateList =
+        org.openmetadata.service.rdf.RdfRepository.buildPredicateInList(
+            org.openmetadata.service.rdf.RdfRepository.RELATIONSHIP_HOOK_PREDICATES);
 
     StringBuilder deleteUpdate = new StringBuilder();
     boolean firstDelete = true;
@@ -571,11 +573,9 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           .append(KNOWLEDGE_GRAPH)
           .append("> { <")
           .append(sourceUri)
-          .append("> ?p ?o . FILTER(isIRI(?o) && STRSTARTS(STR(?o), \"")
-          .append(baseUri)
-          .append("entity/\") && ?p != <https://open-metadata.org/ontology/UPSTREAM> && ?p")
-          .append(
-              " != <http://www.w3.org/ns/prov#wasDerivedFrom> && ?p != <https://open-metadata.org/ontology/hasLineageDetails>) } }");
+          .append("> ?p ?o . FILTER(?p IN (")
+          .append(hookPredicateList)
+          .append(")) } }");
     }
 
     StringBuilder insertData = new StringBuilder();
