@@ -907,9 +907,11 @@ class RdfIndexAppTest {
       method.setAccessible(true);
       method.invoke(rdfIndexApp, "table", mockEntities);
 
-      // Verify bulkAddRelationships was called with the relationships
+      // Verify bulkAddRelationships was called with the relationships +
+      // batchSources (Fix-I — RdfBatchProcessor now passes its batchSources
+      // to scope the per-source DELETE inside JenaFusekiStorage).
       var captor = org.mockito.ArgumentCaptor.forClass(List.class);
-      verify(mockRdfRepository).bulkAddRelationships(captor.capture());
+      verify(mockRdfRepository).bulkAddRelationships(captor.capture(), anySet());
 
       @SuppressWarnings("unchecked")
       List<org.openmetadata.schema.type.EntityRelationship> storedRelationships = captor.getValue();
@@ -998,12 +1000,13 @@ class RdfIndexAppTest {
       method.invoke(rdfIndexApp, "table", mockEntities);
 
       // The eventSubscription edge is filtered out, so no relationships make it
-      // to bulkAddRelationships and no per-edge writes happen. The batch's
-      // source entity still gets its outgoing entity-to-entity edges cleared so
-      // any stale RDF state from prior runs is reconciled — that's the only
-      // expected interaction.
-      verify(mockRdfRepository).clearOutgoingEntityRelationships(anySet());
-      verify(mockRdfRepository, never()).bulkAddRelationships(anyList());
+      // into the bulk insert. The batch's source entity still gets reconciled
+      // (any stale RDF state from prior runs cleared) — bulkAddRelationships
+      // takes an empty list + batchSources and emits the DELETE in the same
+      // SPARQL update. The separate clearOutgoingEntityRelationships call
+      // was retired when the clear was folded into bulkAddRelationships'
+      // atomic transaction; verify the 2-arg overload instead.
+      verify(mockRdfRepository).bulkAddRelationships(eq(java.util.List.of()), anySet());
       verify(mockRdfRepository, never())
           .addRelationship(any(org.openmetadata.schema.type.EntityRelationship.class));
     }
@@ -1039,10 +1042,10 @@ class RdfIndexAppTest {
       method.invoke(rdfIndexApp, "table", mockEntities);
 
       // Same expectation as the canonical-type variant: filtered relationships
-      // never reach bulkAddRelationships, but the per-source reconciliation
-      // clear still runs for the batch entity.
-      verify(mockRdfRepository).clearOutgoingEntityRelationships(anySet());
-      verify(mockRdfRepository, never()).bulkAddRelationships(anyList());
+      // never reach the insert side; bulkAddRelationships is still invoked
+      // with an empty list + batchSources so the atomic clear+insert reconciles
+      // the source entity's existing RDF state.
+      verify(mockRdfRepository).bulkAddRelationships(eq(java.util.List.of()), anySet());
       verify(mockRdfRepository, never())
           .addRelationship(any(org.openmetadata.schema.type.EntityRelationship.class));
     }
