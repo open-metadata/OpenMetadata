@@ -40,12 +40,14 @@ const ApplicationCard = ({
       bordered={false}
       className={classNames(
         className,
-        'application-card card-body-border-none',
+        'application-card card-body-border-none tw:transition-shadow tw:hover:shadow-xl',
         {
           'application-card-disabled': isUnavailable,
+          'tw:cursor-pointer': !isUnavailable && Boolean(onClick),
         }
       )}
-      data-testid={`${kebabCase(appName)}-card`}>
+      data-testid={`${kebabCase(appName)}-card`}
+      onClick={!isUnavailable ? onClick : undefined}>
       <div className="d-flex items-center gap-3">
         <div className="application-logo">
           <AppLogo appName={appName} />
@@ -73,8 +75,7 @@ const ApplicationCard = ({
           <Button
             className="p-0"
             data-testid="config-btn"
-            type="link"
-            onClick={onClick}>
+            type="link">
             {linkTitle}
           </Button>
         </div>
