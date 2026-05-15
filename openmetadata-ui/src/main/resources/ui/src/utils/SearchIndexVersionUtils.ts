@@ -32,11 +32,12 @@ import {
   isEndsWithField,
 } from './EntityVersionUtils';
 import { TagLabelWithStatus } from './EntityVersionUtils.interface';
+import { safeJsonParseStrict } from './jsonUtils';
 
 const handleFieldDescriptionChangeDiff = (
   fieldsDiff: EntityDiffProps,
   fieldList: SearchIndex['fields'] = [],
-  changedFieldName?: string
+  changedFieldName?: string,
 ) => {
   const oldDescription = getChangedEntityOldValue(fieldsDiff);
   const newDescription = getChangedEntityNewValue(fieldsDiff);
@@ -46,7 +47,7 @@ const handleFieldDescriptionChangeDiff = (
       i.description = getTextDiff(
         oldDescription,
         newDescription,
-        i.description
+        i.description,
       );
     }
   });
@@ -57,13 +58,15 @@ const handleFieldDescriptionChangeDiff = (
 const handleFieldTagChangeDiff = (
   fieldsDiff: EntityDiffProps,
   fieldList: SearchIndex['fields'] = [],
-  changedFieldName?: string
+  changedFieldName?: string,
 ) => {
-  const oldTags: Array<TagLabel> = JSON.parse(
-    getChangedEntityOldValue(fieldsDiff) ?? '[]'
+  const oldTags: Array<TagLabel> = safeJsonParseStrict<Array<TagLabel>>(
+    getChangedEntityOldValue(fieldsDiff),
+    [],
   );
-  const newTags: Array<TagLabel> = JSON.parse(
-    getChangedEntityNewValue(fieldsDiff) ?? '[]'
+  const newTags: Array<TagLabel> = safeJsonParseStrict<Array<TagLabel>>(
+    getChangedEntityNewValue(fieldsDiff),
+    [],
   );
 
   fieldList?.forEach((i) => {
@@ -77,7 +80,7 @@ const handleFieldTagChangeDiff = (
             flag[elem.tagFQN] = true;
             uniqueTags.push(elem);
           }
-        }
+        },
       );
       i.tags = uniqueTags;
     }
@@ -88,11 +91,11 @@ const handleFieldTagChangeDiff = (
 
 const handleFieldDiffAdded = (
   fieldsDiff: EntityDiffProps,
-  fieldList: SearchIndex['fields'] = []
+  fieldList: SearchIndex['fields'] = [],
 ) => {
-  const newField: SearchIndex['fields'] = JSON.parse(
-    fieldsDiff.added?.newValue ?? '[]'
-  );
+  const newField: SearchIndex['fields'] = safeJsonParseStrict<
+    SearchIndex['fields']
+  >(fieldsDiff.added?.newValue, []);
   newField?.forEach((field) => {
     const formatFieldData = (arr: SearchIndex['fields']) => {
       arr?.forEach((i) => {
@@ -112,9 +115,9 @@ const handleFieldDiffAdded = (
 };
 
 const getDeletedFields = (fieldsDiff: EntityDiffProps) => {
-  const newField: SearchIndex['fields'] = JSON.parse(
-    fieldsDiff.deleted?.oldValue ?? '[]'
-  );
+  const newField: SearchIndex['fields'] = safeJsonParseStrict<
+    SearchIndex['fields']
+  >(fieldsDiff.deleted?.oldValue, []);
 
   return newField?.map((field) => ({
     ...field,
@@ -128,14 +131,14 @@ const getDeletedFields = (fieldsDiff: EntityDiffProps) => {
 
 export const getUpdatedSearchIndexFields = (
   currentVersionData: VersionData,
-  changeDescription: ChangeDescription
+  changeDescription: ChangeDescription,
 ) => {
   const fieldsList = cloneDeep(
-    (currentVersionData as SearchIndex).fields ?? []
+    (currentVersionData as SearchIndex).fields ?? [],
   );
   const fieldsDiff = getAllDiffByFieldName(
     EntityField.FIELDS,
-    changeDescription
+    changeDescription,
   );
   const changedFields = getAllChangedEntityNames(fieldsDiff);
 
@@ -149,19 +152,19 @@ export const getUpdatedSearchIndexFields = (
       newFieldsList = handleFieldDescriptionChangeDiff(
         fieldDiff,
         fieldsList,
-        changedFieldName
+        changedFieldName,
       );
     } else if (isEndsWithField(EntityField.TAGS, changedField)) {
       newFieldsList = handleFieldTagChangeDiff(
         fieldDiff,
         fieldsList,
-        changedFieldName
+        changedFieldName,
       );
     } else {
       const fieldsDiff = getDiffByFieldName(
         EntityField.TASKS,
         changeDescription,
-        true
+        true,
       );
       if (fieldsDiff.added) {
         newFieldsList = handleFieldDiffAdded(fieldsDiff, fieldsList);

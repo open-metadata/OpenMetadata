@@ -34,9 +34,10 @@ import {
   getTextDiff,
   isEndsWithField,
 } from './EntityVersionUtils';
+import { safeJsonParseStrict } from './jsonUtils';
 
 export function getNewFieldFromSchemaFieldDiff(
-  newCol: Array<Field>
+  newCol: Array<Field>,
 ): Array<Field> {
   return newCol.map((col) => {
     let children: Array<Field> | undefined;
@@ -57,7 +58,7 @@ export function getNewFieldFromSchemaFieldDiff(
 }
 
 export function getNewSchemaFromSchemaDiff(
-  newField: Array<Field>
+  newField: Array<Field>,
 ): Array<Field> {
   return newField.map((field) => {
     let children: Array<Field> | undefined;
@@ -79,12 +80,12 @@ export function getNewSchemaFromSchemaDiff(
 
 export function createAddedSchemasDiff(
   schemaFieldsDiff: EntityDiffProps,
-  schemaFields: Array<Field> = []
+  schemaFields: Array<Field> = [],
 ) {
-  const newField: Array<Field> = JSON.parse(
-    schemaFieldsDiff.added?.newValue ?? '[]'
+  const newField: Array<Field> = safeJsonParseStrict<Array<Field>>(
+    schemaFieldsDiff.added?.newValue,
+    [],
   );
-
   newField.forEach((field) => {
     const formatSchemaFieldsData = (arr: Array<Field>, updateAll?: boolean) => {
       arr?.forEach((i) => {
@@ -109,21 +110,22 @@ export function createAddedSchemasDiff(
 export function addDeletedSchemasDiff(
   columnsDiff: EntityDiffProps,
   colList: Array<Field> = [],
-  changedEntity = ''
+  changedEntity = '',
 ) {
-  const newCol: Array<Field> = JSON.parse(
-    columnsDiff.deleted?.oldValue ?? '[]'
+  const newCol: Array<Field> = safeJsonParseStrict<Array<Field>>(
+    columnsDiff.deleted?.oldValue,
+    [],
   );
   const newColumns = getNewFieldFromSchemaFieldDiff(newCol);
 
   const insertNewSchemaField = (
     changedEntityField: string,
-    colArray: Array<Field>
+    colArray: Array<Field>,
   ) => {
     const fieldsArray = changedEntityField.split(FQN_SEPARATOR_CHAR);
     if (isEmpty(changedEntityField)) {
       const nonExistingColumns = newColumns.filter((newColumn) =>
-        isUndefined(colArray.find((col) => col.name === newColumn.name))
+        isUndefined(colArray.find((col) => col.name === newColumn.name)),
       );
       colArray.unshift(...nonExistingColumns);
     } else {
@@ -140,30 +142,31 @@ export function getSchemasDiff(
   schemaFieldsDiff: EntityDiffProps,
   changedEntity = '',
   schemaFields: Array<Field> = [],
-  clonedMessageSchema?: MessageSchemaObject | APISchema
+  clonedMessageSchema?: MessageSchemaObject | APISchema,
 ) {
   if (schemaFieldsDiff.added) {
     createAddedSchemasDiff(schemaFieldsDiff, schemaFields);
   }
   if (schemaFieldsDiff.deleted) {
-    const newField: Array<Field> = JSON.parse(
-      schemaFieldsDiff.deleted?.oldValue ?? '[]'
+    const newField: Array<Field> = safeJsonParseStrict<Array<Field>>(
+      schemaFieldsDiff.deleted?.oldValue,
+      [],
     );
     const newFields = getNewSchemaFromSchemaDiff(newField);
     const insertNewField = (
       changedEntityField: string,
-      fieldArray: Array<Field>
+      fieldArray: Array<Field>,
     ) => {
       const changedFieldsArray = changedEntityField.split(FQN_SEPARATOR_CHAR);
       if (isEmpty(changedEntityField)) {
         const nonExistingFields = newFields.filter((newField) =>
-          isUndefined(fieldArray.find((field) => field.name === newField.name))
+          isUndefined(fieldArray.find((field) => field.name === newField.name)),
         );
         fieldArray.unshift(...nonExistingFields);
       } else {
         const parentField = changedFieldsArray.shift();
         const arr = fieldArray.find(
-          (field) => field.name === parentField
+          (field) => field.name === parentField,
         )?.children;
 
         insertNewField(changedFieldsArray.join(FQN_SEPARATOR_CHAR), arr ?? []);
@@ -181,13 +184,13 @@ export function getSchemasDiff(
 
 export const getVersionedSchema = (
   schema: MessageSchemaObject | APISchema,
-  changeDescription: ChangeDescription
+  changeDescription: ChangeDescription,
 ): MessageSchemaObject | APISchema => {
   let clonedMessageSchema = cloneDeep(schema);
   const schemaFields = clonedMessageSchema?.schemaFields;
   const schemaFieldsDiff = getAllDiffByFieldName(
     EntityField.SCHEMA_FIELDS,
-    changeDescription
+    changeDescription,
   );
 
   const changedSchemaFields = getAllChangedEntityNames(schemaFieldsDiff);
@@ -195,7 +198,7 @@ export const getVersionedSchema = (
   changedSchemaFields?.forEach((changedSchemaField) => {
     const schemaFieldDiff = getDiffByFieldName(
       changedSchemaField,
-      changeDescription
+      changeDescription,
     );
     const changedEntityName = getChangedEntityName(schemaFieldDiff);
     const changedSchemaFieldName =
@@ -205,7 +208,7 @@ export const getVersionedSchema = (
       const formattedSchema = getEntityDescriptionDiff(
         schemaFieldDiff,
         changedSchemaFieldName,
-        schemaFields
+        schemaFields,
       );
 
       clonedMessageSchema = {
@@ -216,7 +219,7 @@ export const getVersionedSchema = (
       const formattedSchema = getEntityTagDiff(
         schemaFieldDiff,
         changedSchemaFieldName,
-        schemaFields
+        schemaFields,
       );
 
       clonedMessageSchema = {
@@ -228,7 +231,7 @@ export const getVersionedSchema = (
         schemaFieldDiff,
         EntityField.DISPLAYNAME,
         changedSchemaFieldName,
-        schemaFields
+        schemaFields,
       );
 
       clonedMessageSchema = {
@@ -242,7 +245,7 @@ export const getVersionedSchema = (
         schemaFieldDiff,
         EntityField.DATA_TYPE_DISPLAY,
         changedSchemaFieldName,
-        schemaFields
+        schemaFields,
       );
 
       clonedMessageSchema = {
@@ -258,14 +261,14 @@ export const getVersionedSchema = (
       const schemaFieldsDiff = getDiffByFieldName(
         changedEntityName ?? '',
         changeDescription,
-        true
+        true,
       );
 
       clonedMessageSchema = getSchemasDiff(
         schemaFieldsDiff,
         changedEntity,
         schemaFields,
-        clonedMessageSchema
+        clonedMessageSchema,
       );
     }
   });
