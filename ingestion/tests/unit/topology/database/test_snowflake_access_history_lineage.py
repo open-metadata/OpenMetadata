@@ -166,6 +166,10 @@ def test_combined_lineage_sql_streams_one_row_per_edge():
     assert "directSources" in rendered
     # LEFT JOIN binds column array to its table edge
     assert "LEFT JOIN column_edges_grouped" in rendered
+    # SQL text is joined back from QUERY_HISTORY on the representative query_id
+    assert "qh_repr.QUERY_TEXT" in rendered
+    assert "LEFT JOIN SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY qh_repr" in rendered
+    # No per-downstream array caps
     assert "ARRAY_SLICE" not in rendered
 
 
@@ -292,6 +296,43 @@ def test_table_edges_resolve_and_emit_lineage_requests():
     assert str(request.edge.toEntity.id.root) == "22222222-2222-2222-2222-222222222222"
     assert request.edge.lineageDetails.source == LineageEdgeSource.QueryLineage
     assert request.edge.lineageDetails.columnsLineage is None
+    # Row had no query_text → sqlQuery stays unset
+    assert request.edge.lineageDetails.sqlQuery is None
+
+
+def test_sql_query_text_attaches_when_present_in_row():
+    """The representative QUERY_TEXT from QUERY_HISTORY should land on LineageDetails.sqlQuery."""
+    upstream_entity = _make_table_entity("11111111-1111-1111-1111-111111111111", "DB", "SCHEMA", "ORDERS")
+    downstream_entity = _make_table_entity("22222222-2222-2222-2222-222222222222", "DB", "SCHEMA", "REVENUE")
+    metadata = MagicMock()
+    metadata.get_by_name = MagicMock(
+        side_effect=lambda entity, fqn: {
+            "test_service.DB.SCHEMA.ORDERS": upstream_entity,
+            "test_service.DB.SCHEMA.REVENUE": downstream_entity,
+        }.get(fqn)
+    )
+    representative_sql = "INSERT INTO REVENUE (total_amount) SELECT amount FROM ORDERS WHERE active = true"
+    src = _make_lineage_source(
+        metadata=metadata,
+        rows_by_sql={
+            "ACCESS_HISTORY": [
+                _Row(
+                    upstream_table="DB.SCHEMA.ORDERS",
+                    upstream_domain="Table",
+                    downstream_table="DB.SCHEMA.REVENUE",
+                    downstream_domain="Table",
+                    query_id="abc",
+                    query_text=representative_sql,
+                    column_pairs=None,
+                ),
+            ],
+        },
+    )
+    edges = list(src._yield_combined_access_history())
+    assert len(edges) == 1
+    details = edges[0].right.edge.lineageDetails
+    assert details.sqlQuery is not None
+    assert str(details.sqlQuery.root) == representative_sql
 
 
 def test_table_edges_skip_when_either_side_unresolvable():

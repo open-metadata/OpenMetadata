@@ -600,11 +600,14 @@ SNOWFLAKE_ACCESS_HISTORY_LINEAGE = textwrap.dedent(
         te.DOWNSTREAM_TABLE,
         te.DOWNSTREAM_DOMAIN,
         te.QUERY_ID,
+        qh_repr.QUERY_TEXT,
         ce.COLUMN_PAIRS
     FROM table_edges te
     LEFT JOIN column_edges_grouped ce
         ON te.UPSTREAM_TABLE = ce.UPSTREAM_TABLE
         AND te.DOWNSTREAM_TABLE = ce.DOWNSTREAM_TABLE
+    LEFT JOIN {account_usage}.QUERY_HISTORY qh_repr
+        ON te.QUERY_ID = qh_repr.QUERY_ID
     """
 )
 

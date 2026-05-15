@@ -263,9 +263,11 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         column_pairs = self._parse_column_pairs(row_dict.get("column_pairs"))
         columns_lineage = self._build_columns_lineage(downstream_entity, upstream_entity, column_pairs)
 
-        lineage_details = LineageDetails(source=LineageEdgeSource.QueryLineage)
-        if columns_lineage:
-            lineage_details.columnsLineage = columns_lineage
+        lineage_details = LineageDetails(
+            source=LineageEdgeSource.QueryLineage,
+            sqlQuery=row_dict.get("query_text") or None,
+            columnsLineage=columns_lineage or None,
+        )
 
         return AddLineageRequest(
             edge=EntitiesEdge(
