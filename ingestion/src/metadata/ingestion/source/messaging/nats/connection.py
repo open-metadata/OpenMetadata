@@ -110,7 +110,7 @@ def _build_connect_opts(connection: NatsConnection) -> dict:
         opts["token"] = connection.token.get_secret_value()
 
     if connection.nkeySeed:
-        opts["nkeys_seed"] = connection.nkeySeed.get_secret_value().encode()
+        opts["nkeys_seed_str"] = connection.nkeySeed.get_secret_value()
 
     if connection.tlsConfig and connection.tlsConfig.root:
         opts["tls"] = _build_tls_context(connection.tlsConfig.root)
