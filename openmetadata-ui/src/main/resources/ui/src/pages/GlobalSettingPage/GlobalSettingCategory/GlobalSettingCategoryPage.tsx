@@ -79,42 +79,47 @@ const GlobalSettingCategoryPage = () => {
     return categoryItem;
   }, [settingCategory, permissions, isAdminUser]);
 
-  const handleSettingItemClick = useCallback((key: string) => {
-    const [category, option] = key.split('.');
+  const handleSettingItemClick = useCallback(
+    (key: string) => {
+      const [category, option] = key.split('.');
 
-    switch (option) {
-      case GlobalSettingOptions.TEAMS:
-        navigate(getTeamsWithFqnPath(TeamType.Organization));
+      switch (option) {
+        case GlobalSettingOptions.TEAMS:
+          navigate(getTeamsWithFqnPath(TeamType.Organization));
 
-        break;
-      case GlobalSettingOptions.ONLINE_USERS:
-        navigate(getSettingPath(category, option));
-
-        break;
-      case GlobalSettingOptions.SEARCH:
-        if (category === GlobalSettingsMenuCategory.PREFERENCES) {
-          navigate(
-            getSettingsPathWithFqn(
-              category,
-              option,
-              ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.ON_DEMAND
-            )
-          );
-        } else {
+          break;
+        case GlobalSettingOptions.ONLINE_USERS:
           navigate(getSettingPath(category, option));
-        }
 
-        break;
-      default:
-        if (isEmbedded && category === GlobalSettingsMenuCategory.SERVICES) {
-          navigate(connectionsRouterClassBase.getSettingsServicesPath(option));
-        } else {
-          navigate(getSettingPath(category, option));
-        }
+          break;
+        case GlobalSettingOptions.SEARCH:
+          if (category === GlobalSettingsMenuCategory.PREFERENCES) {
+            navigate(
+              getSettingsPathWithFqn(
+                category,
+                option,
+                ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.ON_DEMAND
+              )
+            );
+          } else {
+            navigate(getSettingPath(category, option));
+          }
 
-        break;
-    }
-  }, [isEmbedded, navigate]);
+          break;
+        default:
+          if (isEmbedded && category === GlobalSettingsMenuCategory.SERVICES) {
+            navigate(
+              connectionsRouterClassBase.getSettingsServicesPath(option)
+            );
+          } else {
+            navigate(getSettingPath(category, option));
+          }
+
+          break;
+      }
+    },
+    [isEmbedded, navigate]
+  );
 
   return (
     <PageLayoutV1 pageTitle={t('label.setting-plural')}>

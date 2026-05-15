@@ -464,8 +464,7 @@ export const getLogsViewerPath = (
 // under a sub-path register a provider; without one, input passes through.
 export type AppContextProvider = (urlOrPath: string) => string;
 
-const identityAppContextProvider: AppContextProvider = (urlOrPath) =>
-  urlOrPath;
+const identityAppContextProvider: AppContextProvider = (urlOrPath) => urlOrPath;
 
 let currentAppContextProvider: AppContextProvider = identityAppContextProvider;
 

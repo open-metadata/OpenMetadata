@@ -38,8 +38,8 @@ import {
 import { PRIMARY_COLOR } from '../constants/Color.constants';
 import { EntityType } from '../enums/entity.enum';
 import { getEntityLinkFromType } from './EntityUtils';
-import { inCurrentAppContext } from './RouterUtils';
 import ELKLayout from './Lineage/Layout/ELKUtil/ELKUtil';
+import { inCurrentAppContext } from './RouterUtils';
 
 // Layout: padding(8) + icon(14) + gap(8) + label + gap(8) + typeChip + padding(8)
 // label: 14px bold ≈ 9.5px per char
