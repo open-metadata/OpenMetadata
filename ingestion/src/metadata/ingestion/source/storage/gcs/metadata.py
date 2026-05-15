@@ -307,20 +307,16 @@ class GcsSource(StorageServiceSource):
         client = self.gcs_clients.storage_client.clients[bucket_response.project_id]
         bucket_client = client.bucket(bucket_name)
         blob = GCSBlobAdapter(bucket_client, archive_path)
-        try:
-            with open_archive_reader(blob, metadata_entry.structureFormat) as reader:
-                for entry, columns, entry_format in iter_archive_entries_with_schema(reader):
-                    yield from self._generate_inner_file_container(
-                        entry=entry,
-                        archive_ref=archive_ref,
-                        archive_prefix=prefix,
-                        columns=columns,
-                        entry_format=entry_format,
-                        bucket_response=bucket_response,
-                    )
-        except Exception as exc:
-            logger.warning(f"Cannot open archive {archive_path!r}: {exc}")
-            logger.debug(traceback.format_exc())
+        with open_archive_reader(blob, metadata_entry.structureFormat) as reader:
+            for entry, columns, entry_format in iter_archive_entries_with_schema(reader):
+                yield from self._generate_inner_file_container(
+                    entry=entry,
+                    archive_ref=archive_ref,
+                    archive_prefix=prefix,
+                    columns=columns,
+                    entry_format=entry_format,
+                    bucket_response=bucket_response,
+                )
 
     def _generate_container_details(
         self,
@@ -419,11 +415,15 @@ class GcsSource(StorageServiceSource):
                         metadata_entry=metadata_entry,
                         parent=parent,
                     )
-                except Exception as exc:
+                except (ValueError, OSError) as exc:
                     logger.warning(
                         f"Failed processing archive {metadata_entry.dataPath!r}: {exc}"
                     )
                     logger.debug(traceback.format_exc())
+                except Exception as exc:
+                    logger.error(
+                        f"Unexpected error processing archive {metadata_entry.dataPath!r}: {exc}", exc_info=True
+                    )
                 continue
             if metadata_entry.depth == 0:
                 structured_container: Optional[GCSContainerDetails] = self._generate_container_details(  # noqa: UP045
