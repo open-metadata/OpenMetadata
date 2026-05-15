@@ -17,8 +17,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
@@ -49,18 +54,22 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
   private static final String METADATA_GRAPH = "https://open-metadata.org/graph/metadata";
 
-  // 2s caps TCP connect, which catches the primary failure mode (Fuseki down /
-  // crash-looping). Per-request body timeouts aren't wired in: QueryExecution.
-  // setTimeout exists in Jena 4 but was removed in Jena 5, and our integration
-  // test classpath brings in 5.x — a previous attempt at read-side timeouts
-  // failed at runtime there with NoSuchMethodError. A clean fix needs to go
-  // through QueryExecutionHTTPBuilder.timeout() / UpdateExecHTTPBuilder.
-  // timeout() for both Jena 4 and 5, which requires rebuilding the query/update
-  // path instead of routing through RDFConnection. For now the circuit breaker
-  // below + the bounded pendingWrites gate in RdfUpdater contain the blast
-  // radius: after CIRCUIT_BREAKER_FAILURE_THRESHOLD slow/failed calls the
-  // breaker trips and short-circuits subsequent traffic for the cooldown.
+  // 2s caps TCP connect (Fuseki down / crash-looping). REQUEST_TIMEOUT_MS
+  // bounds the per-request body via a CompletableFuture wrapper around every
+  // blocking RDFConnection call below — caller thread frees on timeout even
+  // when Fuseki accepts the TCP connection and then stalls on the response.
+  //
+  // We use CompletableFuture rather than Jena's QueryExecution.setTimeout
+  // (removed in Jena 5; broke integration tests previously) or Jena's
+  // QueryExecutionHTTPBuilder / UpdateExecHTTPBuilder (API surface differs
+  // between Jena 4 and Jena 5, and our two classpaths use different
+  // versions). The wrapper is Jena-API-agnostic. On timeout the underlying
+  // HTTP request continues to leak its (virtual) thread until OS-level TCP
+  // give-up; that's bounded by the circuit breaker, which trips after
+  // CIRCUIT_BREAKER_FAILURE_THRESHOLD timeouts and short-circuits new
+  // traffic for CIRCUIT_BREAKER_COOLDOWN_MS.
   private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(2);
+  private static final long REQUEST_TIMEOUT_MS = 10_000L;
   private static final int CIRCUIT_BREAKER_FAILURE_THRESHOLD = 5;
   private static final long CIRCUIT_BREAKER_COOLDOWN_MS = 30_000L;
 
@@ -321,6 +330,44 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     return false;
   }
 
+  // Run a blocking RDFConnection call with a request-level deadline.
+  // CompletableFuture.runAsync executes the supplier on the common ForkJoinPool;
+  // get(REQUEST_TIMEOUT_MS, …) frees this thread when the deadline hits, even
+  // if the underlying HTTP request continues blocking until the server
+  // responds (or the OS gives up on the socket). Exceptions thrown by the
+  // supplier are unwrapped from ExecutionException so the caller sees the
+  // original Jena HttpException, IOException, etc. and can decide whether to
+  // retry or surface to the circuit breaker.
+  private static <T> T runWithTimeout(Supplier<T> op, String description) {
+    CompletableFuture<T> future = CompletableFuture.supplyAsync(op);
+    try {
+      return future.get(REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    } catch (TimeoutException te) {
+      // Cancellation doesn't actually interrupt Jena's HTTP call, but
+      // releases this thread; the leaked task continues until OS TCP timeout.
+      future.cancel(true);
+      throw new RuntimeException(description + " timed out after " + REQUEST_TIMEOUT_MS + "ms", te);
+    } catch (ExecutionException ee) {
+      Throwable cause = ee.getCause() != null ? ee.getCause() : ee;
+      if (cause instanceof RuntimeException re) {
+        throw re;
+      }
+      throw new RuntimeException(description + " failed", cause);
+    } catch (InterruptedException ie) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException(description + " interrupted", ie);
+    }
+  }
+
+  private static void runWithTimeout(Runnable op, String description) {
+    runWithTimeout(
+        () -> {
+          op.run();
+          return null;
+        },
+        description);
+  }
+
   // Union the translator's static "always managed" predicates with whatever
   // predicates the current model actually emits for this entity. The static
   // set covers shrink-to-empty cases (e.g. all tags removed -> current model
@@ -392,8 +439,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     while (retryCount < maxRetries) {
       try {
         UpdateRequest deleteRequest = UpdateFactory.create(deleteQuery);
-        connection.update(deleteRequest);
-        connection.load(KNOWLEDGE_GRAPH, entityModel);
+        runWithTimeout(() -> connection.update(deleteRequest), "storeEntity delete");
+        runWithTimeout(() -> connection.load(KNOWLEDGE_GRAPH, entityModel), "storeEntity load");
         LOG.debug("Stored entity {} in graph {}", entityId, KNOWLEDGE_GRAPH);
         recordSuccess();
         return;
@@ -481,7 +528,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       try {
         LOG.debug("SPARQL Update Query: {}", deleteInsertQuery);
         UpdateRequest request = UpdateFactory.create(deleteInsertQuery);
-        connection.update(request);
+        runWithTimeout(() -> connection.update(request), "storeRelationship");
         LOG.debug("Stored relationship (idempotent): {} -{}- {}", fromId, relationshipType, toId);
         recordSuccess();
         return; // Success
@@ -613,11 +660,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     try {
       if (deleteUpdate.length() > 0) {
         UpdateRequest deleteRequest = UpdateFactory.create(deleteUpdate.toString());
-        connection.update(deleteRequest);
+        runWithTimeout(() -> connection.update(deleteRequest), "bulkStoreRelationships delete");
       }
 
       UpdateRequest insertRequest = UpdateFactory.create(insertData.toString());
-      connection.update(insertRequest);
+      runWithTimeout(() -> connection.update(insertRequest), "bulkStoreRelationships insert");
       LOG.info(
           "Bulk stored {} relationships, reconciled {} source entities",
           relationships.size(),
@@ -644,10 +691,14 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
     try {
       Query q = QueryFactory.create(query);
-      Model result;
-      try (QueryExecution qexec = connection.query(q)) {
-        result = qexec.execConstruct();
-      }
+      Model result =
+          runWithTimeout(
+              () -> {
+                try (QueryExecution qexec = connection.query(q)) {
+                  return qexec.execConstruct();
+                }
+              },
+              "getEntity");
       recordSuccess();
       return result.isEmpty() ? null : result;
     } catch (Exception e) {
@@ -673,7 +724,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
     try {
       UpdateRequest request = UpdateFactory.create(deleteQuery);
-      connection.update(request);
+      runWithTimeout(() -> connection.update(request), "deleteEntity");
       LOG.debug("Deleted entity {} from Fuseki", entityId);
       recordSuccess();
     } catch (Exception e) {
@@ -689,7 +740,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   public String executeSparqlQuery(String sparqlQuery, String format) {
     throwIfCircuitOpen("executeSparqlQuery");
     try {
-      String result = doExecuteSparqlQuery(sparqlQuery, format);
+      String result =
+          runWithTimeout(() -> doExecuteSparqlQuery(sparqlQuery, format), "executeSparqlQuery");
       recordSuccess();
       return result;
     } catch (Exception e) {
@@ -766,7 +818,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     throwIfCircuitOpen("executeSparqlUpdate");
     try {
       UpdateRequest request = UpdateFactory.create(sparqlUpdate);
-      connection.update(request);
+      runWithTimeout(() -> connection.update(request), "executeSparqlUpdate");
       LOG.debug("Executed SPARQL update on Fuseki");
       recordSuccess();
     } catch (Exception e) {
