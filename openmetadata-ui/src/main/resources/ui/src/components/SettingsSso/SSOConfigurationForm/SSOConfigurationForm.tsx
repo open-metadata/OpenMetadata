@@ -22,7 +22,7 @@ import {
 } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Check, UploadCloud02, X } from '@untitledui/icons';
-import { Button, Card, Typography, Upload } from 'antd';
+import { Button, Card, Select, Typography, Upload } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -70,6 +70,8 @@ import {
   handleClientTypeChange,
   hasFieldValidationErrors,
   isValidNonBasicProvider,
+  mirrorConfidentialOidcFields,
+  OIDC_PROVIDER_OPTIONS,
   parseSamlMetadataXml,
   parseValidationErrors,
   removeRequiredFields,
@@ -86,10 +88,14 @@ import { FieldErrorTemplate } from '../../common/Form/JSONSchema/JSONSchemaTempl
 import LdapRoleMappingWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/LdapRoleMappingWidget/LdapRoleMappingWidget';
 import SelectWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
 import Loader from '../../common/Loader/Loader';
+import AuthModeWidget from './AuthModeWidget';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import { UnsavedChangesModal } from '../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import ProviderSelector from '../ProviderSelector/ProviderSelector';
 import SSODocPanel from '../SSODocPanel/SSODocPanel';
+import { TestLoginResult } from '../TestLogin/TestLogin.interface';
+import ClaimSelector from '../TestLogin/ClaimSelector.component';
+import TestLoginButton from '../TestLogin/TestLoginButton.component';
 import { SSOGroupedFieldTemplate } from '../SSOGroupedFieldTemplate/SSOGroupedFieldTemplate';
 import './sso-configuration-form.less';
 import {
@@ -154,6 +160,7 @@ const MetadataUploadStatusCard = ({
 const widgets = {
   SelectWidget: SelectWidget,
   LdapRoleMappingWidget: LdapRoleMappingWidget,
+  AuthModeWidget: AuthModeWidget,
 };
 
 const SSOConfigurationFormRJSF = ({
@@ -188,6 +195,218 @@ const SSOConfigurationFormRJSF = ({
   const [metadataUploadFileName, setMetadataUploadFileName] =
     useState<string>('');
   const fieldErrorsRef = useRef<ErrorSchema>({});
+  const [testLoginResult, setTestLoginResult] = useState<
+    TestLoginResult | undefined
+  >();
+
+  type ValidationGateStatus =
+    | 'idle'
+    | 'validating'
+    | 'validated'
+    | 'testing'
+    | 'tested';
+  const [validationStatus, setValidationStatus] =
+    useState<ValidationGateStatus>('idle');
+
+  const areMainFieldsFilled = (data: FormData | undefined): boolean => {
+    const auth = data?.authenticationConfiguration;
+    if (!auth) {
+      return false;
+    }
+
+    if (auth.provider === AuthProvider.Saml) {
+      const idp = (auth.samlConfiguration as Record<string, unknown> | undefined)
+        ?.idp as Record<string, unknown> | undefined;
+      return (
+        !!(idp?.entityId as string) &&
+        !!(idp?.ssoLoginUrl as string) &&
+        !!(idp?.idpX509Certificate as string)
+      );
+    }
+
+    if (auth.provider === AuthProvider.LDAP) {
+      const ldap = auth.ldapConfiguration as Record<string, unknown> | undefined;
+      return (
+        !!(ldap?.host as string) &&
+        !!(ldap?.port as number) &&
+        !!(ldap?.dnAdminPrincipal as string) &&
+        !!(ldap?.dnAdminPassword as string) &&
+        !!(ldap?.userBaseDN as string) &&
+        !!(ldap?.mailAttributeName as string)
+      );
+    }
+
+    if (auth.clientType !== ClientType.Confidential) {
+      return true;
+    }
+    const oidc = auth.oidcConfiguration as Record<string, unknown> | undefined;
+    return (
+      !!auth.discoveryUri &&
+      !!(oidc?.id as string) &&
+      !!(oidc?.secret as string)
+    );
+  };
+
+  const didValidationInputsChange = (
+    prev: FormData | undefined,
+    next: FormData | undefined
+  ): boolean => {
+    const p = prev?.authenticationConfiguration;
+    const n = next?.authenticationConfiguration;
+    if (!p || !n) {
+      return true;
+    }
+    if (p.provider !== n.provider || p.clientType !== n.clientType) {
+      return true;
+    }
+
+    if (n.provider === AuthProvider.Saml) {
+      const pIdp = (p.samlConfiguration as Record<string, unknown> | undefined)
+        ?.idp as Record<string, unknown> | undefined;
+      const nIdp = (n.samlConfiguration as Record<string, unknown> | undefined)
+        ?.idp as Record<string, unknown> | undefined;
+      return (
+        pIdp?.entityId !== nIdp?.entityId ||
+        pIdp?.ssoLoginUrl !== nIdp?.ssoLoginUrl ||
+        pIdp?.idpX509Certificate !== nIdp?.idpX509Certificate ||
+        pIdp?.nameId !== nIdp?.nameId
+      );
+    }
+
+    if (n.provider === AuthProvider.LDAP) {
+      const pLdap = p.ldapConfiguration as Record<string, unknown> | undefined;
+      const nLdap = n.ldapConfiguration as Record<string, unknown> | undefined;
+      return (
+        pLdap?.host !== nLdap?.host ||
+        pLdap?.port !== nLdap?.port ||
+        pLdap?.dnAdminPrincipal !== nLdap?.dnAdminPrincipal ||
+        pLdap?.dnAdminPassword !== nLdap?.dnAdminPassword ||
+        pLdap?.userBaseDN !== nLdap?.userBaseDN ||
+        pLdap?.mailAttributeName !== nLdap?.mailAttributeName
+      );
+    }
+
+    if (p.discoveryUri !== n.discoveryUri) {
+      return true;
+    }
+    const pOidc = p.oidcConfiguration as Record<string, unknown> | undefined;
+    const nOidc = n.oidcConfiguration as Record<string, unknown> | undefined;
+    return pOidc?.id !== nOidc?.id || pOidc?.secret !== nOidc?.secret;
+  };
+
+  const handleTestLoginSuccess = useCallback(
+    (result: TestLoginResult) => {
+      // LDAP skips ClaimSelector. The OM-issued JWT after LDAP bind always has
+      // claim name "email" (hardcoded in JWTTokenGenerator), so emailClaim is NOT
+      // the LDAP mailAttributeName — it's the JWT claim. We leave it unset and let
+      // jwtPrincipalClaims fallback ("email", "preferred_username", "sub") resolve
+      // it. Only principalDomain and adminPrincipals are auto-filled here.
+      if (currentProvider === AuthProvider.LDAP) {
+        setInternalData((prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const existingAdmins = prev.authorizerConfiguration?.adminPrincipals ?? [];
+          const suggested = result.suggestedAdminPrincipal ?? '';
+          const mergedAdmins = suggested
+            ? Array.from(new Set([...existingAdmins, suggested]))
+            : existingAdmins;
+
+          return {
+            ...prev,
+            authorizerConfiguration: {
+              ...prev.authorizerConfiguration,
+              principalDomain: result.derivedPrincipalDomain ?? '',
+              adminPrincipals: mergedAdmins,
+            },
+          };
+        });
+        setValidationStatus('tested');
+        showSuccessToast(t('message.test-login-success'));
+        return;
+      }
+      // OIDC / SAML — show ClaimSelector for the user to pick the email claim.
+      setTestLoginResult(result);
+    },
+    [currentProvider, internalData, t]
+  );
+
+  const handleClaimConfirm = useCallback(
+    (emailClaim: string, principalDomain: string, adminPrincipal: string) => {
+      setInternalData((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          authenticationConfiguration: {
+            ...prev.authenticationConfiguration,
+            emailClaim,
+          },
+          authorizerConfiguration: {
+            ...prev.authorizerConfiguration,
+            principalDomain,
+            adminPrincipals: [
+              ...new Set([
+                ...(prev.authorizerConfiguration?.adminPrincipals ?? []),
+                adminPrincipal,
+              ]),
+            ],
+          },
+        };
+      });
+      setTestLoginResult(undefined);
+      setValidationStatus('tested');
+      showSuccessToast(t('message.test-login-success'));
+    },
+    [t]
+  );
+
+  const handleClaimCancel = useCallback(() => {
+    setTestLoginResult(undefined);
+  }, []);
+
+  const isOidcProvider =
+    currentProvider === AuthProvider.Google ||
+    currentProvider === AuthProvider.Azure ||
+    currentProvider === AuthProvider.Okta ||
+    currentProvider === AuthProvider.Auth0 ||
+    currentProvider === AuthProvider.AwsCognito ||
+    currentProvider === AuthProvider.CustomOidc;
+
+  const handleOidcProviderChange = useCallback(
+    (providerKey: string) => {
+      const selectedOption = OIDC_PROVIDER_OPTIONS.find(
+        (opt) => opt.key === providerKey
+      );
+      if (!selectedOption) {
+        return;
+      }
+
+      setCurrentProvider(selectedOption.key);
+      setInternalData((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          authenticationConfiguration: {
+            ...prev.authenticationConfiguration,
+            provider: selectedOption.key,
+            providerName: selectedOption.label,
+            discoveryUri: selectedOption.discoveryUriTemplate || '',
+            oidcConfiguration: {
+              ...prev.authenticationConfiguration?.oidcConfiguration,
+              type: selectedOption.key,
+            },
+          },
+        };
+      });
+    },
+    []
+  );
 
   // Helper function to setup configuration state - extracted to avoid redundancy
   const setupConfigurationState = useCallback(
@@ -684,6 +903,15 @@ const SSOConfigurationFormRJSF = ({
       authConfig?.clientType
     );
 
+    mirrorConfidentialOidcFields(authConfig);
+
+    if (
+      validationStatus !== 'idle' &&
+      didValidationInputsChange(internalData, newFormData)
+    ) {
+      setValidationStatus('idle');
+    }
+
     setInternalData(newFormData);
     handleProviderChange(newFormData);
   };
@@ -778,6 +1006,63 @@ const SSOConfigurationFormRJSF = ({
     },
     [handleValidationError, handleApiError]
   );
+
+  // Helper: Run validate?context=testLogin to gate Test Login button enablement.
+  const handleValidate = useCallback(async () => {
+    if (!internalData) {
+      return;
+    }
+    setValidationStatus('validating');
+    fieldErrorsRef.current = {};
+    setErrorClearTrigger(0);
+
+    try {
+      const cleanedFormData = cleanupProviderSpecificFields(
+        internalData,
+        internalData?.authenticationConfiguration?.provider as string
+      );
+      if (!cleanedFormData) {
+        setValidationStatus('idle');
+
+        return;
+      }
+
+      const payload: SecurityConfiguration = {
+        authenticationConfiguration: cleanedFormData.authenticationConfiguration,
+        authorizerConfiguration: cleanedFormData.authorizerConfiguration,
+      };
+
+      const response = await validateSecurityConfiguration(payload, 'testLogin');
+      const result = response.data;
+
+      if (
+        'errors' in result &&
+        Array.isArray(result.errors) &&
+        result.errors.length > 0
+      ) {
+        handleValidationError(result);
+        setValidationStatus('idle');
+
+        return;
+      }
+
+      if (
+        result.status === 'failed' ||
+        result.status !== VALIDATION_STATUS.SUCCESS
+      ) {
+        handleValidationError(result);
+        setValidationStatus('idle');
+
+        return;
+      }
+
+      showSuccessToast(t('message.configuration-validated-successfully'));
+      setValidationStatus('validated');
+    } catch (error) {
+      handleApiError(error);
+      setValidationStatus('idle');
+    }
+  }, [internalData, handleValidationError, handleApiError, t]);
 
   // Helper: Save existing configuration using PATCH
   const saveExistingConfiguration = useCallback(
@@ -994,9 +1279,73 @@ const SSOConfigurationFormRJSF = ({
   }
 
   const isSamlProvider = currentProvider === AuthProvider.Saml;
+  const isLdapProvider = currentProvider === AuthProvider.LDAP;
+
+  const selectedOidcOption = OIDC_PROVIDER_OPTIONS.find(
+    (opt) => opt.key === currentProvider
+  );
 
   const formContent = (
     <>
+      {isEditMode && showForm && isOidcProvider && (
+        <div className="m-b-md p-x-md">
+          <Typography.Text strong className="m-b-xs d-block">
+            {t('label.identity-provider')}
+          </Typography.Text>
+          <Select
+            className="w-full"
+            data-testid="oidc-provider-select"
+            value={currentProvider}
+            onChange={handleOidcProviderChange}>
+            {OIDC_PROVIDER_OPTIONS.map((opt) => (
+              <Select.Option key={opt.key} value={opt.key}>
+                <div className="d-flex items-center gap-2">
+                  <img alt={opt.label} height={16} src={opt.icon} width={16} />
+                  <span>{opt.label}</span>
+                </div>
+              </Select.Option>
+            ))}
+          </Select>
+          {selectedOidcOption?.helpText && (
+            <Typography.Text className="text-grey-muted text-xs m-t-xs d-block">
+              {selectedOidcOption.helpText}
+            </Typography.Text>
+          )}
+        </div>
+      )}
+      {isEditMode && showForm && isSamlProvider && !hasExistingConfig && (
+        <div
+          className="m-b-md p-md"
+          style={{
+            background: '#F5F8FF',
+            border: '1px solid #B8D0FF',
+            borderRadius: 6,
+          }}>
+          <Typography.Text strong>
+            Before running Test Login, register these with your SAML IdP:
+          </Typography.Text>
+          <ul className="m-t-xs m-b-0" style={{ paddingLeft: 20 }}>
+            <li>
+              <Typography.Text>ACS / Reply URL: </Typography.Text>
+              <Typography.Text code copyable>
+                {`${window.location.origin}/callback`}
+              </Typography.Text>
+            </li>
+            <li>
+              <Typography.Text>SP Entity ID: </Typography.Text>
+              <Typography.Text code copyable>
+                {window.location.origin}
+              </Typography.Text>
+            </li>
+            <li>
+              <Typography.Text>SP Metadata (optional): </Typography.Text>
+              <Typography.Text code copyable>
+                {`${window.location.origin}/api/v1/saml/metadata`}
+              </Typography.Text>
+            </li>
+          </ul>
+        </div>
+      )}
       {isEditMode && showForm && isSamlProvider && (
         <div className="m-b-md">
           {metadataUploadStatus === null && (
@@ -1111,6 +1460,42 @@ const SSOConfigurationFormRJSF = ({
             children: (
               <>
                 {formContent}
+                {isEditMode &&
+                  (isOidcProvider || isSamlProvider || isLdapProvider) &&
+                  !testLoginResult && (
+                  <div className="m-t-md m-b-md p-x-md">
+                    {validationStatus !== 'validated' ? (
+                      <Button
+                        data-testid="validate-sso-configuration"
+                        disabled={
+                          !showForm ||
+                          validationStatus === 'validating' ||
+                          !areMainFieldsFilled(internalData)
+                        }
+                        loading={validationStatus === 'validating'}
+                        type="primary"
+                        onClick={handleValidate}>
+                        {t('label.validate')}
+                      </Button>
+                    ) : (
+                      <TestLoginButton
+                        disabled={!showForm}
+                        formData={internalData?.authenticationConfiguration}
+                        securityConfig={internalData}
+                        onSuccess={handleTestLoginSuccess}
+                      />
+                    )}
+                  </div>
+                )}
+                {testLoginResult && (
+                  <div className="m-t-md m-b-md p-x-md">
+                    <ClaimSelector
+                      result={testLoginResult}
+                      onCancel={handleClaimCancel}
+                      onConfirm={handleClaimConfirm}
+                    />
+                  </div>
+                )}
                 {isEditMode && (
                   <div className="form-actions-bottom">
                     <Button
@@ -1123,7 +1508,12 @@ const SSOConfigurationFormRJSF = ({
                     <Button
                       className="save-sso-configuration text-md"
                       data-testid="save-sso-configuration"
-                      disabled={isLoading}
+                      disabled={
+                        isLoading ||
+                        ((isOidcProvider || isSamlProvider || isLdapProvider) &&
+                          !hasExistingConfig &&
+                          validationStatus !== 'tested')
+                      }
                       loading={isLoading}
                       type="primary"
                       onClick={handleSave}>
@@ -1211,6 +1601,42 @@ const SSOConfigurationFormRJSF = ({
             <>
               <div className="sso-form-sticky-header" />
               {wrappedFormContent}
+              {isEditMode &&
+                (isOidcProvider || isSamlProvider || isLdapProvider) &&
+                !testLoginResult && (
+                <div className="m-t-md m-b-md">
+                  {validationStatus !== 'validated' ? (
+                    <Button
+                      data-testid="validate-sso-configuration"
+                      disabled={
+                        !showForm ||
+                        validationStatus === 'validating' ||
+                        !areMainFieldsFilled(internalData)
+                      }
+                      loading={validationStatus === 'validating'}
+                      type="primary"
+                      onClick={handleValidate}>
+                      {t('label.validate')}
+                    </Button>
+                  ) : (
+                    <TestLoginButton
+                      disabled={!showForm}
+                      formData={internalData?.authenticationConfiguration}
+                      securityConfig={internalData}
+                      onSuccess={handleTestLoginSuccess}
+                    />
+                  )}
+                </div>
+              )}
+              {testLoginResult && (
+                <div className="m-t-md m-b-md">
+                  <ClaimSelector
+                    result={testLoginResult}
+                    onCancel={handleClaimCancel}
+                    onConfirm={handleClaimConfirm}
+                  />
+                </div>
+              )}
               {isEditMode && (
                 <div className="form-actions-bottom">
                   <Button
@@ -1223,7 +1649,12 @@ const SSOConfigurationFormRJSF = ({
                   <Button
                     className="save-sso-configuration text-md"
                     data-testid="save-sso-configuration"
-                    disabled={isLoading}
+                    disabled={
+                      isLoading ||
+                      ((isOidcProvider || isSamlProvider || isLdapProvider) &&
+                        !hasExistingConfig &&
+                        validationStatus !== 'tested')
+                    }
                     loading={isLoading}
                     type="primary"
                     onClick={handleSave}>

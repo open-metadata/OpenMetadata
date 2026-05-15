@@ -74,11 +74,16 @@ public class AzureAuthValidator {
     try {
       String tenantId = oidcConfig.getTenant();
 
-      // Validate tenant ID for confidential clients
+      // Validate tenant ID for confidential clients. The upstream discoveryUri
+      // reachability check (in SystemRepository) will have already triggered
+      // tenant derivation via normalizeForPersistence. If tenant is still empty
+      // here, it means no discoveryUri was provided and the user did not set
+      // tenant manually.
       if (nullOrEmpty(tenantId)) {
         return ValidationErrorBuilder.createFieldError(
             ValidationErrorBuilder.FieldPaths.OIDC_TENANT,
-            "Tenant ID is required for Azure confidential clients");
+            "Tenant could not be determined from Discovery URI. Provide a valid Azure"
+                + " Discovery URI or set Tenant manually in advanced config.");
       }
 
       // Validate tenant ID format
@@ -126,13 +131,9 @@ public class AzureAuthValidator {
         discoveryUri = AZURE_LOGIN_BASE + "/" + tenantId + "/v2.0" + OPENID_CONFIG_PATH;
       }
 
-      // First validate that the discovery URI is accessible
-      FieldError tenantValidation = validateDiscoveryEndpoint(discoveryUri, tenantId);
-      if (tenantValidation != null) {
-        return tenantValidation;
-      }
-
-      // Validate against the discovery document
+      // Discovery URI reachability is validated upstream in SystemRepository.
+      // Here we run only the semantic checks against the discovery document
+      // (scopes, algorithms, endpoints, prompts).
       FieldError discoveryCheck =
           discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, oidcConfig);
       if (discoveryCheck != null) {
@@ -154,37 +155,6 @@ public class AzureAuthValidator {
     } catch (Exception e) {
       LOG.error("Azure confidential client validation failed", e);
       return ValidationErrorBuilder.createFieldError("", "Failed azure confidential validation");
-    }
-  }
-
-  private FieldError validateDiscoveryEndpoint(String discoveryUrl, String tenantId) {
-    try {
-      LOG.debug("Validating Azure discovery endpoint: {}", discoveryUrl);
-      ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUrl);
-
-      if (response.getStatusCode() == 404) {
-        return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
-            "Azure discovery endpoint not found. Please verify the discovery URI is correct");
-      } else if (response.getStatusCode() != 200) {
-        return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
-            "Failed to access Azure discovery endpoint. HTTP response: "
-                + response.getStatusCode());
-      }
-
-      // Parse and validate the discovery document
-      JsonNode discoveryDoc = JsonUtils.readTree(response.getBody());
-      if (!discoveryDoc.has("issuer") || !discoveryDoc.has("token_endpoint")) {
-        return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
-            "Invalid Azure discovery document format at: " + discoveryUrl);
-      }
-      return null;
-    } catch (Exception e) {
-      return ValidationErrorBuilder.createFieldError(
-          ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
-          "Azure discovery document validation failed");
     }
   }
 

@@ -649,6 +649,9 @@ public class SystemResource {
     String configJson = JsonUtils.pojoToJson(originalConfig);
     SecurityConfiguration config = JsonUtils.readValue(configJson, SecurityConfiguration.class);
 
+    // Hydrate canonical fields from legacy locations so UI sees a consistent shape
+    systemRepository.hydrateForResponse(config.getAuthenticationConfiguration());
+
     // Apply password masking if needed - only to the copy
     if (authorizer.shouldMaskPasswords(securityContext)) {
       // Mask OIDC configuration if present
@@ -690,14 +693,15 @@ public class SystemResource {
   public Response updateSecurityConfig(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid SecurityConfiguration securityConfig) {
+      SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
 
     try {
       AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
 
-      // Auto-populate publicKeyUrls for OIDC confidential clients before saving
-      systemRepository.autoPopulatePublicKeyUrlsIfNeeded(authConfig);
+      // Normalize authentication configuration for persistence: mirror canonical and legacy
+      // field locations, derive authority/publicKeyUrls from discoveryUri, default callbackUrl.
+      systemRepository.normalizeForPersistence(authConfig);
 
       // Update both configurations in a transaction
       Settings authSettings =
@@ -766,6 +770,12 @@ public class SystemResource {
       SecurityConfiguration updatedConfig =
           JsonUtils.readValue(jsonString, SecurityConfiguration.class);
 
+      // Normalize after patch so derived fields (authority, publicKeyUrls, etc.)
+      // stay in sync with patched canonical fields like discoveryUri or oidcConfig.id.
+      if (updatedConfig.getAuthenticationConfiguration() != null) {
+        systemRepository.normalizeForPersistence(updatedConfig.getAuthenticationConfiguration());
+      }
+
       String currentUsername = SecurityUtil.getUserName(securityContext);
       SecurityValidationResponse validationResponse =
           systemRepository.validateSecurityConfiguration(
@@ -831,11 +841,23 @@ public class SystemResource {
                     schema = @Schema(implementation = SecurityValidationResponse.class)))
       })
   public SecurityValidationResponse validateSecurityConfig(
-      @Context SecurityContext securityContext, @Valid SecurityConfiguration securityConfig) {
+      @Context SecurityContext securityContext,
+      @QueryParam("context") String context,
+      SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
+
+    // Normalize configuration before validation so authority, publicKeyUrls,
+    // and mirrored fields are populated from discoveryUri.
+    AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
+    if (authConfig != null) {
+      systemRepository.normalizeForPersistence(authConfig);
+    }
+
     String currentUsername = SecurityUtil.getUserName(securityContext);
+    boolean isTestLoginContext = "testLogin".equals(context);
+
     return systemRepository.validateSecurityConfiguration(
-        securityConfig, applicationConfig, currentUsername);
+        securityConfig, applicationConfig, currentUsername, isTestLoginContext);
   }
 
   @GET

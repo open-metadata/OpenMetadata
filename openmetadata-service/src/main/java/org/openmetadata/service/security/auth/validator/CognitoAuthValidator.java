@@ -153,35 +153,22 @@ public class CognitoAuthValidator {
   }
 
   private FieldError validateUserPool(CognitoDetails cognitoDetails) {
+    // Discovery URI reachability + issuer/jwks_uri presence are validated upstream
+    // in SystemRepository.validateDiscoveryUriReachable. Here we run only the
+    // Cognito-specific semantic checks (issuer format, required endpoints).
     try {
-      // Test discovery endpoint
       ValidationHttpUtil.HttpResponseData response =
           ValidationHttpUtil.safeGet(cognitoDetails.discoveryUri);
-
-      if (response.getStatusCode() == 404) {
+      if (response.getStatusCode() != 200) {
         return ValidationErrorBuilder.createFieldError(
             ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
-            "Cognito user pool '"
-                + cognitoDetails.userPoolId
-                + "' not found in region '"
-                + cognitoDetails.region
-                + "'. Please verify the user pool ID and region.");
-      } else if (response.getStatusCode() != 200) {
-        return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
-            "Failed to access Cognito discovery endpoint. HTTP response: "
-                + response.getStatusCode());
+            "Cognito user pool not found. Verify the Cognito pool ID and region in the"
+                + " Discovery URI (HTTP "
+                + response.getStatusCode()
+                + ").");
       }
-
       JsonNode discoveryDoc = JsonUtils.readTree(response.getBody());
 
-      if (!discoveryDoc.has("issuer") || !discoveryDoc.has("authorization_endpoint")) {
-        return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
-            "Invalid Cognito discovery document format");
-      }
-
-      // Validate issuer format
       String issuer = discoveryDoc.get("issuer").asText();
       String expectedIssuer =
           String.format(
@@ -193,16 +180,14 @@ public class CognitoAuthValidator {
             "Unexpected issuer in Cognito discovery document. Expected: " + expectedIssuer);
       }
 
-      // Check for required Cognito endpoints
-      if (!discoveryDoc.has("token_endpoint")
-          || !discoveryDoc.has("userinfo_endpoint")
-          || !discoveryDoc.has("jwks_uri")) {
+      if (!discoveryDoc.has("authorization_endpoint")
+          || !discoveryDoc.has("token_endpoint")
+          || !discoveryDoc.has("userinfo_endpoint")) {
         return ValidationErrorBuilder.createFieldError(
             ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
             "Missing required Cognito endpoints in discovery document");
       }
-
-      return null; // Success - Cognito user pool validated
+      return null;
     } catch (Exception e) {
       return ValidationErrorBuilder.createFieldError(
           ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,

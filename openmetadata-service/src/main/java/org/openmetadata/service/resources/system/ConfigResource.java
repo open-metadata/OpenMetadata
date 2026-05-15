@@ -19,10 +19,17 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.FormParam;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.util.HashMap;
 import java.util.Map;
 import org.openmetadata.api.configuration.UiThemePreference;
@@ -38,6 +45,9 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceAPIClientConfig;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.auth.TestLdapHandler;
+import org.openmetadata.service.security.auth.TestLoginHandler;
+import org.openmetadata.service.security.auth.TestSamlHandler;
 import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
@@ -218,5 +228,145 @@ public class ConfigResource {
       })
   public JWKSResponse getJWKSResponse() {
     return jwtTokenGenerator.getJWKSResponse();
+  }
+
+  @POST
+  @Path("/auth/test-login/initiate")
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Operation(
+      operationId = "testLoginInitiate",
+      summary = "Initiate OIDC Test Login",
+      description =
+          "Initiates an OIDC Test Login flow by redirecting to the IdP. "
+              + "Accepts form-encoded body so secrets stay out of the URL. "
+              + "Opens in a popup window via hidden form POST with target=_blank.")
+  public Response testLoginInitiate(
+      @Context HttpServletRequest request,
+      @FormParam("discoveryUri") String discoveryUri,
+      @FormParam("clientId") String clientId,
+      @FormParam("clientSecret") String clientSecret,
+      @FormParam("scope") String scope,
+      @FormParam("callbackUrl") String callbackUrl,
+      @FormParam("prompt") String prompt,
+      @FormParam("maxAge") String maxAge,
+      @FormParam("clientAuthenticationMethod") String clientAuthMethod,
+      @FormParam("disablePkce") String disablePkce,
+      @FormParam("useNonce") String useNonce,
+      @FormParam("customParams") String customParams) {
+    return TestLoginHandler.handleInitiate(
+        request,
+        discoveryUri,
+        clientId,
+        clientSecret,
+        scope,
+        callbackUrl,
+        prompt,
+        maxAge,
+        clientAuthMethod,
+        disablePkce,
+        useNonce,
+        customParams);
+  }
+
+  @POST
+  @Path("/auth/test-login/saml-initiate")
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Operation(
+      operationId = "samlTestLoginInitiate",
+      summary = "Initiate SAML Test Login",
+      description =
+          "Initiates a SAML Test Login flow by redirecting the browser to the IdP SSO URL "
+              + "with a SAML AuthnRequest. Expects form-encoded body with idpEntityId, "
+              + "idpSsoLoginUrl, idpX509Certificate, spEntityId, spAcsUrl, nameIdFormat. "
+              + "Browser is typically navigated to this endpoint via a hidden form POST "
+              + "with target=_blank so the response 302 loads inside the popup.")
+  public Response samlTestLoginInitiate(
+      @Context HttpServletRequest request,
+      @Context HttpServletResponse response,
+      @FormParam("idpEntityId") String idpEntityId,
+      @FormParam("idpSsoLoginUrl") String idpSsoLoginUrl,
+      @FormParam("idpX509Certificate") String idpX509Certificate,
+      @FormParam("spEntityId") String spEntityId,
+      @FormParam("spAcsUrl") String spAcsUrl,
+      @FormParam("nameIdFormat") String nameIdFormat) {
+    return TestSamlHandler.handleInitiate(
+        request,
+        response,
+        idpEntityId,
+        idpSsoLoginUrl,
+        idpX509Certificate,
+        spEntityId,
+        spAcsUrl,
+        nameIdFormat);
+  }
+
+  @POST
+  @Path("/auth/test-login")
+  @Operation(
+      operationId = "testLoginLdap",
+      summary = "Test Login (LDAP) — saved config",
+      description =
+          "Tests LDAP authentication using the SAVED LDAP configuration. "
+              + "For pre-save LDAP Test Login, use /auth/test-login/ldap-initiate instead.")
+  public Response testLoginLdap(Map<String, String> credentials) {
+    String email = credentials.get("email");
+    String password = credentials.get("password");
+    Map<String, Object> result = TestLoginHandler.handleLdapTestLogin(email, password);
+
+    return Response.ok(result).build();
+  }
+
+  @POST
+  @Path("/auth/test-login/ldap-initiate")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "ldapTestLoginInitiate",
+      summary = "Initiate LDAP Test Login (pre-save)",
+      description =
+          "Tests LDAP authentication using form-provided configuration — does not rely on "
+              + "saved state. Accepts { ldapConfiguration, email, password } as JSON body. "
+              + "Binds as admin, searches for the user by mailAttributeName, binds as the user "
+              + "to verify password, and returns the derived email + domain + admin principal.")
+  public Response ldapTestLoginInitiate(LdapTestLoginRequest body) {
+    if (body == null || body.getLdapConfiguration() == null) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(Map.of("success", false, "error", "ldapConfiguration is required"))
+          .build();
+    }
+    Map<String, Object> result =
+        TestLdapHandler.handleLdapTestLogin(
+            body.getLdapConfiguration(), body.getEmail(), body.getPassword());
+    return Response.ok(result).build();
+  }
+
+  public static class LdapTestLoginRequest {
+    private org.openmetadata.schema.auth.LdapConfiguration ldapConfiguration;
+    private String email;
+    private String password;
+
+    public org.openmetadata.schema.auth.LdapConfiguration getLdapConfiguration() {
+      return ldapConfiguration;
+    }
+
+    public void setLdapConfiguration(
+        org.openmetadata.schema.auth.LdapConfiguration ldapConfiguration) {
+      this.ldapConfiguration = ldapConfiguration;
+    }
+
+    public String getEmail() {
+      return email;
+    }
+
+    public void setEmail(String email) {
+      this.email = email;
+    }
+
+    public String getPassword() {
+      return password;
+    }
+
+    public void setPassword(String password) {
+      this.password = password;
+    }
   }
 }
