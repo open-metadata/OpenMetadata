@@ -209,7 +209,8 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
         # (NAT/LB idle reaping in K8s/hybrid runners) surfaces as a network
         # error within 10 minutes instead of hanging the worker indefinitely.
         # User-supplied connectionArguments win via setdefault.
-        connection.connectionArguments.root.setdefault("network_timeout", 600)
+        if connection.connectionArguments.root is not None:
+            connection.connectionArguments.root.setdefault("network_timeout", 600)
 
         engine = create_generic_db_connection(
             connection=connection,
