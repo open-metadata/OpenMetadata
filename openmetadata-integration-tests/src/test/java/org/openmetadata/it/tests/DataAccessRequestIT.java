@@ -50,6 +50,7 @@ import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 
 /**
@@ -216,7 +217,7 @@ public class DataAccessRequestIT {
     await()
         .atMost(Duration.ofSeconds(5))
         .pollInterval(Duration.ofMillis(250))
-        .ignoreException(org.openmetadata.sdk.exceptions.ApiException.class)
+        .ignoreException(ApiException.class)
         .untilAsserted(
             () -> {
               Task r =

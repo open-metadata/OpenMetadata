@@ -200,7 +200,6 @@ jest.mock('../../../utils/TableClassBase', () => ({
 jest.mock('../../../rest/tasksAPI', () => ({
   ...jest.requireActual('../../../rest/tasksAPI'),
   listDataAccessRequests: jest.fn().mockResolvedValue({ data: [] }),
-  listTasks: jest.fn().mockResolvedValue({ data: [] }),
 }));
 
 jest.mock('../../../utils/TasksUtils', () =>

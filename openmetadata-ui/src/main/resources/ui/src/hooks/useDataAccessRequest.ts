@@ -136,7 +136,22 @@ export const useDataAccessRequest = ({
           (stage === DarWorkflowStage.Approved &&
             task.status !== TaskEntityStatus.Granted);
 
-        return isApproved;
+        if (!isApproved) {
+          return false;
+        }
+
+        // Mirror the isDarApprovalActive gate used by isDarDisabled. Without this an
+        // expired approval would still show the "awaiting grant" banner even though
+        // isDarDisabled returns false (button enabled), leaving a contradictory UX.
+        const payload = task.payload as
+          | { duration?: string; expirationDate?: number }
+          | undefined;
+
+        return isDarApprovalActive(
+          task.approvedAt ?? task.updatedAt ?? task.createdAt,
+          payload?.duration,
+          payload?.expirationDate
+        );
       }),
     [existingDarTasks]
   );
