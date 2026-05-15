@@ -997,7 +997,14 @@ class RdfIndexAppTest {
       method.setAccessible(true);
       method.invoke(rdfIndexApp, "table", mockEntities);
 
-      verifyNoInteractions(mockRdfRepository);
+      // The eventSubscription edge is filtered out, so no relationships make it
+      // to bulkAddRelationships and no per-edge writes happen. The batch's
+      // source entity still gets its outgoing entity-to-entity edges cleared so
+      // any stale RDF state from prior runs is reconciled — that's the only
+      // expected interaction.
+      verify(mockRdfRepository).clearOutgoingEntityRelationships(anySet());
+      verify(mockRdfRepository, never()).bulkAddRelationships(anyList());
+      verify(mockRdfRepository, never()).addRelationship(any(EntityRelationship.class));
     }
 
     @Test
@@ -1030,7 +1037,12 @@ class RdfIndexAppTest {
       method.setAccessible(true);
       method.invoke(rdfIndexApp, "table", mockEntities);
 
-      verifyNoInteractions(mockRdfRepository);
+      // Same expectation as the canonical-type variant: filtered relationships
+      // never reach bulkAddRelationships, but the per-source reconciliation
+      // clear still runs for the batch entity.
+      verify(mockRdfRepository).clearOutgoingEntityRelationships(anySet());
+      verify(mockRdfRepository, never()).bulkAddRelationships(anyList());
+      verify(mockRdfRepository, never()).addRelationship(any(EntityRelationship.class));
     }
   }
 
