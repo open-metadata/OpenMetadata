@@ -52,5 +52,5 @@ class UnitycatalogUsageSource(UnityCatalogQueryParserSource, UsageSource):
             start_time=start_time,
             end_time=end_time,
             filters=self.get_filters(),
-            result_limit=self.source_config.resultLimit,
+            result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
         )

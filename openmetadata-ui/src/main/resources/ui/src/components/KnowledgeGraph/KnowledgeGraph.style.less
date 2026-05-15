@@ -120,3 +120,30 @@
     height: 100%;
   }
 }
+
+.kg-edge-tooltip {
+  z-index: 1200;
+  pointer-events: none;
+  background: @white;
+  border: @global-border;
+  border-radius: 6px;
+  padding: 6px 10px;
+  box-shadow: @box-shadow-base;
+  max-width: 280px;
+  font-size: 12px;
+  line-height: 1.5;
+
+  &__direction {
+    color: @text-color-tertiary;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__label {
+    color: @text-color;
+    font-weight: 500;
+    word-break: break-word;
+  }
+}

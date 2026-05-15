@@ -118,7 +118,10 @@ class ClientConfig(ConfigModel):
     verify: Optional[Union[bool, str]] = None  # noqa: UP007, UP045
     cookies: Optional[Any] = None  # noqa: UP045
     ttl_cache: int = 60
-    timeout: Optional[int] = None  # noqa: UP045
+    # (connect, read) seconds. Default prevents indefinite hangs when a pooled
+    # socket is silently severed (NAT/LB idle reaping). Override with None to
+    # disable, or pass a single int to use the same value for both.
+    timeout: Optional[int | tuple[int, int]] = (10, 300)  # noqa: UP045
     cert: Optional[Union[str, tuple]] = None  # noqa: UP007, UP045
 
 

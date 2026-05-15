@@ -193,6 +193,7 @@ export const BETA_SERVICES = [
   DriveServiceType.GoogleDrive,
   DatabaseServiceType.Informix,
   DatabaseServiceType.MicrosoftAccess,
+  DatabaseServiceType.QuestDB,
   DashboardServiceType.SapS4Hana,
 ];
 

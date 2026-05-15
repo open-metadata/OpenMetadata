@@ -43,7 +43,7 @@ class UsageSource(QueryParserSource, ABC):
         Method to handle the usage from query logs
         """
         try:
-            query_log_path = self.config.sourceConfig.config.queryLogFilePath
+            query_log_path = self.config.sourceConfig.config.queryLogFilePath  # pyright: ignore[reportAttributeAccessIssue]
             if os.path.isfile(query_log_path):  # noqa: PTH113
                 file_paths = [query_log_path]
             elif os.path.isdir(query_log_path):  # noqa: PTH112
@@ -87,7 +87,7 @@ class UsageSource(QueryParserSource, ABC):
         If queryLogFilePath available in config iterate through log file
         otherwise execute the sql query to fetch TableQuery data
         """
-        if self.config.sourceConfig.config.queryLogFilePath:
+        if self.config.sourceConfig.config.queryLogFilePath:  # pyright: ignore[reportAttributeAccessIssue]
             yield from self.yield_table_queries_from_logs()
         else:
             yield from self.yield_table_queries()
