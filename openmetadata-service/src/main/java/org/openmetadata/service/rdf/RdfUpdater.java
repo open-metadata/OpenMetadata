@@ -162,6 +162,23 @@ public class RdfUpdater {
   // is unreachable and tasks pile up, we drop with a logged warning instead
   // of spawning unbounded virtual threads. RDF is a derived index — missed
   // writes are reconciled by the weekly RdfIndexApp run.
+  //
+  // Ordering trade-off (deliberate): pre-PR the EntityRepository hook chain
+  // (removeOwners → storeOwners → postUpdate → RdfUpdater.updateEntity) ran
+  // synchronously on the request thread and was therefore implicitly
+  // sequenced per entity. Submitting through AsyncService loses that
+  // sequencing — concurrent operations for the same entity / edge can land
+  // in any order. We accept the race because:
+  //   1. EntityUpdater diff-applies changes per request, so an add-then-remove
+  //      of the same edge within one API call nets to no-op (no hooks fire).
+  //   2. Cross-request races resolve at the next weekly recreate-index
+  //      (RdfIndexApp with recreateIndex=true wipes and rebuilds from MySQL,
+  //      so any temporarily out-of-order RDF state is reconciled within a week).
+  //   3. The alternative — per-entity sequencing via a striped lock —
+  //      costs memory and adds latency for the common case where there is
+  //      no contention.
+  // If observed-in-production ordering bugs emerge, this is the place to
+  // add a ConcurrentHashMap<UUID, Semaphore>-style per-entity gate.
   private static void submitAsync(String description, Runnable task) {
     int newCount = pendingWrites.incrementAndGet();
     if (newCount > MAX_PENDING_RDF_WRITES) {
