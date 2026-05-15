@@ -586,6 +586,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       return;
     }
     throwIfCircuitOpen("bulkStoreRelationships");
+    // Normalise to an empty set once so the per-source DELETE loop is safe
+    // regardless of caller. The early-return above already handles the
+    // null+empty-relationships case; this guards a caller that passes null
+    // with a non-empty relationships list (insert-only, no reconcile).
+    Set<String> effectiveSources = sourcesToReconcile != null ? sourcesToReconcile : Set.of();
 
     // Per-source-entity reconciliation: for each source URI the caller asked
     // us to reconcile, wipe every outgoing relationship-hook edge first, then
@@ -608,7 +613,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
     StringBuilder deleteUpdate = new StringBuilder();
     boolean firstDelete = true;
-    for (String sourceUri : sourcesToReconcile) {
+    for (String sourceUri : effectiveSources) {
       if (!firstDelete) {
         deleteUpdate.append("; ");
       }
@@ -678,7 +683,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       LOG.info(
           "Bulk stored {} relationships, reconciled {} source entities",
           relationships.size(),
-          sourcesToReconcile == null ? 0 : sourcesToReconcile.size());
+          effectiveSources.size());
       recordSuccess();
     } catch (Exception e) {
       LOG.error("Failed to bulk store relationships in Fuseki", e);
