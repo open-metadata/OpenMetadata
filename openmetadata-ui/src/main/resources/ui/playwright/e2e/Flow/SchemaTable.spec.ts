@@ -197,24 +197,11 @@ test('Copy column link should have valid URL format', async ({ page }) => {
   expect(validationResult.pathname).toContain('table');
 
   // Visit the copied link to verify it opens the side panel
-  const tableFqn = table.entityResponseData?.['fullyQualifiedName'] ?? '';
   await Promise.all([
     page.waitForResponse(
       (response) =>
-        response
-          .url()
-          .includes(`/api/v1/tables/name/${encodeURIComponent(tableFqn)}`) &&
-        response.url().includes('fields=') &&
+        response.url().includes('/api/v1/columns/name/') &&
         response.request().method() === 'GET'
-    ),
-    page.waitForResponse(
-      (response) =>
-        response
-          .url()
-          .includes(`/api/v1/tables/name/${encodeURIComponent(tableFqn)}`) &&
-        response.url().includes('profile') &&
-        response.request().method() === 'GET',
-      { timeout: 150_000 } // TODO: Reduce timeout once the latency issue is fixed
     ),
     page.goto(clipboardText),
   ]);
@@ -271,8 +258,6 @@ test('Copy nested column link should include full hierarchical path', async ({
       );
 
       // Visit the copied link to verify it opens the side panel
-      const nestedTableFqn =
-        table.entityResponseData?.['fullyQualifiedName'] ?? '';
       await Promise.all([
         page.waitForResponse(
           (response) =>
