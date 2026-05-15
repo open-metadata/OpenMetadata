@@ -56,10 +56,37 @@ def sha256_hash(text: str) -> str:
 cache = LRUCache(LRU_CACHE_SIZE)
 
 
+def _normalise_dml_sql(query: str) -> str:
+    """Normalise a SQL query before DML pattern matching.
+
+    Three-pass process:
+    1. Replace /* ... */ block comments with a single space so they act as a
+       token separator but do not expose their body to the regex.
+    2. Strip -- single-line comments (remove to end of line, leave the newline).
+    3. Strip leading/trailing whitespace so re.match() can find the DML keyword
+       at position 0.
+
+    This prevents comment bodies (e.g. commented-out SQL snippets) from being
+    mistaken for actual DML operations.
+    """
+    # Pass 1: block comments → single space (dotall so . matches \n)
+    query = re.sub(r"/\*.*?\*/", " ", query, flags=re.DOTALL)
+    # Pass 2: single-line comments → remove to end of line, keep the newline
+    query = re.sub(r"--[^\n]*", "", query)
+    # Pass 3: strip leading/trailing whitespace
+    return query.strip()
+
+
 @cache.wrap(key_func=lambda query: sha256_hash(query.strip()))
 def _parse_query(query: str) -> Optional[str]:  # noqa: UP045
-    """Parse snowflake queries to extract the identifiers"""
-    match = re.match(QUERY_PATTERN, query, re.IGNORECASE)
+    """Parse snowflake queries to extract the identifiers.
+
+    The query is first normalised (block comments, single-line comments, and
+    leading whitespace removed) so that re.match() can reliably find the DML
+    keyword at position 0 without being confused by commented-out SQL in the
+    query body.
+    """
+    match = re.match(QUERY_PATTERN, _normalise_dml_sql(query), re.IGNORECASE)
     try:
         # This will match results like `DATABASE.SCHEMA.TABLE1` or IDENTIFIER('TABLE1')
         # If we have `IDENTIFIER` type of queries coming from Stored Procedures, we'll need to further clean it up.
