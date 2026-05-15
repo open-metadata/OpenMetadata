@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.parallel.Resources;
@@ -52,12 +51,6 @@ import org.openmetadata.sdk.fluent.Domains;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.network.HttpMethod;
 
-// @Isolated: the metadataStatus aggregation issues an unbounded composite + top_hits across the
-// column search index. When `EntityCacheMemoryIT` or other column-index-burning tests run in
-// parallel they push the single-shard 1 GB ES instance into transient "[search_phase_execution_
-// exception] all shards failed" responses. Running this class alone removes the load contention;
-// the aggregator-side cap in ElasticSearchColumnAggregator handles the prod side.
-@Isolated
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class ColumnGridResourceIT {
