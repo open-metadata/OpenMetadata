@@ -42,7 +42,7 @@ import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './KnowledgeCenterWidget.less';
 
-import contextCenterClassBase from 'utils/ContextCenterClassBase';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 const KnowledgeCenterWidget = ({
   isEditView = false,
   widgetKey,
