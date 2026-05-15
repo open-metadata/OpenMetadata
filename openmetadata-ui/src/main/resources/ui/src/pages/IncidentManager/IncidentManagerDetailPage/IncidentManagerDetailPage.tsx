@@ -38,7 +38,6 @@ import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/Enti
 import EntityVersionTimeLine from '../../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -61,11 +60,7 @@ import {
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
-import {
-  getTestCaseDetailPagePath,
-  getTestCaseDimensionsDetailPagePath,
-  getTestCaseVersionPath,
-} from '../../../utils/RouterUtils';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { TestCasePageTabs } from '../IncidentManager.interface';
@@ -215,7 +210,7 @@ const IncidentManagerDetailPage = ({
       : [
           {
             name: t('label.incident-manager'),
-            url: ROUTES.INCIDENT_MANAGER,
+            url: observabilityRouterClassBase.getIncidentManagerPath(),
           },
         ];
 
@@ -224,7 +219,7 @@ const IncidentManagerDetailPage = ({
         ...data,
         {
           name: testCase?.name ?? '',
-          url: getTestCaseDetailPagePath(
+          url: observabilityRouterClassBase.getTestCaseDetailPagePath(
             testCaseFQN,
             activeTab as TestCasePageTabs
           ),
@@ -251,16 +246,19 @@ const IncidentManagerDetailPage = ({
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       const testCaseDetailsPath = isDimensionPage
-        ? getTestCaseDimensionsDetailPagePath(
+        ? observabilityRouterClassBase.getTestCaseDimensionsDetailPagePath(
             testCaseFQN,
             dimensionKey || '',
             activeKey as TestCasePageTabs
           )
-        : getTestCaseDetailPagePath(testCaseFQN, activeKey as TestCasePageTabs);
+        : observabilityRouterClassBase.getTestCaseDetailPagePath(
+            testCaseFQN,
+            activeKey as TestCasePageTabs
+          );
 
       navigate(
         isVersionPage
-          ? getTestCaseVersionPath(
+          ? observabilityRouterClassBase.getTestCaseVersionPath(
               testCaseFQN,
               version,
               activeKey as TestCasePageTabs
@@ -325,8 +323,8 @@ const IncidentManagerDetailPage = ({
   const onVersionClick = () => {
     navigate(
       isVersionPage
-        ? getTestCaseDetailPagePath(testCaseFQN)
-        : getTestCaseVersionPath(
+        ? observabilityRouterClassBase.getTestCaseDetailPagePath(testCaseFQN)
+        : observabilityRouterClassBase.getTestCaseVersionPath(
             testCaseFQN,
             toString(testCase?.version) ?? '',
             activeTab
@@ -338,7 +336,11 @@ const IncidentManagerDetailPage = ({
   const versionHandler = useCallback(
     (newVersion = version) => {
       navigate(
-        getTestCaseVersionPath(testCaseFQN, toString(newVersion), activeTab)
+        observabilityRouterClassBase.getTestCaseVersionPath(
+          testCaseFQN,
+          toString(newVersion),
+          activeTab
+        )
       );
     },
     [testCaseFQN, activeTab]
@@ -482,7 +484,11 @@ const IncidentManagerDetailPage = ({
                 {!isVersionPage && (
                   <ManageButton
                     isRecursiveDelete
-                    afterDeleteAction={() => navigate(ROUTES.INCIDENT_MANAGER)}
+                    afterDeleteAction={() =>
+                      navigate(
+                        observabilityRouterClassBase.getIncidentManagerPath()
+                      )
+                    }
                     allowSoftDelete={false}
                     canDelete={hasDeletePermission}
                     displayName={testCase.displayName}

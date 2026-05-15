@@ -54,9 +54,9 @@ const PERSONA_DETAILS = {
 const user = new UserClass();
 const persona1 = new PersonaClass();
 const persona2 = new PersonaClass();
-const curatedAdminUser = new UserClass();
-const curatedPersona = new PersonaClass();
-const curatedTable = new TableClass();
+let curatedAdminUser = new UserClass();
+let curatedPersona = new PersonaClass();
+let curatedTable = new TableClass();
 
 // use the admin user to login
 test.use({
@@ -897,6 +897,10 @@ test.describe.serial('Persona precedence: User > Team > Org', () => {
 
 test.describe('Curated Assets – Description filter', () => {
   test.beforeAll('Setup', async ({ browser }) => {
+    curatedAdminUser = new UserClass();
+    curatedPersona = new PersonaClass();
+    curatedTable = new TableClass();
+
     const UNIQUE_WORD = `unique-word-${uuid()}`;
     WORD_TO_SEARCH = `table with a unique description ${UNIQUE_WORD}.`;
     CURATED_DESCRIPTION_TEXT = `This is a curated table with a unique description ${UNIQUE_WORD}. It is bioluminescent and not an oscilloscope.`;
@@ -960,6 +964,7 @@ test.describe('Curated Assets – Description filter', () => {
     adminPage,
   }) => {
     await test.step('Navigate to persona settings and add curated assets widget', async () => {
+      await redirectToHomePage(adminPage);
       await addCuratedAssetWidget(adminPage);
     });
 

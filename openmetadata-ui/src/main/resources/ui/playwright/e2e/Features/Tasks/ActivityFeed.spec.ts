@@ -68,8 +68,7 @@ test.describe('Activity Feed - Home Page Widget', () => {
       await apiContext.post('/api/v1/tasks', {
         data: {
           name: `Test Task - ${Date.now()}`,
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [regularUser.responseData.name],
@@ -198,8 +197,7 @@ test.describe('Activity Feed - Filters', () => {
       await apiContext.post('/api/v1/tasks', {
         data: {
           name: `Test Task - ${Date.now()}`,
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [regularUser.responseData.name],
@@ -390,8 +388,7 @@ test.describe('Activity Feed - Entity Page', () => {
         await apiContext.post('/api/v1/tasks', {
           data: {
             name: `Test Task - ${Date.now()}-${i}`,
-            about: table.entityResponseData?.fullyQualifiedName,
-            aboutType: 'table',
+            about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
             type: i % 2 === 0 ? 'DescriptionRequest' : 'TagRequest',
             category: 'MetadataUpdate',
             assignees: [adminUser.responseData.name],
@@ -645,8 +642,7 @@ test.describe('Activity Feed - Real-time Updates', () => {
     await apiContext.post('/api/v1/tasks', {
       data: {
         name: `Test Task - ${Date.now()}`,
-        about: table.entityResponseData?.fullyQualifiedName,
-        aboutType: 'table',
+        about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
         type: 'DescriptionUpdate',
         category: 'MetadataUpdate',
         assignees: [adminUser.responseData.name],

@@ -54,8 +54,7 @@ test.describe('Task Navigation - Activity Feed Widget', () => {
       await apiContext.post('/api/v1/tasks', {
         data: {
           name: `Test Task - ${Date.now()}`,
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [assigneeUser.responseData.name],
@@ -193,8 +192,7 @@ test.describe('Task Navigation - Entity Page', () => {
         await apiContext.post('/api/v1/tasks', {
           data: {
             name: `Test Task - ${Date.now()}-${i}`,
-            about: table.entityResponseData?.fullyQualifiedName,
-            aboutType: 'table',
+            about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
             type: i % 2 === 0 ? 'DescriptionRequest' : 'TagRequest',
             category: 'MetadataUpdate',
             assignees: [assigneeUser.responseData.name],
@@ -343,8 +341,7 @@ test.describe('Task Navigation - Notification Box', () => {
       await apiContext.post('/api/v1/tasks', {
         data: {
           name: `Test Task - ${Date.now()}`,
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [assigneeUser.responseData.name],
@@ -501,8 +498,7 @@ test.describe('Task Navigation - URL Validation', () => {
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
           name: `Test Task - ${Date.now()}`,
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [adminUser.responseData.name],
@@ -614,8 +610,8 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       try {
         const response = await apiContext.post('/api/v1/tasks', {
           data: {
-            about: entityFqn,
-            aboutType: 'table',
+            name: `Test Task - ${Date.now()}`,
+            about: `<#E::table::${entityFqn}>`,
             type: 'DescriptionUpdate',
             category: 'MetadataUpdate',
             assignees: [adminUser.responseData.name],
@@ -715,8 +711,8 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
         try {
           const response = await apiContext.post('/api/v1/tasks', {
             data: {
-              about: entityFqn,
-              aboutType: 'table',
+              name: `Test Task - ${Date.now()}`,
+              about: `<#E::table::${entityFqn}>`,
               type: 'DescriptionUpdate',
               category: 'MetadataUpdate',
               assignees: [otherUser.responseData.name],

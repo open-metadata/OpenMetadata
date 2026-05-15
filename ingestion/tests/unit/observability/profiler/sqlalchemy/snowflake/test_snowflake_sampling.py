@@ -18,14 +18,14 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
     SnowflakeConnection,
 )
 from metadata.generated.schema.type.basic import ProfileSampleType, SamplingMethodType
+from metadata.generated.schema.type.samplingConfig import SampleConfigType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.sampler.models import (
     ProfileSampleConfig,
-    ProfileSampleConfigType,
     SampleConfig,
-    StaticSamplingConfig,
 )
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.sampler.sqlalchemy.snowflake.sampler import SnowflakeSampler
@@ -85,7 +85,7 @@ class SampleTest(TestCase):
             entity=self.table_entity,
             sample_config=SampleConfig(
                 profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    sampleConfigType=SampleConfigType.STATIC,
                     config=StaticSamplingConfig(
                         profileSample=50.0,
                         profileSampleType=ProfileSampleType.PERCENTAGE,
@@ -93,7 +93,7 @@ class SampleTest(TestCase):
                 )
             ),
         )
-        query: CTE = sampler.get_sample_query()
+        query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = (
             'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users_1.id AS id \n'
             "FROM users AS users_1 TABLESAMPLE bernoulli(50.0))\n "
@@ -115,7 +115,7 @@ class SampleTest(TestCase):
                 entity=self.table_entity,
                 sample_config=SampleConfig(
                     profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        sampleConfigType=SampleConfigType.STATIC,
                         config=StaticSamplingConfig(
                             profileSample=50.0,
                             profileSampleType=ProfileSampleType.PERCENTAGE,
@@ -124,7 +124,7 @@ class SampleTest(TestCase):
                     )
                 ),
             )
-            query: CTE = sampler.get_sample_query()
+            query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
             expected_query = (
                 'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users_1.id AS id \n'
                 f"FROM users AS users_1 TABLESAMPLE {sampling_method_type.value}(50.0))\n "
@@ -142,7 +142,7 @@ class SampleTest(TestCase):
             entity=self.table_entity,
             sample_config=SampleConfig(
                 profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    sampleConfigType=SampleConfigType.STATIC,
                     config=StaticSamplingConfig(
                         profileSample=50,
                         profileSampleType=ProfileSampleType.ROWS,
@@ -150,10 +150,10 @@ class SampleTest(TestCase):
                 )
             ),
         )
-        query: CTE = sampler.get_sample_query()
+        query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = (
             'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users_1.id AS id '
-            "\nFROM users AS users_1 TABLESAMPLE ROW(50 ROWS))\n "
+            "\nFROM users AS users_1 TABLESAMPLE ROW(50.0 ROWS))\n "
             'SELECT "9bc65c2abec141778ffaa729489f3e87_rnd".id \nFROM "9bc65c2abec141778ffaa729489f3e87_rnd"'
         )
         assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
@@ -168,7 +168,7 @@ class SampleTest(TestCase):
             entity=self.table_entity,
             sample_config=SampleConfig(
                 profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    sampleConfigType=SampleConfigType.STATIC,
                     config=StaticSamplingConfig(
                         profileSample=50.0,
                         profileSampleType=ProfileSampleType.PERCENTAGE,
@@ -182,7 +182,7 @@ class SampleTest(TestCase):
                 partitionValues=["1", "2"],
             ),
         )
-        query: CTE = sampler.get_sample_query()
+        query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = (
             'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users_1.id AS id \n'
             "FROM users AS users_1 TABLESAMPLE bernoulli(50.0) "
