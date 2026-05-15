@@ -62,11 +62,12 @@ def delete_entity_from_source(
         for entity in entity_state:
             if str(entity.fullyQualifiedName.root) not in entity_source_state:
                 yield Either(
+                    left=None,
                     right=DeleteEntity(
                         entity=entity,
                         mark_deleted_entities=mark_deleted_entity,
                         dispatch_async=use_async,
-                    )
+                    ),
                 )
     except Exception as exc:
         yield Either(
@@ -99,11 +100,12 @@ def delete_entity_by_name(
             entity = metadata.get_by_name(entity=entity_type, fqn=entity_name)
             if entity:
                 yield Either(
+                    left=None,
                     right=DeleteEntity(
                         entity=entity,
                         mark_deleted_entities=mark_deleted_entity,
                         dispatch_async=use_async,
-                    )
+                    ),
                 )
     except Exception as exc:
         yield Either(

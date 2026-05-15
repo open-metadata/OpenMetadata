@@ -778,7 +778,8 @@ class OpenMetadata(
         url = f"{self.get_suffix(entity)}/async/{model_str(entity_id)}"
         url += f"?recursive={str(recursive).lower()}"
         url += f"&hardDelete={str(hard_delete).lower()}"
-        return self.client.delete(url)
+        response = self.client.delete(url)
+        return response if isinstance(response, dict) else None
 
     def restore(
         self,
@@ -828,7 +829,8 @@ class OpenMetadata(
         """
         url = f"{self.get_suffix(entity)}/restore?async=true"
         data = {"id": model_str(entity_id)}
-        return self.client.put(url, json=data)
+        response = self.client.put(url, json=data)
+        return response if isinstance(response, dict) else None
 
     def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:  # noqa: UP006, UP007
         """

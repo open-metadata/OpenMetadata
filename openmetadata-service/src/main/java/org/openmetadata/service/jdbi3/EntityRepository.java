@@ -5816,6 +5816,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     bulkDeleteEntityRows(entities);
     bulkInvalidate(entities);
     runHardDeleteAdditionalChildren(entities, updatedBy);
+    // Each cascade-deleted descendant needs the same postDelete hook the per-entity hard-delete
+    // path runs (RdfUpdater.deleteEntity, plus subclass overrides like
+    // UserRepository.deleteSuggestionTasksForUser). The legacy small-batch path went through
+    // Entity.deleteEntity which invoked postDelete; this bulk replacement is the only path
+    // that walks cascaded children now, so it must also fan out the hook explicitly.
+    for (T entity : entities) {
+      postDelete(entity, true);
+    }
   }
 
   private void bulkCleanupReferences(List<T> entities) {
