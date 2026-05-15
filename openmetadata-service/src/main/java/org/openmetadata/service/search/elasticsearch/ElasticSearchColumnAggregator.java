@@ -678,23 +678,18 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     return Query.of(q -> q.bool(b -> b.mustNot(existsQuery(field))));
   }
 
+  // `wildcard(field, "?*")` matches any doc whose indexed terms include at least one token of
+  // at least one character — the analyzer-friendly equivalent of "field has non-empty value".
+  // We can't use `term(field, "")` against analyzed text fields like `columns.description`: the
+  // field's analyzer produces no tokens for the empty string and ES 7.17 rejects the term query
+  // with `search_phase_execution_exception ... all shards failed`. Caught by
+  // ColumnGridResourceIT#test_getColumnGrid_withMetadataStatusIncomplete.
   private Query hasNonEmptyField(String field) {
-    return Query.of(
-        q ->
-            q.bool(
-                b ->
-                    b.must(existsQuery(field))
-                        .mustNot(Query.of(qn -> qn.term(t -> t.field(field).value(""))))));
+    return Query.of(q -> q.wildcard(w -> w.field(field).value("?*")));
   }
 
   private Query hasEmptyOrMissingField(String field) {
-    return Query.of(
-        q ->
-            q.bool(
-                b ->
-                    b.should(notExistsQuery(field))
-                        .should(Query.of(qs -> qs.term(t -> t.field(field).value(""))))
-                        .minimumShouldMatch("1")));
+    return Query.of(q -> q.bool(b -> b.mustNot(hasNonEmptyField(field))));
   }
 
   /** Phase 1: Get all matching column names using terms agg with include regex (no top_hits). */
