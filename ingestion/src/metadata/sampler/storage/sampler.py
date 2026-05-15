@@ -16,24 +16,13 @@ from abc import abstractmethod
 from typing import Any, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.data.container import Container
-from metadata.generated.schema.entity.data.table import (
-    ColumnProfilerConfig,
-    PartitionProfilerConfig,
-    TableData,
-)
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    DataStorageConfig,
-)
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.storageService import StorageConnection
-from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
-    ProcessingEngine,
-)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.readers.dataframe.reader_factory import SupportedTypes
-from metadata.sampler.models import SampleConfig
+from metadata.sampler.sampler_config import StorageSamplerConfig
 from metadata.sampler.sampler_interface import SamplerInterface
-from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.datalake.datalake_utils import fetch_dataframe_first_chunk
 from metadata.utils.logger import sampler_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -43,7 +32,8 @@ logger = sampler_logger()
 
 class StorageSampler(SamplerInterface):
     """
-    Base sampler for storage services that reads data from cloud storage buckets
+    Base sampler for storage services that reads data from cloud storage buckets.
+    Accepts a StorageSamplerConfig — no database-specific fields required.
     """
 
     def __init__(
@@ -51,72 +41,17 @@ class StorageSampler(SamplerInterface):
         service_connection_config: StorageConnection,
         ometa_client: OpenMetadata,
         entity: Container,
-        include_columns: Optional[List[ColumnProfilerConfig]] = None,  # noqa: UP006, UP045
-        exclude_columns: Optional[List[str]] = None,  # noqa: UP006, UP045
-        sample_config: SampleConfig = SampleConfig(),
-        partition_details: Optional[PartitionProfilerConfig] = None,  # noqa: UP045
-        sample_query: Optional[str] = None,  # noqa: UP045
-        storage_config: Optional[DataStorageConfig] = None,  # noqa: UP045
-        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,  # noqa: UP045
-        processing_engine: Optional[ProcessingEngine] = None,  # noqa: UP045
+        config: Optional[StorageSamplerConfig] = None,  # noqa: UP045
         **kwargs,
     ):
         super().__init__(
-            service_connection_config,
-            ometa_client,
-            entity,
-            include_columns,
-            exclude_columns,
-            sample_config,
-            partition_details,
-            sample_query,
-            storage_config,
-            sample_data_count,
-            processing_engine,
-            **kwargs,
-        )
-        self.client = self.get_client()
-
-    @classmethod
-    def create(
-        cls,
-        service_connection_config: StorageConnection,
-        ometa_client: OpenMetadata,
-        entity: Container,
-        schema_entity=None,
-        database_entity=None,
-        table_config=None,
-        storage_config: Optional[DataStorageConfig] = None,  # noqa: UP045
-        default_sample_config: Optional[SampleConfig] = None,  # noqa: UP045
-        default_sample_data_count: int = SAMPLE_DATA_DEFAULT_COUNT,
-        processing_engine: Optional[ProcessingEngine] = None,  # noqa: UP045
-        **kwargs,
-    ) -> "StorageSampler":
-        """Create storage sampler instance
-
-        Args:
-            service_connection_config: Storage service connection config
-            ometa_client: OpenMetadata client
-            entity: Container entity to sample
-            schema_entity: Ignored for storage samplers (Table-specific)
-            database_entity: Ignored for storage samplers (Table-specific)
-            table_config: Ignored for storage samplers (Table-specific)
-            storage_config: Optional storage config for sample data
-            default_sample_config: Default sample config
-            default_sample_data_count: Number of rows to sample
-            processing_engine: Ignored for storage samplers (Table-specific)
-            **kwargs: Additional arguments
-        """
-        return cls(
             service_connection_config=service_connection_config,
             ometa_client=ometa_client,
             entity=entity,
-            sample_config=default_sample_config or SampleConfig(),
-            storage_config=storage_config,
-            sample_data_count=default_sample_data_count,
-            processing_engine=processing_engine,
+            config=config or StorageSamplerConfig(),
             **kwargs,
         )
+        self.client = self.get_client()
 
     @property
     def raw_dataset(self):

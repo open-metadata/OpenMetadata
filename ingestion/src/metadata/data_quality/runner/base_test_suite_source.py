@@ -33,11 +33,15 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.sampler.models import (
-    SampleConfig,
+from metadata.sampler.config import (
+    get_profile_sample_config,
+    get_sample_data_count_config,
 )
+from metadata.sampler.models import SampleConfig
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sampler_interface import SamplerInterface  # noqa: TC001
 from metadata.utils.bigquery_utils import copy_service_config
+from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.profiler_utils import get_context_entities
 from metadata.utils.service_spec.service_spec import (
     import_sampler_class,
@@ -115,17 +119,30 @@ class BaseTestSuiteRunner:
             source_type=self._interface_type,
             source_config_type=self.service_conn_config.type.value,
         )
-        # This is shared between the sampler and DQ interfaces
+        default_sample_config = SampleConfig(
+            profileSampleConfig=self.source_config.profileSampleConfig
+            if self.source_config.profileSampleConfig
+            else None,
+        )
         sampler_interface: SamplerInterface = sampler_class.create(
             service_connection_config=self.service_conn_config,
             ometa_client=self.ometa_client,
             entity=self.entity,
-            schema_entity=schema_entity,
-            database_entity=database_entity,
-            default_sample_config=SampleConfig(
-                profileSampleConfig=self.source_config.profileSampleConfig
-                if self.source_config.profileSampleConfig
-                else None,
+            config=DatabaseSamplerConfig(
+                sample_config=get_profile_sample_config(
+                    entity=self.entity,
+                    schema_entity=schema_entity,
+                    database_entity=database_entity,
+                    entity_config=None,
+                    default_sample_config=default_sample_config,
+                ),
+                sample_data_count=get_sample_data_count_config(
+                    entity=self.entity,
+                    schema_entity=schema_entity,
+                    database_entity=database_entity,
+                    entity_config=None,
+                    default_sample_data_count=SAMPLE_DATA_DEFAULT_COUNT,
+                ),
             ),
         )
 
