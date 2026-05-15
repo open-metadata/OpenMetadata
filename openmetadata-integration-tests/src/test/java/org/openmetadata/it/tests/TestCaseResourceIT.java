@@ -1599,6 +1599,97 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void test_deleteTableCascadesTestSuiteAndTestCases(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase firstCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("cascade_first"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    TestCase secondCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("cascade_second"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "200")
+            .create();
+
+    TestCase loaded = client.testCases().get(firstCase.getId().toString(), "testSuite");
+    assertNotNull(loaded.getTestSuite(), "Test case must have an executable test suite");
+    String testSuiteId = loaded.getTestSuite().getId().toString();
+
+    Map<String, String> params = new HashMap<>();
+    params.put("hardDelete", "true");
+    params.put("recursive", "true");
+    client.tables().delete(table.getId().toString(), params);
+
+    assertThrows(
+        Exception.class,
+        () -> getEntity(firstCase.getId().toString()),
+        "First test case should be deleted along with the table");
+    assertThrows(
+        Exception.class,
+        () -> getEntity(secondCase.getId().toString()),
+        "Second test case should be deleted along with the table");
+    assertThrows(
+        Exception.class,
+        () -> client.testSuites().get(testSuiteId),
+        "Executable test suite should be deleted along with the table");
+  }
+
+  @Test
+  void test_listTestCasesReturnsTestSuiteFieldAfterCascade(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table tableA = createTable(ns);
+    Table tableB = createTable(ns);
+
+    TestCaseBuilder.create(client)
+        .name(ns.prefix("listing_tolerance_a"))
+        .forTable(tableA)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
+
+    TestCase keepCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("listing_tolerance_b"))
+            .forTable(tableB)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "200")
+            .create();
+
+    Map<String, String> params = new HashMap<>();
+    params.put("hardDelete", "true");
+    params.put("recursive", "true");
+    client.tables().delete(tableA.getId().toString(), params);
+
+    String entityLink = String.format("<#E::table::%s>", tableB.getFullyQualifiedName());
+    ListResponse<TestCase> listed =
+        client
+            .testCases()
+            .list(
+                new ListParams()
+                    .setLimit(100)
+                    .addQueryParam("entityLink", entityLink)
+                    .addQueryParam("fields", "testSuite"));
+
+    assertNotNull(listed);
+    assertTrue(
+        listed.getData().stream().anyMatch(tc -> tc.getId().equals(keepCase.getId())),
+        "Surviving test case should still be returned with testSuite field");
+    listed.getData().stream()
+        .filter(tc -> tc.getId().equals(keepCase.getId()))
+        .findFirst()
+        .ifPresent(
+            tc -> assertNotNull(tc.getTestSuite(), "Surviving test case must keep its test suite"));
+  }
+
+  @Test
   void test_testCaseInheritsFromTestDefinition(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);

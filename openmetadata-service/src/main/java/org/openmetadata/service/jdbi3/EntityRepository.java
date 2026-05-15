@@ -4212,7 +4212,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updater.update();
         changeType = ENTITY_SOFT_DELETED;
       } else {
-        cleanup(updated);
+        cleanup(deletedBy, updated);
         changeType = ENTITY_DELETED;
       }
       LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
@@ -4416,7 +4416,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (UUID entityId : entityIds) {
       try {
         EntityInterface entity = repository.find(entityId, Include.ALL);
-        repository.cleanup(entity);
+        repository.cleanup(updatedBy, entity);
       } catch (RuntimeException e) {
         LOG.error(
             "Failed to delete {} '{}' during recursive batch delete: {}",
@@ -4439,11 +4439,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected final void cleanup(T entityInterface) {
+    cleanup(entityInterface.getUpdatedBy(), entityInterface);
+  }
+
+  protected final void cleanup(String deletedBy, T entityInterface) {
     Entity.getJdbi()
         .inTransaction(
             handle -> {
               // Perform Entity Specific Cleanup
-              entitySpecificCleanup(entityInterface);
+              entitySpecificCleanup(deletedBy, entityInterface);
 
               UUID id = entityInterface.getId();
 
@@ -4494,6 +4498,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void entitySpecificCleanup(T entityInterface) {}
+
+  /**
+   * Variant of {@link #entitySpecificCleanup(EntityInterface)} that receives the user performing
+   * the delete. Defaults to delegating so subclasses that don't care about the deleter keep
+   * working unchanged; override this when you need to cascade-delete other entities and want the
+   * audit trail to credit the actual operator instead of a hard-coded system user.
+   */
+  protected void entitySpecificCleanup(String deletedBy, T entityInterface) {
+    entitySpecificCleanup(entityInterface);
+  }
 
   private void invalidate(T entity) {
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));

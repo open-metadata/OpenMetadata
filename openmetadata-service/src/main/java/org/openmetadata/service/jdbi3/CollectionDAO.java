@@ -8817,6 +8817,19 @@ public interface CollectionDAO {
     int countOfTestCases(
         @Define("table") String table, @BindList("testCaseIds") List<String> testCaseIds);
 
+    /**
+     * Returns ids of test cases whose entityFQN equals {@code entityFQN} (table-level tests) or
+     * starts with {@code entityFQNPrefix} (column-level tests). The prefix must already have LIKE
+     * metacharacters escaped — callers should route through
+     * {@link org.openmetadata.service.util.LikeEscape#escape(String)} and append {@code ".%"}.
+     * Uses {@code ESCAPE '\'} so the escaping is honored by both MySQL and PostgreSQL.
+     */
+    @SqlQuery(
+        "SELECT id FROM test_case WHERE entityFQN = :entityFQN "
+            + "OR entityFQN LIKE :entityFQNPrefix ESCAPE '\\'")
+    List<String> findIdsByEntityFQN(
+        @Bind("entityFQN") String entityFQN, @Bind("entityFQNPrefix") String entityFQNPrefix);
+
     class TestCaseRecord {
       @Getter String json;
       @Getter Integer rank;
