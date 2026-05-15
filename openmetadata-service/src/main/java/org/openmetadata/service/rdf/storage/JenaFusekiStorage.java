@@ -27,6 +27,9 @@ import org.apache.jena.query.ResultSet;
 import org.apache.jena.query.ResultSetFormatter;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.RDFNode;
+import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.rdfconnection.RDFConnection;
 import org.apache.jena.rdfconnection.RDFConnectionFuseki;
 import org.apache.jena.riot.RDFDataMgr;
@@ -34,6 +37,7 @@ import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.update.UpdateFactory;
 import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
 
 /**
  * Apache Jena Fuseki implementation of RDF storage.
@@ -317,24 +321,69 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     return false;
   }
 
+  // Union the translator's static "always managed" predicates with whatever
+  // predicates the current model actually emits for this entity. The static
+  // set covers shrink-to-empty cases (e.g. all tags removed -> current model
+  // no longer emits om:hasTag, but we still need to clean up the old triples).
+  // The dynamic walk covers translator-only predicates introduced via the
+  // JSON-LD context that aren't in the static set.
+  private static Set<String> collectTranslatorPredicates(String entityUri, Model entityModel) {
+    Set<String> predicates =
+        new LinkedHashSet<>(RdfPropertyMapper.TRANSLATOR_MANAGED_DIRECT_PREDICATES);
+    Resource entityResource = entityModel.createResource(entityUri);
+    StmtIterator stmts = entityModel.listStatements(entityResource, null, (RDFNode) null);
+    while (stmts.hasNext()) {
+      predicates.add(stmts.next().getPredicate().getURI());
+    }
+    return predicates;
+  }
+
+  private static String buildPredicateScopedDelete(String entityUri, Set<String> predicates) {
+    if (predicates.isEmpty()) {
+      // No-op delete: nothing to remove. Use a constant DELETE WHERE that
+      // matches nothing so the caller's retry/transaction path still has a
+      // well-formed UpdateRequest to execute.
+      return String.format(
+          "DELETE WHERE { GRAPH <%s> { <%s> <urn:om:noop> ?o . FILTER(false) } }",
+          KNOWLEDGE_GRAPH, entityUri);
+    }
+    StringBuilder filterIn = new StringBuilder();
+    boolean first = true;
+    for (String pred : predicates) {
+      if (!first) {
+        filterIn.append(", ");
+      }
+      first = false;
+      filterIn.append('<').append(pred).append('>');
+    }
+    return String.format(
+        "DELETE { GRAPH <%s> { <%s> ?p ?o } } WHERE { GRAPH <%s> { <%s> ?p ?o . FILTER(?p IN (%s)) } }",
+        KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri, filterIn);
+  }
+
   @Override
   public void storeEntity(String entityType, UUID entityId, Model entityModel) {
     throwIfCircuitOpen("storeEntity");
     String entityUri = baseUri + "entity/" + entityType + "/" + entityId;
-    // Refresh literal-valued triples (name, description, tags, etc.) from the
-    // translator, but preserve URI-valued triples — those are inter-entity edges
-    // (om:hasOwner, om:belongsToDatabase, om:UPSTREAM, om:hasLineageDetails, …)
-    // that are managed by add/removeRelationship and add/removeLineage hooks,
-    // not by the translator. A metadata-only update (e.g. PATCH description)
-    // doesn't fire relationship hooks, so a blanket DELETE-then-LOAD here would
-    // wipe relationships until the next weekly recreate-index. Filtering on
-    // !isIRI(?o) keeps every URI object intact; relationship lifecycle is owned
-    // by the dedicated hooks, and the LOAD that follows re-adds the translator's
-    // URI-typed triples (rdf:type, etc.) idempotently under RDF set semantics.
-    String deleteQuery =
-        String.format(
-            "DELETE { GRAPH <%s> { <%s> ?p ?o } } WHERE { GRAPH <%s> { <%s> ?p ?o . FILTER(!isIRI(?o)) } }",
-            KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri);
+    // Scope the DELETE to predicates the translator owns. The previous
+    // FILTER(!isIRI(?o)) preserved EVERY URI object, which let stale
+    // translator-emitted triples (old om:hasOwner, removed om:hasTag, etc.)
+    // accumulate across updates because no hook ever cleans them up — owner /
+    // tag / glossary-term URIs aren't in entity_relationship. Predicate
+    // scoping lets the translator's fresh output replace the prior values,
+    // while hook-managed predicates (om:UPSTREAM, om:hasLineageDetails,
+    // om:owns / om:contains / …) are untouched so relationship and lineage
+    // state survives a metadata-only update.
+    //
+    // The set we delete is the union of:
+    //  - RdfPropertyMapper.TRANSLATOR_MANAGED_DIRECT_PREDICATES (covers the
+    //    shrink-to-empty case where a field is now absent and the new model
+    //    no longer emits its predicate), and
+    //  - the predicates the current model actually emits for <entityUri>
+    //    (covers translator-only predicates introduced via the JSON-LD
+    //    context that aren't in the static set).
+    Set<String> predicatesToDelete = collectTranslatorPredicates(entityUri, entityModel);
+    String deleteQuery = buildPredicateScopedDelete(entityUri, predicatesToDelete);
 
     int maxRetries = 3;
     int retryCount = 0;
