@@ -48,11 +48,26 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
     supportsDataContract = false;
   }
 
+  private static volatile DriveService sharedDriveService;
+
   @BeforeAll
   static void setup() {
     Spreadsheets.setDefaultClient(SdkClients.adminClient());
     Directories.setDefaultClient(SdkClients.adminClient());
     Worksheets.setDefaultClient(SdkClients.adminClient());
+  }
+
+  private DriveService sharedDriveService(TestNamespace ns) {
+    DriveService cached = sharedDriveService;
+    if (cached != null) {
+      return cached;
+    }
+    synchronized (SpreadsheetResourceIT.class) {
+      if (sharedDriveService == null) {
+        sharedDriveService = DriveServiceTestFactory.createGoogleDrive(ns);
+      }
+      return sharedDriveService;
+    }
   }
 
   // ===================================================================
@@ -61,17 +76,17 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Override
   protected CreateSpreadsheet createMinimalRequest(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
     return new CreateSpreadsheet()
         .withName(ns.prefix("spreadsheet"))
-        .withService(driveService.getFullyQualifiedName())
+        .withService(sharedDriveService(ns).getFullyQualifiedName())
         .withDescription("Test spreadsheet created by integration test");
   }
 
   @Override
   protected CreateSpreadsheet createRequest(String name, TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
-    return new CreateSpreadsheet().withName(name).withService(driveService.getFullyQualifiedName());
+    return new CreateSpreadsheet()
+        .withName(name)
+        .withService(sharedDriveService(ns).getFullyQualifiedName());
   }
 
   @Override
@@ -194,7 +209,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_spreadsheetFQNStructure(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Spreadsheet spreadsheet =
         Spreadsheets.create()
@@ -214,7 +229,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_createSpreadsheetNameUniqueness(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
     String uniqueName = ns.prefix("unique_spreadsheet");
 
     Spreadsheet first =
@@ -237,7 +252,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_spreadsheetDirectlyUnderService(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Spreadsheet spreadsheet =
         Spreadsheets.create()
@@ -253,7 +268,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_spreadsheetInDirectory(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Directory directory =
         Directories.create()
@@ -277,7 +292,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_listSpreadsheetsByDirectory(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Directory dir1 =
         Directories.create()
@@ -325,7 +340,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_listSpreadsheetsWithRootParameter(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Directory sheetsDir =
         Directories.create()
@@ -381,7 +396,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_createSpreadsheetWithOptionalFields(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Spreadsheet spreadsheet =
         Spreadsheets.create()
@@ -398,7 +413,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_updateSpreadsheet(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Spreadsheet created =
         Spreadsheets.create()
@@ -430,7 +445,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
       "Worksheet relationship not returned in spreadsheet fields - backend setFields needs worksheets support")
   @Test
   void test_spreadsheetWithWorksheets(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Spreadsheet spreadsheet =
         Spreadsheets.create()
@@ -492,7 +507,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_spreadsheetFQNPatterns(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Spreadsheet directSpreadsheet =
         Spreadsheets.create()
@@ -540,7 +555,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_spreadsheetsWithAndWithoutDirectory(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Directory directory =
         Directories.create()
@@ -581,7 +596,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_listSpreadsheetsWithRootParameterAndPagination(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Directory folder =
         Directories.create()
@@ -635,7 +650,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_listSpreadsheetsWithRootParameterEmptyResult(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     for (int i = 1; i <= 2; i++) {
       Directory dir =
@@ -764,7 +779,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_createSpreadsheet(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Spreadsheet spreadsheet =
         Spreadsheets.create()
@@ -784,7 +799,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_createSpreadsheetMinimal(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Spreadsheet spreadsheet =
         Spreadsheets.create()
@@ -799,7 +814,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_getSpreadsheetById(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Spreadsheet created =
         Spreadsheets.create()
@@ -820,7 +835,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_getSpreadsheetByName(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Spreadsheet created =
         Spreadsheets.create()
@@ -838,7 +853,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_deleteSpreadsheet(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Spreadsheet created =
         Spreadsheets.create()
@@ -858,7 +873,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_finderWithFields(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Spreadsheet created =
         Spreadsheets.create()
@@ -877,7 +892,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_finderByNameWithFields(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Spreadsheet created =
         Spreadsheets.create()
@@ -897,7 +912,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_getByNameWithFields(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Spreadsheet created =
         Spreadsheets.create()
@@ -914,7 +929,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_createMultipleSpreadsheetsUnderSameService(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     for (int i = 0; i < 3; i++) {
       Spreadsheet spreadsheet =
@@ -933,7 +948,7 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_patchSpreadsheetAttributes(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     Spreadsheet spreadsheet =
         Spreadsheets.create()

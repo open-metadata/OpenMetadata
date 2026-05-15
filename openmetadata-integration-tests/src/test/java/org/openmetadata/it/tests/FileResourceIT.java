@@ -49,9 +49,24 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
     supportsDataContract = false;
   }
 
+  private static volatile DriveService sharedDriveService;
+
   @BeforeAll
   public static void setup() {
     Files.setDefaultClient(SdkClients.adminClient());
+  }
+
+  private DriveService sharedDriveService(TestNamespace ns) {
+    DriveService cached = sharedDriveService;
+    if (cached != null) {
+      return cached;
+    }
+    synchronized (FileResourceIT.class) {
+      if (sharedDriveService == null) {
+        sharedDriveService = DriveServiceTestFactory.createGoogleDrive(ns);
+      }
+      return sharedDriveService;
+    }
   }
 
   // ===================================================================
@@ -60,17 +75,17 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
 
   @Override
   protected CreateFile createMinimalRequest(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
     return new CreateFile()
         .withName(ns.prefix("file"))
-        .withService(driveService.getFullyQualifiedName())
+        .withService(sharedDriveService(ns).getFullyQualifiedName())
         .withDescription("Test file created by integration test");
   }
 
   @Override
   protected CreateFile createRequest(String name, TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
-    return new CreateFile().withName(name).withService(driveService.getFullyQualifiedName());
+    return new CreateFile()
+        .withName(name)
+        .withService(sharedDriveService(ns).getFullyQualifiedName());
   }
 
   @Override
@@ -177,7 +192,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
 
   @Test
   void test_createAndGetFile(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     String fileName = ns.prefix("test_file");
     File createdFile =
@@ -202,7 +217,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
 
   @Test
   void test_getFileByName(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     String fileName = ns.prefix("test_file_by_name");
     File createdFile =
@@ -234,7 +249,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
 
   @Test
   void test_multipleFilesInSameService(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     File file1 =
         Files.create()
@@ -269,7 +284,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
 
   @Test
   void test_createFileWithoutColumns(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     String fileName = ns.prefix("test_file_no_columns");
     File createdFile =
@@ -287,7 +302,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
 
   @Test
   void test_createCsvFileWithColumns(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     String fileName = ns.prefix("test_csv_with_columns");
     List<Column> columns =
@@ -311,7 +326,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
 
   @Test
   void test_getFileWithColumnsField(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     String fileName = ns.prefix("test_csv_get_columns");
     List<Column> columns =
@@ -339,7 +354,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
     // Regression: PATCH on a file without columns must not NPE in
     // ColumnEntityUpdater.updateColumns. Reproduces the failure seen when
     // editing tags/description on PDF/image files (no columns defined).
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     String fileName = ns.prefix("patch_no_columns");
     File createdFile =
@@ -362,7 +377,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
 
   @Test
   void test_createFileWithDisplayName(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     String fileName = ns.prefix("test_file_display");
     String displayName = "My Test File";
@@ -381,7 +396,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
 
   @Test
   void test_fileWithAllOptionalFields(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     String fileName = ns.prefix("test_file_full");
     String displayName = "Complete Test File";
@@ -406,7 +421,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
 
   @Test
   void test_createFileMinimal(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     String fileName = ns.prefix("test_file_minimal");
 
@@ -421,7 +436,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
 
   @Test
   void test_createFileWithDescription(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     String fileName = ns.prefix("test_file_desc");
     String description = "This is a detailed description of the test file";
@@ -440,7 +455,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
 
   @Test
   void test_deleteFile(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     String fileName = ns.prefix("test_file_delete");
     File createdFile =
@@ -460,7 +475,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
 
   @Test
   void test_findFileById(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     String fileName = ns.prefix("test_file_find");
     File createdFile =
@@ -476,7 +491,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
 
   @Test
   void test_findFileByNameWithFields(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     String fileName = ns.prefix("test_file_find_by_name");
     File createdFile =
@@ -498,7 +513,7 @@ public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
 
   @Test
   void test_getFileByNameWithFields(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
 
     String fileName = ns.prefix("test_file_with_fields");
     File createdFile =

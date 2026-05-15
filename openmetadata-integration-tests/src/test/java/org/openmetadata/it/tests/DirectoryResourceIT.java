@@ -42,9 +42,24 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
     supportsDataContract = false;
   }
 
+  private static volatile DriveService sharedDriveService;
+
   @BeforeAll
   static void setup() {
     Directories.setDefaultClient(SdkClients.adminClient());
+  }
+
+  private DriveService sharedDriveService(TestNamespace ns) {
+    DriveService cached = sharedDriveService;
+    if (cached != null) {
+      return cached;
+    }
+    synchronized (DirectoryResourceIT.class) {
+      if (sharedDriveService == null) {
+        sharedDriveService = DriveServiceTestFactory.createGoogleDrive(ns);
+      }
+      return sharedDriveService;
+    }
   }
 
   // ===================================================================
@@ -53,17 +68,17 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
 
   @Override
   protected CreateDirectory createMinimalRequest(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
     return new CreateDirectory()
         .withName(ns.prefix("directory"))
-        .withService(driveService.getFullyQualifiedName())
+        .withService(sharedDriveService(ns).getFullyQualifiedName())
         .withDescription("Test directory created by integration test");
   }
 
   @Override
   protected CreateDirectory createRequest(String name, TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
-    return new CreateDirectory().withName(name).withService(driveService.getFullyQualifiedName());
+    return new CreateDirectory()
+        .withName(name)
+        .withService(sharedDriveService(ns).getFullyQualifiedName());
   }
 
   @Override
@@ -166,7 +181,7 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
 
   @Test
   void test_createAndGetDirectory(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
     assertNotNull(driveService);
 
     String directoryName = ns.prefix("test_directory");
@@ -217,7 +232,7 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
 
   @Test
   void test_directoryFullyQualifiedName(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
     assertNotNull(driveService);
 
     String directoryName = ns.prefix("test_directory_fqn");
@@ -235,7 +250,7 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
 
   @Test
   void test_createDirectoryWithAllFields(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
     assertNotNull(driveService);
 
     String directoryName = ns.prefix("test_directory_full");
@@ -261,7 +276,7 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
 
   @Test
   void test_createDirectoryMinimalRequest(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
     assertNotNull(driveService);
 
     String directoryName = ns.prefix("test_directory_minimal");
@@ -279,7 +294,7 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
 
   @Test
   void test_getByName(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
     assertNotNull(driveService);
 
     String directoryName = ns.prefix("test_directory_by_name");
@@ -302,7 +317,7 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
 
   @Test
   void test_getByNameWithFields(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
     assertNotNull(driveService);
 
     String directoryName = ns.prefix("test_directory_with_fields");
@@ -324,7 +339,7 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
 
   @Test
   void test_deleteDirectory(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
     assertNotNull(driveService);
 
     String directoryName = ns.prefix("test_directory_delete");
@@ -348,7 +363,7 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
 
   @Test
   void test_findDirectoryById(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
     assertNotNull(driveService);
 
     String directoryName = ns.prefix("test_directory_find");
@@ -369,7 +384,7 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
 
   @Test
   void test_findDirectoryByName(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
     assertNotNull(driveService);
 
     String directoryName = ns.prefix("test_directory_find_by_name");
@@ -391,7 +406,7 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
 
   @Test
   void test_findDirectoryWithFields(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
     assertNotNull(driveService);
 
     String directoryName = ns.prefix("test_directory_find_fields");
@@ -415,7 +430,7 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
 
   @Test
   void test_createMultipleDirectories(TestNamespace ns) {
-    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+    DriveService driveService = sharedDriveService(ns);
     assertNotNull(driveService);
 
     for (int i = 1; i <= 3; i++) {
