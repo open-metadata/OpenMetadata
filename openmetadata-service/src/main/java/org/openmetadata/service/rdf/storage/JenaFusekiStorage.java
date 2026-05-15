@@ -19,6 +19,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -72,6 +74,16 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private static final long REQUEST_TIMEOUT_MS = 10_000L;
   private static final int CIRCUIT_BREAKER_FAILURE_THRESHOLD = 5;
   private static final long CIRCUIT_BREAKER_COOLDOWN_MS = 30_000L;
+
+  // Dedicated virtual-thread executor for the timeout wrapper. We deliberately
+  // do NOT share ForkJoinPool.commonPool: a timed-out Jena call continues to
+  // block its worker thread until OS-level TCP give-up, and on commonPool that
+  // would starve unrelated CompletableFuture / parallel-stream work elsewhere
+  // in the service. Virtual threads are cheap to leak (a few KB stack each)
+  // and the circuit breaker bounds how many can pile up.
+  private static final ExecutorService TIMEOUT_EXECUTOR =
+      Executors.newThreadPerTaskExecutor(
+          Thread.ofVirtual().name("rdf-storage-timeout-", 0).factory());
 
   private final RDFConnection connection;
   private final String baseUri;
@@ -339,7 +351,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   // original Jena HttpException, IOException, etc. and can decide whether to
   // retry or surface to the circuit breaker.
   private static <T> T runWithTimeout(Supplier<T> op, String description) {
-    CompletableFuture<T> future = CompletableFuture.supplyAsync(op);
+    CompletableFuture<T> future = CompletableFuture.supplyAsync(op, TIMEOUT_EXECUTOR);
     try {
       return future.get(REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
     } catch (TimeoutException te) {
@@ -373,26 +385,47 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   // set covers shrink-to-empty cases (e.g. all tags removed -> current model
   // no longer emits om:hasTag, but we still need to clean up the old triples).
   // The dynamic walk covers translator-only predicates introduced via the
-  // JSON-LD context that aren't in the static set.
+  // JSON-LD context that aren't in the static set. CRITICAL: exclude
+  // RELATIONSHIP_HOOK_PREDICATES from the dynamic-walk result. Callers like
+  // RdfRepository.addRelationship load the existing entity model from Fuseki
+  // (which includes hook-managed predicates like om:owns / om:contains) and
+  // pass it here; without this exclusion the dynamic walk would pull those
+  // hook predicates into the DELETE scope and the subsequent LOAD would
+  // overwrite them with a possibly-stale snapshot, opening a lost-update
+  // race window with concurrent async relationship writes.
   private static Set<String> collectTranslatorPredicates(String entityUri, Model entityModel) {
     Set<String> predicates =
         new LinkedHashSet<>(RdfPropertyMapper.TRANSLATOR_MANAGED_DIRECT_PREDICATES);
     Resource entityResource = entityModel.createResource(entityUri);
     StmtIterator stmts = entityModel.listStatements(entityResource, null, (RDFNode) null);
     while (stmts.hasNext()) {
-      predicates.add(stmts.next().getPredicate().getURI());
+      String predicateUri = stmts.next().getPredicate().getURI();
+      if (org.openmetadata.service.rdf.RdfRepository.RELATIONSHIP_HOOK_PREDICATES.contains(
+          predicateUri)) {
+        continue;
+      }
+      predicates.add(predicateUri);
     }
+    // Defensive belt-and-braces in case a future change adds a hook predicate
+    // to the static set: filter the static set the same way.
+    predicates.removeAll(org.openmetadata.service.rdf.RdfRepository.RELATIONSHIP_HOOK_PREDICATES);
     return predicates;
   }
 
   private static String buildPredicateScopedDelete(String entityUri, Set<String> predicates) {
+    // Always delete literal-/blank-node-valued triples regardless of predicate.
+    // Predicates that emit literals (description, displayName, name, ...) may
+    // SHRINK TO EMPTY between writes — the new translator output simply omits
+    // the triple — and the old literal would persist unless we sweep it here.
+    // Hook-managed URI triples (om:owns / om:contains / lineage / etc.) are
+    // safe because the FILTER below requires isIRI(?o) for them to qualify.
+    String literalSweep =
+        String.format(
+            "DELETE { GRAPH <%s> { <%s> ?p ?o } } "
+                + "WHERE { GRAPH <%s> { <%s> ?p ?o . FILTER(!isIRI(?o)) } }",
+            KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri);
     if (predicates.isEmpty()) {
-      // No-op delete: nothing to remove. Use a constant DELETE WHERE that
-      // matches nothing so the caller's retry/transaction path still has a
-      // well-formed UpdateRequest to execute.
-      return String.format(
-          "DELETE WHERE { GRAPH <%s> { <%s> <urn:om:noop> ?o . FILTER(false) } }",
-          KNOWLEDGE_GRAPH, entityUri);
+      return literalSweep;
     }
     StringBuilder filterIn = new StringBuilder();
     boolean first = true;
@@ -403,9 +436,16 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       first = false;
       filterIn.append('<').append(pred).append('>');
     }
-    return String.format(
-        "DELETE { GRAPH <%s> { <%s> ?p ?o } } WHERE { GRAPH <%s> { <%s> ?p ?o . FILTER(?p IN (%s)) } }",
-        KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri, filterIn);
+    // Chain the literal sweep + the predicate-scoped URI delete in one update.
+    // The literal sweep on its own would leave stale URI triples for
+    // translator predicates that disappeared from the new model (rare, but
+    // possible if a JSON-LD context predicate is removed); the predicate-scoped
+    // URI delete on its own would leave stale literals as Copilot flagged.
+    return literalSweep
+        + "; "
+        + String.format(
+            "DELETE { GRAPH <%s> { <%s> ?p ?o } } WHERE { GRAPH <%s> { <%s> ?p ?o . FILTER(isIRI(?o) && ?p IN (%s)) } }",
+            KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri, filterIn);
   }
 
   @Override
