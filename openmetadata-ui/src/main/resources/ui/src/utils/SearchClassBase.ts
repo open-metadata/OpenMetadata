@@ -24,17 +24,21 @@ import { ReactComponent as ColumnIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
+import { ReactComponent as DirectoryIcon } from '../assets/svg/ic-directory.svg';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as DriveIcon } from '../assets/svg/ic-drive-service.svg';
+import { ReactComponent as FileIcon } from '../assets/svg/ic-file.svg';
 import { ReactComponent as KnowledgeCenterIcon } from '../assets/svg/ic-knowledge-page.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
 import { ReactComponent as SearchIcon } from '../assets/svg/ic-search.svg';
+import { ReactComponent as SpreadsheetIcon } from '../assets/svg/ic-spreadsheet.svg';
 import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
+import { ReactComponent as WorksheetIcon } from '../assets/svg/ic-worksheet.svg';
 import {
   ReactComponent as KnowledgeCenterIconComponent,
   ReactComponent as KnowledgePageIcon,
@@ -587,28 +591,28 @@ class SearchClassBase {
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DIRECTORIES,
-        icon: MetricIcon,
+        icon: DirectoryIcon,
       },
       [SearchIndex.FILE]: {
         label: t('label.file-plural'),
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.FILES,
-        icon: MetricIcon,
+        icon: FileIcon,
       },
       [SearchIndex.SPREADSHEET]: {
         label: t('label.spreadsheet-plural'),
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.SPREADSHEETS,
-        icon: MetricIcon,
+        icon: SpreadsheetIcon,
       },
       [SearchIndex.WORKSHEET]: {
         label: t('label.worksheet-plural'),
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.WORKSHEETS,
-        icon: MetricIcon,
+        icon: WorksheetIcon,
       },
       [SearchIndex.KNOWLEDGE_PAGE_INDEX]: {
         label: t('label.knowledge-center'),
@@ -806,7 +810,6 @@ class SearchClassBase {
       EntityType.GLOSSARY_TERM,
       EntityType.TAG,
       EntityType.DATA_PRODUCT,
-      EntityType.KNOWLEDGE_PAGE,
       EntityType.KNOWLEDGE_PAGE,
     ];
   }

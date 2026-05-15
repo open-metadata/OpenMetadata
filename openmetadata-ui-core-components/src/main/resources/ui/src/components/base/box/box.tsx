@@ -18,7 +18,7 @@ import {
 import { cx } from '@/utils/cx';
 import type { HTMLAttributes, ReactNode } from 'react';
 
-type Direction = 'row' | 'col' | 'row-reverse' | 'col-reverse';
+export type Direction = 'row' | 'col' | 'row-reverse' | 'col-reverse';
 type Align = 'start' | 'center' | 'end' | 'stretch' | 'baseline';
 type Justify = 'start' | 'center' | 'end' | 'between' | 'around' | 'evenly';
 type Wrap = 'wrap' | 'nowrap' | 'wrap-reverse';
