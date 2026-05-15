@@ -1073,7 +1073,6 @@ export const openColumnDetailPanel = async ({
       )
     : null;
 
-  const columnsProfileResponsePromise = null;
   if (entityType === 'MlModel') {
     const columnName = page
       .locator(`[${rowSelector}="${columnId}"]`)
@@ -1102,10 +1101,6 @@ export const openColumnDetailPanel = async ({
   if (apiResponsePromise) {
     const apiResponse = await apiResponsePromise;
     expect(apiResponse.status()).toBe(200);
-  }
-
-  if (columnsProfileResponsePromise) {
-    await columnsProfileResponsePromise;
   }
 
   const panelContainer = page.locator('.column-detail-panel');
