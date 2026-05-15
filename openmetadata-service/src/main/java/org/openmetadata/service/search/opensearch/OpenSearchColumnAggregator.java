@@ -577,26 +577,18 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
     return Query.of(q -> q.bool(b -> b.mustNot(existsQuery(field))));
   }
 
+  // See ElasticSearchColumnAggregator.hasNonEmptyField for the rationale: the previous
+  // shape wrapped existsQuery in `bool.must` and excluded an empty-string `term` match;
+  // that `term(field, "")` on a `text` field was the source of an intermittent
+  // [search_phase_execution_exception] all shards failed on the cache CI lane and is
+  // unnecessary because empty strings on text fields analyze to zero tokens, so exists()
+  // already returns false for them.
   private Query hasNonEmptyField(String field) {
-    return Query.of(
-        q ->
-            q.bool(
-                b ->
-                    b.must(existsQuery(field))
-                        .mustNot(
-                            Query.of(
-                                qn -> qn.term(t -> t.field(field).value(FieldValue.of("")))))));
+    return existsQuery(field);
   }
 
   private Query hasEmptyOrMissingField(String field) {
-    return Query.of(
-        q ->
-            q.bool(
-                b ->
-                    b.should(notExistsQuery(field))
-                        .should(
-                            Query.of(qs -> qs.term(t -> t.field(field).value(FieldValue.of("")))))
-                        .minimumShouldMatch("1")));
+    return notExistsQuery(field);
   }
 
   /** Phase 1: Get all matching column names using terms agg with include regex (no top_hits). */
