@@ -157,6 +157,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     <ModalOverlay
       isDismissable
       isOpen={isOpen}
+      style={{ zIndex: 999 }}
       onOpenChange={(open) => !open && handleClose()}>
       <Modal>
         <Dialog
