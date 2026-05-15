@@ -678,21 +678,23 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     return Query.of(q -> q.bool(b -> b.mustNot(existsQuery(field))));
   }
 
-  // The previous shape wrapped existsQuery in `bool.must` and excluded an empty-string `term`
-  // match. That extra `term(field, "")` clause on a `text` field (description is
-  // `text` + om_analyzer + similarity:boolean) was the source of the intermittent
-  // [search_phase_execution_exception] all shards failed on the postgres+ES+redis CI lane
-  // (PR #28100, run 25936294012) — ES 9.x rejects term-on-text in certain composite-agg
-  // wrap configurations and surfaces the failure as the generic shard-failed error with no
-  // logged caused_by. exists alone is semantically equivalent for text fields: an empty
-  // string analyzes to zero tokens, so exists returns false and the column is treated as
-  // missing, matching the intended "completeness" semantics.
   private Query hasNonEmptyField(String field) {
-    return existsQuery(field);
+    return Query.of(
+        q ->
+            q.bool(
+                b ->
+                    b.must(existsQuery(field))
+                        .mustNot(Query.of(qn -> qn.term(t -> t.field(field).value(""))))));
   }
 
   private Query hasEmptyOrMissingField(String field) {
-    return notExistsQuery(field);
+    return Query.of(
+        q ->
+            q.bool(
+                b ->
+                    b.should(notExistsQuery(field))
+                        .should(Query.of(qs -> qs.term(t -> t.field(field).value(""))))
+                        .minimumShouldMatch("1")));
   }
 
   /** Phase 1: Get all matching column names using terms agg with include regex (no top_hits). */
