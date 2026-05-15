@@ -77,16 +77,6 @@ class NodeStage(BaseModel, Generic[T]):
         description="If true, store the entity FQN in the context instead of just the name",
     )
 
-    # Used to compute the fingerprint
-    cache_entities: bool = Field(
-        False,
-        description="Cache all the entities which have use_cache set as True. Used for fingerprint comparison.",
-    )
-    use_cache: bool = Field(
-        False,
-        description="Enable this to get the entity from cached state in the context",
-    )
-
 
 class TopologyNode(BaseModel):
     """

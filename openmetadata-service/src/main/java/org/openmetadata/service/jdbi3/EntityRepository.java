@@ -203,6 +203,7 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -7006,6 +7007,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private final ChangeSource changeSource;
     private final boolean useOptimisticLocking;
     @Setter private Set<String> patchedFields;
+
+    // When set (bulk path with overrideMetadata=true), bot updates are allowed to overwrite
+    // user-curated metadata that PUT-as-bot would otherwise preserve (description, displayName).
+    @Setter private boolean overrideMetadata;
     private final List<Runnable> deferredReactOperations = new ArrayList<>();
     private boolean deferredReactExecuted;
 
@@ -7476,10 +7481,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateDescription() {
-      if (operation.isPut() && !nullOrEmpty(original.getDescription()) && updatedByBot()) {
+      if (operation.isPut()
+          && !nullOrEmpty(original.getDescription())
+          && updatedByBot()
+          && !overrideMetadata) {
         // Revert change to non-empty description if it is being updated by a bot
         // This is to prevent bots from overwriting the description. Description need to be
-        // updated with a PATCH request
+        // updated with a PATCH request, or via the bulk path with overrideMetadata=true
         updated.setDescription(original.getDescription());
         return;
       }
@@ -7511,6 +7519,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateDisplayName() {
+      if (operation.isPut()
+          && !nullOrEmpty(original.getDisplayName())
+          && updatedByBot()
+          && !overrideMetadata) {
+        // Mirror updateDescription: a bot PUT (for example bulk ingestion) must not clobber a
+        // user-curated displayName. Use a PATCH or overrideMetadata=true to change it.
+        updated.setDisplayName(original.getDisplayName());
+        return;
+      }
       recordChange(FIELD_DISPLAY_NAME, original.getDisplayName(), updated.getDisplayName());
     }
 
@@ -10662,6 +10679,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<T> entities,
       String userName,
       Map<String, T> existingByFqn,
+      boolean overrideMetadata,
       List<BulkResponse> authFailedResponses,
       int totalRequests) {
 
@@ -10683,7 +10701,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               () -> {
                 try {
                   return bulkCreateOrUpdateEntitiesSequential(
-                      uriInfo, entities, userName, existingByFqn);
+                      uriInfo, entities, userName, existingByFqn, overrideMetadata);
                 } catch (Exception e) {
                   LOG.error("Async bulk operation failed for jobId: {}", jobId, e);
                   BulkOperationResult errorResult = new BulkOperationResult();
@@ -10754,11 +10772,36 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new Fields(allowedFields, bulkFields);
   }
 
+  /**
+   * Returns true when a connector-supplied entity is provably unchanged from what is stored, so
+   * the bulk update path can skip field hydration and per-field diffing. Requires a non-empty
+   * sourceHash on both the incoming entity and the stored original that match, an existing
+   * non-deleted original, and that the FQN appears only once in the batch (duplicate FQNs need
+   * the full updater path so each occurrence diffs against a fresh snapshot).
+   */
+  private boolean isSourceHashUnchanged(
+      T entity, Map<String, T> hydratedOriginalByFqn, Map<String, Integer> updateFrequencyByFqn) {
+    String fqn = entity.getFullyQualifiedName();
+    if (nullOrEmpty(fqn) || updateFrequencyByFqn.getOrDefault(fqn, 0) > 1) {
+      return false;
+    }
+    String incomingHash = entity.getSourceHash();
+    if (nullOrEmpty(incomingHash)) {
+      return false;
+    }
+    T original = hydratedOriginalByFqn.get(fqn);
+    if (original == null || Boolean.TRUE.equals(original.getDeleted())) {
+      return false;
+    }
+    return incomingHash.equals(original.getSourceHash());
+  }
+
   private void bulkUpdateEntities(
       UriInfo uriInfo,
       List<T> updateEntities,
       Map<String, T> existingByFqn,
       String userName,
+      boolean overrideMetadata,
       List<BulkResponse> successRequests,
       List<BulkResponse> failedRequests,
       List<Long> entityLatenciesNanos) {
@@ -10782,12 +10825,43 @@ public abstract class EntityRepository<T extends EntityInterface> {
         hydratedOriginalByFqn.putIfAbsent(fqn, original);
       }
     }
-    List<T> originalsForHydration = new ArrayList<>(hydratedOriginalByFqn.values());
+
+    // sourceHash fast-path: skip entities whose connector-supplied sourceHash matches the
+    // stored value. This avoids field hydration and per-field diffing for unchanged entities.
+    // A skipped entity is reported as a no-change success - identical to the outcome of a full
+    // diff that finds nothing changed - so callers see no behavioral difference. Disabled when
+    // overrideMetadata is set: the caller explicitly wants stored metadata overwritten now, so a
+    // matching sourceHash must not short-circuit that.
+    List<T> entitiesToProcess = new ArrayList<>();
+    for (T entity : updateEntities) {
+      if (!overrideMetadata
+          && isSourceHashUnchanged(entity, hydratedOriginalByFqn, updateFrequencyByFqn)) {
+        successRequests.add(
+            new BulkResponse()
+                .withRequest(entity.getFullyQualifiedName())
+                .withStatus(Status.OK.getStatusCode()));
+        entityLatenciesNanos.add(0L);
+        recordEntityMetrics(entityType, 0L, 0, true);
+      } else {
+        entitiesToProcess.add(entity);
+      }
+    }
+    if (entitiesToProcess.isEmpty()) return;
+
+    // Hydrate only the originals of entities that still need a full diff.
+    Map<String, T> originalsToHydrateByFqn = new LinkedHashMap<>();
+    for (T entity : entitiesToProcess) {
+      T original = hydratedOriginalByFqn.get(entity.getFullyQualifiedName());
+      if (original != null) {
+        originalsToHydrateByFqn.putIfAbsent(entity.getFullyQualifiedName(), original);
+      }
+    }
+    List<T> originalsForHydration = new ArrayList<>(originalsToHydrateByFqn.values());
     try {
       setFieldsInBulk(putFields, originalsForHydration);
     } catch (Exception e) {
       LOG.error("setFieldsInBulk failed, marking all updates as failed", e);
-      for (T entity : updateEntities) {
+      for (T entity : entitiesToProcess) {
         failedRequests.add(
             new BulkResponse()
                 .withRequest(entity.getFullyQualifiedName())
@@ -10801,7 +10875,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<EntityUpdater> updaters = new ArrayList<>();
 
     try (var ignored = phase("entityUpdaters")) {
-      for (T entity : updateEntities) {
+      for (T entity : entitiesToProcess) {
         try {
           String fqn = entity.getFullyQualifiedName();
           T hydratedOriginal = hydratedOriginalByFqn.get(fqn);
@@ -10825,6 +10899,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           }
 
           EntityUpdater updater = getUpdater(original, entity, Operation.PUT, null);
+          updater.setOverrideMetadata(overrideMetadata);
           updater.updateWithDeferredStore();
           updaters.add(updater);
         } catch (Exception e) {
@@ -10959,7 +11034,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private BulkOperationResult bulkCreateOrUpdateEntitiesSequential(
-      UriInfo uriInfo, List<T> entities, String userName, Map<String, T> existingByFqn) {
+      UriInfo uriInfo,
+      List<T> entities,
+      String userName,
+      Map<String, T> existingByFqn,
+      boolean overrideMetadata) {
 
     BulkOperationResult result = new BulkOperationResult();
     result.setStatus(ApiStatus.SUCCESS);
@@ -11084,6 +11163,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateEntities,
         existingByFqn,
         userName,
+        overrideMetadata,
         successRequests,
         failedRequests,
         entityLatenciesNanos);
@@ -11235,7 +11315,111 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public BulkOperationResult bulkCreateOrUpdateEntities(
       UriInfo uriInfo, List<T> entities, String userName, Map<String, T> existingByFqn) {
-    return bulkCreateOrUpdateEntitiesSequential(uriInfo, entities, userName, existingByFqn);
+    return bulkCreateOrUpdateEntities(uriInfo, entities, userName, existingByFqn, false);
+  }
+
+  public BulkOperationResult bulkCreateOrUpdateEntities(
+      UriInfo uriInfo,
+      List<T> entities,
+      String userName,
+      Map<String, T> existingByFqn,
+      boolean overrideMetadata) {
+    return bulkCreateOrUpdateEntitiesSequential(
+        uriInfo, entities, userName, existingByFqn, overrideMetadata);
+  }
+
+  /**
+   * Soft-deletes entities of this type within {@code request.scopeFqn} that the ingestion
+   * connector did not report in the current run. The connector sends the set of FQNs it saw
+   * ({@code request.seenFqns}); any live entity under the scope whose FQN is not in that set is
+   * considered stale.
+   *
+   * <p>FQNs are compared by hash so quoting or case differences between the connector-supplied and
+   * stored values never cause spurious deletes. An empty scope yields zero deletions - it is never
+   * interpreted as "everything is stale". Each delete runs in its own transaction so a single
+   * failure does not roll back the rest of the batch.
+   */
+  public BulkOperationResult bulkDeleteStaleEntities(
+      BulkDeleteStaleRequest request, String deletedBy) {
+    boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
+    boolean hardDelete = Boolean.TRUE.equals(request.getHardDelete());
+    boolean recursive = !Boolean.FALSE.equals(request.getRecursive());
+    List<BulkResponse> successRequests = new ArrayList<>();
+    List<BulkResponse> failedRequests = new ArrayList<>();
+    Set<String> deletedHashes = new HashSet<>();
+    for (EntityDAO.EntityIdFqnPair stale :
+        findStaleEntities(request.getScopeFqn(), request.getSeenFqns())) {
+      String fqnHash = FullyQualifiedName.buildHash(stale.fqn);
+      if (dryRun || isCoveredByDeletedAncestor(fqnHash, deletedHashes)) {
+        successRequests.add(staleSuccess(stale.fqn));
+        continue;
+      }
+      try {
+        deleteInternal(deletedBy, stale.id, recursive, hardDelete);
+        deletedHashes.add(fqnHash);
+        successRequests.add(staleSuccess(stale.fqn));
+      } catch (Exception e) {
+        LOG.warn("Failed to delete stale {} '{}': {}", entityType, stale.fqn, e.getMessage());
+        failedRequests.add(
+            new BulkResponse()
+                .withRequest(stale.fqn)
+                .withStatus(Status.INTERNAL_SERVER_ERROR.getStatusCode())
+                .withMessage(e.getMessage()));
+      }
+    }
+    return buildStaleDeletionResult(dryRun, successRequests, failedRequests);
+  }
+
+  /**
+   * Returns the live entities under {@code scopeFqn} that are not present in {@code seenFqns},
+   * sorted shallowest-FQN-first so a recursive delete of an ancestor is processed before its
+   * descendants. Comparison is by FQN hash to be quoting and case insensitive.
+   */
+  private List<EntityDAO.EntityIdFqnPair> findStaleEntities(
+      String scopeFqn, List<String> seenFqns) {
+    List<EntityDAO.EntityIdFqnPair> scopeEntities =
+        dao.listDescendantIdFqnByPrefixNonDeleted(scopeFqn);
+    if (scopeEntities.isEmpty()) {
+      return List.of();
+    }
+    Set<String> seenHashes = new HashSet<>();
+    for (String seenFqn : listOrEmpty(seenFqns)) {
+      try {
+        seenHashes.add(FullyQualifiedName.buildHash(seenFqn));
+      } catch (Exception e) {
+        LOG.warn("Ignoring malformed seen FQN '{}' in stale deletion request", seenFqn);
+      }
+    }
+    return scopeEntities.stream()
+        .filter(pair -> !seenHashes.contains(FullyQualifiedName.buildHash(pair.fqn)))
+        .sorted(Comparator.comparingInt(pair -> FullyQualifiedName.split(pair.fqn).length))
+        .toList();
+  }
+
+  private boolean isCoveredByDeletedAncestor(String fqnHash, Set<String> deletedHashes) {
+    for (String deletedHash : deletedHashes) {
+      if (fqnHash.startsWith(deletedHash + ".")) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private BulkResponse staleSuccess(String fqn) {
+    return new BulkResponse().withRequest(fqn).withStatus(Status.OK.getStatusCode());
+  }
+
+  private BulkOperationResult buildStaleDeletionResult(
+      boolean dryRun, List<BulkResponse> successRequests, List<BulkResponse> failedRequests) {
+    BulkOperationResult result = new BulkOperationResult();
+    result.setDryRun(dryRun);
+    result.setStatus(failedRequests.isEmpty() ? ApiStatus.SUCCESS : ApiStatus.PARTIAL_SUCCESS);
+    result.setNumberOfRowsProcessed(successRequests.size() + failedRequests.size());
+    result.setNumberOfRowsPassed(successRequests.size());
+    result.setNumberOfRowsFailed(failedRequests.size());
+    result.setSuccessRequest(successRequests);
+    result.setFailedRequest(failedRequests);
+    return result;
   }
 
   private static boolean isDuplicateKeyException(Exception e) {

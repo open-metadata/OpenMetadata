@@ -77,7 +77,6 @@ class SearchServiceTopology(ServiceTopology):
                 processor="yield_create_request_search_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["search_index", "search_index_template"],
@@ -91,7 +90,6 @@ class SearchServiceTopology(ServiceTopology):
                 context="search_index",
                 processor="yield_search_index",
                 consumer=["search_service"],
-                use_cache=True,
             ),
             NodeStage(
                 type_=OMetaIndexSampleData,
@@ -111,7 +109,6 @@ class SearchServiceTopology(ServiceTopology):
                     context="search_index_template",
                     processor="yield_search_index_template",
                     consumer=["search_service"],
-                    use_cache=True,
                 )
             ],
         )

@@ -760,6 +760,48 @@ class OpenMetadata(
         url += f"&hardDelete={str(hard_delete).lower()}"
         self.client.delete(url)
 
+    def delete_stale_entities(
+        self,
+        entity: Type[T],  # noqa: UP006
+        scope_params: Optional[Dict[str, str]],  # noqa: UP006, UP045
+        live_fqns: Iterable[str],
+        mark_deleted: bool = True,
+    ) -> Optional[BulkOperationResult]:  # noqa: UP045
+        """
+        Ask the server to soft-delete entities of `entity` within a scope that were not reported
+        by the connector in the current run.
+
+        `scope_params` is a single-key dict such as {"database": fqn}, {"databaseSchema": fqn} or
+        {"service": fqn}: the key is the scope entity type and the value is the scope FQN. The
+        connector sends `live_fqns` (the FQNs it produced this run); the server soft-deletes the
+        in-scope entities that are not in that set.
+
+        Returns the BulkOperationResult, or None when the server does not expose the endpoint
+        (older server) so the caller can fall back to the legacy paginate-and-diff path.
+        """
+        if not scope_params:
+            raise ValueError("delete_stale_entities requires a scope, e.g. {'database': fqn}")
+
+        scope_entity_type, scope_fqn = next(iter(scope_params.items()))
+        request = {
+            "scopeFqn": scope_fqn,
+            "scopeEntityType": scope_entity_type,
+            "seenFqns": list(live_fqns),
+            "recursive": mark_deleted,
+        }
+        url = f"{self.get_suffix(entity)}/deleteStale"
+        try:
+            resp = self.client.put(url, json=request)
+        except APIError as err:
+            if err.status_code == 404:
+                logger.debug(
+                    "deleteStale endpoint unavailable for %s; falling back to legacy delete",
+                    entity.__name__,
+                )
+                return None
+            raise
+        return BulkOperationResult(**resp) if resp else None
+
     def restore(
         self,
         entity: Type[T],  # noqa: UP006

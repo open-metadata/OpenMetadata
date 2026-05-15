@@ -73,7 +73,6 @@ class ApiServiceTopology(ServiceTopology):
                 processor="yield_create_request_api_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["api_collection"],
@@ -87,14 +86,12 @@ class ApiServiceTopology(ServiceTopology):
                 context="api_collections",
                 processor="yield_api_collection",
                 consumer=["api_service"],
-                use_cache=True,
             ),
             NodeStage(
                 type_=APIEndpoint,
                 context="api_endpoints",
                 processor="yield_api_endpoint",
                 consumer=["api_service"],
-                use_cache=True,
             ),
         ],
     )

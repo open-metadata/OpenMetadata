@@ -34,23 +34,33 @@ def delete_entity_from_source(
     params: Optional[Dict[str, str]] = None,  # noqa: UP006, UP045
 ) -> Iterable[Either[DeleteEntity]]:
     """
-    Method to delete the entities
+    Soft-delete the entities of ``entity_type`` within ``params`` scope that were not seen in
+    this run. The server owns the detection: the connector sends the set of FQNs it produced
+    (``entity_source_state``) and the server soft-deletes the in-scope entities not in that set.
+
+    Falls back to the legacy client-side paginate-and-diff against older servers that do not
+    expose the ``deleteStale`` endpoint.
+
     :param metadata: OMeta client
     :param entity_type: Pydantic Entity model
-    :param entity_source_state: Current state of the service
-    :param mark_deleted_entity: Option to mark the entity as deleted or not
-    :param params: param to fetch the entity state
+    :param entity_source_state: FQNs of the entities produced by the connector this run
+    :param mark_deleted_entity: When True, the soft-delete cascades to child entities
+    :param params: single-key scope dict, e.g. {"database": fqn} / {"databaseSchema": fqn}
     """
     try:
-        entity_state = metadata.list_all_entities(entity=entity_type, params=params)
-        for entity in entity_state:
-            if str(entity.fullyQualifiedName.root) not in entity_source_state:
-                yield Either(
-                    right=DeleteEntity(
-                        entity=entity,
-                        mark_deleted_entities=mark_deleted_entity,
-                    )
-                )
+        result = metadata.delete_stale_entities(
+            entity=entity_type,
+            scope_params=params,
+            live_fqns=entity_source_state,
+            mark_deleted=mark_deleted_entity,
+        )
+        if result is not None:
+            # The server soft-deleted the stale entities; nothing to push through the sink.
+            return
+        # Older server without the deleteStale endpoint: fall back to client-side detection.
+        yield from _delete_stale_entities_legacy(
+            metadata, entity_type, entity_source_state, mark_deleted_entity, params
+        )
     except Exception as exc:
         yield Either(
             left=StackTraceError(
@@ -59,6 +69,25 @@ def delete_entity_from_source(
                 stackTrace=traceback.format_exc(),
             )
         )
+
+
+def _delete_stale_entities_legacy(
+    metadata: OpenMetadata,
+    entity_type: Type[T],  # noqa: UP006
+    entity_source_state,
+    mark_deleted_entity: bool,
+    params: Optional[Dict[str, str]],  # noqa: UP006, UP045
+) -> Iterable[Either[DeleteEntity]]:
+    """Legacy client-side stale detection: paginate the scope and diff FQNs locally."""
+    entity_state = metadata.list_all_entities(entity=entity_type, params=params)
+    for entity in entity_state:
+        if str(entity.fullyQualifiedName.root) not in entity_source_state:
+            yield Either(
+                right=DeleteEntity(
+                    entity=entity,
+                    mark_deleted_entities=mark_deleted_entity,
+                )
+            )
 
 
 def delete_entity_by_name(
