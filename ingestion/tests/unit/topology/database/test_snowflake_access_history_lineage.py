@@ -155,6 +155,7 @@ def test_combined_lineage_sql_streams_one_row_per_edge():
         account_usage="SNOWFLAKE.ACCOUNT_USAGE",
         start_time="2025-01-01",
         end_time="2025-01-31",
+        filter_condition="",
     )
     # Server-side dedup for table edges
     assert "MAX_BY(ah.QUERY_ID, ah.QUERY_START_TIME)" in rendered
@@ -171,6 +172,32 @@ def test_combined_lineage_sql_streams_one_row_per_edge():
     assert "LEFT JOIN SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY qh_repr" in rendered
     # No per-downstream array caps
     assert "ARRAY_SLICE" not in rendered
+
+
+def test_combined_sql_injects_filter_condition_when_provided():
+    """User's sourceConfig.filterCondition must be injected into the source CTE."""
+    rendered = SNOWFLAKE_ACCESS_HISTORY_LINEAGE.format(
+        account_usage="SNOWFLAKE.ACCOUNT_USAGE",
+        start_time="2025-01-01",
+        end_time="2025-01-31",
+        filter_condition="AND (qh.QUERY_TYPE = 'CREATE_TABLE_AS_SELECT')",
+    )
+    # Predicate lands inside the access_history_filtered CTE before flatten/aggregation
+    assert "AND (qh.QUERY_TYPE = 'CREATE_TABLE_AS_SELECT')" in rendered
+    cte_section, _, _ = rendered.partition("table_edges AS")
+    assert "AND (qh.QUERY_TYPE = 'CREATE_TABLE_AS_SELECT')" in cte_section
+
+
+def test_build_filter_condition_clause_empty_when_unset():
+    src = _make_lineage_source()
+    src.source_config.filterCondition = None
+    assert src._build_filter_condition_clause() == ""
+
+
+def test_build_filter_condition_clause_wraps_user_predicate():
+    src = _make_lineage_source()
+    src.source_config.filterCondition = "qh.USER_NAME = 'etl_user'"
+    assert src._build_filter_condition_clause() == "AND (qh.USER_NAME = 'etl_user')"
 
 
 def test_copy_history_sql_filters_loaded_status():

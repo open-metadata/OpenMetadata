@@ -549,6 +549,7 @@ SNOWFLAKE_ACCESS_HISTORY_LINEAGE = textwrap.dedent(
             AND qh.EXECUTION_STATUS = 'SUCCESS'
             AND qh.QUERY_TEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
             AND qh.QUERY_TEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+            {filter_condition}
     ),
     table_edges AS (
         SELECT

@@ -127,6 +127,18 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             return False
         return str(raw).strip().lower() == "true"
 
+    def _build_filter_condition_clause(self) -> str:
+        """
+        Render `sourceConfig.filterCondition` as an extra `AND (...)` predicate
+        scoped to the access_history_filtered CTE. Unqualified column names
+        resolve against `qh` (QUERY_HISTORY) — e.g. `query_type = 'COPY'`,
+        `user_name = 'etl_user'`, `query_text ILIKE '%my_pipeline%'`.
+        """
+        condition = getattr(self.source_config, "filterCondition", None)
+        if not condition:
+            return ""
+        return f"AND ({condition})"
+
     def get_stored_procedure_sql_statement(self) -> str:
         """
         Return the SQL statement to get the stored procedure queries
@@ -220,6 +232,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             account_usage=self.service_connection.accountUsageSchema,
             start_time=self.start,
             end_time=self.end,
+            filter_condition=self._build_filter_condition_clause(),
         )
         emitted = 0
         skipped = 0
