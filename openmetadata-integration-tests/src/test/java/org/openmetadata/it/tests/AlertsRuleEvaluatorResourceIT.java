@@ -132,6 +132,7 @@ public class AlertsRuleEvaluatorResourceIT {
         "service.db.schema.name|pipe",
         "service.db.schema.name*star",
         "service.db.schema.[bracketed].table",
+        "AENG - CSP work item bug checks (duration exceeded)",
       })
   void test_matchAnyEntityFqn_treatsRegexMetacharsAsLiteral(String fqn) {
     Table table = new Table().withName("t").withFullyQualifiedName(fqn);
