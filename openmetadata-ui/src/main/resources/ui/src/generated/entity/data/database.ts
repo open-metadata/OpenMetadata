@@ -25,7 +25,9 @@ export interface Database {
      */
     databaseProfilerConfig?: DatabaseProfilerConfig;
     /**
-     * References to schemas in the database.
+     * Deprecated. Use `GET /v1/databaseSchemas?database={fqn}` to list schemas under this
+     * database with pagination. This field is no longer populated by the API and will be
+     * removed in a future release.
      */
     databaseSchemas?: EntityReference[];
     /**
@@ -112,6 +114,11 @@ export interface Database {
      * format in UTC. Example - `P23DT23H`.
      */
     retentionPeriod?: string;
+    /**
+     * Number of schemas under this database. Computed on demand when `schemaCount` is requested
+     * in `fields`.
+     */
+    schemaCount?: number;
     /**
      * Link to the database cluster/service where this database is hosted in.
      */
@@ -436,7 +443,9 @@ export interface FieldChange {
 }
 
 /**
- * References to schemas in the database.
+ * Deprecated. Use `GET /v1/databaseSchemas?database={fqn}` to list schemas under this
+ * database with pagination. This field is no longer populated by the API and will be
+ * removed in a future release.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For

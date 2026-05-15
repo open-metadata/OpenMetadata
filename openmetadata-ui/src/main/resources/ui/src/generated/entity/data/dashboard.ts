@@ -22,7 +22,15 @@ export interface Dashboard {
      */
     changeDescription?: ChangeDescription;
     /**
-     * All the charts included in this Dashboard.
+     * Number of charts linked to this dashboard. Computed on demand when `chartCount` is
+     * requested in `fields`.
+     */
+    chartCount?: number;
+    /**
+     * Charts on this Dashboard. Populated only when `fields=charts` is explicitly requested.
+     * Excluded from `fields=*` expansion to prevent unbounded materialisation for dashboards
+     * with very large chart counts — use `chartCount` plus a paginated chart listing for badges
+     * and tables.
      */
     charts?:        EntityReference[];
     dashboardType?: DashboardType;
@@ -31,7 +39,13 @@ export interface Dashboard {
      */
     dataContract?: EntityReference;
     /**
-     * List of data models used by this dashboard or the charts contained on it.
+     * Number of dashboard data models linked to this dashboard. Computed on demand when
+     * `dataModelCount` is requested in `fields`.
+     */
+    dataModelCount?: number;
+    /**
+     * Dashboard data models on this Dashboard. Populated only when `fields=dataModels` is
+     * explicitly requested. Excluded from `fields=*` expansion.
      */
     dataModels?: EntityReference[];
     /**
@@ -428,7 +442,10 @@ export interface FieldChange {
 }
 
 /**
- * All the charts included in this Dashboard.
+ * Charts on this Dashboard. Populated only when `fields=charts` is explicitly requested.
+ * Excluded from `fields=*` expansion to prevent unbounded materialisation for dashboards
+ * with very large chart counts — use `chartCount` plus a paginated chart listing for badges
+ * and tables.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For

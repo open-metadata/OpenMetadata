@@ -16,7 +16,9 @@
  */
 export interface APICollection {
     /**
-     * All the APIs included in this API Collection.
+     * Endpoints in this API Collection. Populated only when `fields=apiEndpoints` is explicitly
+     * requested. Excluded from `fields=*` expansion to prevent unbounded materialisation; use
+     * `endpointCount` and `GET /v1/apiEndpoints?apiCollection={fqn}` for paginated listing.
      */
     apiEndpoints?:  EntityReference[];
     certification?: AssetCertification;
@@ -50,6 +52,11 @@ export interface APICollection {
      * domain from the API service it belongs to.
      */
     domains?: EntityReference[];
+    /**
+     * Number of API endpoints under this collection. Computed on demand when `endpointCount` is
+     * requested in `fields`.
+     */
+    endpointCount?: number;
     /**
      * EndPoint URL for the API Collection. Capture the Root URL of the collection.
      */
@@ -131,7 +138,9 @@ export interface APICollection {
 }
 
 /**
- * All the APIs included in this API Collection.
+ * Endpoints in this API Collection. Populated only when `fields=apiEndpoints` is explicitly
+ * requested. Excluded from `fields=*` expansion to prevent unbounded materialisation; use
+ * `endpointCount` and `GET /v1/apiEndpoints?apiCollection={fqn}` for paginated listing.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For

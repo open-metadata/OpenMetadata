@@ -121,7 +121,14 @@ export interface DatabaseSchema {
      */
     sourceUrl?: string;
     /**
-     * References to tables in the schema.
+     * Number of tables under this schema. Computed on demand when `tableCount` is requested in
+     * `fields`.
+     */
+    tableCount?: number;
+    /**
+     * Deprecated. Use `GET /v1/tables?databaseSchema={fqn}` to list tables under this schema
+     * with pagination. This field is no longer populated by the API and will be removed in a
+     * future release.
      */
     tables?: EntityReference[];
     /**

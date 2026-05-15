@@ -24,9 +24,16 @@ export interface Container {
      */
     changeDescription?: ChangeDescription;
     /**
-     * References to child containers residing under this entity.
+     * Deprecated. Use `GET /v1/containers?parent={fqn}` (when available) or paginate via the
+     * storage service to list child containers. This field is no longer populated by the API
+     * and will be removed in a future release.
      */
     children?: EntityReference[];
+    /**
+     * Number of direct child containers under this entity. Computed on demand when
+     * `childrenCount` is requested in `fields`.
+     */
+    childrenCount?: number;
     /**
      * Reference to the data contract for this entity.
      */
@@ -454,7 +461,9 @@ export interface FieldChange {
 }
 
 /**
- * References to child containers residing under this entity.
+ * Deprecated. Use `GET /v1/containers?parent={fqn}` (when available) or paginate via the
+ * storage service to list child containers. This field is no longer populated by the API
+ * and will be removed in a future release.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
