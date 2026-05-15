@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -48,7 +49,8 @@ class OrphanTestCaseCleanupTest {
     String liveJson = JsonUtils.pojoToJson(testCase(LIVE_ID, LIVE_TABLE_FQN));
     when(testCaseDAO.listAfterWithOffset(eq("test_case"), anyInt(), eq(0)))
         .thenReturn(List.of(orphanJson, liveJson));
-    when(testCaseDAO.listAfterWithOffset(eq("test_case"), anyInt(), eq(2))).thenReturn(List.of());
+    // Batch returned 2 rows and 1 was deleted, so the next offset is 2 - 1 = 1.
+    when(testCaseDAO.listAfterWithOffset(eq("test_case"), anyInt(), eq(1))).thenReturn(List.of());
 
     EntityRepository<?> tableRepo = mock(EntityRepository.class);
     when(tableRepo.getByName(any(), eq(DELETED_TABLE_FQN), any(), any(Include.class), anyBoolean()))
@@ -160,6 +162,41 @@ class OrphanTestCaseCleanupTest {
       entityMock.verify(
           () -> Entity.deleteEntity(any(), any(), any(UUID.class), anyBoolean(), anyBoolean()),
           never());
+    }
+  }
+
+  @Test
+  void performCleanup_advancesOffsetBySurvivorsToAvoidSkippingShiftedRows() {
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.TestCaseDAO testCaseDAO = mock(CollectionDAO.TestCaseDAO.class);
+    when(dao.testCaseDAO()).thenReturn(testCaseDAO);
+    when(testCaseDAO.getTableName()).thenReturn("test_case");
+
+    // First page is full (batchSize = 2) — one orphan, one live row. The orphan will be deleted,
+    // shifting subsequent rows back by 1.
+    String orphanJson = JsonUtils.pojoToJson(testCase(ORPHAN_ID, DELETED_TABLE_FQN));
+    String liveJson = JsonUtils.pojoToJson(testCase(LIVE_ID, LIVE_TABLE_FQN));
+    when(testCaseDAO.listAfterWithOffset(eq("test_case"), eq(2), eq(0)))
+        .thenReturn(List.of(orphanJson, liveJson));
+    // After 1 delete, the next read must start at offset = 2 - 1 = 1, not 2.
+    when(testCaseDAO.listAfterWithOffset(eq("test_case"), eq(2), eq(1))).thenReturn(List.of());
+
+    EntityRepository<?> tableRepo = mock(EntityRepository.class);
+    when(tableRepo.getByName(any(), eq(DELETED_TABLE_FQN), any(), any(Include.class), anyBoolean()))
+        .thenThrow(new EntityNotFoundException("missing"));
+    when(tableRepo.getByName(any(), eq(LIVE_TABLE_FQN), any(), any(Include.class), anyBoolean()))
+        .thenReturn(null);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(tableRepo);
+
+      OrphanTestCaseCleanup cleanup = new OrphanTestCaseCleanup(dao, false);
+      cleanup.performCleanup(2);
+
+      // Hard assertion: the second page read used offset=1, proving we adjusted for the deleted
+      // row instead of skipping ahead by the full batchSize.
+      Mockito.verify(testCaseDAO).listAfterWithOffset(eq("test_case"), eq(2), eq(1));
+      Mockito.verify(testCaseDAO, never()).listAfterWithOffset(eq("test_case"), eq(2), eq(2));
     }
   }
 

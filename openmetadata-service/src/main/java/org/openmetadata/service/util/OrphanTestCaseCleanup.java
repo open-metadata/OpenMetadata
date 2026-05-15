@@ -24,6 +24,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -79,9 +80,11 @@ public class OrphanTestCaseCleanup {
       List<UUID> orphans = findOrphans(testCases);
       result.setOrphansFound(result.getOrphansFound() + orphans.size());
 
+      int deletedInBatch = 0;
       if (!dryRun) {
         for (UUID id : orphans) {
           if (deleteOrphan(id)) {
+            deletedInBatch++;
             result.setOrphansDeleted(result.getOrphansDeleted() + 1);
           } else {
             result.setFailures(result.getFailures() + 1);
@@ -92,7 +95,10 @@ public class OrphanTestCaseCleanup {
       if (jsonBatch.size() < batchSize) {
         break;
       }
-      offset += batchSize;
+      // Each successful delete shifts every subsequent row backward by one, so advancing the
+      // offset by the full batchSize would skip exactly that many rows. Subtract the deletes
+      // we just made so the next read picks up where we actually stopped.
+      offset += batchSize - deletedInBatch;
     }
 
     LOG.info(
@@ -108,7 +114,7 @@ public class OrphanTestCaseCleanup {
     List<TestCase> testCases = new ArrayList<>(jsonBatch.size());
     for (String json : jsonBatch) {
       try {
-        testCases.add(org.openmetadata.schema.utils.JsonUtils.readValue(json, TestCase.class));
+        testCases.add(JsonUtils.readValue(json, TestCase.class));
       } catch (Exception ex) {
         LOG.warn("Skipping unparseable test case row: {}", ex.getMessage());
       }
@@ -138,12 +144,22 @@ public class OrphanTestCaseCleanup {
     EntityLink link;
     try {
       link = EntityLink.parse(testCase.getEntityLink());
-    } catch (Exception ex) {
+    } catch (IllegalArgumentException ex) {
+      // EntityLink.parse throws IllegalArgumentException for genuinely malformed links — those
+      // test cases can never be displayed or matched to anything, so treat them as orphans.
       LOG.warn(
           "Treating test case {} as orphan: unparseable entityLink {}",
           testCase.getId(),
           testCase.getEntityLink());
       return true;
+    } catch (Exception ex) {
+      // Unexpected parse-time errors (NPE, transient runtime issues) — skip rather than delete,
+      // so a future bug in the parser can't silently destroy valid test cases.
+      LOG.debug(
+          "Skipping test case {} due to unexpected entityLink parse error: {}",
+          testCase.getId(),
+          ex.getMessage());
+      return false;
     }
     EntityRepository<?> targetRepo;
     try {
