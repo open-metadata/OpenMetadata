@@ -581,7 +581,7 @@ python-http-client==3.3.7
 python-jenkins==1.8.3
 python-keycloak==7.0.3
 python-ldap==3.4.5
-python-multipart==0.0.22
+python-multipart==0.0.27
 python-slugify==8.0.4
 python-telegram-bot==22.6
 python3-saml==1.16.0
