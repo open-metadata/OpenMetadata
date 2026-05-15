@@ -60,6 +60,19 @@
       }
     },
     {
+      "type": "automatedTask",
+      "subType": "policyAgentTask",
+      "name": "PolicyAgent",
+      "displayName": "Policy Enforcement",
+      "config": {
+        "waitForCompletion": true,
+        "timeoutSeconds": 600
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
       "type": "userTask",
       "subType": "userApprovalTask",
       "name": "ApprovedAccess",
@@ -153,13 +166,28 @@
     },
     {
       "from": "TaskReview",
-      "to": "ApprovedAccess",
+      "to": "PolicyAgent",
       "condition": "approve"
     },
     {
       "from": "TaskReview",
       "to": "RejectedEnd",
       "condition": "reject"
+    },
+    {
+      "from": "PolicyAgent",
+      "to": "GrantedAccess",
+      "condition": "granted"
+    },
+    {
+      "from": "PolicyAgent",
+      "to": "ApprovedAccess",
+      "condition": "manual"
+    },
+    {
+      "from": "PolicyAgent",
+      "to": "RejectedEnd",
+      "condition": "denied"
     },
     {
       "from": "ApprovedAccess",
