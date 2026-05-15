@@ -430,7 +430,9 @@ public class RdfRepository {
   }
 
   // Build a comma-separated "<uri1>, <uri2>, ..." for SPARQL `?p IN (...)` lists.
-  static String buildPredicateInList(Set<String> uris) {
+  // public so JenaFusekiStorage (in storage subpackage) can reuse the same
+  // RELATIONSHIP_HOOK_PREDICATES rendering for its per-source DELETE filter.
+  public static String buildPredicateInList(Set<String> uris) {
     StringBuilder sb = new StringBuilder();
     boolean first = true;
     for (String uri : uris) {
