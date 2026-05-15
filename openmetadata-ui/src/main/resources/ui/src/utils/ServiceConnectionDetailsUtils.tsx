@@ -124,29 +124,29 @@ const renderFilterPattern = (
   );
 };
 
-export function getKeyValues({
-  obj,
-  schemaPropertyObject,
-  schema,
-  serviceCategory,
-}: KeyValuesProps): ReactNode {
-  const handleSpecialServiceConfig = (
-    serviceType: string,
-    key: string,
-    value: Record<string, unknown>,
-    schemaPropertyObject: Record<string, unknown>
-  ): ReactNode | null => {
+const handleSpecialServiceConfig = (
+  serviceType: string,
+  key: string,
+  value: Record<string, unknown>,
+  schemaPropertyObject: Record<string, unknown>,
+  schema: Record<string, unknown>,
+  serviceCategory: string
+): ReactNode | null => {
+  if (
+    serviceType === EntityType.PIPELINE_SERVICE &&
+    key === 'connection'
+  ) {
+    const valueType = value.type;
     if (
-      serviceType === EntityType.PIPELINE_SERVICE &&
-      key === 'connection' &&
-      value.type?.toString().toLowerCase() === 'airflow'
+      typeof valueType === 'string' &&
+      valueType.toLowerCase() === 'airflow'
     ) {
       const airflowSchema = (
         schemaPropertyObject[key] as {
           oneOf: Array<{ title: string; properties?: Record<string, unknown> }>;
         }
       ).oneOf.find(
-        (item: { title: string }) => item.title === `${value.type}Connection`
+        (item: { title: string }) => item.title === `${valueType}Connection`
       )?.properties;
 
       return (
@@ -159,146 +159,156 @@ export function getKeyValues({
         })
       );
     }
+  }
 
-    if (serviceType === EntityType.DATABASE_SERVICE && key === 'credentials') {
-      const gcpSchema = (
-        schemaPropertyObject[key] as {
-          definitions: { gcpCredentialsPath: Record<string, unknown> };
-        }
-      ).definitions.gcpCredentialsPath;
+  if (serviceType === EntityType.DATABASE_SERVICE && key === 'credentials') {
+    const gcpSchema = (
+      schemaPropertyObject[key] as {
+        definitions: { gcpCredentialsPath: Record<string, unknown> };
+      }
+    ).definitions.gcpCredentialsPath;
 
-      return getKeyValues({
+    return getKeyValues({
+      obj: value,
+      schemaPropertyObject: gcpSchema,
+      schema,
+      serviceCategory,
+    });
+  }
+
+  if (
+    serviceType === EntityType.METADATA_SERVICE &&
+    key === 'securityConfig'
+  ) {
+    const jwtSchema = (
+      schemaPropertyObject[key] as {
+        oneOf: Array<{ title: string; properties?: Record<string, unknown> }>;
+      }
+    ).oneOf.find(
+      (item: { title: string }) => item.title === JWT_CONFIG
+    )?.properties;
+
+    return (
+      jwtSchema &&
+      getKeyValues({
         obj: value,
-        schemaPropertyObject: gcpSchema,
+        schemaPropertyObject: jwtSchema,
         schema,
         serviceCategory,
-      });
-    }
+      })
+    );
+  }
 
-    if (
-      serviceType === EntityType.METADATA_SERVICE &&
-      key === 'securityConfig'
-    ) {
-      const jwtSchema = (
-        schemaPropertyObject[key] as {
-          oneOf: Array<{ title: string; properties?: Record<string, unknown> }>;
-        }
-      ).oneOf.find(
-        (item: { title: string }) => item.title === JWT_CONFIG
-      )?.properties;
+  if (
+    serviceType === EntityType.DASHBOARD_SERVICE &&
+    key === 'githubCredentials'
+  ) {
+    const githubSchema = (
+      schemaPropertyObject[key] as {
+        oneOf: Array<{ title: string; properties?: Record<string, unknown> }>;
+      }
+    ).oneOf.find(
+      (item: { title: string }) => item.title === 'GitHubCredentials'
+    )?.properties;
 
-      return (
-        jwtSchema &&
-        getKeyValues({
-          obj: value,
-          schemaPropertyObject: jwtSchema,
-          schema,
-          serviceCategory,
-        })
-      );
-    }
+    return (
+      githubSchema &&
+      getKeyValues({
+        obj: value,
+        schemaPropertyObject: githubSchema,
+        schema,
+        serviceCategory,
+      })
+    );
+  }
 
-    if (
-      serviceType === EntityType.DASHBOARD_SERVICE &&
-      key === 'githubCredentials'
-    ) {
-      const githubSchema = (
-        schemaPropertyObject[key] as {
-          oneOf: Array<{ title: string; properties?: Record<string, unknown> }>;
-        }
-      ).oneOf.find(
-        (item: { title: string }) => item.title === 'GitHubCredentials'
-      )?.properties;
+  return null;
+};
 
-      return (
-        githubSchema &&
-        getKeyValues({
-          obj: value,
-          schemaPropertyObject: githubSchema,
-          schema,
-          serviceCategory,
-        })
-      );
-    }
-
+const handleDatabaseConfigSource = (
+  key: string,
+  value: Record<string, unknown>,
+  schemaPropertyObject: Record<string, unknown>,
+  schema: Record<string, unknown>,
+  serviceCategory: string
+): ReactNode | null => {
+  const securityConfig = value.securityConfig as Record<string, unknown>;
+  if (!isObject(securityConfig)) {
     return null;
-  };
+  }
 
-  const handleDatabaseConfigSource = (
-    key: string,
-    value: Record<string, unknown>
-  ): ReactNode | null => {
-    const securityConfig = value.securityConfig as Record<string, unknown>;
-    if (!isObject(securityConfig)) {
-      return null;
-    }
-
-    if (securityConfig.gcpConfig) {
-      const gcpConfigSchema = isObject(securityConfig.gcpConfig)
-        ? get(
-            schema,
-            'definitions.GCPConfig.properties.securityConfig.definitions.GCPValues.properties',
-            {}
-          )
-        : get(
-            schema,
-            'definitions.GCPConfig.properties.securityConfig.definitions.gcpCredentialsPath',
-            {}
-          );
-
-      return getKeyValues({
-        obj: isObject(securityConfig.gcpConfig)
-          ? (securityConfig.gcpConfig as Record<string, unknown>)
-          : value,
-        schemaPropertyObject: gcpConfigSchema as Record<string, unknown>,
-        schema,
-        serviceCategory,
-      });
-    }
-
-    const internalRef = '$ref';
-    const oneOf = 'oneOf';
-
-    if (
-      Object.keys(
-        schemaPropertyObject[key] as Record<string, unknown>
-      ).includes(oneOf) &&
-      (securityConfig?.awsAccessKeyId || securityConfig?.awsSecretAccessKey)
-    ) {
-      return getKeyValues({
-        obj: securityConfig,
-        schemaPropertyObject: get(
+  if (securityConfig.gcpConfig) {
+    const gcpConfigSchema = isObject(securityConfig.gcpConfig)
+      ? get(
           schema,
-          'definitions.S3Config.properties.securityConfig.properties',
+          'definitions.GCPConfig.properties.securityConfig.definitions.GCPValues.properties',
           {}
-        ) as Record<string, unknown>,
+        )
+      : get(
+          schema,
+          'definitions.GCPConfig.properties.securityConfig.definitions.gcpCredentialsPath',
+          {}
+        );
+
+    return getKeyValues({
+      obj: isObject(securityConfig.gcpConfig)
+        ? (securityConfig.gcpConfig as Record<string, unknown>)
+        : value,
+      schemaPropertyObject: gcpConfigSchema as Record<string, unknown>,
+      schema,
+      serviceCategory,
+    });
+  }
+
+  const internalRef = '$ref';
+  const oneOf = 'oneOf';
+
+  if (
+    Object.keys(
+      schemaPropertyObject[key] as Record<string, unknown>
+    ).includes(oneOf) &&
+    (securityConfig?.awsAccessKeyId || securityConfig?.awsSecretAccessKey)
+  ) {
+    return getKeyValues({
+      obj: securityConfig,
+      schemaPropertyObject: get(
         schema,
-        serviceCategory,
-      });
-    }
+        'definitions.S3Config.properties.securityConfig.properties',
+        {}
+      ) as Record<string, unknown>,
+      schema,
+      serviceCategory,
+    });
+  }
 
-    if (
-      Object.keys(
-        schemaPropertyObject[key] as Record<string, unknown>
-      ).includes(internalRef)
-    ) {
-      const definition = (schemaPropertyObject[key] as { $ref: string }).$ref
-        .split('/')
-        .splice(2);
+  if (
+    Object.keys(
+      schemaPropertyObject[key] as Record<string, unknown>
+    ).includes(internalRef)
+  ) {
+    const definition = (schemaPropertyObject[key] as { $ref: string }).$ref
+      .split('/')
+      .splice(2);
 
-      return getKeyValues({
-        obj: value,
-        schemaPropertyObject: (
-          schema as { definitions: Record<string, Record<string, unknown>> }
-        ).definitions[definition.join('.')],
-        schema,
-        serviceCategory,
-      });
-    }
+    return getKeyValues({
+      obj: value,
+      schemaPropertyObject: (
+        schema as { definitions: Record<string, Record<string, unknown>> }
+      ).definitions[definition.join('.')],
+      schema,
+      serviceCategory,
+    });
+  }
 
-    return null;
-  };
+  return null;
+};
 
+export function getKeyValues({
+  obj,
+  schemaPropertyObject,
+  schema,
+  serviceCategory,
+}: KeyValuesProps): ReactNode {
   try {
     return Object.keys(obj).map((key) => {
       const value = obj[key];
@@ -356,7 +366,9 @@ export function getKeyValues({
         serviceType,
         key,
         value as Record<string, unknown>,
-        schemaPropertyObject
+        schemaPropertyObject,
+        schema,
+        serviceCategory
       );
       if (specialConfig !== null) {
         return specialConfig;
@@ -368,7 +380,10 @@ export function getKeyValues({
       ) {
         const configSource = handleDatabaseConfigSource(
           key,
-          value as Record<string, unknown>
+          value as Record<string, unknown>,
+          schemaPropertyObject,
+          schema,
+          serviceCategory
         );
         if (configSource !== null) {
           return configSource;

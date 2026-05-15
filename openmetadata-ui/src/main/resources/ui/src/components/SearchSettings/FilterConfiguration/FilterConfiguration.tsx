@@ -21,7 +21,7 @@ import {
   Typography,
 } from 'antd';
 import { startCase } from 'lodash';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/filter-primary.svg';
@@ -43,13 +43,13 @@ const FilterConfiguration = () => {
     []
   );
 
-  const handleCheckboxChange = (fieldName: string) => {
+  const handleCheckboxChange = useCallback((fieldName: string) => {
     setCheckedItems((prev) =>
       prev.includes(fieldName)
         ? prev.filter((item) => item !== fieldName)
         : [...prev, fieldName]
     );
-  };
+  }, []);
 
   const menuItems = useMemo(
     () => ({

@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { searchQuery } from '../rest/searchAPI';
+import { searchQuery } from '../src/rest/searchAPI';
 
 // This is a test file to demonstrate the no-duplicate-api-calls rule
 

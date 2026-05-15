@@ -36,8 +36,15 @@ export const getSelectedEntityTypes = (
     typeof workflowDefinition.trigger === 'object' &&
     workflowDefinition.trigger !== null &&
     !Array.isArray(workflowDefinition.trigger)
-      ? workflowDefinition.trigger.config
-      : {};
+      ? (
+          workflowDefinition.trigger as {
+            config?: {
+              entityType?: EntityType;
+              entityTypes?: string[];
+            };
+          }
+        ).config
+      : undefined;
 
   if (triggerConfig?.entityType) {
     return triggerConfig.entityType;
