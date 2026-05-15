@@ -40,7 +40,7 @@ public class AncestorsCache {
   }
 
   public List<String> getFqns(String entityType, String fqn) {
-    if (fqn == null) {
+    if (fqn == null || EntityCacheBypass.isSkipped()) {
       return null;
     }
     String key = keys.ancestors(entityType, fqn);
@@ -58,7 +58,7 @@ public class AncestorsCache {
   }
 
   public void putFqns(String entityType, String fqn, List<String> ancestorFqns) {
-    if (fqn == null || ancestorFqns == null) {
+    if (fqn == null || ancestorFqns == null || EntityCacheBypass.isSkipped()) {
       return;
     }
     String key = keys.ancestors(entityType, fqn);
@@ -71,7 +71,7 @@ public class AncestorsCache {
   }
 
   public void invalidate(String entityType, String fqn) {
-    if (fqn == null) {
+    if (fqn == null || EntityCacheBypass.isSkipped()) {
       return;
     }
     cache.del(keys.ancestors(entityType, fqn));

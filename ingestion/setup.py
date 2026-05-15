@@ -165,6 +165,7 @@ base_requirements = {
     "sqlalchemy>=2.0.0,<3",
     "collate-sqllineage>=2.1.1",
     "tabulate==0.9.0",
+    "tenacity>=8.0,<10",
     "typing-inspect",
     "packaging",  # For version parsing
     "setuptools>=78.1.1,<81",  # <81 required: pkg_resources removed in setuptools 81+
@@ -282,7 +283,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "opensearch": {VERSIONS["opensearch"]},
     "exasol": {
         "sqlalchemy_exasol>=6,<7",
-        "exasol-integration-test-docker-environment>=3.1.0,<4",
+        "exasol-integration-test-docker-environment>=6.0.0,<7",
     },
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
@@ -356,6 +357,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "qliksense": {"websocket-client~=1.6.1"},
     "presto": {*COMMONS["hive"], DATA_DIFF["presto"]},
     "pymssql": {"pymssql~=2.3.9"},
+    "questdb": {"psycopg2-binary"},
     "quicksight": {VERSIONS["boto3"]},
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
@@ -370,6 +372,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["avro"],
         VERSIONS["grpc-tools"],
         VERSIONS["sqlalchemy-bigquery"],
+        VERSIONS["spacy"],
         VERSIONS["presidio-analyzer"],
     },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
@@ -402,6 +405,11 @@ dev = {
     "datamodel-code-generator==0.25.6",
     "boto3-stubs",
     "mypy-boto3-glue",
+    "google-api-python-client-stubs",
+    "google-auth-stubs",
+    "types-requests",
+    "pandas-stubs~=2.1.4",
+    "scipy-stubs",
     "nox",
     "pre-commit",
     "basedpyright==1.39.3",
@@ -422,6 +430,8 @@ test_unit = {
     # TODO: Remove once no unit test requires testcontainers
     "testcontainers",
     VERSIONS["factory-boy"],
+    *plugins["exasol"],
+    *plugins["teradata"],
 }
 
 test = {
@@ -490,6 +500,8 @@ test = {
     VERSIONS["kafka-connect"],
     VERSIONS["factory-boy"],
     "locust~=2.32.0",
+    *plugins["exasol"],
+    *plugins["teradata"],
 }
 
 docs = {

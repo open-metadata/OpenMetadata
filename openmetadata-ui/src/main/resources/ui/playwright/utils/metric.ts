@@ -13,7 +13,7 @@
 import { expect, Page } from '@playwright/test';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { MetricClass } from '../support/entity/MetricClass';
-import { descriptionBox, uuid } from './common';
+import { clickOutside, descriptionBox, uuid } from './common';
 import { hardDeleteEntity, waitForAllLoadersToDisappear } from './entity';
 
 export const updateMetricType = async (page: Page, metric: string) => {
@@ -172,6 +172,8 @@ export const updateRelatedMetric = async (
   await page.getByTestId(`option-${dataAsset.entity.name}`).waitFor();
   await page.getByTestId(`option-${dataAsset.entity.name}`).click();
 
+  // perform click outside to close the select options and make click to button
+  await clickOutside(page);
   await page.locator('[data-testid="saveRelatedMetrics"]').click();
 
   await patchPromise;

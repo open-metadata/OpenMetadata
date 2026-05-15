@@ -392,9 +392,9 @@ class StorageFetcherStrategy(FetcherStrategy):
         containers = [
             container
             for container in containers
-            if (not self.source_config.bucketFilterPattern or not self._filter_buckets(container))
-            and (not self.source_config.containerFilterPattern or not self._filter_containers(container))
-            and (not self.source_config.classificationFilterPattern or not self.filter_classifications(container))
+            if (not self.source_config.bucketFilterPattern or not self._filter_buckets(container))  # pyright: ignore[reportAttributeAccessIssue]
+            and (not self.source_config.containerFilterPattern or not self._filter_containers(container))  # pyright: ignore[reportAttributeAccessIssue]
+            and (not self.source_config.classificationFilterPattern or not self.filter_classifications(container))  # pyright: ignore[reportAttributeAccessIssue]
             and container.dataModel is not None
         ]
 

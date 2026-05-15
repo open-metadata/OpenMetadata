@@ -71,8 +71,6 @@ const test = base.extend<{ page: Page }>({
 
 test.describe('Entity Version pages', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.slow();
-
     adminUser = new UserClass();
     entities = entityClasses.map((EntityClass) => new EntityClass());
 
@@ -144,8 +142,6 @@ test.describe('Entity Version pages', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow();
-
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.delete(apiContext);
 
