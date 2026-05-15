@@ -12,14 +12,38 @@
 Snowflake lineage module
 """
 
+import json
 import traceback
-from typing import Iterator  # noqa: UP035
+from typing import Dict, Iterable, Iterator, List, Optional, Tuple, Union  # noqa: UP035
 
 from sqlalchemy import text
 
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.container import Container
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+)
+from metadata.generated.schema.type.entityLineage import Source as LineageEdgeSource
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tableQuery import TableQuery
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.connections.builders import get_connection_options_dict
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.lineage_source import LineageSource
+from metadata.ingestion.source.database.snowflake.connection import (
+    probe_access_history_available,
+)
 from metadata.ingestion.source.database.snowflake.queries import (
+    SNOWFLAKE_ACCESS_HISTORY_LINEAGE,
+    SNOWFLAKE_COPY_HISTORY_LINEAGE,
     SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES,
     SNOWFLAKE_SQL_STATEMENT,
 )
@@ -30,10 +54,24 @@ from metadata.ingestion.source.database.snowflake.query_parser import (
 from metadata.ingestion.source.database.stored_procedures_mixin import (
     StoredProcedureLineageMixin,
 )
+from metadata.utils import fqn
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+USE_ACCESS_HISTORY_OPTION_KEY = "useAccessHistory"
+
+EXTERNAL_STAGE_PREFIXES = ("s3://", "azure://", "gcs://", "https://")
+
+LINEAGE_OBJECT_DOMAINS = {
+    "Table",
+    "View",
+    "Materialized view",
+    "Dynamic table",
+    "External table",
+    "Iceberg table",
+}
 
 
 class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageMixin, LineageSource):
@@ -54,6 +92,40 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
     """
 
     stored_procedure_query = SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES
+
+    def __init__(
+        self,
+        config: WorkflowSource,
+        metadata: OpenMetadata,
+        get_engine: bool = True,
+    ):
+        super().__init__(config, metadata, get_engine=get_engine)
+        self._table_cache: Dict[str, Optional[Table]] = {}  # noqa: UP006, UP045
+        self._container_cache: Dict[str, Optional[Container]] = {}  # noqa: UP006, UP045
+        self._use_access_history = self._read_access_history_flag()
+        if self._use_access_history and self.engine is not None:
+            available = probe_access_history_available(self.engine, self.service_connection.accountUsageSchema)
+            if not available:
+                logger.info(
+                    "useAccessHistory was set in connectionOptions but the ACCESS_HISTORY probe failed; "
+                    "falling back to legacy QUERY_HISTORY parser path."
+                )
+                self._use_access_history = False
+            else:
+                logger.info("ACCESS_HISTORY-based lineage path enabled via connectionOptions.useAccessHistory.")
+
+    def _read_access_history_flag(self) -> bool:
+        """
+        Read and remove the OM-specific `useAccessHistory` key from connectionOptions.
+        Popping it ensures the Snowflake driver never sees it in the URL.
+        """
+        options = get_connection_options_dict(self.service_connection)
+        if not options:
+            return False
+        raw = options.pop(USE_ACCESS_HISTORY_OPTION_KEY, None)
+        if raw is None:
+            return False
+        return str(raw).strip().lower() == "true"
 
     def get_stored_procedure_sql_statement(self) -> str:
         """
@@ -114,3 +186,278 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
                     f"Fetching next page with offset {offset} (fetched {total_fetched}/{max_results}) "
                     f"for lineage queries"
                 )
+
+    def yield_query_lineage(
+        self,
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+        """
+        Dispatch lineage extraction to either the new ACCESS_HISTORY path (POC,
+        gated by `useAccessHistory` in connectionOptions) or the legacy
+        QUERY_HISTORY + client-side parser path.
+        """
+        if self._use_access_history:
+            logger.info("Processing Query Lineage via ACCESS_HISTORY (POC path)")
+            yield from self._yield_access_history_lineage()
+            return
+        yield from super().yield_query_lineage()
+
+    def _yield_access_history_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Stream one row per directed table edge from the combined ACCESS_HISTORY
+        SQL — column-pairs are aggregated into a VARIANT array per edge inside
+        Snowflake, so client memory stays O(1) regardless of catalog size.
+        """
+        yield from self._yield_combined_access_history()
+        yield from self._yield_copy_history_lineage()
+
+    def _yield_combined_access_history(self) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Run the single combined ACCESS_HISTORY query and emit one
+        `AddLineageRequest` per row. Uses `stream_results=True` so the
+        snowflake-sqlalchemy cursor streams rather than buffering.
+        """
+        sql_statement = SNOWFLAKE_ACCESS_HISTORY_LINEAGE.format(
+            account_usage=self.service_connection.accountUsageSchema,
+            start_time=self.start,
+            end_time=self.end,
+        )
+        emitted = 0
+        skipped = 0
+        try:
+            for engine in self.get_engine():
+                with engine.connect() as conn:
+                    logger.debug(f"Executing combined ACCESS_HISTORY lineage query: {sql_statement}")
+                    rows = conn.execution_options(stream_results=True, max_row_buffer=1000).execute(text(sql_statement))
+                    for row in rows:
+                        row_dict = self._row_to_dict(row)
+                        edge = self._build_access_history_edge(row_dict)
+                        if edge is None:
+                            skipped += 1
+                            continue
+                        emitted += 1
+                        yield Either(right=edge)
+        except Exception as exc:
+            logger.warning(f"Failed to extract lineage from ACCESS_HISTORY: {exc}")
+            logger.debug(traceback.format_exc())
+        logger.info(
+            f"ACCESS_HISTORY lineage: emitted {emitted} edges, "
+            f"skipped {skipped} (unresolvable downstream/upstream tables)"
+        )
+
+    def _build_access_history_edge(self, row_dict: dict) -> Optional[AddLineageRequest]:  # noqa: UP045
+        """
+        Resolve both sides of a table edge to OM Table entities and build the
+        AddLineageRequest, attaching column lineage parsed from the row's
+        VARIANT `COLUMN_PAIRS` array (already aggregated server-side).
+        """
+        downstream_raw = row_dict.get("downstream_table")
+        upstream_raw = row_dict.get("upstream_table")
+        if not (downstream_raw and upstream_raw):
+            return None
+
+        downstream_entity = self._resolve_snowflake_table(downstream_raw)
+        upstream_entity = self._resolve_snowflake_table(upstream_raw)
+        if downstream_entity is None or upstream_entity is None:
+            return None
+
+        column_pairs = self._parse_column_pairs(row_dict.get("column_pairs"))
+        columns_lineage = self._build_columns_lineage(downstream_entity, upstream_entity, column_pairs)
+
+        lineage_details = LineageDetails(source=LineageEdgeSource.QueryLineage)
+        if columns_lineage:
+            lineage_details.columnsLineage = columns_lineage
+
+        return AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(id=upstream_entity.id.root, type="table"),
+                toEntity=EntityReference(id=downstream_entity.id.root, type="table"),
+                lineageDetails=lineage_details,
+            )
+        )
+
+    @staticmethod
+    def _parse_column_pairs(raw) -> List[Tuple[str, str]]:  # noqa: UP006
+        """
+        Decode the `COLUMN_PAIRS` VARIANT returned by the combined SQL into
+        a list of (downstream_column, upstream_column) tuples. The snowflake
+        driver can hand back either a parsed list or a JSON string depending
+        on cursor configuration, so handle both.
+        """
+        if not raw:
+            return []
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except (ValueError, TypeError):
+                return []
+        if not isinstance(raw, list):
+            return []
+        pairs: List[Tuple[str, str]] = []  # noqa: UP006
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            d_col = item.get("d") or item.get("D")
+            u_col = item.get("u") or item.get("U")
+            if d_col and u_col:
+                pairs.append((d_col, u_col))
+        return pairs
+
+    @staticmethod
+    def _build_columns_lineage(
+        downstream_entity: Table,
+        upstream_entity: Table,
+        column_pairs: List[Tuple[str, str]],  # noqa: UP006
+    ) -> List[ColumnLineage]:  # noqa: UP006
+        """
+        Convert raw (downstream_col, upstream_col) pairs into ColumnLineage objects
+        with fully qualified column names. Drops pairs where either column does
+        not exist on its parent table entity.
+        """
+        result: List[ColumnLineage] = []  # noqa: UP006
+        for d_col, u_col in column_pairs:
+            d_fqn = get_column_fqn(downstream_entity, d_col)
+            u_fqn = get_column_fqn(upstream_entity, u_col)
+            if d_fqn and u_fqn:
+                result.append(ColumnLineage(fromColumns=[u_fqn], toColumn=d_fqn))
+        return result
+
+    def _yield_copy_history_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Read ACCOUNT_USAGE.COPY_HISTORY for stage→table lineage. Resolve the
+        downstream Table and the upstream Container (by stage location URL).
+        Skip internal Snowflake stages silently (they don't map to OM Containers).
+        """
+        sql_statement = SNOWFLAKE_COPY_HISTORY_LINEAGE.format(
+            account_usage=self.service_connection.accountUsageSchema,
+            start_time=self.start,
+            end_time=self.end,
+        )
+        emitted = 0
+        skipped_internal = 0
+        skipped_unresolved = 0
+        try:
+            for engine in self.get_engine():
+                with engine.connect() as conn:
+                    logger.debug(f"Executing COPY_HISTORY lineage query: {sql_statement}")
+                    rows = conn.execute(text(sql_statement))
+                    for row in rows:
+                        row_dict = self._row_to_dict(row)
+                        stage_location = row_dict.get("stage_location") or ""
+                        if not self._is_external_stage(stage_location):
+                            skipped_internal += 1
+                            continue
+                        edge = self._build_copy_edge(row_dict)
+                        if edge is None:
+                            skipped_unresolved += 1
+                            continue
+                        emitted += 1
+                        yield Either(right=edge)
+        except Exception as exc:
+            logger.warning(f"Failed to extract COPY_HISTORY lineage: {exc}")
+            logger.debug(traceback.format_exc())
+        logger.info(
+            f"COPY_HISTORY lineage: emitted {emitted} edges, skipped {skipped_internal} internal stages, "
+            f"skipped {skipped_unresolved} unresolved external stages"
+        )
+
+    def _build_copy_edge(self, row_dict: dict) -> Optional[AddLineageRequest]:  # noqa: UP045
+        """
+        Resolve the downstream table and upstream container, then build the
+        Container → Table lineage request. Returns None if either side is
+        unresolvable in OM (e.g., storage service not ingested).
+        """
+        db = row_dict.get("downstream_database")
+        schema = row_dict.get("downstream_schema")
+        table = row_dict.get("downstream_table")
+        stage_location = row_dict.get("stage_location")
+        if not (db and schema and table and stage_location):
+            return None
+
+        downstream_fqn = fqn._build(self.config.serviceName, db, schema, table)
+        downstream_entity = self._get_table_by_fqn(downstream_fqn)
+        if downstream_entity is None:
+            return None
+
+        container_entity = self._resolve_container_by_path(stage_location)
+        if container_entity is None:
+            logger.info(
+                f"COPY edge unresolved: no Container ingested for stage `{stage_location}` "
+                f"(downstream table `{downstream_fqn}` skipped)"
+            )
+            return None
+
+        return AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(id=container_entity.id.root, type="container"),
+                toEntity=EntityReference(id=downstream_entity.id.root, type="table"),
+                lineageDetails=LineageDetails(source=LineageEdgeSource.QueryLineage),
+            )
+        )
+
+    def _resolve_snowflake_table(self, snowflake_fqn: str) -> Optional[Table]:  # noqa: UP045
+        """
+        Parse a Snowflake-style `DB.SCHEMA.TABLE` FQN into OM-style and resolve
+        to a Table entity. Caches both hits and misses for the run.
+        """
+        parts = self._split_snowflake_fqn(snowflake_fqn)
+        if parts is None:
+            return None
+        db, schema, table = parts
+        om_fqn = fqn._build(self.config.serviceName, db, schema, table)
+        return self._get_table_by_fqn(om_fqn)
+
+    def _get_table_by_fqn(self, om_fqn: str) -> Optional[Table]:  # noqa: UP045
+        if om_fqn in self._table_cache:
+            return self._table_cache[om_fqn]
+        try:
+            entity = self.metadata.get_by_name(entity=Table, fqn=om_fqn)
+        except Exception as exc:
+            logger.debug(f"Failed to resolve Table `{om_fqn}`: {exc}")
+            entity = None
+        self._table_cache[om_fqn] = entity
+        return entity
+
+    def _resolve_container_by_path(self, stage_location: str) -> Optional[Container]:  # noqa: UP045
+        if stage_location in self._container_cache:
+            return self._container_cache[stage_location]
+        try:
+            results = self.metadata.es_search_container_by_path(full_path=stage_location) or []
+            entity = results[0] if results else None
+        except Exception as exc:
+            logger.debug(f"Failed to resolve Container for path `{stage_location}`: {exc}")
+            entity = None
+        self._container_cache[stage_location] = entity
+        return entity
+
+    @staticmethod
+    def _split_snowflake_fqn(snowflake_fqn: str) -> Optional[Tuple[str, str, str]]:  # noqa: UP006, UP045
+        """
+        Split a Snowflake `DB.SCHEMA.TABLE` FQN into its three parts.
+        Returns None for malformed inputs (quoted names with embedded dots are
+        not handled in the POC and are skipped silently).
+        """
+        if not snowflake_fqn or '"' in snowflake_fqn:
+            return None
+        parts = snowflake_fqn.split(".")
+        if len(parts) != 3:
+            return None
+        return parts[0], parts[1], parts[2]
+
+    @staticmethod
+    def _is_external_stage(stage_location: str) -> bool:
+        """
+        External stage URLs start with a cloud storage scheme. Internal Snowflake
+        stages (`@~/`, `@%table/`, `@db.schema.stage/`) don't map to OM Containers.
+        """
+        if not stage_location:
+            return False
+        return stage_location.lower().startswith(EXTERNAL_STAGE_PREFIXES)
+
+    @staticmethod
+    def _row_to_dict(row) -> dict:
+        """
+        SQLAlchemy result rows expose columns as attributes; normalize to a
+        lower-cased dict so downstream code can use uniform keys.
+        """
+        raw = row._asdict() if hasattr(row, "_asdict") else dict(row)
+        return {k.lower(): v for k, v in raw.items()}
