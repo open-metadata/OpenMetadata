@@ -351,7 +351,7 @@ class S3Source(StorageServiceSource):
                         entry_format=entry_format,
                         bucket_name=bucket_name,
                     )
-        except ValueError as exc:
+        except Exception as exc:
             logger.warning(f"Cannot open archive {archive_path!r}: {exc}")
             logger.debug(traceback.format_exc())
 
@@ -455,11 +455,17 @@ class S3Source(StorageServiceSource):
                 f"and generating structured container"
             )
             if is_archive_format(metadata_entry.structureFormat):
-                yield from self._generate_archive_containers(
-                    bucket_response=bucket_response,
-                    metadata_entry=metadata_entry,
-                    parent=parent,
-                )
+                try:
+                    yield from self._generate_archive_containers(
+                        bucket_response=bucket_response,
+                        metadata_entry=metadata_entry,
+                        parent=parent,
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        f"Failed processing archive {metadata_entry.dataPath!r}: {exc}"
+                    )
+                    logger.debug(traceback.format_exc())
                 continue
             if metadata_entry.depth == 0:
                 structured_container: Optional[S3ContainerDetails] = self._generate_container_details(  # noqa: UP045
