@@ -582,7 +582,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   @Override
   public void bulkStoreRelationships(
       List<RelationshipData> relationships, Set<String> sourcesToReconcile) {
-    if (relationships.isEmpty()) {
+    if (relationships.isEmpty() && (sourcesToReconcile == null || sourcesToReconcile.isEmpty())) {
       return;
     }
     throwIfCircuitOpen("bulkStoreRelationships");
@@ -652,23 +652,33 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
     insertData.append("} }");
 
-    // DELETE WHERE on a source with no prior edges is a no-op, not an error,
-    // so we no longer swallow non-connect exceptions here — malformed SPARQL,
-    // authorization failures, or server-side update errors should fail the
-    // batch loudly instead of letting the insert proceed against an
-    // unreconciled graph.
-    try {
-      if (deleteUpdate.length() > 0) {
-        UpdateRequest deleteRequest = UpdateFactory.create(deleteUpdate.toString());
-        runWithTimeout(() -> connection.update(deleteRequest), "bulkStoreRelationships delete");
+    // Combine DELETE and INSERT into a SINGLE SPARQL update so they share a
+    // transaction at the Fuseki side — if the request fails, neither half
+    // commits, and we never leave the graph half-reconciled. (The previous
+    // separate calls + a failed insert could leave sources wiped without
+    // their replacement edges in place until the next weekly recreate-index.)
+    StringBuilder combined = new StringBuilder();
+    if (deleteUpdate.length() > 0) {
+      combined.append(deleteUpdate);
+      if (!relationships.isEmpty()) {
+        combined.append("; ");
       }
+    }
+    if (!relationships.isEmpty()) {
+      combined.append(insertData);
+    }
 
-      UpdateRequest insertRequest = UpdateFactory.create(insertData.toString());
-      runWithTimeout(() -> connection.update(insertRequest), "bulkStoreRelationships insert");
+    try {
+      if (combined.length() == 0) {
+        return; // No work — empty relationships AND empty sourcesToReconcile is the early return
+        // above.
+      }
+      UpdateRequest request = UpdateFactory.create(combined.toString());
+      runWithTimeout(() -> connection.update(request), "bulkStoreRelationships");
       LOG.info(
           "Bulk stored {} relationships, reconciled {} source entities",
           relationships.size(),
-          sourcesToReconcile.size());
+          sourcesToReconcile == null ? 0 : sourcesToReconcile.size());
       recordSuccess();
     } catch (Exception e) {
       LOG.error("Failed to bulk store relationships in Fuseki", e);

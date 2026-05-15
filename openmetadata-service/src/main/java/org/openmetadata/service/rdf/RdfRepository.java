@@ -62,6 +62,16 @@ public class RdfRepository {
           "https://open-metadata.org/ontology/calculatedFrom",
           "https://open-metadata.org/ontology/usedToCalculate",
           "http://www.w3.org/2000/01/rdf-schema#seeAlso",
+          // om:* fallback URIs that getGlossaryTermRelationPredicate writes
+          // when SettingsCache is unavailable / returns null — the default
+          // branch concats `https://open-metadata.org/ontology/` + relationType
+          // verbatim, so a "broader" / "narrower" / etc. type lands as
+          // `om:broader`, NOT `skos:broader`. Without these in the fallback
+          // set, a cleanup run during a transient SettingsCache outage would
+          // miss those triples.
+          "https://open-metadata.org/ontology/broader",
+          "https://open-metadata.org/ontology/narrower",
+          "https://open-metadata.org/ontology/exactMatch",
           // Legacy URIs from older code paths / pre-SettingsCache data.
           "https://open-metadata.org/ontology/synonym",
           "https://open-metadata.org/ontology/seeAlso",
@@ -448,7 +458,15 @@ public class RdfRepository {
    */
   public void bulkAddRelationships(
       List<EntityRelationship> relationships, Set<EntitySourceRef> reconcileSources) {
-    if (!isEnabled() || relationships.isEmpty()) {
+    if (!isEnabled()) {
+      return;
+    }
+    // Allow empty relationships + non-empty reconcileSources: that's the
+    // zero-edge case (an indexed entity with no current outgoing relationships
+    // in MySQL), and we still want bulkStoreRelationships to clear any stale
+    // edges that may exist for it in RDF. If BOTH are empty there's nothing
+    // to do.
+    if (relationships.isEmpty() && (reconcileSources == null || reconcileSources.isEmpty())) {
       return;
     }
 
@@ -459,19 +477,28 @@ public class RdfRepository {
       // bulk path would emit `om:<relationshipType>` (lowercase value) and a
       // later removeRelationship for the same edge would target a different
       // predicate URI, leaving the bulk-written triple in place.
-      Model tempModel = ModelFactory.createDefaultModel();
       List<RdfStorageInterface.RelationshipData> relationshipDataList = new ArrayList<>();
-      for (EntityRelationship relationship : relationships) {
-        String relType = relationship.getRelationshipType().value();
-        String predicateUri = getRelationshipPredicate(relType, tempModel).getURI();
-        relationshipDataList.add(
-            new RdfStorageInterface.RelationshipData(
-                relationship.getFromEntity(),
-                relationship.getFromId(),
-                relationship.getToEntity(),
-                relationship.getToId(),
-                relType,
-                predicateUri));
+      // Jena 4's Model has a `close()` method but doesn't implement
+      // java.lang.AutoCloseable, so try-with-resources is rejected at compile
+      // time. Explicit try/finally close() ensures the in-memory graph backing
+      // the temporary properties is released — important because we're only
+      // using this model to mint Property URIs for predicate-string extraction.
+      Model tempModel = ModelFactory.createDefaultModel();
+      try {
+        for (EntityRelationship relationship : relationships) {
+          String relType = relationship.getRelationshipType().value();
+          String predicateUri = getRelationshipPredicate(relType, tempModel).getURI();
+          relationshipDataList.add(
+              new RdfStorageInterface.RelationshipData(
+                  relationship.getFromEntity(),
+                  relationship.getFromId(),
+                  relationship.getToEntity(),
+                  relationship.getToId(),
+                  relType,
+                  predicateUri));
+        }
+      } finally {
+        tempModel.close();
       }
       if (reconcileSources != null) {
         String base = config.getBaseUri().toString();
@@ -793,8 +820,14 @@ public class RdfRepository {
       // exactly what addRelationship wrote (e.g. UPSTREAM → prov:wasDerivedFrom),
       // not a naive "<baseUri>ontology/<relationshipType>" concat.
       Model tempModel = ModelFactory.createDefaultModel();
-      String predicateUri =
-          getRelationshipPredicate(relationship.getRelationshipType().value(), tempModel).getURI();
+      String predicateUri;
+      try {
+        predicateUri =
+            getRelationshipPredicate(relationship.getRelationshipType().value(), tempModel)
+                .getURI();
+      } finally {
+        tempModel.close();
+      }
 
       String sparqlUpdate =
           String.format(
