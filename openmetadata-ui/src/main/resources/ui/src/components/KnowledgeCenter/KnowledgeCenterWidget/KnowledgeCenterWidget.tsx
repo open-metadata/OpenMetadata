@@ -87,7 +87,9 @@ const KnowledgeCenterWidget = ({
     return (
       <WidgetEmptyState
         actionButtonLink={contextCenterClassBase.getArticlesListPath()}
-        actionButtonText={t('label.create-entity', {entity: t('label.article')})}
+        actionButtonText={t('label.create-entity', {
+          entity: t('label.article'),
+        })}
         description={t('message.no-article-data')}
         icon={
           <KnowledgeCenterNoDataPlaceholder
@@ -189,7 +191,9 @@ const KnowledgeCenterWidget = ({
         isEditView={isEditView}
         title={t('label.knowledge-center')}
         widgetKey={widgetKey}
-        onTitleClick={() => navigate(contextCenterClassBase.getArticlesListPath())}
+        onTitleClick={() =>
+          navigate(contextCenterClassBase.getArticlesListPath())
+        }
       />
     );
   }, [
