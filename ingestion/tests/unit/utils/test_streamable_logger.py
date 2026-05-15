@@ -920,9 +920,7 @@ class TestStreamableLogHandlerRecursionRegression(unittest.TestCase):
         self.test_logger.warning("trigger the overflow path")
         elapsed = time.monotonic() - start
 
-        self.assertEqual(
-            call_count["n"], 1, "emit() must be invoked exactly once per log call"
-        )
+        self.assertEqual(call_count["n"], 1, "emit() must be invoked exactly once per log call")
         self.assertLess(elapsed, 1.0, "emit() must return in bounded time when queue is full")
         handler.fallback_handler.emit.assert_called_once()
 
@@ -942,9 +940,7 @@ class TestStreamableLogHandlerRecursionRegression(unittest.TestCase):
         def counting_emit(record):
             call_count["n"] += 1
             if call_count["n"] > 5:
-                raise AssertionError(
-                    "emit() recursed via the outer except branch — regression."
-                )
+                raise AssertionError("emit() recursed via the outer except branch — regression.")
             real_emit(record)
 
         handler.emit = counting_emit

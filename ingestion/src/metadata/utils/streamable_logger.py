@@ -86,7 +86,10 @@ if not _internal_logger.handlers:
         )
     )
     _internal_logger.addHandler(_internal_handler)
-    _internal_logger.setLevel(logging.INFO)
+    # Filter at the handler so operators can change verbosity at runtime
+    # (e.g. via a debug toggle) without modifying the logger level itself.
+    _internal_handler.setLevel(logging.INFO)
+    _internal_logger.setLevel(logging.DEBUG)
 
 
 class CircuitBreakerError(Exception):
