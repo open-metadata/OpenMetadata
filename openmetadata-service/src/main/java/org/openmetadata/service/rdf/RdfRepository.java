@@ -39,23 +39,36 @@ public class RdfRepository {
 
   private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
 
-  // Default predicate URIs that bulkAddGlossaryTermRelations may write when
-  // GlossaryTermRelationSettings doesn't override them. Kept in sync with
-  // getGlossaryTermRelationPredicate's switch arms (om:* and skos:*); used by
-  // clearAllGlossaryTermRelations as the floor of what to scrub.
+  // Fallback predicate URIs for clearAllGlossaryTermRelations when
+  // GlossaryTermRelationSettings can't be loaded (e.g. DB blip during startup).
+  // Mirrors the system-defined types bootstrapped in SettingsCache.initialize
+  // (see SettingsCache.java ~:355-486) so the floor matches what every install
+  // gets out of the box: relatedTo, synonym (skos:exactMatch), antonym,
+  // broader, narrower, partOf, hasPart, calculatedFrom, usedToCalculate,
+  // seeAlso (rdfs:seeAlso). Also includes a few legacy om:* URIs the stale
+  // getGlossaryTermRelationPredicateUri switch (used by the live remove path)
+  // may have written into older datasets, so a manual cleanup run on those
+  // doesn't leave them behind.
   private static final Set<String> DEFAULT_GLOSSARY_TERM_RELATION_PREDICATES =
       Set.of(
+          // SettingsCache bootstrap defaults — keep in sync if that list changes.
           "https://open-metadata.org/ontology/relatedTo",
+          "http://www.w3.org/2004/02/skos/core#exactMatch",
+          "https://open-metadata.org/ontology/antonym",
+          "http://www.w3.org/2004/02/skos/core#broader",
+          "http://www.w3.org/2004/02/skos/core#narrower",
+          "https://open-metadata.org/ontology/partOf",
+          "https://open-metadata.org/ontology/hasPart",
+          "https://open-metadata.org/ontology/calculatedFrom",
+          "https://open-metadata.org/ontology/usedToCalculate",
+          "http://www.w3.org/2000/01/rdf-schema#seeAlso",
+          // Legacy URIs from older code paths / pre-SettingsCache data.
           "https://open-metadata.org/ontology/synonym",
+          "https://open-metadata.org/ontology/seeAlso",
           "https://open-metadata.org/ontology/typeOf",
           "https://open-metadata.org/ontology/hasTypes",
           "https://open-metadata.org/ontology/componentOf",
           "https://open-metadata.org/ontology/composedOf",
-          "https://open-metadata.org/ontology/calculatedFrom",
-          "https://open-metadata.org/ontology/usedToCalculate",
-          "https://open-metadata.org/ontology/seeAlso",
-          "http://www.w3.org/2004/02/skos/core#broader",
-          "http://www.w3.org/2004/02/skos/core#narrower",
           "http://www.w3.org/2004/02/skos/core#related");
 
   private final RdfConfiguration config;

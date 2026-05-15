@@ -219,15 +219,16 @@ public class RdfIndexApp extends AbstractNativeApplication {
     // glossary-term relations would accumulate forever across reindex runs.
     // When recreateIndex=true clearAll() already wipes everything, so we
     // only need this targeted cleanup on incremental runs.
+    //
+    // Let the failure propagate: clearAllGlossaryTermRelations rethrows on
+    // failure precisely so the indexer can fail loudly instead of silently
+    // marking a job successful while the graph still has stale predicates.
+    // The outer try/catch in execute() will set the run status to FAILED.
     if (!Boolean.TRUE.equals(jobData.getRecreateIndex())
         && jobData.getEntities() != null
         && jobData.getEntities().contains(Entity.GLOSSARY_TERM)) {
       LOG.info("Clearing existing glossary term relations before re-indexing");
-      try {
-        rdfRepository.clearAllGlossaryTermRelations();
-      } catch (Exception e) {
-        LOG.warn("Failed to clear glossary term relations; continuing with reindex", e);
-      }
+      rdfRepository.clearAllGlossaryTermRelations();
     }
 
     if (Boolean.TRUE.equals(jobData.getUseDistributedIndexing())) {

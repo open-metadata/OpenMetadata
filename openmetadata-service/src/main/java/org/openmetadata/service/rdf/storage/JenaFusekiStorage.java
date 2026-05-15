@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
@@ -45,13 +46,20 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
   private static final String METADATA_GRAPH = "https://open-metadata.org/graph/metadata";
 
-  // 2s caps TCP connect only. Once Fuseki accepts the connection, a stalled
-  // server can still hang the request — Jena's RDFConnection.update() doesn't
-  // expose a per-request timeout we can wire in cleanly. The circuit breaker
-  // below + the bounded pendingWrites gate in RdfUpdater contain the blast
-  // radius: after CIRCUIT_BREAKER_FAILURE_THRESHOLD slow/failed calls the
-  // breaker trips and short-circuits subsequent traffic for the cooldown.
+  // 2s caps TCP connect. READ_TIMEOUT_MS bounds individual SPARQL queries via
+  // QueryExecution.setTimeout, so a Fuseki that accepts the connection but
+  // stalls mid-query can no longer hang reads (executeSparqlQuery, getEntity,
+  // getAllGraphs, getTripleCount, testConnection) indefinitely.
+  //
+  // UPDATE-side calls (connection.update / connection.load / connection.delete)
+  // don't have a clean per-request timeout in Jena's RDFConnection API. For
+  // those the circuit breaker below + the bounded pendingWrites gate in
+  // RdfUpdater contain the blast radius: after CIRCUIT_BREAKER_FAILURE_THRESHOLD
+  // slow/failed calls the breaker trips and short-circuits subsequent traffic
+  // for the cooldown. A follow-up could plumb UpdateExecHTTPBuilder.timeout()
+  // through to bound update-side blocking too.
   private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(2);
+  private static final long READ_TIMEOUT_MS = 10_000L;
   private static final int CIRCUIT_BREAKER_FAILURE_THRESHOLD = 5;
   private static final long CIRCUIT_BREAKER_COOLDOWN_MS = 30_000L;
 
@@ -242,6 +250,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       boolean ontologyExists = false;
 
       try (QueryExecution qe = connection.query(checkQuery)) {
+        qe.setTimeout(READ_TIMEOUT_MS, TimeUnit.MILLISECONDS);
         ontologyExists = qe.execAsk();
       } catch (Exception e) {
         LOG.debug("Could not check if ontology exists, will attempt to load", e);
@@ -580,7 +589,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
     try {
       Query q = QueryFactory.create(query);
-      Model result = connection.queryConstruct(q);
+      Model result;
+      try (QueryExecution qexec = connection.query(q)) {
+        qexec.setTimeout(READ_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        result = qexec.execConstruct();
+      }
       recordSuccess();
       return result.isEmpty() ? null : result;
     } catch (Exception e) {
@@ -639,6 +652,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
     if (query.isSelectType()) {
       try (QueryExecution qexec = connection.query(query)) {
+        qexec.setTimeout(READ_TIMEOUT_MS, TimeUnit.MILLISECONDS);
         ResultSet results = qexec.execSelect();
 
         switch (format.toLowerCase()) {
@@ -662,15 +676,22 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         }
       }
     } else if (query.isConstructType()) {
-      Model resultModel = connection.queryConstruct(query);
-      return formatModel(resultModel, format);
+      try (QueryExecution qexec = connection.query(query)) {
+        qexec.setTimeout(READ_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        return formatModel(qexec.execConstruct(), format);
+      }
     } else if (query.isAskType()) {
-      boolean result = connection.queryAsk(query);
-      LOG.info("ASK query result: {}", result);
-      return "{\"head\": {}, \"boolean\": " + result + "}";
+      try (QueryExecution qexec = connection.query(query)) {
+        qexec.setTimeout(READ_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        boolean result = qexec.execAsk();
+        LOG.info("ASK query result: {}", result);
+        return "{\"head\": {}, \"boolean\": " + result + "}";
+      }
     } else if (query.isDescribeType()) {
-      Model resultModel = connection.queryDescribe(query);
-      return formatModel(resultModel, format);
+      try (QueryExecution qexec = connection.query(query)) {
+        qexec.setTimeout(READ_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        return formatModel(qexec.execDescribe(), format);
+      }
     }
 
     return "Unsupported query type";
@@ -742,6 +763,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     List<String> graphs = new ArrayList<>();
 
     try (QueryExecution qexec = connection.query(query)) {
+      qexec.setTimeout(READ_TIMEOUT_MS, TimeUnit.MILLISECONDS);
       ResultSet results = qexec.execSelect();
       results.forEachRemaining(
           qs -> {
@@ -765,6 +787,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     String query = "SELECT (COUNT(*) as ?count) WHERE { GRAPH ?g { ?s ?p ?o } }";
 
     try (QueryExecution qexec = connection.query(query)) {
+      qexec.setTimeout(READ_TIMEOUT_MS, TimeUnit.MILLISECONDS);
       ResultSet results = qexec.execSelect();
       recordSuccess();
       if (results.hasNext()) {
@@ -800,9 +823,9 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   public boolean testConnection() {
     // testConnection is the probe used to detect when Fuseki has recovered, so
     // it must bypass the circuit breaker — otherwise we could never re-close it.
-    try {
-      String testQuery = "ASK { ?s ?p ?o }";
-      connection.queryAsk(testQuery);
+    try (QueryExecution qexec = connection.query("ASK { ?s ?p ?o }")) {
+      qexec.setTimeout(READ_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+      qexec.execAsk();
       recordSuccess();
       return true;
     } catch (Exception e) {
