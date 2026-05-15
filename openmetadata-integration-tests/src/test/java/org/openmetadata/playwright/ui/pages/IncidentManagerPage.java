@@ -140,6 +140,83 @@ public final class IncidentManagerPage extends PageObject {
     return this;
   }
 
+  // ---- Filter & pagination helpers (TS spec: "Verify filters" + "Incident Manager pagination")
+  // ----
+
+  private static final String API_LIST_REGEX =
+      ".*/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list.*";
+
+  /** Filter the incident list by status using the status select; awaits the filtered API. */
+  public IncidentManagerPage filterByStatus(final String statusLabel) {
+    byTestId("status-select").click();
+    page.waitForResponse(
+        r ->
+            r.url().matches(API_LIST_REGEX)
+                && r.url().contains("testCaseResolutionStatusType=" + statusLabel),
+        () -> page.locator("[title='" + statusLabel + "']").click());
+    return this;
+  }
+
+  /** Clear the active status filter via its close-circle icon. */
+  public IncidentManagerPage clearStatusFilter() {
+    page.waitForResponse(
+        r -> r.url().matches(API_LIST_REGEX),
+        () -> page.locator("[data-testid='status-select'] [aria-label='close-circle']").click());
+    return this;
+  }
+
+  /** Filter the incident list by test case name (search + select option). */
+  public IncidentManagerPage filterByTestCase(final String testCaseName) {
+    byTestId("test-case-select").click();
+    page.locator("[data-testid='test-case-select'] input").fill(testCaseName);
+    page.waitForResponse(
+        r -> r.url().matches(API_LIST_REGEX) && r.url().contains("testCaseFQN="),
+        () -> page.locator("[title='" + testCaseName + "']").click());
+    return this;
+  }
+
+  public IncidentManagerPage clearTestCaseFilter() {
+    page.waitForResponse(
+        r -> r.url().matches(API_LIST_REGEX),
+        () -> page.locator("[data-testid='test-case-select'] [aria-label='close-circle']").click());
+    return this;
+  }
+
+  // Pagination
+  public Locator paginationContainer() {
+    return byTestId("pagination");
+  }
+
+  public Locator pageIndicator() {
+    return byTestId("page-indicator");
+  }
+
+  public IncidentManagerPage clickNext() {
+    page.waitForResponse(r -> r.url().matches(API_LIST_REGEX), () -> byTestId("next").click());
+    return this;
+  }
+
+  public IncidentManagerPage clickPrevious() {
+    page.waitForResponse(r -> r.url().matches(API_LIST_REGEX), () -> byTestId("previous").click());
+    return this;
+  }
+
+  /** Open page size dropdown, click the {@code 50 / Page} option, await list with limit=50. */
+  public IncidentManagerPage selectPageSize50() {
+    byTestId("page-size-selection-dropdown").click();
+    page.waitForResponse(
+        r -> r.url().matches(API_LIST_REGEX) && r.url().contains("limit=50"),
+        () ->
+            page.getByRole(
+                    com.microsoft.playwright.options.AriaRole.MENUITEM,
+                    new Page.GetByRoleOptions()
+                        .setName(
+                            java.util.regex.Pattern.compile(
+                                "50.*page", java.util.regex.Pattern.CASE_INSENSITIVE)))
+                .click());
+    return this;
+  }
+
   /**
    * Block until the status badge for the named test case shows {@code expectedText}.
    * Necessary because the API response and the badge re-render are not synchronous —
