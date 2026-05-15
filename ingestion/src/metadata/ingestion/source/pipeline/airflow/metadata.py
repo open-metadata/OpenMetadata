@@ -525,7 +525,7 @@ class AirflowSource(PipelineServiceSource):
             .subquery()
         )
 
-        compressed_col: SQLColumnExpression = (
+        compressed_col: SQLColumnExpression = (  # pyright: ignore[reportAssignmentType]
             SerializedDagModel._data_compressed  # pylint: disable=protected-access
             if hasattr(SerializedDagModel, "_data_compressed")
             else literal(None)
