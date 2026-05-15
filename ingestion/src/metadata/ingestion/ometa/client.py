@@ -15,7 +15,7 @@ Python API REST wrapper and helpers
 import time
 import traceback
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union  # noqa: UP035
+from typing import Any, Callable, Dict, List, Optional, Union  # noqa: UP035
 
 import requests
 from requests.exceptions import HTTPError, JSONDecodeError
@@ -121,7 +121,7 @@ class ClientConfig(ConfigModel):
     # (connect, read) seconds. Default prevents indefinite hangs when a pooled
     # socket is silently severed (NAT/LB idle reaping). Override with None to
     # disable, or pass a single int to use the same value for both.
-    timeout: Optional[Union[int, Tuple[int, int]]] = (10, 300)  # noqa: UP045
+    timeout: Optional[int | tuple[int, int]] = (10, 300)  # noqa: UP045
     cert: Optional[Union[str, tuple]] = None  # noqa: UP007, UP045
 
 
