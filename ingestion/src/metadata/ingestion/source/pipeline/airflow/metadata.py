@@ -613,11 +613,11 @@ class AirflowSource(PipelineServiceSource):
 
                     raw_data = self._resolve_dag_data(serialized_dag[1], serialized_dag[0], serialized_dag[3])
                     if raw_data is None:
-                        logger.warning(f"No serialized data available for dag {serialized_dag[0]}, skipping")
+                        logger.warning("No serialized data available for dag %s, skipping", serialized_dag[0])
                         continue
                     data = raw_data.get("dag")
                     if data is None:
-                        logger.warning(f"Missing 'dag' key in serialized data for dag {serialized_dag[0]}, skipping")
+                        logger.warning("Missing 'dag' key in serialized data for dag %s, skipping", serialized_dag[0])
                         continue
                     dag = AirflowDagDetails(
                         dag_id=serialized_dag[0],
