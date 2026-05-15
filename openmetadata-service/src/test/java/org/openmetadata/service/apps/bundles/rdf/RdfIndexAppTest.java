@@ -1004,7 +1004,8 @@ class RdfIndexAppTest {
       // expected interaction.
       verify(mockRdfRepository).clearOutgoingEntityRelationships(anySet());
       verify(mockRdfRepository, never()).bulkAddRelationships(anyList());
-      verify(mockRdfRepository, never()).addRelationship(any(EntityRelationship.class));
+      verify(mockRdfRepository, never())
+          .addRelationship(any(org.openmetadata.schema.type.EntityRelationship.class));
     }
 
     @Test
@@ -1042,7 +1043,8 @@ class RdfIndexAppTest {
       // clear still runs for the batch entity.
       verify(mockRdfRepository).clearOutgoingEntityRelationships(anySet());
       verify(mockRdfRepository, never()).bulkAddRelationships(anyList());
-      verify(mockRdfRepository, never()).addRelationship(any(EntityRelationship.class));
+      verify(mockRdfRepository, never())
+          .addRelationship(any(org.openmetadata.schema.type.EntityRelationship.class));
     }
   }
 
