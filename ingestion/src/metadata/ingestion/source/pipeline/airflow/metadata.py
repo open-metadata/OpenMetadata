@@ -27,7 +27,7 @@ from airflow.models.dag import DagModel
 from airflow.models.serialized_dag import SerializedDagModel
 from airflow.serialization.serialized_objects import SerializedDAG
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import and_, column, func, inspect, join, literal
+from sqlalchemy import SQLColumnExpression, and_, column, func, inspect, join, literal
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -525,7 +525,7 @@ class AirflowSource(PipelineServiceSource):
             .subquery()
         )
 
-        compressed_col: Any = (
+        compressed_col: SQLColumnExpression = (
             SerializedDagModel._data_compressed  # pylint: disable=protected-access
             if hasattr(SerializedDagModel, "_data_compressed")
             else literal(None)
