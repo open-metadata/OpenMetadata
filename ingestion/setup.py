@@ -77,9 +77,17 @@ VERSIONS = {
     "kafka-connect": "kafka-connect-py==0.10.11",
     "griffe2md": "griffe2md~=1.2",
     "factory-boy": "factory-boy~=3.3.3",
+    "rarfile": "rarfile~=4.2",
+    "py7zr": "py7zr~=1.1.0",
 }
 
 COMMONS = {
+    "storage-archive": {
+        VERSIONS["pandas"],
+        VERSIONS["pyarrow"],
+        VERSIONS["rarfile"],
+        VERSIONS["py7zr"],
+    },
     "datalake": {
         VERSIONS["asammdf"],
         VERSIONS["avro"],
@@ -268,6 +276,8 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         "deltalake>=0.19.0,<0.20",
         "pyspark==3.5.6",
     },  # TODO: remove pinning to under 0.20 after https://github.com/open-metadata/OpenMetadata/issues/17909
+    "s3": {*COMMONS["storage-archive"]},
+    "gcs": {VERSIONS["google-cloud-storage"], *COMMONS["storage-archive"]},
     "deltalake-storage": {"deltalake>=0.19.0,<0.20"},
     "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.6"},
     "domo": {VERSIONS["pydomo"]},
