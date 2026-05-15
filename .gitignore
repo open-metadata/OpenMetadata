@@ -201,3 +201,5 @@ ingestion/.claude/agents
 .claude/plans/
 
 test-results/
+
+docs/superpowers/*
