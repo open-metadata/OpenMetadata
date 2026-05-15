@@ -12,7 +12,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -52,17 +51,6 @@ import org.openmetadata.sdk.fluent.Domains;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.network.HttpMethod;
 
-// TEMPORARILY DISABLED — the metadataStatus aggregation on this endpoint reproducibly fails
-// with [search_phase_execution_exception] all shards failed on both postgres+ES+redis (single
-// failure on test_getColumnGrid_withMetadataStatusIncomplete) AND postgres+OpenSearch (the same
-// query crashes the OS container, then 15 follow-up tests in the class fail with Connection
-// refused). Same behavior on PR #28100 with and without the cache changes, so it is a
-// pre-existing aggregator bug, not a cache regression. The ES Java client swallows the
-// underlying `caused_by`, so root-causing the actual ES-side error requires response-body
-// logging that is not wired up yet. Re-enable once the underlying aggregator/index-mapping
-// issue is fixed in a follow-up. See PR #28100 history and CI run 25940411417 for context.
-@Disabled(
-    "ColumnGrid metadataStatus aggregation crashes ES/OS — pre-existing flake, follow-up needed")
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class ColumnGridResourceIT {

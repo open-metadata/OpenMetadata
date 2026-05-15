@@ -319,10 +319,15 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       opensearch.withEnv("discovery.type", "single-node");
       opensearch.withEnv("DISABLE_SECURITY_PLUGIN", "true");
       opensearch.withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true");
-      opensearch.withEnv("OPENSEARCH_JAVA_OPTS", "-Xms1g -Xmx1g");
+      // 4 GB heap (was 1 GB) — ColumnGridResourceIT's composite aggregation over column docs
+      // brought down the OS container at 1 GB. Runners have ~16 GB available; this leaves
+      // plenty of room for postgres (~2 GB), redis (~512 MB), the OM JVM (4 GB) and the
+      // testcontainers/docker overhead. The data tmpfs also gets bumped to 4 GB so the
+      // shard-store has room for the parallel-test fixture data.
+      opensearch.withEnv("OPENSEARCH_JAVA_OPTS", "-Xms4g -Xmx4g");
       opensearch.withStartupAttempts(3);
       opensearch.withTmpFs(
-          java.util.Map.of("/usr/share/opensearch/data", "rw,size=1g,uid=1000,gid=1000"));
+          java.util.Map.of("/usr/share/opensearch/data", "rw,size=4g,uid=1000,gid=1000"));
       opensearch.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
@@ -345,9 +350,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       elasticsearch.withPassword(ELASTIC_PASSWORD);
       elasticsearch.withEnv("discovery.type", "single-node");
       elasticsearch.withEnv("xpack.security.enabled", "false");
-      elasticsearch.withEnv("ES_JAVA_OPTS", "-Xms1g -Xmx1g");
+      // 4 GB heap (was 1 GB) — see OPENSEARCH_JAVA_OPTS above for rationale.
+      elasticsearch.withEnv("ES_JAVA_OPTS", "-Xms4g -Xmx4g");
       elasticsearch.withStartupAttempts(3);
-      elasticsearch.withTmpFs(java.util.Map.of("/usr/share/elasticsearch/data", "rw,size=1g"));
+      elasticsearch.withTmpFs(java.util.Map.of("/usr/share/elasticsearch/data", "rw,size=4g"));
       elasticsearch.setWaitStrategy(
           new LogMessageWaitStrategy()
               .withRegEx(".*(\"message\":\\s?\"started[\\s?|\"].*|] started\n$)")
