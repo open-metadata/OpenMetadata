@@ -117,7 +117,10 @@ class ClientConfig(ConfigModel):
     verify: Optional[Union[bool, str]] = None
     cookies: Optional[Any] = None
     ttl_cache: int = 60
-    timeout: Optional[int] = None
+    # (connect, read) seconds. Default prevents indefinite hangs when a pooled
+    # socket is silently severed (NAT/LB idle reaping). Override with None to
+    # disable, or pass a single int to use the same value for both.
+    timeout: Optional[int | tuple[int, int]] = (10, 300)
     cert: Optional[Union[str, tuple]] = None
 
 
