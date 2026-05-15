@@ -84,12 +84,11 @@ public class DatabaseSchemaResource
   private final DatabaseSchemaMapper mapper = new DatabaseSchemaMapper();
   public static final String COLLECTION_PATH = "/v1/databaseSchemas/";
   static final String FIELDS =
-      "owners,tables,usageSummary,tags,certification,extension,domains,sourceHash,followers";
+      "owners,tableCount,usageSummary,tags,certification,extension,domains,sourceHash,followers";
 
   @Override
   public DatabaseSchema addHref(UriInfo uriInfo, DatabaseSchema schema) {
     super.addHref(uriInfo, schema);
-    Entity.withHref(uriInfo, schema.getTables());
     Entity.withHref(uriInfo, schema.getService());
     Entity.withHref(uriInfo, schema.getDatabase());
     return schema;
@@ -101,7 +100,7 @@ public class DatabaseSchemaResource
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("tables", MetadataOperation.VIEW_BASIC);
+    addViewOperation("tableCount", MetadataOperation.VIEW_BASIC);
     addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
     return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
   }

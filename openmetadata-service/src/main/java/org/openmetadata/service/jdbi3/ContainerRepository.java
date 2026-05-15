@@ -86,6 +86,31 @@ public class ContainerRepository extends EntityRepository<Container> {
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put(FIELD_PARENT, this::fetchAndSetParents);
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetDataModelColumnTags);
+    fieldFetchers.put("childrenCount", this::fetchAndSetChildrenCounts);
+  }
+
+  @Override
+  protected Set<String> childCollectionFields() {
+    return Set.of("children");
+  }
+
+  private Integer getChildrenCount(Container container) {
+    if (container == null || container.getId() == null) {
+      return 0;
+    }
+    return daoCollection
+        .relationshipDAO()
+        .countFindToByType(
+            container.getId(), Entity.CONTAINER, Entity.CONTAINER, Relationship.CONTAINS.ordinal());
+  }
+
+  private void fetchAndSetChildrenCounts(List<Container> containers, EntityUtil.Fields fields) {
+    if (!fields.contains("childrenCount") || containers == null || containers.isEmpty()) {
+      return;
+    }
+    for (Container container : containers) {
+      container.setChildrenCount(getChildrenCount(container));
+    }
   }
 
   @Override
@@ -180,43 +205,6 @@ public class ContainerRepository extends EntityRepository<Container> {
     }
 
     return parentsMap;
-  }
-
-  @Override
-  protected void fetchAndSetChildren(List<Container> containers, EntityUtil.Fields fields) {
-    if (!fields.contains("children") || containers == null || containers.isEmpty()) {
-      return;
-    }
-    setFieldFromMap(true, containers, batchFetchChildren(containers), Container::setChildren);
-  }
-
-  private Map<UUID, List<EntityReference>> batchFetchChildren(List<Container> containers) {
-    Map<UUID, List<EntityReference>> childrenMap = new HashMap<>();
-    if (containers == null || containers.isEmpty()) {
-      return childrenMap;
-    }
-
-    // Initialize empty lists for all containers
-    for (Container container : containers) {
-      childrenMap.put(container.getId(), new ArrayList<>());
-    }
-
-    // Single batch query to get all children for all containers
-    List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
-            .relationshipDAO()
-            .findToBatch(
-                entityListToStrings(containers), Relationship.CONTAINS.ordinal(), CONTAINER);
-
-    // Group children by parent container ID
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID parentId = UUID.fromString(record.getFromId());
-      EntityReference childRef =
-          getEntityReferenceById(CONTAINER, UUID.fromString(record.getToId()), NON_DELETED);
-      childrenMap.get(parentId).add(childRef);
-    }
-
-    return childrenMap;
   }
 
   private void fetchAndSetDefaultService(List<Container> containers) {
@@ -345,10 +333,6 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   private EntityReference getContainerParent(Container container) {
     return getFromEntityRef(container.getId(), Relationship.CONTAINS, CONTAINER, false);
-  }
-
-  protected List<EntityReference> getChildren(Container container) {
-    return findTo(container.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER);
   }
 
   @Override

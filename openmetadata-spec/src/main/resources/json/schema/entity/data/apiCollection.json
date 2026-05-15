@@ -51,8 +51,13 @@
       "format": "uri"
     },
     "apiEndpoints": {
-      "description": "All the APIs included in this API Collection.",
+      "description": "Endpoints in this API Collection. Populated only when `fields=apiEndpoints` is explicitly requested. Excluded from `fields=*` expansion to prevent unbounded materialisation; use `endpointCount` and `GET /v1/apiEndpoints?apiCollection={fqn}` for paginated listing.",
       "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "endpointCount": {
+      "description": "Number of API endpoints under this collection. Computed on demand when `endpointCount` is requested in `fields`.",
+      "type": "integer",
       "default": null
     },
     "href": {

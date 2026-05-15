@@ -128,6 +128,12 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @Parameter(
+              description =
+                  "Filter Domains by parent Domain FQN. Returns only direct sub-domains of the given parent. Omit to list all root-level domains plus their descendants (the legacy behavior).",
+              schema = @Schema(type = "string"))
+          @QueryParam("parent")
+          String parent,
       @DefaultValue("10")
           @Min(value = 0, message = "must be greater than or equal to 0")
           @Max(value = 1000000, message = "must be less than or equal to 1000000")
@@ -143,8 +149,11 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
-    return listInternal(
-        uriInfo, securityContext, fieldsParam, new ListFilter(null), limitParam, before, after);
+    ListFilter filter = new ListFilter(null);
+    if (parent != null && !parent.isBlank()) {
+      filter.addQueryParam("parent", parent);
+    }
+    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

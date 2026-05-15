@@ -76,13 +76,23 @@
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "charts": {
-      "description": "All the charts included in this Dashboard.",
+      "description": "Charts on this Dashboard. Populated only when `fields=charts` is explicitly requested. Excluded from `fields=*` expansion to prevent unbounded materialisation for dashboards with very large chart counts — use `chartCount` plus a paginated chart listing for badges and tables.",
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
+    "chartCount": {
+      "description": "Number of charts linked to this dashboard. Computed on demand when `chartCount` is requested in `fields`.",
+      "type": "integer",
+      "default": null
+    },
     "dataModels": {
-      "description": "List of data models used by this dashboard or the charts contained on it.",
+      "description": "Dashboard data models on this Dashboard. Populated only when `fields=dataModels` is explicitly requested. Excluded from `fields=*` expansion.",
       "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "dataModelCount": {
+      "description": "Number of dashboard data models linked to this dashboard. Computed on demand when `dataModelCount` is requested in `fields`.",
+      "type": "integer",
       "default": null
     },
     "href": {

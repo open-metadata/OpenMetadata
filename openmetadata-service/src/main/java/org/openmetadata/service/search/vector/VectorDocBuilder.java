@@ -15,10 +15,6 @@ import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
-import org.openmetadata.schema.entity.data.APICollection;
-import org.openmetadata.schema.entity.data.Container;
-import org.openmetadata.schema.entity.data.Database;
-import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
@@ -62,27 +58,37 @@ public class VectorDocBuilder {
   private static final int MAX_CHILD_NAMES_IN_CONTEXT = 20;
 
   /**
-   * Child-entity enumeration spec for container-like types. When an entity has children on the
-   * object (populated during reindexing via {@code fields=*}), their names are joined into a
-   * short natural-language phrase and appended to the semantic body, so queries match against
-   * what a container actually contains. The cast inside each getter is guarded by the map key:
-   * an entry keyed by {@link Entity#DATABASE} is only consulted for {@link Database} entities.
+   * Child-entity enumeration spec for container-like types. Child references are no longer
+   * populated on the parent entity object (that path produced OOMs for parents with very
+   * large child counts). At indexing time we fetch up to {@link #MAX_CHILD_NAMES_IN_CONTEXT}
+   * direct children via the child DAO, identified by {@code childEntityType} filtered by
+   * {@code parentFilterKey} = parent's FQN. {@code DATA_PRODUCT} assets remain on the entity
+   * (many-to-many, bounded) and use {@code embeddedGetter}.
    */
   private record SemanticChildrenSpec(
-      Function<EntityInterface, List<EntityReference>> childGetter, String phrasePrefix) {}
+      String childEntityType,
+      String parentFilterKey,
+      Function<EntityInterface, List<EntityReference>> embeddedGetter,
+      String phrasePrefix) {
+    SemanticChildrenSpec(String childEntityType, String parentFilterKey, String phrasePrefix) {
+      this(childEntityType, parentFilterKey, null, phrasePrefix);
+    }
+
+    SemanticChildrenSpec(
+        Function<EntityInterface, List<EntityReference>> embeddedGetter, String phrasePrefix) {
+      this(null, null, embeddedGetter, phrasePrefix);
+    }
+  }
 
   private static final Map<String, SemanticChildrenSpec> SEMANTIC_CHILDREN_SPECS =
       Map.of(
           Entity.DATABASE,
-              new SemanticChildrenSpec(
-                  e -> ((Database) e).getDatabaseSchemas(), "Contains schemas"),
+              new SemanticChildrenSpec(Entity.DATABASE_SCHEMA, "database", "Contains schemas"),
           Entity.DATABASE_SCHEMA,
-              new SemanticChildrenSpec(e -> ((DatabaseSchema) e).getTables(), "Contains tables"),
+              new SemanticChildrenSpec(Entity.TABLE, "databaseSchema", "Contains tables"),
           Entity.API_COLLECTION,
-              new SemanticChildrenSpec(
-                  e -> ((APICollection) e).getApiEndpoints(), "Contains endpoints"),
-          Entity.CONTAINER,
-              new SemanticChildrenSpec(e -> ((Container) e).getChildren(), "Contains"),
+              new SemanticChildrenSpec(Entity.API_ENDPOINT, "apiCollection", "Contains endpoints"),
+          Entity.CONTAINER, new SemanticChildrenSpec(Entity.CONTAINER, "parent", "Contains"),
           Entity.DATA_PRODUCT,
               new SemanticChildrenSpec(e -> ((DataProduct) e).getAssets(), "Contains assets"));
 
@@ -551,7 +557,11 @@ public class VectorDocBuilder {
     if (spec == null) {
       return null;
     }
-    List<String> childNames = readChildNames(spec.childGetter().apply(entity));
+    List<EntityReference> refs =
+        spec.embeddedGetter() != null
+            ? spec.embeddedGetter().apply(entity)
+            : fetchChildRefsForIndexing(spec, entity);
+    List<String> childNames = readChildNames(refs);
     if (childNames.isEmpty()) {
       return null;
     }
@@ -560,6 +570,36 @@ public class VectorDocBuilder {
             ? childNames.subList(0, MAX_CHILD_NAMES_IN_CONTEXT)
             : childNames;
     return spec.phrasePrefix() + " " + String.join(", ", limited);
+  }
+
+  private static List<EntityReference> fetchChildRefsForIndexing(
+      SemanticChildrenSpec spec, EntityInterface entity) {
+    if (entity == null || entity.getFullyQualifiedName() == null) {
+      return Collections.emptyList();
+    }
+    try {
+      org.openmetadata.service.jdbi3.EntityRepository<?> repo =
+          Entity.getEntityRepository(spec.childEntityType());
+      org.openmetadata.service.jdbi3.ListFilter filter =
+          new org.openmetadata.service.jdbi3.ListFilter(
+                  org.openmetadata.schema.type.Include.NON_DELETED)
+              .addQueryParam(spec.parentFilterKey(), entity.getFullyQualifiedName());
+      var page = repo.listAfter(null, repo.getFields(""), filter, MAX_CHILD_NAMES_IN_CONTEXT, null);
+      List<EntityReference> refs = new ArrayList<>(page.getData().size());
+      for (Object child : page.getData()) {
+        if (child instanceof EntityInterface ei) {
+          refs.add(ei.getEntityReference());
+        }
+      }
+      return refs;
+    } catch (Exception ex) {
+      LOG.warn(
+          "Failed to fetch child refs for semantic indexing of {} {}: {}",
+          entity.getEntityReference() != null ? entity.getEntityReference().getType() : "?",
+          entity.getFullyQualifiedName(),
+          ex.getMessage());
+      return Collections.emptyList();
+    }
   }
 
   private static List<String> readChildNames(List<EntityReference> refs) {

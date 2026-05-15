@@ -144,6 +144,18 @@ public class TeamRepository extends EntityRepository<Team> {
     }
   }
 
+  /**
+   * Users is the only field on Team that can grow unbounded (organizations with thousands of
+   * members). It is still loadable when explicitly requested via {@code fields=users} for
+   * backward compatibility with PATCH change-tracking and the dedicated user-management
+   * endpoint, but is excluded from {@code fields=*} expansion so wildcard GETs cannot trigger
+   * OOM on a large team.
+   */
+  @Override
+  protected java.util.Set<String> childCollectionFields() {
+    return java.util.Set.of("users");
+  }
+
   @Override
   public void setFields(Team team, Fields fields, RelationIncludes relationIncludes) {
     team.setUsers(fields.contains("users") ? getUsers(team) : team.getUsers());

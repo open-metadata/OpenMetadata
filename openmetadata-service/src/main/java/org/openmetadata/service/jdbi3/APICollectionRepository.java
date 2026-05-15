@@ -67,6 +67,11 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
   }
 
   @Override
+  protected java.util.Set<String> childCollectionFields() {
+    return java.util.Set.of("apiEndpoints");
+  }
+
+  @Override
   public void storeEntity(APICollection apiCollection, boolean update) {
     store(apiCollection, update);
   }
@@ -107,14 +112,17 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
     bulkInsertRelationships(relationships);
   }
 
-  private List<EntityReference> getAPIEndpoints(APICollection apiCollection) {
-    return apiCollection == null
-        ? null
-        : findTo(
+  private Integer getEndpointCount(APICollection apiCollection) {
+    if (apiCollection == null || apiCollection.getId() == null) {
+      return 0;
+    }
+    return daoCollection
+        .relationshipDAO()
+        .countFindToByType(
             apiCollection.getId(),
             Entity.API_COLLECTION,
-            Relationship.CONTAINS,
-            Entity.API_ENDPOINT);
+            Entity.API_ENDPOINT,
+            Relationship.CONTAINS.ordinal());
   }
 
   @Override
@@ -138,8 +146,16 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
     }
     apiCollection.setApiEndpoints(
         fields.contains("apiEndpoints")
-            ? getAPIEndpoints(apiCollection)
-            : apiCollection.getApiEndpoints());
+            ? findTo(
+                apiCollection.getId(),
+                Entity.API_COLLECTION,
+                Relationship.CONTAINS,
+                Entity.API_ENDPOINT)
+            : null);
+    apiCollection.setEndpointCount(
+        fields.contains("endpointCount")
+            ? getEndpointCount(apiCollection)
+            : apiCollection.getEndpointCount());
   }
 
   @Override
@@ -222,6 +238,8 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
   public void clearFields(APICollection apiCollection, Fields fields) {
     apiCollection.setApiEndpoints(
         fields.contains("apiEndpoints") ? apiCollection.getApiEndpoints() : null);
+    apiCollection.setEndpointCount(
+        fields.contains("endpointCount") ? apiCollection.getEndpointCount() : null);
   }
 
   @Override

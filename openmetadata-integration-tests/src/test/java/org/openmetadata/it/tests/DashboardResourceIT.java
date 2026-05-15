@@ -1132,4 +1132,41 @@ public class DashboardResourceIT extends BaseEntityIT<Dashboard, CreateDashboard
     request.setName(ns.prefix("invalid_dashboard"));
     return request;
   }
+
+  /**
+   * Regression: dashboards previously materialized the full charts and dataModels lists on
+   * `fields=*` expansion. Now those fields are excluded from `*` (load only when explicitly
+   * requested) and `chartCount`/`dataModelCount` expose the size.
+   */
+  @Test
+  void testGetDashboardWithWildcardFieldsExcludesChartsAndDataModels(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
+
+    CreateChart createChart = new CreateChart();
+    createChart.setName(ns.prefix("chart_for_oom_reg"));
+    createChart.setService(service.getFullyQualifiedName());
+    Chart chart = client.charts().create(createChart);
+
+    CreateDashboard request = new CreateDashboard();
+    request.setName(ns.prefix("dashboard_oom_reg"));
+    request.setService(service.getFullyQualifiedName());
+    request.setCharts(List.of(chart.getFullyQualifiedName()));
+    Dashboard dashboard = client.dashboards().create(request);
+
+    Dashboard wildcardFetch = client.dashboards().get(dashboard.getId().toString(), "*");
+    assertTrue(
+        wildcardFetch.getCharts() == null || wildcardFetch.getCharts().isEmpty(),
+        "fields=* must NOT populate charts[] on the parent dashboard");
+    assertTrue(
+        wildcardFetch.getDataModels() == null || wildcardFetch.getDataModels().isEmpty(),
+        "fields=* must NOT populate dataModels[] on the parent dashboard");
+    assertNotNull(wildcardFetch.getChartCount(), "fields=* must populate chartCount");
+    assertEquals(1, wildcardFetch.getChartCount(), "chartCount should reflect chart count");
+
+    // Explicit fields=charts must still work for backward compat with the UI Charts tab.
+    Dashboard explicitFetch = client.dashboards().get(dashboard.getId().toString(), "charts");
+    assertNotNull(explicitFetch.getCharts(), "Explicit fields=charts must still populate charts[]");
+    assertEquals(1, explicitFetch.getCharts().size());
+  }
 }

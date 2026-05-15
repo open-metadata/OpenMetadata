@@ -91,7 +91,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations
-    fieldFetchers.put("databaseSchemas", this::fetchAndSetDatabaseSchemas);
+    fieldFetchers.put("schemaCount", this::fetchAndSetSchemaCounts);
     fieldFetchers.put(DATABASE_PROFILER_CONFIG, this::fetchAndSetDatabaseProfilerConfigs);
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
   }
@@ -110,6 +110,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
     return List.of("service");
+  }
+
+  @Override
+  protected java.util.Set<String> childCollectionFields() {
+    return java.util.Set.of("databaseSchemas");
   }
 
   @Override
@@ -153,10 +158,14 @@ public class DatabaseRepository extends EntityRepository<Database> {
     bulkInsertRelationships(relationships);
   }
 
-  private List<EntityReference> getSchemas(Database database) {
-    return database == null
-        ? null
-        : findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
+  private Integer getSchemaCount(Database database) {
+    if (database == null || database.getFullyQualifiedName() == null) {
+      return 0;
+    }
+    ListFilter filter =
+        new ListFilter(Include.NON_DELETED)
+            .addQueryParam("database", database.getFullyQualifiedName());
+    return daoCollection.databaseSchemaDAO().listCount(filter);
   }
 
   @Override
@@ -242,8 +251,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
   @Override
   public void setFields(Database database, Fields fields, RelationIncludes relationIncludes) {
     database.setService(getContainer(database.getId()));
-    database.setDatabaseSchemas(
-        fields.contains("databaseSchemas") ? getSchemas(database) : database.getDatabaseSchemas());
+    database.setDatabaseSchemas(null);
+    database.setSchemaCount(
+        fields.contains("schemaCount") ? getSchemaCount(database) : database.getSchemaCount());
     database.setDatabaseProfilerConfig(
         fields.contains(DATABASE_PROFILER_CONFIG)
             ? getDatabaseProfilerConfig(database)
@@ -273,8 +283,13 @@ public class DatabaseRepository extends EntityRepository<Database> {
       return;
     }
 
-    if (fields.contains("databaseSchemas")) {
-      fetchAndSetDatabaseSchemas(databases, fields);
+    // Defensively strip any embedded schemas collection: listing schemas is served
+    // by GET /v1/databaseSchemas?database={fqn} and is no longer materialized here
+    // (avoids OOM on databases with very large schema counts).
+    databases.forEach(database -> database.setDatabaseSchemas(null));
+
+    if (fields.contains("schemaCount")) {
+      fetchAndSetSchemaCounts(databases, fields);
     }
 
     if (fields.contains(DATABASE_PROFILER_CONFIG)) {
@@ -286,12 +301,13 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
   }
 
-  private void fetchAndSetDatabaseSchemas(List<Database> databases, Fields fields) {
-    if (!fields.contains("databaseSchemas") || databases == null || databases.isEmpty()) {
+  private void fetchAndSetSchemaCounts(List<Database> databases, Fields fields) {
+    if (!fields.contains("schemaCount") || databases == null || databases.isEmpty()) {
       return;
     }
-    setFieldFromMap(
-        true, databases, batchFetchDatabaseSchemas(databases), Database::setDatabaseSchemas);
+    for (Database database : databases) {
+      database.setSchemaCount(getSchemaCount(database));
+    }
   }
 
   private void fetchAndSetDatabaseProfilerConfigs(List<Database> databases, Fields fields) {
@@ -317,8 +333,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   public void clearFields(Database database, Fields fields) {
-    database.setDatabaseSchemas(
-        fields.contains("databaseSchemas") ? database.getDatabaseSchemas() : null);
+    database.setDatabaseSchemas(null);
+    database.setSchemaCount(fields.contains("schemaCount") ? database.getSchemaCount() : null);
     database.setDatabaseProfilerConfig(
         fields.contains(DATABASE_PROFILER_CONFIG) ? database.getDatabaseProfilerConfig() : null);
     database.withUsageSummary(fields.contains("usageSummary") ? database.getUsageSummary() : null);
@@ -389,48 +405,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     daoCollection.entityExtensionDAO().delete(databaseId, DATABASE_PROFILER_CONFIG_EXTENSION);
     clearFieldsInternal(database, Fields.EMPTY_FIELDS);
     return database;
-  }
-
-  private Map<UUID, List<EntityReference>> batchFetchDatabaseSchemas(List<Database> databases) {
-    var schemasMap = new HashMap<UUID, List<EntityReference>>();
-    if (databases == null || databases.isEmpty()) {
-      return schemasMap;
-    }
-
-    // Initialize empty lists for all databases
-    databases.forEach(database -> schemasMap.put(database.getId(), new ArrayList<>()));
-
-    // Single batch query to get all schemas for all databases
-    // Use Include.ALL to get all relationships including those for soft-deleted entities
-    var records =
-        daoCollection
-            .relationshipDAO()
-            .findToBatch(
-                entityListToStrings(databases),
-                Relationship.CONTAINS.ordinal(),
-                DATABASE_SCHEMA,
-                Include.ALL);
-
-    // Collect all unique schema IDs first
-    var schemaIds = records.stream().map(rec -> UUID.fromString(rec.getToId())).distinct().toList();
-
-    // Batch fetch all schema entity references
-    var schemaRefs = Entity.getEntityReferencesByIds(DATABASE_SCHEMA, schemaIds, Include.ALL);
-    var schemaRefMap =
-        schemaRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
-
-    // Group schemas by database ID
-    records.forEach(
-        record -> {
-          var databaseId = UUID.fromString(record.getFromId());
-          var schemaId = UUID.fromString(record.getToId());
-          var schemaRef = schemaRefMap.get(schemaId);
-          if (schemaRef != null) {
-            schemasMap.get(databaseId).add(schemaRef);
-          }
-        });
-
-    return schemasMap;
   }
 
   private Map<UUID, DatabaseProfilerConfig> batchFetchDatabaseProfilerConfigs(
