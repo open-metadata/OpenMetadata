@@ -15,6 +15,8 @@ import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -556,6 +558,61 @@ class SearchUtilsTest {
     assertTrue(SearchUtils.isColumnIndex(Entity.TABLE_COLUMN));
     assertFalse(SearchUtils.isColumnIndex("table_search_index"));
     assertFalse(SearchUtils.isColumnIndex("garbage"));
+  }
+
+  // ===========================================================================
+  // search_after cursor decoding — regression for #28076.
+  // The legacy comma-joined cursor breaks when any sort value (e.g. a glossary
+  // term FQN) contains a literal ','. The decoder accepts a base64-encoded
+  // JSON array as the unambiguous wire format and falls back to the legacy
+  // split(",") form so older ingestion clients keep paginating.
+  // ===========================================================================
+
+  @Test
+  void searchAfterReturnsNullForEmptyInput() {
+    assertNull(SearchUtils.searchAfter(""));
+  }
+
+  @Test
+  void searchAfterBase64JsonPreservesValueContainingComma() {
+    // Mirrors the customer FQN from #28076 / Pylon #19901.
+    String commaFqn =
+        "x alation archive.system glossary.sfmc (salesforce marketing cloud, exacttarget) (it system)";
+    String cursor = encodeBase64Json("[\"" + commaFqn + "\"]");
+
+    List<Object> result = SearchUtils.searchAfter(cursor);
+    assertEquals(1, result.size());
+    assertEquals(commaFqn, result.get(0));
+  }
+
+  @Test
+  void searchAfterBase64JsonParsesMultiValueCursor() {
+    String cursor = encodeBase64Json("[\"alpha\",1.5]");
+    List<Object> result = SearchUtils.searchAfter(cursor);
+    assertEquals(2, result.size());
+    assertEquals("alpha", result.get(0));
+    assertEquals(1.5, result.get(1));
+  }
+
+  @Test
+  void searchAfterFallsBackToLegacySplitWhenInputIsNotBase64() {
+    // "alpha,beta" is not valid base64 (',' is outside the alphabet) so it
+    // must fall back to the legacy comma split.
+    assertEquals(List.of("alpha", "beta"), SearchUtils.searchAfter("alpha,beta"));
+  }
+
+  @Test
+  void searchAfterFallsBackToLegacySplitWhenDecodedPayloadIsNotJsonArray() {
+    // base64("hello") decodes cleanly but is not a JSON array, so the cursor
+    // is treated as a single legacy value (no embedded ',').
+    String cursor = encodeBase64Json("hello");
+    List<Object> result = SearchUtils.searchAfter(cursor);
+    assertEquals(1, result.size());
+    assertEquals(cursor, result.get(0));
+  }
+
+  private static String encodeBase64Json(String json) {
+    return Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
   }
 
   @ParameterizedTest(name = "mapEntityTypesToIndexNames(\"{0}\") == \"{1}\"")
