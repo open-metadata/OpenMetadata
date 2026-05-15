@@ -102,6 +102,12 @@ RUN [ $(uname -m) = "x86_64" ] \
   && pip install "openmetadata-ingestion[db2]~=${RI_VERSION}" \
   || echo "DB2 not supported on ARM architectures."
 
+# Ship py-spy so a hung worker can be sampled in place
+# (`py-spy dump --pid <pid>`) without first installing anything in the pod.
+# Container-only — kept out of setup.py to avoid forcing a native binary on
+# dev laptops / CI / non-container installs.
+RUN pip install "py-spy>=0.3.14"
+
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN pip install "python-daemon>=3.0.0"
 # remove all airflow providers except for docker, cncf kubernetes, and standard (required in Airflow 3.x)

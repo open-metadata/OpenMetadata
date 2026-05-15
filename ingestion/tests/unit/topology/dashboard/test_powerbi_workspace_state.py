@@ -126,10 +126,10 @@ def test_reports_registry_persists_across_workspaces(state, ws_a, ws_b):
     state.exit()
     state.enter(ws_b)
     state.exit()
-    assert state.find_report("r_a1") is not None
-    assert state.find_report("r_b1") is not None
-    assert state.find_report(None) is None
-    assert state.find_report("nonexistent") is None
+    assert state.is_known_report("r_a1") is True
+    assert state.is_known_report("r_b1") is True
+    assert state.is_known_report(None) is False
+    assert state.is_known_report("nonexistent") is False
 
 
 # -- Dashboard charts: operation-shaped consume API ---------------------

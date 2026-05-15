@@ -14,10 +14,10 @@ import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { TableClass } from '../support/entity/TableClass';
 import { TagClass } from '../support/tag/TagClass';
 import { createAdminApiContext } from './admin';
-import { getApiContext } from './common';
+import { fullUuid, getApiContext } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 
-export const ACTIVITY_EVENT_TIMEOUT = 300_000;
+export const ACTIVITY_EVENT_TIMEOUT = 200_000;
 export const ACTIVITY_TEST_TIMEOUT = ACTIVITY_EVENT_TIMEOUT + 60_000;
 export const ACTIVITY_FEED_RESPONSE_TIMEOUT = 15_000;
 export const FEED_ITEM_TIMEOUT = 30_000;
@@ -116,32 +116,51 @@ export const waitForActivityEvent = async ({
   )}?days=30&limit=50`;
   let events: ActivityApiEvent[] = [];
 
+  let lastStatus = 0;
+  let lastEventTypes: string[] = [];
+
   try {
-    await expect
-      .poll(
-        async () => {
-          const response = await apiContext.get(activityUrl);
+    try {
+      await expect
+        .poll(
+          async () => {
+            const response = await apiContext.get(activityUrl);
+            lastStatus = response.status();
 
-          if (!response.ok()) {
-            return false;
+            if (!response.ok()) {
+              const body = await response.text().catch(() => '');
+              throw new Error(
+                `Activity API returned ${lastStatus} for ${entityFqn}: ${body}`
+              );
+            }
+
+            const body = (await response.json()) as ActivityApiResponse;
+            events = body.data ?? [];
+            lastEventTypes = events.map((e) => e.eventType ?? 'unknown');
+
+            return events.some(
+              (event) =>
+                event.eventType === eventType &&
+                (text === undefined || JSON.stringify(event).includes(text))
+            );
+          },
+          {
+            timeout: ACTIVITY_EVENT_TIMEOUT,
+            intervals: [5_000, 10_000],
+            message: `Waiting for ${eventType} event for ${entityFqn}`,
           }
-
-          const body = (await response.json()) as ActivityApiResponse;
-          events = body.data ?? [];
-
-          return events.some(
-            (event) =>
-              event.eventType === eventType &&
-              (text === undefined || JSON.stringify(event).includes(text))
-          );
-        },
-        {
-          timeout: ACTIVITY_EVENT_TIMEOUT,
-          intervals: [1_000, 2_000, 5_000, 10_000],
-          message: `Timed out waiting for ${eventType} event for ${entityFqn}`,
-        }
-      )
-      .toBe(true);
+        )
+        .toBe(true);
+    } catch (err) {
+      if (lastStatus !== 0) {
+        throw new Error(
+          `Timed out waiting for ${eventType} event for ${entityFqn}. Last status: ${lastStatus}, events found: [${lastEventTypes.join(
+            ', '
+          )}]`
+        );
+      }
+      throw err;
+    }
 
     return events.find(
       (event) =>
@@ -278,6 +297,43 @@ export const createDescriptionActivityEventFromPage = async (
     eventType: 'DescriptionUpdated',
     text: description,
   });
+};
+
+/**
+ * Inserts an activity event directly into the activity stream via the test-only endpoint,
+ * bypassing the async change-event pipeline. Use this in test setup when you need a feed
+ * item to exist but are not testing the pipeline itself.
+ */
+export const insertActivityEventForTest = async (
+  apiContext: APIRequestContext,
+  table: TableClass,
+  text: string
+) => {
+  const userResponse = await apiContext.get('/api/v1/users/loggedInUser');
+  const adminUser = await userResponse.json();
+  const tableData = table.entityResponseData;
+
+  const fqn = tableData.fullyQualifiedName ?? '';
+
+  const response = await apiContext.post('/api/v1/activity/test-insert', {
+    data: {
+      id: fullUuid(),
+      eventType: 'DescriptionUpdated',
+      about: `<#E::table::${fqn}>`,
+      entity: {
+        id: tableData.id,
+        type: 'table',
+        name: tableData.name,
+        fullyQualifiedName: fqn,
+      },
+      actor: { id: adminUser.id, type: 'user' },
+      timestamp: Date.now(),
+      summary: text,
+      newValue: text,
+    },
+  });
+
+  expect(response.ok()).toBeTruthy();
 };
 
 export const addTagToTable = async (
