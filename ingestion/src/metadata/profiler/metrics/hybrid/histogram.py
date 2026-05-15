@@ -259,6 +259,6 @@ class Histogram(HybridMetric):
                 pd.cut(df[self.col.name], bins, right=False).value_counts().values
             )  # right boundary is exclusive
 
-        if frequencies.size > 0:
+        if frequencies.size > 0:  # pyright: ignore[reportAttributeAccessIssue]
             return {"boundaries": bins_label, "frequencies": frequencies.tolist()}
         return None
