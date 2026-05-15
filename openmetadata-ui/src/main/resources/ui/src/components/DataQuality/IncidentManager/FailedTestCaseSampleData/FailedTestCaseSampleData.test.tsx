@@ -18,6 +18,60 @@ import { getTestCaseFailedSampleData } from '../../../../rest/testAPI';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import FailedTestCaseSampleData from './FailedTestCaseSampleData.component';
 
+jest.mock('@openmetadata/ui-core-components', () => {
+  const Table = Object.assign(
+    jest
+      .fn()
+      .mockImplementation(({ children }: { children: React.ReactNode }) => (
+        <table data-testid="sample-data-table">{children}</table>
+      )),
+    {
+      Header: jest
+        .fn()
+        .mockImplementation(
+          ({
+            children,
+            columns,
+          }: {
+            children: (col: unknown) => React.ReactNode;
+            columns?: unknown[];
+          }) => <thead>{columns?.map(children)}</thead>
+        ),
+      Head: jest
+        .fn()
+        .mockImplementation(({ label }: { label: string }) => <th>{label}</th>),
+      Body: jest
+        .fn()
+        .mockImplementation(
+          ({
+            children,
+            items,
+          }: {
+            children: (item: unknown) => React.ReactNode;
+            items?: unknown[];
+          }) => <tbody>{items?.map(children)}</tbody>
+        ),
+      Row: jest
+        .fn()
+        .mockImplementation(({ children }: { children: React.ReactNode }) => (
+          <tr>{children}</tr>
+        )),
+      Cell: jest
+        .fn()
+        .mockImplementation(({ children }: { children: React.ReactNode }) => (
+          <td>{children}</td>
+        )),
+    }
+  );
+
+  return {
+    Table,
+    Typography: ({ children }: { children: React.ReactNode }) => (
+      <span>{children}</span>
+    ),
+  };
+});
+
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (

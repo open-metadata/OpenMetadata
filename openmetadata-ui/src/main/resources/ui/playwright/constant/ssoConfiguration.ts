@@ -10,69 +10,34 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export const SSO_COMMON_FIELDS = [
-  'Provider Name',
-  'Authority',
-  'Client ID',
-  'Callback URL',
-  'JWT Principal Claims',
-  'Enable Self Signup',
-  'Allowed Domains',
-  'Use Roles From Provider',
-];
+// Visible main-tier form fields for OIDC providers. Provider Name, Authority,
+// root Client ID and root JWT Principal Claims are now hidden via UI schema
+// (SSOConfigurationForm.tsx); the OIDC subsection renders Client ID under
+// `oidcConfiguration.id`.
+export const SSO_COMMON_FIELDS = ['Callback URL'];
 
-export const OIDC_COMMON_FIELDS = [
-  'OIDC Client ID',
-  'OIDC Client Secret',
-  'OIDC Request Scopes',
-  'OIDC Discovery URI',
-  'OIDC Use Nonce',
-  'OIDC Preferred JWS Algorithm',
-  'OIDC Response Type',
-  'OIDC Disable PKCE',
-  'OIDC Max Clock Skew',
-  'OIDC Client Authentication Method',
-  'OIDC Token Validity',
-  'OIDC Server URL',
-  'OIDC Callback URL',
-  'OIDC Max Age',
-  'OIDC Prompt',
-  'OIDC Session Expiry',
-];
+// Main-tier OIDC fields rendered inside `oidcConfiguration` for confidential
+// providers. Other OIDC settings (scope, useNonce, preferredJwsAlgorithm,
+// disablePkce, etc.) live in the Advanced Fields accordion.
+export const OIDC_COMMON_FIELDS = ['Client ID', 'Client Secret', 'Discovery URI'];
 
+// Main-tier SAML form inputs rendered when the IdP section is expanded.
+// Service Provider details (entityId, acs) are surfaced via the
+// "Register with your Identity Provider" copyable banner, not the form.
 export const SAML_VISIBLE_FIELDS = [
   'IdP Entity ID',
   'IdP SSO Login URL',
   'IdP X.509 Certificate',
   'Name ID Format',
-  'SP Entity ID',
-  'Assertion Consumer Service URL',
-  'SP X.509 Certificate',
-  'SP Private Key',
-  'Debug Mode',
-  'Strict Mode',
-  'Want Assertions Signed',
-  'Want Messages Signed',
-  'Send Signed Auth Request',
-  'Allowed Domains',
 ];
 
+// Main-tier LDAP form inputs (LDAP_SUBSECTION in SSO.constant.ts). Group
+// configuration, role mapping, and SSL settings live in Advanced Fields.
 export const LDAP_VISIBLE_FIELDS = [
   'LDAP Host',
   'LDAP Port',
   'Admin Principal DN',
   'Admin Password',
-  'Enable SSL',
-  'Max Pool Size',
   'User Base DN',
-  'Group Base DN',
-  'Full DN Required',
-  'Admin Role Name',
-  'All Attribute Name',
   'Mail Attribute Name',
-  'Group Attribute Name',
-  'Group Attribute Value',
-  'Group Member Attribute Name',
-  'Auth Reassign Roles',
-  'Allowed Domains',
 ];

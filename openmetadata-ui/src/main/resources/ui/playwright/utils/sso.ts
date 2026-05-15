@@ -657,6 +657,12 @@ export const verifyProviderFields = async (
       'sso-configuration-form-array-field-template-allowedDomains',
   };
 
+  // CopyableUrlField widgets render as <div data-testid="<rjsf-id>"> instead
+  // of as labelled inputs — see CallbackUrlWidget in SSOConfigurationForm.tsx.
+  const COPYABLE_FIELD_TESTIDS: Record<string, string> = {
+    'Callback URL': 'root/authenticationConfiguration/callbackUrl',
+  };
+
   // Verify visible fields
   for (const field of expectedVisibleFields) {
     const labelLocator = page.getByLabel(field);
@@ -665,7 +671,8 @@ export const verifyProviderFields = async (
     if (labelCount > 0) {
       await expect(labelLocator.first()).toBeVisible();
     } else {
-      const testId = ARRAY_FIELD_TESTIDS[field];
+      const testId =
+        ARRAY_FIELD_TESTIDS[field] ?? COPYABLE_FIELD_TESTIDS[field];
 
       if (testId) {
         await expect(page.getByTestId(testId)).toBeVisible();
@@ -683,7 +690,8 @@ export const verifyProviderFields = async (
     if (labelCount > 0) {
       await expect(labelLocator).not.toBeVisible();
     } else {
-      const testId = ARRAY_FIELD_TESTIDS[field];
+      const testId =
+        ARRAY_FIELD_TESTIDS[field] ?? COPYABLE_FIELD_TESTIDS[field];
 
       if (testId) {
         await expect(page.getByTestId(testId)).not.toBeVisible();
