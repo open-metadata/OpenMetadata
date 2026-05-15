@@ -13,7 +13,7 @@ Unit tests for NATS connector
 """
 
 import base64
-from pathlib import Path
+import ssl
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -216,9 +216,10 @@ class TestNatsBuildConnectOpts:
         assert opts["pedantic"] is True
         assert "servers" in opts
 
-    def test_tls_ca_cert_written_to_file(self, tmp_path):
+    def test_tls_ca_cert_builds_ssl_context(self):
+        ca_pem = "-----BEGIN CERTIFICATE-----\nCA\n-----END CERTIFICATE-----"
         ca_mock = MagicMock()
-        ca_mock.get_secret_value.return_value = "-----BEGIN CERTIFICATE-----\nCA\n-----END CERTIFICATE-----"
+        ca_mock.get_secret_value.return_value = ca_pem
         ssl_cfg = MagicMock()
         ssl_cfg.caCertificate = ca_mock
         ssl_cfg.sslCertificate = None
@@ -226,16 +227,20 @@ class TestNatsBuildConnectOpts:
         tls_mock = MagicMock()
         tls_mock.root = ssl_cfg
         conn = self._mock_connection(tlsConfig=tls_mock)
-        opts = _build_connect_opts(conn)
-        assert "tls_ca_file" in opts
-        assert Path(opts["tls_ca_file"]).exists()
+        mock_ctx = MagicMock(spec=ssl.SSLContext)
+        with patch(
+            "metadata.ingestion.source.messaging.nats.connection.ssl.create_default_context",
+            return_value=mock_ctx,
+        ):
+            opts = _build_connect_opts(conn)
+        assert "tls" in opts
+        assert opts["tls"] is mock_ctx
+        mock_ctx.load_verify_locations.assert_called_once_with(cadata=ca_pem)
 
     def test_tls_skipped_when_none(self):
         conn = self._mock_connection(tlsConfig=None)
         opts = _build_connect_opts(conn)
-        assert "tls_ca_file" not in opts
-        assert "tls_cert_file" not in opts
-        assert "tls_key_file" not in opts
+        assert "tls" not in opts
 
 
 @pytest.fixture

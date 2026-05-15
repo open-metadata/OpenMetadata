@@ -16,6 +16,7 @@ import asyncio
 import contextlib
 import json
 import os
+import ssl
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -87,6 +88,17 @@ class NatsClient:
             _cleanup_temp_certs()
 
 
+def _build_tls_context(ssl_cfg) -> ssl.SSLContext:
+    ctx = ssl.create_default_context()
+    if ssl_cfg.caCertificate:
+        ctx.load_verify_locations(cadata=ssl_cfg.caCertificate.get_secret_value())
+    if ssl_cfg.sslCertificate and ssl_cfg.sslKey:
+        cert_path = _write_temp_cert(ssl_cfg.sslCertificate.get_secret_value())
+        key_path = _write_temp_cert(ssl_cfg.sslKey.get_secret_value())
+        ctx.load_cert_chain(certfile=cert_path, keyfile=key_path)
+    return ctx
+
+
 def _build_connect_opts(connection: NatsConnection) -> dict:
     servers = [s.strip() for s in connection.natsServers.split(",")]
     opts: dict = {"servers": servers}
@@ -101,13 +113,7 @@ def _build_connect_opts(connection: NatsConnection) -> dict:
         opts["nkeys_seed"] = connection.nkeySeed.get_secret_value().encode()
 
     if connection.tlsConfig and connection.tlsConfig.root:
-        ssl_cfg = connection.tlsConfig.root
-        if ssl_cfg.caCertificate:
-            opts["tls_ca_file"] = _write_temp_cert(ssl_cfg.caCertificate.get_secret_value())
-        if ssl_cfg.sslCertificate:
-            opts["tls_cert_file"] = _write_temp_cert(ssl_cfg.sslCertificate.get_secret_value())
-        if ssl_cfg.sslKey:
-            opts["tls_key_file"] = _write_temp_cert(ssl_cfg.sslKey.get_secret_value())
+        opts["tls"] = _build_tls_context(connection.tlsConfig.root)
 
     if connection.additionalConfig:
         opts.update(connection.additionalConfig)
