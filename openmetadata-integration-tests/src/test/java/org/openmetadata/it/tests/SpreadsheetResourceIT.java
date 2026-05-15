@@ -340,7 +340,8 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_listSpreadsheetsWithRootParameter(TestNamespace ns) {
-    DriveService driveService = sharedDriveService(ns);
+    // Dedicated service: per-name assertion below is poisoned by other tests' roots.
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
 
     Directory sheetsDir =
         Directories.create()
@@ -596,7 +597,8 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_listSpreadsheetsWithRootParameterAndPagination(TestNamespace ns) {
-    DriveService driveService = sharedDriveService(ns);
+    // Dedicated service: pagination counts are skewed by other tests' roots on a shared service.
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
 
     Directory folder =
         Directories.create()
@@ -650,7 +652,8 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
 
   @Test
   void test_listSpreadsheetsWithRootParameterEmptyResult(TestNamespace ns) {
-    DriveService driveService = sharedDriveService(ns);
+    // Dedicated service: asserts root=true returns size==0, would break under shared service.
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
 
     for (int i = 1; i <= 2; i++) {
       Directory dir =
