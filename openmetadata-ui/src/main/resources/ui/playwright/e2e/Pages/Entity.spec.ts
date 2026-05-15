@@ -1589,9 +1589,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
             const profileResponse = page.waitForResponse(
               (response) =>
-                response.url().includes('/api/v1/tables/') &&
-                response.url().includes('/columns') &&
-                response.url().includes('profile')
+                response.url().includes('/api/v1/columns/name/') &&
+                response.url().includes('profile') &&
+                response.request().method() === 'GET'
             );
             await columnName.click();
             await profileResponse;
