@@ -96,6 +96,13 @@ public interface SearchClient
    * {@code tier}, but its FQN is still included in {@code classificationTags} since it's
    * sourced from a Classification — {@code ParseTags} iterates the original list to populate
    * {@code classificationTags}, so the painless equivalent must do the same.
+   *
+   * <p>Important: {@code ctx._source.tier} is only overwritten when a Tier.* entry is actually
+   * found in {@code tags[]}. {@code TaggableIndex.applyTagFields} already strips Tier out of
+   * {@code tags[]} into the dedicated {@code tier} field at index time, so docs touched by a
+   * tag-mutating painless almost never carry Tier in {@code tags[]}. Unconditionally assigning
+   * {@code tier = null} when no Tier was seen would wipe the live-indexed dedicated field —
+   * caught by {@code GlossaryRenameCascade.spec.ts}.
    */
   String TAG_RESEPARATION_SCRIPT =
       """
@@ -117,7 +124,9 @@ public interface SearchClient
           }
         }
         ctx._source.tags = newTags;
-        ctx._source.tier = tier;
+        if (tier != null) {
+          ctx._source.tier = tier;
+        }
         ctx._source.classificationTags = classTags;
         ctx._source.glossaryTags = glossTags;
       }

@@ -103,6 +103,31 @@ class SearchClientTagScriptSeparationTest {
         "snippet must filter Tier.* tags out of tags[] so they don't leak into the bag");
   }
 
+  @Test
+  void tagReseparationScriptOnlyOverwritesTierWhenFoundInTagsBag() {
+    // TaggableIndex.applyTagFields strips Tier out of tags[] into the dedicated tier field at
+    // index time, so a doc touched by any tag-mutating painless almost never carries Tier
+    // inside tags[]. If the snippet unconditionally executed `ctx._source.tier = tier` after a
+    // loop that didn't see any Tier.* entry, `tier` is null and the assignment wipes the
+    // live-indexed dedicated field — caught by GlossaryRenameCascade.spec.ts. The guard
+    // `if (tier != null)` around the assignment keeps the existing tier untouched in that
+    // case while still allowing the snippet to lift Tier back out of tags[] when a legacy /
+    // polluted doc has one stuck in there.
+    String snippet = SearchClient.TAG_RESEPARATION_SCRIPT;
+    int tierAssignIndex = snippet.indexOf("ctx._source.tier =");
+    assertTrue(
+        tierAssignIndex >= 0,
+        "snippet must contain a `ctx._source.tier = ...` assignment to lift legacy Tier"
+            + " entries; if you removed it intentionally update this test.");
+    String upToAssignment = snippet.substring(0, tierAssignIndex);
+    int lastNullCheck = upToAssignment.lastIndexOf("if (tier != null)");
+    assertTrue(
+        lastNullCheck >= 0,
+        "Reseparation write `ctx._source.tier = tier` must be guarded by `if (tier != null)`"
+            + " so docs whose Tier already lives on the dedicated field (the normal post-Phase 4a"
+            + " shape) are not wiped to null when no Tier.* is present in tags[].");
+  }
+
   private static void assertEndsWithReseparation(String script, String label) {
     // Suffix match — the snippet must be the LAST thing the script does so subsequent
     // mutations can't re-break the separation. `contains` would let a future patch append
