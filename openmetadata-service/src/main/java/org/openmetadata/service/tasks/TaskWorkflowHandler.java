@@ -1199,6 +1199,27 @@ public class TaskWorkflowHandler {
     return defaultWorkflowResult(resolutionType);
   }
 
+  /**
+   * Map a transition to a {@link TaskResolutionType} for the resolveTask path. Cascade:
+   *
+   * <ol>
+   *   <li>Caller-supplied {@code requestedResolutionType} (explicit override).
+   *   <li>Transition-declared {@code resolutionType} from the workflow JSON — the canonical
+   *       signal that a transition is terminal.
+   *   <li>Fallback by {@code targetTaskStatus} — only for the unambiguously terminal statuses
+   *       (Rejected, Completed, Cancelled, Revoked, Failed). {@code Approved} and
+   *       {@code Granted} are intentionally NOT mapped here: Data Access Request (and any
+   *       future workflow that uses Approved/Granted as a non-terminal "awaiting next step"
+   *       state) would otherwise close the task prematurely on the approve transition.
+   * </ol>
+   *
+   * <p>Convention for custom workflows: any transition that is intended to be terminal MUST
+   * declare an explicit {@code resolutionType} in the workflow JSON, matching the seeded
+   * GlossaryApproval / DescriptionUpdate / etc. definitions. Returning {@code null} here is
+   * the explicit signal that the transition is non-terminal — callers route through the
+   * workflow advancement path instead of {@code applyTaskResolution}, so the task stays
+   * alive on the next user-task node.
+   */
   private TaskResolutionType resolveResolutionType(
       Task task,
       TaskResolutionType requestedResolutionType,

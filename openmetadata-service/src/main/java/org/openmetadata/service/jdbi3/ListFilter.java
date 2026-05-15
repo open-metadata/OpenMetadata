@@ -1093,9 +1093,17 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   /**
-   * Shared helper for FQN-hash-prefix multi-value filters (aboutEntity, aboutService).
-   * Splits the comma-separated input, hashes each FQN, and produces an OR-joined
-   * fragment of {@code (col = :hash OR col LIKE :hash_prefix)} groups.
+   * Shared helper for the task_entity multi-value FQN filters (aboutEntity, aboutService).
+   * Both filters target the same generated column, {@code task_entity.aboutFqnHash}: an
+   * "aboutEntity" filter matches the dataset's FQN-hash exactly or as a prefix, and an
+   * "aboutService" filter matches the parent service's FQN-hash as a prefix of any
+   * dataset's FQN-hash beneath it. Splits the comma-separated input, hashes each FQN, and
+   * produces an OR-joined fragment of {@code (aboutFqnHash = :hash OR aboutFqnHash LIKE
+   * :hash_prefix)} groups.
+   *
+   * <p>This helper deliberately hard-codes {@code aboutFqnHash}; the {@code prefix} arg
+   * only namespaces the bound parameter keys. Don't reuse it for other columns — copy and
+   * adjust instead so the column choice stays explicit at the callsite.
    */
   private String buildFqnPrefixOrCondition(String prefix, String commaSeparatedFqns) {
     List<String> tokens =
