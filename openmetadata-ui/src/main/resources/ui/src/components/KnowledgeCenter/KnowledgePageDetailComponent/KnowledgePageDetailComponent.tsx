@@ -549,8 +549,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   const tabs = useMemo(() => {
     const items = [
       {
-        name: String(t('label.content')),
-        label: <div data-testid="overview">{String(t('label.content'))}</div>,
+        name: t('label.content'),
+        label: <div data-testid="overview">{t('label.content')}</div>,
         key: EntityTabs.OVERVIEW,
         children: (
           <>
@@ -578,13 +578,13 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         ),
       },
       {
-        name: String(t('label.activity-feed-and-task-plural')),
+        name: t('label.activity-feed-and-task-plural'),
         label: (
           <TabsLabel
             count={feedCount.totalCount}
             id={EntityTabs.ACTIVITY_FEED}
             isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-            name={String(t('label.activity-feed-and-task-plural'))}
+            name={t('label.activity-feed-and-task-plural')}
           />
         ),
         key: EntityTabs.ACTIVITY_FEED,

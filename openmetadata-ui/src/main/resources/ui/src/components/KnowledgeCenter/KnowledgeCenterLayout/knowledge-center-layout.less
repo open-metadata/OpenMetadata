@@ -16,15 +16,18 @@
 @border-color: #0000001a;
 
 .knowledge-center-layout {
-  height: calc(100vh - 246px);
+  // 80px navbar + 150px page header + 20px margin = 250px
+  height: calc(100vh - 250px);
 
   &.knowledge-details-page {
+   // 80px navbar + 178px page header + 20px margin = 278px
     height: calc(100vh - 278px);
     padding-bottom: 20px;
   }
 
   &.knowledge-version-page {
-    height: calc(100vh - 246px);
+    // 80px navbar + 142px page header + 20px margin = 242px
+    height: calc(100vh - 242px);
     padding-bottom: 20px;
   }
 }

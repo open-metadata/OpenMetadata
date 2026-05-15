@@ -25,7 +25,7 @@ import WidgetEmptyState from '../../../components/MyData/Widgets/Common/WidgetEm
 import WidgetFooter from '../../../components/MyData/Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../../../components/MyData/Widgets/Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../../../components/MyData/Widgets/Common/WidgetWrapper/WidgetWrapper';
-import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import { PAGE_SIZE_MEDIUM, ROUTES } from '../../../constants/constants';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -42,7 +42,6 @@ import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './KnowledgeCenterWidget.less';
 
-import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 const KnowledgeCenterWidget = ({
   isEditView = false,
   widgetKey,
@@ -86,7 +85,7 @@ const KnowledgeCenterWidget = ({
   const emptyState = useMemo(() => {
     return (
       <WidgetEmptyState
-        actionButtonLink={contextCenterClassBase.getArticlesListPath()}
+        actionButtonLink={ROUTES.CONTEXT_CENTER_ARTICLES}
         actionButtonText={t('label.create-entity', {
           entity: t('label.article'),
         })}
@@ -173,7 +172,7 @@ const KnowledgeCenterWidget = ({
   const footer = useMemo(() => {
     return (
       <WidgetFooter
-        moreButtonLink={contextCenterClassBase.getArticlesListPath()}
+        moreButtonLink={ROUTES.CONTEXT_CENTER_ARTICLES}
         moreButtonText={t('label.view-more')}
         showMoreButton={showWidgetFooterMoreButton}
       />
@@ -192,7 +191,7 @@ const KnowledgeCenterWidget = ({
         title={t('label.knowledge-center')}
         widgetKey={widgetKey}
         onTitleClick={() =>
-          navigate(contextCenterClassBase.getArticlesListPath())
+          navigate(ROUTES.CONTEXT_CENTER_ARTICLES)
         }
       />
     );
