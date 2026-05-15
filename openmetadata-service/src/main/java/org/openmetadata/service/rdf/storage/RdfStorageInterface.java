@@ -102,14 +102,31 @@ public interface RdfStorageInterface {
     private final String toType;
     private final UUID toId;
     private final String relationshipType;
+    // Full predicate URI to write. Set by RdfRepository.bulkAddRelationships via
+    // getRelationshipPredicate so bulkStoreRelationships writes the same predicate
+    // that addRelationship/removeRelationship would (e.g. prov:wasDerivedFrom for
+    // "upstream"), instead of a naive "<baseUri>ontology/<relationshipType>"
+    // concat that wouldn't match the live remove path.
+    private final String predicateUri;
 
     public RelationshipData(
         String fromType, UUID fromId, String toType, UUID toId, String relationshipType) {
+      this(fromType, fromId, toType, toId, relationshipType, null);
+    }
+
+    public RelationshipData(
+        String fromType,
+        UUID fromId,
+        String toType,
+        UUID toId,
+        String relationshipType,
+        String predicateUri) {
       this.fromType = fromType;
       this.fromId = fromId;
       this.toType = toType;
       this.toId = toId;
       this.relationshipType = relationshipType;
+      this.predicateUri = predicateUri;
     }
   }
 }

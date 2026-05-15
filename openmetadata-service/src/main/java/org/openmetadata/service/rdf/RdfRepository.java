@@ -392,15 +392,25 @@ public class RdfRepository {
     }
 
     try {
+      // Pre-compute predicate URIs via getRelationshipPredicate so they match
+      // exactly what addRelationship/removeRelationship write/expect (e.g.
+      // UPSTREAM → prov:wasDerivedFrom, USES → prov:used). Without this the
+      // bulk path would emit `om:<relationshipType>` (lowercase value) and a
+      // later removeRelationship for the same edge would target a different
+      // predicate URI, leaving the bulk-written triple in place.
+      Model tempModel = ModelFactory.createDefaultModel();
       List<RdfStorageInterface.RelationshipData> relationshipDataList = new ArrayList<>();
       for (EntityRelationship relationship : relationships) {
+        String relType = relationship.getRelationshipType().value();
+        String predicateUri = getRelationshipPredicate(relType, tempModel).getURI();
         relationshipDataList.add(
             new RdfStorageInterface.RelationshipData(
                 relationship.getFromEntity(),
                 relationship.getFromId(),
                 relationship.getToEntity(),
                 relationship.getToId(),
-                relationship.getRelationshipType().value()));
+                relType,
+                predicateUri));
       }
       storageService.bulkStoreRelationships(relationshipDataList);
       LOG.debug("Bulk added {} relationships to RDF store", relationships.size());
@@ -2756,7 +2766,15 @@ public class RdfRepository {
     if (trimmed.startsWith("prov:") && trimmed.length() > 5) {
       return "http://www.w3.org/ns/prov#" + trimmed.substring(5);
     }
-    return trimmed;
+    // Full URIs pass through unchanged. Anything else — bare local names like
+    // `customRel` — is treated as a local name in the OM ontology, mirroring
+    // createPropertyFromUri's default branch which writes the same value as
+    // `https://open-metadata.org/ontology/<localName>`. Otherwise the cleanup
+    // FILTER would target the bare string while the writer stored the full URI.
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+      return trimmed;
+    }
+    return "https://open-metadata.org/ontology/" + trimmed;
   }
 
   private Property createPropertyFromUri(String uri, Model model) {

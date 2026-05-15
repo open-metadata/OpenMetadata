@@ -530,16 +530,24 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
 
     StringBuilder insertData = new StringBuilder();
-    insertData.append("PREFIX om: <").append(baseUri).append("ontology/> ");
     insertData.append("INSERT DATA { GRAPH <").append(KNOWLEDGE_GRAPH).append("> { ");
     for (RelationshipData rel : relationships) {
+      // Use the pre-computed predicateUri (via RdfRepository.getRelationshipPredicate)
+      // so the triple written here matches what addRelationship / removeRelationship
+      // expect for the same relationship type. Fall back to the lowercase
+      // `<baseUri>ontology/<type>` for any caller that built RelationshipData via
+      // the legacy 5-arg constructor — same shape the original implementation used.
+      String predicateUri =
+          rel.getPredicateUri() != null
+              ? rel.getPredicateUri()
+              : baseUri + "ontology/" + rel.getRelationshipType();
       insertData.append(
           String.format(
-              "<%sentity/%s/%s> om:%s <%sentity/%s/%s> . ",
+              "<%sentity/%s/%s> <%s> <%sentity/%s/%s> . ",
               baseUri,
               rel.getFromType(),
               rel.getFromId(),
-              rel.getRelationshipType(),
+              predicateUri,
               baseUri,
               rel.getToType(),
               rel.getToId()));
