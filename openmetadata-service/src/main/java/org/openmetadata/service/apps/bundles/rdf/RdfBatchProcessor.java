@@ -233,7 +233,12 @@ public class RdfBatchProcessor {
 
       if (!allRelationships.isEmpty()) {
         try {
-          rdfRepository.bulkAddRelationships(allRelationships);
+          // Pass batchSources so bulkStoreRelationships only reconciles edges
+          // for entities IN this batch. Incoming-lineage rows can carry source
+          // IDs that are outside the batch (the `from` of an UPSTREAM edge
+          // where this batch's entity is the `to`); reconciling those would
+          // wipe the outside-batch entity's unrelated outgoing edges.
+          rdfRepository.bulkAddRelationships(allRelationships, batchSources);
         } catch (Exception e) {
           LOG.error(
               "Failed to bulk add {} relationships for entity type {}",

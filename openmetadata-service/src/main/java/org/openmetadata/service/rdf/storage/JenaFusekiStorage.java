@@ -528,18 +528,25 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   @Override
-  public void bulkStoreRelationships(List<RelationshipData> relationships) {
+  public String buildEntityUri(String entityType, String entityId) {
+    return baseUri + "entity/" + entityType + "/" + entityId;
+  }
+
+  @Override
+  public void bulkStoreRelationships(
+      List<RelationshipData> relationships, Set<String> sourcesToReconcile) {
     if (relationships.isEmpty()) {
       return;
     }
     throwIfCircuitOpen("bulkStoreRelationships");
 
-    // Per-source-entity reconciliation: for each (fromType, fromId) in this
-    // batch, wipe every outgoing relationship-hook edge from that source first,
-    // then insert the current batch. This ensures relationships that USED to
-    // exist but are no longer in the batch get removed — the original
-    // implementation only deleted the exact triples in the new batch, so
-    // stale edges accumulated.
+    // Per-source-entity reconciliation: for each source URI the caller asked
+    // us to reconcile, wipe every outgoing relationship-hook edge first, then
+    // insert the current batch. Sources NOT in sourcesToReconcile (e.g. an
+    // outside-batch upstream entity that contributed only an incoming lineage
+    // row) get their new edges inserted but their existing edges are left
+    // alone — wiping them would destroy unrelated state that this batch
+    // never had visibility into.
     //
     // The DELETE filter is scoped to RELATIONSHIP_HOOK_PREDICATES (derived
     // from the Relationship enum, see RdfRepository) so it ONLY touches
@@ -548,18 +555,13 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     // translator-managed predicates (om:hasOwner / om:hasTag / etc., managed
     // by storeEntity's predicate-scoped DELETE) are NOT in the set and are
     // therefore preserved across reconciliation.
-    Set<String> distinctSources = new LinkedHashSet<>();
-    for (RelationshipData rel : relationships) {
-      distinctSources.add(baseUri + "entity/" + rel.getFromType() + "/" + rel.getFromId());
-    }
-
     String hookPredicateList =
         org.openmetadata.service.rdf.RdfRepository.buildPredicateInList(
             org.openmetadata.service.rdf.RdfRepository.RELATIONSHIP_HOOK_PREDICATES);
 
     StringBuilder deleteUpdate = new StringBuilder();
     boolean firstDelete = true;
-    for (String sourceUri : distinctSources) {
+    for (String sourceUri : sourcesToReconcile) {
       if (!firstDelete) {
         deleteUpdate.append("; ");
       }
@@ -617,9 +619,9 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       UpdateRequest insertRequest = UpdateFactory.create(insertData.toString());
       connection.update(insertRequest);
       LOG.info(
-          "Bulk stored {} relationships across {} source entities (reconciled)",
+          "Bulk stored {} relationships, reconciled {} source entities",
           relationships.size(),
-          distinctSources.size());
+          sourcesToReconcile.size());
       recordSuccess();
     } catch (Exception e) {
       LOG.error("Failed to bulk store relationships in Fuseki", e);

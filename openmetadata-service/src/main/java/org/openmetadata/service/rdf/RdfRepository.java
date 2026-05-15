@@ -434,6 +434,20 @@ public class RdfRepository {
   }
 
   public void bulkAddRelationships(List<EntityRelationship> relationships) {
+    bulkAddRelationships(relationships, null);
+  }
+
+  /**
+   * Bulk add relationships, reconciling only the supplied source entities. If
+   * {@code reconcileSources} is null (legacy callers), the storage layer falls
+   * back to reconciling whatever sources appear in {@code relationships},
+   * which is unsafe when the list includes incoming-lineage rows whose
+   * {@code fromId} is outside the current entity batch. Indexer callers
+   * (RdfBatchProcessor) should always pass the batch's own entities so
+   * outside-batch sources keep their unrelated outgoing edges.
+   */
+  public void bulkAddRelationships(
+      List<EntityRelationship> relationships, Set<EntitySourceRef> reconcileSources) {
     if (!isEnabled() || relationships.isEmpty()) {
       return;
     }
@@ -459,7 +473,16 @@ public class RdfRepository {
                 relType,
                 predicateUri));
       }
-      storageService.bulkStoreRelationships(relationshipDataList);
+      if (reconcileSources != null) {
+        String base = config.getBaseUri().toString();
+        Set<String> sourceUris = new LinkedHashSet<>();
+        for (EntitySourceRef ref : reconcileSources) {
+          sourceUris.add(base + "entity/" + ref.entityType() + "/" + ref.entityId());
+        }
+        storageService.bulkStoreRelationships(relationshipDataList, sourceUris);
+      } else {
+        storageService.bulkStoreRelationships(relationshipDataList);
+      }
       LOG.debug("Bulk added {} relationships to RDF store", relationships.size());
     } catch (Exception e) {
       LOG.error("Failed to bulk add relationships to RDF", e);
