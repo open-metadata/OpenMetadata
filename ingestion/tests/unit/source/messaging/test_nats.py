@@ -202,7 +202,7 @@ class TestNatsBuildConnectOpts:
         nkey_mock.get_secret_value.return_value = "SUAM..."
         conn = self._mock_connection(nkeySeed=nkey_mock)
         opts = _build_connect_opts(conn)
-        assert opts["nkeys_seed"] == b"SUAM..."
+        assert opts["nkeys_seed_str"] == "SUAM..."
 
     def test_additional_config_merged(self):
         conn = self._mock_connection(additionalConfig={"connect_timeout": 10, "max_reconnect_attempts": 5})
