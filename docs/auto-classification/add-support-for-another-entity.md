@@ -480,8 +480,9 @@ class YourEntityAdapter(EntityAdapter):
             "service_connection_config": deepcopy(config.source.serviceConnection.root.config),
             "ometa_client": metadata,
             "entity": entity,
-            "sample_config": SampleConfig(),
-            "sample_data_count": source_config.sampleDataCount,
+            "config": SamplerConfig(
+                sample_data_count=source_config.sampleDataCount,
+            ),
         }
 ```
 
