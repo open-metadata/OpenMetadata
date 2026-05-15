@@ -215,9 +215,9 @@ jobs:
         run: |
           retire="${{ needs.vulnerability-scan.result }}"
           snyk="${{ needs.security-scan.result }}"
-          if [ "$retire" = "success" ]; then retire_icon="✅"; else retire_icon="❌"; fi
-          if [ "$snyk" = "success" ]; then snyk_icon="✅"; else snyk_icon="❌"; fi
-          if [ "$retire" = "success" ] && [ "$snyk" = "success" ]; then icon="🟢"; else icon="🚨"; fi
+          if [ "$retire" = "success" ]; then retire_icon="✅"; elif [ "$retire" = "cancelled" ]; then retire_icon="⚠️ (cancelled)"; else retire_icon="❌"; fi
+          if [ "$snyk" = "success" ]; then snyk_icon="✅"; elif [ "$snyk" = "cancelled" ]; then snyk_icon="⚠️ (cancelled)"; else snyk_icon="❌"; fi
+          if [ "$retire" = "success" ] && [ "$snyk" = "success" ]; then icon="🟢"; elif [ "$retire" = "cancelled" ] || [ "$snyk" = "cancelled" ]; then icon="⚠️"; else icon="🚨"; fi
           echo "icon=$icon" >> $GITHUB_OUTPUT
           echo "retire_icon=$retire_icon" >> $GITHUB_OUTPUT
           echo "snyk_icon=$snyk_icon" >> $GITHUB_OUTPUT
