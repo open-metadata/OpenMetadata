@@ -5499,7 +5499,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     PutResponse<T> response = null;
     try {
       T original = find(id, DELETED);
-      setFieldsInternal(original, putFields);
+      // Populate fields with Include.ALL so HAS-style children that were soft-deleted as
+      // part of this entity's cascade remain in the loaded child lists (e.g.,
+      // dashboard.charts). If we used the default NON_DELETED filter, those lists would
+      // come back empty, and the PUT updater's diff would see "no children" on both
+      // sides and call deleteFrom(...) to wipe every HAS relationship row before the
+      // additional-children hook ever runs to restore them. Charts attached to the
+      // dashboard being restored would then have nothing to walk back from, and the
+      // restore cascade would silently no-op (DashboardResourceIT#test_deleteDashboard_
+      // chartBelongsToSingleDashboard_chartIsDeletedThenRestored guards against this).
+      setFieldsInternal(original, putFields, ALL);
       setInheritedFields(original, putFields);
       T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
       updated.setUpdatedBy(updatedBy);
