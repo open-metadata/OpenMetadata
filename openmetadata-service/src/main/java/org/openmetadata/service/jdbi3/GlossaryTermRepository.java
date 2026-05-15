@@ -2183,8 +2183,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
       LOG.info("Glossary term FQN changed from {} to {}", oldFqn, newFqn);
       // Drop cache entries for every child term under this renamed term BEFORE the DB rewrite.
-      // Capture the descendants so the post-commit pass can re-evict any entry a racing reader
+      // Capture the descendants so the post-write pass can re-evict any entry a racing reader
       // re-populated with the pre-rename row between this call and glossaryTermDAO.updateFqn.
+      // The pass below runs after updateFqn but inside this transaction — see
+      // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
       List<EntityDAO.EntityIdFqnPair> renamedTerms =
           invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       // Drop cached entity JSON / bundle for every entity tagged with this term (or any
@@ -2257,8 +2259,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       String newFqn = updated.getFullyQualifiedName();
 
       // Drop cache entries for every child term under this moved term BEFORE the DB rewrite.
-      // Capture the descendants so the post-commit pass can re-evict any entry a racing reader
+      // Capture the descendants so the post-write pass can re-evict any entry a racing reader
       // re-populated with the pre-rename row between this call and glossaryTermDAO.updateFqn.
+      // The pass below runs after updateFqn but inside this transaction — see
+      // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
       List<EntityDAO.EntityIdFqnPair> renamedTerms =
           invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       // Drop cached entity JSON / bundle for every entity tagged with this term (or any

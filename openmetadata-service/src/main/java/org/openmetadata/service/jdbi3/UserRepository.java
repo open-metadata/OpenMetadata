@@ -1284,38 +1284,37 @@ public class UserRepository extends EntityRepository<User> {
                     MAX_TASK_CLEANUP_RETRIES));
     String creatorId = entity.getId().toString();
     String category = TaskCategory.MetadataUpdate.value();
-    // Capture the task IDs *before* the bulk DELETE so we know which L1 Guava cache entries to
-    // drop. The DELETE is a direct SQL update that bypasses EntityRepository.delete and its
-    // cache-invalidate hook — without explicit eviction the next GET on a previously-read task
-    // returns the stale cached row even though the DB row is gone.
-    List<String> taskIdsToInvalidate =
-        daoCollection.taskDAO().listIdsByCreatorAndCategory(creatorId, category);
+    // Capture the (id, fqn) pairs *before* the bulk DELETE so we know which L1 Guava cache
+    // entries to drop. The DELETE is a direct SQL update that bypasses EntityRepository.delete
+    // and its cache-invalidate hook — without explicit eviction the next GET on a
+    // previously-read task returns the stale cached row even though the DB row is gone.
+    // FQN is required because tasks expose both GET /v1/tasks/{id} (CACHE_WITH_ID-keyed) and
+    // GET /v1/tasks/name/{taskId} (CACHE_WITH_NAME-keyed); dropping only by id would leave a
+    // by-name reader pinned to a stale entry.
+    List<EntityDAO.EntityIdFqnPair> tasksToInvalidate =
+        daoCollection.taskDAO().listIdAndFqnByCreatorAndCategory(creatorId, category);
     retry.executeRunnable(
         () -> daoCollection.taskDAO().deleteByCreatorAndCategory(creatorId, category));
-    if (!taskIdsToInvalidate.isEmpty()) {
-      invalidateTaskCacheForIds(taskIdsToInvalidate);
+    if (!tasksToInvalidate.isEmpty()) {
+      invalidateTaskCacheForIds(tasksToInvalidate);
     }
   }
 
-  private void invalidateTaskCacheForIds(List<String> taskIds) {
+  private void invalidateTaskCacheForIds(List<EntityDAO.EntityIdFqnPair> tasks) {
     // Task is in UNCACHED_ENTITY_TYPES, so invalidateCacheForEntity clears only the local L1
     // Guava cache and skips the pub/sub fan-out (deliberate perf optimization for the
     // cascade-heavy bot/domain/data-product paths). In a multi-pod deployment, peer instances
     // that previously read one of these tasks still hold it in their L1 cache and would serve
-    // the stale "deleted" row after this bulk SQL DELETE. Publish each id explicitly so peers
-    // drop their L1 entries.
+    // the stale "deleted" row after this bulk SQL DELETE. Publish each (id, fqn) explicitly so
+    // peers drop both their by-id and by-name L1 entries.
     var pubsub = CacheBundle.getCacheInvalidationPubSub();
-    for (String taskIdStr : taskIds) {
-      UUID taskId;
-      try {
-        taskId = UUID.fromString(taskIdStr);
-      } catch (IllegalArgumentException e) {
-        LOG.warn("Skipping cache invalidation for non-UUID task id: {}", taskIdStr);
+    for (EntityDAO.EntityIdFqnPair task : tasks) {
+      if (task.id == null) {
         continue;
       }
-      EntityRepository.invalidateCacheForEntity(Entity.TASK, taskId, null);
+      EntityRepository.invalidateCacheForEntity(Entity.TASK, task.id, task.fqn);
       if (pubsub != null) {
-        pubsub.publish(Entity.TASK, taskId, null, "bot-task-cleanup");
+        pubsub.publish(Entity.TASK, task.id, task.fqn, "bot-task-cleanup");
       }
     }
   }

@@ -4320,9 +4320,18 @@ public interface CollectionDAO {
     void deleteByCreatorAndCategory(
         @Bind("createdById") String createdById, @Bind("category") String category);
 
-    @SqlQuery(
-        "SELECT id FROM task_entity WHERE createdById = :createdById AND category = :category")
-    List<String> listIdsByCreatorAndCategory(
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, json_unquote(json_extract(json, '$.fullyQualifiedName')) AS fqn "
+                + "FROM task_entity WHERE createdById = :createdById AND category = :category",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, json->>'fullyQualifiedName' AS fqn "
+                + "FROM task_entity WHERE createdById = :createdById AND category = :category",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(EntityDAO.EntityIdFqnPairMapper.class)
+    List<EntityDAO.EntityIdFqnPair> listIdAndFqnByCreatorAndCategory(
         @Bind("createdById") String createdById, @Bind("category") String category);
 
     @RegisterRowMapper(TaskCountSummaryMapper.class)

@@ -333,8 +333,10 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       // on Classification name change - update tag's name under classification
       LOG.info("Classification FQN changed from {} to {}", oldFqn, newFqn);
       // Drop cache entries for every tag under this classification BEFORE we rewrite the DB.
-      // Capture the descendants so the post-commit pass can re-evict any entry a racing reader
-      // re-populated with the pre-rename row between this call and tagDAO.updateFqn below.
+      // Capture the descendants so the post-write pass can re-evict any entry a racing reader
+      // re-populated with the pre-rename row between this call and tagDAO.updateFqn below. The
+      // pass below runs after updateFqn but inside this transaction — see
+      // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
       List<EntityDAO.EntityIdFqnPair> renamedTags =
           invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
       // Drop cached entity JSON / bundle for every entity tagged with any tag under this

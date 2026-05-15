@@ -961,8 +961,10 @@ public class TagRepository extends EntityRepository<Tag> {
 
         LOG.info("Tag FQN changed from {} to {}", oldFqn, newFqn);
         // Drop cache entries for every child tag under this renamed tag BEFORE the DB rewrite.
-        // Capture the descendants so the post-commit pass can re-evict any entry a racing reader
+        // Capture the descendants so the post-write pass can re-evict any entry a racing reader
         // re-populated with the pre-rename row between this call and tagDAO.updateFqn below.
+        // The pass below runs after updateFqn but inside this transaction — see
+        // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
         List<EntityDAO.EntityIdFqnPair> renamedTags =
             invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
         // Drop cached entity JSON / bundle for every entity tagged with this tag (or any

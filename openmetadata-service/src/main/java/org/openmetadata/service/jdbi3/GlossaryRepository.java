@@ -675,8 +675,10 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       // Glossary name changed - update tag names starting from glossary and all the children tags
       LOG.info("Glossary FQN changed from {} to {}", oldFqn, newFqn);
       // Drop cache entries for every glossary term under this glossary BEFORE we rewrite the DB.
-      // Capture the descendants so the post-commit pass can re-evict any entry a racing reader
+      // Capture the descendants so the post-write pass can re-evict any entry a racing reader
       // re-populated with the pre-rename row between this call and glossaryTermDAO.updateFqn.
+      // The pass below runs after updateFqn but inside this transaction — see
+      // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
       List<EntityDAO.EntityIdFqnPair> renamedTerms =
           invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
