@@ -11,7 +11,7 @@
       "type": "string"
     },
     "scopeEntityType": {
-      "description": "Entity type of the scope FQN, for example databaseService, database, or databaseSchema.",
+      "description": "Entity type of the scope FQN, for example service, database, or databaseSchema.",
       "type": "string"
     },
     "seenFqns": {
@@ -19,8 +19,7 @@
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "default": null
+      }
     },
     "dryRun": {
       "description": "When true, the response lists entities that would be deleted without performing the deletion.",

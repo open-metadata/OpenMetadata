@@ -19,6 +19,7 @@ import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -547,6 +548,15 @@ public class DatabaseSchemaResource
                                 org.openmetadata.schema.type.api.BulkOperationResult.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
+  @Parameter(
+      name = "overrideMetadata",
+      in = ParameterIn.QUERY,
+      description =
+          "When true, allows the bulk update to overwrite user-curated fields "
+              + "(description, displayName, owners, tags) that bot-driven updates "
+              + "normally preserve, and disables the sourceHash fast-path so unchanged "
+              + "entities are re-evaluated. Defaults to false.",
+      schema = @Schema(type = "boolean", defaultValue = "false"))
   public Response bulkCreateOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -559,12 +569,13 @@ public class DatabaseSchemaResource
   @Path("/deleteStale")
   @Operation(
       operationId = "bulkDeleteStaleDatabaseSchemas",
-      summary = "Soft-delete stale databaseschemas within a scope",
+      summary = "Delete stale databaseschemas within a scope",
       description =
-          "Soft-delete entities within the given scope (service, database, or databaseSchema) "
+          "Delete entities within the given scope (service, database, or databaseSchema) "
               + "that the ingestion connector did not report in the current run. The connector "
               + "sends the set of FQNs it saw; entities in scope not in that set are considered "
-              + "stale. Returns a BulkOperationResult of deleted (or, for dryRun, would-be-deleted) "
+              + "stale. By default the deletion is soft; pass hardDelete=true to hard-delete "
+              + "instead. Returns a BulkOperationResult of deleted (or, for dryRun, would-be-deleted) "
               + "entities.",
       responses = {
         @ApiResponse(

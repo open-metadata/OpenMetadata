@@ -16,6 +16,7 @@ legacy client-side paginate-and-diff against older servers.
 
 from unittest.mock import MagicMock
 
+import pytest
 from pydantic import BaseModel
 
 from metadata.generated.schema.type.bulkOperationResult import BulkOperationResult
@@ -101,24 +102,23 @@ class TestDeleteStaleEntitiesMixin:
         http_error.response.status_code = 500
         metadata.client.put.side_effect = APIError({"message": "boom"}, http_error)
 
-        try:
+        with pytest.raises(APIError):
             OpenMetadata.delete_stale_entities(
                 metadata,
                 entity=MockEntity,
                 scope_params={"database": "svc.db"},
                 live_fqns=[],
             )
-            raise AssertionError("expected APIError to propagate")
-        except APIError:
-            pass
 
     def test_requires_scope(self):
         metadata = MagicMock()
-        try:
-            OpenMetadata.delete_stale_entities(metadata, entity=MockEntity, scope_params=None, live_fqns=[])
-            raise AssertionError("expected ValueError for missing scope")
-        except ValueError:
-            pass
+        with pytest.raises(ValueError):
+            OpenMetadata.delete_stale_entities(
+                metadata,
+                entity=MockEntity,
+                scope_params=None,
+                live_fqns=[],
+            )
 
 
 class TestDeleteEntityFromSource:

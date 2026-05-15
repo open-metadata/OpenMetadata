@@ -11329,10 +11329,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
-   * Soft-deletes entities of this type within {@code request.scopeFqn} that the ingestion
-   * connector did not report in the current run. The connector sends the set of FQNs it saw
-   * ({@code request.seenFqns}); any live entity under the scope whose FQN is not in that set is
-   * considered stale.
+   * Deletes entities of this type within {@code request.scopeFqn} that the ingestion connector did
+   * not report in the current run. The connector sends the set of FQNs it saw ({@code
+   * request.seenFqns}); any live entity under the scope whose FQN is not in that set is considered
+   * stale. By default the deletion is soft; pass {@code hardDelete=true} on the request to
+   * hard-delete the stale entities.
    *
    * <p>FQNs are compared by hash so quoting or case differences between the connector-supplied and
    * stored values never cause spurious deletes. An empty scope yields zero deletions - it is never
@@ -11397,10 +11398,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private boolean isCoveredByDeletedAncestor(String fqnHash, Set<String> deletedHashes) {
-    for (String deletedHash : deletedHashes) {
-      if (fqnHash.startsWith(deletedHash + ".")) {
+    if (deletedHashes.isEmpty()) {
+      return false;
+    }
+    int separator = fqnHash.lastIndexOf('.');
+    while (separator > 0) {
+      String ancestor = fqnHash.substring(0, separator);
+      if (deletedHashes.contains(ancestor)) {
         return true;
       }
+      separator = ancestor.lastIndexOf('.');
     }
     return false;
   }

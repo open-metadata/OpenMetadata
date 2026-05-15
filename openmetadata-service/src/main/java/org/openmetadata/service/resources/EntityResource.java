@@ -1217,9 +1217,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   /**
-   * Soft-deletes entities of this type within the request scope that the ingestion connector did
-   * not report in the current run. Requires {@code DELETE} permission on this entity type. See
-   * {@link EntityRepository#bulkDeleteStaleEntities} for the stale-detection semantics.
+   * Deletes entities of this type within the request scope that the ingestion connector did not
+   * report in the current run. By default the deletion is soft; set {@code hardDelete=true} on the
+   * request to hard-delete. Requires {@code DELETE} permission on this entity type. See {@link
+   * EntityRepository#bulkDeleteStaleEntities} for the stale-detection semantics.
    */
   protected Response deleteStaleEntities(
       SecurityContext securityContext, BulkDeleteStaleRequest request) {

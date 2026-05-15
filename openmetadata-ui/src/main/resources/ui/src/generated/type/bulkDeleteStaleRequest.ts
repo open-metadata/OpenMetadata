@@ -29,7 +29,7 @@ export interface BulkDeleteStaleRequest {
      */
     recursive?: boolean;
     /**
-     * Entity type of the scope FQN, for example databaseService, database, or databaseSchema.
+     * Entity type of the scope FQN, for example service, database, or databaseSchema.
      */
     scopeEntityType: string;
     /**

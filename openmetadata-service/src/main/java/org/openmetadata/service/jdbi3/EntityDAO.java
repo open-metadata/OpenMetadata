@@ -213,7 +213,7 @@ public interface EntityDAO<T extends EntityInterface> {
    */
   default List<EntityIdFqnPair> listDescendantIdFqnByPrefixNonDeleted(String scopeFqn) {
     if (!getNameHashColumn().equals("fqnHash")) {
-      return java.util.Collections.emptyList();
+      return List.of();
     }
     String prefixPattern = FullyQualifiedName.buildHash(scopeFqn) + ".%";
     return listIdFqnByPrefixHashNonDeleted(getTableName(), getNameHashColumn(), prefixPattern);
