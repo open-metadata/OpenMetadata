@@ -207,6 +207,7 @@ jobs:
 
   notify:
     runs-on: ubuntu-latest
+    environment: security-scan
     needs: [vulnerability-scan, security-scan]
     if: always()
     steps:
