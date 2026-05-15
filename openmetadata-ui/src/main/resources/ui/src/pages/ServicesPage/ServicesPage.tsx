@@ -87,16 +87,24 @@ const ServicesPage = () => {
     );
 
     if (isEmbedded) {
-      return crumbs.map((crumb) => {
-        if (!crumb.activeTitle && crumb.url) {
-          return {
-            ...crumb,
-            url: '/askCollate/connections/settings/services',
-          };
-        }
-
-        return crumb;
-      });
+      return [
+        {
+          name: t('label.ask-collate'),
+          url: '/askCollate',
+        },
+        {
+          name: t('label.connection-plural'),
+          url: '/askCollate/connections',
+        },
+        {
+          name:
+            tab === GlobalSettingOptions.DATA_OBSERVABILITY
+              ? t('label.data-observability')
+              : capitalize(tab),
+          url: '',
+          activeTitle: true,
+        },
+      ];
     }
 
     return crumbs;

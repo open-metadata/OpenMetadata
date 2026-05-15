@@ -187,8 +187,8 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                         database_name=catalog_name,
                     )
                     if filter_by_database(
-                        self.config.sourceConfig.config.databaseFilterPattern,
-                        (database_fqn if self.config.sourceConfig.config.useFqnForFiltering else catalog_name),
+                        self.config.sourceConfig.config.databaseFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                        (database_fqn if self.config.sourceConfig.config.useFqnForFiltering else catalog_name),  # pyright: ignore[reportAttributeAccessIssue]
                     ):
                         self._catalog_cache.pop(catalog_name, None)
                         self.status.filter(
@@ -241,8 +241,8 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                     schema_name=schema.name,
                 )
                 if filter_by_schema(
-                    self.config.sourceConfig.config.schemaFilterPattern,
-                    (schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema.name),
+                    self.config.sourceConfig.config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                    (schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema.name),  # pyright: ignore[reportAttributeAccessIssue]
                 ):
                     self.status.filter(schema_fqn, "Schema Filtered Out")
                     continue
@@ -306,8 +306,8 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                     table_name=table_name,
                 )
                 if filter_by_table(
-                    self.config.sourceConfig.config.tableFilterPattern,
-                    (table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name),
+                    self.config.sourceConfig.config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                    (table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name),  # pyright: ignore[reportAttributeAccessIssue]
                 ):
                     self.status.filter(
                         table_fqn,

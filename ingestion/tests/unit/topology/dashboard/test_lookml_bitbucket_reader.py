@@ -29,8 +29,8 @@ class TestLookMLBitBucketReader(TestCase):
     """
 
     creds = BitBucketCredentials(
-        repositoryName="api",
-        repositoryOwner="pmbrull-trial-api",
+        repositoryName="looker-lkml-fixtures",
+        repositoryOwner="mohit-tilala-collate",
         branch="main",
     )
 
@@ -41,7 +41,7 @@ class TestLookMLBitBucketReader(TestCase):
         """
         We can parse the explore file.
 
-        We'll expand and find views from https://bitbucket.org/pmbrull-trial-api/api/src/main
+        We'll expand and find views from https://bitbucket.org/mohit-tilala-collate/looker-lkml-fixtures/src/main
         """
 
         explore_file = "cats.explore.lkml"
