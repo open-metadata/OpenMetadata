@@ -14,7 +14,10 @@
 package org.openmetadata.service.resources.tasks;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.TASK_CLOSED;
+import static org.openmetadata.schema.type.EventType.TASK_RESOLVED;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
+import static org.openmetadata.service.util.RestUtil.CHANGE_CUSTOM_HEADER;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -803,7 +806,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             resolvedPayload,
             comment,
             userName);
-    return Response.ok(resolvedTask).build();
+    return Response.ok(resolvedTask).header(CHANGE_CUSTOM_HEADER, TASK_RESOLVED).build();
   }
 
   private ListFilter buildTaskListFilter(
@@ -976,7 +979,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     repository.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
 
     Task closedTask = repository.closeTask(task, userName, comment);
-    return Response.ok(closedTask).build();
+    return Response.ok(closedTask).header(CHANGE_CUSTOM_HEADER, TASK_CLOSED).build();
   }
 
   @DELETE
@@ -1053,7 +1056,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             null,
             null,
             userName);
-    return Response.ok(resolvedTask).build();
+    return Response.ok(resolvedTask).header(CHANGE_CUSTOM_HEADER, TASK_RESOLVED).build();
   }
 
   // ========================= Bulk Operations Endpoint =========================

@@ -15,6 +15,9 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.net.URI;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -3721,5 +3724,75 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                   task.getAvailableTransitions().isEmpty(),
                   "workflow transitions should be available before bulk resolution");
             });
+  }
+
+  // Issue #27889: Task resolve/close must emit change events so subscriptions on
+  // `task + taskResolved` / `taskClosed` actually fire. Pre-fix, the endpoints returned
+  // `Response.ok(...).build()` with no CHANGE_CUSTOM_HEADER, so ChangeEventHandler
+  // never produced a ChangeEvent for these turnarounds.
+
+  @Test
+  void testResolveTaskEmitsTaskResolvedChangeEventHeader(TestNamespace ns) throws Exception {
+    Task task =
+        createEntity(
+            new CreateTask()
+                .withName(ns.prefix("resolve-emits-event"))
+                .withCategory(TaskCategory.Approval)
+                .withType(TaskEntityType.GlossaryApproval));
+
+    String body =
+        JsonUtils.pojoToJson(
+            new ResolveTask()
+                .withResolutionType(TaskResolutionType.Approved)
+                .withComment("emit-change-event"));
+
+    HttpResponse<String> response =
+        sendDirectJson("POST", String.format("/v1/tasks/%s/resolve", task.getId()), body);
+
+    assertEquals(200, response.statusCode());
+    assertEquals(
+        "taskResolved",
+        response.headers().firstValue("X-OpenMetadata-Change").orElse(null),
+        "resolve endpoint must set X-OpenMetadata-Change=taskResolved so the change event is emitted");
+  }
+
+  @Test
+  void testCloseTaskEmitsTaskClosedChangeEventHeader(TestNamespace ns) throws Exception {
+    Task task =
+        createEntity(
+            new CreateTask()
+                .withName(ns.prefix("close-emits-event"))
+                .withCategory(TaskCategory.Approval)
+                .withType(TaskEntityType.GlossaryApproval));
+
+    HttpResponse<String> response =
+        sendDirectJson(
+            "POST",
+            String.format("/v1/tasks/%s/close?comment=emit-change-event", task.getId()),
+            "");
+
+    assertEquals(200, response.statusCode());
+    assertEquals(
+        "taskClosed",
+        response.headers().firstValue("X-OpenMetadata-Change").orElse(null),
+        "close endpoint must set X-OpenMetadata-Change=taskClosed so the change event is emitted");
+  }
+
+  private static HttpResponse<String> sendDirectJson(String method, String path, String body)
+      throws Exception {
+    String url = SdkClients.getServerUrl() + "/api" + path;
+    HttpRequest.Builder builder =
+        HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(30));
+    HttpRequest.BodyPublisher publisher =
+        body == null || body.isEmpty()
+            ? HttpRequest.BodyPublishers.noBody()
+            : HttpRequest.BodyPublishers.ofString(body);
+    HttpRequest request = builder.method(method, publisher).build();
+    return java.net.http.HttpClient.newHttpClient()
+        .send(request, HttpResponse.BodyHandlers.ofString());
   }
 }
