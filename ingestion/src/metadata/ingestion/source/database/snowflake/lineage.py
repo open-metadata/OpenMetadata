@@ -191,12 +191,12 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         self,
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
         """
-        Dispatch lineage extraction to either the new ACCESS_HISTORY path (POC,
-        gated by `useAccessHistory` in connectionOptions) or the legacy
-        QUERY_HISTORY + client-side parser path.
+        Dispatch lineage extraction to either the ACCESS_HISTORY path (gated by
+        `useAccessHistory` in connectionOptions) or the legacy QUERY_HISTORY +
+        client-side parser path.
         """
         if self._use_access_history:
-            logger.info("Processing Query Lineage via ACCESS_HISTORY (POC path)")
+            logger.info("Processing Query Lineage via ACCESS_HISTORY")
             yield from self._yield_access_history_lineage()
             return
         yield from super().yield_query_lineage()
@@ -435,8 +435,8 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
     def _split_snowflake_fqn(snowflake_fqn: str) -> Optional[Tuple[str, str, str]]:  # noqa: UP006, UP045
         """
         Split a Snowflake `DB.SCHEMA.TABLE` FQN into its three parts.
-        Returns None for malformed inputs (quoted names with embedded dots are
-        not handled in the POC and are skipped silently).
+        Returns None for malformed inputs; quoted names with embedded dots
+        are not handled and are skipped silently.
         """
         if not snowflake_fqn or '"' in snowflake_fqn:
             return None

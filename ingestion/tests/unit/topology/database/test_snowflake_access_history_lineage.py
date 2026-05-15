@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Unit tests for the Snowflake ACCESS_HISTORY lineage path (POC).
+Unit tests for the Snowflake ACCESS_HISTORY lineage path.
 
 The path is selected via `connectionOptions.useAccessHistory = "true"` and is
 gated by a runtime probe against `ACCOUNT_USAGE.ACCESS_HISTORY`. These tests
