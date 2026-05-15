@@ -815,11 +815,11 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 <div className="tw:inline-flex tw:items-center tw:gap-0.5 tw:min-w-0">
                   <Typography.Text
                     className={classNames(
-                      'tw:text-xs tw:truncate tw:max-w-32',
+                      'tw:text-xs tw:truncate',
                       {
-                        'tw:cursor-default tw:font-medium tw:text-gray-700':
+                        'tw:max-w-48 tw:cursor-default tw:font-medium tw:text-gray-700':
                           isLastItem,
-                        'tw:cursor-pointer tw:font-normal tw:text-gray-400 hover:tw:underline':
+                        'tw:max-w-32 tw:cursor-pointer tw:font-normal tw:text-gray-400 hover:tw:underline':
                           !isLastItem,
                       }
                     )}
@@ -859,9 +859,9 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                   title={getEntityName(activeColumn)}
                   trigger="hover">
                   <Typography.Text
+                    ellipsis
                     className="entity-title-link"
-                    data-testid="entity-link"
-                    ellipsis={{ tooltip: true }}>
+                    data-testid="entity-link">
                     {stringToHTML(
                       (activeColumn as { displayName?: string }).displayName ||
                         activeColumn.name ||
