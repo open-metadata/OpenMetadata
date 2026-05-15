@@ -190,9 +190,7 @@ const KnowledgeCenterWidget = ({
         isEditView={isEditView}
         title={t('label.knowledge-center')}
         widgetKey={widgetKey}
-        onTitleClick={() =>
-          navigate(ROUTES.CONTEXT_CENTER_ARTICLES)
-        }
+        onTitleClick={() => navigate(ROUTES.CONTEXT_CENTER_ARTICLES)}
       />
     );
   }, [
