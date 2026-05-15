@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.jdbi3.FolderRepository.FOLDER_ENTITY;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +15,9 @@ import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.Folder;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -156,7 +159,32 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
 
     ContextFileUpdater updater = new ContextFileUpdater(original, updated, Operation.PUT);
     updater.update();
+    emitMoveChangeEvent(original, updated);
     return updated;
+  }
+
+  private void emitMoveChangeEvent(ContextFile original, ContextFile updated) {
+    if (updated.getChangeDescription() == null
+        || isNullOrEmptyChangeDescription(updated.getChangeDescription())) {
+      return;
+    }
+    try {
+      ChangeEvent changeEvent =
+          new ChangeEvent()
+              .withId(UUID.randomUUID())
+              .withEventType(EventType.ENTITY_UPDATED)
+              .withEntityType(entityType)
+              .withEntityId(updated.getId())
+              .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
+              .withUserName(updated.getUpdatedBy())
+              .withPreviousVersion(original.getVersion())
+              .withCurrentVersion(updated.getVersion())
+              .withTimestamp(System.currentTimeMillis())
+              .withEntity(updated);
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+    } catch (Exception e) {
+      LOG.error("Failed to insert change event for context file move", e);
+    }
   }
 
   public class ContextFileUpdater extends EntityUpdater {

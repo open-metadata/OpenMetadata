@@ -252,6 +252,13 @@ public class KnowledgeCenterIT {
     }
   }
 
+  private static void awaitClockPast(long timestamp) {
+    await()
+        .pollInterval(Duration.ofMillis(2))
+        .atMost(Duration.ofSeconds(2))
+        .until(() -> System.currentTimeMillis() > timestamp);
+  }
+
   private void awaitPageIndexed(RestClient rest, UUID id) {
     await()
         .pollDelay(Duration.ZERO)
@@ -270,15 +277,14 @@ public class KnowledgeCenterIT {
   }
 
   @Test
-  void testListPagesSortByUpdatedAtDesc(TestNamespace ns)
-      throws HttpResponseException, InterruptedException {
+  void testListPagesSortByUpdatedAtDesc(TestNamespace ns) throws HttpResponseException {
     RestClient rest = RestClient.admin();
     EntityReference orgRef = getOrganizationRef();
 
     Page older = createPage(rest, buildCreateRequest(ns.prefix("sort-older"), orgRef));
-    Thread.sleep(20);
+    awaitClockPast(older.getUpdatedAt());
     Page middle = createPage(rest, buildCreateRequest(ns.prefix("sort-middle"), orgRef));
-    Thread.sleep(20);
+    awaitClockPast(middle.getUpdatedAt());
     Page newer = createPage(rest, buildCreateRequest(ns.prefix("sort-newer"), orgRef));
 
     awaitPageIndexed(rest, older.getId());
@@ -329,13 +335,12 @@ public class KnowledgeCenterIT {
   }
 
   @Test
-  void testListPagesSortByCreatedAtAliasesUpdatedAt(TestNamespace ns)
-      throws HttpResponseException, InterruptedException {
+  void testListPagesSortByCreatedAtAliasesUpdatedAt(TestNamespace ns) throws HttpResponseException {
     RestClient rest = RestClient.admin();
     EntityReference orgRef = getOrganizationRef();
 
     Page first = createPage(rest, buildCreateRequest(ns.prefix("created-first"), orgRef));
-    Thread.sleep(20);
+    awaitClockPast(first.getUpdatedAt());
     Page second = createPage(rest, buildCreateRequest(ns.prefix("created-second"), orgRef));
 
     awaitPageIndexed(rest, first.getId());

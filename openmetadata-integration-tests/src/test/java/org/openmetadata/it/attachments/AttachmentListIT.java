@@ -13,6 +13,7 @@
 package org.openmetadata.it.attachments;
 
 import static jakarta.ws.rs.core.Response.Status.CREATED;
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -30,6 +31,7 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import org.glassfish.jersey.client.ClientProperties;
@@ -145,15 +147,22 @@ class AttachmentListIT {
     return "<#E::glossary::" + glossary.getFullyQualifiedName() + ">";
   }
 
+  private static void awaitClockPast(long timestamp) {
+    await()
+        .pollInterval(Duration.ofMillis(2))
+        .atMost(Duration.ofSeconds(2))
+        .until(() -> System.currentTimeMillis() > timestamp);
+  }
+
   @Test
-  void testListAttachmentsSortByUpdatedAtDesc(TestNamespace ns) throws InterruptedException {
+  void testListAttachmentsSortByUpdatedAtDesc(TestNamespace ns) {
     Glossary glossary = createGlossary(RestClient.admin(), ns, "attach-sort-updated");
     String link = entityLink(glossary);
 
     Asset older = uploadAttachment(link, "older.txt", "older");
-    Thread.sleep(20);
+    awaitClockPast(older.getUpdatedAt());
     Asset middle = uploadAttachment(link, "middle.txt", "middle");
-    Thread.sleep(20);
+    awaitClockPast(middle.getUpdatedAt());
     Asset newer = uploadAttachment(link, "newer.txt", "newer");
 
     List<Asset> assets =
@@ -193,12 +202,12 @@ class AttachmentListIT {
   }
 
   @Test
-  void testListAttachmentsCreatedAtAliasesUpdatedAt(TestNamespace ns) throws InterruptedException {
+  void testListAttachmentsCreatedAtAliasesUpdatedAt(TestNamespace ns) {
     Glossary glossary = createGlossary(RestClient.admin(), ns, "attach-sort-created");
     String link = entityLink(glossary);
 
     Asset first = uploadAttachment(link, "first.txt", "1");
-    Thread.sleep(20);
+    awaitClockPast(first.getUpdatedAt());
     Asset second = uploadAttachment(link, "second.txt", "2");
 
     List<Asset> assets =

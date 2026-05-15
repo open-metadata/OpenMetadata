@@ -12,6 +12,8 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URLConnection;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
@@ -306,27 +308,36 @@ public class AttachmentResource {
 
   private static List<Asset> applySortAndPaginate(
       List<Asset> assets, String sortBy, String sortOrder, Integer limit, int offset) {
-    if (sortBy != null && !sortBy.isEmpty()) {
-      assets = new java.util.ArrayList<>(assets);
-      assets.sort(buildComparator(sortBy, sortOrder));
-    } else if (offset == 0 && limit == null) {
-      return assets;
-    }
     if (offset < 0) {
       throw new IllegalArgumentException("'offset' must be >= 0");
     }
-    int from = Math.min(offset, assets.size());
-    int to = limit == null ? assets.size() : Math.min(from + Math.max(limit, 0), assets.size());
-    return assets.subList(from, to);
+    boolean hasSort = sortBy != null && !sortBy.isEmpty();
+    boolean hasPagination = offset > 0 || limit != null;
+    if (!hasSort && sortOrder != null && !sortOrder.isEmpty()) {
+      throw new IllegalArgumentException("'sortOrder' is only valid when 'sortBy' is provided.");
+    }
+    if (!hasSort && !hasPagination) {
+      return assets;
+    }
+    List<Asset> ordered = new ArrayList<>(assets);
+    if (hasSort) {
+      ordered.sort(buildComparator(sortBy, sortOrder));
+    } else {
+      // Stable default ordering so paged results are deterministic across requests.
+      ordered.sort(Comparator.comparing(Asset::getId, Comparator.nullsLast(String::compareTo)));
+    }
+    int from = Math.min(offset, ordered.size());
+    int to = limit == null ? ordered.size() : Math.min(from + Math.max(limit, 0), ordered.size());
+    return ordered.subList(from, to);
   }
 
-  private static java.util.Comparator<Asset> buildComparator(String sortBy, String sortOrder) {
-    java.util.Comparator<Asset> comparator =
+  private static Comparator<Asset> buildComparator(String sortBy, String sortOrder) {
+    Comparator<Asset> comparator =
         switch (sortBy) {
-          case "name" -> java.util.Comparator.comparing(
-              Asset::getFileName, java.util.Comparator.nullsLast(String::compareToIgnoreCase));
-          case "createdAt", "updatedAt" -> java.util.Comparator.comparing(
-              Asset::getUpdatedAt, java.util.Comparator.nullsLast(Long::compareTo));
+          case "name" -> Comparator.comparing(
+              Asset::getFileName, Comparator.nullsLast(String::compareToIgnoreCase));
+          case "createdAt", "updatedAt" -> Comparator.comparing(
+              Asset::getUpdatedAt, Comparator.nullsLast(Long::compareTo));
           default -> throw new IllegalArgumentException(
               "Unsupported sortBy value '" + sortBy + "'. Allowed: name, createdAt, updatedAt.");
         };

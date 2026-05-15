@@ -286,8 +286,7 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
     }
 
     SearchSortFilter searchSortFilter =
-        new SearchSortFilter(
-            resolveSortField(sortBy), sortOrder == null ? "desc" : sortOrder, null, null);
+        new SearchSortFilter(resolveSortField(sortBy), resolveSortOrder(sortOrder), null, null);
     EntityUtil.Fields fields = getFields(fieldsParam);
     List<AuthRequest> authRequests = getAuthRequestsForListOps();
     return listInternalFromSearch(
@@ -310,6 +309,17 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
       default -> throw new IllegalArgumentException(
           "Unsupported sortBy value '" + sortBy + "'. Allowed: name, createdAt, updatedAt.");
     };
+  }
+
+  private static String resolveSortOrder(String sortOrder) {
+    if (sortOrder == null || sortOrder.isEmpty()) {
+      return "desc";
+    }
+    if (!"asc".equals(sortOrder) && !"desc".equals(sortOrder)) {
+      throw new IllegalArgumentException(
+          "Unsupported sortOrder value '" + sortOrder + "'. Allowed: asc, desc.");
+    }
+    return sortOrder;
   }
 
   private List<AuthRequest> getAuthRequestsForListOps() {
