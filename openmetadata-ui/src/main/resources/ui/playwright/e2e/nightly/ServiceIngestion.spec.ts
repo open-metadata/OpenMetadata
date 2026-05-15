@@ -117,9 +117,7 @@ Object.entries(services).forEach(([key, ServiceClass]) => {
 
     // TODO: Need to fix MYSQL service specific test - #28125
     if (
-      [POSTGRES.serviceType, REDSHIFT.serviceType].includes(
-        service.serviceType
-      )
+      [POSTGRES.serviceType, REDSHIFT.serviceType].includes(service.serviceType)
     ) {
       /**
        * Tests database-specific ingestion behaviors
