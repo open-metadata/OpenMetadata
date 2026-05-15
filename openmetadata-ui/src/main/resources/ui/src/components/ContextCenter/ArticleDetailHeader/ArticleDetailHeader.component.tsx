@@ -35,7 +35,6 @@ import {
   UploadCloud01,
   User03,
 } from '@untitledui/icons';
-import { EntityStatus } from 'generated/entity/data/glossaryTerm';
 import { isEmpty, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -55,6 +54,7 @@ import { QueryVoteType } from '../../../components/Database/TableQueries/TableQu
 import { EntityStatusBadge } from '../../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useClipboard } from '../../../hooks/useClipBoard';
