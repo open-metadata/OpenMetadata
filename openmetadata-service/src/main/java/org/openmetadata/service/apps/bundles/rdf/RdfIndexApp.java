@@ -330,33 +330,20 @@ public class RdfIndexApp extends AbstractNativeApplication {
         Stats aggregatedStats = statsAggregator.toStats(latestJob);
         rdfIndexStats.set(aggregatedStats);
         jobData.setStats(aggregatedStats);
-        sendUpdates(jobExecutionContext, false);
+        if (latestJob.getStatus()
+            != org.openmetadata
+                .service
+                .apps
+                .bundles
+                .searchIndex
+                .distributed
+                .IndexJobStatus
+                .STOPPING) {
+          sendUpdates(jobExecutionContext, false);
+        }
 
         if (latestJob.isTerminal()) {
-          if (latestJob.getStatus()
-              == org.openmetadata
-                  .service
-                  .apps
-                  .bundles
-                  .searchIndex
-                  .distributed
-                  .IndexJobStatus
-                  .STOPPED) {
-            stopped = true;
-          } else if (latestJob.getStatus()
-              == org.openmetadata
-                  .service
-                  .apps
-                  .bundles
-                  .searchIndex
-                  .distributed
-                  .IndexJobStatus
-                  .FAILED) {
-            jobData.setFailure(
-                new IndexingError()
-                    .withErrorSource(IndexingError.ErrorSource.JOB)
-                    .withMessage(latestJob.getErrorMessage()));
-          }
+          handleTerminalDistributedJob(latestJob);
           return;
         }
       }
@@ -367,6 +354,51 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
       TimeUnit.SECONDS.sleep(2);
     }
+  }
+
+  private void handleTerminalDistributedJob(RdfIndexJob latestJob) {
+    org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus jobStatus =
+        latestJob.getStatus();
+    if (jobStatus
+        == org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus.STOPPED) {
+      stopped = true;
+      return;
+    }
+
+    boolean failedOutright =
+        jobStatus
+            == org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus.FAILED;
+    // The coordinator marks a job COMPLETED_WITH_ERRORS when any partition is
+    // FAILED or CANCELLED, which can happen even with failedRecords == 0 (e.g.
+    // user-initiated stop that cancels in-flight partitions before any record
+    // failures accrue). Surface that case too so the run record reflects
+    // partition-level outcomes, not just record-level ones.
+    boolean completedWithErrors =
+        jobStatus
+            == org.openmetadata
+                .service
+                .apps
+                .bundles
+                .searchIndex
+                .distributed
+                .IndexJobStatus
+                .COMPLETED_WITH_ERRORS;
+
+    if (!failedOutright && !completedWithErrors) {
+      return;
+    }
+
+    String message = latestJob.getErrorMessage();
+    if (message == null || message.isBlank()) {
+      message =
+          latestJob.getFailedRecords() > 0
+              ? String.format(
+                  "RDF index job completed with %d failed record(s)", latestJob.getFailedRecords())
+              : "RDF index job completed with errors at the partition level";
+    }
+    LOG.error("RDF index job {} terminated with errors: {}", latestJob.getId(), message);
+    jobData.setFailure(
+        new IndexingError().withErrorSource(IndexingError.ErrorSource.JOB).withMessage(message));
   }
 
   private void awaitDistributedExecution(Future<?> distributedExecution)
@@ -418,17 +450,38 @@ public class RdfIndexApp extends AbstractNativeApplication {
       RdfBatchProcessor.BatchProcessingResult result =
           batchProcessor.processEntities(entityType, entities, () -> stopped);
 
+      // failedRecords stays an entity-level stat (relationship failures are
+      // per-edge, not per-record). But for surfacing failures on the run
+      // record we want either kind of failure to count, so use hasAnyFailure().
       StepStats currentStats =
           new StepStats()
               .withSuccessRecords(result.successCount())
               .withFailedRecords(result.failedCount());
       updateEntityStats(entityType, currentStats);
+      if (result.hasAnyFailure() && result.lastError() != null) {
+        recordIndexingFailure(
+            entityType,
+            result.failedCount() + result.relationshipFailureCount(),
+            result.lastError());
+      }
       sendUpdates(jobExecutionContext, false);
 
     } catch (Exception e) {
       LOG.error("Error processing batch for entity type {}", entityType, e);
       updateEntityStats(
           entityType, new StepStats().withSuccessRecords(0).withFailedRecords(entities.size()));
+      recordIndexingFailure(entityType, entities.size(), e.getMessage());
+    }
+  }
+
+  private void recordIndexingFailure(String entityType, int failedCount, String errorMessage) {
+    String message =
+        String.format(
+            "%d record(s) failed for entity type %s: %s",
+            failedCount, entityType, errorMessage != null ? errorMessage : "");
+    if (jobData.getFailure() == null) {
+      jobData.setFailure(
+          new IndexingError().withErrorSource(IndexingError.ErrorSource.JOB).withMessage(message));
     }
   }
 

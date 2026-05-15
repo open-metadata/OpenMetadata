@@ -54,11 +54,8 @@ import {
 } from '../../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
-import {
-  getEntityDetailsPath,
-  getTestCaseDetailPagePath,
-  getTestSuitePath,
-} from '../../../../utils/RouterUtils';
+import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
@@ -374,7 +371,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     setBundleSuiteFormInitialCases([]);
     setSelectedKeys(new Set<string>());
     if (testSuite.fullyQualifiedName) {
-      navigate(getTestSuitePath(testSuite.fullyQualifiedName));
+      navigate(
+        observabilityRouterClassBase.getTestSuitePath(
+          testSuite.fullyQualifiedName
+        )
+      );
     }
   };
 
@@ -508,12 +509,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }
             )}>
             <Link
-              to={getTestCaseDetailPagePath(
+              to={observabilityRouterClassBase.getTestCaseDetailPagePath(
                 record.fullyQualifiedName ?? '',
                 TestCasePageTabs.DIMENSIONALITY
               )}>
               <div
-                className="tw:flex tw:items-center tw:gap-2 tw:rounded-md tw:bg-blue-50 tw:p-2 tw:text-primary"
+                className="tw:flex tw:min-w-13 tw:items-center tw:gap-2 tw:rounded-md tw:bg-blue-50 tw:p-2 tw:text-primary"
                 data-testid={`dimension-count-${record.name}`}>
                 <DimensionIcon height={12} width={12} />
                 <span className="tw:text-xs tw:font-medium">
@@ -583,9 +584,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               className="break-word"
               state={{ breadcrumbData }}
               to={{
-                pathname: getTestCaseDetailPagePath(
-                  record.fullyQualifiedName ?? ''
-                ),
+                pathname:
+                  observabilityRouterClassBase.getTestCaseDetailPagePath(
+                    record.fullyQualifiedName ?? ''
+                  ),
               }}>
               {getEntityName(record)}
             </Link>
@@ -714,6 +716,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           'test-case-table-container': true,
           'custom-card-with-table':
             !isUndefined(tableHeader) || removeTableBorder,
+          'tw:overflow-hidden tw:rounded-xl tw:shadow-xs tw:ring-1 tw:ring-secondary':
+            isUndefined(tableHeader) && !removeTableBorder,
         })}>
         <Table
           aria-label={t('label.test-case-plural')}
