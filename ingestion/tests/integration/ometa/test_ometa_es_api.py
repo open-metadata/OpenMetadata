@@ -365,6 +365,44 @@ class TestOMetaESAPI:
                 except Exception:
                     pass
 
+    def test_paginate_with_comma_in_name(self, metadata, es_service, es_schema):
+        """Regression for #28076 — search_after must not break on values with ','.
+
+        The legacy ",".join cursor and the legacy server-side split(",") combine to
+        truncate pagination when any sort value contains a literal ','. With size=1
+        each page boundary's cursor is a single FQN that itself contains a ',' — the
+        exact shape that produced the 311/1863 partial result for the Crocs case.
+        """
+        created_tables = []
+        try:
+            for i in range(5):
+                table = metadata.create_or_update(
+                    data=get_create_entity(
+                        entity=Table,
+                        name=EntityName(f"comma,table,{i}"),
+                        reference=es_schema.fullyQualifiedName,
+                    )
+                )
+                created_tables.append(table)
+
+            query_filter = (
+                '{"query":{"bool":{"must":[{"term":'
+                f'{{"service.displayName.keyword":"{es_service.name.root}"}}'
+                "}]}}}"
+            )
+            assets = list(
+                metadata.paginate_es(entity=Table, query_filter=query_filter, size=1)
+            )
+            assert (
+                len(assets) == 5
+            ), f"Expected 5 tables, got {len(assets)} — pagination truncated on comma in FQN"
+        finally:
+            for table in created_tables:
+                try:  # noqa: SIM105
+                    metadata.delete(entity=Table, entity_id=table.id, hard_delete=True)
+                except Exception:
+                    pass
+
     def test_paginate_with_filters(self, metadata, es_service, es_schema):
         """We can paginate only tier 1 tables"""
         created_tables = []

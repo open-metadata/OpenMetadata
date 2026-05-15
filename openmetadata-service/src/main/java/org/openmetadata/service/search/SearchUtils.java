@@ -6,11 +6,14 @@ import static org.openmetadata.service.search.SearchClient.UPSTREAM_ENTITY_RELAT
 import static org.openmetadata.service.search.SearchClient.UPSTREAM_LINEAGE_FIELD;
 import static org.openmetadata.service.search.elasticsearch.ElasticSearchClient.SOURCE_FIELDS_TO_EXCLUDE;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyStoreException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -330,11 +333,35 @@ public final class SearchUtils {
     return requiredFields;
   }
 
+  /**
+   * Decode an ES/OS search_after cursor passed as a query parameter.
+   *
+   * <p>Preferred format: base64-encoded JSON array, e.g. base64("[\"v1\",\"v2\"]"). Unambiguous
+   * for values that contain ',' such as a glossary term FQN like
+   * <pre>x alation archive.system glossary.sfmc (salesforce marketing cloud, exacttarget) (it system)</pre>
+   *
+   * <p>Legacy format: comma-joined values (e.g. "v1,v2"). Retained as a fallback so older
+   * ingestion clients continue to paginate; the legacy form is broken when any value contains a
+   * ',' and produces an ES "search_after has N value(s) but sort has M" error. New clients
+   * should emit the base64-JSON form.
+   */
   public static List<Object> searchAfter(String searchAfter) {
-    if (!nullOrEmpty(searchAfter)) {
-      return List.of(searchAfter.split(","));
+    if (nullOrEmpty(searchAfter)) {
+      return null;
     }
-    return null;
+    try {
+      byte[] decoded = Base64.getDecoder().decode(searchAfter);
+      String json = new String(decoded, StandardCharsets.UTF_8).trim();
+      if (json.startsWith("[")) {
+        return JsonUtils.readValue(json, new TypeReference<List<Object>>() {});
+      }
+    } catch (RuntimeException e) {
+      // IllegalArgumentException from Base64.decode or JsonUtils' parse exception:
+      // either way fall through to the legacy comma split.
+      LOG.debug(
+          "search_after is not a base64-JSON cursor, using legacy comma split: {}", e.getMessage());
+    }
+    return List.of(searchAfter.split(","));
   }
 
   public static List<String> sourceFields(String sourceFields) {
