@@ -107,14 +107,14 @@ class NatsSource(MessagingServiceSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
         self.nats_client: NatsClient = self.connection
-        self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
+        self.generate_sample_data = self.config.sourceConfig.config.generateSampleData  # pyright: ignore[reportAttributeAccessIssue]
         if self.generate_sample_data and self._is_sample_data_storing_globally_disabled():
             self.generate_sample_data = False
 
     @classmethod
     def create(
         cls,
-        config_dict,
+        config_dict: dict,
         metadata: OpenMetadata,
         pipeline_name: Optional[str] = None,  # noqa: UP045
     ):
@@ -123,6 +123,27 @@ class NatsSource(MessagingServiceSource):
         if not isinstance(connection, NatsConnection):
             raise InvalidSourceException(f"Expected NatsConnection, but got {connection}")
         return cls(config, metadata)
+
+    def _fetch_stream_info(self, stream_name: str) -> Optional[BrokerTopicDetails]:  # noqa: UP045
+        try:
+            info_resp = self.nats_client.request(_JS_STREAM_INFO.format(stream_name))
+            if "error" in info_resp:
+                logger.warning(f"Could not fetch info for stream {stream_name}: {info_resp['error']}")
+                return None
+            config_data = info_resp.get("config") or {}
+            state_data = info_resp.get("state") or {}
+            return BrokerTopicDetails(
+                topic_name=stream_name,
+                topic_metadata=NatsTopicMetadata(
+                    name=stream_name,
+                    config=NatsStreamConfig(**config_data),
+                    state=NatsStreamState(**state_data),
+                ),
+            )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to fetch metadata for NATS stream {stream_name}: {err}")
+            return None
 
     def get_topic_list(self) -> Iterable[BrokerTopicDetails]:
         if not self.service_connection.jetStreamEnabled:
@@ -149,24 +170,9 @@ class NatsSource(MessagingServiceSource):
             total = resp.get("total", len(stream_names))
 
             for stream_name in stream_names:
-                try:
-                    info_resp = self.nats_client.request(_JS_STREAM_INFO.format(stream_name))
-                    if "error" in info_resp:
-                        logger.warning(f"Could not fetch info for stream {stream_name}: {info_resp['error']}")
-                        continue
-
-                    config_data = info_resp.get("config") or {}
-                    state_data = info_resp.get("state") or {}
-
-                    topic_metadata = NatsTopicMetadata(
-                        name=stream_name,
-                        config=NatsStreamConfig(**config_data),
-                        state=NatsStreamState(**state_data),
-                    )
-                    yield BrokerTopicDetails(topic_name=stream_name, topic_metadata=topic_metadata)
-                except Exception as err:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(f"Failed to fetch metadata for NATS stream {stream_name}: {err}")
+                details = self._fetch_stream_info(stream_name)
+                if details:
+                    yield details
 
             offset += len(stream_names)
             if not stream_names:

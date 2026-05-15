@@ -171,7 +171,7 @@ def test_connection(
     return test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
-        service_type=service_connection.type.value,
+        service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
         automation_workflow=automation_workflow,
         timeout_seconds=timeout_seconds,
     )
