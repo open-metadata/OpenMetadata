@@ -21,7 +21,9 @@ import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.RelationCardinality;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -30,6 +32,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.rdf.storage.RdfStorageFactory;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
+import org.openmetadata.service.resources.settings.SettingsCache;
 
 @Slf4j
 public class RdfRepository {
@@ -323,6 +326,17 @@ public class RdfRepository {
   // whose last outgoing relationship was removed — those produce zero
   // RelationshipData entries, so bulkStoreRelationships' per-source DELETE
   // would otherwise skip them and the stale edges would persist.
+  //
+  // The lineage predicate URIs in the FILTER are hardcoded — they match what
+  // addLineageWithDetails actually writes (see addLineageWithDetails:423,435),
+  // which itself uses literal `https://open-metadata.org/ontology/UPSTREAM`
+  // strings rather than deriving from `baseUri`. So even when an operator
+  // configures a custom baseUri, lineage triples land under the hardcoded URIs
+  // and these exclusions correctly protect them. Switching the exclusions to
+  // be baseUri-derived would BREAK the protection because the stored lineage
+  // URIs would no longer match. A separate refactor could make the whole
+  // ontology vocabulary baseUri-derived consistently, but that's out of scope
+  // here.
   public void clearOutgoingEntityRelationships(Set<EntitySourceRef> sources) {
     if (!isEnabled() || sources == null || sources.isEmpty()) {
       return;
@@ -2543,10 +2557,9 @@ public class RdfRepository {
       // the cleanup and accumulate across reindex runs.
       Set<String> predicateUris = new LinkedHashSet<>(DEFAULT_GLOSSARY_TERM_RELATION_PREDICATES);
       try {
-        org.openmetadata.schema.configuration.GlossaryTermRelationSettings settings =
-            org.openmetadata.service.resources.settings.SettingsCache.getSetting(
-                org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS,
-                org.openmetadata.schema.configuration.GlossaryTermRelationSettings.class);
+        GlossaryTermRelationSettings settings =
+            SettingsCache.getSetting(
+                SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
         if (settings != null && settings.getRelationTypes() != null) {
           for (var configuredType : settings.getRelationTypes()) {
             java.net.URI rdfPredicate = configuredType.getRdfPredicate();
@@ -2705,9 +2718,14 @@ public class RdfRepository {
   // Kept private and intentionally tracking the same prefixes
   // createPropertyFromUri handles (skos:, om:, rdfs:, owl:, prov:); if a new
   // prefix is added there, mirror it here so cleanup stays in sync.
+  //
+  // Throw on null/empty rather than defaulting silently. The cleanup path
+  // already guards on the caller side; if a future caller forgets, a
+  // misconfigured "rdfPredicate: null" entry would silently target relatedTo
+  // and skip cleaning the real predicate — better to fail loudly.
   private static String expandPredicateCurie(String uri) {
     if (uri == null || uri.isEmpty()) {
-      return "https://open-metadata.org/ontology/relatedTo";
+      throw new IllegalArgumentException("expandPredicateCurie requires a non-empty URI");
     }
     String trimmed = uri.trim();
     if (trimmed.startsWith("skos:") && trimmed.length() > 5) {
