@@ -304,10 +304,12 @@ public class ColumnGridResourceIT {
   @Test
   void test_getColumnGrid_withMetadataStatusMissing(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    createTableWithoutMetadata(ns);
+    DatabaseService service = createTableWithoutMetadata(ns);
     waitForSearchIndexRefresh();
 
-    ColumnGridResponse response = getColumnGrid(client, "entityTypes=table&metadataStatus=MISSING");
+    ColumnGridResponse response =
+        getColumnGrid(
+            client, "entityTypes=table&metadataStatus=MISSING&serviceName=" + service.getName());
 
     assertNotNull(response);
     assertNotNull(response.getColumns());
@@ -316,11 +318,12 @@ public class ColumnGridResourceIT {
   @Test
   void test_getColumnGrid_withMetadataStatusComplete(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    createTableWithFullMetadata(ns);
+    DatabaseService service = createTableWithFullMetadata(ns);
     waitForSearchIndexRefresh();
 
     ColumnGridResponse response =
-        getColumnGrid(client, "entityTypes=table&metadataStatus=COMPLETE");
+        getColumnGrid(
+            client, "entityTypes=table&metadataStatus=COMPLETE&serviceName=" + service.getName());
 
     assertNotNull(response);
     assertNotNull(response.getColumns());
@@ -329,11 +332,12 @@ public class ColumnGridResourceIT {
   @Test
   void test_getColumnGrid_withMetadataStatusIncomplete(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    createTableWithPartialMetadata(ns);
+    DatabaseService service = createTableWithPartialMetadata(ns);
     waitForSearchIndexRefresh();
 
     ColumnGridResponse response =
-        getColumnGrid(client, "entityTypes=table&metadataStatus=INCOMPLETE");
+        getColumnGrid(
+            client, "entityTypes=table&metadataStatus=INCOMPLETE&serviceName=" + service.getName());
 
     assertNotNull(response);
     assertNotNull(response.getColumns());
@@ -1395,7 +1399,7 @@ public class ColumnGridResourceIT {
         .execute();
   }
 
-  private void createTableWithoutMetadata(TestNamespace ns) {
+  private DatabaseService createTableWithoutMetadata(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
@@ -1408,9 +1412,10 @@ public class ColumnGridResourceIT {
         .inSchema(schema.getFullyQualifiedName())
         .withColumns(List.of(idColumn, nameColumn))
         .execute();
+    return service;
   }
 
-  private void createTableWithFullMetadata(TestNamespace ns) {
+  private DatabaseService createTableWithFullMetadata(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
@@ -1425,9 +1430,10 @@ public class ColumnGridResourceIT {
         .inSchema(schema.getFullyQualifiedName())
         .withColumns(List.of(idColumn))
         .execute();
+    return service;
   }
 
-  private void createTableWithPartialMetadata(TestNamespace ns) {
+  private DatabaseService createTableWithPartialMetadata(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
@@ -1442,6 +1448,7 @@ public class ColumnGridResourceIT {
         .inSchema(schema.getFullyQualifiedName())
         .withColumns(List.of(idColumn))
         .execute();
+    return service;
   }
 
   private void createTableWithCompleteMetadata(TestNamespace ns) {
