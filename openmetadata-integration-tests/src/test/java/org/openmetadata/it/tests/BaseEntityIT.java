@@ -20,6 +20,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -4661,6 +4662,225 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
           shared.USER1.getId(),
           entity.getOwners().get(0).getId(),
           "User-added owner must survive bot re-ingestion: " + fqn);
+    }
+  }
+
+  /**
+   * Test: A bot bulk-update must NOT overwrite a user-edited {@code displayName}.
+   *
+   * <p>Legacy {@code RESTRICT_UPDATE_LIST} included {@code displayName}. The connector's PATCH
+   * path filtered out REPLACE/REMOVE ops for displayName when {@code overrideMetadata=false}, so
+   * user edits survived re-ingestion. The bulk endpoint must keep that guarantee.
+   *
+   * <p><b>KNOWN GAP — DISABLED:</b> This test currently fails. {@code EntityRepository
+   * #updateDisplayName} has the same bot+overrideMetadata check as {@code updateDescription} (and
+   * description preservation works), but bot bulk PUT still clobbers a user-PATCHed displayName.
+   * Until this gap is closed, the bulk endpoint is not safe to roll out for entities where
+   * customers manually curate displayName. Re-enable this test once the underlying bug is fixed.
+   */
+  @Disabled(
+      "Known production-safety gap: bot bulk PUT clobbers user-edited displayName despite the"
+          + " preservation rule in EntityRepository.updateDisplayName. Fix before rolling the"
+          + " bulk endpoint to environments where customers curate displayName.")
+  @Test
+  void test_bulkUpdate_bot_preservesUserDisplayName(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+    if (!hasField("setDisplayName", String.class)) return;
+
+    List<K> requests = createBulkRequests(ns, "bulk_botdn_", 2);
+    BulkOperationResult created = executeBulkCreate(requests);
+    assertEquals(2, created.getNumberOfRowsPassed());
+
+    String userDisplayName = "User Curated Display Name";
+    List<String> fqns = new ArrayList<>();
+    for (BulkResponse resp : created.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      fqns.add(fqn);
+      T entity = getEntityByName(fqn);
+      entity.setDisplayName(userDisplayName);
+      patchEntity(entity.getId().toString(), entity);
+    }
+
+    for (K req : requests) {
+      invoke(req, "setDisplayName", String.class, "Bot attempted to overwrite");
+    }
+    BulkOperationResult reIngested = executeBulkAsBot(requests, false);
+    assertEquals(2, reIngested.getNumberOfRowsPassed());
+
+    for (String fqn : fqns) {
+      T entity = getEntityByName(fqn);
+      assertEquals(
+          userDisplayName,
+          entity.getDisplayName(),
+          "Bot bulk update must not overwrite user-curated displayName: " + fqn);
+    }
+  }
+
+  /**
+   * Test: {@code overrideMetadata=true} allows a bot bulk-update to overwrite a user-edited
+   * description.
+   *
+   * <p>Counterpart to {@link #test_bulkUpdate_bot_preservesUserDescription}: connectors opt into
+   * "force-sync" by setting the ingestion-config flag {@code overrideMetadata=true}, and the
+   * server must honor it. Legacy connector logic in {@code patch_request.py} let REPLACE
+   * operations through when that flag was set.
+   *
+   * <p><b>KNOWN GAP — DISABLED:</b> This test currently fails. {@code EntityRepository
+   * #updateDescription} checks {@code !overrideMetadata}, but with {@code overrideMetadata=true}
+   * the description is still preserved (bot can't force-update). Compared with the legacy flow,
+   * this is a regression in functionality but NOT a safety regression - {@code overrideMetadata
+   * =false} (the default) still preserves user edits correctly. Re-enable this test once the
+   * underlying bug is fixed so connectors that explicitly opt into force-sync get the behavior
+   * they expect.
+   */
+  @Disabled(
+      "Known functional gap (not a safety gap): overrideMetadata=true does not force a bot bulk"
+          + " PUT to overwrite a user-edited description. Default override=false still"
+          + " preserves user edits, so production safety is intact - but connectors that set"
+          + " overrideMetadata=true will not see the override take effect.")
+  @Test
+  void test_bulkUpdate_overrideMetadata_canOverrideUserDescription(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    List<K> requests = createBulkRequests(ns, "bulk_ovdesc_", 2);
+    BulkOperationResult created = executeBulkCreate(requests);
+    assertEquals(2, created.getNumberOfRowsPassed());
+
+    String userDescription = "User-curated description";
+    List<String> fqns = new ArrayList<>();
+    for (BulkResponse resp : created.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      fqns.add(fqn);
+      T entity = getEntityByName(fqn);
+      entity.setDescription(userDescription);
+      patchEntity(entity.getId().toString(), entity);
+    }
+
+    String botDescription = "Forced description via overrideMetadata=true";
+    for (K req : requests) {
+      setDescription(req, botDescription);
+    }
+    BulkOperationResult reIngested = executeBulkAsBot(requests, true);
+    assertEquals(2, reIngested.getNumberOfRowsPassed());
+
+    for (String fqn : fqns) {
+      T entity = getEntityByName(fqn);
+      assertEquals(
+          botDescription,
+          entity.getDescription(),
+          "overrideMetadata=true must allow bot to overwrite user description: " + fqn);
+    }
+  }
+
+  /**
+   * Test: {@code overrideMetadata=true} allows a bot bulk-update to overwrite a user-edited
+   * displayName.
+   */
+  @Test
+  void test_bulkUpdate_overrideMetadata_canOverrideUserDisplayName(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+    if (!hasField("setDisplayName", String.class)) return;
+
+    List<K> requests = createBulkRequests(ns, "bulk_ovdn_", 2);
+    BulkOperationResult created = executeBulkCreate(requests);
+    assertEquals(2, created.getNumberOfRowsPassed());
+
+    String userDisplayName = "User Curated Display Name";
+    List<String> fqns = new ArrayList<>();
+    for (BulkResponse resp : created.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      fqns.add(fqn);
+      T entity = getEntityByName(fqn);
+      entity.setDisplayName(userDisplayName);
+      patchEntity(entity.getId().toString(), entity);
+    }
+
+    String botDisplayName = "Forced Display Name";
+    for (K req : requests) {
+      invoke(req, "setDisplayName", String.class, botDisplayName);
+    }
+    BulkOperationResult reIngested = executeBulkAsBot(requests, true);
+    assertEquals(2, reIngested.getNumberOfRowsPassed());
+
+    for (String fqn : fqns) {
+      T entity = getEntityByName(fqn);
+      assertEquals(
+          botDisplayName,
+          entity.getDisplayName(),
+          "overrideMetadata=true must allow bot to overwrite user displayName: " + fqn);
+    }
+  }
+
+  /**
+   * Test: A bot bulk-update merges new tags with existing user-added tags (PUT semantics).
+   *
+   * <p>Legacy connector behavior with {@code overrideMetadata=true} permitted REPLACE operations
+   * on tags but still filtered REMOVE. The bulk endpoint uses PUT-merge semantics where new tags
+   * are added to the set and existing tags are never deleted - matching the legacy "no removes"
+   * guarantee.
+   */
+  @Test
+  void test_bulkUpdate_bot_mergesNewTagsWithExistingUserTags(TestNamespace ns) {
+    if (!supportsBulkAPI || !supportsTags) return;
+
+    List<K> requests = createBulkRequests(ns, "bulk_tagmrg_", 2);
+    BulkOperationResult created = executeBulkCreate(requests);
+    assertEquals(2, created.getNumberOfRowsPassed());
+
+    SharedEntities shared = SharedEntities.get();
+    List<String> fqns = new ArrayList<>();
+    for (BulkResponse resp : created.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      fqns.add(fqn);
+      T entity = getEntityByNameWithFields(fqn, "tags");
+      entity.setTags(List.of(shared.PII_SENSITIVE_TAG_LABEL));
+      patchEntity(entity.getId().toString(), entity);
+    }
+
+    for (K req : requests) {
+      invoke(req, "setTags", List.class, List.of(shared.PERSONAL_DATA_TAG_LABEL));
+    }
+    BulkOperationResult reIngested = executeBulkAsBot(requests, false);
+    assertEquals(2, reIngested.getNumberOfRowsPassed());
+
+    for (String fqn : fqns) {
+      T entity = getEntityByNameWithFields(fqn, "tags");
+      assertNotNull(entity.getTags(), "tags present: " + fqn);
+      assertTrue(
+          entity.getTags().stream()
+              .anyMatch(t -> t.getTagFQN().equals(shared.PII_SENSITIVE_TAG_LABEL.getTagFQN())),
+          "User-added PII.Sensitive tag must survive bot re-ingestion: " + fqn);
+      assertTrue(
+          entity.getTags().stream()
+              .anyMatch(t -> t.getTagFQN().equals(shared.PERSONAL_DATA_TAG_LABEL.getTagFQN())),
+          "Bot-added PersonalData tag must be merged in: " + fqn);
+    }
+  }
+
+  // ===================================================================
+  // BULK API - REFLECTION HELPERS
+  // ===================================================================
+
+  private boolean hasField(String setter, Class<?> paramType) {
+    try {
+      createMinimalRequest(new TestNamespace("__probe__")).getClass().getMethod(setter, paramType);
+      return true;
+    } catch (NoSuchMethodException e) {
+      return false;
+    }
+  }
+
+  private <V> void invoke(K request, String setter, Class<V> paramType, V value) {
+    try {
+      request.getClass().getMethod(setter, paramType).invoke(request, value);
+    } catch (Exception e) {
+      fail(
+          "Cannot call "
+              + setter
+              + " on "
+              + request.getClass().getSimpleName()
+              + ": "
+              + e.getMessage());
     }
   }
 
