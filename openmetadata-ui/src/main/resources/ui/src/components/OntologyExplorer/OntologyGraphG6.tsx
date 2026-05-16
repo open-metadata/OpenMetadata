@@ -134,8 +134,14 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       glossaryColorMap,
       computeNodeColor,
       assetToTermMap,
-      onPositionsReady: (positions) =>
-        writeNodePositions(containerRef.current, positions),
+      onPositionsReady: (positions) => {
+        writeNodePositions(containerRef.current, positions);
+        if (containerRef.current && graphRef.current) {
+          containerRef.current.dataset.graphZoom = String(
+            graphRef.current.getZoom()
+          );
+        }
+      },
     });
 
     useImperativeHandle(

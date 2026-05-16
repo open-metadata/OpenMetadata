@@ -1213,6 +1213,55 @@ export const addRelatedTerms = async (
   }
 };
 
+export const addRelatedTermsByRelationType = async (
+  page: Page,
+  rows: Array<{ relationTypeLabel: string; terms: GlossaryTerm[] }>
+) => {
+  await page.getByTestId('related-term-add-button').click();
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+
+    if (i > 0) {
+      await page.getByTestId('add-row-button').click();
+    }
+
+    // Row ids are non-deterministic (Date.now() in handleStartAdding/handleAddRow),
+    // so identify rows by position — first when i=0, otherwise last.
+    const rowLocator =
+      i === 0
+        ? page.locator('[data-testid^="relation-row-"]').first()
+        : page.locator('[data-testid^="relation-row-"]').last();
+
+    await rowLocator.getByRole('button').first().click();
+    const option = page.getByRole('option', {
+      exact: true,
+      name: row.relationTypeLabel,
+    });
+    await expect(option).toBeVisible();
+    await option.click();
+
+    const autocompleteInput = rowLocator
+      .locator('[data-testid^="term-autocomplete-"]')
+      .locator('input');
+
+    for (const term of row.terms) {
+      const entityDisplayName =
+        get(term, 'responseData.displayName') || get(term, 'responseData.name');
+      const searchRes = page.waitForResponse('**/api/v1/glossaryTerms/search*');
+      await autocompleteInput.fill(entityDisplayName);
+      await searchRes;
+      await page
+        .getByRole('option', { exact: true, name: entityDisplayName })
+        .click();
+    }
+  }
+
+  const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
+  await page.getByTestId('save-related-terms').click();
+  await saveRes;
+};
+
 export const assignTagToGlossaryTerm = async (
   page: Page,
   tag: string,
