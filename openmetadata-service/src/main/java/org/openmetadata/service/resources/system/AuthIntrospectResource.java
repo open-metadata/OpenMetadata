@@ -212,9 +212,7 @@ public class AuthIntrospectResource {
         // emit it as a numeric string or a date string). Not fatal — just omit
         // from the response. Log at trace so the case is visible during debug
         // without spamming production. Per project convention, no empty catch.
-        LOG.trace(
-            "introspect: exp claim not parseable as long ({})",
-            e.getClass().getSimpleName());
+        LOG.trace("introspect: exp claim not parseable as long ({})", e.getClass().getSimpleName());
       }
     }
 

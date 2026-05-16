@@ -106,15 +106,15 @@ public class AuthIntrospectResourceIT {
 
   @Test
   void test_introspect_missingAuthHeader_returnsInactive() throws Exception {
-    // Use admin client but explicitly clear the Authorization header for this one call.
+    // The SDK adds Authorization from its configured accessToken; trying to clear it with a
+    // per-request empty header is silently ignored, so the request goes out fully authenticated
+    // and the assertion fails. Use a fresh client built without an accessToken so the SDK
+    // omits Authorization entirely — the wire request matches what we want to test.
     String response =
-        SdkClients.adminClient()
+        clientWithoutToken()
             .getHttpClient()
             .executeForString(
-                HttpMethod.POST,
-                INTROSPECT_PATH,
-                null,
-                RequestOptions.builder().header("Authorization", "").build());
+                HttpMethod.POST, INTROSPECT_PATH, null, RequestOptions.builder().build());
     JsonNode body = MAPPER.readTree(response);
     assertEquals(false, body.path("active").asBoolean(), "missing token must be inactive");
   }
@@ -235,12 +235,50 @@ public class AuthIntrospectResourceIT {
     }
   }
 
-  /** Build a fresh client whose default Authorization header is the supplied bearer token. */
+  /**
+   * The IT harness publishes the API base URL via {@code IT_BASE_URL} (system property AND env
+   * var). We MUST honour the same convention {@link SdkClients} uses so the test runs everywhere
+   * the rest of the suite runs (local maven, GH Actions, multi-shard CI). Hardcoding localhost
+   * works only on a developer laptop.
+   */
+  private static String resolveBaseUrl() {
+    String fromProp = System.getProperty("IT_BASE_URL");
+    if (fromProp != null && !fromProp.isEmpty()) {
+      return fromProp;
+    }
+    String fromEnv = System.getenv("IT_BASE_URL");
+    if (fromEnv != null && !fromEnv.isEmpty()) {
+      return fromEnv;
+    }
+    return "http://localhost:8585";
+  }
+
+  /**
+   * Build a fresh client whose default Authorization header is the supplied bearer token.
+   *
+   * <p>For the "no Authorization at all" case, use {@link #clientWithoutToken()} — this method
+   * always sets one (the SDK enforces that when {@code accessToken} is configured).
+   */
   private static OpenMetadataClient clientWithRawToken(String token) {
     OpenMetadataConfig cfg =
         OpenMetadataConfig.builder()
-            .serverUrl(System.getProperty("openmetadata.server.url", "http://localhost:8585/api"))
+            .serverUrl(resolveBaseUrl())
             .accessToken(token)
+            .readTimeout(60_000)
+            .writeTimeout(60_000)
+            .build();
+    return new OpenMetadataClient(cfg);
+  }
+
+  /**
+   * Build a client without any accessToken so the SDK omits the {@code Authorization} header
+   * altogether. Necessary because the SDK silently ignores per-request attempts to clear that
+   * header when an accessToken was configured at construction time.
+   */
+  private static OpenMetadataClient clientWithoutToken() {
+    OpenMetadataConfig cfg =
+        OpenMetadataConfig.builder()
+            .serverUrl(resolveBaseUrl())
             .readTimeout(60_000)
             .writeTimeout(60_000)
             .build();
