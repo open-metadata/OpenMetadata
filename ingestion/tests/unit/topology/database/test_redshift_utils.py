@@ -368,5 +368,110 @@ class TestRedshiftColumnTypeParsing(unittest.TestCase):
         self.assertEqual(varchar_kwargs, {})
 
 
+class TestRedshiftIntervalParsing(unittest.TestCase):
+    """Test Redshift interval column type argument parsing."""
+
+    def test_interval_with_precision_uses_keyword_argument(self):
+        """interval(N) must route precision through kwargs, not positional args."""
+        args, kwargs = _get_args_and_kwargs("6", "interval", "interval(6)")
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {"precision": 6})
+
+        coltype = _update_coltype(
+            ischema_names["interval"],
+            args,
+            kwargs,
+            "interval",
+            "duration",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 6)
+        self.assertIsNone(coltype.fields)
+
+    def test_interval_with_fields_and_precision_uses_keyword_arguments(self):
+        """interval <fields>(N) must route both precision and fields through kwargs."""
+        args, kwargs = _get_args_and_kwargs("6", "interval day to second", "interval day to second(6)")
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {"precision": 6, "fields": "day to second"})
+
+        coltype = _update_coltype(
+            ischema_names["interval"],
+            args,
+            kwargs,
+            "interval",
+            "duration",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 6)
+        self.assertEqual(coltype.fields, "day to second")
+
+    def test_interval_without_precision_keeps_args_empty(self):
+        """Bare interval must produce empty args and empty kwargs."""
+        args, kwargs = _get_args_and_kwargs(None, "interval", "interval")
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {})
+
+
+class TestRedshiftNumericParsing(unittest.TestCase):
+    """Test Redshift numeric column type argument parsing."""
+
+    def test_numeric_with_precision_only_does_not_crash(self):
+        """numeric(N) without scale must parse precision-only without ValueError."""
+        args, kwargs = _get_args_and_kwargs("10", "numeric", "numeric(10)")
+
+        self.assertEqual(args, (10,))
+        self.assertEqual(kwargs, {})
+
+        coltype = _update_coltype(
+            ischema_names["numeric"],
+            args,
+            kwargs,
+            "numeric",
+            "amount",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 10)
+        self.assertIsNone(coltype.scale)
+
+    def test_numeric_with_precision_and_scale_unchanged(self):
+        """Regression: numeric(P,S) must continue to parse both as positional args."""
+        args, kwargs = _get_args_and_kwargs("10,2", "numeric", "numeric(10,2)")
+
+        self.assertEqual(args, (10, 2))
+        self.assertEqual(kwargs, {})
+
+        coltype = _update_coltype(
+            ischema_names["numeric"],
+            args,
+            kwargs,
+            "numeric",
+            "amount",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 10)
+        self.assertEqual(coltype.scale, 2)
+
+    def test_numeric_without_charlen_keeps_args_empty(self):
+        """Bare numeric must produce empty args and empty kwargs."""
+        args, kwargs = _get_args_and_kwargs(None, "numeric", "numeric")
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {})
+
+    def test_numeric_with_space_after_comma_falls_back_to_init_args(self):
+        """numeric(P, S) with a space must still parse precision and scale."""
+        args, kwargs = _get_args_and_kwargs(None, "numeric", "numeric(10, 2)")
+
+        self.assertEqual(args, (10, 2))
+        self.assertEqual(kwargs, {})
+
+
 if __name__ == "__main__":
     unittest.main()
