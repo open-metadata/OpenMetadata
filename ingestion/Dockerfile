@@ -83,7 +83,7 @@ ARG INGESTION_DEPENDENCY="all"
 ENV PIP_NO_CACHE_DIR=1
 # Make pip silent
 ENV PIP_QUIET=1
-ARG RI_VERSION="1.12.8.3"
+ARG RI_VERSION="1.12.8.4"
 # Pin setuptools<81 as pkg_resources was removed in setuptools 81.0.0+
 # cx-Oracle's setup.py still uses pkg_resources
 RUN pip install --upgrade pip "setuptools<81"
@@ -107,8 +107,8 @@ RUN pip install "py-spy>=0.3.14"
 RUN pip install "python-daemon>=3.0.0"
 # remove all airflow providers except for docker, cncf kubernetes, and standard (required in Airflow 3.x)
 RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common|standard" | xargs pip uninstall -y
-# Uninstalling psycopg2-binary and installing psycopg2 instead 
-# because the psycopg2-binary generates a architecture specific error 
+# Uninstalling psycopg2-binary and installing psycopg2 instead
+# because the psycopg2-binary generates a architecture specific error
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2 mysqlclient==2.1.1
