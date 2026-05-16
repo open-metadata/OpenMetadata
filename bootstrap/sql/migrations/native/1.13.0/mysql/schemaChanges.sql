@@ -387,19 +387,11 @@ WHERE fromEntity = 'glossaryTerm'
   AND toEntity = 'glossaryTerm'
   AND relation = 15;
 
--- Swap the PK to include relationType. Guarded by information_schema so a re-run
--- (partial failure, manual replay) is a no-op instead of rebuilding the table
--- a second time. Matches the entity_usage usageDate index pattern above.
-SET @swap_er_pk_sql := (
-    SELECT CASE
-               WHEN SUM(seq_in_index = 4 AND column_name = 'relationType') > 0 THEN 'SELECT 1'
-               ELSE 'ALTER TABLE entity_relationship DROP PRIMARY KEY, ADD PRIMARY KEY (`fromId`, `toId`, `relation`, `relationType`)'
-        END
-    FROM information_schema.statistics
-    WHERE table_schema = DATABASE()
-      AND table_name = 'entity_relationship'
-      AND index_name = 'PRIMARY'
-);
-PREPARE swap_er_pk_stmt FROM @swap_er_pk_sql;
-EXECUTE swap_er_pk_stmt;
-DEALLOCATE PREPARE swap_er_pk_stmt;
+-- Swap the PK to include relationType. The native migration framework tracks
+-- completion in SERVER_CHANGE_LOG so this runs once per upgrade; we intentionally
+-- avoid information_schema gating because least-privilege migration users may
+-- not have SELECT on it. A manual replay of this step on an already-migrated
+-- table will rebuild the PK with the same columns — wasteful but not broken.
+ALTER TABLE entity_relationship
+    DROP PRIMARY KEY,
+    ADD PRIMARY KEY (`fromId`, `toId`, `relation`, `relationType`);

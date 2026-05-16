@@ -534,23 +534,11 @@ WHERE fromEntity = 'glossaryTerm'
   AND toEntity = 'glossaryTerm'
   AND relation = 15;
 
--- Swap the PK to include relationType only when it's not already there. Gating
--- on information_schema makes a re-run (partial failure, manual replay) a no-op
--- instead of paying for another table rewrite.
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM information_schema.table_constraints tc
-        JOIN information_schema.key_column_usage kcu
-          ON tc.constraint_name = kcu.constraint_name
-         AND tc.table_schema = kcu.table_schema
-        WHERE tc.table_name = 'entity_relationship'
-          AND tc.constraint_type = 'PRIMARY KEY'
-          AND kcu.column_name = 'relationtype'
-    ) THEN
-        ALTER TABLE entity_relationship DROP CONSTRAINT IF EXISTS entity_relationship_pkey;
-        ALTER TABLE entity_relationship
-            ADD CONSTRAINT entity_relationship_pkey PRIMARY KEY (fromId, toId, relation, relationType);
-    END IF;
-END $$;
+-- Swap the PK to include relationType. The native migration framework tracks
+-- completion in SERVER_CHANGE_LOG so this runs once per upgrade; we intentionally
+-- avoid information_schema gating because least-privilege migration users may
+-- not have SELECT on it. DROP CONSTRAINT IF EXISTS keeps the statement safe to
+-- replay against a table that's already been migrated.
+ALTER TABLE entity_relationship DROP CONSTRAINT IF EXISTS entity_relationship_pkey;
+ALTER TABLE entity_relationship
+    ADD CONSTRAINT entity_relationship_pkey PRIMARY KEY (fromId, toId, relation, relationType);
