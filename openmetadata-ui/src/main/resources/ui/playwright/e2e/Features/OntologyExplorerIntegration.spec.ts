@@ -14,10 +14,12 @@
 import { expect, test } from '@playwright/test';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { TableClass } from '../../support/entity/TableClass';
 import { getAuthContext, getToken } from '../../utils/common';
 import {
   addTermRelation,
   applyRelationTypeFilter,
+  clickDataModeAssetBadge,
   createApiContext,
   deleteEntities,
   disposeApiContext,
@@ -25,6 +27,7 @@ import {
   navigateToOntologyExplorer,
   readNodePositions,
   waitForGraphLoaded,
+  waitForMoreNodesThan,
 } from '../../utils/ontologyExplorer';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -258,6 +261,87 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
       /[1-9]\d*\s*Relations?/i
     );
+  });
+});
+
+test.describe('Ontology Explorer - Data Mode Asset Spiral View', () => {
+  const spiralGlossary = new Glossary();
+  const spiralTerm = new GlossaryTerm(spiralGlossary);
+  const spiralTable = new TableClass();
+
+  test.beforeAll(async ({ browser }) => {
+    const { page, apiContext } = await createApiContext(browser);
+    await spiralGlossary.create(apiContext);
+    await spiralTerm.create(apiContext);
+    await spiralTable.create(apiContext);
+    await spiralTable.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/tags/-',
+          value: {
+            tagFQN: spiralTerm.responseData.fullyQualifiedName,
+            labelType: 'Manual',
+            state: 'Confirmed',
+            source: 'Glossary',
+          },
+        },
+      ],
+    });
+    await disposeApiContext(page, apiContext);
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { page, apiContext } = await createApiContext(browser);
+    await deleteEntities(apiContext, spiralTerm, spiralGlossary);
+    await spiralTable.delete(apiContext);
+    await disposeApiContext(page, apiContext);
+  });
+
+  test('clicking asset count badge in data mode renders asset nodes without a JS error', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const jsErrors: string[] = [];
+    page.on('pageerror', (err) => jsErrors.push(err.message));
+
+    await navigateAndFilterByGlossary(page, spiralGlossary.responseData.id);
+
+    await page.getByRole('tab', { name: 'Data' }).click();
+
+    const assetCountsResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/glossaryTerms/assets/counts') &&
+        res.request().method() === 'GET',
+      { timeout: 30000 }
+    );
+    await assetCountsResponse;
+    await waitForGraphLoaded(page);
+
+    await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+      /1\s*Data\s*Asset/i
+    );
+
+    const initialPositions = await readNodePositions(page);
+    const initialNodeCount = Object.keys(initialPositions).length;
+
+    await clickDataModeAssetBadge(page, spiralTerm.responseData.id);
+
+    await page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/search/query') &&
+        res.request().method() === 'GET',
+      { timeout: 30000 }
+    );
+
+    await waitForMoreNodesThan(page, initialNodeCount);
+
+    expect(
+      jsErrors.filter((e) => /is not defined/i.test(e)),
+      'no ReferenceError should be thrown when rendering asset nodes'
+    ).toHaveLength(0);
   });
 });
 

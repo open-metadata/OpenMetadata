@@ -95,7 +95,7 @@ import {
   TERM_LABEL_BG_PADDING,
 } from '../OntologyExplorer.constants';
 import './ontologyComboAwarePolylineEdge';
-import { measureTextWidth, truncateToFit } from './textMeasure';
+import { getCanvasContext, measureTextWidth, truncateToFit } from './textMeasure';
 
 const cssColorCache = new Map<string, string>();
 const COMBO_LABEL_CHAR_WIDTH = 7;
