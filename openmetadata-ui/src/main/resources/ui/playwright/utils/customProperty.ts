@@ -18,8 +18,8 @@ import {
 } from '../constant/customProperty';
 import { SidebarItem } from '../constant/sidebar';
 import {
-  ENTITY_PATH,
   EntityTypeEndpoint,
+  ENTITY_PATH,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
@@ -1050,7 +1050,7 @@ export const editColumnCustomProperty = async (
     // Verify selection is applied before saving
     // The selection usually appears as a tag or text in the container
     await expect(page.getByTestId('asset-select-list')).toContainText(value);
-    if(propertyType === 'entityReferenceList') {
+    if (propertyType === 'entityReferenceList') {
       await page.keyboard.press('Escape');
     }
   } else if (['date-cp', 'time-cp', 'dateTime-cp'].includes(propertyType)) {
