@@ -161,6 +161,7 @@ const ContextCenterArticlesPage = () => {
           contentChangeState={
             page.handlers?.contentChangeState ?? ContentChangeState.SAVED
           }
+          feedCount={page?.feedCount}
           fetchKnowledgePageHierarchy={handleFetchKnowledgePageHierarchy}
           isRightPanelOpen={isRightPanelOpen}
           knowledgePage={page.data}

@@ -132,6 +132,7 @@ export interface KnowledgeCenterPageProps {
   header: React.ReactNode;
   data?: KnowledgePage;
   activeTab?: string;
+  feedCount?: number;
   tabs?: ArticleTab[];
   onTabChange?: (key: string) => void;
   isRightPanelOpen?: boolean;

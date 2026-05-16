@@ -722,6 +722,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     return {
       activeTab,
       data: knowledgePage,
+      feedCount: feedCount?.totalCount,
       handlers: {
         contentChangeState,
         onFollowChange: handleFollowChange,
@@ -745,6 +746,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     permissions,
     contentChangeState,
     activeTab,
+    feedCount,
     tags,
     tabs,
     getHeaderElement,
