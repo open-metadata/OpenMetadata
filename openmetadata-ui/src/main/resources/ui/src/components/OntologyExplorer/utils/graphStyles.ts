@@ -50,7 +50,6 @@ import {
   DATA_MODE_ENTITY_PILL_ICON_PAD_LEFT,
   DATA_MODE_ENTITY_PILL_ICON_SIZE,
   DATA_MODE_ENTITY_PILL_TRIM_RIGHT_PX,
-  DATA_MODE_ENTITY_TYPE_PILL_MAX_TEXT_WIDTH_PX,
   DATA_MODE_LABEL_OFFSET_Y,
   DATA_MODE_TERM_HALO_LINE_WIDTH,
   DATA_MODE_TERM_HALO_SHADOW_BLUR,
@@ -642,10 +641,7 @@ export function buildDataModeAssetNodeStyle(
   const entityInnerUncapped =
     measuredEntityInner ??
     Math.ceil(entityTypeText.length * DATA_MODE_ENTITY_TYPE_CHAR_WIDTH_EST);
-  const entityInnerW = Math.min(
-    Math.max(1, entityInnerUncapped),
-    DATA_MODE_ENTITY_TYPE_PILL_MAX_TEXT_WIDTH_PX
-  );
+  const entityInnerW = Math.max(1, Math.ceil(entityInnerUncapped * 1.08));
   const iconSectionW = entityIconUrl ? ENTITY_ICON_SECTION_W : 0;
   const entityBoxW = entityIconUrl
     ? iconSectionW +
@@ -704,10 +700,7 @@ export function buildDataModeAssetNodeStyle(
     padding: [0, 0, 0, 0],
   };
 
-  const nameTruncateBudget = Math.max(
-    12,
-    DATA_MODE_ASSET_NAME_MAX_TEXT_WIDTH_PX - 6
-  );
+  const nameTruncateBudget = Math.max(12, nameMaxTextPx);
   const nameLabel = truncateTextWithEllipsis(
     label,
     nameMeasureFont,
@@ -769,7 +762,6 @@ export function buildDataModeAssetNodeStyle(
       background: false,
       maxWidth: entityTextMaxW,
       maxLines: 1,
-      textOverflow: '...',
       wordWrap: false,
       padding: [
         DATA_MODE_ENTITY_BADGE_V_PAD,
