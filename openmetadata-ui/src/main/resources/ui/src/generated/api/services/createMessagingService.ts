@@ -65,6 +65,8 @@ export interface MessagingConnection {
  *
  * Kinesis Connection Config
  *
+ * NATS Connection Config
+ *
  * Google Cloud Pub/Sub Connection Config
  *
  * Custom Messaging Service Connection to build a source that is not supported by
@@ -136,6 +138,8 @@ export interface Connection {
     supportsMetadataExtraction?: boolean;
     /**
      * Regex to only fetch topics that matches the pattern.
+     *
+     * Regex to only fetch subjects/streams that match the pattern.
      */
     topicFilterPattern?: FilterPattern;
     /**
@@ -145,6 +149,44 @@ export interface Connection {
      */
     type?:      MessagingServiceType;
     awsConfig?: AWSCredentials;
+    /**
+     * Additional NATS client configuration options. See https://nats-io.github.io/nats.py/
+     */
+    additionalConfig?: { [key: string]: any };
+    /**
+     * Enable JetStream to ingest Streams and Consumers metadata. If false, only core NATS
+     * subjects are ingested.
+     */
+    jetStreamEnabled?: boolean;
+    /**
+     * NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222
+     */
+    natsServers?: string;
+    /**
+     * NKey seed for NATS NKey-based authentication.
+     */
+    nkeySeed?: string;
+    /**
+     * Password for NATS basic authentication.
+     */
+    password?: string;
+    /**
+     * Name of the JetStream KV bucket where schemas are stored. Keys must match stream names.
+     * Values should be Avro JSON, Protobuf (.proto) or JSON Schema text.
+     */
+    schemaKvBucket?: string;
+    /**
+     * TLS/SSL configuration for secure NATS connections.
+     */
+    tlsConfig?: Config;
+    /**
+     * Token for NATS token-based authentication.
+     */
+    token?: string;
+    /**
+     * Username for NATS basic authentication.
+     */
+    username?: string;
     /**
      * GCP credentials configuration for authenticating with Pub/Sub.
      */
@@ -242,6 +284,8 @@ export interface AWSCredentials {
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
+ *
+ * TLS/SSL configuration for secure NATS connections.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
@@ -406,6 +450,8 @@ export enum SecurityProtocol {
  * Regex to only fetch topics that matches the pattern.
  *
  * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only fetch subjects/streams that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -435,6 +481,7 @@ export enum MessagingServiceType {
     CustomMessaging = "CustomMessaging",
     Kafka = "Kafka",
     Kinesis = "Kinesis",
+    Nats = "Nats",
     PubSub = "PubSub",
     Redpanda = "Redpanda",
 }
