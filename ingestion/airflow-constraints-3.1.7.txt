@@ -61,7 +61,7 @@ SQLAlchemy-Utils==0.42.1
 SQLAlchemy==2.0.46
 SecretStorage==3.5.0
 WTForms==3.2.1
-Werkzeug==2.2.3
+Werkzeug==3.1.6
 a2wsgi==1.10.10
 adal==1.2.7
 adbc-driver-manager==1.10.0
