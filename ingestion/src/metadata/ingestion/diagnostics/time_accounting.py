@@ -125,16 +125,20 @@ class TimeAccountingSampler(threading.Thread):
 
         Public so tests can drive the sampler with deterministic ticks
         instead of waiting for the real cadence.
+
+        One lock acquisition for the whole update — sample() runs only
+        from this daemon thread; the lock protects readers from
+        `snapshot()` and ensures they see a consistent post-tick state
+        rather than partial mutations.
         """
         deepest = self._registry.deepest_per_thread()
         active_categories: set[str] = set()
-        for op_name, _kwargs, _age in deepest.values():
-            category = _categorize(op_name)
-            if category != "idle":
-                active_categories.add(category)
-            with self._lock:
-                self._op_times[op_name] += delta
         with self._lock:
+            for op_name, _kwargs, _age in deepest.values():
+                category = _categorize(op_name)
+                if category != "idle":
+                    active_categories.add(category)
+                self._op_times[op_name] += delta
             self._sample_count += 1
             if active_categories:
                 for cat in active_categories:
