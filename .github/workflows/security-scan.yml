@@ -191,11 +191,28 @@ jobs:
         continue-on-error: true
         run: |
           source env/bin/activate
-          make snyk-report
+          rm -rf security-report
+          mkdir -p security-report
+          # Run snyk subtargets directly; skip `export-snyk-pdf-report` which deletes JSONs after PDF conversion.
+          make snyk-ingestion-report || true
+          make snyk-ingestion-base-slim-report || true
+          make snyk-airflow-apis-report || true
+          make snyk-server-report || true
+          make snyk-ui-report || true
 
       - name: Publish Snyk Summary
         if: always() && steps.maven-build.outcome == 'success'
         run: python3 scripts/snyk_summary.py security-report >> $GITHUB_STEP_SUMMARY
+
+      - name: Generate Snyk HTML/PDF
+        if: always() && steps.maven-build.outcome == 'success'
+        run: |
+          # Back up JSONs because html_to_pdf.py deletes them after PDF conversion.
+          mkdir -p /tmp/snyk-json-backup
+          cp security-report/*.json /tmp/snyk-json-backup/ 2>/dev/null || true
+          make export-snyk-pdf-report || true
+          # Restore JSONs alongside generated PDFs/HTMLs.
+          cp /tmp/snyk-json-backup/*.json security-report/ 2>/dev/null || true
 
       - name: Slack on Failure
         if: steps.security-report.outcome != 'success'
@@ -221,12 +238,12 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
-      - name: Upload Snyk JSON Reports
+      - name: Upload Snyk Reports
         if: always() && steps.maven-build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: security-report
-          path: security-report/*.json
+          path: security-report
           retention-days: 30
 
       - name: Force failure
