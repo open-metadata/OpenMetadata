@@ -214,30 +214,6 @@ jobs:
           # Restore JSONs alongside generated PDFs/HTMLs.
           cp /tmp/snyk-json-backup/*.json security-report/ 2>/dev/null || true
 
-      - name: Slack on Failure
-        if: steps.security-report.outcome != 'success'
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
-          payload: |
-            {
-              "text": "🚨 Security report failed on branch `${{ github.ref_name }}`, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>. 🚨"
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-
-      - name: Slack on Success
-        if: steps.security-report.outcome == 'success'
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
-          payload: |
-            {
-              "text": "🟢 Security report generated for OpenMetadata Repo on branch `${{ github.ref_name }}`, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-
       - name: Upload Snyk Reports
         if: always() && steps.maven-build.outcome == 'success'
         uses: actions/upload-artifact@v4
