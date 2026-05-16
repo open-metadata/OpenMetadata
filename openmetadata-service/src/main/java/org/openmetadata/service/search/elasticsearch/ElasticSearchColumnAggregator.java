@@ -171,6 +171,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
           LOG.warn("Search index not found for indexes {}, returning empty results", indexes);
           continue;
         }
+        logShardFailureDetails(e, indexes, query);
         throw e;
       }
     }
@@ -212,6 +213,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
         totalOccurrencesAcrossGroups += result.totalDocCount();
       } catch (ElasticsearchException e) {
         if (!isIndexNotFoundException(e)) {
+          logShardFailureDetails(e, indexes, query);
           throw e;
         }
       }
@@ -250,6 +252,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
         }
       } catch (ElasticsearchException e) {
         if (!isIndexNotFoundException(e)) {
+          logShardFailureDetails(e, indexes, query);
           throw e;
         }
       }
@@ -325,6 +328,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
         fetchColumnsWithTagsFromSource(indexes, query, columnFieldPath, targetTags, columnsByName);
       } catch (ElasticsearchException e) {
         if (!isIndexNotFoundException(e)) {
+          logShardFailureDetails(e, indexes, query);
           throw e;
         }
       }
@@ -480,6 +484,23 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
   private boolean isIndexNotFoundException(ElasticsearchException e) {
     String message = e.getMessage();
     return message != null && message.contains("index_not_found_exception");
+  }
+
+  private void logShardFailureDetails(ElasticsearchException e, List<String> indexes, Query query) {
+    try {
+      String queryJson = JsonUtils.pojoToJson(query);
+      LOG.error(
+          "ES search failed on indexes {} | query={} | rootCause={} | error={}",
+          indexes,
+          queryJson,
+          e.error() != null ? e.error().rootCause() : "n/a",
+          e.error() != null ? e.error() : e.getMessage());
+    } catch (Exception ignored) {
+      LOG.error(
+          "ES search failed on indexes {} (failed to serialize query): {}",
+          indexes,
+          e.getMessage());
+    }
   }
 
   private String escapeWildcardPattern(String input) {
