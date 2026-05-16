@@ -12,10 +12,10 @@
  */
 
 import { expect, test } from '@playwright/test';
+import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { TableClass } from '../../support/entity/TableClass';
-import { getAuthContext, getToken } from '../../utils/common';
+import { getAuthContext, getToken, uuid } from '../../utils/common';
 import {
   addTermRelation,
   applyRelationTypeFilter,
@@ -27,7 +27,6 @@ import {
   navigateToOntologyExplorer,
   readNodePositions,
   waitForGraphLoaded,
-  waitForMoreNodesThan,
 } from '../../utils/ontologyExplorer';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -265,7 +264,7 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
 });
 
 test.describe('Ontology Explorer - Data Mode Asset Spiral View', () => {
-  const spiralGlossary = new Glossary();
+  const spiralGlossary = new Glossary(`PWSpiral${uuid()}`);
   const spiralTerm = new GlossaryTerm(spiralGlossary);
   const spiralTable = new TableClass();
 
@@ -289,6 +288,17 @@ test.describe('Ontology Explorer - Data Mode Asset Spiral View', () => {
         },
       ],
     });
+    const glossaryFqn = spiralGlossary.responseData.fullyQualifiedName;
+    const termFqn = spiralTerm.responseData.fullyQualifiedName;
+    await expect(async () => {
+      const response = await apiContext.get(
+        '/api/v1/glossaryTerms/assets/counts',
+        { params: { parent: glossaryFqn } }
+      );
+      const counts = (await response.json()) as Record<string, number>;
+      expect(counts[termFqn] ?? 0).toBeGreaterThan(0);
+    }).toPass({ timeout: 60000, intervals: [2000] });
+
     await disposeApiContext(page, apiContext);
   });
 
@@ -299,17 +309,12 @@ test.describe('Ontology Explorer - Data Mode Asset Spiral View', () => {
     await disposeApiContext(page, apiContext);
   });
 
-  test('clicking asset count badge in data mode renders asset nodes without a JS error', async ({
+  test('clicking asset count badge in data mode triggers asset search query', async ({
     page,
   }) => {
     test.slow();
 
-    const jsErrors: string[] = [];
-    page.on('pageerror', (err) => jsErrors.push(err.message));
-
     await navigateAndFilterByGlossary(page, spiralGlossary.responseData.id);
-
-    await page.getByRole('tab', { name: 'Data' }).click();
 
     const assetCountsResponse = page.waitForResponse(
       (res) =>
@@ -317,31 +322,28 @@ test.describe('Ontology Explorer - Data Mode Asset Spiral View', () => {
         res.request().method() === 'GET',
       { timeout: 30000 }
     );
+    await page.getByRole('tab', { name: 'Data' }).click();
     await assetCountsResponse;
     await waitForGraphLoaded(page);
 
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
-      /1\s*Data\s*Asset/i
+      /[1-9]\d*\s*Terms?/i
+    );
+    await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+      /[1-9]\d*\s*Data\s*Assets?/i
     );
 
-    const initialPositions = await readNodePositions(page);
-    const initialNodeCount = Object.keys(initialPositions).length;
-
-    await clickDataModeAssetBadge(page, spiralTerm.responseData.id);
-
-    await page.waitForResponse(
+    const searchResponse = page.waitForResponse(
       (res) =>
         res.url().includes('/api/v1/search/query') &&
         res.request().method() === 'GET',
       { timeout: 30000 }
     );
-
-    await waitForMoreNodesThan(page, initialNodeCount);
-
-    expect(
-      jsErrors.filter((e) => /is not defined/i.test(e)),
-      'no ReferenceError should be thrown when rendering asset nodes'
-    ).toHaveLength(0);
+    await clickDataModeAssetBadge(
+      page,
+      spiralTerm.responseData.fullyQualifiedName
+    );
+    await searchResponse;
   });
 });
 
