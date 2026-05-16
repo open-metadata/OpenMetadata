@@ -140,7 +140,7 @@ public class BulkDeleteStaleIT {
     DatabaseSchema schemaA = DatabaseSchemaTestFactory.createSimple(ns, service);
     String databaseFqn = schemaA.getFullyQualifiedName();
     databaseFqn = databaseFqn.substring(0, databaseFqn.lastIndexOf('.'));
-    DatabaseSchema schemaB = DatabaseSchemaTestFactory.create(ns, databaseFqn);
+    DatabaseSchema schemaB = DatabaseSchemaTestFactory.create(databaseFqn, ns.prefix("schemaB"));
 
     List<String> schemaATables = createTables(ns, schemaA.getFullyQualifiedName(), 2);
     List<String> schemaBTables = createTables(ns, schemaB.getFullyQualifiedName(), 2);
