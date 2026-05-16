@@ -167,6 +167,7 @@ export const subscribeIngestionPipelineLogs = (
   const path = `/api/v1/services/ingestionPipelines/logs/${encodeURIComponent(
     fqn
   )}/stream/${encodeURIComponent(runId)}`;
+
   return new EventSource(path, { withCredentials: true });
 };
 

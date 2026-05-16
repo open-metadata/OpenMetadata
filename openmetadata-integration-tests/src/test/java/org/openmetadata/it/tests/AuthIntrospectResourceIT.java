@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -61,6 +62,11 @@ import org.openmetadata.sdk.network.RequestOptions;
 public class AuthIntrospectResourceIT {
 
   private static final String INTROSPECT_PATH = "/v1/system/auth/introspect";
+  private static final String CALLER_SECRET_HEADER = "X-OM-Introspect-Auth";
+
+  /** System property mirroring OM's {@code OM_INTROSPECT_CALLER_SECRET}; populated by CI. */
+  private static final String CALLER_SECRET_PROP = "openmetadata.introspect.callerSecret";
+
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   @Test
@@ -129,15 +135,104 @@ public class AuthIntrospectResourceIT {
   }
 
   // ------------------------------------------------------------------
+  // Hardening: caller-secret authentication and full validation chain
+  // ------------------------------------------------------------------
+
+  /**
+   * Only runs when {@code -Dopenmetadata.introspect.callerSecret=<value>} is set, matching the
+   * server's {@code OM_INTROSPECT_CALLER_SECRET}. CI should set this; local dev usually doesn't.
+   * If unset, the endpoint is in "unauthenticated mode" (back-compat) and these tests skip.
+   */
+  @Test
+  @EnabledIfSystemProperty(named = CALLER_SECRET_PROP, matches = ".+")
+  void test_introspect_missingCallerSecret_returns401(TestNamespace ns) throws Exception {
+    BotFixture fixture = createBotWithToken(ns, "secret_missing");
+    OpenMetadataClient botClient = clientWithRawToken(fixture.token);
+
+    int status = postRawStatus(botClient, INTROSPECT_PATH, null);
+    assertEquals(
+        401,
+        status,
+        "without X-OM-Introspect-Auth header the endpoint must reject the caller (not the token)");
+  }
+
+  @Test
+  @EnabledIfSystemProperty(named = CALLER_SECRET_PROP, matches = ".+")
+  void test_introspect_wrongCallerSecret_returns401(TestNamespace ns) throws Exception {
+    BotFixture fixture = createBotWithToken(ns, "secret_wrong");
+    OpenMetadataClient botClient = clientWithRawToken(fixture.token);
+
+    int status = postRawStatus(botClient, INTROSPECT_PATH, "definitely-not-the-secret");
+    assertEquals(
+        401, status, "wrong caller secret must be rejected with 401, not a 200 active=false");
+  }
+
+  @Test
+  @EnabledIfSystemProperty(named = CALLER_SECRET_PROP, matches = ".+")
+  void test_introspect_correctCallerSecret_returnsActive(TestNamespace ns) throws Exception {
+    BotFixture fixture = createBotWithToken(ns, "secret_ok");
+    OpenMetadataClient botClient = clientWithRawToken(fixture.token);
+
+    JsonNode body =
+        postWithCallerSecret(botClient, INTROSPECT_PATH, System.getProperty(CALLER_SECRET_PROP));
+    assertTrue(body.path("active").asBoolean(), "valid token + correct caller secret → active");
+  }
+
+  // ------------------------------------------------------------------
   // helpers
   // ------------------------------------------------------------------
+
+  private static RequestOptions.Builder withCallerSecret(RequestOptions.Builder b) {
+    String secret = System.getProperty(CALLER_SECRET_PROP);
+    if (secret != null && !secret.isEmpty()) {
+      b.header(CALLER_SECRET_HEADER, secret);
+    }
+    return b;
+  }
 
   private static JsonNode post(OpenMetadataClient client, String path) throws Exception {
     String response =
         client
             .getHttpClient()
-            .executeForString(HttpMethod.POST, path, null, RequestOptions.builder().build());
+            .executeForString(
+                HttpMethod.POST, path, null, withCallerSecret(RequestOptions.builder()).build());
     return MAPPER.readTree(response);
+  }
+
+  private static JsonNode postWithCallerSecret(
+      OpenMetadataClient client, String path, String secret) throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                path,
+                null,
+                RequestOptions.builder().header(CALLER_SECRET_HEADER, secret).build());
+    return MAPPER.readTree(response);
+  }
+
+  /**
+   * Returns HTTP status for a POST that does not set the caller-secret header (or sets a wrong
+   * value). The SDK throws on non-2xx; we treat a thrown exception as evidence of 401 and
+   * pattern-match the message rather than wiring a raw OkHttp client just for this.
+   */
+  private static int postRawStatus(OpenMetadataClient client, String path, String wrongSecret)
+      throws Exception {
+    RequestOptions.Builder b = RequestOptions.builder();
+    if (wrongSecret != null) {
+      b.header(CALLER_SECRET_HEADER, wrongSecret);
+    }
+    try {
+      client.getHttpClient().executeForString(HttpMethod.POST, path, null, b.build());
+      return 200;
+    } catch (RuntimeException e) {
+      String msg = e.getMessage() == null ? "" : e.getMessage();
+      if (msg.contains("401") || msg.toLowerCase().contains("unauthor")) {
+        return 401;
+      }
+      throw e;
+    }
   }
 
   /** Build a fresh client whose default Authorization header is the supplied bearer token. */

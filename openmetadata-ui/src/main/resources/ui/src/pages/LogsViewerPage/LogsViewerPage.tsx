@@ -77,6 +77,7 @@ import { getEntityName } from '../../utils/EntityUtils';
 import {
   downloadAppLogs,
   downloadIngestionLog,
+  getLogsFromResponse,
 } from '../../utils/IngestionLogs/LogsUtils';
 import logsClassBase from '../../utils/LogsClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -100,8 +101,13 @@ const LogsViewerPage = () => {
   const [appRuns, setAppRuns] = useState<PipelineStatus[]>([]);
   const [paging, setPaging] = useState<Paging>();
   const [isLogsLoading, setIsLogsLoading] = useState(true);
+  const [isFollowing, setIsFollowing] = useState<boolean>(true);
   const lazyLogRef = useRef<LazyLog>(null);
   const sseRef = useRef<EventSource | null>(null);
+  // Refs so the polling/SSE callbacks always see the latest cursor + run
+  // state without re-creating the interval on every render.
+  const tailCursorRef = useRef<string | undefined>(undefined);
+  const isTailingRef = useRef<boolean>(false);
 
   const isApplicationType = useMemo(
     () => logEntityType === GlobalSettingOptions.APPLICATIONS,
@@ -245,6 +251,10 @@ const LogsViewerPage = () => {
       // with a margin of about 40px (approximate height of one line)
       const isBottom = Math.abs(clientHeight + scrollTop - scrollHeight) < 40;
 
+      // Drive live-follow off scroll position: at-bottom = follow, scrolled-up
+      // = paused. Cheap, no extra UI control needed for the common case.
+      setIsFollowing(isBottom);
+
       if (
         !isLogsLoading &&
         isBottom &&
@@ -280,6 +290,30 @@ const LogsViewerPage = () => {
       lazyLogRef.current.listRef.current.scrollToIndex(totalLines - 1);
     }
   }, [lazyLogRef.current]);
+
+  // ---------------------------------------------------------------------------
+  // Live tail
+  //
+  // Two transports, picked based on whether the run uses streamable storage:
+  //   - Streamable (log-server / S3): SSE — the server pushes each new line as
+  //     soon as the connector emits it. Sub-second latency.
+  //   - Airflow / non-streamable: 2 s polling against /logs/{id}/last with the
+  //     existing cursor. Airflow buffers and flushes log lines server-side at
+  //     similar cadence, so a tighter interval doesn't materially improve
+  //     freshness and just multiplies load on the pipeline-service-client.
+  //
+  // A separate 10 s status poller refreshes pipelineStatuses so we notice when
+  // the run terminates and stop tailing. Both effects depend on the latest
+  // pipelineState; when it transitions to a terminal value the next render's
+  // dependency change tears down the intervals/SSE.
+  // ---------------------------------------------------------------------------
+  const latestStatus = ingestionDetails?.pipelineStatuses;
+  const activeRunId = runId ?? latestStatus?.runId;
+  const isRunActive =
+    !isApplicationType &&
+    (latestStatus?.pipelineState === PipelineState.Running ||
+      latestStatus?.pipelineState === PipelineState.Queued);
+  const isStreamableRun = Boolean(ingestionDetails?.enableStreamableLogs);
 
   const recentRuns = useMemo(() => {
     if (!isUndefined(ingestionDetails) || appRuns) {
@@ -462,6 +496,65 @@ const LogsViewerPage = () => {
               direction="row"
               justifyContent="flex-end"
               spacing={4}>
+              {isRunActive && (
+                <Stack
+                  alignItems="center"
+                  data-testid="live-tail-indicator"
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    px: 1.5,
+                    py: 0.25,
+                    borderRadius: 999,
+                    backgroundColor: isFollowing
+                      ? 'rgba(46, 204, 113, 0.12)'
+                      : 'rgba(149, 165, 166, 0.18)',
+                    color: isFollowing
+                      ? 'rgb(39, 174, 96)'
+                      : theme.palette.grey[700],
+                  }}>
+                  <Box
+                    sx={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      backgroundColor: isFollowing
+                        ? 'rgb(39, 174, 96)'
+                        : theme.palette.grey[500],
+                      animation: isFollowing
+                        ? 'pulse 1.4s ease-in-out infinite'
+                        : 'none',
+                      '@keyframes pulse': {
+                        '0%, 100%': { opacity: 1 },
+                        '50%': { opacity: 0.35 },
+                      },
+                    }}
+                  />
+                  <Typography
+                    sx={{ fontSize: 12, fontWeight: 600 }}
+                    variant="body2">
+                    {isFollowing ? 'LIVE' : 'PAUSED'}
+                  </Typography>
+                  {!isFollowing && (
+                    <Button
+                      data-testid="resume-tail-button"
+                      size="small"
+                      sx={{
+                        minWidth: 'unset',
+                        px: 1,
+                        py: 0,
+                        fontSize: 11,
+                        textTransform: 'none',
+                      }}
+                      onClick={() => {
+                        setIsFollowing(true);
+                        handleJumpToEnd();
+                      }}>
+                      Resume
+                    </Button>
+                  )}
+                </Stack>
+              )}
               <Button
                 color="primary"
                 data-testid="jump-to-end-button"
@@ -495,6 +588,7 @@ const LogsViewerPage = () => {
                 enableSearch
                 selectableLines
                 extraLines={1} // 1 is to be add so that linux users can see last line of the log
+                follow={isRunActive && isFollowing}
                 loading={isLogsLoading}
                 ref={lazyLogRef}
                 text={logs}
@@ -519,6 +613,9 @@ const LogsViewerPage = () => {
     handleJumpToEnd,
     handleIngestionDownloadClick,
     handleScroll,
+    isRunActive,
+    isFollowing,
+    theme,
   ]);
 
   useEffect(() => {
@@ -529,55 +626,194 @@ const LogsViewerPage = () => {
     }
   }, [runId]);
 
-  // Live tail: subscribe to the log-server SSE stream while the latest run is
-  // active. Cursor pagination keeps doing its thing in the background — SSE
-  // just appends fresher lines as they arrive so the user doesn't have to
-  // scroll-to-bottom-to-refresh every few seconds.
+  // Keep the tail cursor ref in sync with paging so polling always uses the
+  // freshest "after" without re-creating the interval.
   useEffect(() => {
-    if (isApplicationType || !ingestionDetails) {
+    tailCursorRef.current = paging?.after ?? undefined;
+  }, [paging?.after]);
+
+  // ---------------------------------------------------------------------------
+  // Append helper — rAF-coalesced.
+  //
+  // A streaming run can emit thousands of lines/sec. Doing one setLogs per
+  // SSE event means one React render per event, which the reconciler will
+  // happily attempt and the browser cannot keep up with — the tab freezes.
+  //
+  // Strategy: every appendLogChunk just shoves the chunk into a ref buffer
+  // and schedules a single requestAnimationFrame flush. Whatever has piled up
+  // by the time rAF fires is concatenated and committed with one setLogs.
+  // This caps re-renders at the display refresh rate (~60Hz / 16.6ms), so
+  // CPU work stays bounded regardless of producer rate.
+  // ---------------------------------------------------------------------------
+  const pendingAppendRef = useRef<string[]>([]);
+  const rafIdRef = useRef<number | null>(null);
+
+  const flushPendingAppends = useCallback(() => {
+    rafIdRef.current = null;
+    const pending = pendingAppendRef.current;
+    if (pending.length === 0) {
       return;
     }
-    const fqn = ingestionDetails.fullyQualifiedName;
-    const latestStatus = ingestionDetails.pipelineStatuses;
-    const activeRunId = runId ?? latestStatus?.runId;
-    const isActive =
-      latestStatus?.pipelineState === PipelineState.Running ||
-      latestStatus?.pipelineState === PipelineState.Queued;
+    pendingAppendRef.current = [];
+    // Join with newlines, ensure trailing newline for clean subsequent appends.
+    let combined = pending.join('\n');
+    if (!combined.endsWith('\n')) {
+      combined += '\n';
+    }
+    setLogs((prev) => {
+      if (!prev) {
+        return combined;
+      }
+      const base = prev.endsWith('\n') ? prev : prev + '\n';
 
-    if (!fqn || !activeRunId || !isActive) {
+      return base + combined;
+    });
+  }, []);
+
+  const appendLogChunk = useCallback(
+    (chunk: string) => {
+      if (!chunk) {
+        return;
+      }
+      pendingAppendRef.current.push(
+        chunk.endsWith('\n') ? chunk.slice(0, -1) : chunk
+      );
+      if (rafIdRef.current === null) {
+        rafIdRef.current = window.requestAnimationFrame(flushPendingAppends);
+      }
+    },
+    [flushPendingAppends]
+  );
+
+  // Make sure no orphan rAF survives unmount.
+  useEffect(() => {
+    return () => {
+      if (rafIdRef.current !== null) {
+        window.cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+      pendingAppendRef.current = [];
+    };
+  }, []);
+
+  // Effect A: SSE for streamable active runs.
+  useEffect(() => {
+    if (!isRunActive || !isStreamableRun) {
       return;
     }
-
+    const fqn = ingestionDetails?.fullyQualifiedName;
+    if (!fqn || !activeRunId) {
+      return;
+    }
     const es = subscribeIngestionPipelineLogs(fqn, activeRunId);
     if (!es) {
       return;
     }
     sseRef.current = es;
+    isTailingRef.current = true;
 
-    const append = (chunk: string) => {
-      if (!chunk) {
-        return;
-      }
-      // The log-server sends each line as one `data:` event (the spec joins
-      // multi-line values with embedded \n, which is exactly the shape LazyLog
-      // wants in its `text` prop).
-      setLogs((prev) => (prev.endsWith('\n') || !prev ? prev + chunk + '\n' : prev + '\n' + chunk));
-    };
-
-    es.addEventListener('backfill', (e: MessageEvent) => append(e.data));
-    es.onmessage = (e: MessageEvent) => append(e.data);
+    es.addEventListener('backfill', (e: MessageEvent) =>
+      appendLogChunk((e as MessageEvent<string>).data)
+    );
+    es.onmessage = (e: MessageEvent) =>
+      appendLogChunk((e as MessageEvent<string>).data);
     es.addEventListener('close', () => es.close());
     es.onerror = () => {
-      // Fail open: SSE may be unavailable (no log-server, network blip).
-      // Cursor pagination continues to work as before — just no live tail.
+      // Fail open: SSE may be unavailable (no log-server, network blip). The
+      // polling effect below will pick up the slack on the next cycle if it
+      // applies; if not, cursor pagination on scroll still works.
       es.close();
     };
 
     return () => {
       es.close();
       sseRef.current = null;
+      isTailingRef.current = false;
     };
-  }, [ingestionDetails, runId, isApplicationType]);
+  }, [
+    isRunActive,
+    isStreamableRun,
+    ingestionDetails?.fullyQualifiedName,
+    activeRunId,
+    appendLogChunk,
+  ]);
+
+  // Effect B: 2 s polling for active non-streamable (Airflow) runs.
+  //
+  // Depend on the specific primitive fields we actually use (id, pipelineType)
+  // rather than the whole `ingestionDetails` object. The status-refresh effect
+  // below rewrites `ingestionDetails` every 10 s with a fresh object reference,
+  // even when nothing relevant changed — having the full object in the dep
+  // array would tear down and recreate the polling interval each time, leaking
+  // a request boundary in the middle of every ack window.
+  const tailPipelineId = ingestionDetails?.id;
+  const tailPipelineType = ingestionDetails?.pipelineType;
+  useEffect(() => {
+    if (!isRunActive || isStreamableRun || !tailPipelineId) {
+      return;
+    }
+    isTailingRef.current = true;
+    let cancelled = false;
+
+    const tick = async () => {
+      try {
+        const res = await getIngestionPipelineLogById(
+          tailPipelineId,
+          tailCursorRef.current
+        );
+        if (cancelled) {
+          return;
+        }
+        const newChunk = getLogsFromResponse(res.data, tailPipelineType ?? '');
+        appendLogChunk(newChunk);
+        setPaging({
+          after: res.data.after,
+          total: toNumber(res.data.total),
+        });
+      } catch {
+        // Swallow — Airflow / pipeline-service-client may be transiently
+        // unavailable. Next tick retries; no toast spam.
+      }
+    };
+
+    const interval = window.setInterval(tick, 2000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      isTailingRef.current = false;
+    };
+  }, [
+    isRunActive,
+    isStreamableRun,
+    tailPipelineId,
+    tailPipelineType,
+    appendLogChunk,
+  ]);
+
+  // Effect C: refresh pipelineStatuses every 10 s while we're actively
+  // tailing, so we notice transitions to Success / Failed / Stopped and the
+  // tail effects above auto-tear-down.
+  useEffect(() => {
+    if (!isRunActive || !ingestionName) {
+      return;
+    }
+    const refresh = async () => {
+      try {
+        const fresh = await getIngestionPipelineByFqn(ingestionName, {
+          fields: [TabSpecificField.PIPELINE_STATUSES],
+        });
+        setIngestionDetails((prev) =>
+          prev ? { ...prev, pipelineStatuses: fresh.pipelineStatuses } : fresh
+        );
+      } catch {
+        // ignore — we'll try again on the next tick
+      }
+    };
+    const interval = window.setInterval(refresh, 10000);
+
+    return () => window.clearInterval(interval);
+  }, [isRunActive, ingestionName]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.log-viewer')}>
