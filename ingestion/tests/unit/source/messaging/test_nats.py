@@ -99,7 +99,6 @@ class TestNatsModels:
         assert meta.state is None
 
 
-
 class TestDetectSchemaType:
     def test_avro_record(self):
         assert _detect_schema_type('{"type": "record", "name": "X", "fields": []}') == "avro"
@@ -362,7 +361,6 @@ class TestNatsYieldTopic:
         results = list(nats_source.yield_topic(details))
         assert results[0].right.messageSchema is not None
         assert "Other" in str(results[0].right.messageSchema.schemaType)
-
 
     def test_topic_config_omits_none_values(self, nats_source):
         details = _make_details("s1", config=NatsStreamConfig())

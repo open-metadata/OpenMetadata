@@ -87,7 +87,6 @@ def _detect_schema_type(schema_text: str) -> str:
     return SchemaType.Other.value.lower()
 
 
-
 class NatsSource(MessagingServiceSource):
     """
     Ingests NATS JetStream streams as OpenMetadata Topics.
@@ -234,7 +233,6 @@ class NatsSource(MessagingServiceSource):
                 replicationFactor=replication_factor,
                 maximumMessageSize=max_message_size,
                 cleanupPolicies=cleanup_policies,
-
             )
             if topic_config:
                 topic.topicConfig = topic_config
