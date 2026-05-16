@@ -20,7 +20,6 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -4670,18 +4669,18 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    *
    * <p>Legacy {@code RESTRICT_UPDATE_LIST} included {@code displayName}. The connector's PATCH
    * path filtered out REPLACE/REMOVE ops for displayName when {@code overrideMetadata=false}, so
-   * user edits survived re-ingestion. The bulk endpoint must keep that guarantee.
+   * user edits survived re-ingestion. The bulk endpoint preserves that guarantee via
+   * {@code EntityRepository#updateDisplayName}, which mirrors the bot-protection rule already in
+   * {@code updateDescription}.
    *
-   * <p><b>KNOWN GAP — DISABLED:</b> This test currently fails. {@code EntityRepository
-   * #updateDisplayName} has the same bot+overrideMetadata check as {@code updateDescription} (and
-   * description preservation works), but bot bulk PUT still clobbers a user-PATCHed displayName.
-   * Until this gap is closed, the bulk endpoint is not safe to roll out for entities where
-   * customers manually curate displayName. Re-enable this test once the underlying bug is fixed.
+   * <p>Historical context: PR #21879 ("SCIM Bot can update displayName") removed the in-code
+   * preservation in June 2025 and moved protection to a policy-level {@code DisplayName-Deny}
+   * rule. That worked for the legacy per-entity PUT/PATCH path, but the bulk endpoint authorizes
+   * with {@code EDIT_ALL} which doesn't intersect the field-specific {@code EditDisplayName}
+   * deny - so a bot bulk PUT bypassed the policy and clobbered user displayName. This PR
+   * restores the in-code preservation in {@code updateDisplayName} so the bulk path is
+   * symmetric with {@code updateDescription}.
    */
-  @Disabled(
-      "Known production-safety gap: bot bulk PUT clobbers user-edited displayName despite the"
-          + " preservation rule in EntityRepository.updateDisplayName. Fix before rolling the"
-          + " bulk endpoint to environments where customers curate displayName.")
   @Test
   void test_bulkUpdate_bot_preservesUserDisplayName(TestNamespace ns) {
     if (!supportsBulkAPI) return;
@@ -4723,21 +4722,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    * <p>Counterpart to {@link #test_bulkUpdate_bot_preservesUserDescription}: connectors opt into
    * "force-sync" by setting the ingestion-config flag {@code overrideMetadata=true}, and the
    * server must honor it. Legacy connector logic in {@code patch_request.py} let REPLACE
-   * operations through when that flag was set.
-   *
-   * <p><b>KNOWN GAP — DISABLED:</b> This test currently fails. {@code EntityRepository
-   * #updateDescription} checks {@code !overrideMetadata}, but with {@code overrideMetadata=true}
-   * the description is still preserved (bot can't force-update). Compared with the legacy flow,
-   * this is a regression in functionality but NOT a safety regression - {@code overrideMetadata
-   * =false} (the default) still preserves user edits correctly. Re-enable this test once the
-   * underlying bug is fixed so connectors that explicitly opt into force-sync get the behavior
-   * they expect.
+   * operations through when that flag was set. The bulk path plumbs the flag through to
+   * {@code EntityUpdater#overrideMetadata}, and {@code updateDescription} checks
+   * {@code !overrideMetadata} to skip the bot-preservation branch.
    */
-  @Disabled(
-      "Known functional gap (not a safety gap): overrideMetadata=true does not force a bot bulk"
-          + " PUT to overwrite a user-edited description. Default override=false still"
-          + " preserves user edits, so production safety is intact - but connectors that set"
-          + " overrideMetadata=true will not see the override take effect.")
   @Test
   void test_bulkUpdate_overrideMetadata_canOverrideUserDescription(TestNamespace ns) {
     if (!supportsBulkAPI) return;
