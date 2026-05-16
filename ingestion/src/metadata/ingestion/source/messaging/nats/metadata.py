@@ -16,7 +16,6 @@ import base64
 import json
 import traceback
 from typing import TYPE_CHECKING, Iterable, Optional  # noqa: UP035
-from urllib.parse import urlparse
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
@@ -29,7 +28,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName, SourceUrl
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.schema import SchemaType
 from metadata.generated.schema.type.schema import Topic as TopicSchema
 from metadata.ingestion.api.models import Either
@@ -67,7 +66,6 @@ _JS_STREAM_MSG_GET = "$JS.API.STREAM.MSG.GET.{}"
 _JS_KV_MSG_GET = "$JS.API.STREAM.MSG.GET.KV_{}"
 _JS_PAGE_SIZE = 256
 _NS_TO_MS = 1_000_000.0
-_NATS_MONITORING_PORT = 8222
 _SAMPLE_SIZE = 10
 
 
@@ -88,15 +86,6 @@ def _detect_schema_type(schema_text: str) -> str:
         pass
     return SchemaType.Other.value.lower()
 
-
-def _build_source_url(nats_servers: str, stream_name: str) -> SourceUrl:
-    first_server = nats_servers.split(",", maxsplit=1)[0].strip()
-    try:
-        parsed = urlparse(first_server)
-        host = parsed.hostname or first_server
-        return SourceUrl(f"http://{host}:{_NATS_MONITORING_PORT}/jsz?stream={stream_name}")
-    except Exception:
-        return SourceUrl(f"{first_server}/stream/{stream_name}")
 
 
 class NatsSource(MessagingServiceSource):
@@ -245,7 +234,7 @@ class NatsSource(MessagingServiceSource):
                 replicationFactor=replication_factor,
                 maximumMessageSize=max_message_size,
                 cleanupPolicies=cleanup_policies,
-                sourceUrl=_build_source_url(self.service_connection.natsServers, topic_details.topic_name),
+
             )
             if topic_config:
                 topic.topicConfig = topic_config
