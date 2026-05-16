@@ -85,12 +85,24 @@ class MemoryTracker:
         self._lock = threading.Lock()
         self._ring: deque[MemorySample] = deque(maxlen=RING_BUFFER_SIZE)
         self._psutil = _import_psutil()
+        # Cache the Process handle. Construction reads /proc/<pid>/stat;
+        # caching saves that read on every sample. The handle remains
+        # valid for the lifetime of this process.
+        self._process = self._make_process_handle()
         self._cgroup_paths = _detect_cgroup_paths()
         self._psi_path = _detect_psi_path()
         # Reserved bytes — `release_emergency_reserve` drops the reference
         # so `gc.get_objects()` can allocate. CPython 3.11 large-object
         # allocations bypass pymalloc and free directly to the OS.
         self._emergency_reserve: bytearray | None = bytearray(EMERGENCY_RESERVE_BYTES)
+
+    def _make_process_handle(self):
+        if self._psutil is None:
+            return None
+        try:
+            return self._psutil.Process()
+        except Exception:
+            return None
 
     def sample(self) -> MemorySample:
         """Take one cheap sample, append to ring, return it.
@@ -173,10 +185,10 @@ class MemoryTracker:
             self._emergency_reserve = None
 
     def _read_rss(self) -> int:
-        if self._psutil is None:
+        if self._process is None:
             return _read_rss_proc_self_status()
         try:
-            return int(self._psutil.Process().memory_info().rss)
+            return int(self._process.memory_info().rss)
         except Exception:
             return _read_rss_proc_self_status()
 
