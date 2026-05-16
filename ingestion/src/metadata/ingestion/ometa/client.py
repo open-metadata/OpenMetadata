@@ -23,6 +23,7 @@ from requests.exceptions import HTTPError, JSONDecodeError
 from metadata.config.common import ConfigModel
 from metadata.ingestion.ometa.credentials import URL, get_api_version
 from metadata.ingestion.ometa.ttl_cache import TTLCache
+from metadata.ingestion.ometa.utils import sanitize_user_agent
 from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import ometa_logger
 
@@ -138,8 +139,13 @@ class REST:
         self._base_url: URL = URL(self.config.base_url)
         self._api_version = get_api_version(self.config.api_version)
         self._session = requests.Session()
-        if self.config.user_agent:
-            self._session.headers["User-Agent"] = self.config.user_agent
+        user_agent = sanitize_user_agent(self.config.user_agent)
+        if user_agent:
+            self._session.headers["User-Agent"] = user_agent
+        elif self.config.user_agent:
+            logger.debug(
+                f"Ignoring User-Agent {self.config.user_agent!r}: no header-safe characters remained after sanitization"
+            )
         self._use_raw_data = self.config.raw_data
         self._retry = self.config.retry
         self._retry_wait = self.config.retry_wait

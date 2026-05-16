@@ -40,6 +40,7 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
+from metadata.ingestion.ometa.utils import sanitize_user_agent
 from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.utils.class_helper import (
     get_pipeline_type_from_source_config,
@@ -124,7 +125,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
     def _user_agent_context(self) -> str:
         """Best-effort ``service: ...; v...`` detail, omitting any unavailable part."""
         parts = []
-        service_name = self.config.source.serviceName
+        service_name = sanitize_user_agent(self.config.source.serviceName)
         if service_name:
             parts.append(f"service: {service_name}")
         try:
