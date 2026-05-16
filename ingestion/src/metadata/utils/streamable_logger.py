@@ -9,507 +9,331 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Streamable log handler for shipping logs to OpenMetadata server.
+Best-effort streamable log handler for OpenMetadata ingestion pipelines.
 
-This module provides a pluggable logger that can stream ingestion logs
-to the server's S3 storage backend without impacting application traffic.
+Design contract (in order of importance):
 
-Configuration:
--------------
-The streamable logger is automatically enabled when:
-1. The IngestionPipeline entity has `enableStreamableLogs` set to true
-2. The ingestion pipeline FQN and run ID are available
-3. The OpenMetadata server has log storage configured (S3 or compatible)
+1. emit() never blocks the producer. Format -> put_nowait -> return.
+   On overflow we increment a counter and drop the record. We do NOT
+   write the dropped record to stderr from inside emit() - that would
+   add synchronous stderr I/O to every producer log under backpressure.
 
-Environment Variables (Optional):
---------------------------------
-- ENABLE_LOG_COMPRESSION: Set to "true" to compress logs before sending (default: "false")
+2. emit() can NEVER re-enter itself. A thread-local flag is set on the
+   sender thread; if emit() sees it, it returns immediately. This is a
+   belt-and-suspenders backstop to the PR #28160 fix: even if a future
+   change reintroduces logging on the shipping path, the recursion
+   simply can't happen.
 
-Features:
---------
-- Asynchronous log shipping with buffering
-- Automatic compression for large payloads (>10KB when enabled)
-- Circuit breaker pattern for failure handling
-- Fallback to local logging when remote logging fails
-- Session cookie persistence for ALB sticky sessions
-- Configurable batch size and flush intervals
+3. ALL background threads are DAEMON. Drainer and senders alike. If
+   the connector main thread exits while a sender is wedged on a slow
+   DNS / TLS / auth call, the process still terminates. Logging will
+   never keep a pod alive.
 
-Usage:
-------
-The streamable logger is automatically configured in the BaseWorkflow class
-when a workflow starts. No manual setup is required if the environment is
-properly configured.
+4. The sender pool is bounded by a fixed-size send queue. If all sender
+   slots are occupied (slow / dead server), the drainer drops new
+   batches and increments a counter. No unbounded thread / memory
+   growth regardless of how long the server takes.
 
-For manual setup (testing):
-```python
-from metadata.utils.streamable_logger import setup_streamable_logging_for_workflow
+5. The HTTP POST goes through a dedicated quiet path
+   (``send_logs_batch_best_effort`` -> ``client.post_best_effort``):
+   no retries, no sleep, no connection-error retry, no logging through
+   ``ometa_logger``. Failure is a silent bool - counted, not logged.
 
-handler = setup_streamable_logging_for_workflow(
-    metadata=metadata_client,
-    pipeline_fqn="service.pipeline_name",
-    run_id=UUID("..."),
-    log_level=logging.INFO
-)
-```
+6. The handler uses an ISOLATED ``REST`` client (own ``requests.Session``,
+   own connection pool, own cookie jar). Shares ``ClientConfig`` with
+   the main metadata client so auth-token refreshes done by the main
+   client are picked up here too - but log shipping can never interfere
+   with normal ingestion API traffic.
+
+7. close() does NOT block on the server and does NOT join workers.
+   It signals the drainer/senders to stop, enqueues a close marker
+   behind already-queued log batches, and returns.
+
+No locks. No sleeps beyond ``queue.get(timeout=...)`` in the drainer/
+senders, which is necessary so they're not in a tight loop when idle.
 """
 
+import contextlib
 import logging
-import os
-import queue
-import sys
 import threading
-import time
-from enum import Enum
-from typing import Any, Dict, Optional  # noqa: UP035
+from queue import Empty, Full, Queue
+from typing import Optional
 from uuid import UUID
 
+from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import BASE_LOGGING_FORMAT, METADATA_LOGGER, ingestion_logger
 
 logger = ingestion_logger()
 
-# Internal logger used by this handler's own diagnostics. It MUST NOT propagate
-# to the root logger because `StreamableLogHandler` is attached there — logging
-# through `logger` from inside `emit()` or its callees re-enters this handler
-# and recurses until the Python recursion limit is hit. A separate logger with
-# `propagate=False` writing straight to stderr is the safe channel for any
-# message originating inside this module's hot path.
-_internal_logger = logging.getLogger("metadata.utils.streamable_logger.internal")
-_internal_logger.propagate = False
-if not _internal_logger.handlers:
-    _internal_handler = logging.StreamHandler(sys.stderr)
-    _internal_handler.setFormatter(
-        logging.Formatter(
-            "%(asctime)s [streamable-log-handler] %(levelname)s %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
-    )
-    _internal_logger.addHandler(_internal_handler)
-    # Filter at the handler so operators can change verbosity at runtime
-    # (e.g. via a debug toggle) without modifying the logger level itself.
-    _internal_handler.setLevel(logging.INFO)
-    _internal_logger.setLevel(logging.DEBUG)
+# Thread-local recursion guard. Sender threads set ``shipping = True``
+# before doing any work. If emit() sees this flag (i.e. someone logged
+# from inside the shipping path), it returns immediately. This protects
+# us even if a future refactor reintroduces logging in the POST path.
+_shipping_state = threading.local()
+_CLOSE_MARKER = object()
 
 
-class CircuitBreakerError(Exception):
-    """Base exception for circuit breaker errors"""
-
-
-class CircuitOpenError(CircuitBreakerError):
-    """Raised when circuit breaker is in OPEN state"""
-
-
-class ServiceCallError(Exception):
-    """Raised when the underlying service call fails"""
-
-
-class CircuitState(Enum):
-    """Circuit breaker states"""
-
-    CLOSED = "closed"  # Normal operation
-    OPEN = "open"  # Failures detected, requests blocked
-    HALF_OPEN = "half_open"  # Testing if service recovered
-
-
-class CircuitBreaker:
-    """
-    Circuit breaker pattern implementation to prevent cascading failures.
-    Fallback to local logging when remote logging fails.
-    """
-
-    def __init__(
-        self,
-        failure_threshold: int = 5,
-        recovery_timeout: int = 60,
-        success_threshold: int = 2,
-    ):
-        self.failure_threshold = failure_threshold
-        self.recovery_timeout = recovery_timeout
-        self.success_threshold = success_threshold
-        self.failure_count = 0
-        self.success_count = 0
-        self.last_failure_time = None
-        self.state = CircuitState.CLOSED
-        self._lock = threading.Lock()
-
-    def call(self, func, *args, **kwargs):
-        """Execute function with circuit breaker protection"""
-        with self._lock:
-            if self.state == CircuitState.OPEN:
-                if self._should_attempt_reset():
-                    self.state = CircuitState.HALF_OPEN
-                    self.success_count = 0
-                else:
-                    raise CircuitOpenError("Circuit breaker is OPEN")
-
-        try:
-            result = func(*args, **kwargs)
-            self._on_success()
-            return result  # noqa: TRY300
-        except (CircuitBreakerError, ServiceCallError):
-            raise
-        except Exception as e:
-            self._on_failure()
-            raise ServiceCallError(f"Service call failed: {str(e)}") from e  # noqa: RUF010
-
-    def _should_attempt_reset(self) -> bool:
-        """Check if enough time has passed to attempt reset"""
-        return self.last_failure_time and time.time() - self.last_failure_time >= self.recovery_timeout
-
-    def _on_success(self):
-        """Handle successful call"""
-        with self._lock:
-            self.failure_count = 0
-            if self.state == CircuitState.HALF_OPEN:
-                self.success_count += 1
-                if self.success_count >= self.success_threshold:
-                    self.state = CircuitState.CLOSED
-
-    def _on_failure(self):
-        """Handle failed call"""
-        with self._lock:
-            self.failure_count += 1
-            self.last_failure_time = time.time()
-
-            if self.failure_count >= self.failure_threshold:
-                self.state = CircuitState.OPEN
-            elif self.state == CircuitState.HALF_OPEN:
-                self.state = CircuitState.OPEN
-
-
-# pylint: disable=too-many-instance-attributes
 class StreamableLogHandler(logging.Handler):
-    """
-    Custom logging handler that streams logs to OpenMetadata server.
+    """Fire-and-forget log shipper. See module docstring for the contract."""
 
-    Features:
-    - Async log shipping with buffering
-    - Circuit breaker for failure handling
-    - Automatic fallback to local logging
-    - Configurable batch size and flush intervals
-    """
+    # Tunables. None affect correctness - only loss rate and how many
+    # sender threads can be in flight at once. Conservative defaults.
+    BATCH_SIZE = 500
+    BATCH_WAIT_SEC = 2.0
+    SENDER_TICK_SEC = 1.0
+    HTTP_TIMEOUT = (1.0, 2.0)  # (connect, read) seconds
+    SENDER_WORKERS = 1  # single daemon sender preserves logs -> close ordering
+    MAX_PENDING_BATCHES = 4  # bounded send-queue depth
+    CLOSE_TIMEOUT_SEC = 2.0  # for the fire-and-forget /close call
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments,too-many-instance-attributes
     def __init__(
         self,
         metadata: OpenMetadata,
         pipeline_fqn: str,
         run_id: UUID,
-        batch_size: int = 500,
-        flush_interval_sec: float = 10.0,
-        max_queue_size: int = 10000,
+        max_buffer: int = 10000,
         enable_streaming: bool = True,
     ):
-        """
-        Initialize the streamable log handler.
-
-        Args:
-            metadata: OpenMetadata client instance
-            pipeline_fqn: Fully qualified name of the pipeline
-            run_id: Unique run identifier
-            batch_size: Number of log entries to batch before sending
-            flush_interval_sec: Time in seconds between automatic flushes
-            max_queue_size: Maximum size of the log queue
-            enable_streaming: Whether to enable log streaming (can be disabled for testing)
-        """
         super().__init__()
-
         self.metadata = metadata
         self.pipeline_fqn = pipeline_fqn
         self.run_id = run_id
-        self.batch_size = batch_size
-        self.flush_interval_sec = flush_interval_sec
         self.enable_streaming = enable_streaming
 
-        # Local fallback handler
+        # Used only when streaming is disabled - direct passthrough.
         self.fallback_handler = logging.StreamHandler()
-        self.fallback_handler.setFormatter(self.formatter)
 
-        # Circuit breaker for failure handling
-        self.circuit_breaker = CircuitBreaker()
+        # Producer-side bounded buffer; drainer drains, senders POST.
+        self._buffer: Queue = Queue(maxsize=max_buffer)
+        # Send queue is the in-flight cap. Drainer put_nowait - drop on Full.
+        self._send_queue: Queue = Queue(maxsize=self.MAX_PENDING_BATCHES)
+        self._stop = threading.Event()
+        self._closed = False
+        self._drainer: Optional[threading.Thread] = None  # noqa: UP045
+        self._senders: list = []
 
-        # Log queue and worker thread
-        self.log_queue = queue.Queue(maxsize=max_queue_size)
-        self.stop_event = threading.Event()
-        self.worker_thread = None
-
-        # Session ID for log streaming (if server supports it)
-        self.session_id = None
-
-        # Metrics tracking
-        self.metrics = {
-            "logs_sent": 0,
-            "logs_failed": 0,
-            "bytes_sent": 0,
-            "circuit_trips": 0,
-            "fallback_count": 0,
-        }
-
-        # Start worker thread if streaming is enabled
-        if self.enable_streaming:
-            self._initialize_log_stream()
-            self._start_worker()
-
-    def _initialize_log_stream(self):
-        """Initialize log stream with the server"""
-        if hasattr(self.metadata, "create_log_stream"):
-            self.session_id = self.metadata.create_log_stream(self.pipeline_fqn, self.run_id)
-
-    def _start_worker(self):
-        """Start the background worker thread for log shipping"""
-        if self.worker_thread is None or not self.worker_thread.is_alive():
-            self.worker_thread = threading.Thread(
-                target=self._worker_loop,
-                name=f"log-shipper-{self.pipeline_fqn}",
-                daemon=True,
-            )
-            self.worker_thread.start()
-
-    def _drain_queue_to_buffer(self, buffer: list) -> tuple[list, bool]:
-        """
-        Drain all available items from the queue into the buffer.
-
-        Args:
-            buffer: Current buffer to append items to
-
-        Returns:
-            Updated buffer and whether a flush marker was encountered
-        """
-        timeout = min(1.0, self.flush_interval_sec)
-        flush_requested = False
-
-        # Get items from queue until empty
-        while True:
-            try:
-                # Use timeout for first call, then get_nowait for remaining
-                log_entry = self.log_queue.get(timeout=timeout) if timeout else self.log_queue.get_nowait()
-
-                if log_entry is None:
-                    # Flush marker encountered
-                    flush_requested = True
-                else:
-                    buffer.append(log_entry)
-
-                # After first successful get, switch to no timeout for draining
-                timeout = None
-
-            except queue.Empty:
-                break
-
-        return buffer, flush_requested
-
-    def _worker_loop(self):
-        """Background worker that ships logs to the server"""
-        buffer = []
-        last_flush = time.time()
-
-        while not self.stop_event.is_set():
-            try:
-                # Drain all available items from queue
-                buffer, flush_requested = self._drain_queue_to_buffer(buffer)
-
-                # Check if we should flush
-                should_flush = (
-                    flush_requested
-                    or len(buffer) >= self.batch_size
-                    or (time.time() - last_flush) >= self.flush_interval_sec
-                )
-
-                if should_flush and buffer:
-                    self._ship_logs(buffer)
-                    buffer = []
-                    last_flush = time.time()
-
-                # Let's not flush too often
-                time.sleep(1.0)
-
-            except Exception as e:
-                # NEVER use `logger` here — this handler is attached to it and
-                # logging through `logger` would re-enter our own emit().
-                _internal_logger.error("error in log shipping worker: %s", e)
-                # Continue processing to avoid blocking
-
-        # Final cleanup - drain ALL remaining items from the queue
-        buffer, _ = self._drain_queue_to_buffer(buffer)
-
-        # Send any final buffered logs
-        if buffer:
-            self._ship_logs(buffer)
-
-    def _ship_logs(self, logs: list):
-        """Ship logs to the server with circuit breaker protection"""
-        if not logs:
-            return
-
-        log_content = "\n".join(logs) + "\n"  # Ensure newline at end
-
-        try:
-            # Try to send logs with circuit breaker
-            self.circuit_breaker.call(self._send_logs_to_server, log_content)
-        except CircuitOpenError:
-            # Circuit is open, update metrics
-            self.metrics["logs_failed"] += len(logs)
-            self.metrics["circuit_trips"] += 1
-            self.metrics["fallback_count"] += 1
-
-            # NEVER use `logger` here — this handler is attached to it.
-            _internal_logger.debug("circuit breaker is OPEN, falling back to local logging")
-            for log in logs:
-                _internal_logger.info("[FALLBACK] %s", log)
-        except (ServiceCallError, Exception) as e:
-            # Service call failed, update metrics
-            self.metrics["logs_failed"] += len(logs)
-            self.metrics["fallback_count"] += 1
-
-            # Fallback to local logging via the internal (non-propagating)
-            # logger. Using `logger` here would dispatch the message back into
-            # this handler, re-entering shipping and ultimately recursing.
-            _internal_logger.debug("failed to ship logs to server: %s", e)
-            for log in logs:
-                _internal_logger.info("[FALLBACK] %s", log)
-
-    def _send_logs_to_server(self, log_content: str):
-        """Send logs to the OpenMetadata server using the logs mixin"""
-        enable_compression = os.getenv("ENABLE_LOG_COMPRESSION", "false").lower() == "true"
-        # Use the centralized logs mixin method which handles both new and legacy approaches
-        metrics = self.metadata.send_logs_batch(
-            pipeline_fqn=self.pipeline_fqn,
-            run_id=self.run_id,
-            log_content=log_content,
-            enable_compression=enable_compression,
+        # Isolated REST client. Same ClientConfig (token refresh visible)
+        # but distinct requests.Session / connection pool / cookie jar.
+        # Log shipping cannot interfere with normal ingestion API traffic.
+        self._client: Optional[REST] = (  # noqa: UP045
+            REST(metadata.client.config) if enable_streaming else None
         )
-        # Update handler metrics with returned metrics
-        self.metrics["logs_sent"] += metrics["logs_sent"]
-        self.metrics["bytes_sent"] += metrics["bytes_sent"]
+
+        # Diagnostic counters (plain ints - the GIL makes ++ monotonic-safe).
+        self.dropped_overflow = 0  # buffer Full at emit()
+        self.dropped_saturated = 0  # send_queue Full at drain()
+        self.dropped_shipping = 0  # recursion guard tripped
+
+        if self.enable_streaming:
+            self._start_workers()
+
+    def _start_workers(self):
+        """All daemon. Drainer + N senders. Process can exit at any time
+        without waiting for them - that's the explicit non-blocking goal."""
+        self._drainer = threading.Thread(
+            target=self._drain_loop,
+            daemon=True,
+            name=f"log-drain-{self.pipeline_fqn[:24]}",
+        )
+        self._drainer.start()
+        for i in range(self.SENDER_WORKERS):
+            t = threading.Thread(
+                target=self._sender_loop,
+                daemon=True,
+                name=f"log-ship-{self.pipeline_fqn[:16]}-{i}",
+            )
+            t.start()
+            self._senders.append(t)
 
     def emit(self, record: logging.LogRecord):
-        """
-        Emit a log record.
+        """Producer entry point. MUST be fast and MUST NOT raise.
 
-        Puts the log entry in the queue for async shipping.
-        Falls back to local logging if queue is full or streaming is disabled.
+        Order of guards:
+        1. Recursion guard - if this thread is currently shipping, drop
+           silently. Prevents any future logging-from-shipping bug.
+        2. Streaming disabled - direct passthrough to fallback.
+        3. Format + put_nowait. On Full, count and drop.
         """
+        # (1) must be the very first check
+        if getattr(_shipping_state, "shipping", False):
+            self.dropped_shipping += 1
+            return
+        if self._closed:
+            self.dropped_overflow += 1
+            return
         try:
+            # (2)
             if not self.enable_streaming:
-                # Direct fallback if streaming is disabled
                 self.fallback_handler.emit(record)
                 return
-
-            # Format the log record
+            # (3)
             log_entry = self.format(record)
-
-            # Try to add to queue (non-blocking)
             try:
-                self.log_queue.put_nowait(log_entry)
-            except queue.Full:
-                # Queue is full. CRITICAL: do not call `logger.warning(...)`
-                # here — this handler is attached to `logger`, so any log call
-                # from inside emit() re-enters emit(), recurses against the
-                # still-full queue, and eventually hits the Python recursion
-                # limit. This was the root cause of the production hang where
-                # MainThread sat in 900+ frames of alternating warning/error
-                # emit calls while every other thread was blocked on the
-                # logging module's internal lock.
-                _internal_logger.warning("log queue is full, falling back to local logging")
-                self.fallback_handler.emit(record)
+                self._buffer.put_nowait(log_entry)
+            except Full:
+                self.dropped_overflow += 1
+        except Exception:
+            # Format/attr error. Don't re-enter the logger; just count.
+            self.dropped_overflow += 1
 
-        except Exception as e:
-            # Any error, fallback to local logging. Same recursion hazard as
-            # above — must use the non-propagating internal logger.
-            _internal_logger.error("error in emit: %s", e)
-            try:  # noqa: SIM105
-                self.fallback_handler.emit(record)
-            except Exception:
-                pass  # Last resort: silently drop the log
+    def _drain_loop(self):
+        """Drain buffer -> batch -> send_queue.put_nowait. Drop if Full.
 
-    def flush(self):
-        """Flush any buffered logs"""
-        # Signal worker to flush by adding a None marker
-        try:  # noqa: SIM105
-            self.log_queue.put_nowait(None)
-        except queue.Full:
-            pass
+        Never blocks on the senders. If all sender slots are busy (slow/
+        dead server), the batch is dropped immediately and counted.
+        """
+        while not self._stop.is_set():
+            batch = self._collect_batch()
+            if not batch:
+                continue
+            if self._closed:
+                self.dropped_saturated += len(batch)
+                continue
+            try:
+                self._send_queue.put_nowait(batch)
+            except Full:
+                self.dropped_saturated += len(batch)
 
-    def get_metrics(self) -> Dict[str, Any]:  # noqa: UP006
-        """Get current metrics for monitoring"""
-        return {
-            **self.metrics,
-            "circuit_state": self.circuit_breaker.state.value,
-            "queue_size": self.log_queue.qsize(),
-            "worker_alive": self.worker_thread.is_alive() if self.worker_thread else False,
-        }
+    def _collect_batch(self) -> list:
+        """Pull up to BATCH_SIZE entries. Waits at most BATCH_WAIT_SEC
+        for the first entry - the only blocking point in the drainer."""
+        try:
+            batch = [self._buffer.get(timeout=self.BATCH_WAIT_SEC)]
+        except Empty:
+            return []
+        while len(batch) < self.BATCH_SIZE:
+            try:
+                batch.append(self._buffer.get_nowait())
+            except Empty:
+                break
+        return batch
+
+    def _sender_loop(self):
+        """Daemon-thread worker. Drains send_queue and POSTs each batch."""
+        try:
+            while True:
+                try:
+                    item = self._send_queue.get(timeout=self.SENDER_TICK_SEC)
+                except Empty:
+                    if self._stop.is_set():
+                        return
+                    continue
+                if item is _CLOSE_MARKER:
+                    self._notify_close()
+                    return
+                self._post_batch(item)
+        finally:
+            with contextlib.suppress(Exception):
+                if self._client is not None:
+                    self._client.close()
+
+    def _post_batch(self, batch: list):
+        """Sender entry point. Sets the recursion guard, ships via the
+        quiet client path, clears the guard."""
+        _shipping_state.shipping = True
+        try:
+            self.metadata.send_logs_batch_best_effort(
+                pipeline_fqn=self.pipeline_fqn,
+                run_id=self.run_id,
+                log_content="\n".join(batch) + "\n",
+                timeout=self.HTTP_TIMEOUT,
+                client=self._client,
+            )
+        finally:
+            _shipping_state.shipping = False
 
     def close(self):
-        """Close the handler and cleanup resources"""
-        if self.enable_streaming and self.worker_thread:
-            # Log final metrics via the non-propagating internal logger so
-            # close() cannot trigger a final round of self-recursion.
-            _internal_logger.info("StreamableLogHandler metrics: %s", self.get_metrics())
+        """Stop workers and enqueue /close behind already queued batches.
 
-            # Signal worker to stop AFTER ensuring any pending flush is processed
-            self.stop_event.set()
+        Returns immediately - does NOT join daemon workers and does NOT
+        wait on the server response. The /close marker uses the same
+        bounded send queue as log batches; if the queue is saturated, we
+        skip /close and rely on server-side abandoned-stream cleanup.
+        """
+        if self._closed:
+            return
+        self._closed = True
+        self._stop.set()
 
-            # Wait for worker to finish (with timeout)
-            if self.worker_thread.is_alive():
-                self.worker_thread.join(timeout=5.0)
+        if self.enable_streaming:
+            self._drain_remaining_buffer()
+            with contextlib.suppress(Full):
+                self._send_queue.put_nowait(_CLOSE_MARKER)
 
-            # Close the log stream
-            self.metadata.close_log_stream(self.pipeline_fqn, self.run_id)
-
-        # Close fallback handler
-        self.fallback_handler.close()
-
+        with contextlib.suppress(Exception):
+            self.fallback_handler.close()
         super().close()
+
+    def _drain_remaining_buffer(self):
+        """Best-effort transfer of producer buffer into the send queue.
+
+        Runs only from close(); never waits. If the send queue is already
+        full, remaining logs are dropped and /close is skipped by the full
+        queue check in close().
+        """
+        while True:
+            batch = []
+            while len(batch) < self.BATCH_SIZE:
+                try:
+                    batch.append(self._buffer.get_nowait())
+                except Empty:
+                    break
+            if not batch:
+                return
+            try:
+                self._send_queue.put_nowait(batch)
+            except Full:
+                self.dropped_saturated += len(batch)
+                return
+
+    def _notify_close(self):
+        """Daemon-thread tail call for close()."""
+        _shipping_state.shipping = True
+        try:
+            self.metadata.send_close_best_effort(
+                pipeline_fqn=self.pipeline_fqn,
+                run_id=self.run_id,
+                timeout=(1.0, self.CLOSE_TIMEOUT_SEC),
+                client=self._client,
+            )
+        finally:
+            _shipping_state.shipping = False
 
 
 class StreamableLogHandlerManager:
-    """
-    Manager class to handle StreamableLogHandler instances.
-    This provides better encapsulation than using global variables.
-
-    Note: This manager assumes single-threaded setup/teardown which is
-    typical for workflow initialization. The handler itself is thread-safe.
-    """
+    """Process-wide singleton holding the active handler instance."""
 
     _instance: Optional["StreamableLogHandler"] = None
 
     @classmethod
     def get_handler(cls) -> Optional["StreamableLogHandler"]:
-        """Get the current handler instance"""
         return cls._instance
 
     @classmethod
     def set_handler(cls, handler: Optional["StreamableLogHandler"]) -> None:
-        """Set or update the handler instance, closing any existing one"""
-        if cls._instance and cls._instance != handler:
-            try:
+        if cls._instance and cls._instance is not handler:
+            # Detach the old one from the metadata logger BEFORE closing -
+            # otherwise records can still be routed at it during close.
+            with contextlib.suppress(Exception):
+                logging.getLogger(METADATA_LOGGER).removeHandler(cls._instance)
+            with contextlib.suppress(Exception):
                 cls._instance.close()
-            except Exception as e:
-                logger.warning(f"Error closing previous handler: {e}")
         cls._instance = handler
 
     @classmethod
     def cleanup(cls) -> None:
-        """Clean up the current handler, flushing any remaining logs first"""
-        if cls._instance:
-            try:
-                # Force flush any remaining logs before cleanup
-                cls._instance.flush()
-
-                # Close will properly wait for worker thread to finish processing
-                # the flush marker and any remaining buffered logs
+        if not cls._instance:
+            return
+        try:
+            with contextlib.suppress(Exception):
+                logging.getLogger(METADATA_LOGGER).removeHandler(cls._instance)
+            with contextlib.suppress(Exception):
                 cls._instance.close()
-
-                # Only remove handler from logger after worker thread has finished
-                metadata_logger = logging.getLogger(METADATA_LOGGER)
-                metadata_logger.removeHandler(cls._instance)
-
-                logger.debug("Streamable logging handler cleaned up")
-            except Exception as e:
-                logger.warning(f"Error during handler cleanup: {e}")
-            finally:
-                cls._instance = None
+        finally:
+            cls._instance = None
 
 
 def setup_streamable_logging_for_workflow(
@@ -519,24 +343,7 @@ def setup_streamable_logging_for_workflow(
     log_level: int = logging.INFO,
     enable_streaming: bool = False,
 ) -> Optional[StreamableLogHandler]:  # noqa: UP045
-    """
-    Setup streamable logging for a workflow execution.
-    This is automatically called when a workflow starts if:
-    1. The IngestionPipeline has enableStreamableLogs set to true
-    2. The server has log storage configured
-    3. The pipeline FQN and run ID are available
-
-    Args:
-        metadata: OpenMetadata client instance
-        pipeline_fqn: Fully qualified name of the pipeline
-        run_id: Unique run identifier
-        log_level: Logging level
-        enable_streaming: Whether to enable streaming (from IngestionPipeline config)
-
-    Returns:
-        StreamableLogHandler instance if configured, None otherwise
-    """
-    # Check if we have the required parameters
+    """Wire up the handler onto the metadata logger, replacing any existing one."""
     if not enable_streaming or not pipeline_fqn or not run_id:
         logger.debug(
             f"Streamable logging not configured: enable={enable_streaming}, "
@@ -545,38 +352,26 @@ def setup_streamable_logging_for_workflow(
         return None
 
     try:
-        # Check if server supports log storage by trying to get the configuration
-        # This would need to be implemented as an API endpoint
-        # For now, we'll assume it's enabled if the env var is set
+        metadata_logger = logging.getLogger(METADATA_LOGGER)
+        existing = StreamableLogHandlerManager.get_handler()
+        if existing is not None:
+            with contextlib.suppress(Exception):
+                metadata_logger.removeHandler(existing)
 
-        # Clean up any existing handler
-        existing_handler = StreamableLogHandlerManager.get_handler()
-        if existing_handler:
-            existing_handler.close()
-
-        # Create and configure the handler
         handler = StreamableLogHandler(
             metadata=metadata,
             pipeline_fqn=pipeline_fqn,
             run_id=run_id,
             enable_streaming=True,
         )
-
-        # Use the same formatter as the base configuration for consistency
         formatter = logging.Formatter(BASE_LOGGING_FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
         handler.setFormatter(formatter)
         handler.setLevel(log_level)
 
-        # Add handler to the metadata logger (parent of all ingestion loggers)
-        metadata_logger = logging.getLogger(METADATA_LOGGER)
         metadata_logger.addHandler(handler)
-
-        # Register with the manager
         StreamableLogHandlerManager.set_handler(handler)
 
         logger.info(f"Streamable logging configured for pipeline: {pipeline_fqn}, run_id: {model_str(run_id)}")
-        metadata.validate_versions()  # Send the version check log
-
         return handler  # noqa: TRY300
 
     except Exception as e:
@@ -585,8 +380,5 @@ def setup_streamable_logging_for_workflow(
 
 
 def cleanup_streamable_logging():
-    """
-    Cleanup streamable logging handler.
-    This should be called when the workflow completes.
-    """
+    """Remove the active handler. Safe to call multiple times."""
     StreamableLogHandlerManager.cleanup()
