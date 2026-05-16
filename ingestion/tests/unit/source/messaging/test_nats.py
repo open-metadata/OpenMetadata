@@ -27,7 +27,6 @@ from metadata.ingestion.source.messaging.nats.connection import _build_connect_o
 from metadata.ingestion.source.messaging.nats.metadata import (
     _NS_TO_MS,
     NatsSource,
-    _build_source_url,
     _detect_schema_type,
 )
 from metadata.ingestion.source.messaging.nats.models import (
@@ -99,24 +98,6 @@ class TestNatsModels:
         assert meta.config is None
         assert meta.state is None
 
-
-class TestBuildSourceUrl:
-    def test_standard_nats_url(self):
-        url = _build_source_url("nats://myhost:4222", "ORDERS")
-        assert url.root == "http://myhost:8222/jsz?stream=ORDERS"
-
-    def test_uses_first_server_from_comma_list(self):
-        url = _build_source_url("nats://primary:4222, nats://secondary:4222", "EVENTS")
-        assert "primary" in str(url)
-        assert "secondary" not in str(url)
-
-    def test_stream_name_encoded_in_url(self):
-        url = _build_source_url("nats://host:4222", "my-stream")
-        assert "my-stream" in str(url)
-
-    def test_fallback_on_unparseable_server(self):
-        url = _build_source_url("not-a-valid-url", "STREAM")
-        assert "STREAM" in str(url)
 
 
 class TestDetectSchemaType:
@@ -382,10 +363,6 @@ class TestNatsYieldTopic:
         assert results[0].right.messageSchema is not None
         assert "Other" in str(results[0].right.messageSchema.schemaType)
 
-    def test_source_url_contains_stream_name(self, nats_source):
-        details = _make_details("my-stream")
-        results = list(nats_source.yield_topic(details))
-        assert "my-stream" in results[0].right.sourceUrl.root
 
     def test_topic_config_omits_none_values(self, nats_source):
         details = _make_details("s1", config=NatsStreamConfig())
