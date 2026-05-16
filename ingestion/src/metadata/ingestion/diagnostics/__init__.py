@@ -56,6 +56,16 @@ KWARGS_TRUNCATION_CHARS = 2000
 OP_STACK_DEPTH_CAP = 20
 DIAG_LOG_PREFIX = "diag"
 
+# Pre-OOM tripwire thresholds. PSI `some avg10` is a percentage 0..100
+# representing how much of the last 10 s the cgroup was stalled on
+# memory; sustained values >10% reliably predict OOMKill within tens of
+# seconds on gradual leaks (see /proc/pressure docs).
+PRESSURE_PSI_AVG10_THRESHOLD = 10.0
+# Memory-pressure tripwire dumps are throttled to one per reason per
+# 5 minutes so we don't flood the logs with snapshots while pressure is
+# sustained.
+PRESSURE_DUMP_THROTTLE_SECONDS = 300
+
 _state: Optional["_DiagnosticsState"] = None
 
 
@@ -220,6 +230,29 @@ def dump(reason: str = "manual") -> None:
         http_tracker=state.http_tracker,
         memory_tracker=state.memory_tracker,
     )
+
+
+def dump_on_memory_error():
+    """Context manager wrapping `MemoryError`-raising code with a dump-then-reraise.
+
+    Use it around `BaseWorkflow.execute_internal()` so a Python-side
+    OOM (the allocator failed before the kernel killed us) still
+    produces a dump in the logs / S3 before propagating.
+    """
+    return _DumpOnMemoryError()
+
+
+class _DumpOnMemoryError:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, _tb):
+        if exc_type is MemoryError:
+            # The dump path itself can fail under severe pressure;
+            # never swallow the original MemoryError.
+            with suppress(Exception):
+                dump(reason=f"memory-error:{exc!r}")
+        return False  # propagate
 
 
 def _logger_level_is_debug(workflow: Any) -> bool:

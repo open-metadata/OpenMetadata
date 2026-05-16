@@ -247,7 +247,10 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self.timer.trigger()
         diagnostics.install(self)
         try:
-            with diagnostics.operation("workflow.execute", fqn=self.config.ingestionPipelineFQN):
+            with (
+                diagnostics.operation("workflow.execute", fqn=self.config.ingestionPipelineFQN),
+                diagnostics.dump_on_memory_error(),
+            ):
                 self.execute_internal()
 
             if self.workflow_config.successThreshold <= self.calculate_success() < 100:

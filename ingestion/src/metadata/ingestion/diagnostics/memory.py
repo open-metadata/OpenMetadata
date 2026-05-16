@@ -32,12 +32,30 @@ from collections import Counter, deque
 
 RING_BUFFER_SIZE = 10
 TOP_TYPES_LIMIT = 10
+# Pre-allocated bytearray reserved at install time and released right
+# before `gc.get_objects()` runs under memory pressure. Gives the deep
+# snapshot ~10MB of headroom so the Counter can build without itself
+# triggering the OOM we're trying to diagnose.
+EMERGENCY_RESERVE_BYTES = 10 * 1024 * 1024
 
 
 class MemorySample:
-    """A single point-in-time memory reading."""
+    """A single point-in-time memory reading.
 
-    __slots__ = ("cgroup_current", "cgroup_max", "oom_kill_count", "rss", "ts")
+    Fields beyond rss/cgroup_current/cgroup_max are pre-OOM tripwire
+    signals — see the watchdog's pressure check.
+    """
+
+    __slots__ = (
+        "cgroup_current",
+        "cgroup_events_high",
+        "cgroup_events_oom",
+        "cgroup_max",
+        "oom_kill_count",
+        "psi_some_avg10",
+        "rss",
+        "ts",
+    )
 
     def __init__(
         self,
@@ -46,12 +64,18 @@ class MemorySample:
         cgroup_current: int | None,
         cgroup_max: int | None,
         oom_kill_count: int | None,
+        cgroup_events_high: int | None = None,
+        cgroup_events_oom: int | None = None,
+        psi_some_avg10: float | None = None,
     ) -> None:
         self.ts = ts
         self.rss = rss
         self.cgroup_current = cgroup_current
         self.cgroup_max = cgroup_max
         self.oom_kill_count = oom_kill_count
+        self.cgroup_events_high = cgroup_events_high
+        self.cgroup_events_oom = cgroup_events_oom
+        self.psi_some_avg10 = psi_some_avg10
 
 
 class MemoryTracker:
@@ -62,15 +86,30 @@ class MemoryTracker:
         self._ring: deque[MemorySample] = deque(maxlen=RING_BUFFER_SIZE)
         self._psutil = _import_psutil()
         self._cgroup_paths = _detect_cgroup_paths()
+        self._psi_path = _detect_psi_path()
+        # Reserved bytes — `release_emergency_reserve` drops the reference
+        # so `gc.get_objects()` can allocate. CPython 3.11 large-object
+        # allocations bypass pymalloc and free directly to the OS.
+        self._emergency_reserve: bytearray | None = bytearray(EMERGENCY_RESERVE_BYTES)
 
     def sample(self) -> MemorySample:
-        """Take one cheap sample, append to ring, return it."""
+        """Take one cheap sample, append to ring, return it.
+
+        Total cost: one rss read (psutil or /proc/self/status), one
+        cgroup memory.current read, one cgroup memory.max read, one
+        consolidated memory.events read (oom_kill + high + oom), and
+        one /proc/pressure/memory read. ~5 tiny syscalls.
+        """
+        events = _read_memory_events(self._cgroup_paths.get("events"))
         sample = MemorySample(
             ts=time.monotonic(),
             rss=self._read_rss(),
             cgroup_current=_read_int(self._cgroup_paths.get("current")),
             cgroup_max=_read_cgroup_max(self._cgroup_paths.get("max")),
-            oom_kill_count=_read_oom_kill_count(self._cgroup_paths.get("events")),
+            oom_kill_count=events.get("oom_kill"),
+            cgroup_events_high=events.get("high"),
+            cgroup_events_oom=events.get("oom"),
+            psi_some_avg10=_read_psi_some_avg10(self._psi_path),
         )
         with self._lock:
             self._ring.append(sample)
@@ -100,10 +139,11 @@ class MemoryTracker:
     def top_object_types(self, limit: int = TOP_TYPES_LIMIT) -> list[tuple[str, int]]:
         """gc.get_objects() aggregated by type name.
 
-        Expensive — only call on dump.  Wrapped in try/except because
-        gc.get_objects can in theory raise on broken __class__
-        descriptors.
+        Expensive — only call on dump. Releases the emergency reserve
+        first so we have headroom to build the Counter even when we're
+        running this BECAUSE of memory pressure.
         """
+        self._release_emergency_reserve()
         try:
             counter: Counter = Counter()
             for obj in gc.get_objects():
@@ -114,6 +154,23 @@ class MemoryTracker:
             return counter.most_common(limit)
         except Exception:
             return []
+        finally:
+            self._restore_emergency_reserve()
+
+    def _release_emergency_reserve(self) -> None:
+        """Drop the reserve so the deep snapshot has 10MB of headroom."""
+        self._emergency_reserve = None
+
+    def _restore_emergency_reserve(self) -> None:
+        """Re-allocate the reserve. Best-effort — under severe pressure
+        this allocation may itself fail; that's acceptable since the
+        snapshot already ran.
+        """
+        try:
+            if self._emergency_reserve is None:
+                self._emergency_reserve = bytearray(EMERGENCY_RESERVE_BYTES)
+        except MemoryError:
+            self._emergency_reserve = None
 
     def _read_rss(self) -> int:
         if self._psutil is None:
@@ -178,25 +235,66 @@ def _read_cgroup_max(path: str | None) -> int | None:
         return None
 
 
-def _read_oom_kill_count(path: str | None) -> int | None:
-    """cgroup v2 memory.events file looks like:
+def _read_memory_events(path: str | None) -> dict[str, int]:
+    """Read cgroup v2 `memory.events` in one shot.
 
-    low 0
-    high 0
-    max 0
-    oom 0
-    oom_kill 0
+    Returns a dict with keys among `low`, `high`, `max`, `oom`,
+    `oom_kill` (whichever the kernel exposes). Empty dict on missing
+    file or v1 cgroup. The kernel writes one counter per line.
     """
+    out: dict[str, int] = {}
     if not path:
-        return None
+        return out
     try:
         with open(path) as fh:  # noqa: PTH123  text read of /sys file
             for line in fh:
                 key, _, value = line.partition(" ")
-                if key == "oom_kill":
-                    return int(value.strip())
-    except (OSError, ValueError):
+                try:
+                    out[key.strip()] = int(value.strip())
+                except ValueError:
+                    continue
+    except OSError:
+        return {}
+    return out
+
+
+def _detect_psi_path() -> str | None:
+    """Return `/proc/pressure/memory` if present (kernel ≥4.20).
+
+    PSI is the kernel's own "memory is becoming a bottleneck" signal —
+    far more reliable than a static cgroup-ratio threshold.
+    """
+    psi_path = "/proc/pressure/memory"
+    if os.path.exists(psi_path):  # noqa: PTH110  cheap probe
+        return psi_path
+    return None
+
+
+def _read_psi_some_avg10(path: str | None) -> float | None:
+    """Parse the `some avg10` value from `/proc/pressure/memory`.
+
+    The file format is:
+        some avg10=0.10 avg60=0.05 avg300=0.01 total=12345
+        full avg10=0.00 avg60=0.00 avg300=0.00 total=6789
+
+    `some` = % of the last N seconds where ANY task in the cgroup was
+    stalled on memory. `avg10` is the most reactive window.
+    """
+    if not path:
         return None
+    try:
+        with open(path) as fh:  # noqa: PTH123  text read of /proc file
+            line = fh.readline()
+    except OSError:
+        return None
+    if not line.startswith("some "):
+        return None
+    for token in line.split():
+        if token.startswith("avg10="):
+            try:
+                return float(token.split("=", 1)[1])
+            except ValueError:
+                return None
     return None
 
 
