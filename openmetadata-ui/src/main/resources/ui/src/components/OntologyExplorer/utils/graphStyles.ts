@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Group, Image as GImage, Rect as GRect, Text as GText } from '@antv/g';
+import { Image as GImage, Rect as GRect, Group, Text as GText } from '@antv/g';
 import {
   Circle,
   ExtensionCategory,
@@ -485,8 +485,10 @@ export function buildDefaultRectNodeStyle(
 
 const DATA_MODE_ASSET_LABEL_CHAR_WIDTH_EST = 6.5;
 const DATA_MODE_ENTITY_TYPE_CHAR_WIDTH_EST = 5.5;
-const DATA_MODE_ENTITY_BADGE_H_PAD = 4;
+const DATA_MODE_ENTITY_BADGE_H_PAD = 8;
 const DATA_MODE_ENTITY_BADGE_V_PAD = 2;
+const DATA_MODE_ENTITY_ICON_TEXT_GAP = 2;
+const DATA_MODE_ENTITY_ICON_RIGHT_PAD = DATA_MODE_ENTITY_PILL_ICON_PAD_LEFT;
 
 function getMeasureTextContext2d(): CanvasRenderingContext2D | null {
   return getCanvasContext();
@@ -525,6 +527,34 @@ function measureCanvasTextWidthPx(
   } catch {
     return undefined;
   }
+}
+
+function truncateTextWithEllipsis(
+  text: string,
+  font: string,
+  maxPx: number
+): string {
+  const measured = measureCanvasTextWidthPx(text, font);
+  if (measured === undefined || measured <= maxPx) {
+    return text;
+  }
+  const ellipsis = '...';
+  const ellipsisW = measureCanvasTextWidthPx(ellipsis, font) ?? 12;
+  const target = Math.max(0, maxPx - ellipsisW);
+
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi + 1) / 2);
+    const w = measureCanvasTextWidthPx(text.slice(0, mid), font) ?? 0;
+    if (w <= target) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
+  }
+
+  return lo === 0 ? ellipsis : text.slice(0, lo) + ellipsis;
 }
 
 export function buildDataModeAssetNodeStyle(
@@ -607,7 +637,7 @@ export function buildDataModeAssetNodeStyle(
   const measuredEntityInner = measureCanvasTextWidthPx(
     entityTypeText,
     entityTypeMeasureFont,
-    'ink'
+    'advance'
   );
   const entityInnerUncapped =
     measuredEntityInner ??
@@ -616,9 +646,13 @@ export function buildDataModeAssetNodeStyle(
     Math.max(1, entityInnerUncapped),
     DATA_MODE_ENTITY_TYPE_PILL_MAX_TEXT_WIDTH_PX
   );
-  const entityTextBoxW = entityInnerW + DATA_MODE_ENTITY_BADGE_H_PAD * 2;
   const iconSectionW = entityIconUrl ? ENTITY_ICON_SECTION_W : 0;
-  const entityBoxW = entityTextBoxW + iconSectionW;
+  const entityBoxW = entityIconUrl
+    ? iconSectionW +
+      DATA_MODE_ENTITY_ICON_TEXT_GAP +
+      entityInnerW +
+      DATA_MODE_ENTITY_ICON_RIGHT_PAD
+    : entityInnerW + DATA_MODE_ENTITY_BADGE_H_PAD * 2;
   const entityBoxH =
     DATA_MODE_ENTITY_BADGE_FONT_SIZE + DATA_MODE_ENTITY_BADGE_V_PAD * 2 + 4;
 
@@ -670,8 +704,18 @@ export function buildDataModeAssetNodeStyle(
     padding: [0, 0, 0, 0],
   };
 
+  const nameTruncateBudget = Math.max(
+    12,
+    DATA_MODE_ASSET_NAME_MAX_TEXT_WIDTH_PX - 6
+  );
+  const nameLabel = truncateTextWithEllipsis(
+    label,
+    nameMeasureFont,
+    nameTruncateBudget
+  );
+
   const nameBadge = {
-    text: label,
+    text: nameLabel,
     placement: 'bottom' as const,
     offsetX: nameSlotLeft,
     offsetY: cardOffsetY,
@@ -680,9 +724,8 @@ export function buildDataModeAssetNodeStyle(
     fill: getColor(NODE_LABEL_FILL, NODE_LABEL_FILL_FALLBACK),
     textAlign: 'left' as const,
     wordWrap: false,
-    maxWidth: nameMaxTextPx,
+    maxWidth: nameTruncateBudget,
     maxLines: 1,
-    textOverflow: '...',
     background: false,
     padding: [cardPadV, 0, cardPadV, 0],
   };
@@ -690,7 +733,7 @@ export function buildDataModeAssetNodeStyle(
   if (entityIconUrl) {
     const pillLeftEdge = entityCenterX - entityBoxW / 2;
     const entityTextLeft =
-      pillLeftEdge + iconSectionW + DATA_MODE_ENTITY_BADGE_H_PAD;
+      pillLeftEdge + iconSectionW + DATA_MODE_ENTITY_ICON_TEXT_GAP;
     const pillTrimRight = DATA_MODE_ENTITY_PILL_TRIM_RIGHT_PX;
     const entityPillDrawW = Math.max(1, entityBoxW - pillTrimRight);
     const entityPillCenterX = entityCenterX - pillTrimRight / 2;
@@ -764,6 +807,10 @@ export function buildDataModeAssetNodeStyle(
     fontWeight: DATA_MODE_ASSET_LABEL_FONT_WEIGHT,
     fill: getColor(NODE_LABEL_FILL, NODE_LABEL_FILL_FALLBACK),
     textAlign: 'center' as const,
+    wordWrap: false,
+    maxWidth: entityInnerW,
+    maxLines: 1,
+    textOverflow: '...',
     background: true,
     backgroundFill: EDGE_LABEL_BG_STROKE,
     backgroundStroke: DATA_MODE_ENTITY_BADGE_BORDER_FALLBACK,
@@ -771,12 +818,7 @@ export function buildDataModeAssetNodeStyle(
     backgroundRadius: DATA_MODE_ASSET_LABEL_BOX_RADIUS,
     backgroundWidth: entityBoxW,
     backgroundHeight: entityBoxH,
-    padding: [
-      DATA_MODE_ENTITY_BADGE_V_PAD,
-      DATA_MODE_ENTITY_BADGE_H_PAD,
-      DATA_MODE_ENTITY_BADGE_V_PAD,
-      DATA_MODE_ENTITY_BADGE_H_PAD,
-    ],
+    padding: [0, 0, 0, 0],
   };
 
   return {
