@@ -370,8 +370,11 @@ ALTER TABLE mcp_pending_auth_requests
 -- ("synonym" + "seeAlso", etc.) was added between the same two terms, silently
 -- dropping the first relationship. Adding relationType to the PK lets the same
 -- (fromId, toId, RELATED_TO) pair carry one row per relation type.
+-- `IF NOT EXISTS` on `ADD COLUMN` only landed in MySQL 8.0.29; supported 8.0.x
+-- deployments may be older, so use plain ADD COLUMN. SERVER_CHANGE_LOG gates
+-- re-execution at the framework level — same reasoning as the PK swap below.
 ALTER TABLE entity_relationship
-    ADD COLUMN IF NOT EXISTS `relationType` varchar(64) NOT NULL DEFAULT '' AFTER `relation`;
+    ADD COLUMN `relationType` varchar(64) NOT NULL DEFAULT '' AFTER `relation`;
 
 -- Backfill relationType for every glossary-term ↔ glossary-term RELATED_TO row.
 -- Pre-1.13 data has json = NULL (no discriminator existed yet) — those rows MUST
