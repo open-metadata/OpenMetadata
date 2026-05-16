@@ -1113,6 +1113,187 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   }
 
   @Test
+  void patch_addSameRelatedTermWithDifferentRelationTypes(TestNamespace ns) {
+    // Reproduces the bug where adding the same related term with multiple relation types
+    // via separate PATCH calls collapses to a single relation. The entity_relationship row
+    // is keyed on (fromId, toId, relation) without the JSON-encoded relationType, so the
+    // second add UPSERTs over the first one and only the last relationType survives.
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm sourceRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_multi_rel_source"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Source term for multi relation-type test");
+    GlossaryTerm sourceTerm = createEntity(sourceRequest);
+
+    CreateGlossaryTerm relatedRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_multi_rel_target"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Related term referenced with multiple relation types");
+    GlossaryTerm relatedTerm = createEntity(relatedRequest);
+
+    GlossaryTerm v1 = client.glossaryTerms().get(sourceTerm.getId().toString(), "relatedTerms");
+    v1.setRelatedTerms(
+        List.of(
+            new TermRelation()
+                .withTerm(relatedTerm.getEntityReference())
+                .withRelationType("synonym")));
+    patchEntity(v1.getId().toString(), v1);
+
+    GlossaryTerm afterFirstPatch =
+        client.glossaryTerms().get(sourceTerm.getId().toString(), "relatedTerms");
+    assertNotNull(afterFirstPatch.getRelatedTerms());
+    assertEquals(1, afterFirstPatch.getRelatedTerms().size());
+    assertEquals(relatedTerm.getId(), afterFirstPatch.getRelatedTerms().get(0).getTerm().getId());
+    assertEquals("synonym", afterFirstPatch.getRelatedTerms().get(0).getRelationType());
+
+    GlossaryTerm v2 = client.glossaryTerms().get(sourceTerm.getId().toString(), "relatedTerms");
+    List<TermRelation> bothRelations = new ArrayList<>(v2.getRelatedTerms());
+    bothRelations.add(
+        new TermRelation().withTerm(relatedTerm.getEntityReference()).withRelationType("seeAlso"));
+    v2.setRelatedTerms(bothRelations);
+    patchEntity(v2.getId().toString(), v2);
+
+    GlossaryTerm afterSecondPatch =
+        client.glossaryTerms().get(sourceTerm.getId().toString(), "relatedTerms");
+    assertNotNull(afterSecondPatch.getRelatedTerms());
+
+    List<String> relationTypesForRelatedTerm =
+        afterSecondPatch.getRelatedTerms().stream()
+            .filter(tr -> tr.getTerm() != null && relatedTerm.getId().equals(tr.getTerm().getId()))
+            .map(TermRelation::getRelationType)
+            .sorted()
+            .toList();
+
+    assertEquals(
+        List.of("seeAlso", "synonym"),
+        relationTypesForRelatedTerm,
+        "Both relation types should be preserved when the same term is added with different "
+            + "relationship types; got "
+            + relationTypesForRelatedTerm);
+    assertEquals(
+        2,
+        afterSecondPatch.getRelatedTerms().size(),
+        "relatedTerms should contain two entries for the same target term, one per relation type");
+  }
+
+  @Test
+  void patch_removeOneRelationTypeKeepsOtherTypeForSameTerm(TestNamespace ns) {
+    // Companion to patch_addSameRelatedTermWithDifferentRelationTypes — verifies the delete path
+    // for the multi-row case. With relationType in the entity_relationship primary key the same
+    // (fromId, toId, RELATED_TO) pair carries one row per type, so the PATCH that drops one type
+    // must delete only that row and leave the other intact.
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm sourceRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_remove_one_source"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Source term for remove-one-relation-type test");
+    GlossaryTerm sourceTerm = createEntity(sourceRequest);
+
+    CreateGlossaryTerm relatedRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_remove_one_target"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Target term reached with two relation types");
+    GlossaryTerm relatedTerm = createEntity(relatedRequest);
+
+    GlossaryTerm withBoth =
+        client.glossaryTerms().get(sourceTerm.getId().toString(), "relatedTerms");
+    withBoth.setRelatedTerms(
+        List.of(
+            new TermRelation()
+                .withTerm(relatedTerm.getEntityReference())
+                .withRelationType("synonym"),
+            new TermRelation()
+                .withTerm(relatedTerm.getEntityReference())
+                .withRelationType("seeAlso")));
+    patchEntity(withBoth.getId().toString(), withBoth);
+
+    GlossaryTerm beforeRemoval =
+        client.glossaryTerms().get(sourceTerm.getId().toString(), "relatedTerms");
+    assertEquals(2, beforeRemoval.getRelatedTerms().size());
+
+    beforeRemoval.setRelatedTerms(
+        beforeRemoval.getRelatedTerms().stream()
+            .filter(tr -> !"synonym".equals(tr.getRelationType()))
+            .toList());
+    patchEntity(beforeRemoval.getId().toString(), beforeRemoval);
+
+    GlossaryTerm afterRemoval =
+        client.glossaryTerms().get(sourceTerm.getId().toString(), "relatedTerms");
+    assertNotNull(afterRemoval.getRelatedTerms());
+
+    List<String> remainingTypes =
+        afterRemoval.getRelatedTerms().stream()
+            .filter(tr -> tr.getTerm() != null && relatedTerm.getId().equals(tr.getTerm().getId()))
+            .map(TermRelation::getRelationType)
+            .toList();
+    assertEquals(
+        List.of("seeAlso"),
+        remainingTypes,
+        "Removing the synonym relation must leave seeAlso intact; got " + remainingTypes);
+  }
+
+  @Test
+  void hardDeletingTaggedTable_clearsGlossaryTermUsage(TestNamespace ns) {
+    // Tag a Table with a GlossaryTerm, hard-delete the Table, and verify the term's
+    // usageCount drops back to zero. Glossary tags on entities live in tag_usage (not
+    // entity_relationship), but this exercises the cleanup branch that runs alongside
+    // the entity_relationship cascade — we want to be sure neither path was disturbed
+    // by the relationType PK change.
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm termRequest =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_usage_cleanup"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term applied to a table for usage-cleanup verification");
+    GlossaryTerm term = createEntity(termRequest);
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable tableRequest = new CreateTable();
+    tableRequest.setName(ns.prefix("usage_cleanup_table"));
+    tableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    tableRequest.setColumns(
+        List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+    tableRequest.setTags(
+        List.of(
+            new TagLabel()
+                .withTagFQN(term.getFullyQualifiedName())
+                .withSource(TagLabel.TagSource.GLOSSARY)
+                .withLabelType(TagLabel.LabelType.MANUAL)));
+    Table table = client.tables().create(tableRequest);
+    assertNotNull(table.getTags());
+    assertEquals(1, table.getTags().size());
+
+    GlossaryTerm beforeDelete = client.glossaryTerms().get(term.getId().toString(), "usageCount");
+    assertEquals(
+        Integer.valueOf(1),
+        beforeDelete.getUsageCount(),
+        "Glossary term usageCount should be 1 while the tagged table exists");
+
+    java.util.Map<String, String> params = new java.util.HashMap<>();
+    params.put("hardDelete", "true");
+    params.put("recursive", "true");
+    client.tables().delete(table.getId().toString(), params);
+
+    GlossaryTerm afterDelete = client.glossaryTerms().get(term.getId().toString(), "usageCount");
+    assertEquals(
+        Integer.valueOf(0),
+        afterDelete.getUsageCount(),
+        "Glossary term usageCount should drop to 0 after the tagged table is hard-deleted");
+  }
+
+  @Test
   void test_glossaryTermInheritsGlossaryOwner(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
