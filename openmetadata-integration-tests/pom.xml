@@ -215,7 +215,7 @@
     <dependency>
       <groupId>org.apache.jena</groupId>
       <artifactId>jena-core</artifactId>
-      <version>5.0.0</version>
+      <version>6.1.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
