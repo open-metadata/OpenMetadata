@@ -241,7 +241,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["databricks-sdk"],
         VERSIONS["databricks-sql-connector"],
         "ndg-httpsclient~=0.5.1",
-        "pyOpenSSL~=24.1.0",
+        "pyOpenSSL>=24.3.0",
         "pyasn1~=0.6.0",
     },
     "datalake-azure": {
