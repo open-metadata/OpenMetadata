@@ -17,9 +17,9 @@ def sev_key(s):
 def load(path):
     try:
         with open(path) as f:
-            return json.load(f)
+            return json.load(f), None
     except Exception as e:
-        return {"_error": str(e)}
+        return None, str(e)
 
 
 def iter_projects(data):
@@ -114,9 +114,9 @@ def main():
         return
     for path in files:
         name = os.path.basename(path).replace(".json", "")
-        data = load(path)
-        if "_error" in data:
-            print(f"\n### ⚠️ {name}\nFailed to parse: {data['_error']}\n")
+        data, err = load(path)
+        if err is not None:
+            print(f"\n### ⚠️ {name}\nFailed to parse: {err}\n")
             continue
         if isinstance(data, dict) and "runs" in data:
             render_code(name, data)
