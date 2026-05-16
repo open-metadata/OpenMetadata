@@ -124,30 +124,6 @@ jobs:
                   print()
           EOF
 
-      - name: Slack on Failure
-        if: steps.retire-scan.outcome == 'failure'
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
-          payload: |
-            {
-              "text": "🚨 Vulnerability scan failed on branch `${{ github.ref_name }}`, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>. 🚨"
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-
-      - name: Slack on Success
-        if: steps.retire-scan.outcome == 'success'
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
-          payload: |
-            {
-              "text": "🟢 Vulnerability scan passed for OpenMetadata Repo on branch `${{ github.ref_name }}`, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-
       - name: Force failure on vulnerabilities found
         if: steps.retire-scan.outcome == 'failure'
         run: exit 1
@@ -257,3 +233,32 @@ jobs:
         if: steps.maven-build.outcome != 'success' || steps.security-report.outcome != 'success'
         run: |
           exit 1
+
+  notify:
+    runs-on: ubuntu-latest
+    environment: security-scan
+    needs: [vulnerability-scan, security-scan]
+    if: always()
+    steps:
+      - name: Build notification message
+        id: build
+        run: |
+          retire="${{ needs.vulnerability-scan.result }}"
+          snyk="${{ needs.security-scan.result }}"
+          if [ "$retire" = "success" ]; then retire_icon="✅"; elif [ "$retire" = "cancelled" ]; then retire_icon="⚠️ (cancelled)"; else retire_icon="❌"; fi
+          if [ "$snyk" = "success" ]; then snyk_icon="✅"; elif [ "$snyk" = "cancelled" ]; then snyk_icon="⚠️ (cancelled)"; else snyk_icon="❌"; fi
+          if [ "$retire" = "success" ] && [ "$snyk" = "success" ]; then icon="🟢"; elif [ "$retire" = "cancelled" ] || [ "$snyk" = "cancelled" ]; then icon="⚠️"; else icon="🚨"; fi
+          echo "icon=$icon" >> $GITHUB_OUTPUT
+          echo "retire_icon=$retire_icon" >> $GITHUB_OUTPUT
+          echo "snyk_icon=$snyk_icon" >> $GITHUB_OUTPUT
+
+      - name: Send Slack Notification
+        uses: slackapi/slack-github-action@v1.27.1
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
+          payload: |
+            {
+              "text": "${{ steps.build.outputs.icon }} Security scan for OpenMetadata Repo on branch `${{ github.ref_name }}` — Vulnerability scan: ${{ steps.build.outputs.retire_icon }} | Security scan: ${{ steps.build.outputs.snyk_icon }}. Check <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
