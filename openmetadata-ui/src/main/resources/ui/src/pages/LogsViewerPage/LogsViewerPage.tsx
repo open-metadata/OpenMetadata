@@ -51,6 +51,7 @@ import { PipelineType } from '../../generated/api/services/ingestionPipelines/cr
 import { App, AppScheduleClass } from '../../generated/entity/applications/app';
 import {
   IngestionPipeline,
+  PipelineState,
   PipelineStatus,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Include } from '../../generated/type/include';
@@ -65,6 +66,7 @@ import {
 import {
   getIngestionPipelineByFqn,
   getIngestionPipelineLogById,
+  subscribeIngestionPipelineLogs,
 } from '../../rest/ingestionPipelineAPI';
 import { ExtraInfoLabel } from '../../utils/DataAssetsHeader.utils';
 import {
@@ -99,6 +101,7 @@ const LogsViewerPage = () => {
   const [paging, setPaging] = useState<Paging>();
   const [isLogsLoading, setIsLogsLoading] = useState(true);
   const lazyLogRef = useRef<LazyLog>(null);
+  const sseRef = useRef<EventSource | null>(null);
 
   const isApplicationType = useMemo(
     () => logEntityType === GlobalSettingOptions.APPLICATIONS,
@@ -525,6 +528,56 @@ const LogsViewerPage = () => {
       fetchIngestionDetailsByName();
     }
   }, [runId]);
+
+  // Live tail: subscribe to the log-server SSE stream while the latest run is
+  // active. Cursor pagination keeps doing its thing in the background — SSE
+  // just appends fresher lines as they arrive so the user doesn't have to
+  // scroll-to-bottom-to-refresh every few seconds.
+  useEffect(() => {
+    if (isApplicationType || !ingestionDetails) {
+      return;
+    }
+    const fqn = ingestionDetails.fullyQualifiedName;
+    const latestStatus = ingestionDetails.pipelineStatuses;
+    const activeRunId = runId ?? latestStatus?.runId;
+    const isActive =
+      latestStatus?.pipelineState === PipelineState.Running ||
+      latestStatus?.pipelineState === PipelineState.Queued;
+
+    if (!fqn || !activeRunId || !isActive) {
+      return;
+    }
+
+    const es = subscribeIngestionPipelineLogs(fqn, activeRunId);
+    if (!es) {
+      return;
+    }
+    sseRef.current = es;
+
+    const append = (chunk: string) => {
+      if (!chunk) {
+        return;
+      }
+      // The log-server sends each line as one `data:` event (the spec joins
+      // multi-line values with embedded \n, which is exactly the shape LazyLog
+      // wants in its `text` prop).
+      setLogs((prev) => (prev.endsWith('\n') || !prev ? prev + chunk + '\n' : prev + '\n' + chunk));
+    };
+
+    es.addEventListener('backfill', (e: MessageEvent) => append(e.data));
+    es.onmessage = (e: MessageEvent) => append(e.data);
+    es.addEventListener('close', () => es.close());
+    es.onerror = () => {
+      // Fail open: SSE may be unavailable (no log-server, network blip).
+      // Cursor pagination continues to work as before — just no live tail.
+      es.close();
+    };
+
+    return () => {
+      es.close();
+      sseRef.current = null;
+    };
+  }, [ingestionDetails, runId, isApplicationType]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.log-viewer')}>
