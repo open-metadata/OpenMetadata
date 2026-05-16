@@ -373,16 +373,19 @@ ALTER TABLE mcp_pending_auth_requests
 ALTER TABLE entity_relationship
     ADD COLUMN IF NOT EXISTS `relationType` varchar(64) NOT NULL DEFAULT '' AFTER `relation`;
 
--- Backfill relationType for existing glossary-term ↔ glossary-term relations
--- by extracting the discriminator from the json column. relation=15 is the
--- ordinal of Relationship.RELATED_TO (see openmetadata-spec entityRelationship.json).
+-- Backfill relationType for every glossary-term ↔ glossary-term RELATED_TO row.
+-- Pre-1.13 data has json = NULL (no discriminator existed yet) — those rows MUST
+-- collapse onto 'relatedTo' so that a subsequent insert of the same logical
+-- relation matches the existing row instead of creating a duplicate under a
+-- different PK. relation=15 is the ordinal of Relationship.RELATED_TO (see
+-- openmetadata-spec entityRelationship.json). 'relatedTo' is the default
+-- relation type that the application code uses when none is specified.
 UPDATE entity_relationship
-SET relationType = JSON_UNQUOTE(JSON_EXTRACT(json, '$.relationType'))
+SET relationType =
+    COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(json, '$.relationType')), ''), 'relatedTo')
 WHERE fromEntity = 'glossaryTerm'
   AND toEntity = 'glossaryTerm'
-  AND relation = 15
-  AND json IS NOT NULL
-  AND JSON_EXTRACT(json, '$.relationType') IS NOT NULL;
+  AND relation = 15;
 
 ALTER TABLE entity_relationship
     DROP PRIMARY KEY,
