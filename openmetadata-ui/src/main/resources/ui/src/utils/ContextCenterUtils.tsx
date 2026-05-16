@@ -171,17 +171,24 @@ export const createArticleKnowledgePage = async (
 };
 
 export const handleAssetDownload = async (file: DocFile) => {
+  let url: string | undefined;
+  let element: HTMLAnchorElement | undefined;
+
   try {
     const blob = await downloadAsset(file.id);
-    const url = URL.createObjectURL(blob);
-    const element = document.createElement('a');
+    url = URL.createObjectURL(blob);
+    element = document.createElement('a');
     element.href = url;
     element.download = file.name;
     document.body.appendChild(element);
     element.click();
-    element.remove();
-    URL.revokeObjectURL(url);
   } catch (err) {
     showErrorToast(err as AxiosError);
+  } finally {
+    element?.remove();
+
+    if (url) {
+      URL.revokeObjectURL(url);
+    }
   }
 };

@@ -45,10 +45,12 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [sizeError, setSizeError] = useState('');
   const uploadedAssetsRef = useRef<Asset[]>([]);
+  const cancelledRef = useRef(false);
 
   const hasStartedUploading = queuedFiles.length > 0;
 
   const handleClose = () => {
+    cancelledRef.current = true;
     uploadedAssetsRef.current = [];
     setStagedFiles([]);
     setQueuedFiles([]);
@@ -87,7 +89,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   const handleDropFiles = (files: FileList) => {
     const newEntries: StagedFile[] = Array.from(files).map((file) => ({
       file,
-      id: `${file.name}-${file.size}-${Date.now()}`,
+      id: crypto.randomUUID(),
     }));
 
     setStagedFiles((prev) => [...prev, ...newEntries]);
@@ -127,6 +129,8 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
       return;
     }
 
+    cancelledRef.current = false;
+
     const newQueued: QueuedFile[] = stagedFiles.map(({ id, file }) => ({
       file,
       id,
@@ -140,16 +144,22 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
 
     const batchAssets: Asset[] = [];
     for (const entry of newQueued) {
+      if (cancelledRef.current) {
+        break;
+      }
+
       const asset = await uploadSingleFile(entry);
       if (asset) {
         batchAssets.push(asset);
       }
     }
 
-    setIsUploading(false);
+    if (!cancelledRef.current) {
+      setIsUploading(false);
 
-    if (batchAssets.length > 0) {
-      onUploaded?.(batchAssets);
+      if (batchAssets.length > 0) {
+        onUploaded?.(batchAssets);
+      }
     }
   };
 

@@ -165,10 +165,17 @@ const makeFileList = (...files: File[]): FileList => {
 };
 
 describe('UploadDocumentModal', () => {
+  let uuidCounter = 0;
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockOnDropFiles = undefined;
     mockOnSizeLimitExceed = undefined;
+    uuidCounter = 0;
+    Object.defineProperty(globalThis, 'crypto', {
+      value: { randomUUID: () => `test-uuid-${++uuidCounter}` },
+      configurable: true,
+    });
   });
 
   it('renders the modal when isOpen is true', () => {
