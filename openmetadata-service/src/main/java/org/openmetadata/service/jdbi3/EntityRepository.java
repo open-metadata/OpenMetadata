@@ -4543,11 +4543,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Mark the entity as not-found in the negative cache. Without this, a concurrent reader
     // racing the deletion can re-populate Guava L1 / Redis between our invalidate() calls
     // from the still-visible DB row (the loader fetches it just before the commit lands).
-    // The marker forces the next read down the negative-cache short-circuit even if a stale
-    // L1 entry exists — see find()/findByName() where isMarkedNotFound* is consulted on L1
-    // miss. Marker TTL (notFoundTtlSeconds, default 30 s) is more than enough to outlast
-    // the request window; recreate-with-same-id paths clear it via
-    // CacheBundle.invalidateEntity() in postCreate.
+    // The marker short-circuits the read path on the L1-miss branch — see find()/findByName()
+    // where isMarkedNotFound* is consulted after CACHE_WITH_*.getIfPresent() returns null —
+    // so once the next read misses L1 (because the post-commit invalidate above cleared it),
+    // the loader is skipped and we throw EntityNotFoundException directly. A stale L1 entry
+    // that survives the two invalidate passes is NOT caught by this marker (getIfPresent
+    // returns it before the loader/negative-cache path runs); the second invalidate makes
+    // that case rare in practice, and it expires within the L1 TTL. Marker TTL
+    // (notFoundTtlSeconds, default 30 s) outlasts any in-flight request window;
+    // recreate-with-same-id paths clear the marker via CacheBundle.invalidateEntity() in
+    // postCreate.
     markEntityNotFound(entityInterface);
   }
 
