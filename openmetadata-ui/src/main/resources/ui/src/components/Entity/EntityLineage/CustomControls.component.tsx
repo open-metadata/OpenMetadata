@@ -426,7 +426,7 @@ const CustomControls: FC<{
             <Tabs
               selectedKey={activeTab}
               onSelectionChange={(key) => handleTabChange(key as string)}>
-              <Tabs.List size="sm" type="button-brand">
+              <Tabs.List size="sm" type="button-border">
                 <Tabs.Item id="lineage" key="lineage">
                   {t('label.lineage')}
                 </Tabs.Item>
