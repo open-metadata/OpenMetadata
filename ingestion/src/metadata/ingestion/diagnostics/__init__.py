@@ -81,6 +81,7 @@ class _DiagnosticsState:
         heartbeat: Any,
         signals_installed: bool,
         db_introspector: Any,
+        time_sampler: Any,
     ) -> None:
         self.registry = registry
         self.http_tracker = http_tracker
@@ -89,6 +90,7 @@ class _DiagnosticsState:
         self.heartbeat = heartbeat
         self.signals_installed = signals_installed
         self.db_introspector = db_introspector
+        self.time_sampler = time_sampler
 
 
 def is_active() -> bool:
@@ -140,6 +142,7 @@ def install(workflow: Any) -> bool:
         from metadata.ingestion.diagnostics.memory import MemoryTracker  # noqa: PLC0415
         from metadata.ingestion.diagnostics.registry import OperationRegistry  # noqa: PLC0415
         from metadata.ingestion.diagnostics.signals import install_signal_handlers  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.time_accounting import TimeAccountingSampler  # noqa: PLC0415
         from metadata.ingestion.diagnostics.watchdog import WatchdogThread  # noqa: PLC0415
 
         registry = OperationRegistry()
@@ -148,6 +151,8 @@ def install(workflow: Any) -> bool:
         _stage_progress.install(_stage_progress.StageProgressCollector())
         db_introspector = DbIntrospector(registry)
         db_introspector.install()
+        time_sampler = TimeAccountingSampler(registry)
+        time_sampler.start()
 
         signals_installed = install_signal_handlers(
             registry=registry,
@@ -180,6 +185,7 @@ def install(workflow: Any) -> bool:
             heartbeat=heartbeat,
             signals_installed=signals_installed,
             db_introspector=db_introspector,
+            time_sampler=time_sampler,
         )
     except Exception as exc:
         # Diagnostics must never break the workflow it is monitoring.
@@ -202,7 +208,12 @@ def shutdown() -> None:
     if state is None:
         return
     _state = None
-    for thread in (state.watchdog, state.heartbeat):
+    # Emit the time-budget summary BEFORE stopping the sampler — gives
+    # the operator one line in `kubectl logs` / S3 explaining where the
+    # workflow actually spent its wall clock.
+    with suppress(Exception):
+        emit_log(logging.INFO, state.time_sampler.summary_log_line())
+    for thread in (state.watchdog, state.heartbeat, state.time_sampler):
         with suppress(Exception):
             thread.stop()
     with suppress(Exception):
