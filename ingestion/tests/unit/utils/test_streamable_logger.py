@@ -777,6 +777,71 @@ class TestClientPostBestEffort(unittest.TestCase):
 
         self.assertTrue(client.post_best_effort("/path", data="x"))
 
+    def test_build_request_headers_does_not_refresh_token(self):
+        """Regression for PR #28198 review finding #1.
+
+        The streamable handler's sender thread MUST NOT race the main
+        ingestion thread on token refresh. _build_request_headers reads
+        config.access_token; it never invokes _auth_token() or mutates
+        config.expires_in. Token refresh is owned exclusively by the
+        main client's _request() path.
+        """
+        client = self._make_client()
+        # Track whether the auth_token callable is invoked.
+        client._auth_token = Mock(return_value=("fresh-token", 60))
+        # Make the config look like a refresh is needed.
+        client.config.expires_in = 0  # expired
+        client.config.access_token = "stale-token"
+        client.config.auth_header = "Authorization"
+
+        headers = client._build_request_headers()
+
+        # auth_token() must NOT have been called — refresh is the main
+        # thread's job, this is just a reader.
+        client._auth_token.assert_not_called()
+        # Header reads from whatever access_token is currently set.
+        self.assertEqual(headers["Authorization"], "Bearer stale-token")
+        # expires_in must not have been mutated.
+        self.assertEqual(client.config.expires_in, 0)
+
+
+class TestCloseOrderingRegression(unittest.TestCase):
+    """Regression for PR #28198 review finding #2.
+
+    close() must enqueue remaining batches + the CLOSE_MARKER BEFORE
+    setting the stop event. Otherwise the sender's get(timeout=1s) can
+    return Empty in the narrow window between set() and enqueue, see
+    _stop, and exit without ever processing the marker — meaning /close
+    is silently lost under light load."""
+
+    def test_close_enqueues_marker_before_setting_stop(self):
+        metadata = _make_metadata_mock()
+        handler = _make_handler(metadata=metadata, enable_streaming=True)
+        handler.close()
+        # Marker must be drained by the sender, which then calls
+        # send_close_best_effort. Wait briefly.
+        for _ in range(50):
+            if metadata.send_close_best_effort.called:
+                break
+            time.sleep(0.05)
+        metadata.send_close_best_effort.assert_called_once()
+
+    def test_close_marker_arrives_even_when_sender_was_idle(self):
+        """Light-load scenario that triggers the original race: sender
+        is sitting in get(timeout=1s) with an empty queue when close()
+        fires. If _stop.set() runs before put_nowait, the sender exits
+        on the Empty/stop check and the marker is never processed."""
+        metadata = _make_metadata_mock()
+        handler = _make_handler(metadata=metadata, enable_streaming=True)
+        # Let the sender enter its get() and wait.
+        time.sleep(0.2)
+        handler.close()
+        for _ in range(50):
+            if metadata.send_close_best_effort.called:
+                break
+            time.sleep(0.05)
+        metadata.send_close_best_effort.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

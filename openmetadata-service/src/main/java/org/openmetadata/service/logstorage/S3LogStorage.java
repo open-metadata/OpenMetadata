@@ -864,7 +864,7 @@ public class S3LogStorage implements LogStorageInterface {
    * would permanently disable partial.txt flushing for the lifetime of the JVM,
    * which is exactly the silent-stall failure mode we shipped this PR to prevent.
    */
-  Runnable safeScheduledTask(String name, Runnable task) {
+  private Runnable safeScheduledTask(String name, Runnable task) {
     return () -> {
       try {
         task.run();

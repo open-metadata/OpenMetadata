@@ -256,12 +256,20 @@ class StreamableLogHandler(logging.Handler):
         if self._closed:
             return
         self._closed = True
-        self._stop.set()
 
         if self.enable_streaming:
             self._drain_remaining_buffer()
             with contextlib.suppress(Full):
                 self._send_queue.put_nowait(_CLOSE_MARKER)
+
+        # Signal stop AFTER the remaining batches and CLOSE_MARKER are
+        # in the send queue. The sender's loop checks _stop only on an
+        # Empty timeout; setting stop first creates a race where the
+        # sender's in-flight get(timeout=1s) returns Empty in the narrow
+        # window between set() and enqueue, exits, and never processes
+        # either the remaining batches or the CLOSE_MARKER. Enqueue first,
+        # then set — preserves the ordering guarantee in docstring point 7.
+        self._stop.set()
 
         with contextlib.suppress(Exception):
             self.fallback_handler.close()

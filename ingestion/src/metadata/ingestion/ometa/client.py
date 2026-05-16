@@ -395,27 +395,19 @@ class REST:
         return 200 <= resp.status_code < 300
 
     def _build_request_headers(self, headers=None):
-        """Build headers + auth + extra_headers for an outgoing request.
+        """Build headers for an outgoing request — auth + extra_headers.
 
-        Mirrors what _request() does inline so post_best_effort() and any
-        future quiet path can reuse the same auth/extras pipeline without
-        going through the retry/log machinery.
+        Deliberately does NOT refresh the auth token. The streamable log
+        handler shares ClientConfig with the main metadata client (so
+        token refreshes done by the main client are visible here), but
+        the sender daemon thread MUST NOT also refresh — concurrent
+        _auth_token() calls from two threads can double-refresh against
+        rate-limited or single-use refresh tokens, and introduces a
+        TOCTOU on config.expires_in. Reads only.
         """
         if not headers:
             headers = {"Content-type": "application/json"}
-        if (
-            self.config.expires_in  # noqa: RUF021
-            and datetime.now(timezone.utc).timestamp() >= self.config.expires_in
-            or not self.config.access_token  # noqa: RUF021
-            and self._auth_token
-        ):
-            self.config.access_token, expiry = self._auth_token()
-            if not self.config.access_token == "no_token":  # noqa: SIM201
-                if isinstance(expiry, datetime):
-                    self.config.expires_in = expiry.timestamp() - 120
-                else:
-                    self.config.expires_in = datetime.now(timezone.utc).timestamp() + expiry - 120
-        if self.config.auth_header:
+        if self.config.auth_header and self.config.access_token:
             headers[self.config.auth_header] = (
                 f"{self._auth_token_mode} {self.config.access_token}"
                 if self._auth_token_mode
