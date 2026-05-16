@@ -14,6 +14,7 @@
 package org.openmetadata.service.apps.bundles.rdf;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -208,18 +209,38 @@ public class RdfBatchProcessor {
         }
       }
 
-      if (!allRelationships.isEmpty()) {
-        try {
-          rdfRepository.bulkAddRelationships(allRelationships);
-        } catch (Exception e) {
-          LOG.error(
-              "Failed to bulk add {} relationships for entity type {}",
-              allRelationships.size(),
-              entityType,
-              e);
-          failures += allRelationships.size();
-          lastError = describeBulkError(entityType, "bulkRelationships", e);
-        }
+      // Reconcile EVERY entity in the batch — not just those with current
+      // outgoing relationships. An entity whose last outgoing relationship was
+      // removed in MySQL contributes zero RelationshipData entries to
+      // allRelationships; we pass it explicitly via batchSources so
+      // bulkAddRelationships' per-source DELETE still fires for it.
+      //
+      // The clear+insert run in a SINGLE SPARQL update inside
+      // JenaFusekiStorage.bulkStoreRelationships, so the operation is atomic
+      // at the Fuseki side — a transient error can't leave the graph wiped
+      // without the replacement edges in place. (Previously the clear ran in
+      // a separate call to clearOutgoingEntityRelationships; if the
+      // subsequent bulkAdd failed, batch sources lost their relationships
+      // until the next weekly recreate-index.)
+      Set<RdfRepository.EntitySourceRef> batchSources = new HashSet<>();
+      for (EntityInterface entity : entities) {
+        batchSources.add(new RdfRepository.EntitySourceRef(entityType, entity.getId()));
+      }
+      try {
+        // Pass batchSources so bulkStoreRelationships only reconciles edges
+        // for entities IN this batch. Incoming-lineage rows can carry source
+        // IDs that are outside the batch (the `from` of an UPSTREAM edge
+        // where this batch's entity is the `to`); reconciling those would
+        // wipe the outside-batch entity's unrelated outgoing edges.
+        rdfRepository.bulkAddRelationships(allRelationships, batchSources);
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to bulk add {} relationships for entity type {}",
+            allRelationships.size(),
+            entityType,
+            e);
+        failures += allRelationships.size();
+        lastError = describeBulkError(entityType, "bulkRelationships", e);
       }
     } catch (Exception e) {
       LOG.error("Failed to process batch relationships for entity type {}", entityType, e);
