@@ -164,6 +164,7 @@ def emit_full_dump(
         _emit_op_dump(out, registry)
         _emit_http_dump(out, http_tracker)
         _emit_memory_dump(out, memory_tracker, deep=True)
+        _emit_queues_dump(out)
         _emit_workflow_dump(out, workflow)
     except Exception as exc:
         out.write(f"{DIAG_LOG_PREFIX}.dump.error err={exc!r}\n")
@@ -189,6 +190,7 @@ def emit_incremental_dump(
     _emit_op_dump(out, registry)
     _emit_http_dump(out, http_tracker)
     _emit_memory_dump(out, memory_tracker, deep=False)
+    _emit_queues_dump(out)
     out.write(f"{DIAG_LOG_PREFIX}.dump.end reason=sigusr2\n")
     if signal_safe:
         out.flush()
@@ -266,6 +268,18 @@ def _emit_memory_dump(out, memory_tracker: MemoryTracker, deep: bool) -> None:
         out.write("  top_types:\n")
         for type_name, count in memory_tracker.top_object_types():
             out.write(f"    {type_name:<32} {count}\n")
+
+
+def _emit_queues_dump(out) -> None:
+    """Render inter-stage queue depths + put/processed counters."""
+    from metadata.ingestion.diagnostics import stage_progress  # noqa: PLC0415
+
+    queues = stage_progress.snapshot()
+    if not queues:
+        return
+    out.write(f"{DIAG_LOG_PREFIX}.dump.queues\n")
+    for q in queues:
+        out.write(f"  name={q['name']} depth={q['depth']} put={q['put']} processed={q['processed']}\n")
 
 
 def _emit_workflow_dump(out, workflow: Any) -> None:

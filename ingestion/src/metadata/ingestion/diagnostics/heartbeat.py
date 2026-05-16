@@ -38,6 +38,7 @@ from metadata.ingestion.diagnostics.memory import (
     format_signed_bytes,
 )
 from metadata.ingestion.diagnostics.registry import OperationRegistry
+from metadata.ingestion.diagnostics.stage_progress import format_for_heartbeat
 
 
 class HeartbeatThread(threading.Thread):
@@ -74,6 +75,7 @@ class HeartbeatThread(threading.Thread):
         delta_30s = self._memory_tracker.rss_delta_bytes_since(30.0)
         main_op = self._format_main_op()
         steps_summary = self._format_steps()
+        stage_queues = format_for_heartbeat()
 
         emit_log(
             logging.INFO,
@@ -87,7 +89,8 @@ class HeartbeatThread(threading.Thread):
             f"oom_kills={sample.oom_kill_count if sample.oom_kill_count is not None else '?'} "
             f"active_http={self._http_tracker.active_count()} "
             f"main_op={main_op}"
-            f"{steps_summary}",
+            f"{steps_summary}"
+            f"{stage_queues}",
         )
 
     def _format_main_op(self) -> str:

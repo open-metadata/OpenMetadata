@@ -62,13 +62,23 @@ _state: Optional["_DiagnosticsState"] = None
 class _DiagnosticsState:
     """Holds references to the singletons installed by `install()`."""
 
-    def __init__(self, registry, http_tracker, memory_tracker, watchdog, heartbeat, signals_installed):
+    def __init__(
+        self,
+        registry,
+        http_tracker,
+        memory_tracker,
+        watchdog,
+        heartbeat,
+        signals_installed,
+        db_introspector,
+    ):
         self.registry = registry
         self.http_tracker = http_tracker
         self.memory_tracker = memory_tracker
         self.watchdog = watchdog
         self.heartbeat = heartbeat
         self.signals_installed = signals_installed
+        self.db_introspector = db_introspector
 
 
 def is_active() -> bool:
@@ -113,6 +123,8 @@ def install(workflow: Any) -> bool:
     # Imports are deferred to keep `is_active()` / no-op `operation()` callers
     # from paying the import cost on every workflow start.
     try:
+        from metadata.ingestion.diagnostics import stage_progress as _stage_progress  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.db_introspect import DbIntrospector  # noqa: PLC0415
         from metadata.ingestion.diagnostics.heartbeat import HeartbeatThread  # noqa: PLC0415
         from metadata.ingestion.diagnostics.http_introspect import HttpTracker  # noqa: PLC0415
         from metadata.ingestion.diagnostics.memory import MemoryTracker  # noqa: PLC0415
@@ -123,6 +135,9 @@ def install(workflow: Any) -> bool:
         registry = OperationRegistry()
         http_tracker = HttpTracker()
         memory_tracker = MemoryTracker()
+        _stage_progress.install(_stage_progress.StageProgressCollector())
+        db_introspector = DbIntrospector(registry)
+        db_introspector.install()
 
         signals_installed = install_signal_handlers(
             registry=registry,
@@ -154,6 +169,7 @@ def install(workflow: Any) -> bool:
             watchdog=watchdog,
             heartbeat=heartbeat,
             signals_installed=signals_installed,
+            db_introspector=db_introspector,
         )
     except Exception as exc:
         # Diagnostics must never break the workflow it is monitoring.
@@ -179,6 +195,12 @@ def shutdown() -> None:
     for thread in (state.watchdog, state.heartbeat):
         with suppress(Exception):
             thread.stop()
+    with suppress(Exception):
+        state.db_introspector.uninstall()
+    with suppress(Exception):
+        from metadata.ingestion.diagnostics import stage_progress  # noqa: PLC0415
+
+        stage_progress.uninstall()
 
 
 def dump(reason: str = "manual") -> None:
