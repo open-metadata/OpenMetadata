@@ -28,7 +28,7 @@ jobs:
 
       - name: Add verification comment
         if: steps.verify.outcome != 'success'
-        uses: peter-evans/create-or-update-comment@v1
+        uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
