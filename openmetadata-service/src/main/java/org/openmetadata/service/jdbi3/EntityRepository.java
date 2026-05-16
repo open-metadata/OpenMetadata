@@ -2920,21 +2920,38 @@ public abstract class EntityRepository<T extends EntityInterface> {
    *
    * <p>Publishes pub/sub for each descendant so peer OM instances drop their Guava entries too.
    *
+   * <p>Returns the enumerated {@code (id, oldFqn)} pairs so the caller can pass them to {@link
+   * #finishInvalidateCacheForRenameCascade} once the rename-related DB statements have run —
+   * necessary because a reader landing in the window between this call and the bulk
+   * {@code UPDATE} can repopulate the by-id cache with the still-visible pre-rename row, and
+   * only a second invalidate pass after the DB statement can evict the poisoned entry.
+   *
+   * <p><b>Transactional scope:</b> the existing rename call sites invoke both passes inside the
+   * same {@code @Transaction}-annotated updater, so the {@code finish} pass runs after the bulk
+   * {@code UPDATE} statement(s) but <i>before</i> the surrounding transaction commits. That
+   * closes the wide pre-update window (seconds, dominated by search-index walks) that CI
+   * traced as the failure mode, but a residual race remains: a concurrent reader landing
+   * between the {@code finish} pass and commit can still see the pre-rename row under
+   * READ COMMITTED and repopulate the cache. The window is on the order of milliseconds and
+   * we have no integration failures attributed to it; a true after-commit hook would close it
+   * fully and is tracked as a follow-up.
+   *
    * @param entityType type name (e.g. {@code domain}, {@code dataProduct}, {@code tag})
    * @param oldPrefix fully qualified name prefix the rename is moving away from
    */
-  public static void invalidateCacheForRenameCascade(String entityType, String oldPrefix) {
+  public static List<EntityDAO.EntityIdFqnPair> invalidateCacheForRenameCascade(
+      String entityType, String oldPrefix) {
     if (entityType == null || nullOrEmpty(oldPrefix)) {
-      return;
+      return Collections.emptyList();
     }
     EntityRepository<?> repo;
     try {
       repo = Entity.getEntityRepository(entityType);
     } catch (Exception e) {
-      return;
+      return Collections.emptyList();
     }
     if (repo == null || repo.getDao() == null) {
-      return;
+      return Collections.emptyList();
     }
     List<EntityDAO.EntityIdFqnPair> affected;
     try {
@@ -2945,14 +2962,51 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entityType,
           oldPrefix,
           e);
-      return;
+      return Collections.emptyList();
     }
     if (affected.isEmpty()) {
+      return Collections.emptyList();
+    }
+    dropDescendantCacheEntries(entityType, affected, "rename-cascade");
+    LOG.info(
+        "Invalidated cache for {} descendants of rename cascade: type={} prefix={}",
+        affected.size(),
+        entityType,
+        oldPrefix);
+    return affected;
+  }
+
+  /**
+   * Post-rename-write pair to {@link #invalidateCacheForRenameCascade}. Re-evicts the cached
+   * forms of every descendant captured before the rename — by id and by the old FQN. Closes
+   * the wide race window where a concurrent reader arriving in the seconds between the
+   * pre-invalidate and the bulk rename {@code UPDATE} repopulates the by-id (or by-old-fqn)
+   * cache with the still-visible pre-rename row and pins that staleness for the entity TTL.
+   *
+   * <p>Called inside the same transaction as the rename writes (see {@link
+   * #invalidateCacheForRenameCascade} for the full transactional caveat); the millisecond
+   * window between this pass and commit is still racy but is not the failure mode CI traced.
+   *
+   * <p>Safe to call with an empty or null list (no-op).
+   */
+  public static void finishInvalidateCacheForRenameCascade(
+      String entityType, List<EntityDAO.EntityIdFqnPair> affected) {
+    if (entityType == null || affected == null || affected.isEmpty()) {
       return;
     }
+    dropDescendantCacheEntries(entityType, affected, "rename-cascade-finish");
+    LOG.debug(
+        "Post-rename-write re-invalidated cache for {} descendants: type={}",
+        affected.size(),
+        entityType);
+  }
+
+  private static void dropDescendantCacheEntries(
+      String entityType, List<EntityDAO.EntityIdFqnPair> affected, String reason) {
     var cachedEntityDao = CacheBundle.getCachedEntityDao();
     var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
     var cachedReadBundle = CacheBundle.getCachedReadBundle();
+    var cachedLineage = CacheBundle.getCachedLineage();
     var pubsub = CacheBundle.getCacheInvalidationPubSub();
     for (EntityDAO.EntityIdFqnPair row : affected) {
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, row.id));
@@ -2973,19 +3027,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (cachedReadBundle != null) {
         cachedReadBundle.invalidate(entityType, row.id);
       }
-      var cachedLineage = CacheBundle.getCachedLineage();
       if (cachedLineage != null) {
         cachedLineage.invalidate(row.id);
       }
       if (pubsub != null) {
-        pubsub.publish(entityType, row.id, row.fqn, "rename-cascade");
+        pubsub.publish(entityType, row.id, row.fqn, reason);
       }
     }
-    LOG.info(
-        "Invalidated cache for {} descendants of rename cascade: type={} prefix={}",
-        affected.size(),
-        entityType,
-        oldPrefix);
   }
 
   /**
