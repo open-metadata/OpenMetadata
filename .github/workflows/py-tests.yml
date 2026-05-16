@@ -288,7 +288,7 @@ jobs:
         id: push-to-sonar
         if: ${{ github.event_name == 'pull_request_target'}}
         continue-on-error: true
-        uses: SonarSource/sonarqube-scan-action@v7
+        uses: SonarSource/sonarqube-scan-action@v8
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
@@ -303,7 +303,7 @@ jobs:
         shell: bash
 
       - name: Retry 'Push Results in PR to Sonar'
-        uses: SonarSource/sonarqube-scan-action@v7
+        uses: SonarSource/sonarqube-scan-action@v8
         if: ${{ github.event_name == 'pull_request_target' && steps.push-to-sonar.outcome != 'success' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
