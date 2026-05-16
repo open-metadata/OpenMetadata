@@ -1271,4 +1271,53 @@ class RdfPropertyMapperTest {
       this.aliases = aliases;
     }
   }
+
+  @Nested
+  @DisplayName("TRANSLATOR_MANAGED_DIRECT_PREDICATES coverage")
+  class TranslatorManagedPredicatesTests {
+
+    @Test
+    @DisplayName("Set must contain core direct URI predicates emitted by the translator")
+    void testCoreSetMembership() {
+      // These are emitted by addProvAttribution / addTagLabel / addEntityReference /
+      // the structured-property handlers. If any are removed from the set, downstream
+      // cleanup (JenaFusekiStorage.storeEntity) will leak stale state on entity updates.
+      java.util.Set<String> required =
+          java.util.Set.of(
+              "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+              OM_NS + "hasOwner",
+              PROV_NS + "wasAttributedTo",
+              OM_NS + "hasTag",
+              OM_NS + "hasGlossaryTerm",
+              OM_NS + "hasTier",
+              OM_NS + "belongsToDomain",
+              OM_NS + "hasDataProduct",
+              DCT_NS + "source",
+              OM_NS + "sourceUrl",
+              OM_NS + "hasLifeCycle",
+              OM_NS + "hasCertification",
+              OM_NS + "hasExtension",
+              OM_NS + "hasCustomProperty");
+      for (String pred : required) {
+        assertTrue(
+            RdfPropertyMapper.TRANSLATOR_MANAGED_DIRECT_PREDICATES.contains(pred),
+            "TRANSLATOR_MANAGED_DIRECT_PREDICATES must include " + pred);
+      }
+    }
+
+    @Test
+    @DisplayName("Set must not include hook-managed lineage predicates")
+    void testNoOverlapWithLineageHookPredicates() {
+      // These are written by RdfRepository.addLineageWithDetails — including them here
+      // would let storeEntity wipe lineage edges on every entity update.
+      java.util.Set<String> lineageHookPredicates =
+          java.util.Set.of(
+              OM_NS + "UPSTREAM", PROV_NS + "wasDerivedFrom", OM_NS + "hasLineageDetails");
+      for (String pred : lineageHookPredicates) {
+        assertFalse(
+            RdfPropertyMapper.TRANSLATOR_MANAGED_DIRECT_PREDICATES.contains(pred),
+            "TRANSLATOR_MANAGED_DIRECT_PREDICATES must NOT include hook-managed " + pred);
+      }
+    }
+  }
 }

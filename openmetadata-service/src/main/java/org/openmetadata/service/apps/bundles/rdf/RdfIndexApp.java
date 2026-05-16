@@ -215,6 +215,22 @@ public class RdfIndexApp extends AbstractNativeApplication {
     rdfIndexStats.set(initializeTotalRecords(jobData.getEntities()));
     jobData.setStats(rdfIndexStats.get());
 
+    // bulkAddGlossaryTermRelations has no per-batch DELETE side, so stale
+    // glossary-term relations would accumulate forever across reindex runs.
+    // When recreateIndex=true clearAll() already wipes everything, so we
+    // only need this targeted cleanup on incremental runs.
+    //
+    // Let the failure propagate: clearAllGlossaryTermRelations rethrows on
+    // failure precisely so the indexer can fail loudly instead of silently
+    // marking a job successful while the graph still has stale predicates.
+    // The outer try/catch in execute() will set the run status to FAILED.
+    if (!Boolean.TRUE.equals(jobData.getRecreateIndex())
+        && jobData.getEntities() != null
+        && jobData.getEntities().contains(Entity.GLOSSARY_TERM)) {
+      LOG.info("Clearing existing glossary term relations before re-indexing");
+      rdfRepository.clearAllGlossaryTermRelations();
+    }
+
     if (Boolean.TRUE.equals(jobData.getUseDistributedIndexing())) {
       sendUpdates(jobExecutionContext, true);
       return;
@@ -242,6 +258,10 @@ public class RdfIndexApp extends AbstractNativeApplication {
     try {
       rdfRepository.clearAll();
       LOG.info("Cleared all RDF data");
+      // CLEAR ALL wipes the ontology and shapes graphs as well; reload them
+      // before indexing starts so SPARQL queries that depend on the ontology
+      // (inference, federated, etc.) work after the wipe.
+      rdfRepository.reloadOntologies();
     } catch (Exception e) {
       LOG.error("Failed to clear RDF data", e);
       throw new RuntimeException("Failed to clear RDF data", e);

@@ -56,13 +56,27 @@ const GlobalSettingCategoryPage = () => {
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(() => {
     const crumbs = getSettingPageEntityBreadCrumb(settingCategory);
     if (isEmbedded) {
-      return crumbs.map((crumb, i) =>
-        i === 0 ? { ...crumb, url: '' } : crumb
-      );
+      const categoryName = crumbs[crumbs.length - 1]?.name ?? '';
+
+      return [
+        {
+          name: t('label.ask-collate'),
+          url: '/askCollate',
+        },
+        {
+          name: t('label.connection-plural'),
+          url: '/askCollate/connections',
+        },
+        {
+          name: categoryName,
+          url: '',
+          activeTitle: true,
+        },
+      ];
     }
 
     return crumbs;
-  }, [settingCategory, isEmbedded]);
+  }, [settingCategory, isEmbedded, t]);
 
   const settingCategoryData: SettingMenuItem | undefined = useMemo(() => {
     let categoryItem = globalSettingsClassBase
