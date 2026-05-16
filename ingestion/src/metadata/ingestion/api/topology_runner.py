@@ -18,9 +18,7 @@ import time
 import traceback
 from functools import singledispatchmethod
 from time import perf_counter
-from typing import Any, Generic, Iterable, List, Optional, TypeVar  # noqa: UP035
-
-from pydantic import BaseModel
+from typing import Any, Generic, Iterable, List, Optional, TypeVar, cast  # noqa: UP035
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -28,6 +26,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 )
 from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.models.custom_properties import OMetaCustomProperties
+from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
@@ -395,9 +394,9 @@ class TopologyRunnerMixin(Generic[C]):
             )
 
         # Stamp the source hash so the server-side bulk endpoint can skip unchanged entities.
-        if hasattr(entity_request.right, "sourceHash"):
+        if entity_request.right is not None and hasattr(entity_request.right, "sourceHash"):
             entity_request.right.sourceHash = generate_source_hash(
-                create_request=entity_request.right,
+                create_request=cast("BaseModel", entity_request.right),
             )
 
         # When the entity is not already present (or is overwritable) we yield the request to

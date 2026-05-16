@@ -800,7 +800,7 @@ class OpenMetadata(
                 )
                 return None
             raise
-        return BulkOperationResult(**resp) if resp else None
+        return BulkOperationResult.model_validate(resp) if resp else None
 
     def restore(
         self,
