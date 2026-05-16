@@ -363,3 +363,27 @@ ALTER TABLE search_index_server_stats
 -- avoid INSERT failures on /mcp/authorize redirects.
 ALTER TABLE mcp_pending_auth_requests
     MODIFY COLUMN mcp_state TEXT;
+
+-- Allow multiple typed relations between the same pair of glossary terms.
+-- The previous PRIMARY KEY (fromId, toId, relation) caused INSERT ... ON DUPLICATE
+-- KEY UPDATE to overwrite the json discriminator when a second relationType
+-- ("synonym" + "seeAlso", etc.) was added between the same two terms, silently
+-- dropping the first relationship. Adding relationType to the PK lets the same
+-- (fromId, toId, RELATED_TO) pair carry one row per relation type.
+ALTER TABLE entity_relationship
+    ADD COLUMN IF NOT EXISTS `relationType` varchar(64) NOT NULL DEFAULT '' AFTER `relation`;
+
+-- Backfill relationType for existing glossary-term ↔ glossary-term relations
+-- by extracting the discriminator from the json column. relation=15 is the
+-- ordinal of Relationship.RELATED_TO (see openmetadata-spec entityRelationship.json).
+UPDATE entity_relationship
+SET relationType = JSON_UNQUOTE(JSON_EXTRACT(json, '$.relationType'))
+WHERE fromEntity = 'glossaryTerm'
+  AND toEntity = 'glossaryTerm'
+  AND relation = 15
+  AND json IS NOT NULL
+  AND JSON_EXTRACT(json, '$.relationType') IS NOT NULL;
+
+ALTER TABLE entity_relationship
+    DROP PRIMARY KEY,
+    ADD PRIMARY KEY (`fromId`, `toId`, `relation`, `relationType`);

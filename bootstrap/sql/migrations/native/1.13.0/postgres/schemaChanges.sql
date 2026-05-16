@@ -511,3 +511,27 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_worksheet_entity_fqnhash_pattern
 -- avoid INSERT failures on /mcp/authorize redirects.
 ALTER TABLE mcp_pending_auth_requests
     ALTER COLUMN mcp_state TYPE TEXT;
+
+-- Allow multiple typed relations between the same pair of glossary terms.
+-- The previous PRIMARY KEY (fromId, toId, relation) caused INSERT ... ON CONFLICT
+-- DO UPDATE to overwrite the json discriminator when a second relationType
+-- ("synonym" + "seeAlso", etc.) was added between the same two terms, silently
+-- dropping the first relationship. Adding relationType to the PK lets the same
+-- (fromId, toId, RELATED_TO) pair carry one row per relation type.
+ALTER TABLE entity_relationship
+    ADD COLUMN IF NOT EXISTS relationType character varying(64) DEFAULT ''::character varying NOT NULL;
+
+-- Backfill relationType for existing glossary-term ↔ glossary-term relations
+-- by extracting the discriminator from the json column. relation=15 is the
+-- ordinal of Relationship.RELATED_TO (see openmetadata-spec entityRelationship.json).
+UPDATE entity_relationship
+SET relationType = json->>'relationType'
+WHERE fromEntity = 'glossaryTerm'
+  AND toEntity = 'glossaryTerm'
+  AND relation = 15
+  AND json IS NOT NULL
+  AND json->>'relationType' IS NOT NULL;
+
+ALTER TABLE entity_relationship DROP CONSTRAINT IF EXISTS entity_relationship_pkey;
+ALTER TABLE entity_relationship
+    ADD CONSTRAINT entity_relationship_pkey PRIMARY KEY (fromId, toId, relation, relationType);
