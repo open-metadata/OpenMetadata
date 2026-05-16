@@ -1545,6 +1545,13 @@ public interface CollectionDAO {
     List<ExtensionRecord> getExtensions(
         @BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
 
+    @RegisterRowMapper(ExtensionMapper.class)
+    @SqlQuery(
+        "SELECT extension, json FROM entity_extension WHERE id = :id AND jsonschema = :jsonSchema "
+            + "ORDER BY extension")
+    List<ExtensionRecord> getExtensionsByJsonSchema(
+        @BindUUID("id") UUID id, @Bind("jsonSchema") String jsonSchema);
+
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
@@ -4311,6 +4318,20 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE FROM task_entity " + "WHERE createdById = :createdById AND category = :category")
     void deleteByCreatorAndCategory(
+        @Bind("createdById") String createdById, @Bind("category") String category);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, json_unquote(json_extract(json, '$.fullyQualifiedName')) AS fqn "
+                + "FROM task_entity WHERE createdById = :createdById AND category = :category",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, json->>'fullyQualifiedName' AS fqn "
+                + "FROM task_entity WHERE createdById = :createdById AND category = :category",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(EntityDAO.EntityIdFqnPairMapper.class)
+    List<EntityDAO.EntityIdFqnPair> listIdAndFqnByCreatorAndCategory(
         @Bind("createdById") String createdById, @Bind("category") String category);
 
     @RegisterRowMapper(TaskCountSummaryMapper.class)
@@ -9489,6 +9510,16 @@ public interface CollectionDAO {
         @Bind("startTime") long startTime,
         @Bind("extension") String extension);
 
+    @SqlQuery(
+        "SELECT json FROM apps_extension_time_series where appName = :appName AND extension = :extension AND timestamp >= :startTime AND timestamp < :endTime ORDER BY timestamp ASC LIMIT :limit OFFSET :offset")
+    List<String> listAppExtensionInWindowByName(
+        @Bind("appName") String appName,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset,
+        @Bind("startTime") long startTime,
+        @Bind("endTime") long endTime,
+        @Bind("extension") String extension);
+
     default List<String> listAppExtensionAfterTime(
         String appId, int limit, int offset, long startTime, String extension) {
       return listAppExtensionAfterTime(appId, limit, offset, startTime, extension, null);
@@ -9540,7 +9571,8 @@ public interface CollectionDAO {
             + "  GROUP BY entityFQNHash"
             + ") latest "
             + "ON p.entityFQNHash = latest.entityFQNHash AND p.timestamp = latest.latestTs "
-            + "WHERE p.extension = :extension")
+            + "WHERE p.extension = :extension "
+            + "AND p.entityFQNHash IN (<entityFQNHashes>)")
     @RegisterRowMapper(LatestExtensionRecordMapper.class)
     List<LatestExtensionRecord> getLatestExtensionsBatch(
         @Define("table") String table,
@@ -13590,6 +13622,51 @@ public interface CollectionDAO {
     int cancelPendingPartitions(@Bind("jobId") String jobId);
 
     @SqlUpdate(
+        "UPDATE rdf_index_partition SET status = 'CANCELLED', "
+            + "lastError = 'Stopped by user', completedAt = :now, lastUpdateAt = :now "
+            + "WHERE jobId = :jobId AND status IN ('PENDING','PROCESSING')")
+    int cancelInFlightPartitions(@Bind("jobId") String jobId, @Bind("now") long now);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM rdf_index_partition "
+            + "WHERE jobId = :jobId AND status = 'PROCESSING' AND assignedServer = :serverId")
+    int countInFlightPartitionsForServer(
+        @Bind("jobId") String jobId, @Bind("serverId") String serverId);
+
+    @SqlQuery("SELECT COUNT(*) FROM rdf_index_partition WHERE jobId = :jobId AND status = :status")
+    int countPartitionsByStatus(@Bind("jobId") String jobId, @Bind("status") String status);
+
+    /**
+     * Status-guarded variant of {@link #update}: only writes if the row is still
+     * PROCESSING. Workers use this on completion so that a concurrent Stop
+     * (which moves the row to CANCELLED) isn't overwritten back to
+     * COMPLETED/FAILED, which would make the Stop button look unreliable.
+     * Returns the number of rows updated (0 means the row was no longer
+     * PROCESSING and the caller should skip side effects like server-stat
+     * increments).
+     */
+    @SqlUpdate(
+        "UPDATE rdf_index_partition SET status = :status, processingCursor = :cursor, "
+            + "processedCount = :processedCount, successCount = :successCount, failedCount = :failedCount, "
+            + "assignedServer = :assignedServer, claimedAt = :claimedAt, startedAt = :startedAt, "
+            + "completedAt = :completedAt, lastUpdateAt = :lastUpdateAt, lastError = :lastError, "
+            + "retryCount = :retryCount WHERE id = :id AND status = 'PROCESSING'")
+    int updateIfProcessing(
+        @Bind("id") String id,
+        @Bind("status") String status,
+        @Bind("cursor") long cursor,
+        @Bind("processedCount") long processedCount,
+        @Bind("successCount") long successCount,
+        @Bind("failedCount") long failedCount,
+        @Bind("assignedServer") String assignedServer,
+        @Bind("claimedAt") Long claimedAt,
+        @Bind("startedAt") Long startedAt,
+        @Bind("completedAt") Long completedAt,
+        @Bind("lastUpdateAt") Long lastUpdateAt,
+        @Bind("lastError") String lastError,
+        @Bind("retryCount") int retryCount);
+
+    @SqlUpdate(
         "UPDATE rdf_index_partition SET status = :status, assignedServer = NULL, claimedAt = NULL, "
             + "lastError = :reason, lastUpdateAt = :updatedAt, completedAt = :completedAt "
             + "WHERE jobId = :jobId AND status = 'PROCESSING' AND assignedServer = :serverId")
@@ -13646,6 +13723,12 @@ public interface CollectionDAO {
         "SELECT DISTINCT assignedServer FROM rdf_index_partition "
             + "WHERE jobId = :jobId AND assignedServer IS NOT NULL")
     List<String> getAssignedServers(@Bind("jobId") String jobId);
+
+    @SqlQuery(
+        "SELECT lastError FROM rdf_index_partition "
+            + "WHERE jobId = :jobId AND lastError IS NOT NULL "
+            + "ORDER BY lastUpdateAt DESC LIMIT :limit")
+    List<String> findRecentPartitionErrors(@Bind("jobId") String jobId, @Bind("limit") int limit);
 
     @SqlUpdate("DELETE FROM rdf_index_partition")
     void deleteAll();

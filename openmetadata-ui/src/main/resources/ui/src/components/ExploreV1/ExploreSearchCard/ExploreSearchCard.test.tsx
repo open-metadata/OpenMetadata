@@ -24,6 +24,21 @@ jest.mock('../../../utils/RouterUtils', () => ({
 jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Mock Entity'),
   highlightSearchText: jest.fn().mockReturnValue(''),
+  highlightEntityNameAndDescription: jest.fn((source, highlight) => {
+    if (!highlight) {
+      return source;
+    }
+
+    return {
+      ...source,
+      displayName:
+        highlight?.displayName?.join(' ') ||
+        highlight?.name?.join(' ') ||
+        source.displayName ||
+        source.name,
+      description: highlight?.description?.[0] || source.description,
+    };
+  }),
 }));
 
 jest.mock('../../../utils/SearchClassBase', () => ({
@@ -106,5 +121,239 @@ describe('ExploreSearchCard - Domain section', () => {
     renderCard({ domains: [] });
 
     expect(screen.queryByText('Domain')).not.toBeInTheDocument();
+  });
+});
+
+describe('ExploreSearchCard - Highlight functionality', () => {
+  const { highlightEntityNameAndDescription } = jest.requireMock(
+    '../../../utils/EntityUtils'
+  );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('uses base source when highlight is not provided', () => {
+    render(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          source={{
+            ...baseSource,
+            name: 'test-table',
+            description: 'Base description',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(highlightEntityNameAndDescription).not.toHaveBeenCalled();
+  });
+
+  it('applies highlight to displayName when highlight.displayName is provided', () => {
+    const highlightData = {
+      displayName: ['<span class="highlight">Test</span> Table'],
+    };
+
+    render(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={highlightData}
+          source={{
+            ...baseSource,
+            name: 'test-table',
+            displayName: 'Test Table',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(highlightEntityNameAndDescription).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'test-table',
+        displayName: 'Test Table',
+      }),
+      highlightData
+    );
+  });
+
+  it('applies highlight to name when highlight.name is provided and displayName is absent', () => {
+    const highlightData = {
+      name: ['<span class="highlight">test</span>-table'],
+    };
+
+    render(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={highlightData}
+          source={{
+            ...baseSource,
+            name: 'test-table',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(highlightEntityNameAndDescription).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'test-table',
+      }),
+      highlightData
+    );
+  });
+
+  it('applies highlight to description when highlight.description is provided', () => {
+    const highlightData = {
+      description: [
+        'This is a <span class="highlight">test</span> description',
+      ],
+    };
+
+    render(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={highlightData}
+          source={{
+            ...baseSource,
+            description: 'This is a test description',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(highlightEntityNameAndDescription).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: 'This is a test description',
+      }),
+      highlightData
+    );
+  });
+
+  it('prioritizes displayName over name in highlight', () => {
+    const highlightData = {
+      displayName: ['<span class="highlight">Display</span> Name'],
+      name: ['<span class="highlight">name</span>'],
+    };
+
+    render(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={highlightData}
+          source={{
+            ...baseSource,
+            name: 'name',
+            displayName: 'Display Name',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(highlightEntityNameAndDescription).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'name',
+        displayName: 'Display Name',
+      }),
+      highlightData
+    );
+  });
+
+  it('applies all highlights when name, displayName, and description are all present', () => {
+    const highlightData = {
+      displayName: ['<span class="highlight">Highlighted</span> Display'],
+      name: ['<span class="highlight">highlighted</span>-name'],
+      description: [
+        '<span class="highlight">Highlighted</span> description text',
+      ],
+    };
+
+    render(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={highlightData}
+          source={{
+            ...baseSource,
+            name: 'highlighted-name',
+            displayName: 'Highlighted Display',
+            description: 'Highlighted description text',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(highlightEntityNameAndDescription).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'highlighted-name',
+        displayName: 'Highlighted Display',
+        description: 'Highlighted description text',
+      }),
+      highlightData
+    );
+  });
+
+  it('handles empty highlight object', () => {
+    const highlightData = {};
+
+    render(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={highlightData}
+          source={{
+            ...baseSource,
+            name: 'test-table',
+            description: 'Test description',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(highlightEntityNameAndDescription).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'test-table',
+        description: 'Test description',
+      }),
+      highlightData
+    );
+  });
+
+  it('memoizes source correctly when highlight changes', () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={{
+            name: ['<span class="highlight">first</span>'],
+          }}
+          source={{
+            ...baseSource,
+            name: 'first',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(highlightEntityNameAndDescription).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={{
+            name: ['<span class="highlight">second</span>'],
+          }}
+          source={{
+            ...baseSource,
+            name: 'second',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(highlightEntityNameAndDescription).toHaveBeenCalledTimes(2);
   });
 });
