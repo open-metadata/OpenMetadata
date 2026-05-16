@@ -165,7 +165,7 @@ jobs:
           AUTHENTICATION_CLIENT_TYPE: ${{ matrix.provider == 'mock-oidc' && 'confidential' || 'public' }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
 
