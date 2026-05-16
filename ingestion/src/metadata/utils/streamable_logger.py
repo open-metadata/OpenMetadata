@@ -8,50 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""
-Best-effort streamable log handler for OpenMetadata ingestion pipelines.
-
-Design contract (in order of importance):
-
-1. emit() never blocks the producer. Format -> put_nowait -> return.
-   On overflow we increment a counter and drop the record. We do NOT
-   write the dropped record to stderr from inside emit() - that would
-   add synchronous stderr I/O to every producer log under backpressure.
-
-2. emit() can NEVER re-enter itself. A thread-local flag is set on the
-   sender thread; if emit() sees it, it returns immediately. This is a
-   belt-and-suspenders backstop to the PR #28160 fix: even if a future
-   change reintroduces logging on the shipping path, the recursion
-   simply can't happen.
-
-3. ALL background threads are DAEMON. Drainer and senders alike. If
-   the connector main thread exits while a sender is wedged on a slow
-   DNS / TLS / auth call, the process still terminates. Logging will
-   never keep a pod alive.
-
-4. The sender pool is bounded by a fixed-size send queue. If all sender
-   slots are occupied (slow / dead server), the drainer drops new
-   batches and increments a counter. No unbounded thread / memory
-   growth regardless of how long the server takes.
-
-5. The HTTP POST goes through a dedicated quiet path
-   (``send_logs_batch_best_effort`` -> ``client.post_best_effort``):
-   no retries, no sleep, no connection-error retry, no logging through
-   ``ometa_logger``. Failure is a silent bool - counted, not logged.
-
-6. The handler uses an ISOLATED ``REST`` client (own ``requests.Session``,
-   own connection pool, own cookie jar). Shares ``ClientConfig`` with
-   the main metadata client so auth-token refreshes done by the main
-   client are picked up here too - but log shipping can never interfere
-   with normal ingestion API traffic.
-
-7. close() does NOT block on the server and does NOT join workers.
-   It signals the drainer/senders to stop, enqueues a close marker
-   behind already-queued log batches, and returns.
-
-No locks. No sleeps beyond ``queue.get(timeout=...)`` in the drainer/
-senders, which is necessary so they're not in a tight loop when idle.
-"""
+"""Best-effort streamable log handler for OpenMetadata ingestion pipelines."""
 
 import contextlib
 import logging
@@ -67,26 +24,22 @@ from metadata.utils.logger import BASE_LOGGING_FORMAT, METADATA_LOGGER, ingestio
 
 logger = ingestion_logger()
 
-# Thread-local recursion guard. Sender threads set ``shipping = True``
-# before doing any work. If emit() sees this flag (i.e. someone logged
-# from inside the shipping path), it returns immediately. This protects
-# us even if a future refactor reintroduces logging in the POST path.
+# Recursion guard: sender threads set shipping=True so emit() returns
+# immediately if it ever fires from inside the shipping path.
 _shipping_state = threading.local()
 _CLOSE_MARKER = object()
 
 
 class StreamableLogHandler(logging.Handler):
-    """Fire-and-forget log shipper. See module docstring for the contract."""
+    """Fire-and-forget log shipper."""
 
-    # Tunables. None affect correctness - only loss rate and how many
-    # sender threads can be in flight at once. Conservative defaults.
     BATCH_SIZE = 500
     BATCH_WAIT_SEC = 2.0
     SENDER_TICK_SEC = 1.0
-    HTTP_TIMEOUT = (1.0, 2.0)  # (connect, read) seconds
-    SENDER_WORKERS = 1  # single daemon sender preserves logs -> close ordering
-    MAX_PENDING_BATCHES = 4  # bounded send-queue depth
-    CLOSE_TIMEOUT_SEC = 2.0  # for the fire-and-forget /close call
+    HTTP_TIMEOUT = (1.0, 2.0)
+    SENDER_WORKERS = 1
+    MAX_PENDING_BATCHES = 4
+    CLOSE_TIMEOUT_SEC = 2.0
 
     # pylint: disable=too-many-arguments,too-many-instance-attributes
     def __init__(
@@ -103,36 +56,29 @@ class StreamableLogHandler(logging.Handler):
         self.run_id = run_id
         self.enable_streaming = enable_streaming
 
-        # Used only when streaming is disabled - direct passthrough.
         self.fallback_handler = logging.StreamHandler()
 
-        # Producer-side bounded buffer; drainer drains, senders POST.
         self._buffer: Queue = Queue(maxsize=max_buffer)
-        # Send queue is the in-flight cap. Drainer put_nowait - drop on Full.
         self._send_queue: Queue = Queue(maxsize=self.MAX_PENDING_BATCHES)
         self._stop = threading.Event()
         self._closed = False
         self._drainer: Optional[threading.Thread] = None  # noqa: UP045
         self._senders: list = []
 
-        # Isolated REST client. Same ClientConfig (token refresh visible)
-        # but distinct requests.Session / connection pool / cookie jar.
-        # Log shipping cannot interfere with normal ingestion API traffic.
+        # Isolated session/connection pool; shares ClientConfig so token
+        # refresh on the main client is visible here.
         self._client: Optional[REST] = (  # noqa: UP045
             REST(metadata.client.config) if enable_streaming else None
         )
 
-        # Diagnostic counters (plain ints - the GIL makes ++ monotonic-safe).
-        self.dropped_overflow = 0  # buffer Full at emit()
-        self.dropped_saturated = 0  # send_queue Full at drain()
-        self.dropped_shipping = 0  # recursion guard tripped
+        self.dropped_overflow = 0
+        self.dropped_saturated = 0
+        self.dropped_shipping = 0
 
         if self.enable_streaming:
             self._start_workers()
 
     def _start_workers(self):
-        """All daemon. Drainer + N senders. Process can exit at any time
-        without waiting for them - that's the explicit non-blocking goal."""
         self._drainer = threading.Thread(
             target=self._drain_loop,
             daemon=True,
@@ -149,15 +95,7 @@ class StreamableLogHandler(logging.Handler):
             self._senders.append(t)
 
     def emit(self, record: logging.LogRecord):
-        """Producer entry point. MUST be fast and MUST NOT raise.
-
-        Order of guards:
-        1. Recursion guard - if this thread is currently shipping, drop
-           silently. Prevents any future logging-from-shipping bug.
-        2. Streaming disabled - direct passthrough to fallback.
-        3. Format + put_nowait. On Full, count and drop.
-        """
-        # (1) must be the very first check
+        # Recursion guard must be the very first check.
         if getattr(_shipping_state, "shipping", False):
             self.dropped_shipping += 1
             return
@@ -165,26 +103,18 @@ class StreamableLogHandler(logging.Handler):
             self.dropped_overflow += 1
             return
         try:
-            # (2)
             if not self.enable_streaming:
                 self.fallback_handler.emit(record)
                 return
-            # (3)
             log_entry = self.format(record)
             try:
                 self._buffer.put_nowait(log_entry)
             except Full:
                 self.dropped_overflow += 1
         except Exception:
-            # Format/attr error. Don't re-enter the logger; just count.
             self.dropped_overflow += 1
 
     def _drain_loop(self):
-        """Drain buffer -> batch -> send_queue.put_nowait. Drop if Full.
-
-        Never blocks on the senders. If all sender slots are busy (slow/
-        dead server), the batch is dropped immediately and counted.
-        """
         while not self._stop.is_set():
             batch = self._collect_batch()
             if not batch:
@@ -198,8 +128,6 @@ class StreamableLogHandler(logging.Handler):
                 self.dropped_saturated += len(batch)
 
     def _collect_batch(self) -> list:
-        """Pull up to BATCH_SIZE entries. Waits at most BATCH_WAIT_SEC
-        for the first entry - the only blocking point in the drainer."""
         try:
             batch = [self._buffer.get(timeout=self.BATCH_WAIT_SEC)]
         except Empty:
@@ -212,7 +140,6 @@ class StreamableLogHandler(logging.Handler):
         return batch
 
     def _sender_loop(self):
-        """Daemon-thread worker. Drains send_queue and POSTs each batch."""
         try:
             while True:
                 try:
@@ -231,8 +158,6 @@ class StreamableLogHandler(logging.Handler):
                     self._client.close()
 
     def _post_batch(self, batch: list):
-        """Sender entry point. Sets the recursion guard, ships via the
-        quiet client path, clears the guard."""
         _shipping_state.shipping = True
         try:
             self.metadata.send_logs_batch_best_effort(
@@ -246,13 +171,6 @@ class StreamableLogHandler(logging.Handler):
             _shipping_state.shipping = False
 
     def close(self):
-        """Stop workers and enqueue /close behind already queued batches.
-
-        Returns immediately - does NOT join daemon workers and does NOT
-        wait on the server response. The /close marker uses the same
-        bounded send queue as log batches; if the queue is saturated, we
-        skip /close and rely on server-side abandoned-stream cleanup.
-        """
         if self._closed:
             return
         self._closed = True
@@ -262,13 +180,9 @@ class StreamableLogHandler(logging.Handler):
             with contextlib.suppress(Full):
                 self._send_queue.put_nowait(_CLOSE_MARKER)
 
-        # Signal stop AFTER the remaining batches and CLOSE_MARKER are
-        # in the send queue. The sender's loop checks _stop only on an
-        # Empty timeout; setting stop first creates a race where the
-        # sender's in-flight get(timeout=1s) returns Empty in the narrow
-        # window between set() and enqueue, exits, and never processes
-        # either the remaining batches or the CLOSE_MARKER. Enqueue first,
-        # then set — preserves the ordering guarantee in docstring point 7.
+        # Set _stop AFTER enqueueing — sender's get(timeout) Empty branch
+        # checks _stop, so setting it first can race the enqueue and drop
+        # the CLOSE_MARKER on a quiet send queue.
         self._stop.set()
 
         with contextlib.suppress(Exception):
@@ -276,12 +190,6 @@ class StreamableLogHandler(logging.Handler):
         super().close()
 
     def _drain_remaining_buffer(self):
-        """Best-effort transfer of producer buffer into the send queue.
-
-        Runs only from close(); never waits. If the send queue is already
-        full, remaining logs are dropped and /close is skipped by the full
-        queue check in close().
-        """
         while True:
             batch = []
             while len(batch) < self.BATCH_SIZE:
@@ -298,7 +206,6 @@ class StreamableLogHandler(logging.Handler):
                 return
 
     def _notify_close(self):
-        """Daemon-thread tail call for close()."""
         _shipping_state.shipping = True
         try:
             self.metadata.send_close_best_effort(
@@ -312,8 +219,6 @@ class StreamableLogHandler(logging.Handler):
 
 
 class StreamableLogHandlerManager:
-    """Process-wide singleton holding the active handler instance."""
-
     _instance: Optional["StreamableLogHandler"] = None
 
     @classmethod
@@ -323,8 +228,7 @@ class StreamableLogHandlerManager:
     @classmethod
     def set_handler(cls, handler: Optional["StreamableLogHandler"]) -> None:
         if cls._instance and cls._instance is not handler:
-            # Detach the old one from the metadata logger BEFORE closing -
-            # otherwise records can still be routed at it during close.
+            # Detach before close so in-flight emits don't route at a closed handler.
             with contextlib.suppress(Exception):
                 logging.getLogger(METADATA_LOGGER).removeHandler(cls._instance)
             with contextlib.suppress(Exception):
@@ -351,7 +255,6 @@ def setup_streamable_logging_for_workflow(
     log_level: int = logging.INFO,
     enable_streaming: bool = False,
 ) -> Optional[StreamableLogHandler]:  # noqa: UP045
-    """Wire up the handler onto the metadata logger, replacing any existing one."""
     if not enable_streaming or not pipeline_fqn or not run_id:
         logger.debug(
             f"Streamable logging not configured: enable={enable_streaming}, "
@@ -388,5 +291,4 @@ def setup_streamable_logging_for_workflow(
 
 
 def cleanup_streamable_logging():
-    """Remove the active handler. Safe to call multiple times."""
     StreamableLogHandlerManager.cleanup()

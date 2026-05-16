@@ -223,16 +223,10 @@ class REST:
         if self._cert:
             opts["cert"] = self._cert
 
-        # Per-call timeout overrides the instance default. Used by the
-        # streamable log handler so a slow logs endpoint can't tie up the
-        # shipper for the full instance timeout.
         effective_timeout = timeout if timeout is not None else self._timeout
         if effective_timeout:
             opts["timeout"] = effective_timeout
 
-        # Per-call retry override. The streamable log handler passes
-        # retries=0 so a 504/429 from the logs endpoint can't tie up a
-        # post thread inside the RetryException sleep loop below.
         if retries is not None:
             total_retries = retries if retries > 0 else 0
         else:
@@ -357,21 +351,7 @@ class REST:
         )
 
     def post_best_effort(self, path, data=None, headers=None, timeout=None) -> bool:
-        """
-        Quiet POST for fire-and-forget log shipping.
-
-        Bypasses every behavior that could either block or re-enter the
-        streamable log handler:
-        - No retry loop, no exponential-backoff sleep on 429/504.
-        - No second request on ConnectionError (the "try one more time"
-          in _one_request).
-        - No logger.warning/error/debug - those would propagate to the
-          metadata.OMetaAPI logger and feed back into the handler.
-
-        Returns:
-            True on a 2xx response, False on anything else (including
-            timeouts, connection errors, non-2xx status, etc.).
-        """
+        """Quiet POST: no retries, no sleep, no logging. Returns True on 2xx."""
         if path in self._limits_reached:
             return False
         try:
@@ -395,16 +375,9 @@ class REST:
         return 200 <= resp.status_code < 300
 
     def _build_request_headers(self, headers=None):
-        """Build headers for an outgoing request — auth + extra_headers.
-
-        Deliberately does NOT refresh the auth token. The streamable log
-        handler shares ClientConfig with the main metadata client (so
-        token refreshes done by the main client are visible here), but
-        the sender daemon thread MUST NOT also refresh — concurrent
-        _auth_token() calls from two threads can double-refresh against
-        rate-limited or single-use refresh tokens, and introduces a
-        TOCTOU on config.expires_in. Reads only.
-        """
+        """Reader-only headers builder. Does NOT refresh auth token —
+        refresh stays on _request() to avoid concurrent refreshes from
+        post_best_effort callers sharing ClientConfig."""
         if not headers:
             headers = {"Content-type": "application/json"}
         if self.config.auth_header and self.config.access_token:

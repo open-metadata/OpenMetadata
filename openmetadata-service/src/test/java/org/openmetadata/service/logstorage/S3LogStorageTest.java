@@ -1221,21 +1221,13 @@ public class S3LogStorageTest {
     assertEquals(1, pending.get(testPipelineFQN + "/" + testRunId).size());
   }
 
-  // ============================================================
-  // Server-side hardening: executor split, throwable guard, metrics.
-  // Each verifies a guarantee the diff was made to provide.
-  // ============================================================
-
   @Test
   void testPartialFlushAndAbandonedCleanupExecutorsAreSeparate() throws Exception {
     Object partial = getPrivateField(s3LogStorage, "partialFlushExecutor");
     Object cleanup = getPrivateField(s3LogStorage, "abandonedCleanupExecutor");
-    assertNotNull(partial, "partial flush executor must exist");
-    assertNotNull(cleanup, "abandoned cleanup executor must exist");
-    assertFalse(
-        partial == cleanup,
-        "partial-flush and abandoned-cleanup MUST be distinct executors so a "
-            + "stuck cleanup task cannot starve partial.txt writes");
+    assertNotNull(partial);
+    assertNotNull(cleanup);
+    assertFalse(partial == cleanup, "executors must be distinct");
   }
 
   @Test
@@ -1248,27 +1240,18 @@ public class S3LogStorageTest {
     Runnable thrower =
         () -> {
           ran[0] = true;
-          throw new RuntimeException("boom - must not escape the scheduler boundary");
+          throw new RuntimeException("boom");
         };
 
     Runnable wrapped = (Runnable) safe.invoke(s3LogStorage, "test-task", thrower);
 
-    // run() must complete normally - propagating an exception out of a
-    // scheduled task is what makes ScheduledExecutorService silently
-    // stop re-running the task, which is the failure mode this guards.
-    assertDoesNotThrow(wrapped::run, "safeScheduledTask must NOT propagate throwables");
-    assertTrue(ran[0], "the inner runnable must have actually run");
-
-    // And a second invocation must also succeed - proves the wrapper
-    // is reusable and didn't get poisoned by the first failure.
+    assertDoesNotThrow(wrapped::run);
+    assertTrue(ran[0]);
     assertDoesNotThrow(wrapped::run);
   }
 
   @Test
   void testWritePartialLogsContinuesEvenIfOneStreamFails() throws Exception {
-    // Two active streams. The first one's flush will throw at the lock-acquire
-    // boundary by mocking S3 getObject to throw. The second must still get
-    // flushed - failure of stream A must not poison the loop for stream B.
     String runIdA = UUID.randomUUID().toString();
     String runIdB = UUID.randomUUID().toString();
     String streamA = testPipelineFQN + "/" + runIdA;
@@ -1328,7 +1311,6 @@ public class S3LogStorageTest {
     org.openmetadata.service.monitoring.StreamableLogsMetrics testMetrics =
         new org.openmetadata.service.monitoring.StreamableLogsMetrics(registry);
 
-    // Inject the metrics into the handler.
     Field metricsField = S3LogStorage.class.getDeclaredField("metrics");
     metricsField.setAccessible(true);
     metricsField.set(s3LogStorage, testMetrics);
@@ -1342,11 +1324,7 @@ public class S3LogStorageTest {
     writePartial.setAccessible(true);
     writePartial.invoke(s3LogStorage);
 
-    // Heartbeat MUST advance on every tick regardless of S3 outcome.
-    assertTrue(
-        testMetrics.getPartialFlushHeartbeat() > beforeHeartbeat,
-        "partial flush heartbeat must advance on every tick");
-    // pendingStreamsCount reflects the single active stream we just pushed to.
+    assertTrue(testMetrics.getPartialFlushHeartbeat() > beforeHeartbeat);
     assertEquals(1, testMetrics.getPendingStreamsCount());
   }
 
@@ -1369,7 +1347,6 @@ public class S3LogStorageTest {
             + testRunId
             + "/partial.txt";
 
-    // First flush from empty - succeeds.
     when(mockS3Client.getObject(
             argThat((GetObjectRequest req) -> req != null && partialKey.equals(req.key()))))
         .thenThrow(NoSuchKeyException.builder().build());
@@ -1378,8 +1355,7 @@ public class S3LogStorageTest {
         .thenReturn(PutObjectResponse.builder().build());
     mockAsyncPutObject();
 
-    long before = testMetrics.getLastPartialFlushTimestamp();
-    assertEquals(0L, before, "last flush ts starts at 0");
+    assertEquals(0L, testMetrics.getLastPartialFlushTimestamp());
 
     s3LogStorage.appendLogs(testPipelineFQN, testRunId, "x\ny\n");
     java.lang.reflect.Method writeStream =
@@ -1387,9 +1363,7 @@ public class S3LogStorageTest {
     writeStream.setAccessible(true);
     writeStream.invoke(s3LogStorage, streamKey);
 
-    assertTrue(
-        testMetrics.getLastPartialFlushTimestamp() > 0L,
-        "successful partial flush must update lastPartialFlushTimestamp");
+    assertTrue(testMetrics.getLastPartialFlushTimestamp() > 0L);
   }
 
   @Test
@@ -1410,7 +1384,6 @@ public class S3LogStorageTest {
             + testRunId
             + "/partial.txt";
 
-    // Make the probe throw so the flush fails.
     when(mockS3Client.getObject(
             argThat((GetObjectRequest req) -> req != null && partialKey.equals(req.key()))))
         .thenThrow(new RuntimeException("simulated S3 outage"));
@@ -1423,9 +1396,7 @@ public class S3LogStorageTest {
     writeStream.setAccessible(true);
     writeStream.invoke(s3LogStorage, testPipelineFQN + "/" + testRunId);
 
-    assertTrue(
-        testMetrics.getFlushFailuresCount() >= 1,
-        "flush failure must increment om_streamable_logs_flush_failures_total");
+    assertTrue(testMetrics.getFlushFailuresCount() >= 1);
   }
 
   @Test
@@ -1459,9 +1430,7 @@ public class S3LogStorageTest {
 
     long before = testMetrics.getAbandonedCleanupHeartbeat();
     s3LogStorage.cleanupAbandonedStreams();
-    assertTrue(
-        testMetrics.getAbandonedCleanupHeartbeat() > before,
-        "abandoned-cleanup heartbeat must advance on each invocation");
+    assertTrue(testMetrics.getAbandonedCleanupHeartbeat() > before);
   }
 
   private static Object getPrivateField(Object target, String name) throws Exception {

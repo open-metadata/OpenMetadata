@@ -171,10 +171,7 @@ public class S3LogStorage implements LogStorageInterface {
   private final Set<String> scheduledPartialFlushes = ConcurrentHashMap.newKeySet();
   private Cache<String, Boolean> closedStreams;
 
-  // Split executors so a stuck/slow abandoned-stream cleanup task cannot
-  // starve the partial.txt flush schedule. Each runs on its own
-  // single-thread scheduler with its own thread name for easy
-  // identification in stack traces.
+  // Split so a stuck cleanup task cannot starve partial flush.
   private ScheduledExecutorService partialFlushExecutor;
   private ScheduledExecutorService abandonedCleanupExecutor;
 
@@ -297,11 +294,6 @@ public class S3LogStorage implements LogStorageInterface {
             "Error accessing S3 bucket: " + bucketName + ". Validate AWS configuration.", e);
       }
 
-      // Two single-thread schedulers. A blocked abandoned-cleanup task
-      // (long S3 deletes, slow list-objects) MUST NOT delay the partial
-      // flush schedule - the partial flush is what makes new logs
-      // visible on S3, and stalling it is exactly the symptom we
-      // shipped this change to prevent.
       this.partialFlushExecutor =
           Executors.newSingleThreadScheduledExecutor(namedDaemonFactory("s3-log-partial-flush"));
       this.abandonedCleanupExecutor =
@@ -430,9 +422,6 @@ public class S3LogStorage implements LogStorageInterface {
         counter.addAndGet(lineCount);
         if (bytes.get() >= earlyFlushWatermarkBytes && scheduledPartialFlushes.add(streamKey)) {
           final String key = streamKey;
-          // Watermark-triggered flush must land on the partial-flush
-          // executor (NOT the abandoned-cleanup executor) - otherwise a
-          // backed-up cleanup queue delays bytes from reaching S3.
           partialFlushExecutor.execute(
               safeScheduledTask(
                   "writePartialLogsForStream",
@@ -844,7 +833,6 @@ public class S3LogStorage implements LogStorageInterface {
     return "s3";
   }
 
-  /** Build a daemon-thread factory with a stable name for stack traces. */
   private static ThreadFactory namedDaemonFactory(String threadName) {
     return r -> {
       Thread t = new Thread(r);
@@ -854,21 +842,12 @@ public class S3LogStorage implements LogStorageInterface {
     };
   }
 
-  /**
-   * Wrap a Runnable so that any Throwable (including Error / RuntimeException)
-   * is caught and logged, NOT propagated.
-   *
-   * <p>This matters because {@link java.util.concurrent.ScheduledExecutorService#scheduleWithFixedDelay}
-   * silently stops re-running a task if it ever throws. Without this wrapper a
-   * single transient error (e.g. an S3 SDK retry exhaustion in writePartialLogs)
-   * would permanently disable partial.txt flushing for the lifetime of the JVM,
-   * which is exactly the silent-stall failure mode we shipped this PR to prevent.
-   */
+  /** Swallow Throwables so a scheduled task that throws is not silently de-scheduled. */
   private Runnable safeScheduledTask(String name, Runnable task) {
     return () -> {
       try {
         task.run();
-      } catch (Throwable t) { // NOSONAR - intentional catch-all on a scheduler boundary
+      } catch (Throwable t) { // NOSONAR
         LOG.error("Scheduled task {} threw - swallowing so the scheduler keeps running", name, t);
       }
     };
@@ -1086,14 +1065,7 @@ public class S3LogStorage implements LogStorageInterface {
     }
   }
 
-  /**
-   * Periodically write accumulated logs to partial files for active streams.
-   * This allows reading complete logs even while ingestion is still running.
-   *
-   * <p>Emits a heartbeat on every tick (whether or not any stream had work)
-   * and snapshots pendingFlush totals so an operator can answer "is the
-   * flush executor alive AND making progress" from metrics alone.
-   */
+  /** Scheduled tick: flush each active stream's pendingFlush to partial.txt. */
   private void writePartialLogs() {
     if (metrics != null) {
       metrics.recordPartialFlushHeartbeat();

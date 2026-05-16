@@ -59,19 +59,10 @@ public class StreamableLogsMetrics {
   private final Counter ingestionLogsDropped;
   private final Counter ingestionFallbackActive;
 
-  // ---- Server-side flush observability ----
-  // Last successful partial.txt PUT (epoch millis). Stays at 0 until the
-  // first partial flush succeeds. Going stale (no updates for several
-  // partialFlushIntervalMinutes) is the canonical signal that the flush
-  // executor is wedged.
+  // Server-side flush observability.
   private final AtomicLong lastPartialFlushTimestamp;
-  // Tick timestamps for each scheduled task. Used to verify the
-  // executor itself is still running. If this goes stale while pending
-  // bytes grow, the flush task is blocked or no longer being scheduled.
   private final AtomicLong partialFlushHeartbeat;
   private final AtomicLong abandonedCleanupHeartbeat;
-  // Aggregate state across all active streams. Sampled by the partial
-  // flush task on each tick.
   private final AtomicInteger pendingStreamsCount;
   private final AtomicLong pendingFlushBytes;
   private final AtomicLong pendingFlushLines;
@@ -260,8 +251,6 @@ public class StreamableLogsMetrics {
             .register(meterRegistry);
   }
 
-  // ---- Server-side flush observability hooks ----
-
   public void recordPartialFlushSuccess() {
     lastPartialFlushTimestamp.set(System.currentTimeMillis());
   }
@@ -290,7 +279,6 @@ public class StreamableLogsMetrics {
     pendingFlushLines.set(lines);
   }
 
-  // Getters for tests / health-check.
   public long getLastPartialFlushTimestamp() {
     return lastPartialFlushTimestamp.get();
   }

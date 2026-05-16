@@ -191,22 +191,7 @@ class OMetaLogsMixin:
         timeout=None,
         client=None,
     ) -> bool:
-        """
-        Quiet log-upload path used by StreamableLogHandler.
-
-        Goes through ``client.post_best_effort`` rather than ``client.post`` so:
-        - no retry loop, no sleep on 504/429
-        - no second request on ConnectionError
-        - no logging through ``ometa_logger`` (would propagate back to the
-          streamable handler that's attached to the metadata logger)
-
-        ``client`` lets the caller pass an isolated REST instance so log
-        shipping does not share a ``requests.Session`` / connection pool /
-        cookie jar with normal ingestion API calls. Defaults to the
-        instance client for backwards compatibility.
-
-        Returns True on 2xx, False on anything else.
-        """
+        """Best-effort log POST: no retries, no logging. Returns True on 2xx."""
         try:
             url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}"
             log_batch = {
@@ -232,10 +217,7 @@ class OMetaLogsMixin:
         timeout=None,
         client=None,
     ) -> bool:
-        """Quiet close-stream notify used by StreamableLogHandler.close().
-
-        Same guarantees and ``client`` kwarg as send_logs_batch_best_effort.
-        """
+        """Best-effort /close notify. Same guarantees as send_logs_batch_best_effort."""
         try:
             url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}/close"
             close_data = {
