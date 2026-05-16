@@ -14,6 +14,7 @@ Python API REST wrapper and helpers
 
 import time
 import traceback
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Union  # noqa: UP035
 
@@ -21,6 +22,8 @@ import requests
 from requests.exceptions import HTTPError, JSONDecodeError
 
 from metadata.config.common import ConfigModel
+from metadata.ingestion import diagnostics
+from metadata.ingestion.diagnostics.http_introspect import get_global_tracker
 from metadata.ingestion.ometa.credentials import URL, get_api_version
 from metadata.ingestion.ometa.ttl_cache import TTLCache
 from metadata.utils.execution_time_tracker import calculate_execution_time
@@ -223,27 +226,31 @@ class REST:
 
         total_retries = self._retry if self._retry > 0 else 0
         retry = total_retries
-        while retry >= 0:
-            try:
-                return self._one_request(method, url, opts, retry)
-            except LimitsException as exc:
-                logger.error(f"Feature limit exceeded for {url}")
-                self._limits_reached.add(path)
-                raise exc  # noqa: TRY201
-            except RetryException:
-                retry_wait = self._retry_wait * (total_retries - retry + 1)
-                logger.warning(
-                    "sleep %s seconds and retrying %s %s more time(s)...",
-                    retry_wait,
-                    url,
-                    retry,
-                )
-                time.sleep(retry_wait)
-                retry -= 1
-                if retry == 0:
-                    logger.error(f"No more retries left for {url}")
-                    traceback.format_exc()
-        return None
+        http_tracker = get_global_tracker()
+        http_cm = http_tracker.request(method, url) if http_tracker is not None else nullcontext()
+        op_cm = diagnostics.operation("ometa.http", method=method, url=str(url))
+        with http_cm, op_cm:
+            while retry >= 0:
+                try:
+                    return self._one_request(method, url, opts, retry)
+                except LimitsException as exc:
+                    logger.error(f"Feature limit exceeded for {url}")
+                    self._limits_reached.add(path)
+                    raise exc  # noqa: TRY201
+                except RetryException:
+                    retry_wait = self._retry_wait * (total_retries - retry + 1)
+                    logger.warning(
+                        "sleep %s seconds and retrying %s %s more time(s)...",
+                        retry_wait,
+                        url,
+                        retry,
+                    )
+                    time.sleep(retry_wait)
+                    retry -= 1
+                    if retry == 0:
+                        logger.error(f"No more retries left for {url}")
+                        traceback.format_exc()
+            return None
 
     def _one_request(self, method: str, url: URL, opts: dict, retry: int):
         """

@@ -40,6 +40,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.tests.testSuite import ServiceType
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion import diagnostics
 from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -151,6 +152,9 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         # it can hung the workflow
         self.timer.stop()
 
+        # Stop diagnostics threads if they were installed
+        diagnostics.shutdown()
+
         # Cleanup streamable logging if it was configured
         cleanup_streamable_logging()
 
@@ -241,8 +245,10 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """
         pipeline_state = PipelineState.success
         self.timer.trigger()
+        diagnostics.install(self)
         try:
-            self.execute_internal()
+            with diagnostics.operation("workflow.execute", fqn=self.config.ingestionPipelineFQN):
+                self.execute_internal()
 
             if self.workflow_config.successThreshold <= self.calculate_success() < 100:
                 pipeline_state = PipelineState.partialSuccess
