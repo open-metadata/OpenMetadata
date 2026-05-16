@@ -2145,7 +2145,7 @@ public interface CollectionDAO {
         "SELECT CASE WHEN relationType = '' THEN 'relatedTo' ELSE relationType END AS relationType, "
             + "COUNT(*) AS cnt FROM entity_relationship "
             + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation "
-            + "GROUP BY relationType")
+            + "GROUP BY CASE WHEN relationType = '' THEN 'relatedTo' ELSE relationType END")
     @RegisterRowMapper(RelationTypeUsageCountMapper.class)
     List<RelationTypeUsageCount> countByRelationType(
         @Bind("fromEntity") String fromEntity,

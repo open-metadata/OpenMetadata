@@ -534,6 +534,23 @@ WHERE fromEntity = 'glossaryTerm'
   AND toEntity = 'glossaryTerm'
   AND relation = 15;
 
-ALTER TABLE entity_relationship DROP CONSTRAINT IF EXISTS entity_relationship_pkey;
-ALTER TABLE entity_relationship
-    ADD CONSTRAINT entity_relationship_pkey PRIMARY KEY (fromId, toId, relation, relationType);
+-- Swap the PK to include relationType only when it's not already there. Gating
+-- on information_schema makes a re-run (partial failure, manual replay) a no-op
+-- instead of paying for another table rewrite.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu
+          ON tc.constraint_name = kcu.constraint_name
+         AND tc.table_schema = kcu.table_schema
+        WHERE tc.table_name = 'entity_relationship'
+          AND tc.constraint_type = 'PRIMARY KEY'
+          AND kcu.column_name = 'relationtype'
+    ) THEN
+        ALTER TABLE entity_relationship DROP CONSTRAINT IF EXISTS entity_relationship_pkey;
+        ALTER TABLE entity_relationship
+            ADD CONSTRAINT entity_relationship_pkey PRIMARY KEY (fromId, toId, relation, relationType);
+    END IF;
+END $$;
