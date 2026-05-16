@@ -21,6 +21,7 @@ import httpx
 
 from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.ometa.credentials import URL
+from metadata.ingestion.ometa.utils import sanitize_user_agent
 from metadata.utils.logger import ometa_logger
 
 
@@ -66,6 +67,13 @@ class SSEClient:
                 f"{self.config.auth_token_mode} {self.config.access_token}"
                 if self.config.auth_token_mode
                 else self.config.access_token
+            )
+        user_agent = sanitize_user_agent(self.config.user_agent)
+        if user_agent:
+            headers["User-Agent"] = user_agent
+        elif self.config.user_agent:
+            self.logger.debug(
+                f"Ignoring User-Agent {self.config.user_agent!r}: no header-safe characters remained after sanitization"
             )
         opts = {
             "headers": headers,
