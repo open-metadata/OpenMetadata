@@ -154,6 +154,7 @@ public class TableRepository extends EntityRepository<Table> {
   public static final String TABLE_COLUMN_EXTENSION = "table.column";
   public static final String TABLE_EXTENSION = "table.table";
   public static final String CUSTOM_METRICS_EXTENSION = "customMetrics.";
+  public static final String COLUMN_EXTENSION_JSON_SCHEMA = "columnExtension";
   public static final String TABLE_PROFILER_CONFIG = "tableProfilerConfig";
   private static final ReadPrefetchKey PREFETCH_DEFAULT_FIELDS =
       ReadPrefetchKey.TABLE_DEFAULT_FIELDS;
@@ -2194,6 +2195,21 @@ public class TableRepository extends EntityRepository<Table> {
     return null;
   }
 
+  private Map<String, List<CustomMetric>> batchFetchCustomMetricsByColumn(UUID tableId) {
+    List<ExtensionRecord> records =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensions(tableId, CUSTOM_METRICS_EXTENSION + TABLE_COLUMN_EXTENSION);
+    Map<String, List<CustomMetric>> metricsByColumn = new HashMap<>();
+    for (ExtensionRecord record : records) {
+      CustomMetric metric = JsonUtils.readValue(record.extensionJson(), CustomMetric.class);
+      if (metric != null && metric.getColumnName() != null) {
+        metricsByColumn.computeIfAbsent(metric.getColumnName(), k -> new ArrayList<>()).add(metric);
+      }
+    }
+    return metricsByColumn;
+  }
+
   private List<CustomMetric> getCustomMetrics(Table table, String columnName) {
     String extension = columnName != null ? TABLE_COLUMN_EXTENSION : TABLE_EXTENSION;
     extension = CUSTOM_METRICS_EXTENSION + extension;
@@ -2891,20 +2907,43 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     if (fieldsParam != null && fieldsParam.contains("customMetrics")) {
+      Map<String, List<CustomMetric>> metricsByColumn =
+          batchFetchCustomMetricsByColumn(table.getId());
       for (Column column : paginatedColumns) {
-        column.setCustomMetrics(getCustomMetrics(table, column.getName()));
+        column.setCustomMetrics(metricsByColumn.getOrDefault(column.getName(), List.of()));
       }
     }
 
     if (fieldsParam != null && fieldsParam.contains("extension")) {
+      List<ExtensionRecord> allColumnExtensions =
+          daoCollection
+              .entityExtensionDAO()
+              .getExtensionsByJsonSchema(table.getId(), COLUMN_EXTENSION_JSON_SCHEMA);
+      Map<String, Object> extensionByColumnHash = new HashMap<>();
+      for (ExtensionRecord record : allColumnExtensions) {
+        try {
+          extensionByColumnHash.put(
+              record.extensionName(), JsonUtils.readValue(record.extensionJson(), Object.class));
+        } catch (Exception e) {
+          LOG.warn(
+              "Failed to deserialize column extension for table {} extensionKey {}: {}",
+              table.getId(),
+              record.extensionName(),
+              e.getMessage());
+        }
+      }
       for (Column column : paginatedColumns) {
-        column.setExtension(getColumnExtension(table.getId(), column.getFullyQualifiedName()));
+        column.setExtension(
+            extensionByColumnHash.get(
+                FullyQualifiedName.buildHash(column.getFullyQualifiedName())));
       }
     }
 
     if (fieldsParam != null && fieldsParam.contains("profile")) {
       setColumnProfile(paginatedColumns);
-      populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
+      if (!fieldsParam.contains("tags")) {
+        populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
+      }
       paginatedColumns =
           piiOwners != null
               ? PIIMasker.getTableProfile(piiOwners, paginatedColumns, authorizer, securityContext)
@@ -3227,8 +3266,10 @@ public class TableRepository extends EntityRepository<Table> {
 
     Fields fields = getFields(fieldsParam);
     if (fields.contains("customMetrics") || fields.contains("*")) {
+      Map<String, List<CustomMetric>> metricsByColumn =
+          batchFetchCustomMetricsByColumn(table.getId());
       for (Column column : paginatedResults) {
-        column.setCustomMetrics(getCustomMetrics(table, column.getName()));
+        column.setCustomMetrics(metricsByColumn.getOrDefault(column.getName(), List.of()));
       }
     }
 
