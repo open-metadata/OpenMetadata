@@ -104,8 +104,13 @@ def install_signal_handlers(
     return installed_any
 
 
-def _make_full_dump_handler(registry, http_tracker, memory_tracker, workflow):
-    def _handler(_signum, _frame):
+def _make_full_dump_handler(
+    registry: OperationRegistry,
+    http_tracker: Any,
+    memory_tracker: MemoryTracker,
+    workflow: Any,
+) -> Any:
+    def _handler(_signum: int, _frame: Any) -> None:
         # Signal context -- must NOT use the logger (per-handler RLocks
         # are not signal-safe). Stay on raw stderr.
         try:
@@ -124,8 +129,12 @@ def _make_full_dump_handler(registry, http_tracker, memory_tracker, workflow):
     return _handler
 
 
-def _make_incremental_dump_handler(registry, http_tracker, memory_tracker):
-    def _handler(_signum, _frame):
+def _make_incremental_dump_handler(
+    registry: OperationRegistry,
+    http_tracker: Any,
+    memory_tracker: MemoryTracker,
+) -> Any:
+    def _handler(_signum: int, _frame: Any) -> None:
         try:
             emit_incremental_dump(
                 registry=registry,
@@ -157,7 +166,8 @@ def emit_full_dump(
     handlers the workflow has configured (StreamableLogHandler, file,
     etc.) without splitting across lines.
     """
-    out = sys.stderr if signal_safe else io.StringIO()
+    buf: io.StringIO | None = None if signal_safe else io.StringIO()
+    out = sys.stderr if buf is None else buf
     out.write(f"{DIAG_LOG_PREFIX}.dump.begin reason={reason} pid={os.getpid()} ts={time.time():.0f}\n")
     try:
         _emit_thread_dump(out, signal_safe=signal_safe)
@@ -169,10 +179,10 @@ def emit_full_dump(
     except Exception as exc:
         out.write(f"{DIAG_LOG_PREFIX}.dump.error err={exc!r}\n")
     out.write(f"{DIAG_LOG_PREFIX}.dump.end reason={reason}\n")
-    if signal_safe:
+    if buf is None:
         out.flush()
     else:
-        emit_log(logging.WARNING, out.getvalue().rstrip("\n"))
+        emit_log(logging.WARNING, buf.getvalue().rstrip("\n"))
 
 
 def emit_incremental_dump(
@@ -185,20 +195,21 @@ def emit_incremental_dump(
 
     Same routing semantics as `emit_full_dump`.
     """
-    out = sys.stderr if signal_safe else io.StringIO()
+    buf: io.StringIO | None = None if signal_safe else io.StringIO()
+    out = sys.stderr if buf is None else buf
     out.write(f"{DIAG_LOG_PREFIX}.dump.begin reason=sigusr2 pid={os.getpid()} ts={time.time():.0f}\n")
     _emit_op_dump(out, registry)
     _emit_http_dump(out, http_tracker)
     _emit_memory_dump(out, memory_tracker, deep=False)
     _emit_queues_dump(out)
     out.write(f"{DIAG_LOG_PREFIX}.dump.end reason=sigusr2\n")
-    if signal_safe:
+    if buf is None:
         out.flush()
     else:
-        emit_log(logging.INFO, out.getvalue().rstrip("\n"))
+        emit_log(logging.INFO, buf.getvalue().rstrip("\n"))
 
 
-def _emit_thread_dump(out, signal_safe: bool) -> None:
+def _emit_thread_dump(out: Any, signal_safe: bool) -> None:
     """Render per-thread stack traces.
 
     Signal-safe path uses `faulthandler.dump_traceback`, which writes
@@ -227,7 +238,7 @@ def _emit_thread_dump(out, signal_safe: bool) -> None:
         out.write(f"{DIAG_LOG_PREFIX}.dump.threads.error err={exc!r}\n")
 
 
-def _emit_op_dump(out, registry: OperationRegistry) -> None:
+def _emit_op_dump(out: Any, registry: OperationRegistry) -> None:
     out.write(f"{DIAG_LOG_PREFIX}.dump.ops\n")
     snapshot = registry.snapshot()
     if not snapshot:
@@ -241,7 +252,7 @@ def _emit_op_dump(out, registry: OperationRegistry) -> None:
             out.write(f"    -> {format_op_frame(name, kwargs, age)}\n")
 
 
-def _emit_http_dump(out, http_tracker: Any) -> None:
+def _emit_http_dump(out: Any, http_tracker: Any) -> None:
     out.write(f"{DIAG_LOG_PREFIX}.dump.http\n")
     active = http_tracker.snapshot()
     if not active:
@@ -253,7 +264,7 @@ def _emit_http_dump(out, http_tracker: Any) -> None:
         out.write(f"  thread={thread_name} method={method} url={url} age={age:.1f}s\n")
 
 
-def _emit_memory_dump(out, memory_tracker: MemoryTracker, deep: bool) -> None:
+def _emit_memory_dump(out: Any, memory_tracker: MemoryTracker, deep: bool) -> None:
     out.write(f"{DIAG_LOG_PREFIX}.dump.memory\n")
     sample = memory_tracker.sample()
     delta_30s = memory_tracker.rss_delta_bytes_since(30.0)
@@ -270,7 +281,7 @@ def _emit_memory_dump(out, memory_tracker: MemoryTracker, deep: bool) -> None:
             out.write(f"    {type_name:<32} {count}\n")
 
 
-def _emit_queues_dump(out) -> None:
+def _emit_queues_dump(out: Any) -> None:
     """Render inter-stage queue depths + put/processed counters."""
     from metadata.ingestion.diagnostics import stage_progress  # noqa: PLC0415
 
@@ -282,7 +293,7 @@ def _emit_queues_dump(out) -> None:
         out.write(f"  name={q['name']} depth={q['depth']} put={q['put']} processed={q['processed']}\n")
 
 
-def _emit_workflow_dump(out, workflow: Any) -> None:
+def _emit_workflow_dump(out: Any, workflow: Any) -> None:
     if workflow is None:
         return
     out.write(f"{DIAG_LOG_PREFIX}.dump.workflow\n")

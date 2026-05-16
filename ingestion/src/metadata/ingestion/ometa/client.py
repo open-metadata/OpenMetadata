@@ -227,8 +227,11 @@ class REST:
         if self._timeout:
             opts["timeout"] = self._timeout
 
-        total_retries = self._retry if self._retry > 0 else 0
-        retry = total_retries
+        # `_retry` / `_retry_wait` are Optional in ClientConfig; narrow to
+        # plain ints here so the loop body type-checks cleanly.
+        total_retries: int = self._retry if self._retry and self._retry > 0 else 0
+        retry: int = total_retries
+        retry_wait_base: int = self._retry_wait or 0
         http_tracker = get_global_tracker()
         http_cm = http_tracker.request(method, url) if http_tracker is not None else nullcontext()
         op_cm = diagnostics.operation("ometa.http", method=method, url=str(url))
@@ -241,7 +244,7 @@ class REST:
                     self._limits_reached.add(path)
                     raise exc  # noqa: TRY201
                 except RetryException:
-                    retry_wait = self._retry_wait * (total_retries - retry + 1)
+                    retry_wait = retry_wait_base * (total_retries - retry + 1)
                     logger.warning(
                         "sleep %s seconds and retrying %s %s more time(s)...",
                         retry_wait,

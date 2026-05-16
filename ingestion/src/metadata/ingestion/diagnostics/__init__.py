@@ -74,14 +74,14 @@ class _DiagnosticsState:
 
     def __init__(
         self,
-        registry,
-        http_tracker,
-        memory_tracker,
-        watchdog,
-        heartbeat,
-        signals_installed,
-        db_introspector,
-    ):
+        registry: Any,
+        http_tracker: Any,
+        memory_tracker: Any,
+        watchdog: Any,
+        heartbeat: Any,
+        signals_installed: bool,
+        db_introspector: Any,
+    ) -> None:
         self.registry = registry
         self.http_tracker = http_tracker
         self.memory_tracker = memory_tracker
@@ -243,10 +243,15 @@ def dump_on_memory_error():
 
 
 class _DumpOnMemoryError:
-    def __enter__(self):
+    def __enter__(self) -> "_DumpOnMemoryError":
         return self
 
-    def __exit__(self, exc_type, exc, _tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        _tb: Any,
+    ) -> bool:
         if exc_type is MemoryError:
             # The dump path itself can fail under severe pressure;
             # never swallow the original MemoryError.

@@ -85,7 +85,15 @@ class DbIntrospector:
 
     # ---- listeners ----
 
-    def _before(self, conn, cursor, statement, parameters, context, executemany) -> None:
+    def _before(
+        self,
+        conn: Any,
+        cursor: Any,
+        statement: Any,
+        parameters: Any,
+        context: Any,
+        executemany: Any,
+    ) -> None:
         """Push a `{dialect}.query` op for the duration of `cursor.execute`."""
         try:
             op_name = self._op_name(conn)
@@ -100,7 +108,15 @@ class DbIntrospector:
             # Never let a diagnostics listener break SQL execution.
             pass
 
-    def _after(self, conn, cursor, statement, parameters, context, executemany) -> None:
+    def _after(
+        self,
+        conn: Any,
+        cursor: Any,
+        statement: Any,
+        parameters: Any,
+        context: Any,
+        executemany: Any,
+    ) -> None:
         try:
             token = getattr(context, _TOKEN_ATTR, None) if context is not None else None
             if token is not None:
@@ -109,7 +125,7 @@ class DbIntrospector:
         except Exception:
             pass
 
-    def _error(self, exception_context) -> None:
+    def _error(self, exception_context: Any) -> None:
         """SQLAlchemy fires `handle_error` instead of `after_cursor_execute`
         when `cursor.execute` raises. Make sure we still pop the op so the
         stack stays balanced.
@@ -124,7 +140,7 @@ class DbIntrospector:
             pass
 
     @staticmethod
-    def _op_name(conn) -> str:
+    def _op_name(conn: Any) -> str:
         try:
             dialect = conn.dialect.name if conn is not None and conn.dialect else "sql"
         except Exception:

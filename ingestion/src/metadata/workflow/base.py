@@ -246,9 +246,13 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         pipeline_state = PipelineState.success
         self.timer.trigger()
         diagnostics.install(self)
+        # `self.config` is typed Union[Any, Dict]; getattr keeps the static
+        # checker happy without changing behavior (the Dict branch never
+        # carries this attribute at runtime).
+        pipeline_fqn = getattr(self.config, "ingestionPipelineFQN", None)
         try:
             with (
-                diagnostics.operation("workflow.execute", fqn=self.config.ingestionPipelineFQN),
+                diagnostics.operation("workflow.execute", fqn=pipeline_fqn),
                 diagnostics.dump_on_memory_error(),
             ):
                 self.execute_internal()
