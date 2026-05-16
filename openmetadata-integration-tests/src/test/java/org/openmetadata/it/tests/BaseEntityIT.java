@@ -4765,7 +4765,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       patchEntity(entity.getId().toString(), entity);
     }
 
-    String botDescription = "Forced description via overrideMetadata=true";
+    String botDescription = "Forced description via override-flag";
     for (K req : requests) {
       setDescription(req, botDescription);
     }
