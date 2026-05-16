@@ -145,13 +145,11 @@ export async function applyRelationTypeFilter(page: Page, typeName: string) {
 }
 
 export async function readGraphZoom(page: Page): Promise<number> {
-  return page
-    .locator('.ontology-g6-container')
-    .evaluate((el: HTMLElement) => {
-      const zoom = Number(el.dataset.graphZoom);
+  return page.locator('.ontology-g6-container').evaluate((el: HTMLElement) => {
+    const zoom = Number(el.dataset.graphZoom);
 
-      return Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
-    });
+    return Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  });
 }
 
 // Badge is at DATA_MODE_TERM_NODE_SIZE/2 + NODE_BADGE_OFFSET_X = 15+8 = 23 px
