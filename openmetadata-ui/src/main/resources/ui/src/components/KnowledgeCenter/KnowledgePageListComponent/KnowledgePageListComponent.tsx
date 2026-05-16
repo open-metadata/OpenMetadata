@@ -376,7 +376,7 @@ const KnowledgePageListComponent = forwardRef<
         data: undefined,
         header: null,
       });
-    }, [permissions, refreshBookMarkWidget, refreshTagsCategory]);
+    }, [getRightPanelElement]);
 
     useImperativeHandle(ref, () => ({
       onPageDelete: handleDelete,
