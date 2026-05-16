@@ -30,8 +30,8 @@ import {
   QuickLink,
 } from '../../../interface/knowledge-center.interface';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';
 
 const KnowledgePages: FC = () => {
   const { t } = useTranslation();
@@ -79,7 +79,7 @@ const KnowledgePages: FC = () => {
       {paging?.total > PAGE_SIZE && (
         <Link
           data-testid="view-all-data-asset-related-articles"
-          to={`${ROUTES.KNOWLEDGE_CENTER_FILTER}?entityId=${entityId}&entityType=${entityType}`}>
+          to={`${ROUTES.CONTEXT_CENTER_FILTER}?entityId=${entityId}&entityType=${entityType}`}>
           {t('label.view-all')}
         </Link>
       )}
@@ -128,7 +128,7 @@ const KnowledgePages: FC = () => {
                   isQuickLink
                     ? quickLink.url
                     : {
-                        pathname: getKnowledgePagePath(
+                        pathname: contextCenterClassBase.getArticlePath(
                           knowledgePage.fullyQualifiedName
                         ),
                       }
