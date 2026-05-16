@@ -590,7 +590,7 @@ pytz==2025.2
 pywinrm==0.5.0
 pyzmq==27.1.0
 qdrant-client==1.16.2
-ray==2.47.1
+ray==2.50.0
 reactivex==4.1.0
 redis==6.4.0
 redshift-connector==2.1.7
