@@ -13,7 +13,7 @@ Delete methods
 """
 
 import traceback
-from typing import Dict, Iterable, List, Optional, Type  # noqa: UP035
+from typing import Dict, Iterable, List, Optional, Set, Type  # noqa: UP035
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -29,7 +29,7 @@ logger = utils_logger()
 def delete_entity_from_source(
     metadata: OpenMetadata,
     entity_type: Type[T],  # noqa: UP006
-    entity_source_state,
+    entity_source_state: Set[str],  # noqa: UP006
     mark_deleted_entity: bool = True,
     params: Optional[Dict[str, str]] = None,  # noqa: UP006, UP045
 ) -> Iterable[Either[DeleteEntity]]:
@@ -74,7 +74,7 @@ def delete_entity_from_source(
 def _delete_stale_entities_legacy(
     metadata: OpenMetadata,
     entity_type: Type[T],  # noqa: UP006
-    entity_source_state,
+    entity_source_state: Set[str],  # noqa: UP006
     mark_deleted_entity: bool,
     params: Optional[Dict[str, str]],  # noqa: UP006, UP045
 ) -> Iterable[Either[DeleteEntity]]:
@@ -83,10 +83,11 @@ def _delete_stale_entities_legacy(
     for entity in entity_state:
         if str(entity.fullyQualifiedName.root) not in entity_source_state:
             yield Either(
+                left=None,
                 right=DeleteEntity(
                     entity=entity,
                     mark_deleted_entities=mark_deleted_entity,
-                )
+                ),
             )
 
 
