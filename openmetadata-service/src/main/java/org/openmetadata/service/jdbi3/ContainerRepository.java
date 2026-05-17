@@ -1046,6 +1046,40 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   /**
+   * Hard ceiling on how many descendant containers a single PATCH re-parent (#24294) is allowed
+   * to cascade through in one transaction. The whole rewrite — descendant FQNs in
+   * {@code storage_container_entity}, every tag_usage row, every cached entry across all OM
+   * instances, and the search-index update-by-query — runs inside one DB transaction holding
+   * row locks on the entire subtree. Past this threshold the operation is functionally a DoS
+   * on the cluster, so we reject it at the front door and ask the operator to split the move.
+   *
+   * <p>Overridable via the {@code openmetadata.container.maxReparentDescendants} system
+   * property for operators who have measured the impact and accept it; tests use the same
+   * knob to exercise the limit without creating thousands of fixtures.
+   */
+  static final int DEFAULT_MAX_REPARENT_DESCENDANTS = 10_000;
+
+  private static final String MAX_REPARENT_DESCENDANTS_PROPERTY =
+      "openmetadata.container.maxReparentDescendants";
+
+  static int maxReparentDescendants() {
+    return Integer.getInteger(MAX_REPARENT_DESCENDANTS_PROPERTY, DEFAULT_MAX_REPARENT_DESCENDANTS);
+  }
+
+  /**
+   * Pure size check. Extracted so it's unit-testable without a live DAO — the production
+   * caller in {@link ContainerUpdater#updateParent} runs the count query then passes the
+   * result here.
+   */
+  static void validateSubtreeSize(String containerFqn, int descendantCount, int maxAllowed) {
+    if (descendantCount > maxAllowed) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.containerSubtreeTooLarge(
+              containerFqn, descendantCount, maxAllowed));
+    }
+  }
+
+  /**
    * Validate that the {@code updated} container's parent (if set) is in the same StorageService
    * as the {@code original} and that it doesn't form a cycle. Extracted as a static helper so
    * the validation logic is unit-testable without bootstrapping an {@link EntityUpdater}.
@@ -1177,6 +1211,16 @@ public class ContainerRepository extends EntityRepository<Container> {
       }
 
       LOG.info("Container FQN changed from {} to {} (parent reassignment)", oldFqn, newFqn);
+
+      // #24294 — bail out BEFORE any cascade work if the subtree is large enough that the
+      // single-transaction rewrite would lock thousands of rows + reindex hundreds of thousands
+      // of search docs. Cheap indexed COUNT(*); short-circuits before any cache work runs.
+      int maxAllowed = maxReparentDescendants();
+      int descendantCount =
+          daoCollection
+              .containerDAO()
+              .countDescendantsByPrefix(FullyQualifiedName.buildHash(oldFqn) + ".%");
+      validateSubtreeSize(oldFqn, descendantCount, maxAllowed);
 
       List<EntityDAO.EntityIdFqnPair> renamedContainers =
           invalidateCacheForRenameCascade(CONTAINER, oldFqn);

@@ -1028,6 +1028,15 @@ public interface CollectionDAO {
               oldHash);
       updateFqnInternal(mySqlUpdate, postgresUpdate);
     }
+
+    /**
+     * Cheap descendant count used by the PATCH re-parent guard (#24294) to short-circuit
+     * absurd subtree moves before any cascade work runs. {@code fqnHash LIKE 'oldHash.%'}
+     * matches every descendant row (excluding the moved container itself) and the index on
+     * {@code fqnHash} makes this an O(log n) lookup.
+     */
+    @SqlQuery("SELECT COUNT(*) FROM storage_container_entity WHERE fqnHash LIKE :prefixLike")
+    int countDescendantsByPrefix(@Bind("prefixLike") String prefixLike);
   }
 
   class ContainerSummaryRowMapper implements RowMapper<Container> {

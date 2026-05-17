@@ -3080,6 +3080,76 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   }
 
   @Test
+  void patch_containerParent_rejectsOversizedSubtree_400(TestNamespace ns) {
+    // Force a tiny threshold for this test only so we can exercise the guard without
+    // creating 10,000+ containers. The server reads this on every PATCH so the override
+    // takes effect immediately; restored in `finally` so concurrent tests see the default.
+    String property = "openmetadata.container.maxReparentDescendants";
+    String previous = System.setProperty(property, "2");
+    try {
+      StorageService service = StorageServiceTestFactory.createS3(ns);
+      Container parentA = createUnderService(ns, service, "bigA");
+      Container parentB = createUnderService(ns, service, "bigB");
+      Container child = createUnderParent(ns, service, parentA, "bigChild");
+      // 3 grandchildren — exceeds the threshold of 2 descendants.
+      createUnderParent(ns, service, child, "gc1");
+      createUnderParent(ns, service, child, "gc2");
+      createUnderParent(ns, service, child, "gc3");
+
+      child.setParent(parentRefOf(parentB));
+      Exception ex =
+          assertThrows(
+              Exception.class,
+              () -> patchEntity(child.getId().toString(), child),
+              "subtree of 3 descendants must exceed the configured limit of 2");
+      String message = ex.getMessage();
+      assertNotNull(message);
+      assertTrue(
+          message.contains("subtree has 3 descendant"),
+          "error message should report the actual descendant count: " + message);
+      assertTrue(
+          message.contains("maximum of 2"),
+          "error message should report the configured maximum: " + message);
+
+      // The rejection must not have partially mutated state: child still points at parentA.
+      Container refetched = getEntityWithFields(child.getId().toString(), "parent");
+      assertEquals(parentA.getId(), refetched.getParent().getId());
+    } finally {
+      if (previous == null) {
+        System.clearProperty(property);
+      } else {
+        System.setProperty(property, previous);
+      }
+    }
+  }
+
+  @Test
+  void patch_containerParent_allowsMoveAtConfiguredLimit_200(TestNamespace ns) {
+    // Exactly at the limit (descendantCount == max) must still be allowed — the guard uses
+    // strict `>` not `>=`.
+    String property = "openmetadata.container.maxReparentDescendants";
+    String previous = System.setProperty(property, "2");
+    try {
+      StorageService service = StorageServiceTestFactory.createS3(ns);
+      Container parentA = createUnderService(ns, service, "limA");
+      Container parentB = createUnderService(ns, service, "limB");
+      Container child = createUnderParent(ns, service, parentA, "limChild");
+      createUnderParent(ns, service, child, "lgc1");
+      createUnderParent(ns, service, child, "lgc2");
+
+      child.setParent(parentRefOf(parentB));
+      Container moved = patchEntity(child.getId().toString(), child);
+      assertEquals(parentB.getId(), moved.getParent().getId());
+    } finally {
+      if (previous == null) {
+        System.clearProperty(property);
+      } else {
+        System.setProperty(property, previous);
+      }
+    }
+  }
+
+  @Test
   void patch_containerParent_emitsChangeDescription_200(TestNamespace ns) {
     StorageService service = StorageServiceTestFactory.createS3(ns);
     Container parentA = createUnderService(ns, service, "cdA");

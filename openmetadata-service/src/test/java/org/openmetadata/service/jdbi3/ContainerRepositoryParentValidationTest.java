@@ -11,6 +11,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -171,6 +172,64 @@ class ContainerRepositoryParentValidationTest {
       assertTrue(ex.getMessage().contains(SERVICE_A_FQN));
       assertTrue(ex.getMessage().contains(SERVICE_B_FQN));
       assertTrue(ex.getMessage().contains("different StorageService"));
+    }
+  }
+
+  @Test
+  void validateSubtreeSize_allowsUnderLimit() {
+    assertDoesNotThrow(
+        () -> ContainerRepository.validateSubtreeSize(SERVICE_A_FQN + ".bucket", 0, 100));
+    assertDoesNotThrow(
+        () -> ContainerRepository.validateSubtreeSize(SERVICE_A_FQN + ".bucket", 50, 100));
+  }
+
+  @Test
+  void validateSubtreeSize_allowsAtLimit() {
+    // 10 descendants when the limit is exactly 10 is still allowed — the check is strict >.
+    assertDoesNotThrow(
+        () -> ContainerRepository.validateSubtreeSize(SERVICE_A_FQN + ".bucket", 10, 10));
+  }
+
+  @Test
+  void validateSubtreeSize_rejectsOverLimit() {
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                ContainerRepository.validateSubtreeSize(
+                    SERVICE_A_FQN + ".bucket", 1_500_000, 10_000));
+    assertTrue(ex.getMessage().contains(SERVICE_A_FQN + ".bucket"));
+    assertTrue(ex.getMessage().contains("1500000"));
+    assertTrue(ex.getMessage().contains("10000"));
+    assertTrue(ex.getMessage().contains("openmetadata.container.maxReparentDescendants"));
+  }
+
+  @Test
+  void maxReparentDescendants_defaultsTo10000WhenPropertyUnset() {
+    String previous = System.clearProperty("openmetadata.container.maxReparentDescendants");
+    try {
+      assertEquals(10_000, ContainerRepository.maxReparentDescendants());
+      assertEquals(
+          ContainerRepository.DEFAULT_MAX_REPARENT_DESCENDANTS,
+          ContainerRepository.maxReparentDescendants());
+    } finally {
+      if (previous != null) {
+        System.setProperty("openmetadata.container.maxReparentDescendants", previous);
+      }
+    }
+  }
+
+  @Test
+  void maxReparentDescendants_readsSystemPropertyOverride() {
+    String previous = System.setProperty("openmetadata.container.maxReparentDescendants", "42");
+    try {
+      assertEquals(42, ContainerRepository.maxReparentDescendants());
+    } finally {
+      if (previous == null) {
+        System.clearProperty("openmetadata.container.maxReparentDescendants");
+      } else {
+        System.setProperty("openmetadata.container.maxReparentDescendants", previous);
+      }
     }
   }
 

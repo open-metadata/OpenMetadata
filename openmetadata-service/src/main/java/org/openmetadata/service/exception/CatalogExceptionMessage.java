@@ -389,6 +389,17 @@ public final class CatalogExceptionMessage {
         container, currentService, parentService);
   }
 
+  public static String containerSubtreeTooLarge(
+      String container, int descendantCount, int maxAllowed) {
+    return String.format(
+        "Can't re-parent Container %s: its subtree has %d descendant containers, which exceeds "
+            + "the maximum of %d. Re-parenting at this scale would lock every descendant row and "
+            + "reindex all matching search documents in a single transaction; split the move into "
+            + "smaller subtrees or raise openmetadata.container.maxReparentDescendants if you "
+            + "understand the operational impact.",
+        container, descendantCount, maxAllowed);
+  }
+
   public static String eventPublisherFailedToPublish(
       SubscriptionDestination.SubscriptionType type, ChangeEvent event, String message) {
     return String.format(
