@@ -22,6 +22,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedSearchIndexExecutor;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.SearchIndexJob;
+import org.openmetadata.service.apps.bundles.searchIndex.promotion.RatioPromotionPolicy;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -302,7 +303,10 @@ public class DistributedIndexingStrategy {
       return finalSuccess;
     }
 
-    return new DistributedReindexFinalizer(indexPromotionHandler, stagedIndexContext)
+    double minRatio =
+        config != null ? config.minSuccessRatio() : RatioPromotionPolicy.DEFAULT_MIN_SUCCESS_RATIO;
+    return new DistributedReindexFinalizer(
+            indexPromotionHandler, stagedIndexContext, new RatioPromotionPolicy(minRatio))
         .finalizeRemainingEntities(getPromotedEntities(), getFinalEntityStats(), finalSuccess);
   }
 
