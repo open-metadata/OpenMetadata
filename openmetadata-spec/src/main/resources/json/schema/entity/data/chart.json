@@ -211,11 +211,6 @@
       "default": null,
       "deprecated": true
     },
-    "dashboardCount": {
-      "description": "Number of dashboards that contain this chart. Computed on demand when `dashboardCount` is requested in `fields`.",
-      "type": "integer",
-      "default": null
-    },
     "entityStatus": {
       "description": "Status of the Chart.",
       "$ref": "../../type/status.json"

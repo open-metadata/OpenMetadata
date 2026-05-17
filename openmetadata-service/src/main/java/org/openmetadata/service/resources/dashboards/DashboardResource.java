@@ -75,7 +75,7 @@ import org.openmetadata.service.security.Authorizer;
 public class DashboardResource extends EntityResource<Dashboard, DashboardRepository> {
   public static final String COLLECTION_PATH = "/v1/dashboards/";
   protected static final String FIELDS =
-      "owners,chartCount,dataModelCount,followers,tags,usageSummary,extension,domains,dataProducts,sourceHash";
+      "owners,followers,tags,usageSummary,extension,domains,dataProducts,sourceHash";
   private final DashboardMapper mapper = new DashboardMapper();
 
   @Override
@@ -91,7 +91,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("chartCount,dataModelCount", MetadataOperation.VIEW_BASIC);
     addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
     return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_LINEAGE);
   }

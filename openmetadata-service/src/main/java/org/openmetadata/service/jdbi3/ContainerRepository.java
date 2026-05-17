@@ -86,31 +86,11 @@ public class ContainerRepository extends EntityRepository<Container> {
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put(FIELD_PARENT, this::fetchAndSetParents);
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetDataModelColumnTags);
-    fieldFetchers.put("childrenCount", this::fetchAndSetChildrenCounts);
   }
 
   @Override
   protected Set<String> childCollectionFields() {
     return Set.of("children");
-  }
-
-  private Integer getChildrenCount(Container container) {
-    if (container == null || container.getId() == null) {
-      return 0;
-    }
-    return daoCollection
-        .relationshipDAO()
-        .countFindToByType(
-            container.getId(), Entity.CONTAINER, Entity.CONTAINER, Relationship.CONTAINS.ordinal());
-  }
-
-  private void fetchAndSetChildrenCounts(List<Container> containers, EntityUtil.Fields fields) {
-    if (!fields.contains("childrenCount") || containers == null || containers.isEmpty()) {
-      return;
-    }
-    for (Container container : containers) {
-      container.setChildrenCount(getChildrenCount(container));
-    }
   }
 
   @Override

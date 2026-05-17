@@ -76,24 +76,16 @@
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "charts": {
-      "description": "Charts on this Dashboard. Populated only when `fields=charts` is explicitly requested. Excluded from `fields=*` expansion to prevent unbounded materialisation for dashboards with very large chart counts — use `chartCount` plus a paginated chart listing for badges and tables.",
+      "description": "Deprecated. Use `GET /v1/charts?dashboard={fqn}` to list charts on this dashboard with pagination. This field is no longer populated by the API and will be removed in a future release.",
       "$ref": "../../type/entityReferenceList.json",
-      "default": null
-    },
-    "chartCount": {
-      "description": "Number of charts linked to this dashboard. Computed on demand when `chartCount` is requested in `fields`.",
-      "type": "integer",
-      "default": null
+      "default": null,
+      "deprecated": true
     },
     "dataModels": {
-      "description": "Dashboard data models on this Dashboard. Populated only when `fields=dataModels` is explicitly requested. Excluded from `fields=*` expansion.",
+      "description": "Deprecated. Use the dashboardDataModels list endpoint filtered by the dashboard's service. This field is no longer populated by the API and will be removed in a future release.",
       "$ref": "../../type/entityReferenceList.json",
-      "default": null
-    },
-    "dataModelCount": {
-      "description": "Number of dashboard data models linked to this dashboard. Computed on demand when `dataModelCount` is requested in `fields`.",
-      "type": "integer",
-      "default": null
+      "default": null,
+      "deprecated": true
     },
     "href": {
       "description": "Link to the resource corresponding to this entity.",

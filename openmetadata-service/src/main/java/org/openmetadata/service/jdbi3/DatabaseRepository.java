@@ -91,7 +91,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations
-    fieldFetchers.put("schemaCount", this::fetchAndSetSchemaCounts);
     fieldFetchers.put(DATABASE_PROFILER_CONFIG, this::fetchAndSetDatabaseProfilerConfigs);
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
   }
@@ -156,16 +155,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
               Relationship.CONTAINS));
     }
     bulkInsertRelationships(relationships);
-  }
-
-  private Integer getSchemaCount(Database database) {
-    if (database == null || database.getFullyQualifiedName() == null) {
-      return 0;
-    }
-    ListFilter filter =
-        new ListFilter(Include.NON_DELETED)
-            .addQueryParam("database", database.getFullyQualifiedName());
-    return daoCollection.databaseSchemaDAO().listCount(filter);
   }
 
   @Override
@@ -251,9 +240,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
   @Override
   public void setFields(Database database, Fields fields, RelationIncludes relationIncludes) {
     database.setService(getContainer(database.getId()));
+    // Schemas under a database are never materialised here — use GET
+    // /v1/databaseSchemas?database={fqn}.
     database.setDatabaseSchemas(null);
-    database.setSchemaCount(
-        fields.contains("schemaCount") ? getSchemaCount(database) : database.getSchemaCount());
     database.setDatabaseProfilerConfig(
         fields.contains(DATABASE_PROFILER_CONFIG)
             ? getDatabaseProfilerConfig(database)
@@ -283,14 +272,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
       return;
     }
 
-    // Defensively strip any embedded schemas collection: listing schemas is served
-    // by GET /v1/databaseSchemas?database={fqn} and is no longer materialized here
-    // (avoids OOM on databases with very large schema counts).
+    // Schemas under a database are never materialised here — use GET
+    // /v1/databaseSchemas?database={fqn}.
     databases.forEach(database -> database.setDatabaseSchemas(null));
-
-    if (fields.contains("schemaCount")) {
-      fetchAndSetSchemaCounts(databases, fields);
-    }
 
     if (fields.contains(DATABASE_PROFILER_CONFIG)) {
       fetchAndSetDatabaseProfilerConfigs(databases, fields);
@@ -298,15 +282,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
     if (fields.contains("usageSummary")) {
       fetchAndSetUsageSummaries(databases, fields);
-    }
-  }
-
-  private void fetchAndSetSchemaCounts(List<Database> databases, Fields fields) {
-    if (!fields.contains("schemaCount") || databases == null || databases.isEmpty()) {
-      return;
-    }
-    for (Database database : databases) {
-      database.setSchemaCount(getSchemaCount(database));
     }
   }
 
@@ -334,7 +309,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public void clearFields(Database database, Fields fields) {
     database.setDatabaseSchemas(null);
-    database.setSchemaCount(fields.contains("schemaCount") ? database.getSchemaCount() : null);
     database.setDatabaseProfilerConfig(
         fields.contains(DATABASE_PROFILER_CONFIG) ? database.getDatabaseProfilerConfig() : null);
     database.withUsageSummary(fields.contains("usageSummary") ? database.getUsageSummary() : null);

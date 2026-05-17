@@ -68,8 +68,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         DASHBOARD_UPDATE_FIELDS);
     supportsSearch = true;
 
-    fieldFetchers.put("chartCount", this::fetchAndSetChartCounts);
-    fieldFetchers.put("dataModelCount", this::fetchAndSetDataModelCounts);
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
   }
 
@@ -132,80 +130,15 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public void setFields(Dashboard dashboard, Fields fields, RelationIncludes relationIncludes) {
     dashboard.setService(getContainer(dashboard.getId()));
-    // Charts and dataModels remain available when explicitly requested via `fields=charts`
-    // (the existing UI relies on this to render the Charts tab). They are excluded from
-    // `fields=*` expansion via childCollectionFields() to prevent unbounded materialisation
-    // on the wildcard path.
-    dashboard.setCharts(
-        fields.contains("charts")
-            ? findTo(
-                dashboard.getId(),
-                Entity.DASHBOARD,
-                Relationship.HAS,
-                Entity.CHART,
-                relationIncludes.getIncludeFor("charts"))
-            : null);
-    dashboard.setDataModels(
-        fields.contains("dataModels")
-            ? findTo(
-                dashboard.getId(),
-                Entity.DASHBOARD,
-                Relationship.HAS,
-                Entity.DASHBOARD_DATA_MODEL,
-                relationIncludes.getIncludeFor("dataModels"))
-            : null);
-    dashboard.setChartCount(
-        fields.contains("chartCount") ? getChartCount(dashboard) : dashboard.getChartCount());
-    dashboard.setDataModelCount(
-        fields.contains("dataModelCount")
-            ? getDataModelCount(dashboard)
-            : dashboard.getDataModelCount());
+    // Charts and dataModels are never materialised here. Use the paginated child resource
+    // endpoints: GET /v1/charts?dashboard={fqn} and the dataModel list endpoint.
+    dashboard.setCharts(null);
+    dashboard.setDataModels(null);
     if (dashboard.getUsageSummary() == null) {
       dashboard.withUsageSummary(
           fields.contains("usageSummary")
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId())
               : null);
-    }
-  }
-
-  private Integer getChartCount(Dashboard dashboard) {
-    if (dashboard == null || dashboard.getId() == null) {
-      return 0;
-    }
-    return daoCollection
-        .relationshipDAO()
-        .countFindToByType(
-            dashboard.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS.ordinal());
-  }
-
-  private Integer getDataModelCount(Dashboard dashboard) {
-    if (dashboard == null || dashboard.getId() == null) {
-      return 0;
-    }
-    return daoCollection
-        .relationshipDAO()
-        .countFindToByType(
-            dashboard.getId(),
-            Entity.DASHBOARD,
-            Entity.DASHBOARD_DATA_MODEL,
-            Relationship.HAS.ordinal());
-  }
-
-  private void fetchAndSetChartCounts(List<Dashboard> dashboards, Fields fields) {
-    if (!fields.contains("chartCount") || dashboards == null || dashboards.isEmpty()) {
-      return;
-    }
-    for (Dashboard dashboard : dashboards) {
-      dashboard.setChartCount(getChartCount(dashboard));
-    }
-  }
-
-  private void fetchAndSetDataModelCounts(List<Dashboard> dashboards, Fields fields) {
-    if (!fields.contains("dataModelCount") || dashboards == null || dashboards.isEmpty()) {
-      return;
-    }
-    for (Dashboard dashboard : dashboards) {
-      dashboard.setDataModelCount(getDataModelCount(dashboard));
     }
   }
 
@@ -227,13 +160,12 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       return;
     }
 
-    if (fields.contains("chartCount")) {
-      fetchAndSetChartCounts(dashboards, fields);
-    }
-
-    if (fields.contains("dataModelCount")) {
-      fetchAndSetDataModelCounts(dashboards, fields);
-    }
+    // Charts and dataModels are never materialised on the parent — use paginated child endpoints.
+    dashboards.forEach(
+        d -> {
+          d.setCharts(null);
+          d.setDataModels(null);
+        });
 
     if (fields.contains("usageSummary")) {
       fetchAndSetUsageSummaries(dashboards, fields);
@@ -256,9 +188,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   public void clearFields(Dashboard dashboard, Fields fields) {
     dashboard.setCharts(null);
     dashboard.setDataModels(null);
-    dashboard.setChartCount(fields.contains("chartCount") ? dashboard.getChartCount() : null);
-    dashboard.setDataModelCount(
-        fields.contains("dataModelCount") ? dashboard.getDataModelCount() : null);
     dashboard.withUsageSummary(
         fields.contains("usageSummary") ? dashboard.getUsageSummary() : null);
   }

@@ -1134,12 +1134,12 @@ public class DashboardResourceIT extends BaseEntityIT<Dashboard, CreateDashboard
   }
 
   /**
-   * Regression: dashboards previously materialized the full charts and dataModels lists on
-   * `fields=*` expansion. Now those fields are excluded from `*` (load only when explicitly
-   * requested) and `chartCount`/`dataModelCount` expose the size.
+   * Regression: dashboards previously materialized the full charts and dataModels lists when
+   * requested. The fields are now removed entirely — callers must paginate via
+   * {@code GET /v1/charts?dashboard={fqn}} and the dashboardDataModels listing instead.
    */
   @Test
-  void testGetDashboardWithWildcardFieldsExcludesChartsAndDataModels(TestNamespace ns) {
+  void testGetDashboardDoesNotMaterializeChartsOrDataModels(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
 
@@ -1161,12 +1161,10 @@ public class DashboardResourceIT extends BaseEntityIT<Dashboard, CreateDashboard
     assertTrue(
         wildcardFetch.getDataModels() == null || wildcardFetch.getDataModels().isEmpty(),
         "fields=* must NOT populate dataModels[] on the parent dashboard");
-    assertNotNull(wildcardFetch.getChartCount(), "fields=* must populate chartCount");
-    assertEquals(1, wildcardFetch.getChartCount(), "chartCount should reflect chart count");
 
-    // Explicit fields=charts must still work for backward compat with the UI Charts tab.
     Dashboard explicitFetch = client.dashboards().get(dashboard.getId().toString(), "charts");
-    assertNotNull(explicitFetch.getCharts(), "Explicit fields=charts must still populate charts[]");
-    assertEquals(1, explicitFetch.getCharts().size());
+    assertTrue(
+        explicitFetch.getCharts() == null || explicitFetch.getCharts().isEmpty(),
+        "Even explicit fields=charts must NOT materialize charts[] anymore");
   }
 }

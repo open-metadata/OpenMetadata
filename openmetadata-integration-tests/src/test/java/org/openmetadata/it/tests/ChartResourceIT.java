@@ -1022,7 +1022,10 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
     assertTrue(
         wildcardFetch.getDashboards() == null || wildcardFetch.getDashboards().isEmpty(),
         "fields=* must NOT populate dashboards[] on the parent chart");
-    assertNotNull(wildcardFetch.getDashboardCount(), "fields=* must populate dashboardCount");
-    assertEquals(2, wildcardFetch.getDashboardCount(), "dashboardCount should reflect linkage");
+
+    Chart explicitFetch = client.charts().get(chart.getId().toString(), "dashboards");
+    assertTrue(
+        explicitFetch.getDashboards() == null || explicitFetch.getDashboards().isEmpty(),
+        "Even explicit fields=dashboards must NOT materialize dashboards[] anymore");
   }
 }

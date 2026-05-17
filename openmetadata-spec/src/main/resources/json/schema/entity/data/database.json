@@ -92,11 +92,6 @@
       "$ref": "../../type/entityReferenceList.json",
       "deprecated": true
     },
-    "schemaCount": {
-      "description": "Number of schemas under this database. Computed on demand when `schemaCount` is requested in `fields`.",
-      "type": "integer",
-      "default": null
-    },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"

@@ -161,22 +161,12 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     bulkInsertRelationships(relationships);
   }
 
-  private Integer getTableCount(DatabaseSchema schema) {
-    if (schema == null || schema.getFullyQualifiedName() == null) {
-      return 0;
-    }
-    ListFilter filter =
-        new ListFilter(Include.NON_DELETED)
-            .addQueryParam("databaseSchema", schema.getFullyQualifiedName());
-    return daoCollection.tableDAO().listCount(filter);
-  }
-
   @Override
   public void setFields(DatabaseSchema schema, Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(schema);
+    // Tables under a schema are listed via GET /v1/tables?databaseSchema={fqn}. Never
+    // materialised on the parent — this was the source of an OOM on a schema with 36k tables.
     schema.setTables(null);
-    schema.setTableCount(
-        fields.contains("tableCount") ? getTableCount(schema) : schema.getTableCount());
     schema.setDatabaseSchemaProfilerConfig(
         fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG)
             ? getDatabaseSchemaProfilerConfig(schema)
@@ -189,7 +179,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   public void clearFields(DatabaseSchema schema, Fields fields) {
     schema.setTables(null);
-    schema.setTableCount(fields.contains("tableCount") ? schema.getTableCount() : null);
     schema.setDatabaseSchemaProfilerConfig(
         fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG)
             ? schema.getDatabaseSchemaProfilerConfig()
@@ -236,14 +225,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     // Fetch common fields like owners, tags, domain, etc.
     fetchAndSetFields(entities, fields);
 
-    // Defensively strip any embedded tables collection: listing tables is served
-    // by GET /v1/tables?databaseSchema={fqn} and is no longer materialized here
-    // (avoids OOM on schemas with very large table counts).
+    // Tables under a schema are never materialised here — use GET /v1/tables?databaseSchema={fqn}.
     entities.forEach(entity -> entity.setTables(null));
-
-    if (fields.contains("tableCount")) {
-      fetchAndSetTableCounts(entities);
-    }
 
     if (fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG)) {
       fetchAndSetDatabaseSchemaProfilerConfigs(entities);
@@ -424,15 +407,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         });
 
     return databaseMap;
-  }
-
-  private void fetchAndSetTableCounts(List<DatabaseSchema> schemas) {
-    if (schemas == null || schemas.isEmpty()) {
-      return;
-    }
-    for (DatabaseSchema schema : schemas) {
-      schema.setTableCount(getTableCount(schema));
-    }
   }
 
   private void fetchAndSetDatabaseSchemaProfilerConfigs(List<DatabaseSchema> schemas) {

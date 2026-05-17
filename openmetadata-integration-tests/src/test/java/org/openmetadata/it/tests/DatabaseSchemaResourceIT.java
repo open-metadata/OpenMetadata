@@ -456,7 +456,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     }
 
     org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
-    params.setFields("tableCount,databaseSchemaProfilerConfig");
+    params.setFields("databaseSchemaProfilerConfig");
     params.setLimit(100);
 
     params.setDatabase(database.getFullyQualifiedName());
@@ -473,13 +473,11 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
               .orElse(null);
 
       if (createdSchema != null) {
-        // tables[] is no longer materialized on the parent. Use tableCount + dedicated
-        // GET /v1/tables?databaseSchema={fqn} listing instead.
+        // tables[] is no longer materialized on the parent. List tables via
+        // GET /v1/tables?databaseSchema={fqn} for paginated access.
         assertTrue(
             schema.getTables() == null || schema.getTables().isEmpty(),
             "tables[] must not be populated on the parent");
-        assertNotNull(schema.getTableCount());
-        assertEquals(2, schema.getTableCount(), "Schema should have exactly 2 tables");
 
         int schemaIndex = createdSchemas.indexOf(createdSchema);
         if (schemaIndex % 2 == 0) {
@@ -506,7 +504,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     for (DatabaseSchema createdSchema : createdSchemas) {
       DatabaseSchema individualSchema =
           getEntityByNameWithFields(
-              createdSchema.getFullyQualifiedName(), "tableCount,databaseSchemaProfilerConfig");
+              createdSchema.getFullyQualifiedName(), "databaseSchemaProfilerConfig");
 
       DatabaseSchema bulkSchema =
           schemaList.getData().stream()
@@ -515,11 +513,6 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
               .orElse(null);
 
       if (bulkSchema != null) {
-        assertEquals(
-            individualSchema.getTableCount(),
-            bulkSchema.getTableCount(),
-            "tableCount should match between individual and bulk fetch");
-
         if (individualSchema.getDatabaseSchemaProfilerConfig() != null) {
           assertNotNull(
               bulkSchema.getDatabaseSchemaProfilerConfig(),
@@ -1994,10 +1987,10 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   }
 
   /**
-   * Regression: schemas with many tables previously OOMed the server because `fields=*` (and
-   * `fields=tables`) eagerly materialized the entire tables collection on the parent. The
-   * tables list is now served only by `GET /v1/tables?databaseSchema={fqn}` with pagination;
-   * the parent's `tables[]` field must remain null/empty and `tableCount` exposes the size.
+   * Regression: schemas with many tables previously OOMed the server because `fields=*`
+   * eagerly materialized the entire tables collection on the parent. The tables list is now
+   * served only by `GET /v1/tables?databaseSchema={fqn}` with pagination; the parent's
+   * `tables[]` field must remain null regardless of which fields are requested.
    */
   @Test
   void testGetSchemaWithWildcardFieldsDoesNotMaterializeTables(TestNamespace ns) {
@@ -2025,9 +2018,6 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     assertTrue(
         wildcardFetch.getTables() == null || wildcardFetch.getTables().isEmpty(),
         "fields=* must NOT populate tables[] on the parent schema (regression: OOM on 36k tables)");
-    assertNotNull(wildcardFetch.getTableCount(), "fields=* must populate tableCount");
-    assertEquals(
-        3, wildcardFetch.getTableCount(), "tableCount should reflect the number of tables");
 
     DatabaseSchema explicitFetch =
         getEntityByNameWithFields(schema.getFullyQualifiedName(), "tables");

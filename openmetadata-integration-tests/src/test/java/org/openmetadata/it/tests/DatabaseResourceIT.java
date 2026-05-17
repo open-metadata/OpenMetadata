@@ -603,7 +603,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
 
   @Override
   protected Database getEntityIncludeDeleted(String id) {
-    return SdkClients.adminClient().databases().get(id, "owners,tags,schemaCount", "deleted");
+    return SdkClients.adminClient().databases().get(id, "owners,tags", "deleted");
   }
 
   @Override
@@ -1776,8 +1776,6 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     assertTrue(
         wildcardFetch.getDatabaseSchemas() == null || wildcardFetch.getDatabaseSchemas().isEmpty(),
         "fields=* must NOT populate databaseSchemas[] on the parent database");
-    assertNotNull(wildcardFetch.getSchemaCount(), "fields=* must populate schemaCount");
-    assertEquals(3, wildcardFetch.getSchemaCount(), "schemaCount should reflect schema count");
 
     Database explicitFetch =
         getEntityByNameWithFields(database.getFullyQualifiedName(), "databaseSchemas");

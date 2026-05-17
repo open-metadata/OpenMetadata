@@ -80,11 +80,6 @@
       "$ref": "../../type/entityReferenceList.json",
       "deprecated": true
     },
-    "tableCount": {
-      "description": "Number of tables under this schema. Computed on demand when `tableCount` is requested in `fields`.",
-      "type": "integer",
-      "default": null
-    },
     "usageSummary": {
       "description": "Latest usage information for this database.",
       "$ref": "../../type/usageDetails.json",

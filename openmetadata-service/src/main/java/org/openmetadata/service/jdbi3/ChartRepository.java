@@ -55,7 +55,6 @@ public class ChartRepository extends EntityRepository<Chart> {
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations
-    fieldFetchers.put("dashboardCount", this::fetchAndSetDashboardCounts);
     // NOTE: "service" field is NOT registered here because:
     // - For bulk operations: fetchAndSetDefaultService() in setFieldsInBulk handles it correctly
     // - For single entity: setFields() already sets service via getContainer()
@@ -148,28 +147,9 @@ public class ChartRepository extends EntityRepository<Chart> {
   @Override
   public void setFields(Chart chart, Fields fields, RelationIncludes relationIncludes) {
     chart.withService(getContainer(chart.getId()));
+    // Dashboards-containing-this-chart is never materialised here — use the dashboards
+    // listing endpoint filtered by chart (or GET /v1/charts?dashboard={fqn} for the reverse).
     chart.setDashboards(null);
-    chart.setDashboardCount(
-        fields.contains("dashboardCount") ? getDashboardCount(chart) : chart.getDashboardCount());
-  }
-
-  private Integer getDashboardCount(Chart chart) {
-    if (chart == null || chart.getId() == null) {
-      return 0;
-    }
-    return daoCollection
-        .relationshipDAO()
-        .countFindFromByType(
-            chart.getId(), Entity.CHART, Entity.DASHBOARD, Relationship.HAS.ordinal());
-  }
-
-  private void fetchAndSetDashboardCounts(List<Chart> charts, Fields fields) {
-    if (!fields.contains("dashboardCount") || charts == null || charts.isEmpty()) {
-      return;
-    }
-    for (Chart chart : charts) {
-      chart.setDashboardCount(getDashboardCount(chart));
-    }
   }
 
   @Override

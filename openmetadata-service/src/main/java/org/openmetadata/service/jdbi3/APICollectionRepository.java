@@ -112,19 +112,6 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
     bulkInsertRelationships(relationships);
   }
 
-  private Integer getEndpointCount(APICollection apiCollection) {
-    if (apiCollection == null || apiCollection.getId() == null) {
-      return 0;
-    }
-    return daoCollection
-        .relationshipDAO()
-        .countFindToByType(
-            apiCollection.getId(),
-            Entity.API_COLLECTION,
-            Entity.API_ENDPOINT,
-            Relationship.CONTAINS.ordinal());
-  }
-
   @Override
   protected EntityReference getParentReference(APICollection entity) {
     return entity.getService();
@@ -144,18 +131,8 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
     if (apiCollection.getService() == null) {
       apiCollection.setService(getContainer(apiCollection.getId()));
     }
-    apiCollection.setApiEndpoints(
-        fields.contains("apiEndpoints")
-            ? findTo(
-                apiCollection.getId(),
-                Entity.API_COLLECTION,
-                Relationship.CONTAINS,
-                Entity.API_ENDPOINT)
-            : null);
-    apiCollection.setEndpointCount(
-        fields.contains("endpointCount")
-            ? getEndpointCount(apiCollection)
-            : apiCollection.getEndpointCount());
+    // API endpoints are never materialised here — use GET /v1/apiEndpoints?apiCollection={fqn}.
+    apiCollection.setApiEndpoints(null);
   }
 
   @Override
@@ -236,10 +213,7 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
   }
 
   public void clearFields(APICollection apiCollection, Fields fields) {
-    apiCollection.setApiEndpoints(
-        fields.contains("apiEndpoints") ? apiCollection.getApiEndpoints() : null);
-    apiCollection.setEndpointCount(
-        fields.contains("endpointCount") ? apiCollection.getEndpointCount() : null);
+    apiCollection.setApiEndpoints(null);
   }
 
   @Override

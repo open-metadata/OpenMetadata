@@ -481,14 +481,11 @@ public class APICollectionResourceIT extends BaseEntityIT<APICollection, CreateA
     assertTrue(
         wildcardFetch.getApiEndpoints() == null || wildcardFetch.getApiEndpoints().isEmpty(),
         "fields=* must NOT populate apiEndpoints[] on the parent collection");
-    assertNotNull(wildcardFetch.getEndpointCount(), "fields=* must populate endpointCount");
-    assertEquals(3, wildcardFetch.getEndpointCount(), "endpointCount should reflect endpoints");
 
     APICollection explicitFetch =
         client.apiCollections().get(collection.getId().toString(), "apiEndpoints");
-    assertNotNull(
-        explicitFetch.getApiEndpoints(),
-        "Explicit fields=apiEndpoints must still populate apiEndpoints[]");
-    assertEquals(3, explicitFetch.getApiEndpoints().size());
+    assertTrue(
+        explicitFetch.getApiEndpoints() == null || explicitFetch.getApiEndpoints().isEmpty(),
+        "Even explicit fields=apiEndpoints must NOT materialize apiEndpoints[] anymore");
   }
 }

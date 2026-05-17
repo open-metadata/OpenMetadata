@@ -78,6 +78,34 @@ export const getCharts = async (
   return response.data;
 };
 
+/**
+ * List charts linked to a given dashboard. Backend filters via a JOIN through the
+ * dashboard→chart HAS relationship. Use this instead of reading `dashboard.charts` —
+ * that field is no longer materialised on the parent dashboard entity.
+ */
+export const getChartsByDashboard = async (
+  dashboard: string,
+  fields?: string,
+  paging?: PagingWithoutTotal,
+  include: Include = Include.NonDeleted,
+  limit: number = PAGE_SIZE
+) => {
+  const response = await APIClient.get<{
+    data: Chart[];
+    paging: Paging;
+  }>(`${BASE_URL}`, {
+    params: {
+      dashboard,
+      fields,
+      limit,
+      ...paging,
+      include,
+    },
+  });
+
+  return response.data;
+};
+
 export const getChartByFqn = async (fqn: string, params?: ListParams) => {
   const response = await APIClient.get<Chart>(
     `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
