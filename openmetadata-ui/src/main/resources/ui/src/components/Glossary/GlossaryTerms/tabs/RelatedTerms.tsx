@@ -44,6 +44,7 @@ import {
   getGlossaryTermRelationSettings,
   searchGlossaryTermsPaginated,
 } from '../../../../rest/glossaryAPI';
+import { getTextFromHtmlString } from '../../../../utils/BlockEditorUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
@@ -52,7 +53,6 @@ import {
 } from '../../../../utils/EntityVersionUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
-import { getTextFromHtmlString } from '../../../../utils/BlockEditorUtils';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import {
