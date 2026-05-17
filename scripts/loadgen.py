@@ -52,7 +52,11 @@ Usage::
         --enrich-inline tag-pct:0.1,cert-pct:0.05,glossary-pct:0.05 \\
         --bulk-size 150 --concurrency 12
 
-    # Username/password auth (uses login flow):
+    # Pass a JWT directly (e.g. a bot token copied from the UI):
+    python scripts/loadgen.py --server http://localhost:8585/api \\
+        --token "$OM_JWT" --total 100000
+
+    # Username/password auth (exchanges for a token via /v1/users/login):
     python scripts/loadgen.py --server http://localhost:8585/api \\
         --email admin@open-metadata.org --password admin --total 100000
 
@@ -152,6 +156,7 @@ SEVERITIES = ["Severity1", "Severity2", "Severity3", "Severity4", "Severity5"]
 class Config:
     server: str
     token_file: str
+    token: str | None
     email: str | None
     password: str | None
     total: int
@@ -333,8 +338,20 @@ async def gather_bounded(client: Client, coros, label: str, batch: int = 200) ->
 # ---------- Token bootstrap ----------
 
 
-async def login_and_save_token(cfg: Config):
-    """If --email + --password given, exchange them for a token and write to token_file."""
+async def bootstrap_token(cfg: Config):
+    """Write the auth token to ``cfg.token_file`` so the async client can pick
+    it up. Three modes, in precedence order:
+
+      1. ``--token`` literal — written verbatim.
+      2. ``--email`` + ``--password`` — exchanged for a JWT via ``/v1/users/login``.
+      3. Nothing — leave ``cfg.token_file`` as-is (caller is expected to have
+         populated it, e.g. via an external token-refresh loop).
+    """
+    if cfg.token:
+        with open(cfg.token_file, "w") as fh:
+            fh.write(cfg.token)
+        print(f"Token written to {cfg.token_file} (from --token)")
+        return
     if not (cfg.email and cfg.password):
         return
     url = f"{cfg.server.rstrip('/')}/v1/users/login"
@@ -356,7 +373,7 @@ async def login_and_save_token(cfg: Config):
                 sys.exit(2)
             with open(cfg.token_file, "w") as fh:
                 fh.write(token)
-            print(f"Token written to {cfg.token_file}")
+            print(f"Token written to {cfg.token_file} (from /v1/users/login)")
 
 
 # ---------- Distribution planning ----------
@@ -884,7 +901,7 @@ async def create_tests_and_incidents(client: Client, cfg: Config, table_fqns: li
 
 async def run(cfg: Config):
     random.seed(cfg.seed)
-    await login_and_save_token(cfg)
+    await bootstrap_token(cfg)
     plan = plan_volumes(cfg)
     throttle = AdaptiveThrottle(cfg.max_error_rate, cfg.backoff_seconds)
     connector = aiohttp.TCPConnector(limit=cfg.concurrency * 2)
@@ -1001,8 +1018,12 @@ def main():
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--server", default=os.environ.get("OM_SERVER", "http://localhost:8585/api"))
     p.add_argument("--token-file", default=os.environ.get("OM_TOKEN_FILE", "/tmp/om_token"),
-                   help="Path to a file containing the bearer token. Re-read every 30s.")
-    p.add_argument("--email", help="Admin email (will exchange for token and write to --token-file)")
+                   help="Path to a file containing the bearer token. Re-read every 30s "
+                        "so an external rotator can refresh it during long runs.")
+    p.add_argument("--token", default=os.environ.get("OM_TOKEN"),
+                   help="JWT bearer token (bot token from UI, or any valid JWT). "
+                        "When provided, this is written to --token-file before the run.")
+    p.add_argument("--email", help="Admin email — exchanged for a token via /v1/users/login")
     p.add_argument("--password", help="Admin password (paired with --email)")
     p.add_argument("--total", type=int, default=int(os.environ.get("OM_TOTAL", "100000")))
     p.add_argument("--mix", type=parse_mix, default=DEFAULT_MIX,
@@ -1035,6 +1056,7 @@ def main():
     cfg = Config(
         server=args.server,
         token_file=args.token_file,
+        token=args.token,
         email=args.email,
         password=args.password,
         total=args.total,
