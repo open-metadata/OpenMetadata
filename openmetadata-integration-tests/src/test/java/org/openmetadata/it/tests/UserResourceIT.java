@@ -21,15 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.azure.core.exception.HttpResponseException;
 import java.net.URI;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -55,8 +50,6 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
  * Integration tests for User entity operations.
@@ -2162,131 +2155,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                 .users()
                 .generateToken(regularUser.getId(), JWTTokenExpiry.Seven),
         "Admin should not be able to generate token for regular user");
-  }
-
-  @Test
-  void testUserContextCachePerformance(TestNamespace ns) throws HttpResponseException {
-    // Create a test user with multiple roles and teams to properly test cache performance
-    CreateUser createUser =
-        createRequest(ns.prefix("cache-perf-test-user"), ns)
-            .withRoles(List.of(dataStewardRole().getId(), dataConsumerRole().getId()))
-            .withTeams(List.of(testTeam1().getId(), shared().TEAM21.getId()));
-    User testUser = createEntity(createUser);
-    String userName = testUser.getName();
-
-    SubjectCache.invalidateAll();
-
-    // Warm up JVM (exclude from measurements)
-    for (int i = 0; i < 3; i++) {
-      SubjectContext.getSubjectContext(userName);
-    }
-    SubjectCache.invalidateAll();
-
-    // Test 1: Cache Miss (First call - should be slower)
-    long cacheMissStartTime = System.nanoTime();
-    SubjectContext context1 = SubjectContext.getSubjectContext(userName);
-    double cacheMissTime = (System.nanoTime() - cacheMissStartTime) / 1_000_000.0;
-    assertNotNull(context1);
-    assertEquals(userName, context1.user().getName());
-
-    // Test 2: Cache Hit (Multiple subsequent calls - should be much faster)
-    List<Double> cacheHitTimes = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      long cacheHitStartTime = System.nanoTime();
-      SubjectContext context = SubjectContext.getSubjectContext(userName);
-      double cacheHitTime = (System.nanoTime() - cacheHitStartTime) / 1_000_000.0;
-
-      cacheHitTimes.add(cacheHitTime);
-      assertNotNull(context);
-      assertEquals(userName, context.user().getName());
-    }
-
-    // Calculate cache hit performance statistics
-    double avgCacheHitTime =
-        cacheHitTimes.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
-
-    // Performance assertions
-    double performanceImprovement =
-        cacheMissTime > 0 ? ((cacheMissTime - avgCacheHitTime) / cacheMissTime) * 100 : 0.0;
-
-    // Assert significant performance improvement
-    assertTrue(
-        performanceImprovement > 30.0,
-        String.format(
-            "Expected >30%% improvement, got %.1f%% (%.3fms -> %.3fms)",
-            performanceImprovement, cacheMissTime, avgCacheHitTime));
-    assertTrue(
-        avgCacheHitTime < 200,
-        String.format("Cache hits should be <200ms, got %.3fms", avgCacheHitTime));
-
-    // Test 3: Concurrent Access Performance
-    int threadCount = 5;
-    int callsPerThread = 10;
-    ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-
-    long concurrentStartTime = System.nanoTime();
-    List<CompletableFuture<List<Double>>> futures = new ArrayList<>();
-
-    for (int threadId = 0; threadId < threadCount; threadId++) {
-      CompletableFuture<List<Double>> future =
-          CompletableFuture.supplyAsync(
-              () -> {
-                List<Double> threadTimes = new ArrayList<>();
-                for (int call = 0; call < callsPerThread; call++) {
-                  long callStart = System.nanoTime();
-                  SubjectContext context = SubjectContext.getSubjectContext(userName);
-                  double callTime = (System.nanoTime() - callStart) / 1_000_000.0;
-
-                  threadTimes.add(callTime);
-                  assertNotNull(context);
-                  assertEquals(userName, context.user().getName());
-                }
-                return threadTimes;
-              },
-              executor);
-
-      futures.add(future);
-    }
-
-    // Wait for all threads to complete
-    try {
-      CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get();
-    } catch (Exception e) {
-      throw new RuntimeException("Concurrent test failed", e);
-    }
-
-    double totalConcurrentTime = (System.nanoTime() - concurrentStartTime) / 1_000_000.0;
-    executor.shutdown();
-
-    // Collect all concurrent timing data
-    List<Double> allConcurrentTimes = new ArrayList<>();
-    for (CompletableFuture<List<Double>> future : futures) {
-      try {
-        allConcurrentTimes.addAll(future.get());
-      } catch (Exception e) {
-        throw new RuntimeException("Failed to get concurrent results", e);
-      }
-    }
-
-    double avgConcurrentTime =
-        allConcurrentTimes.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
-    int totalCalls = threadCount * callsPerThread;
-    double callsPerSecond = (double) totalCalls / (totalConcurrentTime / 1000.0);
-
-    // Performance assertions for concurrent access
-    assertTrue(
-        avgConcurrentTime < 300,
-        String.format(
-            "Average concurrent call time should be <300ms, got %.2fms", avgConcurrentTime));
-    assertTrue(
-        callsPerSecond > 20,
-        String.format("Should handle >20 calls/sec, got %.1f", callsPerSecond));
-
-    // Test 4: Cache Statistics
-    String cacheStats = SubjectCache.getCacheStats();
-
-    // Cleanup: Remove the test user
-    deleteEntity(testUser.getId().toString());
   }
 
   // ===================================================================

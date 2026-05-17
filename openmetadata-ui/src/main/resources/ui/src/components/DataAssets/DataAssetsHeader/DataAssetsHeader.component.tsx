@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
+import {
+  Alert,
+  Button,
+  Col,
+  Divider,
+  Row,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -162,7 +171,11 @@ export const DataAssetsHeader = ({
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
   const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
-  const { isDarDisabled, refetch: refetchExistingDar } = useDataAccessRequest({
+  const {
+    isDarDisabled,
+    isDarAwaitingGrant,
+    refetch: refetchExistingDar,
+  } = useDataAccessRequest({
     entityFqn: dataAsset.fullyQualifiedName,
     enabled: entityType === EntityType.TABLE,
   });
@@ -630,6 +643,19 @@ export const DataAssetsHeader = ({
         className="data-assets-header-container"
         data-testid="data-assets-header"
         gutter={[0, 20]}>
+        {isDarAwaitingGrant && (
+          <Col span={24}>
+            <Alert
+              showIcon
+              data-testid="dar-awaiting-grant-banner"
+              description={t(
+                'message.data-access-request-awaiting-grant-message'
+              )}
+              message={t('label.data-access-request-awaiting-grant')}
+              type="info"
+            />
+          </Col>
+        )}
         <Col
           className={classNames('d-flex flex-col gap-3 ', {
             'p-l-xs': isCustomizedView,
