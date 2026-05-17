@@ -184,13 +184,13 @@
     <dependency>
       <groupId>org.glassfish.jersey.core</groupId>
       <artifactId>jersey-client</artifactId>
-      <version>3.1.9</version>
+      <version>3.1.11</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.glassfish.jersey.connectors</groupId>
       <artifactId>jersey-apache-connector</artifactId>
-      <version>3.1.9</version>
+      <version>3.1.11</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -239,6 +239,25 @@
       <groupId>org.junit-pioneer</groupId>
       <artifactId>junit-pioneer</artifactId>
       <version>2.3.0</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Required by DriveFileUploadIT (test fixture generation: PDF + XLSX). -->
+    <dependency>
+      <groupId>org.apache.pdfbox</groupId>
+      <artifactId>pdfbox</artifactId>
+      <version>2.0.31</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.poi</groupId>
+      <artifactId>poi</artifactId>
+      <version>5.4.1</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.poi</groupId>
+      <artifactId>poi-ooxml</artifactId>
+      <version>5.4.1</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

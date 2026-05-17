@@ -138,7 +138,7 @@ export const EntityTitleSection = ({
           placement={tooltipPlacement}
           title={getTextFromHtmlString(entityName)}
           trigger="hover">
-          <TooltipTrigger>
+          <TooltipTrigger className="tw:max-w-[75%]">
             <Link
               className="tw:min-w-0 tw:overflow-hidden tw:text-sm tw:font-semibold tw:truncate tw:no-underline tw:text-blue-700 tw:block"
               data-testid={testId}

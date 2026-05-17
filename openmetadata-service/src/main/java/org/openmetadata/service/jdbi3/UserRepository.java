@@ -80,6 +80,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -1281,12 +1282,41 @@ public class UserRepository extends EntityRepository<User> {
                     event.getWaitInterval().toMillis(),
                     event.getNumberOfRetryAttempts() + 1,
                     MAX_TASK_CLEANUP_RETRIES));
+    String creatorId = entity.getId().toString();
+    String category = TaskCategory.MetadataUpdate.value();
+    // Capture the (id, fqn) pairs *before* the bulk DELETE so we know which L1 Guava cache
+    // entries to drop. The DELETE is a direct SQL update that bypasses EntityRepository.delete
+    // and its cache-invalidate hook — without explicit eviction the next GET on a
+    // previously-read task returns the stale cached row even though the DB row is gone.
+    // FQN is required because tasks expose both GET /v1/tasks/{id} (CACHE_WITH_ID-keyed) and
+    // GET /v1/tasks/name/{taskId} (CACHE_WITH_NAME-keyed); dropping only by id would leave a
+    // by-name reader pinned to a stale entry.
+    List<EntityDAO.EntityIdFqnPair> tasksToInvalidate =
+        daoCollection.taskDAO().listIdAndFqnByCreatorAndCategory(creatorId, category);
     retry.executeRunnable(
-        () ->
-            daoCollection
-                .taskDAO()
-                .deleteByCreatorAndCategory(
-                    entity.getId().toString(), TaskCategory.MetadataUpdate.value()));
+        () -> daoCollection.taskDAO().deleteByCreatorAndCategory(creatorId, category));
+    if (!tasksToInvalidate.isEmpty()) {
+      invalidateTaskCacheForIds(tasksToInvalidate);
+    }
+  }
+
+  private void invalidateTaskCacheForIds(List<EntityDAO.EntityIdFqnPair> tasks) {
+    // Task is in UNCACHED_ENTITY_TYPES, so invalidateCacheForEntity clears only the local L1
+    // Guava cache and skips the pub/sub fan-out (deliberate perf optimization for the
+    // cascade-heavy bot/domain/data-product paths). In a multi-pod deployment, peer instances
+    // that previously read one of these tasks still hold it in their L1 cache and would serve
+    // the stale "deleted" row after this bulk SQL DELETE. Publish each (id, fqn) explicitly so
+    // peers drop both their by-id and by-name L1 entries.
+    var pubsub = CacheBundle.getCacheInvalidationPubSub();
+    for (EntityDAO.EntityIdFqnPair task : tasks) {
+      if (task.id == null) {
+        continue;
+      }
+      EntityRepository.invalidateCacheForEntity(Entity.TASK, task.id, task.fqn);
+      if (pubsub != null) {
+        pubsub.publish(Entity.TASK, task.id, task.fqn, "bot-task-cleanup");
+      }
+    }
   }
 
   static long getTaskCleanupRetryDelayMillis(int attempt) {
