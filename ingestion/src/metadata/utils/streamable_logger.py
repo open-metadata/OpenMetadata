@@ -74,6 +74,8 @@ class StreamableLogHandler(logging.Handler):
         self.dropped_overflow = 0
         self.dropped_saturated = 0
         self.dropped_shipping = 0
+        self.dropped_after_close = 0
+        self.dropped_format_error = 0
 
         if self.enable_streaming:
             self._start_workers()
@@ -100,7 +102,7 @@ class StreamableLogHandler(logging.Handler):
             self.dropped_shipping += 1
             return
         if self._closed:
-            self.dropped_overflow += 1
+            self.dropped_after_close += 1
             return
         try:
             if not self.enable_streaming:
@@ -112,15 +114,12 @@ class StreamableLogHandler(logging.Handler):
             except Full:
                 self.dropped_overflow += 1
         except Exception:
-            self.dropped_overflow += 1
+            self.dropped_format_error += 1
 
     def _drain_loop(self):
         while not self._stop.is_set():
             batch = self._collect_batch()
             if not batch:
-                continue
-            if self._closed:
-                self.dropped_saturated += len(batch)
                 continue
             try:
                 self._send_queue.put_nowait(batch)

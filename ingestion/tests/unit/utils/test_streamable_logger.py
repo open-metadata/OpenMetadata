@@ -131,8 +131,17 @@ class TestEmitNonBlocking(unittest.TestCase):
 
         handler.emit(_make_record())
 
-        self.assertEqual(handler.dropped_overflow, 1)
+        self.assertEqual(handler.dropped_format_error, 1)
+        self.assertEqual(handler.dropped_overflow, 0)
         handler.close()
+
+    def test_emit_after_close_increments_dedicated_counter(self):
+        handler = _make_handler(enable_streaming=True)
+        handler.close()
+        handler.emit(_make_record("post-close"))
+        self.assertEqual(handler.dropped_after_close, 1)
+        self.assertEqual(handler.dropped_overflow, 0)
+        self.assertEqual(handler.dropped_format_error, 0)
 
     def test_emit_returns_quickly_under_high_volume(self):
         handler = _make_handler(max_buffer=10000, enable_streaming=True)
