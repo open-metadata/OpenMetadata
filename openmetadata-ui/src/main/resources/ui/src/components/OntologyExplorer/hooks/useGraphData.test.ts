@@ -29,12 +29,21 @@ const edge = (
   relationType: string
 ): OntologyEdge => ({ from, to, label: relationType, relationType });
 
+// Mirrors the subset of GlossaryTermRelationSettings the backend seeds via the
+// 1.13.0 migration that the tests below exercise.
+const seededRelationTypes: GlossaryTermRelationType[] = [
+  customRelationType({ name: 'relatedTo', isSymmetric: true }),
+  customRelationType({ name: 'synonym', isSymmetric: true }),
+  customRelationType({ name: 'partOf', inverseRelation: 'hasPart' }),
+  customRelationType({ name: 'hasPart', inverseRelation: 'partOf' }),
+];
+
 describe('mergeEdges', () => {
   it('merges a symmetric pair (relatedTo + relatedTo) into one bidirectional edge', () => {
-    const result = mergeEdges([
-      edge('A', 'B', 'relatedTo'),
-      edge('B', 'A', 'relatedTo'),
-    ]);
+    const result = mergeEdges(
+      [edge('A', 'B', 'relatedTo'), edge('B', 'A', 'relatedTo')],
+      seededRelationTypes
+    );
 
     expect(result).toEqual([
       {
@@ -47,10 +56,10 @@ describe('mergeEdges', () => {
   });
 
   it('merges an inverse pair (partOf + hasPart) into one bidirectional edge with both labels', () => {
-    const result = mergeEdges([
-      edge('A', 'B', 'partOf'),
-      edge('B', 'A', 'hasPart'),
-    ]);
+    const result = mergeEdges(
+      [edge('A', 'B', 'partOf'), edge('B', 'A', 'hasPart')],
+      seededRelationTypes
+    );
 
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
@@ -62,45 +71,16 @@ describe('mergeEdges', () => {
     });
   });
 
-  it('merges an asymmetric inverse pair (composedOf maps to partOf, but partOf maps to hasPart)', () => {
-    // INVERSE_RELATION_PAIRS has composedOf -> partOf, but partOf -> hasPart.
-    // The bidirectional isInversePair lookup must still detect this case.
-    const forward = mergeEdges([
-      edge('A', 'B', 'composedOf'),
-      edge('B', 'A', 'partOf'),
-    ]);
-
-    expect(forward).toHaveLength(1);
-    expect(forward[0]).toMatchObject({
-      from: 'A',
-      to: 'B',
-      relationType: 'composedOf',
-      inverseRelationType: 'partOf',
-      isBidirectional: true,
-    });
-
-    const reverse = mergeEdges([
-      edge('A', 'B', 'partOf'),
-      edge('B', 'A', 'composedOf'),
-    ]);
-
-    expect(reverse).toHaveLength(1);
-    expect(reverse[0]).toMatchObject({
-      from: 'A',
-      to: 'B',
-      relationType: 'partOf',
-      inverseRelationType: 'composedOf',
-      isBidirectional: true,
-    });
-  });
-
   it('keeps multiple distinct relation pairs between the same nodes as separate merged edges', () => {
-    const result = mergeEdges([
-      edge('A', 'B', 'relatedTo'),
-      edge('B', 'A', 'relatedTo'),
-      edge('A', 'B', 'partOf'),
-      edge('B', 'A', 'hasPart'),
-    ]);
+    const result = mergeEdges(
+      [
+        edge('A', 'B', 'relatedTo'),
+        edge('B', 'A', 'relatedTo'),
+        edge('A', 'B', 'partOf'),
+        edge('B', 'A', 'hasPart'),
+      ],
+      seededRelationTypes
+    );
 
     expect(result).toHaveLength(2);
 
@@ -111,7 +91,7 @@ describe('mergeEdges', () => {
   });
 
   it('keeps a single-direction edge unidirectional', () => {
-    const result = mergeEdges([edge('A', 'B', 'partOf')]);
+    const result = mergeEdges([edge('A', 'B', 'partOf')], seededRelationTypes);
 
     expect(result).toEqual([
       {
@@ -124,10 +104,10 @@ describe('mergeEdges', () => {
   });
 
   it('does not merge two edges of the same non-symmetric relation type', () => {
-    const result = mergeEdges([
-      edge('A', 'B', 'partOf'),
-      edge('B', 'A', 'partOf'),
-    ]);
+    const result = mergeEdges(
+      [edge('A', 'B', 'partOf'), edge('B', 'A', 'partOf')],
+      seededRelationTypes
+    );
 
     expect(result).toHaveLength(2);
     expect(result.every((e) => e.isBidirectional === false)).toBe(true);
@@ -190,11 +170,26 @@ describe('mergeEdges', () => {
     });
   });
 
-  it('leaves an unknown custom relation as unidirectional when not in settings', () => {
+  it('renders edges as unidirectional when no relation type settings are provided (fail-safe)', () => {
+    // Without backend settings (e.g. fetch failure), we do not guess inverse
+    // semantics — every edge stays unidirectional. Same data still renders.
     const result = mergeEdges([
-      edge('A', 'B', 'somethingCustom'),
-      edge('B', 'A', 'somethingElseCustom'),
+      edge('A', 'B', 'partOf'),
+      edge('B', 'A', 'hasPart'),
     ]);
+
+    expect(result).toHaveLength(2);
+    expect(result.every((e) => e.isBidirectional === false)).toBe(true);
+  });
+
+  it('leaves an unknown relation type unidirectional when not in settings', () => {
+    const result = mergeEdges(
+      [
+        edge('A', 'B', 'somethingCustom'),
+        edge('B', 'A', 'somethingElseCustom'),
+      ],
+      seededRelationTypes
+    );
 
     expect(result).toHaveLength(2);
     expect(result.every((e) => e.isBidirectional === false)).toBe(true);

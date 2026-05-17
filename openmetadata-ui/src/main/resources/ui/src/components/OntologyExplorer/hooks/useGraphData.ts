@@ -55,38 +55,6 @@ import {
 } from '../utils/layoutCalculations';
 import { ONTOLOGY_COMBO_AWARE_POLYLINE_EDGE_TYPE } from '../utils/ontologyComboAwarePolylineEdge';
 
-const INVERSE_RELATION_PAIRS: Record<string, string> = {
-  broader: 'narrower',
-  narrower: 'broader',
-  parentOf: 'childOf',
-  childOf: 'parentOf',
-  hasPart: 'partOf',
-  partOf: 'hasPart',
-  hasA: 'componentOf',
-  componentOf: 'hasA',
-  composedOf: 'partOf',
-  owns: 'ownedBy',
-  ownedBy: 'owns',
-  manages: 'managedBy',
-  managedBy: 'manages',
-  contains: 'containedIn',
-  containedIn: 'contains',
-  hasTypes: 'typeOf',
-  typeOf: 'hasTypes',
-  usedToCalculate: 'calculatedFrom',
-  calculatedFrom: 'usedToCalculate',
-  usedBy: 'dependsOn',
-  dependsOn: 'usedBy',
-};
-
-const SYMMETRIC_RELATIONS = new Set([
-  'related',
-  'relatedTo',
-  'synonym',
-  'antonym',
-  'seeAlso',
-]);
-
 interface RelationMaps {
   inverseMap: Record<string, string>;
   symmetricSet: Set<string>;
@@ -95,8 +63,8 @@ interface RelationMaps {
 function buildRelationMaps(
   configuredTypes?: GlossaryTermRelationType[]
 ): RelationMaps {
-  const inverseMap: Record<string, string> = { ...INVERSE_RELATION_PAIRS };
-  const symmetricSet = new Set<string>(SYMMETRIC_RELATIONS);
+  const inverseMap: Record<string, string> = {};
+  const symmetricSet = new Set<string>();
   configuredTypes?.forEach((rt) => {
     if (rt.inverseRelation) {
       inverseMap[rt.name] = rt.inverseRelation;
