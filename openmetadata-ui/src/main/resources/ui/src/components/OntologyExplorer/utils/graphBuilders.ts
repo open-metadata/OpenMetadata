@@ -121,8 +121,12 @@ export function convertRdfGraphToOntologyGraph(
   });
 
   const nodes: OntologyNode[] = rdfData.nodes.map((node) => {
-    let glossaryId: string | undefined;
-    if (node.group) {
+    // Prefer the explicit glossaryId from the RDF endpoint — it survives
+    // glossary rename / display-name drift better than the FQN-prefix
+    // heuristic. Fall back to looking up the glossary by `group` (display
+    // name) or the FQN's first segment for backwards-compatible payloads.
+    let glossaryId: string | undefined = node.glossaryId;
+    if (!glossaryId && node.group) {
       glossaryId = glossaryNameToId.get(node.group.toLowerCase());
     }
     if (!glossaryId && node.fullyQualifiedName) {

@@ -239,46 +239,26 @@ public class RdfRepository {
       return;
     }
 
+    // Append the relationship triples directly with INSERT DATA. The previous
+    // implementation fetched the entity model, merged the new triple in, then
+    // round-tripped through storeEntity — but storeEntity performs a
+    // translator-scoped delete (rdf:type, rdfs:label, om:belongsToGlossary,
+    // and every literal) on the entity URI before loading the supplied model.
+    // Called with a relationship-only model that path wiped the source
+    // entity's identity, so subsequent SPARQL queries anchored on rdf:type or
+    // om:belongsToGlossary stopped finding the term. INSERT DATA is purely
+    // additive and matches the pattern used by addGlossaryTermRelation, which
+    // never had this bug.
     try {
       Model relationshipModel = createRelationshipModel(relationship);
-
-      String fromUri =
-          config.getBaseUri().toString()
-              + "entity/"
-              + relationship.getFromEntity()
-              + "/"
-              + relationship.getFromId();
-      String toUri =
-          config.getBaseUri().toString()
-              + "entity/"
-              + relationship.getToEntity()
-              + "/"
-              + relationship.getToId();
-
-      // Add to the entity's graph
-      Model fromEntityModel =
-          storageService.getEntity(relationship.getFromEntity(), relationship.getFromId());
-
-      if (fromEntityModel == null) {
-        // During initialization, relationships might be added before entities are created in RDF
-        // This is expected behavior, so we'll handle it gracefully without warnings
-        LOG.debug(
-            "Entity {} with ID {} not yet in RDF store, creating model for relationship",
-            relationship.getFromEntity(),
-            relationship.getFromId());
-        fromEntityModel = ModelFactory.createDefaultModel();
-
-        // Add basic entity information to make the model valid
-        Resource entityResource = fromEntityModel.createResource(fromUri);
-        entityResource.addProperty(
-            fromEntityModel.createProperty(config.getBaseUri() + "ontology/entityType"),
-            relationship.getFromEntity());
+      java.io.StringWriter writer = new java.io.StringWriter();
+      relationshipModel.write(writer, "N-TRIPLES");
+      String triples = writer.toString();
+      if (triples.isBlank()) {
+        return;
       }
-
-      fromEntityModel.add(relationshipModel);
-      storageService.storeEntity(
-          relationship.getFromEntity(), relationship.getFromId(), fromEntityModel);
-
+      String insertQuery = "INSERT DATA { GRAPH <" + KNOWLEDGE_GRAPH + "> { " + triples + " } }";
+      storageService.executeSparqlUpdate(insertQuery);
       LOG.debug("Added relationship {} to RDF store", relationship);
     } catch (Exception e) {
       LOG.error("Failed to add relationship to RDF", e);
@@ -1204,17 +1184,41 @@ public class RdfRepository {
     queryBuilder.append("PREFIX skos: <http://www.w3.org/2004/02/skos/core#> ");
     queryBuilder.append("PREFIX prov: <http://www.w3.org/ns/prov#> ");
     queryBuilder.append(
-        "SELECT DISTINCT ?term1 ?term2 ?relationType ?term1Name ?term2Name ?term1FQN ?term2FQN ?term1DisplayName ?term2DisplayName ?glossary ");
+        "SELECT DISTINCT ?term1 ?term2 ?relationType ?term1Name ?term2Name ?term1FQN ?term2FQN ?term1DisplayName ?term2DisplayName ?glossary ?glossaryName ");
     queryBuilder.append("WHERE { ");
     queryBuilder.append("  GRAPH ?g { ");
     // Note: glossaryTerm entities are typed as skos:Concept (see RdfUtils.getRdfType)
     queryBuilder.append("    ?term1 a skos:Concept . ");
     // Filter to only include glossaryTerm URIs (not tags or other skos:Concept types)
     queryBuilder.append("    FILTER(CONTAINS(STR(?term1), '/glossaryTerm/')) ");
-    queryBuilder.append("    OPTIONAL { ?term1 om:name ?term1Name } ");
+    // `name` is mapped to rdfs:label in base.jsonld; om:name is never written.
+    // Read rdfs:label so terms without a displayName still surface a real label
+    // instead of falling back to the entity UUID at render time.
+    queryBuilder.append("    OPTIONAL { ?term1 rdfs:label ?term1Name } ");
     queryBuilder.append("    OPTIONAL { ?term1 skos:prefLabel ?term1DisplayName } ");
     queryBuilder.append("    OPTIONAL { ?term1 om:fullyQualifiedName ?term1FQN } ");
-    queryBuilder.append("    OPTIONAL { ?term1 om:belongsTo ?glossary } ");
+    // When glossaryId is supplied, require the membership triple so the row is
+    // dropped (not just filtered) for terms outside the requested glossary.
+    // The predicate is om:belongsToGlossary (see governance.jsonld @context for
+    // GlossaryTerm.glossary); the previous om:belongsTo predicate is never
+    // written, which made the downstream FILTER a no-op and leaked every
+    // glossary's terms.
+    if (glossaryId != null) {
+      String glossaryUri = config.getBaseUri().toString() + "entity/glossary/" + glossaryId;
+      queryBuilder.append("    ?term1 om:belongsToGlossary <").append(glossaryUri).append("> . ");
+      queryBuilder.append("    BIND(<").append(glossaryUri).append("> AS ?glossary) ");
+    } else {
+      queryBuilder.append("    OPTIONAL { ?term1 om:belongsToGlossary ?glossary } ");
+    }
+    // Resolve the glossary's human label so the UI can render a group container
+    // even when the parent Glossary entity is not in the caller's accessible
+    // glossary list (otherwise it falls back to the raw UUID). The `name`
+    // property is mapped to rdfs:label by base.jsonld; skos:prefLabel
+    // (displayName) is also tried so a user-friendly label wins when present.
+    queryBuilder.append("    OPTIONAL { ?glossary skos:prefLabel ?glossaryDisplayName } ");
+    queryBuilder.append("    OPTIONAL { ?glossary rdfs:label ?glossaryRdfsLabel } ");
+    queryBuilder.append(
+        "    BIND(COALESCE(?glossaryDisplayName, ?glossaryRdfsLabel) AS ?glossaryName) ");
 
     // Build relation type filter
     List<String> relationPredicates = new ArrayList<>();
@@ -1254,7 +1258,7 @@ public class RdfRepository {
     // Note: glossaryTerm entities are typed as skos:Concept (see RdfUtils.getRdfType)
     queryBuilder.append("      ?term2 a skos:Concept . ");
     queryBuilder.append("      FILTER(CONTAINS(STR(?term2), '/glossaryTerm/')) ");
-    queryBuilder.append("      OPTIONAL { ?term2 om:name ?term2Name } ");
+    queryBuilder.append("      OPTIONAL { ?term2 rdfs:label ?term2Name } ");
     queryBuilder.append("      OPTIONAL { ?term2 skos:prefLabel ?term2DisplayName } ");
     queryBuilder.append("      OPTIONAL { ?term2 om:fullyQualifiedName ?term2FQN } ");
     queryBuilder.append("      FILTER(?relationType IN (");
@@ -1262,11 +1266,8 @@ public class RdfRepository {
     queryBuilder.append(")) ");
     queryBuilder.append("    } ");
 
-    // Filter by glossary if specified
-    if (glossaryId != null) {
-      String glossaryUri = config.getBaseUri().toString() + "entity/glossary/" + glossaryId;
-      queryBuilder.append("    FILTER(?glossary = <").append(glossaryUri).append(">) ");
-    }
+    // Glossary scoping is handled above by adding a required om:belongsToGlossary
+    // triple to ?term1 when glossaryId is non-null.
 
     queryBuilder.append("  } ");
     queryBuilder.append("} ");
@@ -1319,6 +1320,14 @@ public class RdfRepository {
     Set<String> edgeKeys = new HashSet<>();
     Set<String> termsWithRelations = new HashSet<>();
 
+    // When scoped to a specific glossary, resolve its display label from the
+    // DB once and use it as a fallback for `?glossaryName`. The SPARQL
+    // OPTIONAL binds nothing if the parent Glossary entity hasn't been (or
+    // has only partially been) projected to RDF — without this fallback the
+    // response would omit the `group` field and the UI hierarchy view would
+    // render the glossary UUID instead of its name.
+    String scopedGlossaryName = lookupGlossaryDisplayName(glossaryId);
+
     com.fasterxml.jackson.databind.JsonNode resultsJson = JsonUtils.readTree(sparqlResults);
 
     if (resultsJson.has("results") && resultsJson.get("results").has("bindings")) {
@@ -1358,20 +1367,56 @@ public class RdfRepository {
             binding.has("term2FQN") && !binding.get("term2FQN").isNull()
                 ? binding.get("term2FQN").get("value").asText()
                 : null;
+        String glossaryUri =
+            binding.has("glossary") && !binding.get("glossary").isNull()
+                ? binding.get("glossary").get("value").asText()
+                : null;
+        String glossaryName =
+            binding.has("glossaryName") && !binding.get("glossaryName").isNull()
+                ? binding.get("glossaryName").get("value").asText()
+                : null;
 
-        // Use displayName if available, otherwise fall back to name
-        String term1Label = term1DisplayName != null ? term1DisplayName : term1Name;
-        String term2Label = term2DisplayName != null ? term2DisplayName : term2Name;
+        // Treat blank as missing: skos:prefLabel is materialized as an empty
+        // literal when the term has no displayName, and an empty string here
+        // would otherwise win over the real rdfs:label name and render as a
+        // blank node label in the UI.
+        String term1Label = firstNonBlank(term1DisplayName, term1Name);
+        String term2Label = firstNonBlank(term2DisplayName, term2Name);
+        glossaryName = firstNonBlank(glossaryName, scopedGlossaryName);
 
         if (term1Uri == null) continue;
 
         // Add term1 node
         if (!addedNodes.contains(term1Uri) && addedNodes.size() < limit) {
           com.fasterxml.jackson.databind.node.ObjectNode node =
-              createGlossaryTermNode(term1Uri, term1Label, term1FQN, term2Uri != null);
+              createGlossaryTermNode(
+                  term1Uri, term1Label, term1FQN, glossaryUri, glossaryName, term2Uri != null);
           nodes.add(node);
           nodeMap.put(term1Uri, node);
           addedNodes.add(term1Uri);
+        } else if (addedNodes.contains(term1Uri)) {
+          // The term may have been added earlier as a `term2` (edge target)
+          // by a row whose `term1` was a different term; that path doesn't
+          // populate glossaryId / group. Now that we have a row where this
+          // term is the primary, backfill the membership fields so the
+          // hierarchy view in the UI can resolve the group container label.
+          com.fasterxml.jackson.databind.node.ObjectNode existing = nodeMap.get(term1Uri);
+          if (existing != null) {
+            if (!existing.has("glossaryId") && glossaryUri != null) {
+              existing.put("glossaryId", extractEntityIdFromUri(glossaryUri));
+            }
+            if (!existing.has("group") && !isBlank(glossaryName)) {
+              existing.put("group", glossaryName);
+            }
+            // Also upgrade the label if we now have a real one (the term2
+            // path falls through to UUID when neither name nor displayName
+            // is present in that row).
+            String currentLabel = existing.path("label").asText(null);
+            String entityId = extractEntityIdFromUri(term1Uri);
+            if ((currentLabel == null || currentLabel.equals(entityId)) && !isBlank(term1Label)) {
+              existing.put("label", term1Label);
+            }
+          }
         }
 
         // If there's a relation, add term2 and the edge
@@ -1380,8 +1425,11 @@ public class RdfRepository {
           termsWithRelations.add(term2Uri);
 
           if (!addedNodes.contains(term2Uri) && addedNodes.size() < limit) {
+            // term2 may live in a different glossary; the SPARQL row only
+            // surfaces term1's glossary, so leave the membership fields empty
+            // for term2 rather than mis-attributing it.
             com.fasterxml.jackson.databind.node.ObjectNode node =
-                createGlossaryTermNode(term2Uri, term2Label, term2FQN, true);
+                createGlossaryTermNode(term2Uri, term2Label, term2FQN, null, null, true);
             nodes.add(node);
             nodeMap.put(term2Uri, node);
             addedNodes.add(term2Uri);
@@ -1441,7 +1489,12 @@ public class RdfRepository {
   }
 
   private com.fasterxml.jackson.databind.node.ObjectNode createGlossaryTermNode(
-      String termUri, String name, String fqn, boolean hasRelations) {
+      String termUri,
+      String name,
+      String fqn,
+      String glossaryUri,
+      String glossaryName,
+      boolean hasRelations) {
     com.fasterxml.jackson.databind.node.ObjectNode node =
         JsonUtils.getObjectMapper().createObjectNode();
 
@@ -1452,9 +1505,54 @@ public class RdfRepository {
     if (fqn != null) {
       node.put("fullyQualifiedName", fqn);
     }
+    if (glossaryUri != null) {
+      node.put("glossaryId", extractEntityIdFromUri(glossaryUri));
+    }
+    if (glossaryName != null) {
+      // Used by the UI as the hierarchy combo (group container) label so a
+      // glossary name is shown even when the caller cannot see the parent
+      // Glossary in the glossaries listing.
+      node.put("group", glossaryName);
+    }
     node.put("isolated", !hasRelations);
 
     return node;
+  }
+
+  private static boolean isBlank(String s) {
+    return s == null || s.isBlank();
+  }
+
+  private static String firstNonBlank(String a, String b) {
+    if (!isBlank(a)) return a;
+    if (!isBlank(b)) return b;
+    return null;
+  }
+
+  /**
+   * Resolve a glossary's user-facing label from the entity repository.
+   * Returns null if {@code glossaryId} is null, the entity is gone, or the
+   * lookup fails — callers should treat this as a best-effort fallback.
+   */
+  private String lookupGlossaryDisplayName(UUID glossaryId) {
+    if (glossaryId == null) {
+      return null;
+    }
+    try {
+      var glossaryRepo = Entity.getEntityRepository(Entity.GLOSSARY);
+      var glossary =
+          (org.openmetadata.schema.entity.data.Glossary)
+              glossaryRepo.get(
+                  null,
+                  glossaryId,
+                  glossaryRepo.getFields(""),
+                  org.openmetadata.schema.type.Include.NON_DELETED,
+                  false);
+      return firstNonBlank(glossary.getDisplayName(), glossary.getName());
+    } catch (Exception e) {
+      LOG.debug("Could not resolve display name for glossary {}: {}", glossaryId, e.getMessage());
+      return null;
+    }
   }
 
   private String formatGlossaryRelationType(String relationUri) {
@@ -1521,27 +1619,36 @@ public class RdfRepository {
         JsonUtils.getObjectMapper().createArrayNode();
 
     try {
-      // Get glossary terms from database
-      var glossaryTermRepository = Entity.getEntityRepository("glossaryTerm");
+      // Get glossary terms from database. ListFilter has no first-class
+      // "glossary" predicate for the glossary_term_entity table, so passing
+      // it via addQueryParam is a silent no-op and would leak every term in
+      // the system. Fetch the full list and scope by glossary id in memory.
+      var glossaryTermRepository = Entity.getEntityRepository(Entity.GLOSSARY_TERM);
       var listFilter = new org.openmetadata.service.jdbi3.ListFilter(null);
-
-      if (glossaryId != null) {
-        listFilter.addQueryParam("glossary", glossaryId.toString());
-      }
-
-      var terms =
+      var fetched =
           glossaryTermRepository.listAll(
               glossaryTermRepository.getFields("relatedTerms,parent,children"), listFilter);
+      var terms = new ArrayList<org.openmetadata.schema.entity.data.GlossaryTerm>();
+      String wantedGlossaryId = glossaryId != null ? glossaryId.toString() : null;
+      for (var entity : fetched) {
+        var term = (org.openmetadata.schema.entity.data.GlossaryTerm) entity;
+        if (wantedGlossaryId != null
+            && (term.getGlossary() == null
+                || term.getGlossary().getId() == null
+                || !wantedGlossaryId.equals(term.getGlossary().getId().toString()))) {
+          continue;
+        }
+        terms.add(term);
+      }
 
       Set<String> addedNodes = new HashSet<>();
       Set<String> termsWithRelations = new HashSet<>();
       Set<String> edgeKeys = new HashSet<>();
       int count = 0;
 
-      for (var entity : terms) {
+      for (var term : terms) {
         if (count >= limit) break;
 
-        var term = (org.openmetadata.schema.entity.data.GlossaryTerm) entity;
         String termId = term.getId().toString();
 
         boolean hasRelations =
@@ -2628,10 +2735,23 @@ public class RdfRepository {
       String toUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + toTermId;
       String predicateUri = getGlossaryTermRelationPredicateUri(relationType);
 
+      // Delete BOTH directions. The add path runs through
+      // EntityRepository.addRelationship which writes the reverse direction
+      // for bidirectional relationships, so a one-sided delete leaves a
+      // stale "<to> om:<predicate> <from>" triple — visible as a lingering
+      // edge in the relations graph after the user removed the relation.
       String sparqlUpdate =
           String.format(
-              "DELETE WHERE { GRAPH <%s> { <%s> <%s> <%s> } }",
-              KNOWLEDGE_GRAPH, fromUri, predicateUri, toUri);
+              "DELETE WHERE { GRAPH <%s> { <%s> <%s> <%s> } };"
+                  + "DELETE WHERE { GRAPH <%s> { <%s> <%s> <%s> } }",
+              KNOWLEDGE_GRAPH,
+              fromUri,
+              predicateUri,
+              toUri,
+              KNOWLEDGE_GRAPH,
+              toUri,
+              predicateUri,
+              fromUri);
 
       storageService.executeSparqlUpdate(sparqlUpdate);
       LOG.debug("Removed glossary term relation {} -> {} ({})", fromTermId, toTermId, relationType);
@@ -2977,7 +3097,7 @@ public class RdfRepository {
         glossaryResource.addProperty(skosDefinition, glossary.getDescription());
       }
 
-      var glossaryTermRepository = Entity.getEntityRepository("glossaryTerm");
+      var glossaryTermRepository = Entity.getEntityRepository(Entity.GLOSSARY_TERM);
       var listFilter = new org.openmetadata.service.jdbi3.ListFilter(null);
       listFilter.addQueryParam("glossary", glossaryId.toString());
 
