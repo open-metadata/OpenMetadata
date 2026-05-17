@@ -29,6 +29,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
+import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO.SearchIndexJobRecord;
@@ -245,7 +246,7 @@ public class DistributedSearchIndexCoordinator {
     Map<String, List<SearchIndexPartition>> byEntity =
         partitions.stream()
             .filter(p -> p.getEntityType() != null)
-            .filter(p -> !PartitionWorker.TIME_SERIES_ENTITIES.contains(p.getEntityType()))
+            .filter(p -> !SearchIndexEntityTypes.isTimeSeriesEntity(p.getEntityType()))
             .collect(Collectors.groupingBy(SearchIndexPartition::getEntityType));
 
     Map<String, Map<Long, String>> jobCache = new HashMap<>();

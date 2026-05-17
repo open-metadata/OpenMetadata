@@ -104,7 +104,7 @@ class UnitycatalogLineageSource(Source):
         """
         Bulk-fetch all table and column lineage from system tables into memory.
         """
-        query_log_duration = self.source_config.queryLogDuration or 1
+        query_log_duration = self.source_config.queryLogDuration or 1  # pyright: ignore[reportAttributeAccessIssue]
         logger.info(f"Caching lineage from system tables (lookback: {query_log_duration} days)")
 
         try:
@@ -307,7 +307,7 @@ class UnitycatalogLineageSource(Source):
         self._cache_external_locations()
 
         for database in self.metadata.list_all_entities(entity=Database, params={"service": self.config.serviceName}):
-            if filter_by_database(self.source_config.databaseFilterPattern, database.name.root):
+            if filter_by_database(self.source_config.databaseFilterPattern, database.name.root):  # pyright: ignore[reportAttributeAccessIssue]
                 self.status.filter(
                     database.fullyQualifiedName.root,
                     "Catalog Filtered Out",
@@ -317,7 +317,7 @@ class UnitycatalogLineageSource(Source):
                 entity=DatabaseSchema,
                 params={"database": database.fullyQualifiedName.root},
             ):
-                if filter_by_schema(self.source_config.schemaFilterPattern, schema.name.root):
+                if filter_by_schema(self.source_config.schemaFilterPattern, schema.name.root):  # pyright: ignore[reportAttributeAccessIssue]
                     self.status.filter(
                         schema.fullyQualifiedName.root,
                         "Schema Filtered Out",
@@ -327,7 +327,7 @@ class UnitycatalogLineageSource(Source):
                     entity=Table,
                     params={"databaseSchema": schema.fullyQualifiedName.root},
                 ):
-                    if filter_by_table(self.source_config.tableFilterPattern, table.name.root):
+                    if filter_by_table(self.source_config.tableFilterPattern, table.name.root):  # pyright: ignore[reportAttributeAccessIssue]
                         self.status.filter(
                             table.fullyQualifiedName.root,
                             "Table Filtered Out",

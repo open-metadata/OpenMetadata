@@ -194,8 +194,8 @@ class KafkaconnectSource(PipelineServiceSource):
                 host_port = None
                 if hasattr(service_config, "hostPort") and service_config.hostPort:
                     host_port = service_config.hostPort
-                elif hasattr(service_config, "host") and service_config.host:
-                    host_port = service_config.host
+                elif hasattr(service_config, "host") and service_config.host:  # pyright: ignore[reportAttributeAccessIssue]
+                    host_port = service_config.host  # pyright: ignore[reportAttributeAccessIssue]
 
                 if host_port:
                     # Extract just the hostname (no protocol, no port)

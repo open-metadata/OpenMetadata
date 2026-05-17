@@ -23,6 +23,7 @@ from requests.exceptions import HTTPError, JSONDecodeError
 from metadata.config.common import ConfigModel
 from metadata.ingestion.ometa.credentials import URL, get_api_version
 from metadata.ingestion.ometa.ttl_cache import TTLCache
+from metadata.ingestion.ometa.utils import sanitize_user_agent
 from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import ometa_logger
 
@@ -112,13 +113,17 @@ class ClientConfig(ConfigModel):
     expires_in: Optional[int] = None  # noqa: UP045
     auth_header: Optional[str] = None  # noqa: UP045
     extra_headers: Optional[dict] = None  # noqa: UP045
+    user_agent: Optional[str] = None  # noqa: UP045
     raw_data: Optional[bool] = False  # noqa: UP045
     allow_redirects: Optional[bool] = False  # noqa: UP045
     auth_token_mode: Optional[str] = "Bearer"  # noqa: UP045
     verify: Optional[Union[bool, str]] = None  # noqa: UP007, UP045
     cookies: Optional[Any] = None  # noqa: UP045
     ttl_cache: int = 60
-    timeout: Optional[int] = None  # noqa: UP045
+    # (connect, read) seconds. Default prevents indefinite hangs when a pooled
+    # socket is silently severed (NAT/LB idle reaping). Override with None to
+    # disable, or pass a single int to use the same value for both.
+    timeout: Optional[int | tuple[int, int]] = (10, 300)  # noqa: UP045
     cert: Optional[Union[str, tuple]] = None  # noqa: UP007, UP045
 
 
@@ -134,6 +139,13 @@ class REST:
         self._base_url: URL = URL(self.config.base_url)
         self._api_version = get_api_version(self.config.api_version)
         self._session = requests.Session()
+        user_agent = sanitize_user_agent(self.config.user_agent)
+        if user_agent:
+            self._session.headers["User-Agent"] = user_agent
+        elif self.config.user_agent:
+            logger.debug(
+                f"Ignoring User-Agent {self.config.user_agent!r}: no header-safe characters remained after sanitization"
+            )
         self._use_raw_data = self.config.raw_data
         self._retry = self.config.retry
         self._retry_wait = self.config.retry_wait
