@@ -86,57 +86,85 @@ const SYMMETRIC_RELATIONS = new Set([
   'seeAlso',
 ]);
 
+function getCanonicalRelationKey(relationType: string): string {
+  const inverse = INVERSE_RELATION_PAIRS[relationType];
+  if (inverse) {
+    return relationType < inverse ? relationType : inverse;
+  }
+
+  return relationType;
+}
+
 function mergeEdges(inputEdges: OntologyEdge[]): MergedEdge[] {
-  const edgeMap = new Map<string, OntologyEdge>();
-  const processedPairs = new Set<string>();
-  const result: MergedEdge[] = [];
-
-  inputEdges.forEach((edge) => {
-    edgeMap.set(`${edge.from}->${edge.to}`, edge);
-  });
-
+  const groups = new Map<string, OntologyEdge[]>();
   inputEdges.forEach((edge) => {
     const pairKey = [edge.from, edge.to]
       .sort((a, b) => a.localeCompare(b))
       .join('::');
-    if (processedPairs.has(pairKey)) {
-      return;
+    const canonical = getCanonicalRelationKey(edge.relationType);
+    const groupKey = `${pairKey}|${canonical}`;
+    const list = groups.get(groupKey) ?? [];
+    list.push(edge);
+    groups.set(groupKey, list);
+  });
+
+  const result: MergedEdge[] = [];
+  for (const list of groups.values()) {
+    const first = list[0];
+    if (list.length === 1) {
+      result.push({
+        from: first.from,
+        to: first.to,
+        relationType: first.relationType,
+        isBidirectional: false,
+      });
+
+      continue;
     }
 
-    const reverseEdge = edgeMap.get(`${edge.to}->${edge.from}`);
-    const inverseRelation = INVERSE_RELATION_PAIRS[edge.relationType];
-    const isSymmetric = SYMMETRIC_RELATIONS.has(edge.relationType);
+    const inverse = INVERSE_RELATION_PAIRS[first.relationType];
+    const isSymmetric = SYMMETRIC_RELATIONS.has(first.relationType);
 
-    if (inverseRelation && reverseEdge?.relationType === inverseRelation) {
-      processedPairs.add(pairKey);
+    const inverseEdge = inverse
+      ? list.find((e) => e.relationType === inverse && e.from === first.to)
+      : undefined;
+    if (inverseEdge) {
       result.push({
-        from: edge.from,
-        to: edge.to,
-        relationType: edge.relationType,
-        inverseRelationType: reverseEdge.relationType,
+        from: first.from,
+        to: first.to,
+        relationType: first.relationType,
+        inverseRelationType: inverseEdge.relationType,
         isBidirectional: true,
       });
-    } else if (
-      reverseEdge &&
+
+      continue;
+    }
+
+    const symmetricReverseEdge =
       isSymmetric &&
-      edge.relationType === reverseEdge.relationType
-    ) {
-      processedPairs.add(pairKey);
+      list.find(
+        (e) => e.relationType === first.relationType && e.from === first.to
+      );
+    if (symmetricReverseEdge) {
       result.push({
-        from: edge.from,
-        to: edge.to,
-        relationType: edge.relationType,
+        from: first.from,
+        to: first.to,
+        relationType: first.relationType,
         isBidirectional: true,
       });
-    } else {
+
+      continue;
+    }
+
+    list.forEach((edge) => {
       result.push({
         from: edge.from,
         to: edge.to,
         relationType: edge.relationType,
         isBidirectional: false,
       });
-    }
-  });
+    });
+  }
 
   return result;
 }

@@ -53,6 +53,29 @@ function writeSearchHighlightIds(
   }
 }
 
+function writeEdges(
+  container: HTMLDivElement | null,
+  edges: ReadonlyArray<{
+    from: string;
+    to: string;
+    relationType: string;
+    inverseRelationType?: string;
+  }>
+) {
+  if (container) {
+    container.dataset.edges = JSON.stringify(
+      edges.map((e) => ({
+        from: e.from,
+        to: e.to,
+        relationType: e.relationType,
+        ...(e.inverseRelationType
+          ? { inverseRelationType: e.inverseRelationType }
+          : {}),
+      }))
+    );
+  }
+}
+
 const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
   (
     {
@@ -224,6 +247,10 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           : null
       );
     }, [graphSearchHighlight]);
+
+    useEffect(() => {
+      writeEdges(containerRef.current, mergedEdgesList);
+    }, [mergedEdgesList]);
 
     return (
       <div

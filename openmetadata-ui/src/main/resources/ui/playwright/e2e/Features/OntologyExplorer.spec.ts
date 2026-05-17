@@ -23,6 +23,7 @@ import {
   deleteEntities,
   disposeApiContext,
   navigateToOntologyExplorer,
+  readGraphEdges,
   readNodePositions,
   waitForGraphLoaded,
 } from '../../utils/ontologyExplorer';
@@ -49,6 +50,7 @@ test.describe('Ontology Explorer', () => {
     await term4.create(apiContext);
 
     await addTermRelation(apiContext, term1, term2, 'relatedTo');
+    await addTermRelation(apiContext, term1, term2, 'partOf');
 
     await disposeApiContext(page, apiContext);
   });
@@ -611,6 +613,39 @@ test.describe('Ontology Explorer', () => {
       await expect(
         page.getByTestId('entity-summary-panel-container')
       ).not.toBeVisible();
+    });
+  });
+
+  test.describe('Multiple Relations Between Same Term Pair', () => {
+    test('renders a distinct edge for each relation type between the same pair', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await applyGlossaryFilter(page, glossary.responseData.id);
+      await waitForGraphLoaded(page);
+
+      const edges = await readGraphEdges(page);
+      const term1Id = term1.responseData.id;
+      const term2Id = term2.responseData.id;
+
+      const edgesForPair = edges.filter(
+        (e) =>
+          (e.from === term1Id && e.to === term2Id) ||
+          (e.from === term2Id && e.to === term1Id)
+      );
+
+      const allRelationTypes = new Set<string>();
+      edgesForPair.forEach((edge) => {
+        allRelationTypes.add(edge.relationType);
+        if (edge.inverseRelationType) {
+          allRelationTypes.add(edge.inverseRelationType);
+        }
+      });
+
+      expect(allRelationTypes.has('relatedTo')).toBe(true);
+      expect(
+        allRelationTypes.has('partOf') || allRelationTypes.has('hasPart')
+      ).toBe(true);
     });
   });
 });
