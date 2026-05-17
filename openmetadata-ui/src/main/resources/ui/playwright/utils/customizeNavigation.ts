@@ -53,7 +53,8 @@ export const validateLeftSidebarWithHiddenItems = async (
     if (
       item === SidebarItem.OBSERVABILITY ||
       item === SidebarItem.GOVERNANCE ||
-      item === SidebarItem.DATA_MARKETPLACE_SECTION
+      item === SidebarItem.DATA_MARKETPLACE_SECTION ||
+      item === SidebarItem.CONTEXT_CENTER
     ) {
       await expect(page.getByTestId(item)).toBeVisible();
     } else {

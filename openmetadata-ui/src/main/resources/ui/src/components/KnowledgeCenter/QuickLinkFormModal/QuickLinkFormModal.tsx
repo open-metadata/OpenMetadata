@@ -334,6 +334,10 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     },
   ];
 
+  if (!isOpen) {
+    return null;
+  }
+
   return (
     <Modal
       centered
