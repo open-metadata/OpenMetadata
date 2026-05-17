@@ -11,7 +11,6 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.PreparedBatch;
-import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -19,7 +18,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -28,80 +26,8 @@ public class MigrationUtil {
 
   private MigrationUtil() {}
 
-  private static final String UPDATE_EVENT_SUB_MYSQL =
-      "UPDATE event_subscription_entity SET json = :json WHERE id = :id";
-  private static final String UPDATE_EVENT_SUB_POSTGRESQL =
-      "UPDATE event_subscription_entity SET json = :json::jsonb WHERE id = :id";
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String ADMIN_USER_NAME = "admin";
-
-  public static void migrateWebhookSecretKeyToAuthType(Handle handle) {
-    LOG.info("Starting migration of webhook secretKey to authType");
-
-    List<Map<String, Object>> rows =
-        handle.createQuery("SELECT id, json FROM event_subscription_entity").mapToMap().list();
-
-    int migratedCount = 0;
-    for (Map<String, Object> row : rows) {
-      String id = row.get("id").toString();
-      String jsonStr = row.get("json").toString();
-
-      try {
-        ObjectNode root = (ObjectNode) JsonUtils.readTree(jsonStr);
-        JsonNode destinations = root.get("destinations");
-        if (destinations == null || !destinations.isArray()) {
-          continue;
-        }
-
-        boolean modified = false;
-        for (JsonNode destination : destinations) {
-          String destinationType =
-              destination.get("type") != null
-                  ? destination.get("type").asText().toLowerCase()
-                  : null;
-          if (destinationType == null
-              || !destinationType.equals(
-                  SubscriptionDestination.SubscriptionType.WEBHOOK.value().toLowerCase())) {
-            continue;
-          }
-          JsonNode config = destination.get("config");
-          if (config == null || !config.isObject()) {
-            continue;
-          }
-
-          JsonNode secretKeyNode = config.get("secretKey");
-          if (secretKeyNode == null
-              || secretKeyNode.isNull()
-              || secretKeyNode.asText().trim().isEmpty()) {
-            continue;
-          }
-
-          ObjectNode configObj = (ObjectNode) config;
-          ObjectNode bearerAuth =
-              JsonUtils.getObjectMapper()
-                  .createObjectNode()
-                  .put("type", "bearer")
-                  .put("secretKey", secretKeyNode.asText());
-          configObj.set("authType", bearerAuth);
-          configObj.remove("secretKey");
-          modified = true;
-        }
-
-        if (modified) {
-          String updateSql =
-              Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
-                  ? UPDATE_EVENT_SUB_MYSQL
-                  : UPDATE_EVENT_SUB_POSTGRESQL;
-          handle.createUpdate(updateSql).bind("json", root.toString()).bind("id", id).execute();
-          migratedCount++;
-        }
-      } catch (Exception e) {
-        LOG.warn("Error migrating event subscription {}: {}", id, e.getMessage());
-      }
-    }
-
-    LOG.info("Migrated {} event subscriptions with secretKey to authType", migratedCount);
-  }
 
   public static void migrateWorkflowDefinitions() {
     LOG.info(

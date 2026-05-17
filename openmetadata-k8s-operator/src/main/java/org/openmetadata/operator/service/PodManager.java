@@ -37,6 +37,7 @@ import org.openmetadata.operator.model.OMJobResource;
 import org.openmetadata.operator.model.OMJobSpec;
 import org.openmetadata.operator.model.OMJobStatus;
 import org.openmetadata.operator.util.EnvVarUtils;
+import org.openmetadata.operator.util.KubernetesNameBuilder;
 import org.openmetadata.operator.util.LabelBuilder;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.slf4j.Logger;
@@ -51,6 +52,7 @@ public class PodManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(PodManager.class);
   private static final String PIPELINE_STATUS = "pipelineStatus";
+  private static final int MAX_POD_NAME_LENGTH = 253;
 
   private final KubernetesClient client;
 
@@ -425,11 +427,35 @@ public class PodManager {
   }
 
   private String generateMainPodName(OMJobResource omJob) {
-    return omJob.getMetadata().getName() + "-main";
+    return buildPodName(omJob, "-main");
   }
 
   private String generateExitHandlerPodName(OMJobResource omJob) {
-    return omJob.getMetadata().getName() + "-exit";
+    return buildPodName(omJob, "-exit");
+  }
+
+  private String buildPodName(OMJobResource omJob, String suffix) {
+    // Kubernetes pod names can be up to 253 characters (DNS subdomain limit).
+    // The OMJob name label is derived from omJob.getMetadata().getName()
+    // and sanitized by LabelBuilder to satisfy the separate 63-character label limit.
+    // It is not derived from the generated pod name.
+    String baseName = omJob.getMetadata().getName();
+
+    // Account for suffix length when calculating max base name length.
+    int maxBaseLength = MAX_POD_NAME_LENGTH - suffix.length();
+    String podName =
+        KubernetesNameBuilder.fitNameWithHash(baseName, maxBaseLength, "omjob") + suffix;
+
+    // Log a warning if the original name was truncated to fit the DNS subdomain limit.
+    if (!podName.equals(omJob.getMetadata().getName() + suffix)) {
+      LOG.warn(
+          "Pod name for OMJob {} was truncated from {} to {} to comply with Kubernetes DNS name length limits",
+          omJob.getMetadata().getName(),
+          omJob.getMetadata().getName() + suffix,
+          podName);
+    }
+
+    return podName;
   }
 
   private String determinePipelineStatus(OMJobResource omJob) {

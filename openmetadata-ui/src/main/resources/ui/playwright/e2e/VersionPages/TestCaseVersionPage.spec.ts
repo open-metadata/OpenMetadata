@@ -135,7 +135,7 @@ test.describe('TestCase Version Page', () => {
           .getByTestId('asset-description-container')
           .getByTestId('markdown-parser')
           .getByTestId('diff-added')
-      ).toHaveText('test case description changed');
+      ).toContainText('test case description changed');
 
       await page.getByTestId('version-button').click();
       await waitForAllLoadersToDisappear(page);

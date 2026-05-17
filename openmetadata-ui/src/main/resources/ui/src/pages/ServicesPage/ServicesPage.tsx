@@ -76,20 +76,44 @@ const ServicesPage = () => {
     );
   }, [permissions]);
 
-  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
-    () =>
-      getSettingPageEntityBreadCrumb(
-        GlobalSettingsMenuCategory.SERVICES,
-        tab === GlobalSettingOptions.DATA_OBSERVABILITY
-          ? t('label.data-observability')
-          : capitalize(tab)
-      ),
-    []
-  );
+  const isEmbedded = location.pathname.startsWith('/askCollate');
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(() => {
+    const crumbs = getSettingPageEntityBreadCrumb(
+      GlobalSettingsMenuCategory.SERVICES,
+      tab === GlobalSettingOptions.DATA_OBSERVABILITY
+        ? t('label.data-observability')
+        : capitalize(tab)
+    );
+
+    if (isEmbedded) {
+      return [
+        {
+          name: t('label.ask-collate'),
+          url: '/askCollate',
+        },
+        {
+          name: t('label.connection-plural'),
+          url: '/askCollate/connections',
+        },
+        {
+          name:
+            tab === GlobalSettingOptions.DATA_OBSERVABILITY
+              ? t('label.data-observability')
+              : capitalize(tab),
+          url: '',
+          activeTitle: true,
+        },
+      ];
+    }
+
+    return crumbs;
+  }, [tab, t, isEmbedded]);
 
   return viewAllPermission ? (
     <PageLayoutV1 pageTitle={serviceName}>
-      <Row gutter={[0, 16]}>
+      {isEmbedded && <div className="tw:h-4" />}
+      <Row gutter={isEmbedded ? [0, 8] : [0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>

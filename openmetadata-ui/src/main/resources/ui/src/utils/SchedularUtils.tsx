@@ -13,7 +13,6 @@
 
 import { Select } from 'antd';
 import cronstrue from 'cronstrue/i18n';
-import { t } from 'i18next';
 import { isUndefined, toNumber, toString } from 'lodash';
 import { RuleObject } from 'rc-field-form/es/interface';
 import {
@@ -36,6 +35,7 @@ import {
 } from '../constants/Schedular.constants';
 import { CronTypes } from '../enums/Schedular.enum';
 import { FieldTypes, FormItemLayout } from '../interface/FormUtils.interface';
+import i18n from './i18next/LocalUtil';
 
 export const getScheduleOptionsFromSchedules = (
   scheduleOptions: string[]
@@ -303,29 +303,35 @@ export const cronValidator = async (_: RuleObject, value: string) => {
   // Check if the cron expression has exactly 5 fields (standard Unix cron)
 
   if (cronParts.length !== 5) {
-    return Promise.reject(new Error(t('message.cron-invalid-field-count')));
+    return Promise.reject(
+      new Error(i18n.t('message.cron-invalid-field-count'))
+    );
   }
 
   // Validate that each field follows standard Unix cron format
   const [minute, hour, dayOfMonth, month, dayOfWeek] = cronParts;
 
   if (!MINUTE_PATTERN.test(minute)) {
-    return Promise.reject(new Error(t('message.cron-invalid-minute-field')));
+    return Promise.reject(
+      new Error(i18n.t('message.cron-invalid-minute-field'))
+    );
   }
   if (!HOUR_PATTERN.test(hour)) {
-    return Promise.reject(new Error(t('message.cron-invalid-hour-field')));
+    return Promise.reject(new Error(i18n.t('message.cron-invalid-hour-field')));
   }
   if (!DAY_OF_MONTH_PATTERN.test(dayOfMonth)) {
     return Promise.reject(
-      new Error(t('message.cron-invalid-day-of-month-field'))
+      new Error(i18n.t('message.cron-invalid-day-of-month-field'))
     );
   }
   if (!MONTH_PATTERN.test(month)) {
-    return Promise.reject(new Error(t('message.cron-invalid-month-field')));
+    return Promise.reject(
+      new Error(i18n.t('message.cron-invalid-month-field'))
+    );
   }
   if (!DAY_OF_WEEK_PATTERN.test(dayOfWeek)) {
     return Promise.reject(
-      new Error(t('message.cron-invalid-day-of-week-field'))
+      new Error(i18n.t('message.cron-invalid-day-of-week-field'))
     );
   }
 
@@ -339,14 +345,14 @@ export const cronValidator = async (_: RuleObject, value: string) => {
 
     if (isFrequencyInMinutes || isFrequencyInSeconds) {
       return Promise.reject(
-        new Error(t('message.cron-less-than-hour-message'))
+        new Error(i18n.t('message.cron-less-than-hour-message'))
       );
     }
 
     return Promise.resolve();
   } catch {
     // If cronstrue fails to parse, it's an invalid cron expression
-    return Promise.reject(new Error(t('message.cron-invalid-expression')));
+    return Promise.reject(new Error(i18n.t('message.cron-invalid-expression')));
   }
 };
 
@@ -355,7 +361,7 @@ export const getRaiseOnErrorFormField = (
 ) => {
   return {
     name: 'raiseOnError',
-    label: t('label.raise-on-error'),
+    label: i18n.t('label.raise-on-error'),
     type: FieldTypes.SWITCH,
     required: false,
     formItemProps: {

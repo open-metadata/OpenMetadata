@@ -354,15 +354,14 @@ test.describe('Glossary Permissions', () => {
   });
 
   // P-11: Team-based permissions work correctly
-  test('Team-based permissions work correctly', async ({
-    testUserPage,
-    page,
-  }) => {
+  test('Team-based permissions work correctly', async ({ browser, page }) => {
     test.slow(true);
 
     const { apiContext } = await getApiContext(page);
 
-    // Create a team and add testUser to it
+    const teamUser = new UserClass();
+    await teamUser.create(apiContext);
+
     const teamName = `TestTeam${Date.now()}`;
     const teamResponse = await apiContext.post('/api/v1/teams', {
       data: {
@@ -375,14 +374,13 @@ test.describe('Glossary Permissions', () => {
     const teamData = await teamResponse.json();
     const teamId = teamData.id;
 
-    // Add user to team
-    await apiContext.patch(`/api/v1/teams/${teamData.id}`, {
+    await apiContext.patch(`/api/v1/teams/${teamId}`, {
       data: [
         {
           op: 'add',
           path: '/users/0',
           value: {
-            id: testUser.responseData.id,
+            id: teamUser.responseData.id,
             type: 'user',
           },
         },
@@ -392,30 +390,49 @@ test.describe('Glossary Permissions', () => {
       },
     });
 
-    // Set up permissions with team as the principal
-    await initializePermissions(page, 'allow', [
+    const { role: teamRole } = await initializePermissions(page, 'allow', [
       'EditDescription',
       'EditOwners',
     ]);
 
-    // Login as test user and verify permissions inherited from team
-    await expect(async () => {
-      await glossary.visitEntityPage(testUserPage);
-      await waitForAllLoadersToDisappear(testUserPage);
+    await apiContext.patch(`/api/v1/teams/${teamId}`, {
+      data: [
+        {
+          op: 'add',
+          path: '/defaultRoles/0',
+          value: {
+            id: teamRole.responseData.id,
+            type: 'role',
+            name: teamRole.responseData.name,
+          },
+        },
+      ],
+      headers: {
+        'Content-Type': 'application/json-patch+json',
+      },
+    });
 
-      const glossaryHeader = testUserPage.getByTestId(
-        'entity-header-display-name'
-      );
+    const teamUserPage = await browser.newPage();
+    try {
+      await teamUser.login(teamUserPage);
 
-      await expect(glossaryHeader).toBeVisible({ timeout: 5_000 });
-      await expect(glossaryHeader).toContainText(glossary.data.displayName);
-    }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
+      await expect(async () => {
+        await glossary.visitEntityPage(teamUserPage);
+        await waitForAllLoadersToDisappear(teamUserPage);
 
-    // Clean up
-    await cleanupPermissions(apiContext);
+        const glossaryHeader = teamUserPage.getByTestId(
+          'entity-header-display-name'
+        );
 
-    if (teamId) {
-      await apiContext.delete(`/api/v1/teams/${teamId}?hardDelete=true`);
+        await expect(glossaryHeader).toBeVisible({ timeout: 5_000 });
+        await expect(glossaryHeader).toContainText(glossary.data.displayName);
+      }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
+    } finally {
+      await teamUserPage.close();
     }
+
+    await cleanupPermissions(apiContext);
+    await apiContext.delete(`/api/v1/teams/${teamId}?hardDelete=true`);
+    await teamUser.delete(apiContext);
   });
 });

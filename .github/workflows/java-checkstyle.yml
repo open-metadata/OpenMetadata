@@ -12,6 +12,7 @@
 name: Java Checkstyle
 
 on:
+  merge_group:
   # Trigger analysis when pushing in master or pull requests, and when creating
   # a pull request.
   push:
@@ -68,7 +69,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -86,7 +87,7 @@ jobs:
           git diff-files --quiet
 
       - name: Create a comment in the PR with the instructions
-        if: steps.git.outcome != 'success'
+        if: ${{ steps.git.outcome != 'success' && github.event_name == 'pull_request_target' }}
         uses: peter-evans/create-or-update-comment@v1
         with:
           issue-number: ${{ github.event.pull_request.number }}

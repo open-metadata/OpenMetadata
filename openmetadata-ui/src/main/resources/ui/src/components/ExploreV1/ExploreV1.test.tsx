@@ -245,17 +245,6 @@ jest.mock('react-i18next', () => ({
   Trans: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
-  Transi18next: jest
-    .fn()
-    .mockImplementation(({ i18nKey, renderElement, values }) => (
-      <div data-testid="trans-component">
-        {i18nKey} {values && JSON.stringify(values)}
-        {renderElement}
-      </div>
-    )),
-}));
-
 jest.mock('../../utils/AdvancedSearchUtils', () => ({
   getDropDownItems: jest.fn().mockReturnValue([]),
 }));

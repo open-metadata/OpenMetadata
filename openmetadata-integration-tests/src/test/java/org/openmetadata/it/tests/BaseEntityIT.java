@@ -1338,7 +1338,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   @Test
   void get_entityVersionHistory_200(TestNamespace ns) {
-    if (!supportsPatch) return; // Version history tests require patch support
+    if (!supportsVersionHistory || !supportsPatch) return;
 
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
@@ -1360,7 +1360,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   @Test
   void get_specificVersion_200(TestNamespace ns) {
-    if (!supportsPatch) return; // Specific version tests require patch support
+    if (!supportsVersionHistory || !supportsGetByVersion || !supportsPatch) return;
 
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
@@ -1399,16 +1399,30 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
     hardDeleteEntity(entityId);
 
-    assertThrows(
-        Exception.class,
-        () -> getEntity(entityId),
-        "Hard deleted entity should not be retrievable");
+    // Poll the GET — on the Redis-cache profile the by-id / by-name / reference
+    // hash deletes published by cleanup() can land milliseconds after the DELETE
+    // response returns. Polling matches the same pattern FolderResourceIT uses
+    // for its async-delete override and keeps the assertion intent unchanged.
+    Awaitility.await("Hard deleted entity should not be retrievable")
+        .atMost(Duration.ofSeconds(15))
+        .pollInterval(Duration.ofMillis(250))
+        .untilAsserted(
+            () ->
+                assertThrows(
+                    Exception.class,
+                    () -> getEntity(entityId),
+                    "Hard deleted entity should not be retrievable"));
 
     if (supportsSoftDelete) {
-      assertThrows(
-          Exception.class,
-          () -> getEntityIncludeDeleted(entityId),
-          "Hard deleted entity should not be retrievable even with include=deleted");
+      Awaitility.await("Hard deleted entity should not be retrievable with include=deleted")
+          .atMost(Duration.ofSeconds(15))
+          .pollInterval(Duration.ofMillis(250))
+          .untilAsserted(
+              () ->
+                  assertThrows(
+                      Exception.class,
+                      () -> getEntityIncludeDeleted(entityId),
+                      "Hard deleted entity should not be retrievable even with include=deleted"));
     }
   }
 
@@ -3073,12 +3087,19 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     // Hard delete
     hardDeleteEntity(entity.getId().toString());
 
-    // Should not be retrievable even with include=deleted
+    // Should not be retrievable even with include=deleted. Polling matches
+    // the pattern in delete_entityAsAdmin_hardDelete_200 for the same
+    // cache-invalidation propagation reason.
     String entityId = entity.getId().toString();
-    assertThrows(
-        Exception.class,
-        () -> getEntityIncludeDeleted(entityId),
-        "Hard deleted entity should not be retrievable");
+    Awaitility.await("Hard deleted entity should not be retrievable")
+        .atMost(Duration.ofSeconds(15))
+        .pollInterval(Duration.ofMillis(250))
+        .untilAsserted(
+            () ->
+                assertThrows(
+                    Exception.class,
+                    () -> getEntityIncludeDeleted(entityId),
+                    "Hard deleted entity should not be retrievable"));
   }
 
   /**
@@ -3278,12 +3299,23 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       patchEntity(fetched.getId().toString(), fetched);
     }
 
-    // Verify updates
+    // Verify updates. Retry to absorb the cache write-through / pub-sub fan-out under parallel
+    // load — the PATCH is synchronous server-side but concurrent test traffic can briefly stall
+    // the fresh read of a just-updated row. 60s matches other eventual-consistency windows in
+    // this test suite; NotificationTemplate showed the previous 10s budget hit 12s of stall.
     for (T entity : createdEntities) {
-      T fetched = getEntity(entity.getId().toString());
-      assertTrue(
-          fetched.getDescription().startsWith("Bulk updated"),
-          "Description should be bulk updated");
+      String entityId = entity.getId().toString();
+      Awaitility.await("Description should be bulk updated")
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofMillis(500))
+          .untilAsserted(
+              () -> {
+                T refetched = getEntity(entityId);
+                assertTrue(
+                    refetched.getDescription() != null
+                        && refetched.getDescription().startsWith("Bulk updated"),
+                    "Description should be bulk updated");
+              });
     }
   }
 
@@ -4067,7 +4099,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     Awaitility.await()
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
         .ignoreExceptions()
@@ -4129,7 +4161,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     Awaitility.await()
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(3))
         .ignoreExceptions()
@@ -4791,7 +4823,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4819,7 +4851,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4855,7 +4887,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4883,7 +4915,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4902,7 +4934,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for search to reflect update")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -6403,5 +6435,88 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     assertTrue(
         thrown.getMessage().contains("404") || thrown.getMessage().contains("not found"),
         "Should get 404 for non-existent entity, got: " + thrown.getMessage());
+  }
+
+  // ===================================================================
+  // Redis cache write-through correctness — fire on every entity subclass
+  // when the suite is configured with cacheProvider=redis. With Redis
+  // disabled these are no-ops. Each test warms the cache (by-id and
+  // by-name), mutates the entity, and re-reads to confirm the cached
+  // path returns the latest value rather than a pre-mutation snapshot.
+  // ===================================================================
+
+  @Test
+  void cache_displayNameUpdateReflectedOnReadById(TestNamespace ns) {
+    Assumptions.assumeTrue(
+        org.openmetadata.it.bootstrap.TestSuiteBootstrap.isRedisEnabled(),
+        "Skipped — cache write-through tests require cacheProvider=redis");
+
+    K request = createMinimalRequest(ns);
+    T created = createEntity(request);
+    String id = created.getId().toString();
+
+    // Warm by-id and by-name caches.
+    T warmById = getEntity(id);
+    getEntityByName(created.getFullyQualifiedName());
+
+    String newDisplayName = "cache-it-" + System.nanoTime();
+    warmById.setDisplayName(newDisplayName);
+    T patched = patchEntity(id, warmById);
+    assertEquals(
+        newDisplayName, patched.getDisplayName(), "PATCH response itself must show the update");
+
+    T fetchedById = getEntity(id);
+    assertEquals(
+        newDisplayName,
+        fetchedById.getDisplayName(),
+        "GET-by-id after PATCH must serve the new displayName, not a stale Redis snapshot");
+  }
+
+  @Test
+  void cache_displayNameUpdateReflectedOnReadByName(TestNamespace ns) {
+    Assumptions.assumeTrue(
+        org.openmetadata.it.bootstrap.TestSuiteBootstrap.isRedisEnabled(),
+        "Skipped — cache write-through tests require cacheProvider=redis");
+
+    K request = createMinimalRequest(ns);
+    T created = createEntity(request);
+    String id = created.getId().toString();
+    String fqn = created.getFullyQualifiedName();
+
+    // Warm both caches up front so PATCH's invalidation has something to invalidate.
+    T warm = getEntity(id);
+    getEntityByName(fqn);
+
+    String newDisplayName = "cache-by-name-" + System.nanoTime();
+    warm.setDisplayName(newDisplayName);
+    patchEntity(id, warm);
+
+    T fetchedByName = getEntityByName(fqn);
+    assertEquals(
+        newDisplayName,
+        fetchedByName.getDisplayName(),
+        "GET-by-name after PATCH must serve the new displayName, not a stale Redis snapshot");
+  }
+
+  @Test
+  void cache_hardDeleteReflectedOnReadById(TestNamespace ns) {
+    Assumptions.assumeTrue(
+        org.openmetadata.it.bootstrap.TestSuiteBootstrap.isRedisEnabled(),
+        "Skipped — cache write-through tests require cacheProvider=redis");
+
+    K request = createMinimalRequest(ns);
+    T created = createEntity(request);
+    String id = created.getId().toString();
+
+    // Warm the cache, then hard-delete.
+    getEntity(id);
+    hardDeleteEntity(id);
+
+    // Subsequent reads must 404 — a stale cache entry would let the entity stay
+    // resolvable until TTL.
+    Exception thrown = assertThrows(Exception.class, () -> getEntity(id));
+    assertTrue(
+        thrown.getMessage().contains("404") || thrown.getMessage().contains("not found"),
+        "GET-by-id after hard delete must 404, got: " + thrown.getMessage());
   }
 }

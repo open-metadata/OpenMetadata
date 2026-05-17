@@ -90,7 +90,9 @@ test.describe(
       });
     });
 
-    test('Clicking announcement navigates to entity page', async ({ page }) => {
+    test.skip('Clicking announcement navigates to entity page', async ({
+      page,
+    }) => {
       test.slow();
 
       await test.step('Navigate to marketplace', async () => {

@@ -25,9 +25,7 @@ from metadata.sampler.models import SampleData
 table = Table(
     id=Uuid(root=uuid.uuid4()),
     name=EntityName(root="example_table"),
-    fullyQualifiedName=FullyQualifiedEntityName(
-        root="Service.database.schema.example_table"
-    ),
+    fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.example_table"),
     columns=[
         Column(
             name=ColumnName(root="SSN"),
@@ -38,9 +36,7 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="string",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.example_table.SSN"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.example_table.SSN"),
         ),
         Column(
             name=ColumnName(root="DWH_X10"),
@@ -51,9 +47,7 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="string",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.example_table.DWH_X10"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.example_table.DWH_X10"),
         ),
         Column(
             name=ColumnName(root="customer_id"),
@@ -64,9 +58,7 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="int",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.example_table.customer_id"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.example_table.customer_id"),
         ),
         Column(
             name=ColumnName(root="user_name"),
@@ -77,9 +69,7 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="string",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.example_table.user_name"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.example_table.user_name"),
         ),
         Column(
             name=ColumnName(root="address"),
@@ -90,9 +80,7 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="string",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.example_table.address"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.example_table.address"),
         ),
     ],
 )

@@ -56,10 +56,11 @@ handler = setup_streamable_logging_for_workflow(
 import logging
 import os
 import queue
+import sys
 import threading
 import time
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional  # noqa: UP035
 from uuid import UUID
 
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -67,6 +68,28 @@ from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import BASE_LOGGING_FORMAT, METADATA_LOGGER, ingestion_logger
 
 logger = ingestion_logger()
+
+# Internal logger used by this handler's own diagnostics. It MUST NOT propagate
+# to the root logger because `StreamableLogHandler` is attached there — logging
+# through `logger` from inside `emit()` or its callees re-enters this handler
+# and recurses until the Python recursion limit is hit. A separate logger with
+# `propagate=False` writing straight to stderr is the safe channel for any
+# message originating inside this module's hot path.
+_internal_logger = logging.getLogger("metadata.utils.streamable_logger.internal")
+_internal_logger.propagate = False
+if not _internal_logger.handlers:
+    _internal_handler = logging.StreamHandler(sys.stderr)
+    _internal_handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s [streamable-log-handler] %(levelname)s %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
+    _internal_logger.addHandler(_internal_handler)
+    # Filter at the handler so operators can change verbosity at runtime
+    # (e.g. via a debug toggle) without modifying the logger level itself.
+    _internal_handler.setLevel(logging.INFO)
+    _internal_logger.setLevel(logging.DEBUG)
 
 
 class CircuitBreakerError(Exception):
@@ -123,19 +146,16 @@ class CircuitBreaker:
         try:
             result = func(*args, **kwargs)
             self._on_success()
-            return result
+            return result  # noqa: TRY300
         except (CircuitBreakerError, ServiceCallError):
             raise
         except Exception as e:
             self._on_failure()
-            raise ServiceCallError(f"Service call failed: {str(e)}") from e
+            raise ServiceCallError(f"Service call failed: {str(e)}") from e  # noqa: RUF010
 
     def _should_attempt_reset(self) -> bool:
         """Check if enough time has passed to attempt reset"""
-        return (
-            self.last_failure_time
-            and time.time() - self.last_failure_time >= self.recovery_timeout
-        )
+        return self.last_failure_time and time.time() - self.last_failure_time >= self.recovery_timeout
 
     def _on_success(self):
         """Handle successful call"""
@@ -234,9 +254,7 @@ class StreamableLogHandler(logging.Handler):
     def _initialize_log_stream(self):
         """Initialize log stream with the server"""
         if hasattr(self.metadata, "create_log_stream"):
-            self.session_id = self.metadata.create_log_stream(
-                self.pipeline_fqn, self.run_id
-            )
+            self.session_id = self.metadata.create_log_stream(self.pipeline_fqn, self.run_id)
 
     def _start_worker(self):
         """Start the background worker thread for log shipping"""
@@ -265,11 +283,7 @@ class StreamableLogHandler(logging.Handler):
         while True:
             try:
                 # Use timeout for first call, then get_nowait for remaining
-                log_entry = (
-                    self.log_queue.get(timeout=timeout)
-                    if timeout
-                    else self.log_queue.get_nowait()
-                )
+                log_entry = self.log_queue.get(timeout=timeout) if timeout else self.log_queue.get_nowait()
 
                 if log_entry is None:
                     # Flush marker encountered
@@ -311,7 +325,9 @@ class StreamableLogHandler(logging.Handler):
                 time.sleep(1.0)
 
             except Exception as e:
-                logger.error(f"Error in log shipping worker: {e}")
+                # NEVER use `logger` here — this handler is attached to it and
+                # logging through `logger` would re-enter our own emit().
+                _internal_logger.error("error in log shipping worker: %s", e)
                 # Continue processing to avoid blocking
 
         # Final cleanup - drain ALL remaining items from the queue
@@ -337,24 +353,25 @@ class StreamableLogHandler(logging.Handler):
             self.metrics["circuit_trips"] += 1
             self.metrics["fallback_count"] += 1
 
-            logger.debug("Circuit breaker is OPEN, falling back to local logging")
+            # NEVER use `logger` here — this handler is attached to it.
+            _internal_logger.debug("circuit breaker is OPEN, falling back to local logging")
             for log in logs:
-                logger.info(f"[FALLBACK] {log}")
+                _internal_logger.info("[FALLBACK] %s", log)
         except (ServiceCallError, Exception) as e:
             # Service call failed, update metrics
             self.metrics["logs_failed"] += len(logs)
             self.metrics["fallback_count"] += 1
 
-            # Fallback to local logging
-            logger.debug(f"Failed to ship logs to server: {e}")
+            # Fallback to local logging via the internal (non-propagating)
+            # logger. Using `logger` here would dispatch the message back into
+            # this handler, re-entering shipping and ultimately recursing.
+            _internal_logger.debug("failed to ship logs to server: %s", e)
             for log in logs:
-                logger.info(f"[FALLBACK] {log}")
+                _internal_logger.info("[FALLBACK] %s", log)
 
     def _send_logs_to_server(self, log_content: str):
         """Send logs to the OpenMetadata server using the logs mixin"""
-        enable_compression = (
-            os.getenv("ENABLE_LOG_COMPRESSION", "false").lower() == "true"
-        )
+        enable_compression = os.getenv("ENABLE_LOG_COMPRESSION", "false").lower() == "true"
         # Use the centralized logs mixin method which handles both new and legacy approaches
         metrics = self.metadata.send_logs_batch(
             pipeline_fqn=self.pipeline_fqn,
@@ -386,14 +403,22 @@ class StreamableLogHandler(logging.Handler):
             try:
                 self.log_queue.put_nowait(log_entry)
             except queue.Full:
-                # Queue is full, fallback to local logging
-                logger.warning("Log queue is full, falling back to local logging")
+                # Queue is full. CRITICAL: do not call `logger.warning(...)`
+                # here — this handler is attached to `logger`, so any log call
+                # from inside emit() re-enters emit(), recurses against the
+                # still-full queue, and eventually hits the Python recursion
+                # limit. This was the root cause of the production hang where
+                # MainThread sat in 900+ frames of alternating warning/error
+                # emit calls while every other thread was blocked on the
+                # logging module's internal lock.
+                _internal_logger.warning("log queue is full, falling back to local logging")
                 self.fallback_handler.emit(record)
 
         except Exception as e:
-            # Any error, fallback to local logging
-            logger.error(f"Error in emit: {e}")
-            try:
+            # Any error, fallback to local logging. Same recursion hazard as
+            # above — must use the non-propagating internal logger.
+            _internal_logger.error("error in emit: %s", e)
+            try:  # noqa: SIM105
                 self.fallback_handler.emit(record)
             except Exception:
                 pass  # Last resort: silently drop the log
@@ -401,27 +426,26 @@ class StreamableLogHandler(logging.Handler):
     def flush(self):
         """Flush any buffered logs"""
         # Signal worker to flush by adding a None marker
-        try:
+        try:  # noqa: SIM105
             self.log_queue.put_nowait(None)
         except queue.Full:
             pass
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> Dict[str, Any]:  # noqa: UP006
         """Get current metrics for monitoring"""
         return {
             **self.metrics,
             "circuit_state": self.circuit_breaker.state.value,
             "queue_size": self.log_queue.qsize(),
-            "worker_alive": self.worker_thread.is_alive()
-            if self.worker_thread
-            else False,
+            "worker_alive": self.worker_thread.is_alive() if self.worker_thread else False,
         }
 
     def close(self):
         """Close the handler and cleanup resources"""
         if self.enable_streaming and self.worker_thread:
-            # Log final metrics
-            logger.info(f"StreamableLogHandler metrics: {self.get_metrics()}")
+            # Log final metrics via the non-propagating internal logger so
+            # close() cannot trigger a final round of self-recursion.
+            _internal_logger.info("StreamableLogHandler metrics: %s", self.get_metrics())
 
             # Signal worker to stop AFTER ensuring any pending flush is processed
             self.stop_event.set()
@@ -490,11 +514,11 @@ class StreamableLogHandlerManager:
 
 def setup_streamable_logging_for_workflow(
     metadata: OpenMetadata,
-    pipeline_fqn: Optional[str] = None,
-    run_id: Optional[UUID] = None,
+    pipeline_fqn: Optional[str] = None,  # noqa: UP045
+    run_id: Optional[UUID] = None,  # noqa: UP045
     log_level: int = logging.INFO,
     enable_streaming: bool = False,
-) -> Optional[StreamableLogHandler]:
+) -> Optional[StreamableLogHandler]:  # noqa: UP045
     """
     Setup streamable logging for a workflow execution.
     This is automatically called when a workflow starts if:
@@ -550,12 +574,10 @@ def setup_streamable_logging_for_workflow(
         # Register with the manager
         StreamableLogHandlerManager.set_handler(handler)
 
-        logger.info(
-            f"Streamable logging configured for pipeline: {pipeline_fqn}, run_id: {model_str(run_id)}"
-        )
+        logger.info(f"Streamable logging configured for pipeline: {pipeline_fqn}, run_id: {model_str(run_id)}")
         metadata.validate_versions()  # Send the version check log
 
-        return handler
+        return handler  # noqa: TRY300
 
     except Exception as e:
         logger.warning(f"Failed to setup streamable logging: {e}")

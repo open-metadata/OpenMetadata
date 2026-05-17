@@ -12,7 +12,7 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { DriveServiceType } from '../generated/entity/services/driveService';
 import customDriveConnection from '../jsons/connectionSchemas/connections/drive/customDriveConnection.json';
 import googleDriveConnection from '../jsons/connectionSchemas/connections/drive/googleDriveConnection.json';

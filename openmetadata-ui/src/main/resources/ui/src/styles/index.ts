@@ -51,6 +51,7 @@ import './components/slider.less';
 import './components/step.less';
 import './components/tags.less';
 import './fonts.less';
+import './knowledge-center.less';
 import './modal.less';
 import './tailwind.css';
 import './temp.css';

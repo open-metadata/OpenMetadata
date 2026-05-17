@@ -14,6 +14,7 @@ name: Python Checkstyle
 # read-write repo token
 # access to secrets
 on:
+  merge_group:
   pull_request_target:
     types: [labeled, opened, synchronize, reopened, ready_for_review]
     paths-ignore:
@@ -56,7 +57,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
@@ -84,7 +85,7 @@ jobs:
           make py_format_check
 
       - name: Create a comment in the PR with the instructions
-        if: steps.style.outcome != 'success'
+        if: ${{ steps.style.outcome != 'success' && github.event_name == 'pull_request_target' }}
         uses: peter-evans/create-or-update-comment@v1
         with:
           issue-number: ${{ github.event.pull_request.number }}

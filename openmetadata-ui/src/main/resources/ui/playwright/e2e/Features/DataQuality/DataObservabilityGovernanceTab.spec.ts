@@ -30,12 +30,12 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const classification = new ClassificationClass();
-const tag = new TagClass({ classification: classification.data.name });
-const glossary = new Glossary();
-const glossaryTerm = new GlossaryTerm(glossary);
-const domain = new Domain();
-const table = new TableClass();
+let classification: ClassificationClass;
+let tag: TagClass;
+let glossary: Glossary;
+let glossaryTerm: GlossaryTerm;
+let domain: Domain;
+let table: TableClass;
 
 const testCaseResult = {
   result: 'Found value outside expected range.',
@@ -57,6 +57,13 @@ const watchDashboardResponse = (page: Page, filterKey: string) =>
 
 test.beforeAll('setup', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
+
+  classification = new ClassificationClass();
+  tag = new TagClass({ classification: classification.data.name });
+  glossary = new Glossary();
+  glossaryTerm = new GlossaryTerm(glossary);
+  domain = new Domain();
+  table = new TableClass();
 
   await classification.create(apiContext);
   await tag.create(apiContext);

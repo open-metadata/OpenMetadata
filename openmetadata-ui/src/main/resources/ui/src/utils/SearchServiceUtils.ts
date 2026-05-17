@@ -12,7 +12,7 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { SearchServiceType } from '../generated/entity/services/searchService';
 import customSearchConnection from '../jsons/connectionSchemas/connections/search/customSearchConnection.json';
 import elasticSearchConnection from '../jsons/connectionSchemas/connections/search/elasticSearchConnection.json';

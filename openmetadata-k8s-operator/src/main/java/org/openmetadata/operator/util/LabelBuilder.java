@@ -25,6 +25,8 @@ import org.openmetadata.operator.model.OMJobResource;
  */
 public class LabelBuilder {
 
+  private static final int MAX_LABEL_VALUE_LENGTH = 63;
+
   // Standard Kubernetes labels
   public static final String LABEL_APP_NAME = "app.kubernetes.io/name";
   public static final String LABEL_APP_COMPONENT = "app.kubernetes.io/component";
@@ -56,7 +58,7 @@ public class LabelBuilder {
     labels.put(LABEL_APP_NAME, APP_NAME);
     labels.put(LABEL_APP_COMPONENT, COMPONENT_INGESTION);
     labels.put(LABEL_APP_MANAGED_BY, MANAGED_BY_OMJOB_OPERATOR);
-    labels.put(LABEL_OMJOB_NAME, omJob.getMetadata().getName());
+    labels.put(LABEL_OMJOB_NAME, buildOMJobNameLabelValue(omJob));
 
     // Copy pipeline and run-id from OMJob labels
     String pipelineName = omJob.getPipelineName();
@@ -113,8 +115,16 @@ public class LabelBuilder {
    */
   public static Map<String, String> buildPodSelector(OMJobResource omJob) {
     Map<String, String> selector = new HashMap<>();
-    selector.put(LABEL_OMJOB_NAME, omJob.getMetadata().getName());
+    selector.put(LABEL_OMJOB_NAME, buildOMJobNameLabelValue(omJob));
+    selector.put(LABEL_APP_MANAGED_BY, MANAGED_BY_OMJOB_OPERATOR);
     return selector;
+  }
+
+  /**
+   * Build the OMJob name label value used by operator-managed pods.
+   */
+  public static String buildOMJobNameLabelValue(OMJobResource omJob) {
+    return sanitizeLabelValue(omJob.getMetadata().getName());
   }
 
   /**
@@ -143,10 +153,51 @@ public class LabelBuilder {
       return "";
     }
 
-    // Replace invalid characters with hyphens and truncate to 63 chars
-    String sanitized =
-        value.replaceAll("[^a-zA-Z0-9\\-_.]", "-").replaceAll("-+", "-").replaceAll("^-|-$", "");
+    // Replace invalid characters with hyphens and collapse repeated hyphens.
+    // We intentionally keep dots and underscores, as they are allowed in label values.
+    String sanitized = value.replaceAll("[^a-zA-Z0-9\\-_.]", "-").replaceAll("-+", "-");
 
-    return sanitized.length() > 63 ? sanitized.substring(0, 63) : sanitized;
+    if (sanitized.length() <= MAX_LABEL_VALUE_LENGTH) {
+      // Even for short values, ensure we respect the Kubernetes rule that
+      // label values must start and end with an alphanumeric character.
+      return ensureValidLabelValue(sanitized, value);
+    }
+
+    // For long values, preserve uniqueness by appending a short hash while
+    // keeping the overall value within the 63-character limit.
+    String hash = HashUtils.hash(value);
+    int maxPrefixLength = MAX_LABEL_VALUE_LENGTH - hash.length() - 1;
+    String prefix = sanitized.substring(0, maxPrefixLength);
+
+    String candidate = prefix + "-" + hash;
+    return ensureValidLabelValue(candidate, value);
+  }
+
+  /**
+   * Ensure the label value starts and ends with an alphanumeric character.
+   * If trimming non-alphanumeric characters from the edges results in an
+   * empty string, fall back to a hash-based value derived from the original
+   * input so that the label remains valid and stable.
+   */
+  private static String ensureValidLabelValue(String candidate, String original) {
+    String result = candidate.replaceAll("^[^a-zA-Z0-9]+", "").replaceAll("[^a-zA-Z0-9]+$", "");
+
+    if (!result.isEmpty() && result.length() <= MAX_LABEL_VALUE_LENGTH) {
+      return result;
+    }
+
+    // Fallback: build a short, deterministic value based on a hash of the
+    // original input. This guarantees the output is non-empty, starts/ends
+    // with an alphanumeric character, and fits within the label limit.
+    int maxHashLength = Math.max(1, MAX_LABEL_VALUE_LENGTH - 3); // Reserve for "om-"
+    String fullHash = HashUtils.hash(original);
+    String hash = fullHash.substring(0, Math.min(maxHashLength, fullHash.length()));
+    String fallback = "om-" + hash;
+
+    if (fallback.length() > MAX_LABEL_VALUE_LENGTH) {
+      fallback = fallback.substring(0, MAX_LABEL_VALUE_LENGTH);
+    }
+
+    return fallback;
   }
 }

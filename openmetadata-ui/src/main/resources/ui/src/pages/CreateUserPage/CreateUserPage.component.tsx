@@ -14,20 +14,17 @@
 import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import _ from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import CreateUserComponent from '../../components/Settings/Users/CreateUser/CreateUser.component';
-import { PAGE_SIZE_EXTRA_LARGE } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { CreateUser } from '../../generated/api/teams/createUser';
-import { Role } from '../../generated/entity/teams/role';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { createBot } from '../../rest/botsAPI';
-import { getAllRoles } from '../../rest/rolesAPIV1';
 import {
   createUser,
   createUserWithPut,
@@ -53,7 +50,6 @@ const CreateUserPage = () => {
   const isAdminPage = Boolean(state?.isAdminPage);
   const { setInlineAlertDetails } = useApplicationStore();
   const { getResourceLimit } = useLimitStore();
-  const [roles, setRoles] = useState<Array<Role>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const { bot } = useRequiredParams<{ bot: string }>();
@@ -154,27 +150,6 @@ const CreateUserPage = () => {
     setIsLoading(false);
   };
 
-  const fetchRoles = async () => {
-    try {
-      const roles = await getAllRoles(
-        '',
-        false,
-        PAGE_SIZE_EXTRA_LARGE // until we implement server-side search, fetch all pages
-      );
-      setRoles(roles);
-    } catch (err) {
-      setRoles([]);
-      showErrorToast(
-        err as AxiosError,
-        t('server.entity-fetch-error', { entity: t('label.role-plural') })
-      );
-    }
-  };
-
-  useEffect(() => {
-    fetchRoles();
-  }, []);
-
   const BREADCRUMB_DETAILS = useMemo(() => {
     if (bot) {
       return {
@@ -222,7 +197,6 @@ const CreateUserPage = () => {
           <CreateUserComponent
             forceBot={Boolean(bot)}
             isLoading={isLoading}
-            roles={roles}
             onCancel={handleCancel}
             onSave={handleAddUserSave}
           />

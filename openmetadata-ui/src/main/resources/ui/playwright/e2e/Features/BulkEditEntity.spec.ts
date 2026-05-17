@@ -168,8 +168,8 @@ test.describe('Bulk Edit Entity', () => {
       await page.getByRole('button', { name: 'Next' }).click();
 
       await validateImportStatus(page, {
-        passed: '2',
-        processed: '2',
+        passed: '1',
+        processed: '1',
         failed: '0',
       });
 
@@ -316,8 +316,8 @@ test.describe('Bulk Edit Entity', () => {
       await loader.waitFor({ state: 'hidden' });
 
       await validateImportStatus(page, {
-        passed: '2',
-        processed: '2',
+        passed: '1',
+        processed: '1',
         failed: '0',
       });
 
@@ -463,8 +463,8 @@ test.describe('Bulk Edit Entity', () => {
       await page.getByRole('button', { name: 'Next' }).click();
 
       await validateImportStatus(page, {
-        passed: '2',
-        processed: '2',
+        passed: '1',
+        processed: '1',
         failed: '0',
       });
       const updateButtonResponse = page.waitForResponse(
@@ -588,8 +588,7 @@ test.describe('Bulk Edit Entity', () => {
 
       // eslint-disable-next-line playwright/no-force-option -- button obscured by data grid overlay
       await page.click('[type="button"] >> text="Next"', { force: true });
-      // total column count +1 for header row
-      const count = `${tableEntity.entityLinkColumnsName.length + 1}`;
+      const count = `${tableEntity.entityLinkColumnsName.length}`;
       await validateImportStatus(page, {
         passed: count,
         processed: count,
@@ -696,8 +695,8 @@ test.describe('Bulk Edit Entity', () => {
       await loader.waitFor({ state: 'hidden' });
 
       await validateImportStatus(page, {
-        passed: '2',
-        processed: '2',
+        passed: '1',
+        processed: '1',
         failed: '0',
       });
 
@@ -835,8 +834,8 @@ test.describe('Bulk Edit Entity', () => {
       await loader.waitFor({ state: 'hidden' });
 
       await validateImportStatus(page, {
-        passed: '2',
-        processed: '2',
+        passed: '1',
+        processed: '1',
         failed: '0',
       });
 

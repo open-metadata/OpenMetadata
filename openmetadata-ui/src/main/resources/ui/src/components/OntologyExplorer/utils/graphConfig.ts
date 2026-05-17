@@ -13,6 +13,8 @@
 import {
   LayoutEngine,
   MODEL_ANTV_DAGRE_RANKSEP_WITH_COMBOS,
+  NODE_LABEL_FONT_SIZE,
+  NODE_LABEL_FONT_WEIGHT,
   NODE_PADDING_H,
   NODE_PADDING_V,
   toLayoutEngineType,
@@ -20,12 +22,18 @@ import {
   type LayoutType,
 } from '../OntologyExplorer.constants';
 import { LayoutConfig, LayoutNodeLike } from '../OntologyExplorer.interface';
+import { measureTextWidth, truncateToFit } from './textMeasure';
 
 export const NODE_WIDTH = 120;
 export const NODE_HEIGHT = 2 * NODE_PADDING_V + 18;
 export { NODE_PADDING_H } from '../OntologyExplorer.constants';
-export const CHAR_WIDTH_ESTIMATE = 7;
-export const MODEL_NODE_MAX_WIDTH = 220;
+export const NODE_LABEL_EXTRA_PAD_H = 10;
+export const CHAR_WIDTH_ESTIMATE = 9;
+export const MODEL_NODE_MAX_LABEL_CHARS = 60;
+export const MODEL_NODE_MAX_WIDTH = 560;
+
+const NODE_LABEL_MEASURE_FONT = `${NODE_LABEL_FONT_WEIGHT} ${NODE_LABEL_FONT_SIZE}px sans-serif`;
+
 export const COMBO_PADDING = 48;
 export const HULL_GAP = 56;
 export const MIN_NODE_SPACING = 12;
@@ -39,7 +47,7 @@ export const HIERARCHY_DAGRE_RANK_SEP = 150;
 export const MIN_NODE_WIDTH = 72;
 export const BADGE_MIN_NODE_WIDTH = 100;
 
-function adaptiveSpacing(base: number, nodeCount: number): number {
+export function adaptiveSpacing(base: number, nodeCount: number): number {
   if (nodeCount <= 50) {
     return base;
   }
@@ -56,23 +64,8 @@ function adaptiveSpacing(base: number, nodeCount: number): number {
   return Math.ceil(base * 0.15);
 }
 
-function adaptiveSpacingModel(base: number, nodeCount: number): number {
-  if (nodeCount <= 80) {
-    return base;
-  }
-  if (nodeCount <= 200) {
-    return Math.ceil(base * 0.72);
-  }
-  if (nodeCount <= 1000) {
-    return Math.ceil(base * 0.48);
-  }
-
-  return Math.ceil(base * 0.32);
-}
-
 export interface GetOntologyLayoutConfigOptions {
   hasCombos: boolean;
-  focusNode?: string;
   isDataMode: boolean;
   isModelView: boolean;
   isHierarchyMode: boolean;
@@ -95,27 +88,35 @@ export function getNodeSize(d?: LayoutNodeLike): [number, number] {
   return [NODE_WIDTH, NODE_HEIGHT];
 }
 
-export function estimateNodeWidth(label: string): number {
-  const fromLabel = NODE_PADDING_H * 2 + label.length * CHAR_WIDTH_ESTIMATE;
+const NODE_LABEL_H_PAD = NODE_PADDING_H + NODE_LABEL_EXTRA_PAD_H;
 
-  return Math.max(MIN_NODE_WIDTH, fromLabel);
-}
-
-export function truncateNodeLabelByWidth(label: string, width: number): string {
-  const maxChars = Math.max(
-    1,
-    Math.floor((width - NODE_PADDING_H * 2) / CHAR_WIDTH_ESTIMATE)
-  );
-
-  if (label.length <= maxChars) {
+function capLabelToMaxChars(label: string): string {
+  if (label.length <= MODEL_NODE_MAX_LABEL_CHARS) {
     return label;
   }
 
-  if (maxChars <= 1) {
-    return '...';
-  }
+  return `${label.slice(0, MODEL_NODE_MAX_LABEL_CHARS - 1)}...`;
+}
 
-  return `${label.slice(0, maxChars - 1)}...`;
+export function estimateNodeWidth(label: string): number {
+  return Math.max(
+    MIN_NODE_WIDTH,
+    measureTextWidth(
+      capLabelToMaxChars(label),
+      NODE_LABEL_MEASURE_FONT,
+      CHAR_WIDTH_ESTIMATE
+    ) +
+      NODE_LABEL_H_PAD * 2
+  );
+}
+
+export function truncateNodeLabelByWidth(label: string, width: number): string {
+  return truncateToFit(
+    capLabelToMaxChars(label),
+    width - NODE_LABEL_H_PAD * 2,
+    NODE_LABEL_MEASURE_FONT,
+    CHAR_WIDTH_ESTIMATE
+  );
 }
 
 export function getLayoutConfig(
@@ -123,15 +124,12 @@ export function getLayoutConfig(
   nodeCount: number,
   options: GetOntologyLayoutConfigOptions
 ): LayoutConfig {
-  const { hasCombos, focusNode, isDataMode, isModelView, isHierarchyMode } =
-    options;
+  const { hasCombos, isDataMode, isModelView, isHierarchyMode } = options;
 
   const baseNodeSize = (d?: LayoutNodeLike) => getNodeSize(d);
 
   const engineType: LayoutEngineType =
-    layoutType === LayoutEngine.Dagre ||
-    layoutType === LayoutEngine.Radial ||
-    layoutType === LayoutEngine.Circular
+    layoutType === LayoutEngine.Dagre || layoutType === LayoutEngine.Circular
       ? layoutType
       : toLayoutEngineType(layoutType as LayoutType);
 
@@ -155,20 +153,8 @@ export function getLayoutConfig(
       };
     }
 
-    if (engineType === LayoutEngine.Radial) {
-      return {
-        type: LayoutEngine.Radial,
-        animation: false,
-        ...(focusNode && !isDataMode && { focusNode }),
-        unitRadius: isDataMode ? 80 : nodeCount <= 2 ? MIN_LINK_DISTANCE : 80,
-        preventOverlap: true,
-        nodeSize: isDataMode ? 20 : 40,
-        nodeSpacing: MIN_NODE_SPACING,
-        linkDistance: isDataMode ? 80 : 80,
-        strictRadial: false,
-        maxIteration: 1000,
-        sortBy: 'degree',
-      };
+    if (isDataMode && engineType === LayoutEngine.Circular) {
+      return { type: 'preset', animation: false };
     }
 
     if (engineType === LayoutEngine.Circular) {
@@ -196,34 +182,11 @@ export function getLayoutConfig(
     };
   }
 
-  if (engineType === LayoutEngine.Radial) {
-    const unitRadius = adaptiveSpacingModel(
-      nodeCount <= 2 ? MIN_LINK_DISTANCE : 80,
-      nodeCount
-    );
-
-    return {
-      type: LayoutEngine.Radial,
-      animation: false,
-      ...(focusNode && { focusNode }),
-      unitRadius,
-      preventOverlap: true,
-      nodeSize: baseNodeSize,
-      nodeSpacing: adaptiveSpacingModel(MIN_NODE_SPACING, nodeCount),
-      linkDistance: adaptiveSpacingModel(80, nodeCount),
-      strictRadial: false,
-      maxIteration: nodeCount > 500 ? 600 : 1000,
-      sortBy: 'degree',
-    };
-  }
-
+  // Model-view Circular: positions are pre-computed by positionCircularNodes in
+  // useOntologyGraph and baked into node.style.x/y before draw(). Use 'preset'
+  // so G6 reads those coordinates directly — same pattern as KnowledgeGraph.
   if (engineType === LayoutEngine.Circular) {
-    return {
-      type: LayoutEngine.Circular,
-      animation: false,
-      nodeSize: baseNodeSize,
-      nodeSpacing: adaptiveSpacingModel(MIN_NODE_SPACING, nodeCount),
-    };
+    return { type: 'preset', animation: false };
   }
 
   return {

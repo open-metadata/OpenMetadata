@@ -19,8 +19,9 @@ import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.Getter;
@@ -50,7 +51,15 @@ public class EventPubSub {
   public static void start() {
     if (!started) {
       disruptor = new Disruptor<>(ChangeEventHolder::new, 1024, EVENT_PUBSUB_THREAD_FACTORY);
-      executor = Executors.newCachedThreadPool(EVENT_PUBSUB_THREAD_FACTORY);
+      executor =
+          new ThreadPoolExecutor(
+              4,
+              32,
+              60L,
+              TimeUnit.SECONDS,
+              new LinkedBlockingQueue<>(1024),
+              EVENT_PUBSUB_THREAD_FACTORY,
+              new ThreadPoolExecutor.CallerRunsPolicy());
       ringBuffer = disruptor.start();
       LOG.info("Disruptor started");
       started = true;

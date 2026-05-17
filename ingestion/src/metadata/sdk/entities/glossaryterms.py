@@ -1,7 +1,8 @@
 """
 GlossaryTerms entity SDK with fluent API
 """
-from typing import Type
+
+from typing import Type  # noqa: UP035
 
 from metadata.generated.schema.api.data.createGlossaryTerm import (
     CreateGlossaryTermRequest,
@@ -14,6 +15,6 @@ class GlossaryTerms(BaseEntity[GlossaryTerm, CreateGlossaryTermRequest]):
     """GlossaryTerms SDK class - plural to avoid conflict with generated GlossaryTerm entity"""
 
     @classmethod
-    def entity_type(cls) -> Type[GlossaryTerm]:
+    def entity_type(cls) -> Type[GlossaryTerm]:  # noqa: UP006
         """Return the GlossaryTerm entity type"""
         return GlossaryTerm

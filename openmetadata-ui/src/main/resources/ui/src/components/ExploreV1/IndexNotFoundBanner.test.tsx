@@ -16,12 +16,6 @@ import { SEARCH_INDEXING_APPLICATION } from '../../constants/explore.constants';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import { IndexNotFoundBanner } from './IndexNotFoundBanner';
 
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn().mockReturnValue({
-    t: (key: string) => key,
-  }),
-}));
-
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockReturnValue({
     theme: {
@@ -32,18 +26,6 @@ jest.mock('../../hooks/useApplicationStore', () => ({
 
 jest.mock('../../utils/RouterUtils', () => ({
   getApplicationDetailsPath: jest.fn().mockReturnValue('/settings/search'),
-}));
-
-jest.mock('../../utils/CommonUtils', () => ({
-  Transi18next: jest
-    .fn()
-    .mockImplementation(({ i18nKey, renderElement, values }) => (
-      <div data-testid="trans-i18next">
-        {i18nKey}
-        <span data-testid="trans-settings-value">{values?.settings}</span>
-        {renderElement}
-      </div>
-    )),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -86,17 +68,17 @@ jest.mock('antd', () => ({
 }));
 
 describe('IndexNotFoundBanner', () => {
-  it('renders indexing error details and re-index help text', () => {
+  it('renders indexing error details and re-index help text', async () => {
     render(<IndexNotFoundBanner />);
 
     expect(screen.getByTestId('index-not-found-alert')).toBeInTheDocument();
     expect(screen.getByText('server.indexing-error')).toBeInTheDocument();
-    expect(screen.getByTestId('trans-i18next')).toHaveTextContent(
-      'message.configure-search-re-index'
-    );
-    expect(screen.getByTestId('trans-settings-value')).toHaveTextContent(
-      'label.search-index-setting-plural'
-    );
+    expect(
+      await screen.findByText(/message.configure-search-re-index/)
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(/label.search-index-setting-plural/)
+    ).toBeInTheDocument();
   });
 
   it('builds the settings link using search indexing application path', () => {

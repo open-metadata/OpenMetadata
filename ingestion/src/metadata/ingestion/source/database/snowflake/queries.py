@@ -410,13 +410,9 @@ WHERE FUNCTION_CATALOG = '{database_name}'
     """
 )
 
-SNOWFLAKE_DESC_STORED_PROCEDURE = (
-    "DESC PROCEDURE {database_name}.{schema_name}.{procedure_name}{procedure_signature}"
-)
+SNOWFLAKE_DESC_STORED_PROCEDURE = "DESC PROCEDURE {database_name}.{schema_name}.{procedure_name}{procedure_signature}"
 
-SNOWFLAKE_DESC_FUNCTION = (
-    "DESC FUNCTION {database_name}.{schema_name}.{procedure_name}{procedure_signature}"
-)
+SNOWFLAKE_DESC_FUNCTION = "DESC FUNCTION {database_name}.{schema_name}.{procedure_name}{procedure_signature}"
 
 SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
     """

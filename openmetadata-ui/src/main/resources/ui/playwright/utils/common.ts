@@ -12,6 +12,7 @@
  */
 import { Browser, expect, Locator, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
+import { toLower } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
@@ -430,17 +431,42 @@ export const assignDataProduct = async (
     fullyQualifiedName?: string;
   }[],
   action: 'Add' | 'Edit' = 'Add',
-  parentId = 'KnowledgePanel.DataProducts'
+  parentId = 'KnowledgePanel.DataProducts',
+  // Set true when the domain is inherited from a parent entity. The search
+  // index is updated asynchronously, so a page reload is needed on each poll
+  // to fetch the current state directly from the entity API.
+  pollForInheritance = false
 ) => {
-  const hasMultipleDomains = await page
-    .getByTestId('domain-count-button')
-    .isVisible();
-  if (hasMultipleDomains) {
-    await expect(page.getByTestId('domain-count-button')).toBeVisible();
+  if (pollForInheritance) {
+    await expect
+      .poll(
+        async () => {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+
+          return page
+            .getByTestId('domain-link')
+            .textContent()
+            .catch(() => null);
+        },
+        {
+          message: `Waiting for inherited domain "${domain.displayName}" to appear on the entity page`,
+          timeout: 60_000,
+          intervals: [2_000, 3_000, 5_000],
+        }
+      )
+      .toContain(domain.displayName);
   } else {
-    await expect(page.getByTestId('domain-link')).toContainText(
-      domain.displayName
-    );
+    const hasMultipleDomains = await page
+      .getByTestId('domain-count-button')
+      .isVisible();
+    if (hasMultipleDomains) {
+      await expect(page.getByTestId('domain-count-button')).toBeVisible();
+    } else {
+      await expect(page.getByTestId('domain-link')).toContainText(
+        domain.displayName
+      );
+    }
   }
 
   await page
@@ -487,13 +513,38 @@ export const assignDataProduct = async (
     .click();
   await patchReq;
 
-  for (const dataProduct of dataProducts) {
-    await expect(
-      page
-        .getByTestId(parentId)
-        .getByTestId('data-products-list')
-        .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
-    ).toBeVisible();
+  if (pollForInheritance) {
+    for (const dataProduct of dataProducts) {
+      await expect
+        .poll(
+          async () => {
+            await page.reload();
+            await waitForAllLoadersToDisappear(page);
+
+            return page
+              .getByTestId(parentId)
+              .getByTestId('data-products-list')
+              .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
+              .isVisible()
+              .catch(() => false);
+          },
+          {
+            message: `Waiting for data product "${dataProduct.displayName}" to appear after save`,
+            timeout: 60_000,
+            intervals: [2_000, 3_000, 5_000],
+          }
+        )
+        .toBe(true);
+    }
+  } else {
+    for (const dataProduct of dataProducts) {
+      await expect(
+        page
+          .getByTestId(parentId)
+          .getByTestId('data-products-list')
+          .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
+      ).toBeVisible();
+    }
   }
 };
 
@@ -586,6 +637,23 @@ export const generateRandomUsername = (prefix = '') => {
     lastName,
     email: `${firstName}.${lastName}.${timestamp}@example.com`,
     password: 'User@OMD123',
+  };
+};
+
+export const generateRandomAdminUsername = (prefix = '') => {
+  const timestamp = Date.now();
+  const firstName = `${prefix}${getRandomFirstName()}`;
+  const lastName = `${prefix}${getRandomLastName()}`;
+  const name = toLower(`${firstName}.${lastName}.${timestamp}`);
+  const password = 'Admin@OMD123';
+
+  return {
+    name,
+    displayName: `${firstName}${lastName}`,
+    email: `${name}@example.com`,
+    password,
+    confirmPassword: password,
+    isAdmin: true,
   };
 };
 

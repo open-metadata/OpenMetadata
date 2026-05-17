@@ -84,12 +84,30 @@ export default defineConfig({
       teardown: 'entity-data-teardown',
       testIgnore: [
         '**/nightly/**',
+        '**/Search/**',
         '**/Auth/**',
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
+        '**/SSOLogin.spec.ts',
       ],
+    },
+    {
+      name: 'sso-auth',
+      testMatch: ['**/SSOLogin.spec.ts', '**/SSORenewal.spec.ts'],
+      use: { ...devices['Desktop Chrome'] },
+      fullyParallel: false,
+      workers: 1,
+    },
+    {
+      name: 'search-nightly',
+      testMatch: ['**/Search/**'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/admin.json',
+      },
+      dependencies: ['setup'],
     },
     {
       name: 'entity-data-teardown',

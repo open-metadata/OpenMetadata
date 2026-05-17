@@ -25,15 +25,17 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { EntityType } from '../../enums/entity.enum';
-import { Thread } from '../../generated/entity/feed/thread';
 import { Page, PageType } from '../../generated/system/ui/page';
 import { PersonaPreferences } from '../../generated/type/personaPreferences';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { useWelcomeStore } from '../../hooks/useWelcomeStore';
+import {
+  AnnouncementEntity,
+  getActiveAnnouncements,
+} from '../../rest/announcementsAPI';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
-import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { updateUserDetail } from '../../rest/userAPI';
 import {
   getConstrainedWidgetWidth,
@@ -60,7 +62,7 @@ const MyDataPage = () => {
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
   const [isAnnouncementLoading, setIsAnnouncementLoading] =
     useState<boolean>(true);
-  const [announcements, setAnnouncements] = useState<Thread[]>([]);
+  const [announcements, setAnnouncements] = useState<AnnouncementEntity[]>([]);
   const [personaPreferences, setPersonaPreferences] = useState<
     PersonaPreferences[]
   >([]);
@@ -171,7 +173,7 @@ const MyDataPage = () => {
   const fetchAnnouncements = useCallback(async () => {
     try {
       setIsAnnouncementLoading(true);
-      const response = await getActiveAnnouncement();
+      const response = await getActiveAnnouncements();
 
       setAnnouncements(response.data);
     } catch (error) {

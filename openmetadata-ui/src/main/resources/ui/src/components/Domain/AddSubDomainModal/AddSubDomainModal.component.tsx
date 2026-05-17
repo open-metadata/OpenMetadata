@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 import { Button, Modal } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
+import { useCallback } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
-import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
+import AddDomainForm, {
+  DOMAIN_FORM_DEFAULTS,
+  transformDomainFormData,
+} from '../AddDomainForm/AddDomainForm.component';
+import { DomainFormValues } from '../AddDomainForm/AddDomainForm.interface';
 import { DomainFormType } from '../DomainPage.interface';
 import { AddSubDomainModalProps } from './AddSubDomainModal.interface';
 
@@ -24,7 +29,23 @@ const AddSubDomainModal = ({
   onCancel,
 }: AddSubDomainModalProps) => {
   const { t } = useTranslation();
-  const [form] = useForm();
+  const form = useForm<DomainFormValues>({
+    defaultValues: DOMAIN_FORM_DEFAULTS,
+  });
+
+  const handleFormSubmit = useCallback(
+    async (data: DomainFormValues) => {
+      const payload = transformDomainFormData(
+        data,
+        DomainFormType.SUBDOMAIN
+      ) as CreateDomain;
+      await onSubmit(payload);
+      form.reset();
+    },
+    [form, onSubmit]
+  );
+
+  const handleSave = form.handleSubmit(handleFormSubmit);
 
   return (
     <Modal
@@ -40,7 +61,7 @@ const AddSubDomainModal = ({
           data-testid="save-sub-domain"
           key="save-btn"
           type="primary"
-          onClick={() => form.submit()}>
+          onClick={handleSave}>
           {t('label.save')}
         </Button>,
       ]}
@@ -55,11 +76,11 @@ const AddSubDomainModal = ({
       onCancel={onCancel}>
       <AddDomainForm
         isFormInDialog
-        formRef={form}
+        form={form}
         loading={false}
         type={DomainFormType.SUBDOMAIN}
         onCancel={onCancel}
-        onSubmit={(formData) => onSubmit(formData as CreateDomain)}
+        onSubmit={handleFormSubmit}
       />
     </Modal>
   );

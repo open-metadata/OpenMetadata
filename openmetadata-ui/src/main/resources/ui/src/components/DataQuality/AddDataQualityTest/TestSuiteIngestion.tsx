@@ -43,9 +43,9 @@ import {
 import {
   getNameFromFQN,
   replaceAllSpacialCharWith_,
-  Transi18next,
 } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getScheduleOptionsFromSchedules } from '../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../utils/ServiceUtils';
 import { generateUUID } from '../../../utils/StringsUtils';

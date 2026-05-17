@@ -24,6 +24,64 @@ interface TableMenuProps {
   editor: Editor;
 }
 
+const TABLE_WRAPPER_SELECTOR = '.tableWrapper';
+const TABLE_CELL_SELECTOR = 'td, th';
+const SELECTED_TABLE_CELL_SELECTOR = 'td.selectedCell, th.selectedCell';
+
+const buildRect = (
+  top: number,
+  left: number,
+  right: number,
+  bottom: number
+): DOMRect => {
+  return {
+    x: left,
+    y: top,
+    top,
+    left,
+    right,
+    bottom,
+    width: right - left,
+    height: bottom - top,
+    toJSON: () => ({
+      x: left,
+      y: top,
+      top,
+      left,
+      right,
+      bottom,
+      width: right - left,
+      height: bottom - top,
+    }),
+  } as DOMRect;
+};
+
+const getSelectedCellsRect = (tableWrapper: Element): DOMRect | null => {
+  const selectedCells = tableWrapper.querySelectorAll<HTMLElement>(
+    SELECTED_TABLE_CELL_SELECTOR
+  );
+
+  if (!selectedCells.length) {
+    return null;
+  }
+
+  let top = Number.POSITIVE_INFINITY;
+  let left = Number.POSITIVE_INFINITY;
+  let right = Number.NEGATIVE_INFINITY;
+  let bottom = Number.NEGATIVE_INFINITY;
+
+  selectedCells.forEach((cell) => {
+    const rect = cell.getBoundingClientRect();
+
+    top = Math.min(top, rect.top);
+    left = Math.min(left, rect.left);
+    right = Math.max(right, rect.right);
+    bottom = Math.max(bottom, rect.bottom);
+  });
+
+  return buildRect(top, left, right, bottom);
+};
+
 const TableMenu = (props: TableMenuProps) => {
   const { editor } = props;
   const { view, isEditable } = editor;
@@ -31,16 +89,33 @@ const TableMenu = (props: TableMenuProps) => {
   const tableMenuPopup = useRef<Instance | null>(null);
 
   const handleMouseDown = useCallback((event: MouseEvent) => {
-    const target = event.target as HTMLElement;
-    const table = target?.closest('.tableWrapper');
+    const { target } = event;
 
-    if (table?.contains(target)) {
-      tableMenuPopup.current?.setProps({
-        getReferenceClientRect: () => table.getBoundingClientRect(),
-      });
-
-      tableMenuPopup.current?.show();
+    if (!(target instanceof Element)) {
+      return;
     }
+
+    const tableWrapper = target.closest(
+      TABLE_WRAPPER_SELECTOR
+    ) as HTMLElement | null;
+
+    if (!tableWrapper) {
+      return;
+    }
+
+    const tableCell = target.closest(TABLE_CELL_SELECTOR) as HTMLElement | null;
+
+    const getReferenceClientRect = tableCell
+      ? () => tableCell.getBoundingClientRect()
+      : () =>
+          getSelectedCellsRect(tableWrapper) ??
+          tableWrapper.getBoundingClientRect();
+
+    tableMenuPopup.current?.setProps({
+      getReferenceClientRect,
+    });
+
+    tableMenuPopup.current?.show();
   }, []);
 
   useEffect(() => {
@@ -70,12 +145,16 @@ const TableMenu = (props: TableMenuProps) => {
   }, [isEditable]);
 
   useEffect(() => {
+    if (!isEditable) {
+      return;
+    }
+
     document.addEventListener('mousedown', handleMouseDown);
 
     return () => {
       document.removeEventListener('mousedown', handleMouseDown);
     };
-  }, [handleMouseDown]);
+  }, [handleMouseDown, isEditable]);
 
   return (
     <div className="table-menu" ref={menuRef}>

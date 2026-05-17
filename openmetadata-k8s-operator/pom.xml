@@ -22,8 +22,6 @@
         <java-operator-sdk.version>4.9.2</java-operator-sdk.version>
         <!-- Kubernetes client version (should match openmetadata-service) -->
         <kubernetes-client.version>21.0.1</kubernetes-client.version>
-        <!-- Jackson version (should match parent project) -->
-        <jackson.version>2.17.2</jackson.version>
     </properties>
     
     <dependencies>
@@ -187,6 +185,11 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
+                <configuration>
+                    <includes>
+                        <include>**/*Test.java</include>
+                    </includes>
+                </configuration>
             </plugin>
             
             <!-- Failsafe plugin for integration tests -->

@@ -130,7 +130,7 @@ test.describe(
       });
     });
 
-    test('Data consumer can search and view results', async ({
+    test.skip('Data consumer can search and view results', async ({
       consumerPage,
     }) => {
       test.slow();

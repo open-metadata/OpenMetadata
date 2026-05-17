@@ -45,6 +45,8 @@ public class JobRecoveryManager {
   /** Maximum age for a job to be considered for recovery vs marking as failed */
   private static final long RECOVERY_WINDOW_MS = TimeUnit.HOURS.toMillis(1);
 
+  private static final String SEARCH_INDEX_APP_NAME = "SearchIndexingApplication";
+
   private final CollectionDAO collectionDAO;
   private final DistributedSearchIndexCoordinator coordinator;
   private final String serverId;
@@ -422,6 +424,17 @@ public class JobRecoveryManager {
 
     // Release any lock held by this job
     collectionDAO.searchReindexLockDAO().releaseLock("SEARCH_REINDEX_LOCK", job.getId().toString());
+
+    // Sync app_extension_time_series so the UI reflects FAILED instead of RUNNING.
+    // OmAppJobListener.jobWasExecuted() is bypassed during recovery (no Quartz context),
+    // so we update the time-series record here directly.
+    try {
+      collectionDAO
+          .appExtensionTimeSeriesDao()
+          .markRunningEntriesFailedByName(SEARCH_INDEX_APP_NAME);
+    } catch (Exception e) {
+      LOG.warn("Failed to update app_extension_time_series for failed job {}", job.getId(), e);
+    }
 
     LOG.info(
         "Marked job {} as FAILED: {} (processed: {}, success: {}, failed: {})",

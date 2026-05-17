@@ -11,10 +11,11 @@
 """
 Python API REST wrapper and helpers
 """
+
 import time
 import traceback
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union  # noqa: UP035
 
 import requests
 from requests.exceptions import HTTPError, JSONDecodeError
@@ -22,19 +23,20 @@ from requests.exceptions import HTTPError, JSONDecodeError
 from metadata.config.common import ConfigModel
 from metadata.ingestion.ometa.credentials import URL, get_api_version
 from metadata.ingestion.ometa.ttl_cache import TTLCache
+from metadata.ingestion.ometa.utils import sanitize_user_agent
 from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
 
-class RetryException(Exception):
+class RetryException(Exception):  # noqa: N818
     """
     API Client retry exception
     """
 
 
-class LimitsException(Exception):
+class LimitsException(Exception):  # noqa: N818
     """
     API Client Feature Limit exception
     """
@@ -101,24 +103,28 @@ class ClientConfig(ConfigModel):
     """
 
     base_url: str
-    api_version: Optional[str] = "v1"
-    retry: Optional[int] = 3
-    retry_wait: Optional[int] = 30
-    limit_codes: List[int] = [429]
-    retry_codes: List[int] = [504]
-    auth_token: Optional[Callable] = None
-    access_token: Optional[str] = None
-    expires_in: Optional[int] = None
-    auth_header: Optional[str] = None
-    extra_headers: Optional[dict] = None
-    raw_data: Optional[bool] = False
-    allow_redirects: Optional[bool] = False
-    auth_token_mode: Optional[str] = "Bearer"
-    verify: Optional[Union[bool, str]] = None
-    cookies: Optional[Any] = None
+    api_version: Optional[str] = "v1"  # noqa: UP045
+    retry: Optional[int] = 3  # noqa: UP045
+    retry_wait: Optional[int] = 30  # noqa: UP045
+    limit_codes: List[int] = [429]  # noqa: RUF012, UP006
+    retry_codes: List[int] = [504]  # noqa: RUF012, UP006
+    auth_token: Optional[Callable] = None  # noqa: UP045
+    access_token: Optional[str] = None  # noqa: UP045
+    expires_in: Optional[int] = None  # noqa: UP045
+    auth_header: Optional[str] = None  # noqa: UP045
+    extra_headers: Optional[dict] = None  # noqa: UP045
+    user_agent: Optional[str] = None  # noqa: UP045
+    raw_data: Optional[bool] = False  # noqa: UP045
+    allow_redirects: Optional[bool] = False  # noqa: UP045
+    auth_token_mode: Optional[str] = "Bearer"  # noqa: UP045
+    verify: Optional[Union[bool, str]] = None  # noqa: UP007, UP045
+    cookies: Optional[Any] = None  # noqa: UP045
     ttl_cache: int = 60
-    timeout: Optional[int] = None
-    cert: Optional[Union[str, tuple]] = None
+    # (connect, read) seconds. Default prevents indefinite hangs when a pooled
+    # socket is silently severed (NAT/LB idle reaping). Override with None to
+    # disable, or pass a single int to use the same value for both.
+    timeout: Optional[int | tuple[int, int]] = (10, 300)  # noqa: UP045
+    cert: Optional[Union[str, tuple]] = None  # noqa: UP007, UP045
 
 
 # pylint: disable=too-many-instance-attributes
@@ -133,6 +139,13 @@ class REST:
         self._base_url: URL = URL(self.config.base_url)
         self._api_version = get_api_version(self.config.api_version)
         self._session = requests.Session()
+        user_agent = sanitize_user_agent(self.config.user_agent)
+        if user_agent:
+            self._session.headers["User-Agent"] = user_agent
+        elif self.config.user_agent:
+            logger.debug(
+                f"Ignoring User-Agent {self.config.user_agent!r}: no header-safe characters remained after sanitization"
+            )
         self._use_raw_data = self.config.raw_data
         self._retry = self.config.retry
         self._retry_wait = self.config.retry_wait
@@ -154,8 +167,8 @@ class REST:
         data=None,
         json=None,
         base_url: URL = None,
-        api_version: str = None,
-        headers: dict = None,
+        api_version: str = None,  # noqa: RUF013
+        headers: dict = None,  # noqa: RUF013
     ):
         # pylint: disable=too-many-locals
         if path in self._limits_reached:
@@ -168,19 +181,17 @@ class REST:
         url: URL = URL(base_url + "/" + version + path)
         cookies = self._cookies
         if (
-            self.config.expires_in
+            self.config.expires_in  # noqa: RUF021
             and datetime.now(timezone.utc).timestamp() >= self.config.expires_in
-            or not self.config.access_token
+            or not self.config.access_token  # noqa: RUF021
             and self._auth_token
         ):
             self.config.access_token, expiry = self._auth_token()
-            if not self.config.access_token == "no_token":
+            if not self.config.access_token == "no_token":  # noqa: SIM201
                 if isinstance(expiry, datetime):
                     self.config.expires_in = expiry.timestamp() - 120
                 else:
-                    self.config.expires_in = (
-                        datetime.now(timezone.utc).timestamp() + expiry - 120
-                    )
+                    self.config.expires_in = datetime.now(timezone.utc).timestamp() + expiry - 120
 
         if self.config.auth_header:
             headers[self.config.auth_header] = (
@@ -196,7 +207,7 @@ class REST:
         # This will result in the Authorization value being set for the Proxy-Authorization Extra Header
         # Any header which is comming as extra header from client will overwrite the header with same name in headers
         if self.config.extra_headers:
-            extra_headers: Dict[str, str] = self.config.extra_headers
+            extra_headers: Dict[str, str] = self.config.extra_headers  # noqa: UP006
             extra_headers = {k: (v % headers) for k, v in extra_headers.items()}
             headers = {**headers, **extra_headers}
 
@@ -230,7 +241,7 @@ class REST:
             except LimitsException as exc:
                 logger.error(f"Feature limit exceeded for {url}")
                 self._limits_reached.add(path)
-                raise exc
+                raise exc  # noqa: TRY201
             except RetryException:
                 retry_wait = self._retry_wait * (total_retries - retry + 1)
                 logger.warning(
@@ -272,9 +283,7 @@ class REST:
                     return resp
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Unexpected error while returning response {resp} in json format - {exc}"
-                    )
+                    logger.warning(f"Unexpected error while returning response {resp} in json format - {exc}")
 
         except HTTPError as http_error:
             # retry if we hit Rate Limit
@@ -294,15 +303,11 @@ class REST:
                 return self._session.request(method, url, **opts).json()
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Unexpected error while retrying after a connection error - {exc}"
-                )
-                raise conn
+                logger.warning(f"Unexpected error while retrying after a connection error - {exc}")
+                raise conn  # noqa: B904
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unexpected error calling [{url}] with method [{method}]: {exc}"
-            )
+            logger.warning(f"Unexpected error calling [{url}] with method [{method}]: {exc}")
 
         return None
 
