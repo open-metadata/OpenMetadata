@@ -156,6 +156,21 @@ public class TaskRepository extends EntityRepository<Task> {
     return super.listBefore(uriInfo, fields, filter, limitParam, before);
   }
 
+  public ResultList<Task> listDataAccessRequests(
+      UriInfo uriInfo, Fields fields, ListFilter filter, int limit, int offset, String sortOrder) {
+    applyTaskDomainFilter(filter);
+    String direction = "ASC".equalsIgnoreCase(sortOrder) ? "ASC" : "DESC";
+    CollectionDAO.TaskDAO taskDAO = (CollectionDAO.TaskDAO) dao;
+    int total = taskDAO.listTasksByCreatedAtCount(filter.getCondition(), filter.getQueryParams());
+    List<String> jsons =
+        taskDAO.listTasksByCreatedAt(
+            filter.getCondition(), filter.getQueryParams(), direction, limit, offset);
+    List<Task> entities = JsonUtils.readObjects(jsons, Task.class);
+    setFieldsInBulk(fields, entities);
+    entities.forEach(entity -> withHref(uriInfo, entity));
+    return new ResultList<>(entities, offset, limit, total);
+  }
+
   public void addDomainFilter(ListFilter filter, String domainFilter) {
     if (nullOrEmpty(domainFilter)) {
       return;
@@ -1011,6 +1026,19 @@ public class TaskRepository extends EntityRepository<Task> {
    * Internal method to update task resolution status.
    * Called by TaskWorkflowHandler after workflow processing.
    */
+  public Task persistApprover(UUID taskId, EntityReference approver, String updatedBy) {
+    Task original = get(null, taskId, getFields("*"));
+    Task updated = JsonUtils.deepCopy(original, Task.class);
+    updated.setApprovedBy(approver);
+    updated.setApprovedById(approver.getId() != null ? approver.getId().toString() : null);
+    updated.setApprovedAt(System.currentTimeMillis());
+    updated.setUpdatedBy(updatedBy);
+    updated.setUpdatedAt(System.currentTimeMillis());
+    storeEntity(updated, true);
+    postUpdate(original, updated);
+    return updated;
+  }
+
   public Task resolveTask(Task task, TaskResolution resolution, String updatedBy) {
     if (resolution == null) {
       throw new IllegalArgumentException("Resolution cannot be null");
