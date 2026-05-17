@@ -1741,7 +1741,12 @@ public interface CollectionDAO {
 
   interface EntityRelationshipDAO {
     default void insert(UUID fromId, UUID toId, String fromEntity, String toEntity, int relation) {
-      insert(fromId, toId, fromEntity, toEntity, relation, null);
+      insert(fromId, toId, fromEntity, toEntity, relation, "", null);
+    }
+
+    default void insert(
+        UUID fromId, UUID toId, String fromEntity, String toEntity, int relation, String json) {
+      insert(fromId, toId, fromEntity, toEntity, relation, "", json);
     }
 
     default void bulkInsertToRelationship(
@@ -1779,15 +1784,15 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) "
-                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, :json) "
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, relationType, json) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, :relationType, :json) "
                 + "ON DUPLICATE KEY UPDATE json = :json",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) VALUES "
-                + "(:fromId, :toId, :fromEntity, :toEntity, :relation, (:json :: jsonb)) "
-                + "ON CONFLICT (fromId, toId, relation) DO UPDATE SET json = EXCLUDED.json",
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, relationType, json) VALUES "
+                + "(:fromId, :toId, :fromEntity, :toEntity, :relation, :relationType, (:json :: jsonb)) "
+                + "ON CONFLICT (fromId, toId, relation, relationType) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
     void insert(
         @BindUUID("fromId") UUID fromId,
@@ -1795,6 +1800,7 @@ public interface CollectionDAO {
         @Bind("fromEntity") String fromEntity,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
+        @Bind("relationType") String relationType,
         @Bind("json") String json);
 
     @ConnectionAwareSqlUpdate(
@@ -2135,20 +2141,11 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.relationType')), 'relatedTo') AS relationType, "
-                + "COUNT(*) AS cnt FROM entity_relationship "
-                + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation "
-                + "GROUP BY relationType",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COALESCE(json->>'relationType', 'relatedTo') AS relationType, "
-                + "COUNT(*) AS cnt FROM entity_relationship "
-                + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation "
-                + "GROUP BY relationType",
-        connectionType = POSTGRES)
+    @SqlQuery(
+        "SELECT CASE WHEN relationType = '' THEN 'relatedTo' ELSE relationType END AS relationType, "
+            + "COUNT(*) AS cnt FROM entity_relationship "
+            + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation "
+            + "GROUP BY CASE WHEN relationType = '' THEN 'relatedTo' ELSE relationType END")
     @RegisterRowMapper(RelationTypeUsageCountMapper.class)
     List<RelationTypeUsageCount> countByRelationType(
         @Bind("fromEntity") String fromEntity,
@@ -2512,18 +2509,10 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
-    @ConnectionAwareSqlUpdate(
-        value =
-            "DELETE FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
-                + "AND toId = :toId AND toEntity = :toEntity AND relation = :relation "
-                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.relationType')) = :relationType",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "DELETE FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
-                + "AND toId = :toId AND toEntity = :toEntity AND relation = :relation "
-                + "AND json->>'relationType' = :relationType",
-        connectionType = POSTGRES)
+    @SqlUpdate(
+        "DELETE FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
+            + "AND toId = :toId AND toEntity = :toEntity AND relation = :relation "
+            + "AND relationType = :relationType")
     int deleteWithRelationType(
         @BindUUID("fromId") UUID fromId,
         @Bind("fromEntity") String fromEntity,

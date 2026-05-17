@@ -220,6 +220,7 @@ import org.openmetadata.service.cache.CachedEntityDao;
 import org.openmetadata.service.cache.CachedReadBundle;
 import org.openmetadata.service.cache.CachedRelationshipDao;
 import org.openmetadata.service.cache.ListCountCache;
+import org.openmetadata.service.cache.NotFoundCache;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -4539,6 +4540,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // still-visible DB row; clearing again here guarantees the next read goes back to the
     // (now empty) DB and observes the deletion.
     invalidate(entityInterface);
+    // Mark the entity as not-found in the negative cache. Without this, a concurrent reader
+    // racing the deletion can re-populate Guava L1 / Redis between our invalidate() calls
+    // from the still-visible DB row (the loader fetches it just before the commit lands).
+    // The marker short-circuits the read path on the L1-miss branch — see find()/findByName()
+    // where isMarkedNotFound* is consulted after CACHE_WITH_*.getIfPresent() returns null —
+    // so once the next read misses L1 (because the post-commit invalidate above cleared it),
+    // the loader is skipped and we throw EntityNotFoundException directly. A stale L1 entry
+    // that survives the two invalidate passes is NOT caught by this marker (getIfPresent
+    // returns it before the loader/negative-cache path runs); the second invalidate makes
+    // that case rare in practice, and it expires within the L1 TTL. Marker TTL
+    // (notFoundTtlSeconds, default 30 s) outlasts any in-flight request window;
+    // recreate-with-same-id paths clear the marker via CacheBundle.invalidateEntity() in
+    // postCreate.
+    markEntityNotFound(entityInterface);
+  }
+
+  private void markEntityNotFound(T entity) {
+    NotFoundCache notFoundCache = CacheBundle.getNotFoundCache();
+    if (notFoundCache == null || !notFoundCache.enabled()) {
+      return;
+    }
+    if (entity.getId() != null) {
+      notFoundCache.markNotFoundById(entityType, entity.getId());
+    }
+    if (entity.getFullyQualifiedName() != null) {
+      notFoundCache.markNotFoundByName(entityType, entity.getFullyQualifiedName());
+    }
   }
 
   protected void entitySpecificCleanup(T entityInterface) {}
@@ -5708,6 +5736,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     addRelationship(fromId, toId, fromEntity, toEntity, relationship, null, bidirectional);
   }
 
+  public final void addRelationship(
+      UUID fromId,
+      UUID toId,
+      String fromEntity,
+      String toEntity,
+      Relationship relationship,
+      String json,
+      boolean bidirectional) {
+    addRelationship(fromId, toId, fromEntity, toEntity, relationship, "", json, bidirectional);
+  }
+
   @Transaction
   public final void addRelationship(
       UUID fromId,
@@ -5715,6 +5754,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String fromEntity,
       String toEntity,
       Relationship relationship,
+      String relationType,
       String json,
       boolean bidirectional) {
     UUID from = fromId;
@@ -5727,7 +5767,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     daoCollection
         .relationshipDAO()
-        .insert(from, to, fromEntity, toEntity, relationship.ordinal(), json);
+        .insert(
+            from,
+            to,
+            fromEntity,
+            toEntity,
+            relationship.ordinal(),
+            relationType == null ? "" : relationType,
+            json);
 
     // Update RDF
     EntityRelationship entityRelationship =
