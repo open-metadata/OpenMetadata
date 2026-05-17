@@ -86,84 +86,75 @@ const SYMMETRIC_RELATIONS = new Set([
   'seeAlso',
 ]);
 
-function getCanonicalRelationKey(relationType: string): string {
-  const inverse = INVERSE_RELATION_PAIRS[relationType];
-  if (inverse) {
-    return relationType < inverse ? relationType : inverse;
-  }
-
-  return relationType;
+function isInversePair(a: string, b: string): boolean {
+  return INVERSE_RELATION_PAIRS[a] === b || INVERSE_RELATION_PAIRS[b] === a;
 }
 
-function mergeEdges(inputEdges: OntologyEdge[]): MergedEdge[] {
-  const groups = new Map<string, OntologyEdge[]>();
+export function mergeEdges(inputEdges: OntologyEdge[]): MergedEdge[] {
+  const pairGroups = new Map<string, OntologyEdge[]>();
   inputEdges.forEach((edge) => {
     const pairKey = [edge.from, edge.to]
       .sort((a, b) => a.localeCompare(b))
       .join('::');
-    const canonical = getCanonicalRelationKey(edge.relationType);
-    const groupKey = `${pairKey}|${canonical}`;
-    const list = groups.get(groupKey) ?? [];
+    const list = pairGroups.get(pairKey) ?? [];
     list.push(edge);
-    groups.set(groupKey, list);
+    pairGroups.set(pairKey, list);
   });
 
   const result: MergedEdge[] = [];
-  for (const list of groups.values()) {
-    const first = list[0];
-    if (list.length === 1) {
-      result.push({
-        from: first.from,
-        to: first.to,
-        relationType: first.relationType,
-        isBidirectional: false,
-      });
+  for (const list of pairGroups.values()) {
+    const consumed = new Set<number>();
+    for (let i = 0; i < list.length; i++) {
+      if (consumed.has(i)) {
+        continue;
+      }
+      const edge = list[i];
+      const isSymmetric = SYMMETRIC_RELATIONS.has(edge.relationType);
 
-      continue;
-    }
+      let matchIndex = -1;
+      for (let j = i + 1; j < list.length; j++) {
+        if (consumed.has(j)) {
+          continue;
+        }
+        const other = list[j];
+        if (other.from !== edge.to || other.to !== edge.from) {
+          continue;
+        }
+        const isSymmetricMatch =
+          isSymmetric && other.relationType === edge.relationType;
+        if (
+          isSymmetricMatch ||
+          isInversePair(edge.relationType, other.relationType)
+        ) {
+          matchIndex = j;
 
-    const inverse = INVERSE_RELATION_PAIRS[first.relationType];
-    const isSymmetric = SYMMETRIC_RELATIONS.has(first.relationType);
+          break;
+        }
+      }
 
-    const inverseEdge = inverse
-      ? list.find((e) => e.relationType === inverse && e.from === first.to)
-      : undefined;
-    if (inverseEdge) {
-      result.push({
-        from: first.from,
-        to: first.to,
-        relationType: first.relationType,
-        inverseRelationType: inverseEdge.relationType,
-        isBidirectional: true,
-      });
+      consumed.add(i);
+      if (matchIndex < 0) {
+        result.push({
+          from: edge.from,
+          to: edge.to,
+          relationType: edge.relationType,
+          isBidirectional: false,
+        });
 
-      continue;
-    }
-
-    const symmetricReverseEdge =
-      isSymmetric &&
-      list.find(
-        (e) => e.relationType === first.relationType && e.from === first.to
-      );
-    if (symmetricReverseEdge) {
-      result.push({
-        from: first.from,
-        to: first.to,
-        relationType: first.relationType,
-        isBidirectional: true,
-      });
-
-      continue;
-    }
-
-    list.forEach((edge) => {
+        continue;
+      }
+      const match = list[matchIndex];
+      consumed.add(matchIndex);
       result.push({
         from: edge.from,
         to: edge.to,
         relationType: edge.relationType,
-        isBidirectional: false,
+        ...(edge.relationType === match.relationType
+          ? {}
+          : { inverseRelationType: match.relationType }),
+        isBidirectional: true,
       });
-    });
+    }
   }
 
   return result;
