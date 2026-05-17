@@ -12,6 +12,7 @@
  */
 import { ComboData, EdgeData, NodeData } from '@antv/g6';
 import { useCallback, useMemo } from 'react';
+import { GlossaryTermRelationType } from '../../../rest/settingConfigAPI';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   DATA_MODE_ASSET_CIRCLE_SIZE,
@@ -86,11 +87,44 @@ const SYMMETRIC_RELATIONS = new Set([
   'seeAlso',
 ]);
 
-function isInversePair(a: string, b: string): boolean {
-  return INVERSE_RELATION_PAIRS[a] === b || INVERSE_RELATION_PAIRS[b] === a;
+interface RelationMaps {
+  inverseMap: Record<string, string>;
+  symmetricSet: Set<string>;
 }
 
-export function mergeEdges(inputEdges: OntologyEdge[]): MergedEdge[] {
+function buildRelationMaps(
+  configuredTypes?: GlossaryTermRelationType[]
+): RelationMaps {
+  const inverseMap: Record<string, string> = { ...INVERSE_RELATION_PAIRS };
+  const symmetricSet = new Set<string>(SYMMETRIC_RELATIONS);
+  configuredTypes?.forEach((rt) => {
+    if (rt.inverseRelation) {
+      inverseMap[rt.name] = rt.inverseRelation;
+      if (!(rt.inverseRelation in inverseMap)) {
+        inverseMap[rt.inverseRelation] = rt.name;
+      }
+    }
+    if (rt.isSymmetric) {
+      symmetricSet.add(rt.name);
+    }
+  });
+
+  return { inverseMap, symmetricSet };
+}
+
+function isInversePair(
+  a: string,
+  b: string,
+  inverseMap: Record<string, string>
+): boolean {
+  return inverseMap[a] === b || inverseMap[b] === a;
+}
+
+export function mergeEdges(
+  inputEdges: OntologyEdge[],
+  configuredTypes?: GlossaryTermRelationType[]
+): MergedEdge[] {
+  const { inverseMap, symmetricSet } = buildRelationMaps(configuredTypes);
   const pairGroups = new Map<string, OntologyEdge[]>();
   inputEdges.forEach((edge) => {
     const pairKey = [edge.from, edge.to]
@@ -109,7 +143,7 @@ export function mergeEdges(inputEdges: OntologyEdge[]): MergedEdge[] {
         continue;
       }
       const edge = list[i];
-      const isSymmetric = SYMMETRIC_RELATIONS.has(edge.relationType);
+      const isSymmetric = symmetricSet.has(edge.relationType);
 
       let matchIndex = -1;
       for (let j = i + 1; j < list.length; j++) {
@@ -124,7 +158,7 @@ export function mergeEdges(inputEdges: OntologyEdge[]): MergedEdge[] {
           isSymmetric && other.relationType === edge.relationType;
         if (
           isSymmetricMatch ||
-          isInversePair(edge.relationType, other.relationType)
+          isInversePair(edge.relationType, other.relationType, inverseMap)
         ) {
           matchIndex = j;
 
@@ -174,6 +208,7 @@ export function useGraphDataBuilder({
   layoutType,
   hierarchyCombos = [],
   graphSearchHighlight = null,
+  relationTypes,
 }: BuildGraphDataProps) {
   const computeNodeColor = useCallback(
     (node: OntologyNode): string =>
@@ -183,7 +218,10 @@ export function useGraphDataBuilder({
     [glossaryColorMap]
   );
 
-  const mergedEdgesList = useMemo(() => mergeEdges(inputEdges), [inputEdges]);
+  const mergedEdgesList = useMemo(
+    () => mergeEdges(inputEdges, relationTypes),
+    [inputEdges, relationTypes]
+  );
 
   const neighborSet = useMemo(() => {
     const set = new Set<string>();

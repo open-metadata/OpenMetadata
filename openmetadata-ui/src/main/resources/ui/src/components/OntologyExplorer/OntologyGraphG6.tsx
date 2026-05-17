@@ -96,6 +96,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       onPaneClick,
       onScrollNearEdge,
       nodePositions,
+      relationTypes,
     },
     ref
   ) => {
@@ -129,6 +130,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       graphSearchHighlight,
       layoutType,
       nodePositions,
+      relationTypes,
     });
 
     const {
