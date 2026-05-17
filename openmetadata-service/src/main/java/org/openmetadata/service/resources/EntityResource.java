@@ -873,8 +873,11 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
               try {
                 PutResponse<T> response = repository.restoreEntity(userName, id);
                 if (response == null) {
-                  WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
-                      jobId, notifyUserId, entityName, "Entity is not in deleted state");
+                  // Pre-check saw the entity in DELETED state; a null response now means a
+                  // concurrent restore won the race. Treat as idempotent success — the
+                  // operator's request is satisfied. If the entity has since been hard-
+                  // deleted, surface that as a real failure.
+                  handleAlreadyRestored(jobId, id, entityName, notifyUserId);
                   return;
                 }
                 repository.restoreFromSearch(response.getEntity());
@@ -902,6 +905,22 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     RestoreEntityResponse response =
         new RestoreEntityResponse(jobId, "Restore initiated successfully.");
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  private void handleAlreadyRestored(String jobId, UUID id, String entityName, UUID notifyUserId) {
+    try {
+      T restored = repository.find(id, Include.NON_DELETED);
+      LOG.info(
+          "[AsyncRestore] {} {} was already restored by another request (jobId={})",
+          entityType,
+          id,
+          jobId);
+      WebsocketNotificationHandler.sendRestoreOperationCompleteNotification(
+          jobId, notifyUserId, restored);
+    } catch (EntityNotFoundException missing) {
+      WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
+          jobId, notifyUserId, entityName, "Entity was hard-deleted before restore");
+    }
   }
 
   public Response exportCsvInternalAsync(

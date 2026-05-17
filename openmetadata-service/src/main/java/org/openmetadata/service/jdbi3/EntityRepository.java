@@ -4266,6 +4266,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // dashboard charts).
         softDeleteAdditionalChildren(original.getId(), deletedBy);
       } else {
+        // Run hook BEFORE cleanup(): cleanup() deletes this entity's relationship rows
+        // (including HAS), and subclass hooks like DashboardRepository.cascadeChartCleanup
+        // need to walk HAS to discover linked entities. Mirrors bulkHardDeleteSubtree
+        // ordering for direct-entity hard delete.
+        hardDeleteAdditionalChildren(original.getId(), deletedBy);
         cleanup(updated);
         changeType = ENTITY_DELETED;
       }
@@ -5774,21 +5779,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
     if (!supportsSoftDelete) {
-      // This type can't be soft-deleted, so each entity at this level must be hard
-      // deleted instead. Pass hardDelete=false through to the per-entity delete so
-      // descendant levels that *do* support soft delete remain soft-deleted — the
-      // per-entity flow handles the asymmetry by inspecting each level's own
-      // supportsSoftDelete flag. Using hardDelete=true here would propagate hard
-      // deletion to the entire subtree, breaking that contract.
-      for (UUID id : ids) {
-        Entity.deleteEntity(updatedBy, entityType, id, true, false);
-      }
+      hardDeleteAtLevelOnly(ids, updatedBy);
       return;
     }
-    // Load with ALL so we still walk children even when this level's parents are already
-    // soft-deleted — a descendant may have been restored independently and needs to be
-    // re-deleted as part of the parent's cascade. Matches the previous per-entity flow
-    // where deleteChildren ran before the parent's deleted state mattered.
     List<T> allEntities = loadForBulk(ids, ALL, "bulkSoftDeleteLoad");
     if (allEntities.isEmpty()) {
       return;
@@ -5799,30 +5792,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
       checkSystemEntityDeletion(entity);
       preDelete(entity, updatedBy);
     }
-
     dispatchToContainedChildren(
         allEntities,
         "bulkSoftDeleteFindChildren",
         (childRepo, childIds) -> childRepo.bulkSoftDeleteSubtree(childIds, updatedBy));
-
-    if (!entities.isEmpty()) {
-      List<EntityUpdater> updaters =
-          buildBulkUpdaters(
-              entities,
-              updatedBy,
-              Operation.SOFT_DELETE,
-              "bulkSoftDeleteUpdaters",
-              e -> e.setDeleted(true));
-      List<EntityUpdater> changed = filterChanged(updaters);
-      if (!changed.isEmpty()) {
-        persistBulkUpdaters(changed, ENTITY_SOFT_DELETED, updatedBy, "bulkSoftDelete");
-        ListCountCache.invalidate(entityType);
-      }
-    }
+    applyBulkSoftDelete(entities, updatedBy);
     // Always run per-entity hooks even when nothing at THIS level needed flipping —
     // descendants restored independently before the cascade still need to be re-deleted
     // by the per-entity hook.
     runSoftDeleteAdditionalChildren(allEntities, updatedBy);
+  }
+
+  // This type can't be soft-deleted, so each entity at this level must be hard
+  // deleted instead. Pass hardDelete=false through to the per-entity delete so
+  // descendant levels that *do* support soft delete remain soft-deleted — the
+  // per-entity flow handles the asymmetry by inspecting each level's own
+  // supportsSoftDelete flag.
+  private void hardDeleteAtLevelOnly(List<UUID> ids, String updatedBy) {
+    for (UUID id : ids) {
+      Entity.deleteEntity(updatedBy, entityType, id, true, false);
+    }
+  }
+
+  private void applyBulkSoftDelete(List<T> entities, String updatedBy) {
+    if (entities.isEmpty()) {
+      return;
+    }
+    List<EntityUpdater> updaters =
+        buildBulkUpdaters(
+            entities,
+            updatedBy,
+            Operation.SOFT_DELETE,
+            "bulkSoftDeleteUpdaters",
+            e -> e.setDeleted(true));
+    List<EntityUpdater> changed = filterChanged(updaters);
+    if (!changed.isEmpty()) {
+      persistBulkUpdaters(changed, ENTITY_SOFT_DELETED, updatedBy, "bulkSoftDelete");
+      ListCountCache.invalidate(entityType);
+    }
   }
 
   private void runSoftDeleteAdditionalChildren(List<T> entities, String updatedBy) {
@@ -5888,10 +5895,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
         "bulkHardDeleteFindChildren",
         (childRepo, childIds) -> childRepo.bulkHardDeleteSubtree(childIds, updatedBy));
     bulkEntitySpecificCleanup(entities);
+    // Run BEFORE bulkCleanupReferences: hooks like DashboardRepository.cascadeChartCleanup
+    // walk HAS relationships to discover linked entities, and bulkCleanupReferences wipes
+    // those relationship rows.
+    runHardDeleteAdditionalChildren(entities, updatedBy);
     bulkCleanupReferences(entities);
     bulkDeleteEntityRows(entities);
     bulkInvalidate(entities);
-    runHardDeleteAdditionalChildren(entities, updatedBy);
     // Each cascade-deleted descendant needs the same postDelete hook the per-entity hard-delete
     // path runs (RdfUpdater.deleteEntity, plus subclass overrides like
     // UserRepository.deleteSuggestionTasksForUser). The legacy small-batch path went through

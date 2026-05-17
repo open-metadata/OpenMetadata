@@ -60,6 +60,11 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
  *   <li>All three bulk methods issue a single batched {@code findToBatchAllTypes} per tree
  *       level that walks both {@code CONTAINS} and {@code PARENT_OF} so Glossary / Team /
  *       recursive-Container descendants stop silently slipping past the cascade.
+ *   <li>The per-entity {@code *AdditionalChildren} hooks fire even on the "entities present
+ *       but none need flipping" branch (so a re-entered cascade can reconcile HAS-related
+ *       descendants), and {@code hardDeleteAdditionalChildren} + {@code
+ *       bulkEntitySpecificCleanup} fire on the full bulk hard-delete path with the expected
+ *       per-entity / per-batch counts.
  * </ul>
  *
  * The full bulk DB-write path (version history, updateMany, change events, entity row

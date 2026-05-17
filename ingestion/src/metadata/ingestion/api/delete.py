@@ -87,7 +87,7 @@ def delete_entity_by_name(
     dispatch_async: Optional[bool] = None,  # noqa: UP045
 ) -> Iterable[Either[DeleteEntity]]:
     """
-    Method to delete the entites contained on a given list
+    Method to delete the entities contained on a given list
     :param metadata: OMeta client
     :param entity_type: Pydantic Entity model
     :param entity_names: List of FullyQualifiedNames of the entities to be deleted
