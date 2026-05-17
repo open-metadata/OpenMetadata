@@ -19,12 +19,12 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Tag01 } from '@untitledui/icons';
 import { groupBy, isEmpty } from 'lodash';
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as IconTerm } from '../../../../assets/svg/book.svg';
 
 import {
   NO_DATA_PLACEHOLDER,
@@ -121,7 +121,11 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
         }
         data-testid={getEntityName(entity)}
         onPress={() => onRelatedTermClick(entity.fullyQualifiedName ?? '')}>
-        <BadgeWithIcon color="gray" iconLeading={Tag01} size="md" type="color">
+        <BadgeWithIcon
+          color="gray"
+          iconLeading={IconTerm}
+          size="md"
+          type="color">
           {getEntityName(entity)}
         </BadgeWithIcon>
       </TooltipTrigger>
