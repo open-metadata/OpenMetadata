@@ -24,22 +24,24 @@ import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.util.EntityETag;
 
 /**
- * JAX-RS filter that adds {@code ETag} + {@code Cache-Control} headers to entity GET responses
- * and short-circuits to {@code 304 Not Modified} when the client's {@code If-None-Match} matches
- * the computed ETag.
+ * JAX-RS filter that adds an {@code ETag} header to entity GET responses and short-circuits to
+ * {@code 304 Not Modified} when the client's {@code If-None-Match} matches the computed ETag.
  *
  * <p>The 304 path saves the response body bytes on the wire and the client-side render cost on
  * revisits — the server still computes the entity body (we'd need a cheap version-stamp lookup
  * to truly skip the work, see design doc), but the network and client savings are immediate.
  *
- * <p>{@code Cache-Control: must-revalidate, private}: clients (browsers, our Axios interceptor)
- * may keep the body but must revalidate via {@code If-None-Match} before reusing it; private
- * keeps it out of any shared/proxy cache so per-user data doesn't leak.
+ * <p>No {@code Cache-Control} header is emitted on purpose. Adding {@code must-revalidate,
+ * private} caused the browser to actively HTTP-cache entity GETs and revalidate on
+ * {@code page.reload()}; non-standard mutation paths that bump entity version without bumping
+ * {@code updatedAt} (e.g. {@code DataContractRepository.updateLatestResult}) interact poorly
+ * with browser-level conditional GETs and showed up as Playwright failures on the DataContract
+ * specs. Our client-side Axios interceptor still gets the 304 win because it caches in memory
+ * and sends {@code If-None-Match} explicitly — we just stop instructing the browser to do the
+ * same.
  */
 @Provider
 public class ETagResponseFilter implements ContainerResponseFilter {
-
-  private static final String CACHE_CONTROL_VALUE = "must-revalidate, private";
 
   @Override
   public void filter(
@@ -56,7 +58,6 @@ public class ETagResponseFilter implements ContainerResponseFilter {
         return;
       }
       responseContext.getHeaders().putSingle(HttpHeaders.ETAG, etag);
-      responseContext.getHeaders().putSingle(HttpHeaders.CACHE_CONTROL, CACHE_CONTROL_VALUE);
 
       String ifNoneMatch = requestContext.getHeaderString(HttpHeaders.IF_NONE_MATCH);
       if (ifNoneMatch == null) {
