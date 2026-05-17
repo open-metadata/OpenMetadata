@@ -153,13 +153,13 @@ class REST:
 
     def _request(  # noqa: C901, pylint: disable=too-many-arguments,too-many-branches
         self,
-        method,
-        path,
-        data=None,
-        json=None,
-        base_url: URL = None,
-        api_version: str = None,  # noqa: RUF013
-        headers: dict = None,  # noqa: RUF013
+        method: str,
+        path: str,
+        data: Any = None,
+        json: Any = None,
+        base_url: Optional[URL] = None,  # noqa: UP045
+        api_version: Optional[str] = None,  # noqa: UP045
+        headers: Optional[dict] = None,  # noqa: UP045
         timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
         retries: Optional[int] = None,  # noqa: UP045
     ):
@@ -230,7 +230,7 @@ class REST:
         if retries is not None:
             total_retries = retries if retries > 0 else 0
         else:
-            total_retries = self._retry if self._retry > 0 else 0
+            total_retries = self._retry if self._retry and self._retry > 0 else 0
         retry = total_retries
         while retry >= 0:
             try:
@@ -326,10 +326,10 @@ class REST:
     @calculate_execution_time(context="POST")
     def post(
         self,
-        path,
-        data=None,
-        json=None,
-        headers=None,
+        path: str,
+        data: Any = None,
+        json: Any = None,
+        headers: Optional[dict] = None,  # noqa: UP045
         timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
         retries: Optional[int] = None,  # noqa: UP045
     ):
@@ -360,9 +360,9 @@ class REST:
 
     def post_best_effort(
         self,
-        path,
-        data=None,
-        headers=None,
+        path: str,
+        data: Any = None,
+        headers: Optional[dict] = None,  # noqa: UP045
         timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
     ) -> bool:
         """Quiet POST: no retries, no sleep, no logging. Returns True on 2xx."""
@@ -388,7 +388,7 @@ class REST:
             return False
         return 200 <= resp.status_code < 300
 
-    def _build_request_headers(self, headers=None):
+    def _build_request_headers(self, headers: Optional[dict] = None):  # noqa: UP045
         """Reader-only headers builder. Does NOT refresh auth token —
         refresh stays on _request() to avoid concurrent refreshes from
         post_best_effort callers sharing ClientConfig."""
