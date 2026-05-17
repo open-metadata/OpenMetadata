@@ -1186,14 +1186,6 @@
         ],
         "./src/_openmetadata_testutils/helpers/login_user.py": [
             {
-                "code": "reportMissingImports",
-                "range": {
-                    "startColumn": 5,
-                    "endColumn": 28,
-                    "lineCount": 1
-                }
-            },
-            {
                 "code": "reportMissingParameterType",
                 "range": {
                     "startColumn": 23,
@@ -40506,18 +40498,18 @@
         ],
         "./src/metadata/ingestion/source/database/doris/metadata.py": [
             {
-                "code": "reportMissingImports",
+                "code": "reportAttributeAccessIssue",
                 "range": {
-                    "startColumn": 5,
-                    "endColumn": 23,
+                    "startColumn": 13,
+                    "endColumn": 37,
                     "lineCount": 1
                 }
             },
             {
-                "code": "reportMissingImports",
+                "code": "reportAttributeAccessIssue",
                 "range": {
-                    "startColumn": 5,
-                    "endColumn": 31,
+                    "startColumn": 33,
+                    "endColumn": 50,
                     "lineCount": 1
                 }
             },
@@ -40590,6 +40582,30 @@
                 "range": {
                     "startColumn": 54,
                     "endColumn": 61,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportAttributeAccessIssue",
+                "range": {
+                    "startColumn": 18,
+                    "endColumn": 24,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportAttributeAccessIssue",
+                "range": {
+                    "startColumn": 22,
+                    "endColumn": 31,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportAttributeAccessIssue",
+                "range": {
+                    "startColumn": 22,
+                    "endColumn": 27,
                     "lineCount": 1
                 }
             },
