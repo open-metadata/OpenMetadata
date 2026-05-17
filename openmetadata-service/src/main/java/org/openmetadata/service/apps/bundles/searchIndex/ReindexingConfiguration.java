@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.IndexMappingLanguage;
+import org.openmetadata.service.apps.bundles.searchIndex.promotion.RatioPromotionPolicy;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 import org.slf4j.Logger;
@@ -37,7 +38,8 @@ public record ReindexingConfiguration(
     String slackBotToken,
     String slackChannel,
     int timeSeriesMaxDays,
-    Map<String, Integer> timeSeriesEntityDays) {
+    Map<String, Integer> timeSeriesEntityDays,
+    double minSuccessRatio) {
 
   private static final Logger LOG = LoggerFactory.getLogger(ReindexingConfiguration.class);
 
@@ -55,6 +57,8 @@ public record ReindexingConfiguration(
   private static final int DEFAULT_INITIAL_BACKOFF = 1000;
   private static final int DEFAULT_MAX_BACKOFF = 10000;
   private static final int DEFAULT_TIME_SERIES_MAX_DAYS = 0;
+  private static final double DEFAULT_MIN_SUCCESS_RATIO =
+      RatioPromotionPolicy.DEFAULT_MIN_SUCCESS_RATIO;
 
   public static ReindexingConfiguration applyAutoTuning(
       ReindexingConfiguration config, SearchRepository searchRepository, long totalEntities) {
@@ -90,6 +94,7 @@ public record ReindexingConfiguration(
         .slackChannel(config.slackChannel())
         .timeSeriesMaxDays(config.timeSeriesMaxDays())
         .timeSeriesEntityDays(config.timeSeriesEntityDays())
+        .minSuccessRatio(config.minSuccessRatio())
         .build();
   }
 
@@ -144,7 +149,10 @@ public record ReindexingConfiguration(
             : DEFAULT_TIME_SERIES_MAX_DAYS,
         jobData.getTimeSeriesEntityDays() != null
             ? jobData.getTimeSeriesEntityDays()
-            : Collections.emptyMap());
+            : Collections.emptyMap(),
+        jobData.getMinSuccessRatio() != null
+            ? jobData.getMinSuccessRatio()
+            : DEFAULT_MIN_SUCCESS_RATIO);
   }
 
   /**
@@ -219,6 +227,7 @@ public record ReindexingConfiguration(
     private String slackChannel;
     private int timeSeriesMaxDays = DEFAULT_TIME_SERIES_MAX_DAYS;
     private Map<String, Integer> timeSeriesEntityDays = Collections.emptyMap();
+    private double minSuccessRatio = DEFAULT_MIN_SUCCESS_RATIO;
 
     public Builder entities(Set<String> entities) {
       this.entities = entities;
@@ -335,6 +344,11 @@ public record ReindexingConfiguration(
       return this;
     }
 
+    public Builder minSuccessRatio(double minSuccessRatio) {
+      this.minSuccessRatio = minSuccessRatio;
+      return this;
+    }
+
     public ReindexingConfiguration build() {
       return new ReindexingConfiguration(
           entities,
@@ -359,7 +373,8 @@ public record ReindexingConfiguration(
           slackBotToken,
           slackChannel,
           timeSeriesMaxDays,
-          timeSeriesEntityDays);
+          timeSeriesEntityDays,
+          minSuccessRatio);
     }
   }
 }
