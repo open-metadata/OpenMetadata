@@ -19,7 +19,6 @@ import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { pluralize } from '../../utils/CommonUtils';
-import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
 import ErrorPlaceHolderES from '../common/ErrorWithPlaceholder/ErrorPlaceHolderES';
 import Loader from '../common/Loader/Loader';
 import ExploreSearchCard from '../ExploreV1/ExploreSearchCard/ExploreSearchCard';
@@ -51,7 +50,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   } = useCurrentUserPreferences();
 
   const searchResultCards = useMemo(() => {
-    return data.map(({ _source: table, highlight }, index) => {
+    return data.map(({ _source: table, highlight, _id }) => {
       const matches = highlight
         ? Object.entries(highlight)
             .filter(([key]) => !key.includes('.ngram'))
@@ -59,25 +58,22 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             .filter((d) => !ASSETS_NAME.has(d.key))
         : [];
 
-      const source = highlightEntityNameAndDescription(table, highlight);
-
       return (
-        <div className="m-b-md" key={`tabledatacard${index}`}>
-          <ExploreSearchCard
-            showEntityIcon
-            className={classNames(
-              table.id === selectedEntityId && isSummaryPanelVisible
-                ? 'highlight-card'
-                : ''
-            )}
-            handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-            id={`tabledatacard${index}`}
-            matches={matches}
-            searchValue={filter?.search as string}
-            showTags={false}
-            source={source}
-          />
-        </div>
+        <ExploreSearchCard
+          showEntityIcon
+          className={classNames(
+            table.id === selectedEntityId && isSummaryPanelVisible
+              ? 'highlight-card'
+              : ''
+          )}
+          handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+          highlight={highlight}
+          id={`search-card-${_id}`}
+          key={_id}
+          matches={matches}
+          showTags={false}
+          source={table}
+        />
       );
     });
   }, [

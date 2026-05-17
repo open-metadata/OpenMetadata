@@ -1545,6 +1545,13 @@ public interface CollectionDAO {
     List<ExtensionRecord> getExtensions(
         @BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
 
+    @RegisterRowMapper(ExtensionMapper.class)
+    @SqlQuery(
+        "SELECT extension, json FROM entity_extension WHERE id = :id AND jsonschema = :jsonSchema "
+            + "ORDER BY extension")
+    List<ExtensionRecord> getExtensionsByJsonSchema(
+        @BindUUID("id") UUID id, @Bind("jsonSchema") String jsonSchema);
+
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
@@ -1734,7 +1741,12 @@ public interface CollectionDAO {
 
   interface EntityRelationshipDAO {
     default void insert(UUID fromId, UUID toId, String fromEntity, String toEntity, int relation) {
-      insert(fromId, toId, fromEntity, toEntity, relation, null);
+      insert(fromId, toId, fromEntity, toEntity, relation, "", null);
+    }
+
+    default void insert(
+        UUID fromId, UUID toId, String fromEntity, String toEntity, int relation, String json) {
+      insert(fromId, toId, fromEntity, toEntity, relation, "", json);
     }
 
     default void bulkInsertToRelationship(
@@ -1772,15 +1784,15 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) "
-                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, :json) "
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, relationType, json) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, :relationType, :json) "
                 + "ON DUPLICATE KEY UPDATE json = :json",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) VALUES "
-                + "(:fromId, :toId, :fromEntity, :toEntity, :relation, (:json :: jsonb)) "
-                + "ON CONFLICT (fromId, toId, relation) DO UPDATE SET json = EXCLUDED.json",
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, relationType, json) VALUES "
+                + "(:fromId, :toId, :fromEntity, :toEntity, :relation, :relationType, (:json :: jsonb)) "
+                + "ON CONFLICT (fromId, toId, relation, relationType) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
     void insert(
         @BindUUID("fromId") UUID fromId,
@@ -1788,6 +1800,7 @@ public interface CollectionDAO {
         @Bind("fromEntity") String fromEntity,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
+        @Bind("relationType") String relationType,
         @Bind("json") String json);
 
     @ConnectionAwareSqlUpdate(
@@ -2128,20 +2141,11 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.relationType')), 'relatedTo') AS relationType, "
-                + "COUNT(*) AS cnt FROM entity_relationship "
-                + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation "
-                + "GROUP BY relationType",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COALESCE(json->>'relationType', 'relatedTo') AS relationType, "
-                + "COUNT(*) AS cnt FROM entity_relationship "
-                + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation "
-                + "GROUP BY relationType",
-        connectionType = POSTGRES)
+    @SqlQuery(
+        "SELECT CASE WHEN relationType = '' THEN 'relatedTo' ELSE relationType END AS relationType, "
+            + "COUNT(*) AS cnt FROM entity_relationship "
+            + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation "
+            + "GROUP BY CASE WHEN relationType = '' THEN 'relatedTo' ELSE relationType END")
     @RegisterRowMapper(RelationTypeUsageCountMapper.class)
     List<RelationTypeUsageCount> countByRelationType(
         @Bind("fromEntity") String fromEntity,
@@ -2505,18 +2509,10 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
-    @ConnectionAwareSqlUpdate(
-        value =
-            "DELETE FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
-                + "AND toId = :toId AND toEntity = :toEntity AND relation = :relation "
-                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.relationType')) = :relationType",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "DELETE FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
-                + "AND toId = :toId AND toEntity = :toEntity AND relation = :relation "
-                + "AND json->>'relationType' = :relationType",
-        connectionType = POSTGRES)
+    @SqlUpdate(
+        "DELETE FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
+            + "AND toId = :toId AND toEntity = :toEntity AND relation = :relation "
+            + "AND relationType = :relationType")
     int deleteWithRelationType(
         @BindUUID("fromId") UUID fromId,
         @Bind("fromEntity") String fromEntity,
@@ -4160,12 +4156,17 @@ public interface CollectionDAO {
       private final int open;
       private final int completed;
       private final int inProgress;
+      private final int approved;
+      private final int granted;
 
-      public TaskCountSummary(int total, int open, int completed, int inProgress) {
+      public TaskCountSummary(
+          int total, int open, int completed, int inProgress, int approved, int granted) {
         this.total = total;
         this.open = open;
         this.completed = completed;
         this.inProgress = inProgress;
+        this.approved = approved;
+        this.granted = granted;
       }
 
       public int getTotal() {
@@ -4183,6 +4184,14 @@ public interface CollectionDAO {
       public int getInProgress() {
         return inProgress;
       }
+
+      public int getApproved() {
+        return approved;
+      }
+
+      public int getGranted() {
+        return granted;
+      }
     }
 
     class TaskCountSummaryMapper implements RowMapper<TaskCountSummary> {
@@ -4192,7 +4201,9 @@ public interface CollectionDAO {
             rs.getInt("total"),
             rs.getInt("openCount"),
             rs.getInt("completedCount"),
-            rs.getInt("inProgressCount"));
+            rs.getInt("inProgressCount"),
+            rs.getInt("approvedCount"),
+            rs.getInt("grantedCount"));
       }
     }
 
@@ -4313,16 +4324,52 @@ public interface CollectionDAO {
     void deleteByCreatorAndCategory(
         @Bind("createdById") String createdById, @Bind("category") String category);
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, json_unquote(json_extract(json, '$.fullyQualifiedName')) AS fqn "
+                + "FROM task_entity WHERE createdById = :createdById AND category = :category",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, json->>'fullyQualifiedName' AS fqn "
+                + "FROM task_entity WHERE createdById = :createdById AND category = :category",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(EntityDAO.EntityIdFqnPairMapper.class)
+    List<EntityDAO.EntityIdFqnPair> listIdAndFqnByCreatorAndCategory(
+        @Bind("createdById") String createdById, @Bind("category") String category);
+
     @RegisterRowMapper(TaskCountSummaryMapper.class)
     @SqlQuery(
+        // 'Approved' double-counts in `completedCount` AND `approvedCount` because the
+        // same status means different things across task types: terminal for
+        // Glossary/DescriptionUpdate (legacy dashboards expect it under "completed") and
+        // non-terminal for Data Access Requests (the dedicated DAR list uses
+        // `approvedCount` / `grantedCount` and the `active` status group instead).
+        // See ListFilter.getTaskStatusCondition for the matching status-group semantics.
         "SELECT "
             + "COUNT(id) AS total, "
-            + "COALESCE(SUM(CASE WHEN status IN ('Open', 'InProgress') THEN 1 ELSE 0 END), 0) AS openCount, "
-            + "COALESCE(SUM(CASE WHEN status IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed') THEN 1 ELSE 0 END), 0) AS completedCount, "
-            + "COALESCE(SUM(CASE WHEN status = 'InProgress' THEN 1 ELSE 0 END), 0) AS inProgressCount "
+            + "COALESCE(SUM(CASE WHEN status IN ('Open', 'InProgress', 'Pending') THEN 1 ELSE 0 END), 0) AS openCount, "
+            + "COALESCE(SUM(CASE WHEN status IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked') THEN 1 ELSE 0 END), 0) AS completedCount, "
+            + "COALESCE(SUM(CASE WHEN status = 'InProgress' THEN 1 ELSE 0 END), 0) AS inProgressCount, "
+            + "COALESCE(SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END), 0) AS approvedCount, "
+            + "COALESCE(SUM(CASE WHEN status = 'Granted' THEN 1 ELSE 0 END), 0) AS grantedCount "
             + "FROM task_entity <condition>")
     TaskCountSummary getTaskCountSummary(
         @Define("condition") String condition, @BindMap Map<String, String> params);
+
+    @SqlQuery(
+        "SELECT json FROM task_entity <cond> "
+            + "ORDER BY createdAt <sortOrder>, id <sortOrder> "
+            + "LIMIT :limit OFFSET :offset")
+    List<String> listTasksByCreatedAt(
+        @Define("cond") String cond,
+        @BindMap Map<String, ?> params,
+        @Define("sortOrder") String sortOrder,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
+    @SqlQuery("SELECT count(*) FROM task_entity <cond>")
+    int listTasksByCreatedAtCount(@Define("cond") String cond, @BindMap Map<String, ?> params);
   }
 
   interface AnnouncementDAO extends EntityDAO<Announcement> {
@@ -9489,6 +9536,16 @@ public interface CollectionDAO {
         @Bind("startTime") long startTime,
         @Bind("extension") String extension);
 
+    @SqlQuery(
+        "SELECT json FROM apps_extension_time_series where appName = :appName AND extension = :extension AND timestamp >= :startTime AND timestamp < :endTime ORDER BY timestamp ASC LIMIT :limit OFFSET :offset")
+    List<String> listAppExtensionInWindowByName(
+        @Bind("appName") String appName,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset,
+        @Bind("startTime") long startTime,
+        @Bind("endTime") long endTime,
+        @Bind("extension") String extension);
+
     default List<String> listAppExtensionAfterTime(
         String appId, int limit, int offset, long startTime, String extension) {
       return listAppExtensionAfterTime(appId, limit, offset, startTime, extension, null);
@@ -9540,7 +9597,8 @@ public interface CollectionDAO {
             + "  GROUP BY entityFQNHash"
             + ") latest "
             + "ON p.entityFQNHash = latest.entityFQNHash AND p.timestamp = latest.latestTs "
-            + "WHERE p.extension = :extension")
+            + "WHERE p.extension = :extension "
+            + "AND p.entityFQNHash IN (<entityFQNHashes>)")
     @RegisterRowMapper(LatestExtensionRecordMapper.class)
     List<LatestExtensionRecord> getLatestExtensionsBatch(
         @Define("table") String table,
@@ -13590,6 +13648,51 @@ public interface CollectionDAO {
     int cancelPendingPartitions(@Bind("jobId") String jobId);
 
     @SqlUpdate(
+        "UPDATE rdf_index_partition SET status = 'CANCELLED', "
+            + "lastError = 'Stopped by user', completedAt = :now, lastUpdateAt = :now "
+            + "WHERE jobId = :jobId AND status IN ('PENDING','PROCESSING')")
+    int cancelInFlightPartitions(@Bind("jobId") String jobId, @Bind("now") long now);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM rdf_index_partition "
+            + "WHERE jobId = :jobId AND status = 'PROCESSING' AND assignedServer = :serverId")
+    int countInFlightPartitionsForServer(
+        @Bind("jobId") String jobId, @Bind("serverId") String serverId);
+
+    @SqlQuery("SELECT COUNT(*) FROM rdf_index_partition WHERE jobId = :jobId AND status = :status")
+    int countPartitionsByStatus(@Bind("jobId") String jobId, @Bind("status") String status);
+
+    /**
+     * Status-guarded variant of {@link #update}: only writes if the row is still
+     * PROCESSING. Workers use this on completion so that a concurrent Stop
+     * (which moves the row to CANCELLED) isn't overwritten back to
+     * COMPLETED/FAILED, which would make the Stop button look unreliable.
+     * Returns the number of rows updated (0 means the row was no longer
+     * PROCESSING and the caller should skip side effects like server-stat
+     * increments).
+     */
+    @SqlUpdate(
+        "UPDATE rdf_index_partition SET status = :status, processingCursor = :cursor, "
+            + "processedCount = :processedCount, successCount = :successCount, failedCount = :failedCount, "
+            + "assignedServer = :assignedServer, claimedAt = :claimedAt, startedAt = :startedAt, "
+            + "completedAt = :completedAt, lastUpdateAt = :lastUpdateAt, lastError = :lastError, "
+            + "retryCount = :retryCount WHERE id = :id AND status = 'PROCESSING'")
+    int updateIfProcessing(
+        @Bind("id") String id,
+        @Bind("status") String status,
+        @Bind("cursor") long cursor,
+        @Bind("processedCount") long processedCount,
+        @Bind("successCount") long successCount,
+        @Bind("failedCount") long failedCount,
+        @Bind("assignedServer") String assignedServer,
+        @Bind("claimedAt") Long claimedAt,
+        @Bind("startedAt") Long startedAt,
+        @Bind("completedAt") Long completedAt,
+        @Bind("lastUpdateAt") Long lastUpdateAt,
+        @Bind("lastError") String lastError,
+        @Bind("retryCount") int retryCount);
+
+    @SqlUpdate(
         "UPDATE rdf_index_partition SET status = :status, assignedServer = NULL, claimedAt = NULL, "
             + "lastError = :reason, lastUpdateAt = :updatedAt, completedAt = :completedAt "
             + "WHERE jobId = :jobId AND status = 'PROCESSING' AND assignedServer = :serverId")
@@ -13646,6 +13749,12 @@ public interface CollectionDAO {
         "SELECT DISTINCT assignedServer FROM rdf_index_partition "
             + "WHERE jobId = :jobId AND assignedServer IS NOT NULL")
     List<String> getAssignedServers(@Bind("jobId") String jobId);
+
+    @SqlQuery(
+        "SELECT lastError FROM rdf_index_partition "
+            + "WHERE jobId = :jobId AND lastError IS NOT NULL "
+            + "ORDER BY lastUpdateAt DESC LIMIT :limit")
+    List<String> findRecentPartitionErrors(@Bind("jobId") String jobId, @Bind("limit") int limit);
 
     @SqlUpdate("DELETE FROM rdf_index_partition")
     void deleteAll();

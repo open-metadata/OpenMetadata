@@ -177,8 +177,8 @@ class SalesforceSource(DatabaseServiceSource):
                     table_name=table_name,
                 )
                 if filter_by_table(
-                    self.config.sourceConfig.config.tableFilterPattern,
-                    (table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name),
+                    self.config.sourceConfig.config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                    (table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name),  # pyright: ignore[reportAttributeAccessIssue]
                 ):
                     self.status.filter(
                         table_fqn,

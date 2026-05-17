@@ -141,6 +141,113 @@ class SampleTest(TestCase):
         )
         assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
 
+    def test_temporal_columns_excluded_from_fetch_sample_data(self, sampler_mock):
+        """
+        Temporal table period columns (GENERATED ALWAYS AS ROW START/END) must be
+        excluded from the sample query so that TABLESAMPLE does not fail on temporal
+        tables (SQL Server error 13541) and pyodbc does not error on period column types.
+        """
+        from unittest.mock import MagicMock, patch
+
+        from sqlalchemy.types import DateTime
+
+        sampler = AzureSQLSampler(
+            service_connection_config=self.azuresql_conn,
+            ometa_client=None,
+            entity=self.table_entity,
+            sample_config=SampleConfig(),
+        )
+
+        valid_from_col = MagicMock()
+        valid_from_col.name = "ValidFrom"
+        valid_from_col.type = DateTime()
+
+        valid_to_col = MagicMock()
+        valid_to_col.name = "ValidTo"
+        valid_to_col.type = DateTime()
+
+        id_col = MagicMock()
+        id_col.name = "id"
+        id_col.type.__class__.__name__ = "Integer"
+
+        columns_passed_to_super = []
+
+        def capture_fetch(*args, **kwargs):
+            cols = args[0] if args else kwargs.get("columns")
+            if cols:
+                columns_passed_to_super.extend(cols)
+            from metadata.generated.schema.entity.data.table import TableData
+
+            return TableData(columns=[], rows=[])
+
+        with (
+            patch.object(
+                sampler,
+                "_get_temporal_column_names",
+                return_value=frozenset({"ValidFrom", "ValidTo"}),
+            ),
+            patch.object(
+                SQASampler,
+                "fetch_sample_data",
+                side_effect=capture_fetch,
+            ),
+        ):
+            sampler.fetch_sample_data(columns=[id_col, valid_from_col, valid_to_col])
+
+        passed_names = {col.name for col in columns_passed_to_super}
+        assert "ValidFrom" not in passed_names
+        assert "ValidTo" not in passed_names
+        assert "id" in passed_names
+
+    def test_all_columns_filtered_passes_empty_list_not_original(self, sampler_mock):
+        """
+        When every column is a temporal period column, sqa_columns is [].
+        The empty list must be passed to super(), not the original column list —
+        otherwise the filter is bypassed entirely (falsy empty list bug).
+        """
+        from unittest.mock import MagicMock, patch
+
+        from sqlalchemy.types import DateTime
+
+        sampler = AzureSQLSampler(
+            service_connection_config=self.azuresql_conn,
+            ometa_client=None,
+            entity=self.table_entity,
+            sample_config=SampleConfig(),
+        )
+
+        valid_from_col = MagicMock()
+        valid_from_col.name = "ValidFrom"
+        valid_from_col.type = DateTime()
+
+        valid_to_col = MagicMock()
+        valid_to_col.name = "ValidTo"
+        valid_to_col.type = DateTime()
+
+        received = {}
+
+        def capture_fetch(cols=None):
+            received["columns"] = cols
+            from metadata.generated.schema.entity.data.table import TableData
+
+            return TableData(columns=[], rows=[])
+
+        with (
+            patch.object(
+                sampler,
+                "_get_temporal_column_names",
+                return_value=frozenset({"ValidFrom", "ValidTo"}),
+            ),
+            patch.object(
+                SQASampler,
+                "fetch_sample_data",
+                side_effect=capture_fetch,
+            ),
+        ):
+            sampler.fetch_sample_data(columns=[valid_from_col, valid_to_col])
+
+        assert received["columns"] == [], "Expected empty list when all columns are filtered, not the original list"
+
     def test_sampling_with_partition(self, sampler_mock):
         """
         use specified partition columns.

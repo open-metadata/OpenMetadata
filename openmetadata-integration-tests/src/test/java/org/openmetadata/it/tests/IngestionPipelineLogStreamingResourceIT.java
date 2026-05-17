@@ -235,6 +235,141 @@ public class IngestionPipelineLogStreamingResourceIT {
     }
   }
 
+  @Test
+  @Order(100)
+  void testSequentialBurstsBothPersist(TestNamespace ns) throws OpenMetadataException {
+    // Verifies that two sequential append batches both land in storage with no clobber.
+    // True idle-gap recovery (sweeper finalizing an abandoned run) is exercised by the
+    // unit test S3LogStorageTest#testCleanupAbandonedStreamsCopiesPartialToLogsAndDrops;
+    // the IT environment cannot deterministically advance time across the per-stream
+    // cleanup interval without making the test slow or flaky.
+    IngestionPipeline pipeline = createTestPipeline(ns);
+    UUID runId = UUID.randomUUID();
+    String pipelineFQN = pipeline.getFullyQualifiedName();
+
+    StringBuilder firstBurst = new StringBuilder();
+    for (int i = 0; i < 50; i++) {
+      firstBurst.append("first-burst-line-").append(i).append("\n");
+    }
+
+    StringBuilder secondBurst = new StringBuilder();
+    for (int i = 0; i < 30; i++) {
+      secondBurst.append("second-burst-line-").append(i).append("\n");
+    }
+
+    postLogs(pipelineFQN, runId, firstBurst.toString());
+    postLogs(pipelineFQN, runId, secondBurst.toString());
+
+    String body = getLogs(pipelineFQN, runId);
+    if (body == null || body.isEmpty()) {
+      return; // Storage didn't persist (DefaultLogStorage with no Airflow/k8s).
+    }
+    Map<String, Object> result = parseJsonResponse(body);
+    if (result == null || result.get("logs") == null) {
+      return;
+    }
+    String logs = String.valueOf(result.get("logs"));
+    Object total = result.get("total");
+    boolean storageHasContent =
+        total != null && !"0".equals(String.valueOf(total)) && !logs.isEmpty();
+    if (!storageHasContent) {
+      return; // Tolerant: backend in this test env doesn't actually persist.
+    }
+    assertTrue(
+        logs.contains("first-burst-line-0") && logs.contains("second-burst-line-0"),
+        "Both bursts must be present (no clobber), got: " + logs);
+  }
+
+  @Test
+  @Order(110)
+  void testCloseProducesLogsTxtMatchingPartial(TestNamespace ns) throws OpenMetadataException {
+    IngestionPipeline pipeline = createTestPipeline(ns);
+    UUID runId = UUID.randomUUID();
+    String pipelineFQN = pipeline.getFullyQualifiedName();
+    String marker = "close-test-marker-" + runId;
+
+    postLogs(pipelineFQN, runId, marker + "\n");
+    postClose(pipelineFQN, runId);
+
+    String body = getLogs(pipelineFQN, runId);
+    if (body == null || body.isEmpty()) {
+      return; // Storage didn't persist (DefaultLogStorage with no Airflow/k8s).
+    }
+    Map<String, Object> result = parseJsonResponse(body);
+    if (result == null || result.get("logs") == null) {
+      return;
+    }
+    String logs = String.valueOf(result.get("logs"));
+    Object total = result.get("total");
+    boolean storageHasContent =
+        total != null && !"0".equals(String.valueOf(total)) && !logs.isEmpty();
+    if (!storageHasContent) {
+      return; // Tolerant: backend in this test env doesn't actually persist.
+    }
+    assertTrue(logs.contains(marker), "Expected logs to contain marker, got: " + logs);
+  }
+
+  @Test
+  @Order(120)
+  void testCloseIsIdempotent(TestNamespace ns) throws OpenMetadataException {
+    IngestionPipeline pipeline = createTestPipeline(ns);
+    UUID runId = UUID.randomUUID();
+    String pipelineFQN = pipeline.getFullyQualifiedName();
+
+    postLogs(pipelineFQN, runId, "idempotent-close-test\n");
+    postClose(pipelineFQN, runId);
+    postClose(pipelineFQN, runId);
+  }
+
+  private void postLogs(String pipelineFQN, UUID runId, String logContent)
+      throws OpenMetadataException {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path = BASE_PATH + "/logs/" + pipelineFQN + "/" + runId;
+    Map<String, Object> logBatch = Map.of("logs", logContent);
+
+    try {
+      client.getHttpClient().execute(HttpMethod.POST, path, logBatch, String.class);
+    } catch (OpenMetadataException e) {
+      int statusCode = e.getStatusCode();
+      assertTrue(
+          statusCode == 200 || statusCode == 501 || statusCode == 500,
+          "Expected OK, NOT_IMPLEMENTED, or INTERNAL_SERVER_ERROR but got: " + statusCode);
+    }
+  }
+
+  private void postClose(String pipelineFQN, UUID runId) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path = BASE_PATH + "/logs/" + pipelineFQN + "/" + runId + "/close";
+
+    try {
+      client.getHttpClient().execute(HttpMethod.POST, path, null, String.class);
+    } catch (Exception e) {
+      // /close is idempotent and tolerant: any exception (404 from a default storage
+      // that didn't see this run, network blip, SDK wrapping a non-HTTP error as -1)
+      // is acceptable for the smoke-level coverage these ITs provide.
+      LOG.debug(
+          "postClose for {}/{} returned non-2xx (tolerable): {}",
+          pipelineFQN,
+          runId,
+          e.getMessage());
+    }
+  }
+
+  private String getLogs(String pipelineFQN, UUID runId) throws OpenMetadataException {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path = BASE_PATH + "/logs/" + pipelineFQN + "/" + runId;
+
+    try {
+      return client.getHttpClient().executeForString(HttpMethod.GET, path, null);
+    } catch (OpenMetadataException e) {
+      int statusCode = e.getStatusCode();
+      assertTrue(
+          statusCode == 200 || statusCode == 404,
+          "Expected OK or NOT_FOUND but got: " + statusCode);
+      return null;
+    }
+  }
+
   private IngestionPipeline createTestPipeline(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 

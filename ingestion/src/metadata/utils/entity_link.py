@@ -20,7 +20,7 @@ from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
 from antlr4.InputStream import InputStream
 from antlr4.tree.Tree import ParseTreeWalker
-from requests.compat import unquote_plus
+from requests.compat import unquote_plus  # pyright: ignore[reportPrivateImportUsage]
 
 from metadata.antlr.split_listener import EntityLinkSplitListener
 from metadata.generated.antlr.EntityLinkLexer import EntityLinkLexer
