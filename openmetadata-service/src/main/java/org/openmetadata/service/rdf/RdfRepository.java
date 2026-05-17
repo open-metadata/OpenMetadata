@@ -23,12 +23,18 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.RelationCardinality;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.GlossaryTermRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.rdf.storage.RdfStorageFactory;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
@@ -339,8 +345,7 @@ public class RdfRepository {
 
   private static Set<String> computeRelationshipHookPredicates() {
     Set<String> predicates = new LinkedHashSet<>();
-    for (org.openmetadata.schema.type.Relationship rel :
-        org.openmetadata.schema.type.Relationship.values()) {
+    for (Relationship rel : Relationship.values()) {
       String value = rel.value();
       // Lineage is owned by addLineageWithDetails — its DELETE is scoped to
       // the lineageDetails sub-resource, not the relationship hook layer.
@@ -1541,13 +1546,9 @@ public class RdfRepository {
     try {
       var glossaryRepo = Entity.getEntityRepository(Entity.GLOSSARY);
       var glossary =
-          (org.openmetadata.schema.entity.data.Glossary)
+          (Glossary)
               glossaryRepo.get(
-                  null,
-                  glossaryId,
-                  glossaryRepo.getFields(""),
-                  org.openmetadata.schema.type.Include.NON_DELETED,
-                  false);
+                  null, glossaryId, glossaryRepo.getFields(""), Include.NON_DELETED, false);
       return firstNonBlank(glossary.getDisplayName(), glossary.getName());
     } catch (Exception e) {
       LOG.debug("Could not resolve display name for glossary {}: {}", glossaryId, e.getMessage());
@@ -1619,56 +1620,31 @@ public class RdfRepository {
         JsonUtils.getObjectMapper().createArrayNode();
 
     try {
-      // Resolve the glossary terms with DB-level scoping. ListFilter has no
-      // first-class "glossary" predicate for the glossary_term_entity table,
-      // so the previous addQueryParam("glossary", …) was a silent no-op that
-      // leaked every term in the deployment and then filtered them in
-      // memory. The fqnHash LIKE '<glossaryFqnHash>.%' query in
-      // glossaryTermDAO.getNestedTerms scopes at the database, then we
-      // batch-hydrate the related fields the parsing loop needs.
+      // Reuse the exact code path the /v1/glossaryTerms?glossary=<id> listing
+      // takes: resolve the glossary's FQN, then drive listAfter with the
+      // `parent` filter. ListFilter.getParentCondition translates that into a
+      // fqnHash LIKE '<glossaryFqnHash>.%' predicate (see
+      // ListFilter.getFqnPrefixCondition) which is an indexed prefix scan
+      // scoped to that glossary — never the full table. The previous
+      // implementation called listAll() and filtered by glossary.id in a Java
+      // loop, which loaded every term in the deployment into memory.
       var glossaryTermRepository =
-          (org.openmetadata.service.jdbi3.GlossaryTermRepository)
-              Entity.getEntityRepository(Entity.GLOSSARY_TERM);
-      List<org.openmetadata.schema.entity.data.GlossaryTerm> terms;
+          (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+      var listFilter = new ListFilter(null);
       if (glossaryId != null) {
         var glossaryRepo = Entity.getEntityRepository(Entity.GLOSSARY);
         var glossary =
-            (org.openmetadata.schema.entity.data.Glossary)
+            (Glossary)
                 glossaryRepo.get(
-                    null,
-                    glossaryId,
-                    glossaryRepo.getFields(""),
-                    org.openmetadata.schema.type.Include.NON_DELETED,
-                    false);
-        List<String> nestedJsons =
-            Entity.getCollectionDAO()
-                .glossaryTermDAO()
-                .getNestedTerms(glossary.getFullyQualifiedName());
-        List<java.util.UUID> ids = new ArrayList<>(nestedJsons.size());
-        for (String json : nestedJsons) {
-          var stub =
-              JsonUtils.readValue(json, org.openmetadata.schema.entity.data.GlossaryTerm.class);
-          if (stub.getId() != null) {
-            ids.add(stub.getId());
-          }
-        }
-        terms =
-            ids.isEmpty()
-                ? new ArrayList<>()
-                : glossaryTermRepository.get(
-                    null,
-                    ids,
-                    glossaryTermRepository.getFields("relatedTerms,parent,children"),
-                    org.openmetadata.schema.type.Include.NON_DELETED);
-      } else {
-        var listFilter = new org.openmetadata.service.jdbi3.ListFilter(null);
-        var fetched =
-            glossaryTermRepository.listAll(
-                glossaryTermRepository.getFields("relatedTerms,parent,children"), listFilter);
-        terms = new ArrayList<>(fetched.size());
-        for (var entity : fetched) {
-          terms.add((org.openmetadata.schema.entity.data.GlossaryTerm) entity);
-        }
+                    null, glossaryId, glossaryRepo.getFields(""), Include.NON_DELETED, false);
+        listFilter.addQueryParam("parent", glossary.getFullyQualifiedName());
+      }
+      List<GlossaryTerm> terms = new ArrayList<>();
+      var fetched =
+          glossaryTermRepository.listAll(
+              glossaryTermRepository.getFields("relatedTerms,parent,children"), listFilter);
+      for (var entity : fetched) {
+        terms.add((GlossaryTerm) entity);
       }
 
       Set<String> addedNodes = new HashSet<>();
@@ -3114,8 +3090,7 @@ public class RdfRepository {
     Property rdfsLabel = model.createProperty("http://www.w3.org/2000/01/rdf-schema#", "label");
 
     try {
-      org.openmetadata.schema.entity.data.Glossary glossary =
-          Entity.getEntity("glossary", glossaryId, "*", null);
+      Glossary glossary = Entity.getEntity("glossary", glossaryId, "*", null);
 
       String glossaryUri = config.getBaseUri().toString() + "glossary/" + glossaryId;
       Resource glossaryResource = model.createResource(glossaryUri);
@@ -3128,7 +3103,7 @@ public class RdfRepository {
       }
 
       var glossaryTermRepository = Entity.getEntityRepository(Entity.GLOSSARY_TERM);
-      var listFilter = new org.openmetadata.service.jdbi3.ListFilter(null);
+      var listFilter = new ListFilter(null);
       listFilter.addQueryParam("glossary", glossaryId.toString());
 
       var terms =
@@ -3139,7 +3114,7 @@ public class RdfRepository {
       Map<UUID, Resource> termResources = new HashMap<>();
 
       for (var entity : terms) {
-        var term = (org.openmetadata.schema.entity.data.GlossaryTerm) entity;
+        var term = (GlossaryTerm) entity;
         String termUri = config.getBaseUri().toString() + "glossaryTerm/" + term.getId();
         Resource termResource = model.createResource(termUri);
 
@@ -3169,7 +3144,7 @@ public class RdfRepository {
 
       if (includeRelations) {
         for (var entity : terms) {
-          var term = (org.openmetadata.schema.entity.data.GlossaryTerm) entity;
+          var term = (GlossaryTerm) entity;
           Resource termResource = termResources.get(term.getId());
 
           if (term.getParent() != null && term.getParent().getId() != null) {
