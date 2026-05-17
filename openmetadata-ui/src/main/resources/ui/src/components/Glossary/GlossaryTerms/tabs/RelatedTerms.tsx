@@ -52,6 +52,7 @@ import {
 } from '../../../../utils/EntityVersionUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
+import { getTextFromHtmlString } from '../../../../utils/BlockEditorUtils';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import {
@@ -103,14 +104,14 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
       )}
       {entity.description && (
         <Typography as="p" size="text-xs">
-          {entity.description}
+          {getTextFromHtmlString(entity.description)}
         </Typography>
       )}
     </div>
   );
 
   return (
-    <Tooltip placement="bottom left" title={tooltipContent}>
+    <Tooltip placement="bottom left" title={tooltipContent} variant="light">
       <TooltipTrigger
         className={
           versionStatus?.added
