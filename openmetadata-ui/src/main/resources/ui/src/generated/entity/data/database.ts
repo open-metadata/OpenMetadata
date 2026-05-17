@@ -115,11 +115,6 @@ export interface Database {
      */
     retentionPeriod?: string;
     /**
-     * Number of schemas under this database. Computed on demand when `schemaCount` is requested
-     * in `fields`.
-     */
-    schemaCount?: number;
-    /**
      * Link to the database cluster/service where this database is hosted in.
      */
     service: EntityReference;

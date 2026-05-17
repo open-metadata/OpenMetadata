@@ -22,15 +22,9 @@ export interface Dashboard {
      */
     changeDescription?: ChangeDescription;
     /**
-     * Number of charts linked to this dashboard. Computed on demand when `chartCount` is
-     * requested in `fields`.
-     */
-    chartCount?: number;
-    /**
-     * Charts on this Dashboard. Populated only when `fields=charts` is explicitly requested.
-     * Excluded from `fields=*` expansion to prevent unbounded materialisation for dashboards
-     * with very large chart counts — use `chartCount` plus a paginated chart listing for badges
-     * and tables.
+     * Deprecated. Use `GET /v1/charts?dashboard={fqn}` to list charts on this dashboard with
+     * pagination. This field is no longer populated by the API and will be removed in a future
+     * release.
      */
     charts?:        EntityReference[];
     dashboardType?: DashboardType;
@@ -39,13 +33,9 @@ export interface Dashboard {
      */
     dataContract?: EntityReference;
     /**
-     * Number of dashboard data models linked to this dashboard. Computed on demand when
-     * `dataModelCount` is requested in `fields`.
-     */
-    dataModelCount?: number;
-    /**
-     * Dashboard data models on this Dashboard. Populated only when `fields=dataModels` is
-     * explicitly requested. Excluded from `fields=*` expansion.
+     * Deprecated. Use the dashboardDataModels list endpoint filtered by the dashboard's
+     * service. This field is no longer populated by the API and will be removed in a future
+     * release.
      */
     dataModels?: EntityReference[];
     /**
@@ -442,10 +432,9 @@ export interface FieldChange {
 }
 
 /**
- * Charts on this Dashboard. Populated only when `fields=charts` is explicitly requested.
- * Excluded from `fields=*` expansion to prevent unbounded materialisation for dashboards
- * with very large chart counts — use `chartCount` plus a paginated chart listing for badges
- * and tables.
+ * Deprecated. Use `GET /v1/charts?dashboard={fqn}` to list charts on this dashboard with
+ * pagination. This field is no longer populated by the API and will be removed in a future
+ * release.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For

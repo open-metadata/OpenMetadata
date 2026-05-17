@@ -21,11 +21,6 @@ export interface Chart {
     changeDescription?: ChangeDescription;
     chartType?:         ChartType;
     /**
-     * Number of dashboards that contain this chart. Computed on demand when `dashboardCount` is
-     * requested in `fields`.
-     */
-    dashboardCount?: number;
-    /**
      * Deprecated. Use the dashboards list endpoint filtered by chart (when supported) to
      * enumerate dashboards containing this chart. This field is no longer populated by the API
      * and will be removed in a future release.
