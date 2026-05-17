@@ -1619,26 +1619,56 @@ public class RdfRepository {
         JsonUtils.getObjectMapper().createArrayNode();
 
     try {
-      // Get glossary terms from database. ListFilter has no first-class
-      // "glossary" predicate for the glossary_term_entity table, so passing
-      // it via addQueryParam is a silent no-op and would leak every term in
-      // the system. Fetch the full list and scope by glossary id in memory.
-      var glossaryTermRepository = Entity.getEntityRepository(Entity.GLOSSARY_TERM);
-      var listFilter = new org.openmetadata.service.jdbi3.ListFilter(null);
-      var fetched =
-          glossaryTermRepository.listAll(
-              glossaryTermRepository.getFields("relatedTerms,parent,children"), listFilter);
-      var terms = new ArrayList<org.openmetadata.schema.entity.data.GlossaryTerm>();
-      String wantedGlossaryId = glossaryId != null ? glossaryId.toString() : null;
-      for (var entity : fetched) {
-        var term = (org.openmetadata.schema.entity.data.GlossaryTerm) entity;
-        if (wantedGlossaryId != null
-            && (term.getGlossary() == null
-                || term.getGlossary().getId() == null
-                || !wantedGlossaryId.equals(term.getGlossary().getId().toString()))) {
-          continue;
+      // Resolve the glossary terms with DB-level scoping. ListFilter has no
+      // first-class "glossary" predicate for the glossary_term_entity table,
+      // so the previous addQueryParam("glossary", …) was a silent no-op that
+      // leaked every term in the deployment and then filtered them in
+      // memory. The fqnHash LIKE '<glossaryFqnHash>.%' query in
+      // glossaryTermDAO.getNestedTerms scopes at the database, then we
+      // batch-hydrate the related fields the parsing loop needs.
+      var glossaryTermRepository =
+          (org.openmetadata.service.jdbi3.GlossaryTermRepository)
+              Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+      List<org.openmetadata.schema.entity.data.GlossaryTerm> terms;
+      if (glossaryId != null) {
+        var glossaryRepo = Entity.getEntityRepository(Entity.GLOSSARY);
+        var glossary =
+            (org.openmetadata.schema.entity.data.Glossary)
+                glossaryRepo.get(
+                    null,
+                    glossaryId,
+                    glossaryRepo.getFields(""),
+                    org.openmetadata.schema.type.Include.NON_DELETED,
+                    false);
+        List<String> nestedJsons =
+            Entity.getCollectionDAO()
+                .glossaryTermDAO()
+                .getNestedTerms(glossary.getFullyQualifiedName());
+        List<java.util.UUID> ids = new ArrayList<>(nestedJsons.size());
+        for (String json : nestedJsons) {
+          var stub =
+              JsonUtils.readValue(json, org.openmetadata.schema.entity.data.GlossaryTerm.class);
+          if (stub.getId() != null) {
+            ids.add(stub.getId());
+          }
         }
-        terms.add(term);
+        terms =
+            ids.isEmpty()
+                ? new ArrayList<>()
+                : glossaryTermRepository.get(
+                    null,
+                    ids,
+                    glossaryTermRepository.getFields("relatedTerms,parent,children"),
+                    org.openmetadata.schema.type.Include.NON_DELETED);
+      } else {
+        var listFilter = new org.openmetadata.service.jdbi3.ListFilter(null);
+        var fetched =
+            glossaryTermRepository.listAll(
+                glossaryTermRepository.getFields("relatedTerms,parent,children"), listFilter);
+        terms = new ArrayList<>(fetched.size());
+        for (var entity : fetched) {
+          terms.add((org.openmetadata.schema.entity.data.GlossaryTerm) entity);
+        }
       }
 
       Set<String> addedNodes = new HashSet<>();
