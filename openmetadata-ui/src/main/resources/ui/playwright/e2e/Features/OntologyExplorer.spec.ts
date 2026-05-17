@@ -38,6 +38,10 @@ const glossary2 = new Glossary();
 const term3 = new GlossaryTerm(glossary2);
 const term4 = new GlossaryTerm(glossary2);
 
+const multiRelGlossary = new Glossary();
+const multiRelTermA = new GlossaryTerm(multiRelGlossary);
+const multiRelTermB = new GlossaryTerm(multiRelGlossary);
+
 test.describe('Ontology Explorer', () => {
   test.beforeAll(async ({ browser }) => {
     const { page, apiContext } = await createApiContext(browser);
@@ -48,9 +52,18 @@ test.describe('Ontology Explorer', () => {
     await glossary2.create(apiContext);
     await term3.create(apiContext);
     await term4.create(apiContext);
+    await multiRelGlossary.create(apiContext);
+    await multiRelTermA.create(apiContext);
+    await multiRelTermB.create(apiContext);
 
     await addTermRelation(apiContext, term1, term2, 'relatedTo');
-    await addTermRelation(apiContext, term1, term2, 'partOf');
+    await addTermRelation(
+      apiContext,
+      multiRelTermA,
+      multiRelTermB,
+      'relatedTo'
+    );
+    await addTermRelation(apiContext, multiRelTermA, multiRelTermB, 'partOf');
 
     await disposeApiContext(page, apiContext);
   });
@@ -64,7 +77,10 @@ test.describe('Ontology Explorer', () => {
       glossary,
       term3,
       term4,
-      glossary2
+      glossary2,
+      multiRelTermA,
+      multiRelTermB,
+      multiRelGlossary
     );
     await disposeApiContext(page, apiContext);
   });
@@ -621,17 +637,17 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, glossary.responseData.id);
+      await applyGlossaryFilter(page, multiRelGlossary.responseData.id);
       await waitForGraphLoaded(page);
 
       const edges = await readGraphEdges(page);
-      const term1Id = term1.responseData.id;
-      const term2Id = term2.responseData.id;
+      const fromId = multiRelTermA.responseData.id;
+      const toId = multiRelTermB.responseData.id;
 
       const edgesForPair = edges.filter(
         (e) =>
-          (e.from === term1Id && e.to === term2Id) ||
-          (e.from === term2Id && e.to === term1Id)
+          (e.from === fromId && e.to === toId) ||
+          (e.from === toId && e.to === fromId)
       );
 
       const allRelationTypes = new Set<string>();
