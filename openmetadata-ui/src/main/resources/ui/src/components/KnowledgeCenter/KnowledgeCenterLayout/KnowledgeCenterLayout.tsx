@@ -27,8 +27,9 @@ interface KnowledgeCenterLayoutProps {
   className?: string;
   leftSidebarTitle?: React.ReactNode;
   rightSidebarTitle?: string;
-  leftSidebarExtra?: React.ReactNode; // Pass Antd Card extra to the left sidebar card
-  rightSidebarExtra?: React.ReactNode; // Pass Antd Card extra to the right sidebar card
+  leftSidebarExtra?: React.ReactNode;
+  rightSidebarExtra?: React.ReactNode;
+  centerNoPadding?: boolean;
 }
 
 const KnowledgeCenterLayout: FC<KnowledgeCenterLayoutProps> = ({
@@ -41,9 +42,10 @@ const KnowledgeCenterLayout: FC<KnowledgeCenterLayoutProps> = ({
   rightSidebarTitle,
   leftSidebarExtra,
   rightSidebarExtra,
+  centerNoPadding = false,
 }) => {
   const { i18n } = useTranslation();
-  const isLeftPanelCollapsed = false;
+  const isLeftPanelCollapsed = !leftSidebar;
   const isRightPanelCollapsed = !rightSidebar;
 
   return (
@@ -93,9 +95,13 @@ const KnowledgeCenterLayout: FC<KnowledgeCenterLayoutProps> = ({
             'has-sidebar': !isLeftPanelCollapsed,
           })}
           data-testid="center-panel"
-          flex={isRightPanelCollapsed ? 0.8 : 0.6}
+          flex={isRightPanelCollapsed ? 1 : 0.6}
           minSize={700}>
-          <Card className="reflex-card center-reflex-card">{children}</Card>
+          <Card
+            bodyStyle={centerNoPadding ? { padding: 0 } : undefined}
+            className="reflex-card center-reflex-card">
+            {children}
+          </Card>
         </ReflexElement>
 
         <ReflexSplitter

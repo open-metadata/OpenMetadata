@@ -2,7 +2,7 @@
   "name": "DataAccessRequestTaskWorkflow",
   "fullyQualifiedName": "DataAccessRequestTaskWorkflow",
   "displayName": "Data Access Request Task Workflow",
-  "description": "Default workflow-driven lifecycle for data access request tasks. After approval, access can be revoked by the approver, owner, or domain owner.",
+  "description": "Default workflow-driven lifecycle for data access request tasks. After review the request moves to Approved (banner shown until access is provisioned), then to Granted once an admin marks access as provisioned. Access can later be revoked by the approver, owner, or domain owner.",
   "config": {
     "storeStageStatus": true
   },
@@ -40,7 +40,7 @@
             "id": "approve",
             "label": "Approve",
             "targetStageId": "approved",
-            "targetTaskStatus": "InProgress",
+            "targetTaskStatus": "Approved",
             "formRef": "approve",
             "requiresComment": false
           },
@@ -63,7 +63,7 @@
       "type": "userTask",
       "subType": "userApprovalTask",
       "name": "ApprovedAccess",
-      "displayName": "Active Access",
+      "displayName": "Approved - Awaiting Grant",
       "config": {
         "assignees": {
           "addReviewers": true,
@@ -74,7 +74,48 @@
         "rejectionThreshold": 1,
         "stageId": "approved",
         "stageDisplayName": "Approved",
-        "taskStatus": "InProgress",
+        "taskStatus": "Approved",
+        "assigneeStrategy": "owners-and-reviewers",
+        "transitionMetadata": [
+          {
+            "id": "markAsGranted",
+            "label": "Mark as Granted",
+            "targetStageId": "granted",
+            "targetTaskStatus": "Granted",
+            "formRef": "grant",
+            "requiresComment": false
+          },
+          {
+            "id": "revoke",
+            "label": "Revoke Access",
+            "targetStageId": "revoked",
+            "targetTaskStatus": "Revoked",
+            "resolutionType": "Revoked",
+            "formRef": "revoke",
+            "requiresComment": true
+          }
+        ]
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "GrantedAccess",
+      "displayName": "Active Access",
+      "config": {
+        "assignees": {
+          "addReviewers": true,
+          "addOwners": true,
+          "candidates": []
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1,
+        "stageId": "granted",
+        "stageDisplayName": "Granted",
+        "taskStatus": "Granted",
         "assigneeStrategy": "owners-and-reviewers",
         "transitionMetadata": [
           {
@@ -122,6 +163,16 @@
     },
     {
       "from": "ApprovedAccess",
+      "to": "GrantedAccess",
+      "condition": "markAsGranted"
+    },
+    {
+      "from": "ApprovedAccess",
+      "to": "RevokedEnd",
+      "condition": "revoke"
+    },
+    {
+      "from": "GrantedAccess",
       "to": "RevokedEnd",
       "condition": "revoke"
     }

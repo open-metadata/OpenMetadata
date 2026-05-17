@@ -12,10 +12,11 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  listTasks,
+  DarWorkflowStage,
+  listDataAccessRequests,
   Task,
-  TaskCategory,
-  TaskEntityType,
+  TaskEntityStatus,
+  TaskStatusGroup,
 } from '../rest/tasksAPI';
 import { isDarApprovalActive } from '../utils/TasksUtils';
 import { useApplicationStore } from './useApplicationStore';
@@ -28,6 +29,7 @@ interface UseDataAccessRequestParams {
 
 interface UseDataAccessRequestResult {
   isDarDisabled: boolean;
+  isDarAwaitingGrant: boolean;
   refetch: () => void;
 }
 
@@ -47,12 +49,10 @@ export const useDataAccessRequest = ({
     }
 
     try {
-      const res = await listTasks({
-        aboutEntity: entityFqn,
-        category: TaskCategory.DataAccess,
-        type: TaskEntityType.DataAccessRequest,
-        createdBy: currentUser.name,
-        statusGroup: 'open',
+      const res = await listDataAccessRequests({
+        dataset: entityFqn,
+        requestedBy: currentUser.name,
+        statusGroup: TaskStatusGroup.Active,
         fields: 'about,resolution',
         limit: 10,
       });
@@ -84,27 +84,77 @@ export const useDataAccessRequest = ({
   const isDarDisabled = useMemo(
     () =>
       existingDarTasks.some((task) => {
+        // Prefer the persisted status enum (Approved/Granted carry the workflow
+        // semantics directly); fall back to the workflow stage name for any task
+        // that pre-dates the explicit status setter and only has stage metadata.
         const stage = (
           task.workflowStageDisplayName ??
           task.workflowStageId ??
           ''
         ).toLowerCase();
-        if (stage === 'approved') {
+        const isApproved =
+          task.status === TaskEntityStatus.Approved ||
+          stage === DarWorkflowStage.Approved;
+        const isGranted =
+          task.status === TaskEntityStatus.Granted ||
+          stage === DarWorkflowStage.Granted;
+
+        if (isApproved || isGranted) {
           const payload = task.payload as
             | { duration?: string; expirationDate?: number }
             | undefined;
 
+          // Use the persisted approvedAt for the duration window so later
+          // workflow transitions (e.g. granting) don't shift the apparent
+          // approval timestamp via updatedAt. Fall back for older tasks
+          // that don't carry approvedAt yet.
           return isDarApprovalActive(
-            task.updatedAt ?? task.createdAt,
+            task.approvedAt ?? task.updatedAt ?? task.createdAt,
             payload?.duration,
             payload?.expirationDate
           );
         }
 
+        // The fetch is scoped to statusGroup=active, so any remaining task here
+        // is Open/InProgress/Pending (or stage=review) — still in-flight, block
+        // a duplicate request.
         return true;
       }),
     [existingDarTasks]
   );
 
-  return { isDarDisabled, refetch: fetchExistingDar };
+  const isDarAwaitingGrant = useMemo(
+    () =>
+      existingDarTasks.some((task) => {
+        const stage = (
+          task.workflowStageDisplayName ??
+          task.workflowStageId ??
+          ''
+        ).toLowerCase();
+        const isApproved =
+          task.status === TaskEntityStatus.Approved ||
+          (stage === DarWorkflowStage.Approved &&
+            task.status !== TaskEntityStatus.Granted);
+
+        if (!isApproved) {
+          return false;
+        }
+
+        // Mirror the isDarApprovalActive gate used by isDarDisabled. Without this an
+        // expired approval would still show the "awaiting grant" banner even though
+        // isDarDisabled returns false (button enabled), leaving a contradictory UX.
+        const payload = task.payload as
+          | { duration?: string; expirationDate?: number }
+          | undefined;
+
+        return isDarApprovalActive(
+          task.approvedAt ?? task.updatedAt ?? task.createdAt,
+          payload?.duration,
+          payload?.expirationDate
+        );
+      }),
+    [existingDarTasks]
+  );
+
+  return { isDarDisabled, isDarAwaitingGrant, refetch: fetchExistingDar };
 };

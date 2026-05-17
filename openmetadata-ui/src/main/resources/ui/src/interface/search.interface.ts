@@ -49,6 +49,7 @@ import { DatabaseService } from '../generated/entity/services/databaseService';
 import { DriveService } from '../generated/entity/services/driveService';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MessagingService } from '../generated/entity/services/messagingService';
+import { MetadataService } from '../generated/entity/services/metadataService';
 import { MlmodelService } from '../generated/entity/services/mlmodelService';
 import { PipelineService } from '../generated/entity/services/pipelineService';
 import { SearchService } from '../generated/entity/services/searchService';
@@ -210,6 +211,10 @@ export interface StorageServiceSearchSource
 
 export interface APIServiceSearchSource extends SearchSourceBase, APIService {}
 
+export interface MetadataServiceSearchSource
+  extends SearchSourceBase,
+    MetadataService {}
+
 export interface DriveServiceSearchSource
   extends SearchSourceBase,
     DriveService {}
@@ -308,6 +313,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TEST_SUITE]: TestSuiteSearchSource;
   [SearchIndex.INGESTION_PIPELINE]: IngestionPipelineSearchSource;
   [SearchIndex.API_SERVICE]: APIServiceSearchSource;
+  [SearchIndex.METADATA_SERVICE]: MetadataServiceSearchSource;
   [SearchIndex.API_COLLECTION]: APICollectionSearchSource;
   [SearchIndex.API_ENDPOINT]: APIEndpointSearchSource;
   [SearchIndex.METRIC]: MetricSearchSource;
@@ -317,6 +323,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.WORKSHEET]: WorksheetSearchSource;
   [SearchIndex.COLUMN]: TableColumnSearchSource;
   [SearchIndex.KNOWLEDGE_PAGE_INDEX]: KnowledgePageSearchSource;
+  [SearchIndex.MARKETPLACE]: DataProductSearchSource | DomainSearchSource;
 };
 
 export type SearchRequest<
@@ -367,7 +374,7 @@ export type SuggestRequest<
 export interface SearchHitBody<SI extends SearchIndex | DataInsightIndex, T> {
   _index: SI;
   _type?: string;
-  _id?: string;
+  _id: string;
   _score?: number;
   highlight?: Record<string, string[]>;
   sort?: number[];
