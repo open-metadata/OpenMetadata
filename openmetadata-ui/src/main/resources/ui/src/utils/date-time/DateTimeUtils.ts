@@ -473,6 +473,29 @@ export const formatDuration = (ms: number) => {
     return pluralize(hours, 'hour');
   }
 };
+export const formatIsoDuration = (iso: string): string => {
+  const d = Duration.fromISO(iso);
+  if (!d.isValid) {
+    return iso;
+  }
+  const { years = 0, months = 0, weeks = 0, days = 0 } = d.toObject();
+  const parts: string[] = [];
+  if (years) {
+    parts.push(`${years} Year${years > 1 ? 's' : ''}`);
+  }
+  if (months) {
+    parts.push(`${months} Month${months > 1 ? 's' : ''}`);
+  }
+  if (weeks) {
+    parts.push(`${weeks} Week${weeks > 1 ? 's' : ''}`);
+  }
+  if (days) {
+    parts.push(`${days} Day${days > 1 ? 's' : ''}`);
+  }
+
+  return parts.length ? parts.join(', ') : iso;
+};
+
 export const formatDurationToHHMMSS = (ms: number) => {
   if (ms > 0 && ms < 1000) {
     return `${Math.floor(ms)} ms`;
