@@ -281,7 +281,7 @@ jobs:
           fi
           run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           {
-            echo "$icon *Security scan* on branch \`${{ github.ref_name }}\`"
+            echo "$icon *Security scan* — *OpenMetadata Repo* on branch \`${{ github.ref_name }}\`"
             echo "• Vulnerability scan (Retire.js): $retire_icon"
             echo "• Security scan (Snyk): $snyk_icon"
             echo "<$run_url|Open run details>"
