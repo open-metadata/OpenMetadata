@@ -36,12 +36,6 @@ interface TooltipProps
    */
   delay?: number;
   /**
-   * Visual style variant of the tooltip.
-   * - `dark` (default): dark background with white text.
-   * - `light`: white background with dark text and a subtle border.
-   */
-  variant?: 'dark' | 'light';
-  /**
    * Optional className applied to the tooltip content container div.
    */
   containerClassName?: string;
@@ -62,11 +56,9 @@ export const Tooltip = ({
   crossOffset,
   placement = 'top',
   onOpenChange,
-  variant = 'dark',
   containerClassName,
   ...tooltipProps
 }: TooltipProps) => {
-  const isLight = variant === 'light';
   const isTopOrBottomLeft = [
     'top left',
     'top end',
@@ -116,12 +108,7 @@ export const Tooltip = ({
             {arrow && (
               <AriaOverlayArrow>
                 <svg
-                  className={cx(
-                    'tw:block tw:size-2.5 tw:in-placement-left:-rotate-90 tw:in-placement-right:rotate-90 tw:in-placement-top:rotate-0 tw:in-placement-bottom:rotate-180',
-                    isLight
-                      ? 'tw:fill-white tw:drop-shadow-sm'
-                      : 'tw:fill-bg-primary-solid'
-                  )}
+                  className="tw:block tw:size-2.5 tw:bg-white tw:in-placement-left:-rotate-90 tw:in-placement-right:rotate-90 tw:in-placement-top:rotate-0 tw:in-placement-bottom:rotate-180"
                   viewBox="0 0 100 100">
                   <path d="M0,0 L35.858,35.858 Q50,50 64.142,35.858 L100,0 Z" />
                 </svg>
@@ -130,9 +117,7 @@ export const Tooltip = ({
             <div
               className={cx(
                 'tw:z-50 tw:flex tw:max-w-xs tw:origin-(--trigger-anchor-point) tw:flex-col tw:items-start tw:gap-1 tw:rounded-lg tw:px-3 tw:shadow-lg tw:will-change-transform',
-                isLight
-                  ? 'tw:bg-primary tw:border tw:border-border-primary'
-                  : 'tw:bg-primary-solid',
+                'tw:bg-primary tw:border tw:border-border-primary',
                 description ? 'tw:py-3' : 'tw:py-2',
                 containerClassName,
 
@@ -144,7 +129,7 @@ export const Tooltip = ({
               <span
                 className={cx(
                   'tw:text-xs tw:font-semibold',
-                  isLight ? 'tw:text-primary' : 'tw:text-white'
+                  'tw:text-primary'
                 )}>
                 {title}
               </span>
@@ -153,9 +138,7 @@ export const Tooltip = ({
                 <span
                   className={cx(
                     'tw:text-xs tw:font-medium',
-                    isLight
-                      ? 'tw:text-secondary'
-                      : 'tw:text-tooltip-supporting-text'
+                    'tw:text-secondary'
                   )}>
                   {description}
                 </span>

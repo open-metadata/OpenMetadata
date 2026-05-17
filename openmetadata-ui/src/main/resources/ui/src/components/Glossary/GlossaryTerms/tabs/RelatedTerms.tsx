@@ -111,7 +111,7 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
   );
 
   return (
-    <Tooltip placement="bottom left" title={tooltipContent} variant="light">
+    <Tooltip placement="bottom left" title={tooltipContent}>
       <TooltipTrigger
         className={
           versionStatus?.added
