@@ -644,7 +644,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       String canonicalType = computeCanonicalRelationType(entity.getId(), toId, relationType);
       String json = String.format("{\"relationType\":\"%s\"}", canonicalType);
       addRelationship(
-          entity.getId(), toId, GLOSSARY_TERM, GLOSSARY_TERM, Relationship.RELATED_TO, json, true);
+          entity.getId(),
+          toId,
+          GLOSSARY_TERM,
+          GLOSSARY_TERM,
+          Relationship.RELATED_TO,
+          canonicalType,
+          json,
+          true);
       RdfUpdater.addGlossaryTermRelation(entity.getId(), toId, relationType);
     }
   }
@@ -676,7 +683,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     String canonicalType = computeCanonicalRelationType(id, termRef.getId(), relationType);
     String json = String.format("{\"relationType\":\"%s\"}", canonicalType);
     addRelationship(
-        id, termRef.getId(), GLOSSARY_TERM, GLOSSARY_TERM, Relationship.RELATED_TO, json, true);
+        id,
+        termRef.getId(),
+        GLOSSARY_TERM,
+        GLOSSARY_TERM,
+        Relationship.RELATED_TO,
+        canonicalType,
+        json,
+        true);
     RdfUpdater.addGlossaryTermRelation(id, termRef.getId(), relationType);
     RequestEntityCache.invalidate(entityType, id, null);
     return get(null, id, getFields("relatedTerms"), Include.NON_DELETED, false);
@@ -2134,6 +2148,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             GLOSSARY_TERM,
             GLOSSARY_TERM,
             Relationship.RELATED_TO,
+            canonicalType,
             json,
             true);
         RdfUpdater.addGlossaryTermRelation(origTerm.getId(), toId, relationType);

@@ -44,6 +44,7 @@ import OntologyGraph from './OntologyGraphG6';
 import { OntologyNodeRelationsContent } from './OntologyNodeRelationsContent';
 import {
   ASSET_NODE_TYPE,
+  ASSET_RELATION_TYPE,
   isDataAssetLikeNode,
   METRIC_NODE_TYPE,
 } from './utils/graphBuilders';
@@ -490,7 +491,9 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                   ontologyExplorerRelationsSlot={
                     isDataAssetLikeNode(selectedNode) ? undefined : (
                       <OntologyNodeRelationsContent
-                        edges={filteredGraphData?.edges ?? []}
+                        edges={(filteredGraphData?.edges ?? []).filter(
+                          (e) => e.relationType !== ASSET_RELATION_TYPE
+                        )}
                         node={selectedNode}
                         nodes={filteredGraphData?.nodes ?? []}
                         relationTypes={relationTypes}
