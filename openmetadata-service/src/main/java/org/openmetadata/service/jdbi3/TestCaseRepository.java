@@ -877,8 +877,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private void updateTestSuite(TestCase testCase) {
+    if (testCase.getTestSuite() == null) {
+      return;
+    }
     var testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
     TestSuite testSuite = Entity.getEntity(testCase.getTestSuite(), "*", ALL);
+    if (testSuite == null) {
+      return;
+    }
     var original = TestSuiteRepository.copyTestSuite(testSuite);
     testSuiteRepository.postUpdate(original, testSuite);
   }

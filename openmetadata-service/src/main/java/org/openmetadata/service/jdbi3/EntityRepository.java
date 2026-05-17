@@ -5886,6 +5886,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entities.isEmpty()) {
       return;
     }
+    // Populate relation fields up front so the same subclass hooks the legacy
+    // Entity.deleteEntity path called against a fully-loaded entity (e.g.,
+    // TestCaseRepository.updateTestSuite reading testCase.getTestSuite()) see the
+    // expected shape. bulkCleanupReferences wipes these relationship rows later, so
+    // hooks running after that point must remain null-safe.
+    populateRelationFields(entities);
     for (T entity : entities) {
       checkSystemEntityDeletion(entity);
       preDelete(entity, updatedBy);
@@ -5902,13 +5908,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
     bulkCleanupReferences(entities);
     bulkDeleteEntityRows(entities);
     bulkInvalidate(entities);
-    // Each cascade-deleted descendant needs the same postDelete hook the per-entity hard-delete
-    // path runs (RdfUpdater.deleteEntity, plus subclass overrides like
-    // UserRepository.deleteSuggestionTasksForUser). The legacy small-batch path went through
-    // Entity.deleteEntity which invoked postDelete; this bulk replacement is the only path
-    // that walks cascaded children now, so it must also fan out the hook explicitly.
     for (T entity : entities) {
       postDelete(entity, true);
+    }
+  }
+
+  private void populateRelationFields(List<T> entities) {
+    try {
+      setFieldsInBulk(putFields, entities);
+    } catch (Exception e) {
+      LOG.debug(
+          "Bulk field population failed during bulk hard delete for {}, falling back per-entity: {}",
+          entityType,
+          e.getMessage());
+      for (T entity : entities) {
+        try {
+          setFieldsInternal(entity, putFields);
+        } catch (Exception ignored) {
+          // postDelete subclass overrides must remain null-safe for cascade-deleted parents.
+        }
+      }
     }
   }
 
