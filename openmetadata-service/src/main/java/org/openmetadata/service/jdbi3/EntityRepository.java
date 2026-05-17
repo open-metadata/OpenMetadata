@@ -5975,6 +5975,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void bulkInvalidate(List<T> entities) {
     for (T entity : entities) {
       invalidate(entity);
+      // Mirror cleanup()'s NotFoundCache marker so a concurrent reader that re-populates
+      // L1/Redis between bulkDeleteEntityRows and the next invalidate doesn't keep
+      // returning a stale "found" entity. Without this the next get_by_name/find against
+      // the same id or FQN can still hit the cache and return a deleted entity, which
+      // breaks fixture teardown (DELETE returns 404 because the row is gone but Redis
+      // still hands out the entity to the get_by_name probe).
+      markEntityNotFound(entity);
     }
   }
 
