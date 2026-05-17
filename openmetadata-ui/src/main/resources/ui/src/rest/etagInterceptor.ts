@@ -147,7 +147,19 @@ export function attachEtagInterceptor(client: AxiosInstance): void {
 
   client.interceptors.response.use((response) => {
     const method = (response.config.method ?? 'get').toLowerCase();
+
+    // Any successful non-GET response is a mutation — wipe the entire ETag cache so the next
+    // read on any URL fetches fresh state. We have to be aggressive here because several
+    // server endpoints mutate an entity without bumping its {@code version}/{@code updatedAt}
+    // (e.g. {@code addFollower}, {@code updateVote}, {@code DataContractRepository.updateLatestResult}),
+    // so the entity's ETag is unchanged after the mutation and a targeted invalidation by URL
+    // wouldn't help — the server would still return 304 with our stale cached body. Clearing
+    // the cache means the next GET goes out without {@code If-None-Match} and the server
+    // returns 200 with the current body. The cost is small (per-session in-memory map, 200
+    // entries max) and avoids correctness bugs in tests and in production.
     if (method !== 'get') {
+      etagCache.clear();
+
       return response;
     }
 
