@@ -12,6 +12,9 @@ import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTags;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
+import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -42,6 +45,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -50,12 +54,14 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.AncestorsCache;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.ChildrenPageCache;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.storages.ContainerResource;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -65,10 +71,12 @@ import org.slf4j.LoggerFactory;
 
 public class ContainerRepository extends EntityRepository<Container> {
   private static final Logger LOG = LoggerFactory.getLogger(ContainerRepository.class);
-  private static final String CONTAINER_UPDATE_FIELDS = "dataModel";
-  private static final String CONTAINER_PATCH_FIELDS = "dataModel";
+  private static final String CONTAINER_UPDATE_FIELDS = "dataModel,parent";
+  private static final String CONTAINER_PATCH_FIELDS = "dataModel,parent";
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("dataModel.columns.description");
   public static final String CONTAINER_SAMPLE_DATA_EXTENSION = "container.sampleData";
+
+  private final FeedRepository feedRepository = Entity.getFeedRepository();
 
   public ContainerRepository() {
     super(
@@ -92,8 +100,11 @@ public class ContainerRepository extends EntityRepository<Container> {
   public void setFields(
       Container container, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(container);
-    container.setParent(
-        fields.contains(FIELD_PARENT) ? getContainerParent(container) : container.getParent());
+    // Always resolve parent — re-parenting via PATCH (#24294) requires the loaded entity to
+    // carry the current parent so the JSON Patch document can target an existing
+    // `/parent` member. Mirrors `GlossaryTermRepository.setFields`. `clearFields` below still
+    // strips parent from the response payload when the caller did not request it.
+    container.setParent(getContainerParent(container));
     if (container.getDataModel() != null) {
       populateDataModelColumnTags(
           fields.contains(FIELD_TAGS), container.getDataModel().getColumns());
@@ -353,8 +364,12 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   @Override
   public void setFullyQualifiedName(Container container) {
-    container.setParent(
-        container.getParent() != null ? container.getParent() : getContainerParent(container));
+    // Trust the in-memory parent — do not re-query the relationship table. The previous
+    // behavior (`parent != null ? parent : getContainerParent(...)`) silently restored the
+    // stored parent when a PATCH explicitly cleared `parent` (#24294), making
+    // "promote to top level" impossible. Create flow already populates parent from the request
+    // via ContainerMapper before this runs, so there's no legitimate caller relying on the
+    // implicit DB lookup here.
     if (container.getParent() != null) {
       container.setFullyQualifiedName(
           FullyQualifiedName.add(
@@ -432,9 +447,10 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   @Override
   public void restorePatchAttributes(Container original, Container updated) {
-    // Patch can't make changes to following fields. Ignore the changes
+    // Service can't change via PATCH; parent is patchable (see #24294 — same-service re-parent
+    // is validated in ContainerUpdater.validateParent).
     super.restorePatchAttributes(original, updated);
-    updated.withService(original.getService()).withParent(original.getParent());
+    updated.withService(original.getService());
   }
 
   // ----------------------------------------------------------------------------------------
@@ -999,6 +1015,68 @@ public class ContainerRepository extends EntityRepository<Container> {
     }
   }
 
+  /**
+   * Rewrite feed entity-links and field-relationships when a container's FQN changes (parent
+   * move). Mirrors {@code GlossaryTermRepository.updateEntityLinks}. Descendant container
+   * entity-links are also updated by walking children via {@link Relationship#CONTAINS}.
+   */
+  private void updateEntityLinks(String oldFqn, String newFqn, Container updated) {
+    daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
+
+    EntityLink newAbout = new EntityLink(CONTAINER, newFqn);
+    feedRepository.updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
+
+    List<EntityReference> children =
+        findTo(updated.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER);
+    for (EntityReference child : children) {
+      EntityLink childAbout = new EntityLink(CONTAINER, child.getFullyQualifiedName());
+      feedRepository.updateLegacyThreadsAbout(childAbout.getLinkString(), child.getId().toString());
+    }
+  }
+
+  /**
+   * Rewrite the search-index documents whose {@code fullyQualifiedName} starts with {@code
+   * oldFqn} so they reflect {@code newFqn}. Covers the moved container and every descendant in
+   * one indexed update-by-query.
+   */
+  private void updateAssetIndexes(String oldFqn, String newFqn) {
+    searchRepository
+        .getSearchClient()
+        .updateByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, "fullyQualifiedName");
+  }
+
+  /**
+   * Validate that the {@code updated} container's parent (if set) is in the same StorageService
+   * as the {@code original} and that it doesn't form a cycle. Extracted as a static helper so
+   * the validation logic is unit-testable without bootstrapping an {@link EntityUpdater}.
+   *
+   * <p>Throws {@link IllegalArgumentException} when the parent points at a different service,
+   * at the container itself, or at a descendant of the container.
+   */
+  static void validateContainerParent(Container original, Container updated) {
+    EntityReference newParent = updated.getParent();
+    if (newParent == null) {
+      return;
+    }
+    Container resolvedParent =
+        Entity.getEntity(CONTAINER, newParent.getId(), "service", NON_DELETED);
+    UUID origServiceId = original.getService().getId();
+    UUID parentServiceId = resolvedParent.getService().getId();
+    if (!Objects.equals(origServiceId, parentServiceId)) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.invalidContainerParentService(
+              original.getFullyQualifiedName(),
+              original.getService().getFullyQualifiedName(),
+              resolvedParent.getService().getFullyQualifiedName()));
+    }
+    String origFqn = original.getFullyQualifiedName();
+    String parentFqn = resolvedParent.getFullyQualifiedName();
+    if (Objects.equals(parentFqn, origFqn) || FullyQualifiedName.isParent(parentFqn, origFqn)) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.invalidContainerMove(origFqn, parentFqn));
+    }
+  }
+
   /** Handles entity updated from PUT and POST operations */
   public class ContainerUpdater extends ColumnEntityUpdater {
     public ContainerUpdater(Container original, Container updated, Operation operation) {
@@ -1008,6 +1086,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      validateParent();
       compareAndUpdate("dataModel", () -> updateDataModel(original, updated));
       compareAndUpdate(
           "prefix", () -> recordChange("prefix", original.getPrefix(), updated.getPrefix()));
@@ -1066,6 +1145,99 @@ public class ContainerRepository extends EntityRepository<Container> {
                   false,
                   EntityUtil.objectMatch,
                   false));
+      compareAndUpdateAny(() -> updateParent(original, updated), FIELD_PARENT);
+    }
+
+    /**
+     * Reject parent updates that would move the container under a different StorageService,
+     * under itself, or under one of its descendants. Same-service-only is the user-confirmed
+     * scope for #24294; cross-service moves are explicitly out of scope.
+     */
+    void validateParent() {
+      validateContainerParent(original, updated);
+    }
+
+    /**
+     * Re-parent the container and cascade the FQN change to every descendant container,
+     * column FQN, tag-usage row, entity-link, policy condition, and search-index doc.
+     * Mirrors {@link GlossaryTermRepository}'s {@code updateNameAndParent} flow.
+     */
+    private void updateParent(Container original, Container updated) {
+      UUID oldParentId = original.getParent() == null ? null : original.getParent().getId();
+      UUID newParentId = updated.getParent() == null ? null : updated.getParent().getId();
+      if (Objects.equals(oldParentId, newParentId)) {
+        return;
+      }
+
+      String oldFqn = getOriginalFqn();
+      setFullyQualifiedName(updated);
+      String newFqn = updated.getFullyQualifiedName();
+      if (oldFqn.equals(newFqn)) {
+        return;
+      }
+
+      LOG.info("Container FQN changed from {} to {} (parent reassignment)", oldFqn, newFqn);
+
+      List<EntityDAO.EntityIdFqnPair> renamedContainers =
+          invalidateCacheForRenameCascade(CONTAINER, oldFqn);
+      invalidateCacheForTaggedEntitiesAndDescendants(CONTAINER, oldFqn);
+
+      daoCollection.containerDAO().updateFqn(oldFqn, newFqn);
+
+      daoCollection.tagUsageDAO().deleteTagsByTarget(oldFqn);
+      List<TagLabel> updatedTags = listOrEmpty(updated.getTags());
+      if (!updatedTags.isEmpty()) {
+        updatedTags = new ArrayList<>(updatedTags);
+        updatedTags.sort(compareTagLabel);
+        applyTags(updatedTags, newFqn);
+      }
+      daoCollection
+          .tagUsageDAO()
+          .renameByTargetFQNHash(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
+      daoCollection
+          .tagUsageDAO()
+          .renameByTargetFQNHash(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
+
+      updateEntityLinks(oldFqn, newFqn, updated);
+
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.renamePrefixInCondition(
+                  condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
+
+      updateParentRelationship(original, updated);
+      recordChange(
+          FIELD_PARENT, original.getParent(), updated.getParent(), true, entityReferenceMatch);
+
+      updateAssetIndexes(oldFqn, newFqn);
+      finishInvalidateCacheForRenameCascade(CONTAINER, renamedContainers);
+    }
+
+    private void updateParentRelationship(Container orig, Container updated) {
+      deleteParentRelationship(orig);
+      addParentRelationship(updated);
+    }
+
+    private void deleteParentRelationship(Container container) {
+      if (container.getParent() != null) {
+        deleteRelationship(
+            container.getParent().getId(),
+            CONTAINER,
+            container.getId(),
+            CONTAINER,
+            Relationship.CONTAINS);
+      }
+    }
+
+    private void addParentRelationship(Container container) {
+      if (container.getParent() != null) {
+        addRelationship(
+            container.getParent().getId(),
+            container.getId(),
+            CONTAINER,
+            CONTAINER,
+            Relationship.CONTAINS);
+      }
     }
 
     private void updateDataModel(Container original, Container updated) {

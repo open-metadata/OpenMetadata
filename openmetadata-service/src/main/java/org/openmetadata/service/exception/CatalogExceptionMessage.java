@@ -375,6 +375,20 @@ public final class CatalogExceptionMessage {
         "Can't move Glossary term %s to its child Glossary term %s", term, newParent);
   }
 
+  public static String invalidContainerMove(String container, String newParent) {
+    return String.format(
+        "Can't move Container %s to itself or to its descendant Container %s",
+        container, newParent);
+  }
+
+  public static String invalidContainerParentService(
+      String container, String currentService, String parentService) {
+    return String.format(
+        "Can't re-parent Container %s under a Container from a different StorageService. "
+            + "Container belongs to service [%s] but the requested parent belongs to service [%s].",
+        container, currentService, parentService);
+  }
+
   public static String eventPublisherFailedToPublish(
       SubscriptionDestination.SubscriptionType type, ChangeEvent event, String message) {
     return String.format(

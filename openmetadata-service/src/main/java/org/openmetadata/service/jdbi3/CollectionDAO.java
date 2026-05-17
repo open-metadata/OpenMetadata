@@ -981,6 +981,53 @@ public interface CollectionDAO {
         @Bind("parentHashChild") String parentHashChild,
         @Bind("nameLike") String nameLike,
         @Bind("includeDeleted") String includeDeleted);
+
+    /**
+     * Cascade an FQN rename to every descendant container row when a parent is reassigned
+     * (#24294). The generic {@link EntityDAO#updateFqn(String, String)} only rewrites the
+     * top-level {@code $.fullyQualifiedName} via MySQL {@code JSON_REPLACE}, which leaves
+     * nested column FQNs ({@code $.dataModel.columns[*].fullyQualifiedName}) pointing at the
+     * old parent — silently breaking column lookups on MySQL. Postgres works only by accident
+     * because the base impl does a global {@code REPLACE(json::text, ...)}.
+     *
+     * <p>This override rewrites every {@code "fullyQualifiedName": "OLD_PREFIX..."} occurrence
+     * in the JSON document so column FQNs follow their container. {@code WHERE fqnHash LIKE
+     * 'oldHash.%'} restricts the update to descendants — the moved row itself updates via the
+     * standard {@code storeEntity} path after {@code setFullyQualifiedName} runs in memory.
+     */
+    @Override
+    default void updateFqn(String oldPrefix, String newPrefix) {
+      if (!getNameHashColumn().equals("fqnHash")) {
+        return;
+      }
+      String oldHash = FullyQualifiedName.buildHash(oldPrefix);
+      String newHash = FullyQualifiedName.buildHash(newPrefix);
+      String mySqlUpdate =
+          String.format(
+              "UPDATE %s SET json = CAST(REPLACE(CAST(json AS CHAR), "
+                  + "'\"fullyQualifiedName\": \"%s.', '\"fullyQualifiedName\": \"%s.') AS JSON), "
+                  + "fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
+                  + "WHERE fqnHash LIKE '%s.%%'",
+              getTableName(),
+              escapeApostrophe(oldPrefix),
+              escapeApostrophe(newPrefix),
+              oldHash,
+              newHash,
+              oldHash);
+      String postgresUpdate =
+          String.format(
+              "UPDATE %s SET json = REPLACE(json::text, "
+                  + "'\"fullyQualifiedName\": \"%s.', '\"fullyQualifiedName\": \"%s.')::jsonb, "
+                  + "fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
+                  + "WHERE fqnHash LIKE '%s.%%'",
+              getTableName(),
+              escapeApostrophe(oldPrefix),
+              escapeApostrophe(newPrefix),
+              oldHash,
+              newHash,
+              oldHash);
+      updateFqnInternal(mySqlUpdate, postgresUpdate);
+    }
   }
 
   class ContainerSummaryRowMapper implements RowMapper<Container> {
