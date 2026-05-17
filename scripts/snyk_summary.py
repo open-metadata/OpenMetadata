@@ -166,7 +166,8 @@ def count_severities(libs, by_rule):
     for rid, items in by_rule.items():
         for uri, level, lines in items:
             mapped = {"error": "high", "warning": "medium", "note": "low"}.get(level, "medium")
-            counts[mapped] += len(lines)
+            # Count one per (rule, file, level) group to match `total` in collect_code.
+            counts[mapped] += 1
     return counts
 
 
