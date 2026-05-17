@@ -290,12 +290,12 @@ jobs:
               cat security-report/_slack.txt
             fi
           } > slack_body.txt
-          jq -Rs --arg ch "${{ secrets.SLACK_CHANNEL_IDS }}" \
-            '{channel: $ch, text: ., mrkdwn: true}' slack_body.txt > payload.json
+          jq -Rs '{text: ., mrkdwn: true}' slack_body.txt > payload.json
 
       - name: Send Slack Notification
         uses: slackapi/slack-github-action@v1.27.1
         with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
           payload-file-path: payload.json
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
