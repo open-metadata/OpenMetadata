@@ -1,4 +1,5 @@
 """Load test for the test case result resources"""
+
 from datetime import datetime, timedelta
 
 from locust import TaskSet, task
@@ -42,27 +43,21 @@ class TestCaseResultTasks(TaskSet):
         """List test case results for the last 30 days. Weighted 3"""
         now = datetime.now()
         last_30_days = int((now - timedelta(days=30)).timestamp() * 1000)
-        self._list_test_case_results(
-            last_30_days, int(now.timestamp() * 1000), "30_days"
-        )
+        self._list_test_case_results(last_30_days, int(now.timestamp() * 1000), "30_days")
 
     @task(2)
     def list_test_case_results_60_days(self):
         """List test case results for the last 60 days. Weighted 2"""
         now = datetime.now()
         last_60_days = int((now - timedelta(days=60)).timestamp() * 1000)
-        self._list_test_case_results(
-            last_60_days, int(now.timestamp() * 1000), "60_days"
-        )
+        self._list_test_case_results(last_60_days, int(now.timestamp() * 1000), "60_days")
 
     @task
     def list_test_case_results_180_days(self):
         """List test case results for the last 180 days"""
         now = datetime.now()
         last_180_days = int((now - timedelta(days=180)).timestamp() * 1000)
-        self._list_test_case_results(
-            last_180_days, int(now.timestamp() * 1000), "180_days"
-        )
+        self._list_test_case_results(last_180_days, int(now.timestamp() * 1000), "180_days")
 
     @task
     def stop(self):

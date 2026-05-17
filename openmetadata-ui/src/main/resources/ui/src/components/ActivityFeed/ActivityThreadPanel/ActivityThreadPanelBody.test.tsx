@@ -14,7 +14,6 @@
 import { findByTestId, findByText, render } from '@testing-library/react';
 import ReactDOM from 'react-dom';
 import { MemoryRouter } from 'react-router-dom';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import ActivityThreadPanelBody from './ActivityThreadPanelBody';
 
 const mockActivityThreadPanelBodyBodyProp = {
@@ -24,11 +23,22 @@ const mockActivityThreadPanelBodyBodyProp = {
   createThread: jest.fn(),
   deletePostHandler: jest.fn(),
   updateThreadHandler: jest.fn(),
-  threadType: ThreadType.Conversation,
+  view: 'conversations' as const,
 };
 
 jest.mock('../../../rest/feedsAPI', () => ({
   getAllFeeds: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
+  useActivityFeedProvider: jest.fn().mockReturnValue({
+    tasks: [],
+    selectedTask: undefined,
+    setActiveTask: jest.fn(),
+    getTaskData: jest.fn(),
+    loading: false,
+    entityPaging: {},
+  }),
 }));
 
 jest.mock('../ActivityFeedEditor/ActivityFeedEditor', () => {

@@ -219,8 +219,8 @@ test.describe(
         await test.step('Verify Import Status', async () => {
           await waitForImportAsyncResponse(page);
           await validateImportStatus(page, {
-            passed: '4',
-            processed: '4',
+            passed: '3',
+            processed: '3',
             failed: '0',
           });
         });

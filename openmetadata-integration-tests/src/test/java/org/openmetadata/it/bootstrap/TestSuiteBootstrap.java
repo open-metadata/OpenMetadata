@@ -129,11 +129,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static String databaseType;
   private static String searchType;
   private static boolean rdfEnabled;
+  private static String cacheProvider;
 
   private static JdbcDatabaseContainer<?> DATABASE_CONTAINER;
   private static GenericContainer<?> SEARCH_CONTAINER;
   private static GenericContainer<?> FUSEKI_CONTAINER;
+  private static GenericContainer<?> REDIS_CONTAINER;
   private static K3sContainer K3S_CONTAINER;
+  private static GenericContainer<?> MINIO_CONTAINER;
   private static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
   private static Jdbi jdbi;
 
@@ -141,6 +144,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static int searchPort;
   private static String fusekiEndpoint;
   private static String kubeConfigYaml;
+  private static String redisUrl;
+
+  private static final String DEFAULT_REDIS_IMAGE = "redis:7-alpine";
+  private static final int REDIS_PORT = 6379;
 
   @Override
   public void launcherSessionOpened(LauncherSession session) {
@@ -153,11 +160,13 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     databaseType = System.getProperty("databaseType", "postgres");
     searchType = System.getProperty("searchType", "elasticsearch");
     rdfEnabled = Boolean.parseBoolean(System.getProperty("enableRdf", "false"));
+    cacheProvider = System.getProperty("cacheProvider", "none");
 
     LOG.info("=== TestSuiteBootstrap: Starting test infrastructure ===");
     LOG.info("Database type: {}", databaseType);
     LOG.info("Search type: {}", searchType);
     LOG.info("RDF enabled: {}", rdfEnabled);
+    LOG.info("Cache provider: {}", cacheProvider);
     boolean k8sEnabled = isK8sTestsRequested();
     LOG.info("K8s tests enabled: {}", k8sEnabled);
     long startTime = System.currentTimeMillis();
@@ -167,6 +176,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       startSearch();
       if (rdfEnabled) {
         startFuseki();
+      }
+      if (isRedisEnabled()) {
+        startRedis();
       }
       if (k8sEnabled) {
         startK3s();
@@ -179,6 +191,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       LOG.info("Search ({}): {}:{}", searchType, searchHost, searchPort);
       if (rdfEnabled) {
         LOG.info("Fuseki SPARQL: {}", fusekiEndpoint);
+      }
+      if (isRedisEnabled()) {
+        LOG.info("Redis: {}", redisUrl);
       }
       if (k8sEnabled) {
         LOG.info("K3s Kubernetes: enabled");
@@ -216,7 +231,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       mysql.withDatabaseName("openmetadata");
       mysql.withUsername("test");
       mysql.withPassword("test");
-      mysql.withCommand("mysqld", "--max_allowed_packet=" + mysqlMaxAllowedPacket);
+      mysql.withCommand(
+          "mysqld",
+          "--max_allowed_packet=" + mysqlMaxAllowedPacket,
+          // The tag list query (TagDAO.listAfter) joins three tables and sorts by tag.name,
+          // tag.id; under the parallel-tests fork the tag table grows large and the default
+          // 256KB sort_buffer_size overflows with "Out of sort memory" (#27649). 8MB is plenty
+          // for an integration-test workload and well under the 4GB overall limit.
+          "--sort_buffer_size=8M");
       mysql.withStartupTimeoutSeconds(240);
       mysql.withConnectTimeoutSeconds(240);
       mysql.withTmpFs(java.util.Map.of("/var/lib/mysql", "rw,size=2g"));
@@ -264,7 +286,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           "-c",
           "synchronous_commit=off",
           "-c",
-          "full_page_writes=off");
+          "full_page_writes=off",
+          // Bump work_mem for the same reason MySQL gets a larger sort_buffer above:
+          // TagDAO.listAfter joins three tables and sorts; default 4MB spills to temp files
+          // under load.
+          "-c",
+          "work_mem=32MB");
       postgres.withTmpFs(java.util.Map.of("/var/lib/postgresql/data", "rw,size=2g"));
       postgres.withCreateContainerCmdModifier(
           cmd ->
@@ -338,6 +365,58 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       searchPort = elasticsearch.getMappedPort(9200);
       LOG.info("Elasticsearch started: {}:{}", searchHost, searchPort);
     }
+  }
+
+  private void startRedis() {
+    String image = System.getProperty("redisImage", DEFAULT_REDIS_IMAGE);
+    LOG.info("Starting Redis container with image: {}", image);
+    REDIS_CONTAINER =
+        new GenericContainer<>(DockerImageName.parse(image))
+            .withExposedPorts(REDIS_PORT)
+            .withCommand(
+                "redis-server",
+                "--appendonly",
+                "no",
+                "--save",
+                "",
+                "--maxmemory",
+                "512mb",
+                "--maxmemory-policy",
+                "allkeys-lru")
+            .waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofMinutes(1)));
+    REDIS_CONTAINER.start();
+    redisUrl =
+        String.format(
+            "redis://%s:%d", REDIS_CONTAINER.getHost(), REDIS_CONTAINER.getMappedPort(REDIS_PORT));
+    LOG.info("Redis started: {}", redisUrl);
+  }
+
+  public static boolean isRedisEnabled() {
+    return "redis".equalsIgnoreCase(cacheProvider);
+  }
+
+  public static String getRedisUrl() {
+    return redisUrl;
+  }
+
+  private void configureCache(OpenMetadataApplicationConfig config) {
+    if (!isRedisEnabled()) {
+      return;
+    }
+    org.openmetadata.service.cache.CacheConfig cacheConfig = config.getCacheConfig();
+    cacheConfig.provider = org.openmetadata.service.cache.CacheConfig.Provider.redis;
+    cacheConfig.redis.url = redisUrl;
+    cacheConfig.redis.authType = org.openmetadata.service.cache.CacheConfig.AuthType.NONE;
+    cacheConfig.redis.keyspace = "om:it:" + System.currentTimeMillis();
+    cacheConfig.redis.commandTimeoutMs = 1000;
+    cacheConfig.entityTtlSeconds = 3600;
+    cacheConfig.relationshipTtlSeconds = 3600;
+    cacheConfig.tagTtlSeconds = 3600;
+    config.setCacheConfig(cacheConfig);
+    LOG.info(
+        "Configured Redis cache: url={} keyspace={}",
+        cacheConfig.redis.url,
+        cacheConfig.redis.keyspace);
   }
 
   private void startFuseki() {
@@ -451,6 +530,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
     configurePipelineServiceClient(config);
     configureRdf(config);
+    configureCache(config);
 
     IndexMappingLoader.init(getBaseSearchConfig());
 
@@ -476,6 +556,17 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         false);
 
     createIndices();
+
+    // Start MinIO before app boot if object storage is configured to use S3 so that the
+    // S3AssetService picks up the correct endpoint.
+    if (config.getObjectStorage() != null
+        && config.getObjectStorage().isEnabled()
+        && "s3".equalsIgnoreCase(config.getObjectStorage().getProvider())) {
+      setupMinIO();
+      if (config.getObjectStorage().getS3Configuration() != null) {
+        config.getObjectStorage().getS3Configuration().setEndpoint(getMinIOEndpoint());
+      }
+    }
 
     // Start the application
     APP.before();
@@ -719,6 +810,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
 
     try {
+      if (REDIS_CONTAINER != null) {
+        REDIS_CONTAINER.stop();
+      }
+    } catch (Exception e) {
+      LOG.warn("Error stopping Redis container", e);
+    }
+
+    try {
       if (K3S_CONTAINER != null) {
         K3S_CONTAINER.stop();
       }
@@ -733,6 +832,79 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     } catch (Exception e) {
       LOG.warn("Error stopping database container", e);
     }
+
+    try {
+      if (MINIO_CONTAINER != null) {
+        MINIO_CONTAINER.stop();
+      }
+    } catch (Exception e) {
+      LOG.warn("Error stopping MinIO container", e);
+    }
+  }
+
+  // === On-demand MinIO container for object-storage tests ===
+
+  public static synchronized void setupMinIO() {
+    if (MINIO_CONTAINER != null && MINIO_CONTAINER.isRunning()) {
+      LOG.info("MinIO already running at {}", getMinIOEndpoint());
+      return;
+    }
+    LOG.info("Starting MinIO Testcontainer on-demand...");
+    // Pin the MinIO image to a known-good release so a newly-published :latest tag
+    // cannot break integration tests without a code change.
+    MINIO_CONTAINER =
+        new GenericContainer<>("minio/minio:RELEASE.2024-01-16T16-07-38Z")
+            .withExposedPorts(9000)
+            .withEnv("MINIO_ROOT_USER", "minio")
+            .withEnv("MINIO_ROOT_PASSWORD", "minio123")
+            .withCommand("server /data")
+            .waitingFor(
+                Wait.forHttp("/minio/health/live")
+                    .forPort(9000)
+                    .forStatusCode(200)
+                    .withStartupTimeout(java.time.Duration.ofSeconds(60)));
+    MINIO_CONTAINER.start();
+
+    String endpoint = getMinIOEndpoint();
+
+    // Create the default test bucket so tests can upload immediately.
+    software.amazon.awssdk.services.s3.S3Client s3 =
+        software.amazon.awssdk.services.s3.S3Client.builder()
+            .region(software.amazon.awssdk.regions.Region.US_EAST_1)
+            .credentialsProvider(
+                software.amazon.awssdk.auth.credentials.StaticCredentialsProvider.create(
+                    software.amazon.awssdk.auth.credentials.AwsBasicCredentials.create(
+                        "minio", "minio123")))
+            .endpointOverride(java.net.URI.create(endpoint))
+            .serviceConfiguration(
+                software.amazon.awssdk.services.s3.S3Configuration.builder()
+                    .pathStyleAccessEnabled(true)
+                    .build())
+            .build();
+    try {
+      boolean exists =
+          s3.listBuckets().buckets().stream().anyMatch(b -> b.name().equals("test-bucket"));
+      if (!exists) {
+        s3.createBucket(
+            software.amazon.awssdk.services.s3.model.CreateBucketRequest.builder()
+                .bucket("test-bucket")
+                .build());
+      }
+    } finally {
+      s3.close();
+    }
+
+    // Expose endpoint to tests that read a system property / env var.
+    System.setProperty("IT_MINIO_ENDPOINT", endpoint);
+
+    LOG.info("MinIO started at {}", endpoint);
+  }
+
+  public static String getMinIOEndpoint() {
+    if (MINIO_CONTAINER == null || !MINIO_CONTAINER.isRunning()) {
+      throw new IllegalStateException("MinIO container not running. Call setupMinIO() first.");
+    }
+    return "http://" + MINIO_CONTAINER.getHost() + ":" + MINIO_CONTAINER.getMappedPort(9000);
   }
 
   // === Static accessor methods for tests ===

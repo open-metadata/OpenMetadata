@@ -84,8 +84,8 @@ jest.mock('../../../../hooks/useApplicationStore', () => ({
   })),
 }));
 
-jest.mock('../../../../rest/feedsAPI', () => ({
-  getActiveAnnouncement: jest
+jest.mock('../../../../rest/announcementsAPI', () => ({
+  getActiveAnnouncements: jest
     .fn()
     .mockImplementation(() => mockActiveAnnouncementData),
 }));

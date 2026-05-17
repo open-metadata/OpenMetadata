@@ -12,6 +12,7 @@
 """
 Source connection handler for OpenSearch
 """
+
 from pathlib import Path
 from typing import Optional
 
@@ -57,7 +58,7 @@ def _clean_cert_value(cert_data: str) -> str:
 
 
 def write_data_to_file(file_path: Path, cert_data: str) -> None:
-    with open(
+    with open(  # noqa: PTH123
         file_path,
         "w+",
         encoding=UTF_8,
@@ -73,9 +74,7 @@ def _handle_ssl_context_by_value(ssl_config: SslConfig):
     init_staging_dir(ssl_config.certificates.stagingDir)
     if ssl_config.certificates.caCertValue:
         ca_cert = Path(ssl_config.certificates.stagingDir, CA_CERT_FILE_NAME)
-        write_data_to_file(
-            ca_cert, ssl_config.certificates.caCertValue.get_secret_value()
-        )
+        write_data_to_file(ca_cert, ssl_config.certificates.caCertValue.get_secret_value())
     if ssl_config.certificates.clientCertValue:
         client_cert = Path(ssl_config.certificates.stagingDir, CLIENT_CERT_FILE_NAME)
         write_data_to_file(
@@ -119,24 +118,15 @@ def get_connection(connection: OpenSearchConnection) -> OpenSearch:
 
     if connection.sslConfig and connection.sslConfig.certificates:
         if isinstance(connection.sslConfig.certificates, SslCertificatesByValues):
-            ca_cert, client_cert, private_key = _handle_ssl_context_by_value(
-                ssl_config=connection.sslConfig
-            )
+            ca_cert, client_cert, private_key = _handle_ssl_context_by_value(ssl_config=connection.sslConfig)
         elif isinstance(connection.sslConfig.certificates, SslCertificatesByPath):
-            ca_cert, client_cert, private_key = _handle_ssl_context_by_path(
-                ssl_config=connection.sslConfig
-            )
+            ca_cert, client_cert, private_key = _handle_ssl_context_by_path(ssl_config=connection.sslConfig)
 
     # Check for Basic Authentication
-    if (
-        isinstance(connection.authType, BasicAuthentication)
-        and connection.authType.username
-    ):
+    if isinstance(connection.authType, BasicAuthentication) and connection.authType.username:
         basic_auth = (
             connection.authType.username,
-            connection.authType.password.get_secret_value()
-            if connection.authType.password
-            else None,
+            (connection.authType.password.get_secret_value() if connection.authType.password else None),
         )
 
     # Check for AWS IAM Authentication
@@ -148,12 +138,9 @@ def get_connection(connection: OpenSearchConnection) -> OpenSearch:
             else None
         )
         aws_region = connection.authType.awsRegion  # Region as a plain string
-        aws_session_token = (
-            connection.authType.awsSessionToken.get_secret_value()
-            if hasattr(connection.authType, "awsSessionToken")
-            and connection.authType.awsSessionToken
-            else None
-        )
+        # awsSessionToken is a plain str in the schema (no "format": "password"),
+        # so we use it directly without calling .get_secret_value()
+        aws_session_token = connection.authType.awsSessionToken or None
         aws_auth = AWS4Auth(
             aws_access_key,
             aws_secret_key,
@@ -186,8 +173,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: OpenSearch,
     service_connection: OpenSearchConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection for OpenSearch. This can be executed either as part

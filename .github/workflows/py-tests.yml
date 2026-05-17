@@ -99,6 +99,11 @@ jobs:
           install-server: 'false'
 
       - name: Run Static Checks
+        # basedpyright is configured with `pythonVersion = "3.10"` (the lowest
+        # supported version) so type-checking results are identical across the
+        # 3.10/3.11/3.12 matrix. Run on the lowest version only to avoid
+        # redundant work and keep the baseline file deterministic.
+        if: matrix.py-version == '3.10'
         run: |
           source env/bin/activate
           cd ingestion

@@ -56,6 +56,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.audit.AuditLogRepository;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.events.lifecycle.handlers.DomainSyncHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ChangeEventRepository;
@@ -69,7 +71,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.Repository;
 import org.openmetadata.service.jdbi3.RoleRepository;
-import org.openmetadata.service.jdbi3.SuggestionRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.TypeRepository;
@@ -106,7 +107,6 @@ public final class Entity {
   @Getter @Setter private static ChangeEventRepository changeEventRepository;
   @Getter @Setter private static SearchRepository searchRepository;
   @Getter @Setter private static AuditLogRepository auditLogRepository;
-  @Getter @Setter private static SuggestionRepository suggestionRepository;
   @Getter @Setter private static TypeRepository typeRepository;
   @Getter @Setter private static EntityRelationshipRepository entityRelationshipRepository;
   // List of all the entities
@@ -201,6 +201,9 @@ public final class Entity {
   public static final String FILE = "file";
   public static final String SPREADSHEET = "spreadsheet";
   public static final String WORKSHEET = "worksheet";
+  public static final String FOLDER = "folder";
+  public static final String CONTEXT_FILE = "contextFile";
+  public static final String CONTEXT_FILE_CONTENT = "contextFileContent";
 
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
@@ -269,6 +272,8 @@ public final class Entity {
   public static final String NOTIFICATION_TEMPLATE = "notificationTemplate";
   public static final String THREAD = "THREAD";
   public static final String SUGGESTION = "SUGGESTION";
+  public static final String ANNOUNCEMENT = "announcement";
+  public static final String TASK_FORM_SCHEMA = "taskFormSchema";
   public static final String WORKFLOW = "workflow";
   public static final String WORKFLOW_DEFINITION = "workflowDefinition";
 
@@ -400,7 +405,18 @@ public final class Entity {
           }
         }
       }
+      registerDomainSyncHandler();
       initializedRepositories = true;
+    }
+  }
+
+  private static void registerDomainSyncHandler() {
+    try {
+      DomainSyncHandler domainSyncHandler = new DomainSyncHandler();
+      EntityLifecycleEventDispatcher.getInstance().registerHandler(domainSyncHandler);
+      LOG.info("Successfully registered DomainSyncHandler for entity lifecycle events");
+    } catch (Exception e) {
+      LOG.error("Failed to register DomainSyncHandler", e);
     }
   }
 
@@ -491,7 +507,7 @@ public final class Entity {
 
     // For regular entities, use the standard repository
     EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
-    include = repository.supportsSoftDelete ? Include.ALL : include;
+    include = repository.supportsSoftDelete ? include : Include.ALL;
     return repository.getReference(id, include);
   }
 
@@ -512,7 +528,7 @@ public final class Entity {
 
     // For regular entities, use the standard repository
     EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
-    include = repository.supportsSoftDelete ? Include.ALL : include;
+    include = repository.supportsSoftDelete ? include : Include.ALL;
     return repository.getReferences(ids, include);
   }
 
@@ -523,48 +539,6 @@ public final class Entity {
     }
     EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
     return repository.getReferenceByName(fqn, include);
-  }
-
-  /**
-   * Get entity reference by ID, respecting the include parameter for soft-delete filtering. Unlike
-   * {@link #getEntityReferenceById}, this method does NOT override the include parameter to ALL for
-   * repositories that support soft delete.
-   */
-  public static EntityReference getEntityReferenceByIdRespectingInclude(
-      @NonNull String entityType, @NonNull UUID id, Include include) {
-    if (ENTITY_TS_REPOSITORY_MAP.containsKey(entityType)) {
-      return new EntityReference()
-          .withId(id)
-          .withType(entityType)
-          .withFullyQualifiedName(entityType + "." + id);
-    }
-    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
-    // If repository doesn't support soft delete, use ALL since there's no deleted column
-    include = repository.supportsSoftDelete ? include : Include.ALL;
-    return repository.getReference(id, include);
-  }
-
-  /**
-   * Get entity references by IDs, respecting the include parameter for soft-delete filtering.
-   * Unlike {@link #getEntityReferencesByIds}, this method does NOT override the include parameter
-   * to ALL for repositories that support soft delete.
-   */
-  public static List<EntityReference> getEntityReferencesByIdsRespectingInclude(
-      @NonNull String entityType, @NonNull List<UUID> ids, Include include) {
-    if (ENTITY_TS_REPOSITORY_MAP.containsKey(entityType)) {
-      return ids.stream()
-          .map(
-              id ->
-                  new EntityReference()
-                      .withId(id)
-                      .withType(entityType)
-                      .withFullyQualifiedName(entityType + "." + id))
-          .collect(Collectors.toList());
-    }
-    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
-    // If repository doesn't support soft delete, use ALL since there's no deleted column
-    include = repository.supportsSoftDelete ? include : Include.ALL;
-    return repository.getReferences(ids, include);
   }
 
   public static List<EntityReference> getOwners(@NonNull EntityReference reference) {
@@ -590,6 +564,11 @@ public final class Entity {
   public static Fields getFields(String entityType, List<String> fields) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     return entityRepository.getFields(String.join(",", fields));
+  }
+
+  public static Fields getOnlySupportedFields(String entityType, List<String> fields) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    return entityRepository.getOnlySupportedFields(String.join(",", fields));
   }
 
   public static <T> T getEntity(EntityReference ref, String fields, Include include) {

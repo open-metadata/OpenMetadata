@@ -17,7 +17,7 @@ in job facets. This module extracts that information and maps it to the
 appropriate OMD PipelineServiceType, creating services as needed.
 """
 
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceRequest,
@@ -34,7 +34,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-INTEGRATION_TO_SERVICE_TYPE: Dict[str, PipelineServiceType] = {
+INTEGRATION_TO_SERVICE_TYPE: Dict[str, PipelineServiceType] = {  # noqa: UP006
     "spark": PipelineServiceType.Spark,
     "flink": PipelineServiceType.Flink,
     "airflow": PipelineServiceType.Airflow,
@@ -45,7 +45,7 @@ INTEGRATION_TO_SERVICE_TYPE: Dict[str, PipelineServiceType] = {
 SERVICE_NAME_SUFFIX = "_openlineage"
 
 
-def extract_integration_type(event: OpenLineageEvent) -> Optional[str]:
+def extract_integration_type(event: OpenLineageEvent) -> Optional[str]:  # noqa: UP045
     """
     Extract the integration type from an OpenLineage event via the
     standard ``job.facets.jobType.integration`` field.
@@ -65,7 +65,7 @@ def extract_integration_type(event: OpenLineageEvent) -> Optional[str]:
 def find_pipeline_by_namespace(
     metadata: OpenMetadata,
     event: OpenLineageEvent,
-) -> Optional[Tuple[str, Pipeline]]:
+) -> Optional[Tuple[str, Pipeline]]:  # noqa: UP006, UP045
     """
     Try to find an existing pipeline using ``namespace.jobName`` as FQN.
 
@@ -95,7 +95,7 @@ def find_pipeline_by_namespace(
 
 
 def resolve_pipeline_service_type(
-    integration: Optional[str],
+    integration: Optional[str],  # noqa: UP045
 ) -> PipelineServiceType:
     """Map an integration string to a PipelineServiceType enum."""
     if integration and integration in INTEGRATION_TO_SERVICE_TYPE:
@@ -103,7 +103,7 @@ def resolve_pipeline_service_type(
     return PipelineServiceType.OpenLineage
 
 
-def build_service_name(integration: Optional[str], fallback_service: str) -> str:
+def build_service_name(integration: Optional[str], fallback_service: str) -> str:  # noqa: UP045
     """
     Build the pipeline service name.
 
@@ -119,7 +119,7 @@ def get_or_create_pipeline_service(
     metadata: OpenMetadata,
     service_name: str,
     service_type: PipelineServiceType,
-    _cache: Optional[Dict[str, str]] = None,
+    _cache: Optional[Dict[str, str]] = None,  # noqa: UP006, UP045
 ) -> str:
     """
     Ensure a PipelineService with the given name and type exists in OMD.
@@ -136,9 +136,7 @@ def get_or_create_pipeline_service(
             _cache[service_name] = service_name
         return service_name
 
-    logger.info(
-        f"Creating pipeline service '{service_name}' with type '{service_type.value}'"
-    )
+    logger.info(f"Creating pipeline service '{service_name}' with type '{service_type.value}'")
     request = CreatePipelineServiceRequest(
         name=EntityName(service_name),
         serviceType=service_type,

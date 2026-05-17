@@ -34,7 +34,7 @@ import {
   FAILED_CHART_COLOR_SCHEME,
   SUCCESS_CHART_COLOR_SCHEME,
 } from '../../../constants/Chart.constants';
-import { PAGE_SIZE_BASE, ROUTES } from '../../../constants/constants';
+import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import {
   DATA_QUALITY_DASHBOARD_HEADER,
   DQ_FILTER_KEYS,
@@ -57,7 +57,7 @@ import {
   getStartOfDayInMillis,
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getDataQualityPagePath } from '../../../utils/RouterUtils';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import DataAssetsCoveragePieChartWidget from '../ChartWidgets/DataAssetsCoveragePieChartWidget/DataAssetsCoveragePieChartWidget.component';
 import EntityHealthStatusPieChartWidget from '../ChartWidgets/EntityHealthStatusPieChartWidget/EntityHealthStatusPieChartWidget.component';
 import IncidentTimeChartWidget from '../ChartWidgets/IncidentTimeChartWidget/IncidentTimeChartWidget.component';
@@ -633,7 +633,7 @@ const DataQualityDashboard = ({
     'tw:shadow-none': isGovernanceView,
   });
 
-  const cardBodyClass = isGovernanceView ? 'tw:py-6' : 'tw:p-6';
+  const cardBodyClass = 'tw:p-6';
 
   const filterBarContent = (
     <div
@@ -797,9 +797,10 @@ const DataQualityDashboard = ({
                   chartFilter={defaultFilters}
                   name="success"
                   redirectPath={{
-                    pathname: getDataQualityPagePath(
-                      DataQualityPageTabs.TEST_CASES
-                    ),
+                    pathname:
+                      observabilityRouterClassBase.getDataQualityPagePath(
+                        DataQualityPageTabs.TEST_CASES
+                      ),
                     search: QueryString.stringify({
                       testCaseStatus: TestCaseStatus.Success,
                     }),
@@ -814,9 +815,10 @@ const DataQualityDashboard = ({
                   chartFilter={defaultFilters}
                   name="aborted"
                   redirectPath={{
-                    pathname: getDataQualityPagePath(
-                      DataQualityPageTabs.TEST_CASES
-                    ),
+                    pathname:
+                      observabilityRouterClassBase.getDataQualityPagePath(
+                        DataQualityPageTabs.TEST_CASES
+                      ),
                     search: QueryString.stringify({
                       testCaseStatus: TestCaseStatus.Aborted,
                     }),
@@ -831,9 +833,10 @@ const DataQualityDashboard = ({
                   chartFilter={defaultFilters}
                   name="failed"
                   redirectPath={{
-                    pathname: getDataQualityPagePath(
-                      DataQualityPageTabs.TEST_CASES
-                    ),
+                    pathname:
+                      observabilityRouterClassBase.getDataQualityPagePath(
+                        DataQualityPageTabs.TEST_CASES
+                      ),
                     search: QueryString.stringify({
                       testCaseStatus: TestCaseStatus.Failed,
                     }),
@@ -858,7 +861,8 @@ const DataQualityDashboard = ({
                   incidentStatusType={TestCaseResolutionStatusTypes.New}
                   name="open-incident"
                   redirectPath={{
-                    pathname: ROUTES.INCIDENT_MANAGER,
+                    pathname:
+                      observabilityRouterClassBase.getIncidentManagerPath(),
                     search: QueryString.stringify({
                       testCaseResolutionStatusType:
                         TestCaseResolutionStatusTypes.New,
@@ -875,7 +879,8 @@ const DataQualityDashboard = ({
                   incidentStatusType={TestCaseResolutionStatusTypes.Resolved}
                   name="resolved-incident"
                   redirectPath={{
-                    pathname: ROUTES.INCIDENT_MANAGER,
+                    pathname:
+                      observabilityRouterClassBase.getIncidentManagerPath(),
                     search: QueryString.stringify({
                       testCaseResolutionStatusType:
                         TestCaseResolutionStatusTypes.Resolved,

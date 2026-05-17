@@ -925,13 +925,21 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   public static void validateProfileSample(IngestionPipeline ingestionPipeline) {
-
     JSONObject sourceConfigJson =
         new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
-    String profileSampleType = sourceConfigJson.optString("profileSampleType");
-    double profileSample = sourceConfigJson.optDouble("profileSample");
-
-    EntityUtil.validateProfileSample(profileSampleType, profileSample);
+    JSONObject profileSampleConfig = sourceConfigJson.optJSONObject("profileSampleConfig");
+    if (profileSampleConfig == null) {
+      return;
+    }
+    JSONObject config = profileSampleConfig.optJSONObject("config");
+    if (config == null) {
+      return;
+    }
+    String profileSampleType = config.optString("profileSampleType", "");
+    double profileSample = config.optDouble("profileSample", Double.NaN);
+    if (!profileSampleType.isEmpty() && !Double.isNaN(profileSample)) {
+      EntityUtil.validateProfileSample(profileSampleType, profileSample);
+    }
   }
 
   /**
@@ -983,12 +991,19 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   public void closeStream(String pipelineFQN, UUID runId) {
+    if (!isLogStorageEnabled()) {
+      // Closing a stream is idempotent: if log storage isn't configured there
+      // is nothing to close, so we treat this as a no-op rather than an error.
+      // This lets defensive callers (e.g. exit handlers, cleanup paths) call
+      // close() without first having to know whether streaming was enabled.
+      LOG.debug(
+          "Log storage not configured; closeStream is a no-op for pipeline: {}, runId: {}",
+          pipelineFQN,
+          runId);
+      return;
+    }
     try {
-      if (isLogStorageEnabled()) {
-        logStorage.closeStream(pipelineFQN, runId);
-      } else {
-        throw new IllegalStateException("Log storage is not configured");
-      }
+      logStorage.closeStream(pipelineFQN, runId);
     } catch (Exception e) {
       LOG.error("Failed to close stream for pipeline: {}, runId: {}", pipelineFQN, runId, e);
       throw new RuntimeException("Failed to close stream", e);

@@ -1,0 +1,60 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/policyagentconfig/databasePolicyConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatabasePolicyConfig",
+  "description": "Policy config for database service connectors (snowflake, postgres, etc.).",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.metadataIngestion.policyagentconfig.DatabasePolicyConfig",
+  "definitions": {
+    "principalType": {
+      "description": "Type of principal the grant is issued to.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.metadataIngestion.policyagentconfig.DatabasePrincipalType",
+      "enum": ["USER", "ROLE"],
+      "default": "USER"
+    },
+    "privilege": {
+      "description": "Privilege to grant.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.metadataIngestion.policyagentconfig.DatabasePrivilege",
+      "enum": ["USAGE", "SELECT", "INSERT", "UPDATE", "DELETE", "ALL"]
+    }
+  },
+  "properties": {
+    "principalType": {
+      "$ref": "#/definitions/principalType",
+      "default": "USER"
+    },
+    "principal": {
+      "description": "Grantee identifier. For USER this is typically the email/username; for ROLE the role name.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^;'\" ]+$"
+    },
+    "databaseName": {
+      "description": "Database on which the grant is applied.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "schemaName": {
+      "description": "Schema on which the grant is applied. If omitted, the grant is scoped to the database.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "tableName": {
+      "description": "Table on which the grant is applied. Requires schemaName.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "columnName": {
+      "description": "Column on which the grant is applied. Requires tableName. Supported only by connectors that allow column-level grants; ignored otherwise.",
+      "$ref": "../../entity/data/table.json#/definitions/columnName"
+    },
+    "privilege": {
+      "$ref": "#/definitions/privilege"
+    }
+  },
+  "required": ["principal", "databaseName", "privilege"],
+  "dependencies": {
+    "tableName": ["schemaName"],
+    "columnName": ["tableName"]
+  },
+  "additionalProperties": false
+}

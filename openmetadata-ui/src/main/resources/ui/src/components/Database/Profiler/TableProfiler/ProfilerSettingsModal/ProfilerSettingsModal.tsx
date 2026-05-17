@@ -56,6 +56,7 @@ import { CSMode } from '../../../../../enums/codemirror.enum';
 import {
   PartitionIntervalTypes,
   ProfileSampleType,
+  SampleConfigType,
   TableProfilerConfig,
 } from '../../../../../generated/entity/data/table';
 import {
@@ -176,11 +177,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       includeColumns,
       partitioning,
       profileQuery,
-      profileSample,
-      profileSampleType,
       excludeColumns,
       sampleDataCount,
+      profileSampleConfig,
     } = tableProfilerConfig;
+    const staticConfig = profileSampleConfig?.config;
+    const profileSample = staticConfig?.profileSample;
+    const profileSampleType = staticConfig?.profileSampleType;
     handleStateChange({
       sqlQuery: profileQuery ?? '',
       profileSample: profileSample,
@@ -293,17 +296,25 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         sampleDataCount,
       } = data;
 
+      const profileSample = profileSampleType
+        ? profileSampleType === ProfileSampleType.Percentage
+          ? profileSamplePercentage
+          : profileSampleRows
+        : undefined;
+
       const profileConfig: TableProfilerConfig = {
         excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
         profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
-        profileSample: profileSampleType
-          ? profileSampleType === ProfileSampleType.Percentage
-            ? profileSamplePercentage
-            : profileSampleRows
-          : undefined,
-        profileSampleType: isUndefined(profileSampleType)
-          ? undefined
-          : profileSampleType,
+        profileSampleConfig:
+          profileSampleType && profileSample
+            ? {
+                sampleConfigType: SampleConfigType.Static,
+                config: {
+                  profileSample,
+                  profileSampleType,
+                },
+              }
+            : undefined,
         includeColumns: !isEqual(includeCol, DEFAULT_INCLUDE_PROFILE)
           ? getIncludesColumns()
           : undefined,

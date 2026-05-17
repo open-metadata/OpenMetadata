@@ -17,6 +17,16 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     try {
+      MigrationUtil.migratePipelineServiceEdges(collectionDAO);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to migrate pipeline service edges in v1126 migration. "
+              + "The 'By Service' lineage view for pipeline services may be incomplete "
+              + "until a full reindex is performed.",
+          e);
+    }
+
+    try {
       MigrationUtil.revertWebhookAuthTypeToSecretKey(handle);
     } catch (Exception e) {
       LOG.error("Failed to revert webhook authType to secretKey in v1126 migration.", e);

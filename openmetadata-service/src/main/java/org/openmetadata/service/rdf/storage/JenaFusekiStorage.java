@@ -2,15 +2,30 @@ package org.openmetadata.service.rdf.storage;
 
 import java.io.ByteArrayOutputStream;
 import java.io.StringWriter;
+import java.net.ConnectException;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.channels.ClosedChannelException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
@@ -19,6 +34,9 @@ import org.apache.jena.query.ResultSet;
 import org.apache.jena.query.ResultSetFormatter;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.RDFNode;
+import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.rdfconnection.RDFConnection;
 import org.apache.jena.rdfconnection.RDFConnectionFuseki;
 import org.apache.jena.riot.RDFDataMgr;
@@ -26,6 +44,7 @@ import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.update.UpdateFactory;
 import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
 
 /**
  * Apache Jena Fuseki implementation of RDF storage.
@@ -37,24 +56,63 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
   private static final String METADATA_GRAPH = "https://open-metadata.org/graph/metadata";
 
+  // 2s caps TCP connect (Fuseki down / crash-looping). REQUEST_TIMEOUT_MS
+  // bounds the per-request body via a CompletableFuture wrapper around every
+  // blocking RDFConnection call below — caller thread frees on timeout even
+  // when Fuseki accepts the TCP connection and then stalls on the response.
+  //
+  // We use CompletableFuture rather than Jena's QueryExecution.setTimeout
+  // (removed in Jena 5; broke integration tests previously) or Jena's
+  // QueryExecutionHTTPBuilder / UpdateExecHTTPBuilder (API surface differs
+  // between Jena 4 and Jena 5, and our two classpaths use different
+  // versions). The wrapper is Jena-API-agnostic. On timeout the underlying
+  // HTTP request continues to leak its (virtual) thread until OS-level TCP
+  // give-up; that's bounded by the circuit breaker, which trips after
+  // CIRCUIT_BREAKER_FAILURE_THRESHOLD timeouts and short-circuits new
+  // traffic for CIRCUIT_BREAKER_COOLDOWN_MS.
+  private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(2);
+  private static final long REQUEST_TIMEOUT_MS = 10_000L;
+  private static final int CIRCUIT_BREAKER_FAILURE_THRESHOLD = 5;
+  private static final long CIRCUIT_BREAKER_COOLDOWN_MS = 30_000L;
+
+  // Dedicated virtual-thread executor for the timeout wrapper. We deliberately
+  // do NOT share ForkJoinPool.commonPool: a timed-out Jena call continues to
+  // block its worker thread until OS-level TCP give-up, and on commonPool that
+  // would starve unrelated CompletableFuture / parallel-stream work elsewhere
+  // in the service. Virtual threads are cheap to leak (a few KB stack each)
+  // and the circuit breaker bounds how many can pile up.
+  private static final ExecutorService TIMEOUT_EXECUTOR =
+      Executors.newThreadPerTaskExecutor(
+          Thread.ofVirtual().name("rdf-storage-timeout-", 0).factory());
+
   private final RDFConnection connection;
   private final String baseUri;
+  private final String endpoint;
+  private final String username;
+  private final String password;
+
+  private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
+  private final AtomicLong circuitOpenUntilMs = new AtomicLong(0L);
 
   public JenaFusekiStorage(RdfConfiguration config) {
     this.baseUri =
         config.getBaseUri() != null ? config.getBaseUri().toString() : "https://open-metadata.org/";
 
-    String endpoint =
+    this.endpoint =
         config.getRemoteEndpoint() != null && !config.getRemoteEndpoint().toString().isEmpty()
             ? config.getRemoteEndpoint().toString()
             : "http://openmetadata-fuseki:3030/openmetadata";
+    this.username = config.getUsername();
+    this.password = config.getPassword();
 
-    // Ensure the dataset exists before connecting
-    ensureDatasetExists(endpoint, config.getUsername(), config.getPassword());
+    // Best-effort attempt to create the dataset at startup; callers should invoke
+    // ensureStorageReady() before running work to recover from later restarts of the RDF server.
+    ensureDatasetExists(endpoint, username, password);
 
-    if (config.getUsername() != null && config.getPassword() != null) {
+    if (username != null && password != null) {
       java.net.http.HttpClient httpClient =
           java.net.http.HttpClient.newBuilder()
+              .connectTimeout(CONNECT_TIMEOUT)
               .authenticator(
                   new java.net.Authenticator() {
                     @Override
@@ -68,9 +126,36 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       this.connection =
           RDFConnectionFuseki.create().destination(endpoint).httpClient(httpClient).build();
     } else {
-      this.connection = RDFConnectionFuseki.create().destination(endpoint).build();
+      java.net.http.HttpClient httpClient =
+          java.net.http.HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
+      this.connection =
+          RDFConnectionFuseki.create().destination(endpoint).httpClient(httpClient).build();
     }
     LOG.info("Connected to Apache Jena Fuseki at {}", endpoint);
+    loadOntology();
+  }
+
+  @Override
+  public void ensureStorageReady() {
+    if (testConnection()) {
+      LOG.debug("Fuseki dataset at {} is accessible", endpoint);
+      return;
+    }
+
+    LOG.warn(
+        "Fuseki dataset at {} is not accessible; attempting to (re)create it before running",
+        endpoint);
+    ensureDatasetExists(endpoint, username, password);
+
+    if (!testConnection()) {
+      throw new IllegalStateException(
+          String.format(
+              "RDF storage is not accessible at %s after attempting dataset creation. "
+                  + "Verify the configured RDF endpoint URL, credentials, that the Fuseki dataset "
+                  + "exists, and that the configured user has permission to create it.",
+              endpoint));
+    }
+    LOG.info("Fuseki dataset at {} is now ready", endpoint);
     loadOntology();
   }
 
@@ -103,7 +188,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       LOG.info("Checking if Fuseki dataset '{}' exists at server {}", datasetName, serverBaseUrl);
 
       // Check if dataset exists by querying the datasets admin endpoint
-      HttpClient httpClient = HttpClient.newHttpClient();
+      HttpClient httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
       String adminUrl = serverBaseUrl + "/$/datasets/" + datasetName;
 
       HttpRequest.Builder requestBuilder = HttpRequest.newBuilder().uri(URI.create(adminUrl)).GET();
@@ -146,7 +231,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private void createDataset(
       String serverBaseUrl, String datasetName, String username, String password) {
     try {
-      HttpClient httpClient = HttpClient.newHttpClient();
+      HttpClient httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
       String adminUrl = serverBaseUrl + "/$/datasets";
 
       String body = "dbName=" + datasetName + "&dbType=tdb2";
@@ -210,11 +295,182 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
   }
 
+  private boolean isCircuitOpen() {
+    return System.currentTimeMillis() < circuitOpenUntilMs.get();
+  }
+
+  private void throwIfCircuitOpen(String operation) {
+    if (isCircuitOpen()) {
+      throw new RuntimeException(
+          "RDF circuit breaker is open; skipping " + operation + " until Fuseki recovers");
+    }
+  }
+
+  private void recordSuccess() {
+    consecutiveFailures.set(0);
+    circuitOpenUntilMs.set(0L);
+  }
+
+  private void recordFailure() {
+    int failures = consecutiveFailures.incrementAndGet();
+    if (failures >= CIRCUIT_BREAKER_FAILURE_THRESHOLD) {
+      long until = System.currentTimeMillis() + CIRCUIT_BREAKER_COOLDOWN_MS;
+      if (circuitOpenUntilMs.getAndSet(until) < until) {
+        LOG.warn(
+            "RDF circuit breaker tripped after {} consecutive failures; "
+                + "short-circuiting writes for {} ms",
+            failures,
+            CIRCUIT_BREAKER_COOLDOWN_MS);
+      }
+    }
+  }
+
+  private static boolean isConnectError(Throwable t) {
+    Throwable cause = t;
+    while (cause != null) {
+      if (cause instanceof ConnectException
+          || cause instanceof ClosedChannelException
+          || cause instanceof HttpConnectTimeoutException) {
+        return true;
+      }
+      Throwable next = cause.getCause();
+      if (next == cause) {
+        return false;
+      }
+      cause = next;
+    }
+    return false;
+  }
+
+  // Run a blocking RDFConnection call with a request-level deadline.
+  // CompletableFuture.runAsync executes the supplier on the common ForkJoinPool;
+  // get(REQUEST_TIMEOUT_MS, …) frees this thread when the deadline hits, even
+  // if the underlying HTTP request continues blocking until the server
+  // responds (or the OS gives up on the socket). Exceptions thrown by the
+  // supplier are unwrapped from ExecutionException so the caller sees the
+  // original Jena HttpException, IOException, etc. and can decide whether to
+  // retry or surface to the circuit breaker.
+  private static <T> T runWithTimeout(Supplier<T> op, String description) {
+    CompletableFuture<T> future = CompletableFuture.supplyAsync(op, TIMEOUT_EXECUTOR);
+    try {
+      return future.get(REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    } catch (TimeoutException te) {
+      // Cancellation doesn't actually interrupt Jena's HTTP call, but
+      // releases this thread; the leaked task continues until OS TCP timeout.
+      future.cancel(true);
+      throw new RuntimeException(description + " timed out after " + REQUEST_TIMEOUT_MS + "ms", te);
+    } catch (ExecutionException ee) {
+      Throwable cause = ee.getCause() != null ? ee.getCause() : ee;
+      if (cause instanceof RuntimeException re) {
+        throw re;
+      }
+      throw new RuntimeException(description + " failed", cause);
+    } catch (InterruptedException ie) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException(description + " interrupted", ie);
+    }
+  }
+
+  private static void runWithTimeout(Runnable op, String description) {
+    runWithTimeout(
+        () -> {
+          op.run();
+          return null;
+        },
+        description);
+  }
+
+  // Union the translator's static "always managed" predicates with whatever
+  // predicates the current model actually emits for this entity. The static
+  // set covers shrink-to-empty cases (e.g. all tags removed -> current model
+  // no longer emits om:hasTag, but we still need to clean up the old triples).
+  // The dynamic walk covers translator-only predicates introduced via the
+  // JSON-LD context that aren't in the static set. CRITICAL: exclude
+  // RELATIONSHIP_HOOK_PREDICATES from the dynamic-walk result. Callers like
+  // RdfRepository.addRelationship load the existing entity model from Fuseki
+  // (which includes hook-managed predicates like om:owns / om:contains) and
+  // pass it here; without this exclusion the dynamic walk would pull those
+  // hook predicates into the DELETE scope and the subsequent LOAD would
+  // overwrite them with a possibly-stale snapshot, opening a lost-update
+  // race window with concurrent async relationship writes.
+  private static Set<String> collectTranslatorPredicates(String entityUri, Model entityModel) {
+    Set<String> predicates =
+        new LinkedHashSet<>(RdfPropertyMapper.TRANSLATOR_MANAGED_DIRECT_PREDICATES);
+    Resource entityResource = entityModel.createResource(entityUri);
+    StmtIterator stmts = entityModel.listStatements(entityResource, null, (RDFNode) null);
+    while (stmts.hasNext()) {
+      String predicateUri = stmts.next().getPredicate().getURI();
+      if (org.openmetadata.service.rdf.RdfRepository.RELATIONSHIP_HOOK_PREDICATES.contains(
+          predicateUri)) {
+        continue;
+      }
+      predicates.add(predicateUri);
+    }
+    // Defensive belt-and-braces in case a future change adds a hook predicate
+    // to the static set: filter the static set the same way.
+    predicates.removeAll(org.openmetadata.service.rdf.RdfRepository.RELATIONSHIP_HOOK_PREDICATES);
+    return predicates;
+  }
+
+  private static String buildPredicateScopedDelete(String entityUri, Set<String> predicates) {
+    // Always delete literal-/blank-node-valued triples regardless of predicate.
+    // Predicates that emit literals (description, displayName, name, ...) may
+    // SHRINK TO EMPTY between writes — the new translator output simply omits
+    // the triple — and the old literal would persist unless we sweep it here.
+    // Hook-managed URI triples (om:owns / om:contains / lineage / etc.) are
+    // safe because the FILTER below requires isIRI(?o) for them to qualify.
+    String literalSweep =
+        String.format(
+            "DELETE { GRAPH <%s> { <%s> ?p ?o } } "
+                + "WHERE { GRAPH <%s> { <%s> ?p ?o . FILTER(!isIRI(?o)) } }",
+            KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri);
+    if (predicates.isEmpty()) {
+      return literalSweep;
+    }
+    StringBuilder filterIn = new StringBuilder();
+    boolean first = true;
+    for (String pred : predicates) {
+      if (!first) {
+        filterIn.append(", ");
+      }
+      first = false;
+      filterIn.append('<').append(pred).append('>');
+    }
+    // Chain the literal sweep + the predicate-scoped URI delete in one update.
+    // The literal sweep on its own would leave stale URI triples for
+    // translator predicates that disappeared from the new model (rare, but
+    // possible if a JSON-LD context predicate is removed); the predicate-scoped
+    // URI delete on its own would leave stale literals as Copilot flagged.
+    return literalSweep
+        + "; "
+        + String.format(
+            "DELETE { GRAPH <%s> { <%s> ?p ?o } } WHERE { GRAPH <%s> { <%s> ?p ?o . FILTER(isIRI(?o) && ?p IN (%s)) } }",
+            KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri, filterIn);
+  }
+
   @Override
   public void storeEntity(String entityType, UUID entityId, Model entityModel) {
+    throwIfCircuitOpen("storeEntity");
     String entityUri = baseUri + "entity/" + entityType + "/" + entityId;
-    String deleteQuery =
-        String.format("DELETE WHERE { GRAPH <%s> { <%s> ?p ?o } }", KNOWLEDGE_GRAPH, entityUri);
+    // Scope the DELETE to predicates the translator owns. The previous
+    // FILTER(!isIRI(?o)) preserved EVERY URI object, which let stale
+    // translator-emitted triples (old om:hasOwner, removed om:hasTag, etc.)
+    // accumulate across updates because no hook ever cleans them up — owner /
+    // tag / glossary-term URIs aren't in entity_relationship. Predicate
+    // scoping lets the translator's fresh output replace the prior values,
+    // while hook-managed predicates (om:UPSTREAM, om:hasLineageDetails,
+    // om:owns / om:contains / …) are untouched so relationship and lineage
+    // state survives a metadata-only update.
+    //
+    // The set we delete is the union of:
+    //  - RdfPropertyMapper.TRANSLATOR_MANAGED_DIRECT_PREDICATES (covers the
+    //    shrink-to-empty case where a field is now absent and the new model
+    //    no longer emits its predicate), and
+    //  - the predicates the current model actually emits for <entityUri>
+    //    (covers translator-only predicates introduced via the JSON-LD
+    //    context that aren't in the static set).
+    Set<String> predicatesToDelete = collectTranslatorPredicates(entityUri, entityModel);
+    String deleteQuery = buildPredicateScopedDelete(entityUri, predicatesToDelete);
 
     int maxRetries = 3;
     int retryCount = 0;
@@ -223,12 +479,18 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     while (retryCount < maxRetries) {
       try {
         UpdateRequest deleteRequest = UpdateFactory.create(deleteQuery);
-        connection.update(deleteRequest);
-        connection.load(KNOWLEDGE_GRAPH, entityModel);
+        runWithTimeout(() -> connection.update(deleteRequest), "storeEntity delete");
+        runWithTimeout(() -> connection.load(KNOWLEDGE_GRAPH, entityModel), "storeEntity load");
         LOG.debug("Stored entity {} in graph {}", entityId, KNOWLEDGE_GRAPH);
+        recordSuccess();
         return;
       } catch (org.apache.jena.atlas.web.HttpException e) {
         lastException = e;
+        if (isConnectError(e)) {
+          recordFailure();
+          LOG.error("Fuseki unreachable storing entity {}; fast-failing without retry", entityId);
+          throw new RuntimeException("Failed to store entity in RDF (Fuseki unreachable)", e);
+        }
         retryCount++;
         if (retryCount < maxRetries) {
           try {
@@ -246,21 +508,25 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           }
         } else {
           LOG.error("Failed to store entity in Fuseki after {} attempts", maxRetries, e);
+          recordFailure();
           throw new RuntimeException("Failed to store entity in RDF", e);
         }
       } catch (Exception e) {
         LOG.error("Failed to store entity in Fuseki", e);
+        recordFailure();
         throw new RuntimeException("Failed to store entity in RDF", e);
       }
     }
 
     LOG.error("Failed to store entity after {} retries", maxRetries);
+    recordFailure();
     throw new RuntimeException("Failed to store entity in RDF after retries", lastException);
   }
 
   @Override
   public void storeRelationship(
       String fromType, UUID fromId, String toType, UUID toId, String relationshipType) {
+    throwIfCircuitOpen("storeRelationship");
 
     // Use DELETE/INSERT pattern for idempotency - deletes existing triple before inserting
     String deleteInsertQuery =
@@ -302,11 +568,20 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       try {
         LOG.debug("SPARQL Update Query: {}", deleteInsertQuery);
         UpdateRequest request = UpdateFactory.create(deleteInsertQuery);
-        connection.update(request);
+        runWithTimeout(() -> connection.update(request), "storeRelationship");
         LOG.debug("Stored relationship (idempotent): {} -{}- {}", fromId, relationshipType, toId);
+        recordSuccess();
         return; // Success
       } catch (org.apache.jena.atlas.web.HttpException e) {
         lastException = e;
+        if (isConnectError(e)) {
+          recordFailure();
+          LOG.error(
+              "Fuseki unreachable storing relationship {}->{}; fast-failing without retry",
+              fromId,
+              toId);
+          throw new RuntimeException("Failed to store relationship in RDF (Fuseki unreachable)", e);
+        }
         retryCount++;
         if (retryCount < maxRetries) {
           try {
@@ -324,86 +599,144 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           }
         } else {
           LOG.error("Failed to store relationship in Fuseki after {} attempts", maxRetries, e);
+          recordFailure();
           throw new RuntimeException("Failed to store relationship in RDF", e);
         }
       } catch (Exception e) {
         LOG.error("Failed to store relationship in Fuseki", e);
+        recordFailure();
         throw new RuntimeException("Failed to store relationship in RDF", e);
       }
     }
 
     LOG.error("Failed to store relationship after {} retries", maxRetries);
+    recordFailure();
     throw new RuntimeException("Failed to store relationship in RDF after retries", lastException);
   }
 
   @Override
-  public void bulkStoreRelationships(List<RelationshipData> relationships) {
-    if (relationships.isEmpty()) {
+  public String buildEntityUri(String entityType, String entityId) {
+    return baseUri + "entity/" + entityType + "/" + entityId;
+  }
+
+  @Override
+  public void bulkStoreRelationships(
+      List<RelationshipData> relationships, Set<String> sourcesToReconcile) {
+    if (relationships.isEmpty() && (sourcesToReconcile == null || sourcesToReconcile.isEmpty())) {
       return;
     }
+    throwIfCircuitOpen("bulkStoreRelationships");
+    // Normalise to an empty set once so the per-source DELETE loop is safe
+    // regardless of caller. The early-return above already handles the
+    // null+empty-relationships case; this guards a caller that passes null
+    // with a non-empty relationships list (insert-only, no reconcile).
+    Set<String> effectiveSources = sourcesToReconcile != null ? sourcesToReconcile : Set.of();
 
-    // First, delete existing relationships to ensure idempotency
-    // This prevents duplicate triples when reindexing
-    StringBuilder deleteData = new StringBuilder();
-    deleteData.append("PREFIX om: <").append(baseUri).append("ontology/> ");
-    deleteData.append("DELETE DATA { GRAPH <").append(KNOWLEDGE_GRAPH).append("> { ");
+    // Per-source-entity reconciliation: for each source URI the caller asked
+    // us to reconcile, wipe every outgoing relationship-hook edge first, then
+    // insert the current batch. Sources NOT in sourcesToReconcile (e.g. an
+    // outside-batch upstream entity that contributed only an incoming lineage
+    // row) get their new edges inserted but their existing edges are left
+    // alone — wiping them would destroy unrelated state that this batch
+    // never had visibility into.
+    //
+    // The DELETE filter is scoped to RELATIONSHIP_HOOK_PREDICATES (derived
+    // from the Relationship enum, see RdfRepository) so it ONLY touches
+    // predicates that addRelationship / bulkAddRelationships actually write.
+    // Lineage predicates (managed by addLineageWithDetails) and
+    // translator-managed predicates (om:hasOwner / om:hasTag / etc., managed
+    // by storeEntity's predicate-scoped DELETE) are NOT in the set and are
+    // therefore preserved across reconciliation.
+    String hookPredicateList =
+        org.openmetadata.service.rdf.RdfRepository.buildPredicateInList(
+            org.openmetadata.service.rdf.RdfRepository.RELATIONSHIP_HOOK_PREDICATES);
 
-    for (RelationshipData rel : relationships) {
-      deleteData.append(
-          String.format(
-              "<%sentity/%s/%s> om:%s <%sentity/%s/%s> . ",
-              baseUri,
-              rel.getFromType(),
-              rel.getFromId(),
-              rel.getRelationshipType(),
-              baseUri,
-              rel.getToType(),
-              rel.getToId()));
+    StringBuilder deleteUpdate = new StringBuilder();
+    boolean firstDelete = true;
+    for (String sourceUri : effectiveSources) {
+      if (!firstDelete) {
+        deleteUpdate.append("; ");
+      }
+      firstDelete = false;
+      deleteUpdate
+          .append("DELETE { GRAPH <")
+          .append(KNOWLEDGE_GRAPH)
+          .append("> { <")
+          .append(sourceUri)
+          .append("> ?p ?o } } WHERE { GRAPH <")
+          .append(KNOWLEDGE_GRAPH)
+          .append("> { <")
+          .append(sourceUri)
+          .append("> ?p ?o . FILTER(?p IN (")
+          .append(hookPredicateList)
+          .append(")) } }");
     }
-    deleteData.append("} }");
 
-    // Then insert the new relationships
     StringBuilder insertData = new StringBuilder();
-    insertData.append("PREFIX om: <").append(baseUri).append("ontology/> ");
     insertData.append("INSERT DATA { GRAPH <").append(KNOWLEDGE_GRAPH).append("> { ");
-
     for (RelationshipData rel : relationships) {
+      // Use the pre-computed predicateUri (via RdfRepository.getRelationshipPredicate)
+      // so the triple written here matches what addRelationship / removeRelationship
+      // expect for the same relationship type. Fall back to the lowercase
+      // `<baseUri>ontology/<type>` for any caller that built RelationshipData via
+      // the legacy 5-arg constructor — same shape the original implementation used.
+      String predicateUri =
+          rel.getPredicateUri() != null
+              ? rel.getPredicateUri()
+              : baseUri + "ontology/" + rel.getRelationshipType();
       insertData.append(
           String.format(
-              "<%sentity/%s/%s> om:%s <%sentity/%s/%s> . ",
+              "<%sentity/%s/%s> <%s> <%sentity/%s/%s> . ",
               baseUri,
               rel.getFromType(),
               rel.getFromId(),
-              rel.getRelationshipType(),
+              predicateUri,
               baseUri,
               rel.getToType(),
               rel.getToId()));
     }
-
     insertData.append("} }");
 
-    try {
-      // Execute delete first (ignore errors if triples don't exist)
-      try {
-        UpdateRequest deleteRequest = UpdateFactory.create(deleteData.toString());
-        connection.update(deleteRequest);
-      } catch (Exception e) {
-        // Ignore delete errors - triples may not exist on first indexing
-        LOG.debug("Delete before insert completed (some triples may not have existed)");
+    // Combine DELETE and INSERT into a SINGLE SPARQL update so they share a
+    // transaction at the Fuseki side — if the request fails, neither half
+    // commits, and we never leave the graph half-reconciled. (The previous
+    // separate calls + a failed insert could leave sources wiped without
+    // their replacement edges in place until the next weekly recreate-index.)
+    StringBuilder combined = new StringBuilder();
+    if (deleteUpdate.length() > 0) {
+      combined.append(deleteUpdate);
+      if (!relationships.isEmpty()) {
+        combined.append("; ");
       }
+    }
+    if (!relationships.isEmpty()) {
+      combined.append(insertData);
+    }
 
-      // Then execute insert
-      UpdateRequest insertRequest = UpdateFactory.create(insertData.toString());
-      connection.update(insertRequest);
-      LOG.info("Bulk stored {} relationships (idempotent)", relationships.size());
+    try {
+      if (combined.length() == 0) {
+        return; // No work — empty relationships AND empty sourcesToReconcile is the early return
+        // above.
+      }
+      UpdateRequest request = UpdateFactory.create(combined.toString());
+      runWithTimeout(() -> connection.update(request), "bulkStoreRelationships");
+      LOG.info(
+          "Bulk stored {} relationships, reconciled {} source entities",
+          relationships.size(),
+          effectiveSources.size());
+      recordSuccess();
     } catch (Exception e) {
       LOG.error("Failed to bulk store relationships in Fuseki", e);
+      recordFailure();
       throw new RuntimeException("Failed to bulk store relationships in RDF", e);
     }
   }
 
   @Override
   public Model getEntity(String entityType, UUID entityId) {
+    if (isCircuitOpen()) {
+      return null;
+    }
     String entityUri = baseUri + "entity/" + entityType + "/" + entityId;
 
     String query =
@@ -413,16 +746,28 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
     try {
       Query q = QueryFactory.create(query);
-      Model result = connection.queryConstruct(q);
+      Model result =
+          runWithTimeout(
+              () -> {
+                try (QueryExecution qexec = connection.query(q)) {
+                  return qexec.execConstruct();
+                }
+              },
+              "getEntity");
+      recordSuccess();
       return result.isEmpty() ? null : result;
     } catch (Exception e) {
       LOG.error("Failed to get entity from Fuseki", e);
+      if (isConnectError(e)) {
+        recordFailure();
+      }
       return null;
     }
   }
 
   @Override
   public void deleteEntity(String entityType, UUID entityId) {
+    throwIfCircuitOpen("deleteEntity");
     String entityUri = baseUri + "entity/" + entityType + "/" + entityId;
 
     // Delete entity and all its relationships from the knowledge graph
@@ -434,60 +779,79 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
     try {
       UpdateRequest request = UpdateFactory.create(deleteQuery);
-      connection.update(request);
+      runWithTimeout(() -> connection.update(request), "deleteEntity");
       LOG.debug("Deleted entity {} from Fuseki", entityId);
+      recordSuccess();
     } catch (Exception e) {
       LOG.error("Failed to delete entity from Fuseki", e);
+      if (isConnectError(e)) {
+        recordFailure();
+      }
       throw new RuntimeException("Failed to delete entity from RDF", e);
     }
   }
 
   @Override
   public String executeSparqlQuery(String sparqlQuery, String format) {
+    throwIfCircuitOpen("executeSparqlQuery");
     try {
-      Query query = QueryFactory.create(sparqlQuery);
-
-      if (query.isSelectType()) {
-        try (QueryExecution qexec = connection.query(query)) {
-          ResultSet results = qexec.execSelect();
-
-          switch (format.toLowerCase()) {
-            case "json":
-            case "application/json":
-            case "application/sparql-results+json":
-              ByteArrayOutputStream out = new ByteArrayOutputStream();
-              ResultSetFormatter.outputAsJSON(out, results);
-              return out.toString();
-            case "xml":
-            case "application/xml":
-            case "application/sparql-results+xml":
-              return ResultSetFormatter.asXMLString(results);
-            case "csv":
-            case "text/csv":
-              ByteArrayOutputStream csvOut = new ByteArrayOutputStream();
-              ResultSetFormatter.outputAsCSV(csvOut, results);
-              return csvOut.toString();
-            default:
-              return ResultSetFormatter.asText(results);
-          }
-        }
-      } else if (query.isConstructType()) {
-        Model resultModel = connection.queryConstruct(query);
-        return formatModel(resultModel, format);
-      } else if (query.isAskType()) {
-        boolean result = connection.queryAsk(query);
-        LOG.info("ASK query result: {}", result);
-        return "{\"head\": {}, \"boolean\": " + result + "}";
-      } else if (query.isDescribeType()) {
-        Model resultModel = connection.queryDescribe(query);
-        return formatModel(resultModel, format);
-      }
-
-      return "Unsupported query type";
+      String result =
+          runWithTimeout(() -> doExecuteSparqlQuery(sparqlQuery, format), "executeSparqlQuery");
+      recordSuccess();
+      return result;
     } catch (Exception e) {
       LOG.error("Failed to execute SPARQL query on Fuseki", e);
+      if (isConnectError(e)) {
+        recordFailure();
+      }
       throw new RuntimeException("Failed to execute SPARQL query", e);
     }
+  }
+
+  private String doExecuteSparqlQuery(String sparqlQuery, String format) {
+    Query query = QueryFactory.create(sparqlQuery);
+
+    if (query.isSelectType()) {
+      try (QueryExecution qexec = connection.query(query)) {
+        ResultSet results = qexec.execSelect();
+
+        switch (format.toLowerCase()) {
+          case "json":
+          case "application/json":
+          case "application/sparql-results+json":
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ResultSetFormatter.outputAsJSON(out, results);
+            return out.toString();
+          case "xml":
+          case "application/xml":
+          case "application/sparql-results+xml":
+            return ResultSetFormatter.asXMLString(results);
+          case "csv":
+          case "text/csv":
+            ByteArrayOutputStream csvOut = new ByteArrayOutputStream();
+            ResultSetFormatter.outputAsCSV(csvOut, results);
+            return csvOut.toString();
+          default:
+            return ResultSetFormatter.asText(results);
+        }
+      }
+    } else if (query.isConstructType()) {
+      try (QueryExecution qexec = connection.query(query)) {
+        return formatModel(qexec.execConstruct(), format);
+      }
+    } else if (query.isAskType()) {
+      try (QueryExecution qexec = connection.query(query)) {
+        boolean result = qexec.execAsk();
+        LOG.info("ASK query result: {}", result);
+        return "{\"head\": {}, \"boolean\": " + result + "}";
+      }
+    } else if (query.isDescribeType()) {
+      try (QueryExecution qexec = connection.query(query)) {
+        return formatModel(qexec.execDescribe(), format);
+      }
+    }
+
+    return "Unsupported query type";
   }
 
   private String formatModel(Model model, String format) {
@@ -506,18 +870,24 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   @Override
   public void executeSparqlUpdate(String sparqlUpdate) {
+    throwIfCircuitOpen("executeSparqlUpdate");
     try {
       UpdateRequest request = UpdateFactory.create(sparqlUpdate);
-      connection.update(request);
+      runWithTimeout(() -> connection.update(request), "executeSparqlUpdate");
       LOG.debug("Executed SPARQL update on Fuseki");
+      recordSuccess();
     } catch (Exception e) {
       LOG.error("Failed to execute SPARQL update on Fuseki", e);
+      if (isConnectError(e)) {
+        recordFailure();
+      }
       throw new RuntimeException("Failed to execute SPARQL update", e);
     }
   }
 
   @Override
   public void loadTurtleFile(java.io.InputStream turtleStream, String graphUri) {
+    throwIfCircuitOpen("loadTurtleFile");
     try {
       Model model = ModelFactory.createDefaultModel();
       model.read(turtleStream, null, "TURTLE");
@@ -533,14 +903,19 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       connection.load(graphUri, model);
 
       LOG.info("Loaded Turtle file into graph {} with {} triples", graphUri, model.size());
+      recordSuccess();
     } catch (Exception e) {
       LOG.error("Failed to load Turtle file into Fuseki", e);
+      if (isConnectError(e)) {
+        recordFailure();
+      }
       throw new RuntimeException("Failed to load Turtle file", e);
     }
   }
 
   @Override
   public List<String> getAllGraphs() {
+    throwIfCircuitOpen("getAllGraphs");
     String query = "SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }";
     List<String> graphs = new ArrayList<>();
 
@@ -551,6 +926,12 @@ public class JenaFusekiStorage implements RdfStorageInterface {
             String graphUri = qs.getResource("g").getURI();
             graphs.add(graphUri);
           });
+      recordSuccess();
+    } catch (Exception e) {
+      if (isConnectError(e)) {
+        recordFailure();
+      }
+      throw e;
     }
 
     return graphs;
@@ -558,13 +939,20 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   @Override
   public long getTripleCount() {
+    throwIfCircuitOpen("getTripleCount");
     String query = "SELECT (COUNT(*) as ?count) WHERE { GRAPH ?g { ?s ?p ?o } }";
 
     try (QueryExecution qexec = connection.query(query)) {
       ResultSet results = qexec.execSelect();
+      recordSuccess();
       if (results.hasNext()) {
         return results.next().getLiteral("count").getLong();
       }
+    } catch (Exception e) {
+      if (isConnectError(e)) {
+        recordFailure();
+      }
+      throw e;
     }
 
     return 0;
@@ -572,21 +960,27 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   @Override
   public void clearGraph(String graphUri) {
+    throwIfCircuitOpen("clearGraph");
     try {
       connection.delete(graphUri);
       LOG.info("Cleared graph: {}", graphUri);
+      recordSuccess();
     } catch (Exception e) {
       LOG.error("Failed to clear graph on Fuseki", e);
+      if (isConnectError(e)) {
+        recordFailure();
+      }
       throw new RuntimeException("Failed to clear graph", e);
     }
   }
 
   @Override
   public boolean testConnection() {
-    try {
-      // Try a simple ASK query
-      String testQuery = "ASK { ?s ?p ?o }";
-      connection.queryAsk(testQuery);
+    // testConnection is the probe used to detect when Fuseki has recovered, so
+    // it must bypass the circuit breaker — otherwise we could never re-close it.
+    try (QueryExecution qexec = connection.query("ASK { ?s ?p ?o }")) {
+      qexec.execAsk();
+      recordSuccess();
       return true;
     } catch (Exception e) {
       LOG.error("Connection test failed", e);

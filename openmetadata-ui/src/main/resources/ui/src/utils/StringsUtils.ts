@@ -17,8 +17,12 @@ import { get, isString } from 'lodash';
 import i18n from './i18next/LocalUtil';
 
 export const stringToSlug = (dataString: string, slugString = '') => {
-  return dataString.toLowerCase().replace(/ /g, slugString);
+  return dataString.toLowerCase().replaceAll(' ', slugString);
 };
+
+// will add back slash "\" before quote in string if present
+export const getQueryWithSlash = (query: string): string =>
+  query.replaceAll(/["']/g, String.raw`\$&`);
 
 /**
  * Convert a template string into HTML DOM nodes
@@ -66,8 +70,7 @@ export const getJSONFromString = (data: string): string | null => {
   try {
     // Format string if possible and return valid JSON
     return JSON.parse(data);
-  } catch (e) {
-    // Invalid JSON, return null
+  } catch (_error) {
     return null;
   }
 };
@@ -87,7 +90,7 @@ export const bytesToSize = (bytes: number) => {
   } else if (bytes < 0) {
     return `N/A`;
   } else {
-    const i = parseInt(
+    const i = Number.parseInt(
       Math.floor(Math.log(bytes) / Math.log(1024)).toString(),
       10
     );
@@ -160,15 +163,6 @@ export const getDecodedFqn = (fqn: string, plusAsSpace = false) => {
 
 /**
  *
- * @param url - Url to be check
- * @returns - True if url is external otherwise false
- */
-export const isExternalUrl = (url = '') => {
-  return /^https?:\/\//.test(url);
-};
-
-/**
- *
  * @param a compare value one
  * @param b compare value two
  * @returns sorted array (A-Z) which will have custom value at last
@@ -189,41 +183,41 @@ export const customServiceComparator = (a: string, b: string): number => {
 export const replacePlus = (fqn: string) => fqn.replaceAll('+', ' ');
 
 export const ES_RESERVED_CHARACTERS: Record<string, string> = {
-  '+': '\\+',
-  '-': '\\-',
-  '=': '\\=',
-  '&': '\\&',
-  '&&': '\\&&',
-  '||': '\\||',
-  '>': '\\>',
-  '<': '\\<',
-  '!': '\\!',
-  '(': '\\(',
-  ')': '\\)',
-  '{': '\\{',
-  '}': '\\}',
-  '[': '\\[',
-  ']': '\\]',
-  '^': '\\^',
-  '"': '\\"',
-  '~': '\\~',
-  '*': '\\*',
-  '?': '\\?',
-  ':': '\\:',
-  '\\': '\\\\',
-  '/': '\\/',
+  '+': String.raw`\+`,
+  '-': String.raw`\-`,
+  '=': String.raw`\=`,
+  '&': String.raw`\&`,
+  '&&': String.raw`\&&`,
+  '||': String.raw`\||`,
+  '>': String.raw`\>`,
+  '<': String.raw`\<`,
+  '!': String.raw`\!`,
+  '(': String.raw`\(`,
+  ')': String.raw`\)`,
+  '{': String.raw`\{`,
+  '}': String.raw`\}`,
+  '[': String.raw`\[`,
+  ']': String.raw`\]`,
+  '^': String.raw`\^`,
+  '"': String.raw`\"`,
+  '~': String.raw`\~`,
+  '*': String.raw`\*`,
+  '?': String.raw`\?`,
+  ':': String.raw`\:`,
+  '\\': String.raw`\\`,
+  '/': String.raw`\/`,
 };
 
 export const escapeESReservedCharacters = (text?: string) => {
   const reUnescapedHtml = /[\\[\]#+=&|><!(){}^"~*?:/-]/g;
-  const reHasUnescapedHtml = RegExp(reUnescapedHtml.source);
+  const reHasUnescapedHtml = new RegExp(reUnescapedHtml.source);
 
   const getReplacedChar = (char: string) => {
     return ES_RESERVED_CHARACTERS[char] ?? char;
   };
 
   return text && reHasUnescapedHtml.test(text)
-    ? text.replace(reUnescapedHtml, getReplacedChar)
+    ? text.replaceAll(reUnescapedHtml, getReplacedChar)
     : text ?? '';
 };
 
@@ -251,7 +245,7 @@ export const formatJsonString = (jsonString: string, indent = '') => {
     }
 
     return formattedJson;
-  } catch (error) {
+  } catch (_error) {
     // Return the original JSON string if parsing fails
     return jsonString;
   }
@@ -276,7 +270,7 @@ export const replaceCallback = (character: string) => {
  * @returns A UUID string
  */
 export const generateUUID = () => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replaceAll(
     /[xy]/g,
     replaceCallback
   );
@@ -315,7 +309,7 @@ export const jsonToCSV = <T extends JSONRecord>(
         }
         const escaped =
           typeof value === 'string'
-            ? value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+            ? value.replaceAll('\\', '\\\\').replaceAll('"', String.raw`\"`)
             : value.toString(); // handle quotes in content
 
         return `"${escaped}"`; // wrap each field in quotes
@@ -350,7 +344,7 @@ export function removeAttachmentsWithoutUrl(htmlString: string): string {
     doc.querySelectorAll<HTMLDivElement>('div[data-type="file-attachment"]');
 
   attachments.forEach((div: HTMLDivElement) => {
-    const url: string | null = div.getAttribute('data-url');
+    const url = div.dataset.url;
     if (!url) {
       div.remove();
     }

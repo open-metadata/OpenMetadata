@@ -14,7 +14,10 @@
 import { Glossary } from '../../generated/entity/data/glossary';
 import { EntityReference } from '../../generated/entity/type';
 import { GlossaryTermRelationType } from '../../rest/settingConfigAPI';
-import type { LayoutEngineType } from './OntologyExplorer.constants';
+import {
+  LayoutType,
+  type LayoutEngineType,
+} from './OntologyExplorer.constants';
 
 export type OntologyScope = 'global' | 'glossary' | 'term';
 
@@ -60,10 +63,8 @@ export interface OntologyGraphData {
   edges: OntologyEdge[];
 }
 
-import { LayoutType } from './OntologyExplorer.constants';
 import type { GraphSearchHighlightInput } from './utils/graphSearchHighlight';
 
-export type LayoutAlgorithm = LayoutType;
 export type { LayoutEngineType } from './OntologyExplorer.constants';
 export type { GraphSearchHighlightInput } from './utils/graphSearchHighlight';
 export type GraphViewMode = 'overview' | 'hierarchy' | 'crossGlossary';
@@ -108,6 +109,7 @@ export interface OntologyGraphProps {
   nodePositions?: Record<string, { x: number; y: number }>;
   selectedNodeId?: string | null;
   expandedTermIds?: Set<string>;
+  glossaries: Glossary[];
   glossaryColorMap: Record<string, string>;
   dataSignature?: string;
   explorationMode?: ExplorationMode;
@@ -123,10 +125,6 @@ export interface OntologyGraphProps {
     }
   ) => void;
   onNodeDoubleClick: (node: OntologyNode) => void;
-  onNodeContextMenu: (
-    node: OntologyNode,
-    position: { x: number; y: number }
-  ) => void;
   onPaneClick: () => void;
   onScrollNearEdge?: () => void;
 }
@@ -138,22 +136,18 @@ export interface FilterToolbarProps {
   onFiltersChange: (filters: GraphFilters) => void;
   onViewModeChange?: (viewMode: GraphViewMode) => void;
   onClearAll?: () => void;
+  onLoadMore?: () => void;
   viewModeDisabled?: boolean;
+  isLoading?: boolean;
+  isLoadingMore?: boolean;
+  hasMoreTerms?: boolean;
+  loadedTermCount?: number;
+  totalTermCount?: number;
 }
 
 export interface GraphSettingsPanelProps {
   settings: GraphSettings;
   onSettingsChange: (settings: GraphSettings) => void;
-  isDataMode?: boolean;
-}
-
-export interface NodeContextMenuProps {
-  node: OntologyNode;
-  position: { x: number; y: number };
-  onClose: () => void;
-  onFocus: (node: OntologyNode) => void;
-  onViewDetails: (node: OntologyNode) => void;
-  onOpenInNewTab: (node: OntologyNode) => void;
 }
 
 export interface OntologyControlButtonsProps {
@@ -221,6 +215,7 @@ export interface BuildGraphDataProps {
   expandedTermIds?: Set<string>;
   clickedEdgeId: string | null;
   nodePositions?: Record<string, { x: number; y: number }>;
+  glossaries: Glossary[];
   glossaryColorMap: Record<string, string>;
   layoutType: LayoutEngineType;
   hierarchyCombos?: HierarchyComboInfo[];

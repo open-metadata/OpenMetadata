@@ -236,7 +236,7 @@ jest.mock('../../../../utils/EntityUtils', () => ({
       if (entityLink.includes('::columns::')) {
         const parts = entityLink.split('::columns::');
 
-        return parts[parts.length - 1];
+        return parts.at(-1);
       }
 
       return null;

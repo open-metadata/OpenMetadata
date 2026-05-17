@@ -7,15 +7,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
-import org.openmetadata.schema.api.feed.CloseTask;
-import org.openmetadata.schema.entity.feed.Thread;
-import org.openmetadata.schema.type.TaskStatus;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
-import org.openmetadata.service.jdbi3.FeedRepository;
+import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 @Slf4j
@@ -41,7 +36,6 @@ public class AutoApproveServiceTaskImpl implements JavaDelegate {
           execution.getProcessInstanceId());
     }
 
-    // Close any existing orphaned tasks before auto-approval and log entity info
     if (inputNamespaceMapExpr != null) {
       try {
         Map<String, String> inputNamespaceMap =
@@ -51,28 +45,11 @@ public class AutoApproveServiceTaskImpl implements JavaDelegate {
                 varHandler.getNamespacedVariable(
                     inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE);
 
-        // Close orphaned tasks if they exist
         if (entityInfo != null) {
           MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityInfo);
-          FeedRepository feedRepository = Entity.getFeedRepository();
-
-          try {
-            Thread existingTask =
-                feedRepository.getTask(entityLink, TaskType.RequestApproval, TaskStatus.Open);
-            if (existingTask != null) {
-              CloseTask closeTask =
-                  new CloseTask().withComment("Task auto-approved: " + autoApprovalReason);
-              feedRepository.closeTaskWithoutWorkflow(existingTask, "system", closeTask);
-              LOG.info(
-                  "Closed orphaned task {} due to auto-approval: {}",
-                  existingTask.getId(),
-                  autoApprovalReason);
-            }
-          } catch (EntityNotFoundException e) {
-            LOG.debug(
-                "No existing approval task found for entity {}, proceeding with auto-approval",
-                entityInfo);
-          }
+          TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+          taskRepository.closeApprovalTaskForEntity(
+              entityLink.getEntityFQN(), "system", "Task auto-approved: " + autoApprovalReason);
         }
 
         LOG.info("Auto-approved entity: {}", entityInfo);

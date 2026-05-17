@@ -14,6 +14,7 @@
 package org.openmetadata.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
 import io.dropwizard.core.Configuration;
 import io.dropwizard.core.server.DefaultServerFactory;
 import jakarta.validation.Valid;
@@ -34,11 +35,13 @@ import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.configuration.AdminOpsConfiguration;
 import org.openmetadata.schema.configuration.AiPlatformConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
+import org.openmetadata.schema.configuration.SentryConfiguration;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.config.BulkOperationConfiguration;
+import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.config.QoSConfiguration;
@@ -76,6 +79,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("elasticsearch")
   private ElasticSearchConfiguration elasticSearchConfiguration;
+
+  @JsonProperty("nlqHybridSearch")
+  private JsonNode nlqHybridSearch;
 
   @JsonProperty("eventHandlerConfiguration")
   private EventHandlerConfiguration eventHandlerConfiguration;
@@ -166,6 +172,16 @@ public class OpenMetadataApplicationConfig extends Configuration {
     return adminOpsConfiguration;
   }
 
+  @JsonProperty("sentry")
+  private SentryConfiguration sentryConfiguration;
+
+  public SentryConfiguration getSentryConfiguration() {
+    if (sentryConfiguration == null) {
+      sentryConfiguration = new SentryConfiguration();
+    }
+    return sentryConfiguration;
+  }
+
   @JsonProperty("mcpConfiguration")
   private org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfiguration;
 
@@ -196,11 +212,22 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("qos")
   private QoSConfiguration qosConfiguration;
 
+  @JsonProperty("cacheMemory")
+  @Valid
+  private CacheConfiguration cacheMemoryConfiguration = new CacheConfiguration();
+
   public QoSConfiguration getQosConfiguration() {
     if (qosConfiguration == null) {
       qosConfiguration = new QoSConfiguration();
     }
     return qosConfiguration;
+  }
+
+  public CacheConfiguration getCacheMemoryConfiguration() {
+    if (cacheMemoryConfiguration == null) {
+      cacheMemoryConfiguration = new CacheConfiguration();
+    }
+    return cacheMemoryConfiguration;
   }
 
   public String getApiRootPath() {

@@ -12,19 +12,16 @@
 Helper module to handle data sampling
 for the profiler
 """
-from copy import deepcopy
-from typing import Dict, Optional, Union
+
+from copy import deepcopy  # noqa: I001
+from typing import Dict, Optional, Union  # noqa: UP035
 
 from sqlalchemy import Column
 from sqlalchemy import Table as SqaTable
 from sqlalchemy import text
 from sqlalchemy.orm import Query
 
-from metadata.generated.schema.entity.data.table import (
-    ProfileSampleType,
-    Table,
-    TableType,
-)
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     DataStorageConfig,
 )
@@ -33,10 +30,12 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.security.credentials.gcpValues import SingleProjectId
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.ssl_manager import get_ssl_connection
@@ -55,14 +54,14 @@ class BigQuerySampler(SQASampler):
     # pylint: disable=too-many-arguments
     def __init__(
         self,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        service_connection_config: Union[DatabaseConnection, DatalakeConnection],  # noqa: UP007
         ometa_client: OpenMetadata,
         entity: Table,
-        sample_config: Optional[SampleConfig] = None,
-        partition_details: Optional[Dict] = None,
-        sample_query: Optional[str] = None,
+        sample_config: Optional[SampleConfig] = None,  # noqa: UP045
+        partition_details: Optional[Dict] = None,  # noqa: UP006, UP045
+        sample_query: Optional[str] = None,  # noqa: UP045
         storage_config: DataStorageConfig = None,
-        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
+        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,  # noqa: UP045
         **kwargs,
     ):
         super().__init__(
@@ -76,37 +75,32 @@ class BigQuerySampler(SQASampler):
             sample_data_count=sample_data_count,
             **kwargs,
         )
-        self.raw_dataset_type: Optional[TableType] = entity.tableType
+        self.raw_dataset_type: Optional[TableType] = entity.tableType  # noqa: UP045
 
         connection_config = deepcopy(service_connection_config)
         # Create a modified connection for BigQuery with the correct project ID
-        if (
-            hasattr(connection_config.credentials.gcpConfig, "projectId")
-            and self.entity.database
-        ):
-            connection_config.credentials.gcpConfig.projectId = SingleProjectId(
-                root=self.entity.database.name
-            )
+        if hasattr(connection_config.credentials.gcpConfig, "projectId") and self.entity.database:
+            connection_config.credentials.gcpConfig.projectId = SingleProjectId(root=self.entity.database.name)
             self.connection = get_ssl_connection(connection_config)
 
         self.session_factory = create_and_bind_thread_safe_session(self.connection)
 
-    def set_tablesample(self, selectable: SqaTable):
+    def set_tablesample(self, static: StaticSamplingConfig | None, selectable: SqaTable):
         """Set the TABLESAMPLE clause for BigQuery
         Args:
+            static (StaticSamplingConfig | None): sampling configuration
             selectable (Table): Table object
         """
         if (
-            self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE
+            static
+            and static.profileSampleType == ProfileSampleType.PERCENTAGE
             and self.raw_dataset_type != TableType.View
         ):
-            return selectable.tablesample(
-                text(f"{self.sample_config.profileSample or 100} PERCENT")
-            )
+            return selectable.tablesample(text(f"{static.profileSample or 100} PERCENT"))
 
         return selectable
 
-    def _base_sample_query(self, column: Optional[Column], label=None):
+    def _base_sample_query(self, selectable, column: Column | None, label=None):
         """Base query for sampling
 
         Args:
@@ -116,7 +110,7 @@ class BigQuerySampler(SQASampler):
         Returns:
         """
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy_bigquery import STRUCT
+        from sqlalchemy_bigquery import STRUCT  # noqa: PLC0415
 
         if column is not None:
             column_parts = column.name.split(".")
@@ -131,17 +125,17 @@ class BigQuerySampler(SQASampler):
                 column._set_parent(self.raw_dataset.__table__)
                 # pylint: enable=protected-access
 
-        return super()._base_sample_query(column, label=label)
+        return super()._base_sample_query(selectable, column, label=label)
 
-    def get_sample_query(self, *, column=None) -> Query:
+    def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> Query:
         """get query for sample data"""
+        selectable = self.set_tablesample(static, self.raw_dataset.__table__)  # type: ignore
         # TABLESAMPLE SYSTEM is not supported for views
         if (
-            self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE
+            static
+            and static.profileSampleType == ProfileSampleType.PERCENTAGE
             and self.raw_dataset_type != TableType.View
         ):
-            return self._base_sample_query(column).cte(
-                f"{self.get_sampler_table_name()}_sample"
-            )
+            return self._base_sample_query(selectable, column).cte(f"{self.get_sampler_table_name()}_sample")  # type: ignore
 
-        return super().get_sample_query(column=column)
+        return super().get_sample_query(static, column=column)

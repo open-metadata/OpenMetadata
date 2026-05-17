@@ -11,32 +11,57 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isNil } from 'lodash';
-import { useCallback, useEffect } from 'react';
+import { isEmpty } from 'lodash';
+import { lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { useAnalytics } from 'use-analytics';
 import { useShallow } from 'zustand/react/shallow';
-import { ROUTES } from '../../constants/constants';
-import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
+import { APP_ROUTER_ROUTES } from '../../constants/router.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
-import AccessNotAllowedPage from '../../pages/AccessNotAllowedPage/AccessNotAllowedPage';
-import { LogoutPage } from '../../pages/LogoutPage/LogoutPage';
-import PageNotFound from '../../pages/PageNotFound/PageNotFound';
-import SamlCallback from '../../pages/SamlCallback';
-import SignUpPage from '../../pages/SignUp/SignUpPage';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
-import AppContainer from '../AppContainer/AppContainer';
 import Loader from '../common/Loader/Loader';
-import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
-import { RoutePosition } from '../Settings/Applications/plugins/AppPlugin';
+import withSuspenseFallback from './withSuspenseFallback';
+
+const AuthenticatedApp = withSuspenseFallback(
+  lazy(() => import('./AuthenticatedApp'))
+);
+
+const AuthenticatedRoutes = withSuspenseFallback(
+  lazy(() =>
+    import('./AuthenticatedRoutes').then((m) => ({
+      default: m.AuthenticatedRoutes,
+    }))
+  )
+);
+
+// Lazy-load infrequently-visited unauthenticated pages
+const AccessNotAllowedPage = withSuspenseFallback(
+  lazy(() => import('../../pages/AccessNotAllowedPage/AccessNotAllowedPage'))
+);
+
+const LogoutPage = withSuspenseFallback(
+  lazy(() =>
+    import('../../pages/LogoutPage/LogoutPage').then((m) => ({
+      default: m.LogoutPage,
+    }))
+  )
+);
+
+const PageNotFound = withSuspenseFallback(
+  lazy(() => import('../../pages/PageNotFound/PageNotFound'))
+);
+
+const SamlCallback = withSuspenseFallback(
+  lazy(() => import('../../pages/SamlCallback'))
+);
+
+const SignUpPage = withSuspenseFallback(
+  lazy(() => import('../../pages/SignUp/SignUpPage'))
+);
 
 const AppRouter = () => {
-  const location = useCustomLocation();
   const UnAuthenticatedAppRouter =
     applicationRoutesClass.getUnAuthenticatedRouteElements();
 
-  const analytics = useAnalytics();
   const {
     currentUser,
     isAuthenticated,
@@ -50,43 +75,6 @@ const AppRouter = () => {
       isAuthenticating: state.isAuthenticating,
     }))
   );
-  const { plugins = [] } = useApplicationsProvider();
-
-  useEffect(() => {
-    const { pathname } = location;
-
-    /**
-     * Ignore the slash path because we are treating my data as
-     * default path.
-     * And check if analytics instance is available
-     */
-    if (pathname !== '/' && !isNil(analytics)) {
-      // track page view on route change
-      analytics.page();
-    }
-  }, [location.pathname]);
-
-  const handleClickEvent = useCallback(
-    (event: MouseEvent) => {
-      const eventValue =
-        (event.target as HTMLElement)?.textContent || CustomEventTypes.Click;
-      /**
-       * Ignore the click event if the event value is undefined
-       * And analytics instance is not available
-       */
-      if (eventValue && !isNil(analytics)) {
-        analytics.track(eventValue);
-      }
-    },
-    [analytics]
-  );
-
-  useEffect(() => {
-    const targetNode = document.body;
-    targetNode.addEventListener('click', handleClickEvent);
-
-    return () => targetNode.removeEventListener('click', handleClickEvent);
-  }, [handleClickEvent]);
 
   /**
    * isApplicationLoading is true when the application is loading in AuthProvider
@@ -100,46 +88,37 @@ const AppRouter = () => {
     return <Loader fullScreen />;
   }
 
+  if (isAuthenticated) {
+    return (
+      <AuthenticatedApp>
+        <AuthenticatedRoutes />
+      </AuthenticatedApp>
+    );
+  }
+
   return (
     <Routes>
-      <Route element={<PageNotFound />} path={ROUTES.NOT_FOUND} />
-      <Route element={<LogoutPage />} path={ROUTES.LOGOUT} />
-      <Route element={<AccessNotAllowedPage />} path={ROUTES.UNAUTHORISED} />
+      <Route element={<PageNotFound />} path={APP_ROUTER_ROUTES.NOT_FOUND} />
+      <Route element={<LogoutPage />} path={APP_ROUTER_ROUTES.LOGOUT} />
+      <Route
+        element={<AccessNotAllowedPage />}
+        path={APP_ROUTER_ROUTES.UNAUTHORISED}
+      />
       <Route
         element={
           isEmpty(currentUser) ? (
             <SignUpPage />
           ) : (
-            <Navigate replace to={ROUTES.HOME} />
+            <Navigate replace to={APP_ROUTER_ROUTES.HOME} />
           )
         }
-        path={ROUTES.SIGNUP}
+        path={APP_ROUTER_ROUTES.SIGNUP}
       />
-      {/* When authenticating from an SSO provider page (e.g., SAML Apps), if the user is already logged in,
-       * the callbacks should be available. This ensures consistent behavior across different authentication scenarios.
-       */}
-      <Route element={<SamlCallback />} path={ROUTES.AUTH_CALLBACK} />
-
-      {/* Render APP position plugin routes (they handle their own layouts) */}
-      {isAuthenticated &&
-        plugins?.flatMap((plugin) => {
-          const routes = plugin.getRoutes?.() || [];
-          // Filter routes with APP position
-          const appRoutes = routes.filter(
-            (route) => route.position === RoutePosition.APP
-          );
-
-          return appRoutes.map((route, idx) => (
-            <Route key={`${plugin.name}-app-${idx}`} {...route} />
-          ));
-        })}
-
-      {/* Default authenticated and unauthenticated routes */}
-      {isAuthenticated ? (
-        <Route element={<AppContainer />} path="*" />
-      ) : (
-        <Route element={<UnAuthenticatedAppRouter />} path="*" />
-      )}
+      <Route
+        element={<SamlCallback />}
+        path={APP_ROUTER_ROUTES.AUTH_CALLBACK}
+      />
+      <Route element={<UnAuthenticatedAppRouter />} path="*" />
     </Routes>
   );
 };

@@ -8,12 +8,8 @@
     "message": {
       "description": "Message in Markdown format. See markdown support for more details.",
       "type": "string"
-    },
-    "from": {
-      "description": "Name of the User posting the message",
-      "type": "string"
     }
   },
-  "required": ["message", "from"],
+  "required": ["message"],
   "additionalProperties": false
 }

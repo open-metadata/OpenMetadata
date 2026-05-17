@@ -13,7 +13,6 @@
 import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import { InfoCircle } from '@untitledui/icons';
 import { Divider, Space, Tooltip as AntDTooltip, Typography } from 'antd';
-import { InternalAxiosRequestConfig } from 'axios';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, noop } from 'lodash';
 import { Fragment, ReactNode } from 'react';
@@ -36,20 +35,14 @@ import SubDomainsTable from '../components/Domain/SubDomainsTable/SubDomainsTabl
 import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import AssetsTabs from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import {
-  DEFAULT_DOMAIN_VALUE,
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
-} from '../constants/constants';
+import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
-import { SearchIndex } from '../enums/search.enum';
 import { Domain } from '../generated/entity/domains/domain';
 import { Operation } from '../generated/entity/policies/policy';
 import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../generated/system/ui/page';
-import { useDomainStore } from '../hooks/useDomainStore';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
   QueryFieldInterface,
@@ -64,99 +57,7 @@ import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from './PermissionsUtils';
-import { getDomainPath, getPathNameFromWindowLocation } from './RouterUtils';
-
-export const withDomainFilter = (
-  config: InternalAxiosRequestConfig
-): InternalAxiosRequestConfig => {
-  const isGetRequest = config.method === 'get';
-  const activeDomain = useDomainStore.getState().activeDomain;
-  const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
-  const currentPath = getPathNameFromWindowLocation();
-  const shouldNotIntercept = [
-    '/domain',
-    '/auth/logout',
-    '/auth/refresh',
-  ].reduce((prev, curr) => {
-    return prev || currentPath.startsWith(curr);
-  }, false);
-
-  if (shouldNotIntercept) {
-    return config;
-  }
-
-  if (isGetRequest && hasActiveDomain) {
-    if (config.url?.includes('/search/query')) {
-      if (config.params?.index === SearchIndex.TAG) {
-        return config;
-      }
-
-      const domainFilterField =
-        config.params?.index === SearchIndex.DOMAIN
-          ? 'fullyQualifiedName'
-          : 'domains.fullyQualifiedName';
-      let filter: QueryFilterInterface = { query: { bool: {} } };
-      if (config.params?.query_filter) {
-        try {
-          const parsed = JSON.parse(config.params.query_filter as string);
-          filter = parsed?.query ? parsed : { query: { bool: {} } };
-        } catch {
-          filter = { query: { bool: {} } };
-        }
-      }
-
-      let mustArray: QueryFieldInterface[] = [];
-      const existingMust = filter.query?.bool?.must;
-      if (Array.isArray(existingMust)) {
-        mustArray = [...existingMust];
-      } else if (existingMust) {
-        mustArray = [existingMust];
-      }
-
-      const { bool: existingBool, ...nonBoolClauses } = filter.query ?? {};
-      for (const [key, value] of Object.entries(nonBoolClauses)) {
-        mustArray.push({ [key]: value } as QueryFieldInterface);
-      }
-
-      filter.query = {
-        bool: {
-          ...existingBool,
-          must: [
-            ...mustArray,
-            {
-              bool: {
-                should: [
-                  {
-                    term: {
-                      [domainFilterField]: activeDomain,
-                    },
-                  },
-                  {
-                    prefix: {
-                      [domainFilterField]: `${activeDomain}.`,
-                    },
-                  },
-                ],
-              },
-            } as QueryFieldInterface,
-          ],
-        },
-      };
-
-      config.params = {
-        ...config.params,
-        query_filter: JSON.stringify(filter),
-      };
-    } else {
-      config.params = {
-        ...config.params,
-        domain: activeDomain,
-      };
-    }
-  }
-
-  return config;
-};
+import { getDomainPath } from './RouterUtils';
 
 export const getOwner = (
   hasPermission: boolean,

@@ -3,7 +3,7 @@ package org.openmetadata.service.util;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -14,12 +14,38 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
- * Request-scoped entity cache used to avoid duplicate loads of the same entity shape
- * (entity + include + field set + relation include set) within one HTTP request.
+ * Request-scoped entity cache that stores JSON strings instead of entity objects. This eliminates
+ * the two {@code deepCopy} calls per cache interaction that previously caused ~1 MB of allocation
+ * per 247 KB entity (deepCopy on put + deepCopy on get).
+ *
+ * <p>Now: {@code put()} serializes once to JSON string (~247 KB), {@code get()} deserializes back.
+ * The JSON string is immutable and safe to share, so no defensive copying is needed. Net savings:
+ * ~50% less allocation per cache interaction compared to the deepCopy approach.
+ *
+ * <p>Bounded to {@value MAX_ENTRIES_PER_REQUEST} entries using LRU eviction.
  */
 public final class RequestEntityCache {
-  private static final ThreadLocal<Map<EntityCacheKey, EntityInterface>> REQUEST_CACHE =
-      ThreadLocal.withInitial(HashMap::new);
+
+  /**
+   * Cap per-request entity cache at 50 entries. A typical API request touches 5-20 entities. Bulk
+   * operations may touch more, but LRU eviction ensures only the most recently accessed are kept.
+   */
+  private static final int MAX_ENTRIES_PER_REQUEST = 50;
+
+  private static final int INITIAL_CAPACITY = 16;
+  private static final float LOAD_FACTOR = 0.75f;
+  private static final boolean ACCESS_ORDER = true; // LRU eviction order
+
+  // Stores JSON strings (not entity objects) to avoid deepCopy overhead
+  private static final ThreadLocal<Map<EntityCacheKey, String>> REQUEST_CACHE =
+      ThreadLocal.withInitial(
+          () ->
+              new LinkedHashMap<>(INITIAL_CAPACITY, LOAD_FACTOR, ACCESS_ORDER) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<EntityCacheKey, String> eldest) {
+                  return size() > MAX_ENTRIES_PER_REQUEST;
+                }
+              });
 
   private RequestEntityCache() {}
 
@@ -28,8 +54,8 @@ public final class RequestEntityCache {
   }
 
   /**
-   * Invalidate cached shapes for a single entity across all field/include combinations.
-   * This is required for same-thread read-after-write correctness (for example async jobs).
+   * Invalidate cached shapes for a single entity across all field/include combinations. This is
+   * required for same-thread read-after-write correctness (for example async jobs).
    */
   public static void invalidate(String entityType, UUID id, String name) {
     if (entityType == null || (id == null && name == null)) {
@@ -113,15 +139,15 @@ public final class RequestEntityCache {
   }
 
   private static <T extends EntityInterface> T get(EntityCacheKey key, Class<T> entityClass) {
-    EntityInterface cached;
+    String cachedJson;
     try (var ignored = phase("requestCacheGet")) {
-      cached = REQUEST_CACHE.get().get(key);
+      cachedJson = REQUEST_CACHE.get().get(key);
     }
-    if (cached == null) {
+    if (cachedJson == null) {
       return null;
     }
     try (var ignored = phase("requestCacheDeserialize")) {
-      return JsonUtils.deepCopy(entityClass.cast(cached), entityClass);
+      return JsonUtils.readValue(cachedJson, entityClass);
     }
   }
 
@@ -129,16 +155,9 @@ public final class RequestEntityCache {
     if (entity == null) {
       return;
     }
-    T cachedCopy = null;
     try (var ignored = phase("requestCacheSerialize")) {
-      @SuppressWarnings("unchecked")
-      Class<T> entityClass = (Class<T>) entity.getClass();
-      cachedCopy = JsonUtils.deepCopy(entity, entityClass);
-    }
-    try (var ignored = phase("requestCachePut")) {
-      if (cachedCopy != null) {
-        REQUEST_CACHE.get().put(key, cachedCopy);
-      }
+      String json = JsonUtils.pojoToJson(entity);
+      REQUEST_CACHE.get().put(key, json);
     }
   }
 

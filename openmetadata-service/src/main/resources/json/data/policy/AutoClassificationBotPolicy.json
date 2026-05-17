@@ -15,6 +15,13 @@
       "effect": "allow"
     },
     {
+      "name": "AutoClassificationBotRule-Allow-Container",
+      "description" : "Allow adding tags and sample data to the containers",
+      "resources" : ["Container"],
+      "operations": ["EditAll", "ViewAll"],
+      "effect": "allow"
+    },
+    {
       "name": "AutoClassificationBotRule-ViewAll",
       "description" : "Allow viewing all assets",
       "resources" : ["All"],

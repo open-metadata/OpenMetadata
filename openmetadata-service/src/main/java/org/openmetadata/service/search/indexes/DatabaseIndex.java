@@ -22,6 +22,13 @@ public record DatabaseIndex(Database database) implements TaggableIndex {
     return Set.of("databaseSchemas");
   }
 
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(TaggableIndex.super.getRequiredReindexFields());
+    fields.add("usageSummary");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     return doc;
   }
