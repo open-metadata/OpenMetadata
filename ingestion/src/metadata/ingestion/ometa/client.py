@@ -160,8 +160,8 @@ class REST:
         base_url: URL = None,
         api_version: str = None,  # noqa: RUF013
         headers: dict = None,  # noqa: RUF013
-        timeout=None,
-        retries=None,
+        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        retries: Optional[int] = None,  # noqa: UP045
     ):
         # pylint: disable=too-many-locals
         if path in self._limits_reached:
@@ -324,7 +324,15 @@ class REST:
         return self._request("GET", path, data, headers=headers)
 
     @calculate_execution_time(context="POST")
-    def post(self, path, data=None, json=None, headers=None, timeout=None, retries=None):
+    def post(
+        self,
+        path,
+        data=None,
+        json=None,
+        headers=None,
+        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        retries: Optional[int] = None,  # noqa: UP045
+    ):
         """
         POST method
 
@@ -350,7 +358,13 @@ class REST:
             retries=retries,
         )
 
-    def post_best_effort(self, path, data=None, headers=None, timeout=None) -> bool:
+    def post_best_effort(
+        self,
+        path,
+        data=None,
+        headers=None,
+        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+    ) -> bool:
         """Quiet POST: no retries, no sleep, no logging. Returns True on 2xx."""
         if path in self._limits_reached:
             return False
