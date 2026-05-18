@@ -13,6 +13,7 @@
 
 import { ADMONITION_TYPES } from './BlockEditor.constants';
 
+export const UrlEntityCharRegEx = /[#.%;?/\\]/g;
 export const EMAIL_REG_EX = /^\S+@\S+\.\S+$/;
 
 /**
@@ -49,6 +50,7 @@ export const passwordRegex =
 
 export const ONEOF_ANYOF_ALLOF_REGEX = /(oneof|anyof|allof)/;
 
+export const markdownTextAndIdRegex = /^(\S.*?)\s*\$\(id="(.*?)"\)/;
 export const MARKDOWN_MATCH_ID = /\$\(id="(.*?)"\)/;
 
 export const ENDS_WITH_NUMBER_REGEX = /\d+$/;
@@ -70,6 +72,15 @@ export const VALIDATE_ESCAPE_START_END_REGEX = /^(\\+|"+)([\s\S]*?)(\\+|"+)$/;
 // Validates decimal numbers between 0 and 1 (inclusive)
 // Matches: 0, 0.5, 0.123, 1, 1.0, 1.00, etc.
 export const DECIMAL_ZERO_TO_ONE_REGEX = /^(0(\.\d+)?|1(\.0+)?)$/;
+
+// Validates integers between 0 and 100 (inclusive)
+// Matches: 0, 1, 9, 10, 50, 99, 100
+export const INTEGER_ZERO_TO_HUNDRED_REGEX = /^(100|[1-9]?\d)$/;
+
+// Validates locale/language codes (ISO 639-1 format)
+// Matches: en, fr, de, en-US, fr-CA, de-DE, etc.
+// Format: two lowercase letters optionally followed by hyphen and two uppercase letters
+export const LOCALE_CODE_REGEX = /^[a-z]{2}(-[A-Z]{2})?$/;
 
 // Matches URLs (http/https with content, absolute paths with content, data URIs) OR filenames with image extensions
 // Filenames restricted to alphanumeric, hyphens, underscores, and dots for security
