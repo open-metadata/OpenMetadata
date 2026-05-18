@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
 import com.google.gson.Gson;
@@ -59,6 +60,7 @@ import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -135,6 +137,24 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       Optional.ofNullable(sourceConfigJson.optJSONObject("appConfig"))
           .map(appConfig -> appConfig.optString("type", null))
           .ifPresent(ingestionPipeline::setApplicationType);
+    }
+  }
+
+  @Override
+  public void setInheritedFields(IngestionPipeline ingestionPipeline, Fields fields) {
+    EntityReference serviceRef = ingestionPipeline.getService();
+    if (serviceRef == null) {
+      return;
+    }
+    try {
+      EntityInterface parent = Entity.getEntity(serviceRef, "owners,domains", ALL);
+      inheritOwners(ingestionPipeline, fields, parent);
+      inheritDomains(ingestionPipeline, fields, parent);
+    } catch (EntityNotFoundException e) {
+      LOG.debug(
+          "Parent service {} not found for ingestion pipeline {}; skipping owner/domain inheritance",
+          serviceRef.getFullyQualifiedName(),
+          ingestionPipeline.getFullyQualifiedName());
     }
   }
 
