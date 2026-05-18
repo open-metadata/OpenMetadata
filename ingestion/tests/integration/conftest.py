@@ -175,7 +175,7 @@ def _safe_delete(metadata, entity, entity_id, retries=3, **kwargs):
         try:
             metadata.delete(entity=entity, entity_id=entity_id, **kwargs)
             return  # noqa: TRY300
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             if _is_not_found(exc):
                 logger.debug("Skipping %s %s delete — already gone", entity.__name__, entity_id)
                 return
