@@ -18,7 +18,10 @@ volumes:
   ingestion-volume-dags:
   ingestion-volume-tmp:
   es-data:
-  fuseki-data:
+  # See ../development/docker-compose-fuseki.yml — renamed from `fuseki-data`
+  # because the new Dockerfile uses a different on-disk layout and reusing
+  # the old volume name silently mounts stale state.
+  fuseki-tdb2-data:
 
 services:
   mysql:
@@ -86,7 +89,7 @@ services:
     ports:
       - "3030:3030"
     volumes:
-      - fuseki-data:/fuseki-data
+      - fuseki-tdb2-data:/fuseki-data
     networks:
       - app_net
     healthcheck:

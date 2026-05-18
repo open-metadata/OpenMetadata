@@ -3,6 +3,13 @@ FROM openjdk:17-jdk-slim
 
 ENV FUSEKI_VERSION=5.6.0
 ENV FUSEKI_HOME=/fuseki
+# FUSEKI_BASE must point at the directory containing shiro.ini so Fuseki picks
+# up our auth config on boot. Without this, Fuseki falls back to its built-in
+# default base (typically the working directory) and the bundled shiro.ini is
+# never loaded — leaving the admin endpoints (incl. /$/compact and
+# /$/datasets) reachable without authentication. The Dockerfile copies
+# config.ttl + shiro.ini into /fuseki below, so we point FUSEKI_BASE there.
+ENV FUSEKI_BASE=/fuseki
 
 RUN apt-get update && apt-get install -y \
     wget \

@@ -9,6 +9,7 @@ import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.channels.ClosedChannelException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -199,7 +200,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       return;
     }
     String auth = username + ":" + password;
-    String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
+    // RFC 7617 mandates UTF-8 for the credential string before Base64 encoding.
+    // Using auth.getBytes() relies on the JVM default charset, which is not
+    // guaranteed to be UTF-8 in containerised environments with non-standard
+    // locales.
+    String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes(StandardCharsets.UTF_8));
     requestBuilder.header("Authorization", "Basic " + encodedAuth);
   }
 
@@ -1020,7 +1025,17 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         return;
       }
       waitForCompactionTask(info.serverBaseUrl(), taskId);
-    } catch (Exception e) {
+    } catch (InterruptedException e) {
+      // Re-assert the interrupt flag so downstream blocking calls (e.g. the
+      // surrounding Quartz job's shutdown path) see the cancellation request.
+      // Swallowing it here without restoring the flag would silently turn a
+      // shutdown signal into a normal return.
+      Thread.currentThread().interrupt();
+      LOG.warn(
+          "Compaction wait for Fuseki dataset '{}' was interrupted; "
+              + "the compact task may still be running on the server.",
+          info.datasetName());
+    } catch (java.io.IOException e) {
       LOG.warn(
           "Failed to compact Fuseki dataset '{}' — disk reclamation skipped, "
               + "indexing will continue but on-disk usage may stay elevated.",
@@ -1029,7 +1044,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
   }
 
-  private String startCompaction(DatasetEndpoint info) throws Exception {
+  private String startCompaction(DatasetEndpoint info)
+      throws java.io.IOException, InterruptedException {
     HttpClient httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
     String compactUrl =
         info.serverBaseUrl() + "/$/compact/" + info.datasetName() + "?deleteOld=true";
@@ -1074,7 +1090,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       var node = JsonUtils.readTree(responseBody);
       var taskNode = node.get("taskId");
       return taskNode != null && !taskNode.isNull() ? taskNode.asText() : null;
-    } catch (Exception e) {
+    } catch (org.openmetadata.schema.exception.JsonParsingException e) {
       LOG.debug("Could not parse taskId from Fuseki compaction response: {}", responseBody, e);
       return null;
     }
@@ -1085,9 +1101,16 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     HttpClient httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
     String taskUrl = serverBaseUrl + "/$/tasks/" + taskId;
     long deadline = System.currentTimeMillis() + COMPACT_MAX_WAIT_MS;
-
+    // Poll-then-sleep ordering: the very first iteration checks immediately so
+    // a compaction that finished by the time we'd issued the POST (the empty
+    // dataset case, which is the common one for recreateIndex=true) completes
+    // without a 2 s wait. Subsequent iterations sleep between requests.
+    boolean firstIteration = true;
     while (System.currentTimeMillis() < deadline) {
-      Thread.sleep(COMPACT_POLL_INTERVAL_MS);
+      if (!firstIteration) {
+        Thread.sleep(COMPACT_POLL_INTERVAL_MS);
+      }
+      firstIteration = false;
       HttpRequest.Builder pollBuilder =
           HttpRequest.newBuilder()
               .uri(URI.create(taskUrl))
@@ -1098,7 +1121,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       HttpResponse<String> pollResponse;
       try {
         pollResponse = httpClient.send(pollBuilder.build(), HttpResponse.BodyHandlers.ofString());
-      } catch (Exception e) {
+      } catch (java.io.IOException e) {
         LOG.warn("Polling Fuseki task {} failed; abandoning wait", taskId, e);
         return;
       }
@@ -1136,7 +1159,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       var node = JsonUtils.readTree(responseBody);
       var finished = node.get("finished");
       return finished != null && !finished.isNull() && !finished.asText().isBlank();
-    } catch (Exception e) {
+    } catch (org.openmetadata.schema.exception.JsonParsingException e) {
       LOG.debug("Could not parse Fuseki task status response: {}", responseBody, e);
       return false;
     }

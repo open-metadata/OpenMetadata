@@ -54,7 +54,16 @@ services:
       - FUSEKI_ADMIN_PASSWORD=admin
       - JVM_ARGS=${FUSEKI_JVM_ARGS:--Xmx1500m -Xms256m}
     volumes:
-      - fuseki-data:/fuseki-data
+      # New volume name (was `fuseki-data` mounted at `/fuseki`). The in-repo
+      # Dockerfile stores TDB2 at `/fuseki-data` and the data layout differs
+      # from the old stain/jena-fuseki image — re-using the previous volume
+      # name would mount stale state at a path Fuseki no longer reads from,
+      # silently looking like an empty database. Using a fresh volume name
+      # forces operators to consciously migrate (or accept a re-index). The
+      # orphaned `fuseki-data` volume can be removed manually with
+      # `docker volume rm fuseki-data` after confirming the new stack is
+      # healthy.
+      - fuseki-tdb2-data:/fuseki-data
     deploy:
       resources:
         limits:
@@ -78,5 +87,5 @@ networks:
         - subnet: "172.16.239.0/24"
 
 volumes:
-  fuseki-data:
+  fuseki-tdb2-data:
     driver: local

@@ -15,7 +15,9 @@ volumes:
   ingestion-volume-dags:
   ingestion-volume-tmp:
   es-data:
-  fuseki-data:
+  # See docker-compose-fuseki.yml — renamed from `fuseki-data` to avoid
+  # silently mounting stale state under the new Fuseki layout.
+  fuseki-tdb2-data:
 services:
   postgresql:
     build:
@@ -580,7 +582,11 @@ services:
       - FUSEKI_ADMIN_PASSWORD=admin
       - JVM_ARGS=-Xmx4g -Xms2g
     volumes:
-      - fuseki-data:/fuseki-data
+      # See docker-compose-fuseki.yml for why the volume was renamed from
+      # `fuseki-data` to `fuseki-tdb2-data` (the data layout differs from the
+      # previous stain/jena-fuseki image and reusing the old name silently
+      # mounts stale state at a path Fuseki no longer reads).
+      - fuseki-tdb2-data:/fuseki-data
     deploy:
       resources:
         limits:

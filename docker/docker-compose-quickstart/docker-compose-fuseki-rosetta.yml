@@ -17,7 +17,13 @@ services:
       - FUSEKI_ADMIN_PASSWORD=admin
       - JVM_ARGS=-Xmx8g -Xms4g
     volumes:
-      - ${DOCKER_VOLUMES_PATH:-./docker-volumes}/fuseki:/fuseki-data
+      # Host bind path renamed from `.../fuseki` (used by the old stain image
+      # layout) to `.../fuseki-tdb2-data` so an existing host directory with
+      # the previous layout isn't silently mounted at /fuseki-data — Fuseki
+      # would see an empty TDB2 store and the old data would appear lost.
+      # Operators upgrading can either delete the new dir to start fresh or
+      # migrate old data manually.
+      - ${DOCKER_VOLUMES_PATH:-./docker-volumes}/fuseki-tdb2-data:/fuseki-data
     networks:
       - fuseki-net
     healthcheck:

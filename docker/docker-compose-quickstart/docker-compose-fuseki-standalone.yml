@@ -15,7 +15,10 @@ services:
       - FUSEKI_ADMIN_PASSWORD=admin
       - JVM_ARGS=-Xmx4g -Xms2g
     volumes:
-      - ${DOCKER_VOLUMES_PATH:-./docker-volumes}/fuseki:/fuseki-data
+      # See docker-compose-fuseki-rosetta.yml — host bind path renamed so
+      # existing directories with the old stain layout aren't silently
+      # mounted at the new /fuseki-data path.
+      - ${DOCKER_VOLUMES_PATH:-./docker-volumes}/fuseki-tdb2-data:/fuseki-data
     networks:
       - fuseki-net
     healthcheck:
