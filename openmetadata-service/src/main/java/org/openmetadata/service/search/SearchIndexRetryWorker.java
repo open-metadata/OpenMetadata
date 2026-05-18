@@ -384,7 +384,8 @@ public class SearchIndexRetryWorker implements Managed {
 
       EntityInterface entity;
       try {
-        entity = Entity.getEntity(current, "*", Include.ALL);
+        String fields = String.join(",", ReindexingUtil.getSearchIndexFields(current.getType()));
+        entity = Entity.getEntity(current, fields, Include.ALL);
       } catch (Exception ex) {
         continue;
       }
