@@ -1066,9 +1066,18 @@ class SnowflakeSource(
                 pass
 
         try:
-            columns = inspector.get_columns(
-                table_name, schema_name, table_type=table_type, db_name=db_name
-            )
+            # Do NOT forward `table_type` here. SQLAlchemy's @reflection.cache
+            # decorator on the underlying get_columns / _get_schema_columns
+            # builds its cache key from **kw, so a varying `table_type`
+            # (Regular for base tables, View for views) produces distinct
+            # cache keys for the SAME schema. For a huge schema (e.g. ~13k
+            # wide tables), the table→view transition then cache-misses on
+            # _get_schema_columns and re-materializes the whole schema's
+            # column metadata (~1.6 GB) — which is what OOM-killed the pod
+            # in the COM_US_IMDNA_ADL.AWB_INTERM incident. The Snowflake
+            # dialect's get_columns ignores `table_type`; the Stage/Stream
+            # branches above already consumed it.
+            columns = inspector.get_columns(table_name, schema_name, db_name=db_name)
         except sa_exc.NoSuchTableError:
             logger.warning(
                 f"Table [{table_name}] (schema: '{schema_name}', db: '{db_name}') not found."
