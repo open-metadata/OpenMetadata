@@ -243,12 +243,13 @@ export class GlossaryCombo extends RectCombo {
     attributes: Required<RectComboStyleProps>
   ): [number, number, number] {
     const [w, h, d] = super.getExpandedKeySize(attributes);
+    const attrs = attributes as Record<string, unknown>;
     const minW =
-      typeof (attributes as Record<string, unknown>).minWidth === 'number'
-        ? ((attributes as Record<string, unknown>).minWidth as number)
-        : 0;
+      typeof attrs.minWidth === 'number' ? (attrs.minWidth as number) : 0;
+    const minH =
+      typeof attrs.minHeight === 'number' ? (attrs.minHeight as number) : 0;
 
-    return [Math.max(w, minW), h, d];
+    return [Math.max(w, minW), Math.max(h, minH), d];
   }
 
   protected drawLabelShape(
@@ -870,7 +871,8 @@ export function buildDataModeTermNodeStyle(
 
 export function buildComboStyle(
   labelText: string,
-  color: string
+  color: string,
+  extraVerticalPadding = 0
 ): Record<string, unknown> {
   const labelPx = measureTextWidth(
     labelText,
@@ -879,17 +881,25 @@ export function buildComboStyle(
   );
   const minWidth = labelPx + COMBO_LABEL_PADDING_LEFT * 2;
 
+  const NODE_ROW_HEIGHT = 36; // 2 × NODE_PADDING_V(9) + 18
+  const minHeight =
+    COMBO_INTERIOR_PADDING_TOP +
+    NODE_ROW_HEIGHT +
+    COMBO_INTERIOR_PADDING_SIDES +
+    extraVerticalPadding * 2;
+
   return {
     fill: COMBO_FILL_DEFAULT,
     stroke: color,
     lineWidth: COMBO_LINE_WIDTH,
     radius: COMBO_RADIUS,
     padding: [
-      COMBO_INTERIOR_PADDING_TOP,
+      COMBO_INTERIOR_PADDING_TOP + extraVerticalPadding,
       COMBO_INTERIOR_PADDING_SIDES,
-      COMBO_INTERIOR_PADDING_SIDES,
+      COMBO_INTERIOR_PADDING_SIDES + extraVerticalPadding,
       COMBO_INTERIOR_PADDING_SIDES,
     ],
+    minHeight,
     label: true,
     labelText,
     labelFill: color,

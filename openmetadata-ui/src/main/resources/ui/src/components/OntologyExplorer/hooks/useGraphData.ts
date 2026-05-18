@@ -597,121 +597,200 @@ export function useGraphDataBuilder({
           )
         : null;
 
-    const g6Edges: EdgeData[] = edgesForGraph.map((edge) => {
-      const edgeId = `edge-${edge.from}-${edge.to}-${edge.relationType}`;
-      const fromGlossary = nodeIdToGlossaryId.get(edge.from);
-      const toGlossary = nodeIdToGlossaryId.get(edge.to);
-      const isCrossTeam = Boolean(
-        fromGlossary && toGlossary && fromGlossary !== toGlossary
-      );
-      const isHighlighted =
-        selectedNodeId === edge.from ||
-        selectedNodeId === edge.to ||
-        (selectedScopedIds != null &&
-          (selectedScopedIds.has(edge.from) || selectedScopedIds.has(edge.to)));
-      const edgeKeyStr = `${edge.from}::${edge.to}::${edge.relationType}`;
-      const isDimmedBySelection =
-        selectedNodeId !== null &&
-        selectedNodeId !== edge.from &&
-        selectedNodeId !== edge.to &&
-        !(
-          selectedScopedIds?.has(edge.from) || selectedScopedIds?.has(edge.to)
-        ) &&
-        !neighborSet.has(edge.from) &&
-        !neighborSet.has(edge.to);
-      const isDimmedBySearch =
-        Boolean(searchEdgeSet) && !searchEdgeSet!.has(edgeKeyStr);
-      const isEdgeDimmed = searchHighlightActive
-        ? isDimmedBySearch
-        : isDimmedBySelection;
-      const isClickedEdge = edgeId === clickedEdgeId;
+    const BADGE_V_STEP = 36; // px between badge centres (badge height ~22px + gap)
 
-      const fromType = nodeIdToType.get(edge.from);
-      const toType = nodeIdToType.get(edge.to);
-      const isTermTermInDataMode =
-        explorationMode === 'data' &&
-        fromType !== 'dataAsset' &&
-        fromType !== 'metric' &&
-        toType !== 'dataAsset' &&
-        toType !== 'metric';
-
-      const isTermTermEdge =
-        fromType !== 'dataAsset' &&
-        fromType !== 'metric' &&
-        toType !== 'dataAsset' &&
-        toType !== 'metric';
-
-      const isCrossGlossaryTermEdge =
-        isCrossTeam && isTermTermEdge && explorationMode !== 'data';
-
-      const useComboAwarePolyline =
-        isTermTermInDataMode || isCrossGlossaryTermEdge;
-
-      const rawEdgeColor =
-        explorationMode === 'data' && !isTermTermInDataMode
-          ? DATA_MODE_ASSET_EDGE_STROKE_COLOR
-          : RELATION_COLORS[edge.relationType] ?? EDGE_STROKE_COLOR;
-      const edgeColor = getCanvasColor(
-        rawEdgeColor,
-        explorationMode === 'data' && !isTermTermInDataMode
-          ? DATA_MODE_ASSET_EDGE_STROKE_COLOR
-          : EDGE_STROKE_COLOR
-      );
-
-      const showLabel =
-        settings.showEdgeLabels &&
-        (explorationMode === 'model' ||
-          explorationMode === 'hierarchy' ||
-          isClickedEdge ||
-          isTermTermInDataMode);
-      const labelText = showLabel
-        ? formatRelationLabel(
-            edge.inverseRelationType
-              ? `${edge.relationType} / ${edge.inverseRelationType}`
-              : edge.relationType
-          )
-        : undefined;
-
-      const baseEdgeStyle = {
-        stroke: edgeColor,
-        lineWidth: isHighlighted || isClickedEdge ? 2.5 : 1.5,
-        lineAppendWidth: EDGE_LINE_APPEND_WIDTH,
-        opacity: isEdgeDimmed ? DIMMED_EDGE_OPACITY : 1,
-        endArrow: explorationMode !== 'data',
-        ...(labelText &&
-          getEdgeRelationLabelStyle(labelText, edge.relationType)),
-      };
-
-      const edgeType = useComboAwarePolyline
-        ? ONTOLOGY_COMBO_AWARE_POLYLINE_EDGE_TYPE
-        : 'cubic-vertical';
-
-      return {
-        id: edgeId,
-        source: edge.from,
-        target: edge.to,
-        data: {
-          relationType: edge.relationType,
-          edgeColor,
-          isHighlighted,
-          isClickedEdge,
-          isCrossTeam,
-          isEdgeDimmed,
-          edgeShapeType: edgeType,
-        },
-        type: edgeType,
-        style: {
-          ...baseEdgeStyle,
-          ...(useComboAwarePolyline && {
-            router: {
-              type: 'shortest-path',
-              offset: 20,
-              enableObstacleAvoidance: true,
-            },
-          }),
-        },
-      };
+    const directedGroupMap = new Map<string, MergedEdge[]>();
+    edgesForGraph.forEach((edge) => {
+      const key = `${edge.from}::${edge.to}`;
+      const group = directedGroupMap.get(key) ?? [];
+      group.push(edge);
+      directedGroupMap.set(key, group);
     });
+
+    const glossaryMaxParallelEdges = new Map<string, number>();
+    directedGroupMap.forEach((group) => {
+      if (group.length <= 1) {
+        return;
+      }
+      const fromGlossary = nodeIdToGlossaryId.get(group[0].from);
+      const toGlossary = nodeIdToGlossaryId.get(group[0].to);
+      if (fromGlossary && fromGlossary === toGlossary) {
+        const prev = glossaryMaxParallelEdges.get(fromGlossary) ?? 1;
+        glossaryMaxParallelEdges.set(
+          fromGlossary,
+          Math.max(prev, group.length)
+        );
+      }
+    });
+
+    const g6Edges: EdgeData[] = Array.from(directedGroupMap.values()).flatMap(
+      (group) => {
+        const rep = group[0];
+        const n = group.length;
+
+        const fromGlossary = nodeIdToGlossaryId.get(rep.from);
+        const toGlossary = nodeIdToGlossaryId.get(rep.to);
+        const isCrossTeam = Boolean(
+          fromGlossary && toGlossary && fromGlossary !== toGlossary
+        );
+        const isHighlighted =
+          selectedNodeId === rep.from ||
+          selectedNodeId === rep.to ||
+          (selectedScopedIds != null &&
+            (selectedScopedIds.has(rep.from) || selectedScopedIds.has(rep.to)));
+        const isDimmedBySelection =
+          selectedNodeId !== null &&
+          selectedNodeId !== rep.from &&
+          selectedNodeId !== rep.to &&
+          !(
+            selectedScopedIds?.has(rep.from) || selectedScopedIds?.has(rep.to)
+          ) &&
+          !neighborSet.has(rep.from) &&
+          !neighborSet.has(rep.to);
+
+        const fromType = nodeIdToType.get(rep.from);
+        const toType = nodeIdToType.get(rep.to);
+        const isTermTermInDataMode =
+          explorationMode === 'data' &&
+          fromType !== 'dataAsset' &&
+          fromType !== 'metric' &&
+          toType !== 'dataAsset' &&
+          toType !== 'metric';
+
+        const isTermTermEdge =
+          fromType !== 'dataAsset' &&
+          fromType !== 'metric' &&
+          toType !== 'dataAsset' &&
+          toType !== 'metric';
+
+        const isCrossGlossaryTermEdge =
+          isCrossTeam && isTermTermEdge && explorationMode !== 'data';
+
+        const useComboAwarePolyline =
+          isTermTermInDataMode || isCrossGlossaryTermEdge;
+
+        const edgeType = useComboAwarePolyline
+          ? ONTOLOGY_COMBO_AWARE_POLYLINE_EDGE_TYPE
+          : 'line';
+
+        return group.map((singleEdge, i) => {
+          const edgeId = `edge-${singleEdge.from}-${singleEdge.to}-${singleEdge.relationType}`;
+          const isPrimary = i === 0;
+          const edgeKeyStr = `${singleEdge.from}::${singleEdge.to}::${singleEdge.relationType}`;
+          const isDimmedBySearch =
+            Boolean(searchEdgeSet) && !searchEdgeSet!.has(edgeKeyStr);
+          const isEdgeDimmed = searchHighlightActive
+            ? isDimmedBySearch
+            : isDimmedBySelection;
+          const isClickedEdge = edgeId === clickedEdgeId;
+
+          const rawEdgeColor =
+            explorationMode === 'data' && !isTermTermInDataMode
+              ? DATA_MODE_ASSET_EDGE_STROKE_COLOR
+              : RELATION_COLORS[singleEdge.relationType] ?? EDGE_STROKE_COLOR;
+          const edgeColor = getCanvasColor(
+            rawEdgeColor,
+            explorationMode === 'data' && !isTermTermInDataMode
+              ? DATA_MODE_ASSET_EDGE_STROKE_COLOR
+              : EDGE_STROKE_COLOR
+          );
+
+          const showLabel =
+            settings.showEdgeLabels &&
+            (explorationMode === 'model' ||
+              explorationMode === 'hierarchy' ||
+              isClickedEdge ||
+              isTermTermInDataMode);
+
+          const labelText = showLabel
+            ? singleEdge.inverseRelationType
+              ? `${formatRelationLabel(
+                  singleEdge.relationType
+                )} / ${formatRelationLabel(singleEdge.inverseRelationType)}`
+              : formatRelationLabel(singleEdge.relationType)
+            : undefined;
+
+          // Offset badges perpendicular to the edge direction so they never
+          // stack along the edge (which breaks for vertical edges).
+          const step = i - (n - 1) / 2;
+          let labelOffsetX = 0;
+          let labelOffsetY = Math.round(step * BADGE_V_STEP);
+          const fromPos = nodePositions?.[singleEdge.from];
+          const toPos = nodePositions?.[singleEdge.to];
+          if (fromPos && toPos) {
+            const dx = toPos.x - fromPos.x;
+            const dy = toPos.y - fromPos.y;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            if (len > 0) {
+              const offset = step * BADGE_V_STEP;
+              labelOffsetX = Math.round((-dy / len) * offset);
+              labelOffsetY = Math.round((dx / len) * offset);
+            }
+          }
+
+          const labelStyle = labelText
+            ? {
+                ...getEdgeRelationLabelStyle(
+                  labelText,
+                  singleEdge.relationType
+                ),
+                labelPosition: 'center',
+                labelAutoRotate: false,
+                labelOffsetX,
+                labelOffsetY,
+              }
+            : {};
+
+          const commonStyle = {
+            lineAppendWidth: EDGE_LINE_APPEND_WIDTH,
+            opacity: isEdgeDimmed ? DIMMED_EDGE_OPACITY : 1,
+            ...labelStyle,
+            ...(useComboAwarePolyline && {
+              router: {
+                type: 'shortest-path',
+                offset: 20,
+                enableObstacleAvoidance: true,
+              },
+            }),
+          };
+
+          return {
+            id: edgeId,
+            source: singleEdge.from,
+            target: singleEdge.to,
+            data: {
+              relationType: singleEdge.relationType,
+              edgeColor,
+              isHighlighted,
+              isClickedEdge,
+              isCrossTeam,
+              isEdgeDimmed,
+            },
+            type: edgeType,
+            style: isPrimary
+              ? {
+                  stroke: edgeColor,
+                  lineWidth: isHighlighted || isClickedEdge ? 2.5 : 1.5,
+                  endArrow: explorationMode !== 'data',
+                  ...commonStyle,
+                }
+              : {
+                  // Line invisible; label group retains opacity:1 so badge shows.
+                  stroke: 'transparent',
+                  lineWidth: 0,
+                  endArrow: false,
+                  ...commonStyle,
+                },
+          };
+        });
+      }
+    );
+
+    const extraComboPadding = (glossaryId: string): number => {
+      const maxParallel = glossaryMaxParallelEdges.get(glossaryId) ?? 1;
+
+      return Math.max(0, (maxParallel - 1) * BADGE_V_STEP);
+    };
 
     const combos: ComboData[] = [];
     if (explorationMode === 'hierarchy' && hierarchyCombos.length > 0) {
@@ -727,8 +806,13 @@ export function useGraphDataBuilder({
             glossaryName: combo.label,
             color,
             isDimmed: isComboDimmed,
+            extraVerticalPadding: extraComboPadding(combo.glossaryId),
           },
-          style: buildComboStyle(combo.label, color),
+          style: buildComboStyle(
+            combo.label,
+            color,
+            extraComboPadding(combo.glossaryId)
+          ),
         });
       });
     } else if (explorationMode !== 'data') {
@@ -754,8 +838,13 @@ export function useGraphDataBuilder({
         );
         combos.push({
           id: `glossary-group-${glossaryId}`,
-          data: { glossaryName: name, color, isDimmed: isComboDimmed },
-          style: buildComboStyle(name, color),
+          data: {
+            glossaryName: name,
+            color,
+            isDimmed: isComboDimmed,
+            extraVerticalPadding: extraComboPadding(glossaryId),
+          },
+          style: buildComboStyle(name, color, extraComboPadding(glossaryId)),
         });
       });
     }
