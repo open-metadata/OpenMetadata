@@ -13,7 +13,7 @@
 
 import { test } from '@playwright/test';
 import { TopicClass } from '../../../support/entity/TopicClass';
-import { registerFilterSeparationSuite } from './searchSeparationSuite';
+import { registerFilterSeparationSuite } from './SearchSeparationSuite';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -22,3 +22,4 @@ registerFilterSeparationSuite({
   reindexEntityType: 'topic',
   entityFactory: () => new TopicClass(),
 });
+

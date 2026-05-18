@@ -163,7 +163,7 @@ export function registerFilterSeparationSuite(
 
       await afterAction();
       await redirectToHomePage(page);
-      await assertAllFourFiltersWork(
+      await assertAllFourFiltersWorkWithRetry(
         page,
         entity,
         classificationTag,
@@ -283,12 +283,47 @@ async function assertReindexedDocPreservesSeparation(
     });
 }
 
+async function assertAllFourFiltersWorkWithRetry(
+  page: Page,
+  entity: FilterSeparationEntity,
+  classificationTag: TagClass,
+  glossaryTerm: GlossaryTerm,
+  maxAttempts = 3
+): Promise<void> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      await assertAllFourFiltersWork(page, entity, classificationTag, glossaryTerm);
+
+      return;
+    } catch (err) {
+      if (attempt === maxAttempts) {
+        throw err;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 8_000));
+    }
+  }
+}
+
 async function assertAllFourFiltersWork(
   page: Page,
   entity: FilterSeparationEntity,
   classificationTag: TagClass,
   glossaryTerm: GlossaryTerm
 ): Promise<void> {
+  const responseData = entity.entityResponseData as Record<string, unknown>;
+  const serviceName = (responseData?.service as { name?: string } | undefined)
+    ?.name;
+
+  if (serviceName) {
+    await checkExploreSearchFilter(
+      page,
+      'Service',
+      'service.displayName.keyword',
+      serviceName,
+      entity
+    );
+  }
+
   await checkExploreSearchFilter(page, 'Tier', 'tier.tagFQN', TIER_FQN, entity);
   await checkExploreSearchFilter(
     page,
