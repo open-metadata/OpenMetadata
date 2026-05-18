@@ -67,10 +67,10 @@ public class StatsReconciler {
     jobStats.setFailedRecords(jobFailed);
     jobStats.setWarningRecords(readerWarnings);
 
-    int computedTotal = sinkSuccess + jobFailed;
+    int computedTotal = sinkSuccess + jobFailed + readerWarnings;
     if (computedTotal != jobTotal && jobTotal > 0) {
       LOG.warn(
-          "Stats discrepancy detected: total={}, success+failed={}. "
+          "Stats discrepancy detected: total={}, success+failed+warnings={}. "
               + "Reader: total={}, failed={}, warnings={}. Process: failed={}. Sink: success={}, failed={}, warnings={}",
           jobTotal,
           computedTotal,

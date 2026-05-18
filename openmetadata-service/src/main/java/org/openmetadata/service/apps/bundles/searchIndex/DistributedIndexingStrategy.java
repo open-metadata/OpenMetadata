@@ -368,7 +368,7 @@ public class DistributedIndexingStrategy {
     return SearchIndexJob.EntityTypeStats.builder()
         .entityType(entityType)
         .totalRecords(stepStats != null ? statValue(stepStats.getTotalRecords()) : 0L)
-        .processedRecords(success + failed)
+        .processedRecords(success + failed + warnings)
         .successRecords(success)
         .failedRecords(failed)
         .warningRecords(warnings)
