@@ -333,7 +333,7 @@ const TaskPayloadSchemaFields = ({
     renderReadOnlyRow(
       label,
       label,
-      <div className="tw:flex tw:flex-wrap tw:gap-1">
+      <Box gap={1} wrap="wrap">
         {value.length ? (
           value.map((tag) => <Tag key={tag.tagFQN}>{tag.tagFQN}</Tag>)
         ) : (
@@ -349,12 +349,12 @@ const TaskPayloadSchemaFields = ({
             {description}
           </Typography>
         ) : null}
-      </div>,
+      </Box>,
       iconSrc
     );
 
   return (
-    <div className="tw:flex tw:flex-col tw:gap-4">
+    <Box direction="col" gap={4}>
       {mode === 'read' &&
         headerRows?.map(({ iconSrc, label, value }) =>
           renderReadOnlyRow(label, label, value, iconSrc)
@@ -372,7 +372,7 @@ const TaskPayloadSchemaFields = ({
         if (widget === 'descriptionTabs') {
           if (mode === 'read') {
             return (
-              <div className="tw:flex tw:flex-col tw:gap-4" key={fieldName}>
+              <Box direction="col" gap={4} key={fieldName}>
                 {renderReadOnlyText(
                   `${label} (${'Current'})`,
                   payload.currentDescription,
@@ -382,7 +382,7 @@ const TaskPayloadSchemaFields = ({
                   `${label} (${'Suggested'})`,
                   payload.newDescription ?? payload.suggestedValue
                 )}
-              </div>
+              </Box>
             );
           }
 
@@ -409,14 +409,14 @@ const TaskPayloadSchemaFields = ({
 
           if (mode === 'read') {
             return (
-              <div className="tw:flex tw:flex-col tw:gap-4" key={fieldName}>
+              <Box direction="col" gap={4} key={fieldName}>
                 {renderReadOnlyTags(
                   `${label} (${'Current'})`,
                   currentTags,
                   description
                 )}
                 {renderReadOnlyTags(`${label} (${'Suggested'})`, suggestedTags)}
-              </div>
+              </Box>
             );
           }
 
@@ -660,7 +660,7 @@ const TaskPayloadSchemaFields = ({
           </Form.Item>
         );
       })}
-    </div>
+    </Box>
   );
 };
 
