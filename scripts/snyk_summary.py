@@ -126,30 +126,30 @@ def render_code_md(name, by_rule, rules, total):
 
 def render_deps_slack(name, libs, total, top):
     if not libs:
-        return f"📦 *{name}*: ✅ clean"
-    head = f"📦 *{name}*: {len(libs)} libs · {total} findings"
+        return f"📦  *{name}*  ·  ✅ clean"
+    head = f"📦  *{name}*  ·  {len(libs)} libs · {total} findings"
     rows = []
     ordered = sorted(libs.items(), key=lambda kv: sev_key(kv[1]["sev"]))
     for (pkg, ver), info in ordered[:top]:
         icon = SEV_ICON.get(info["sev"], "⚪")
         title = (sorted(info["titles"])[0] if info["titles"] else "")[:60]
-        fix = sorted(info["fixedIn"])[0] if info["fixedIn"] else "no fix"
-        rows.append(f"  {icon} `{pkg}` {ver} — {title} (fix: {fix})")
+        fix_label = f"_fix in {sorted(info['fixedIn'])[0]}_" if info["fixedIn"] else "_no fix_"
+        rows.append(f"   {icon}  `{pkg}@{ver}` — {title}  ·  {fix_label}")
     extra = len(libs) - top
     if extra > 0:
-        rows.append(f"  … +{extra} more")
+        rows.append(f"   _… +{extra} more_")
     return head + "\n" + "\n".join(rows)
 
 
 def render_code_slack(name, by_rule, rules, total, top):
     if not by_rule:
-        return f"🔎 *{name}*: ✅ clean"
-    head = f"🔎 *{name}*: {total} findings · {len(by_rule)} rules"
+        return f"🔎  *{name}*  ·  ✅ clean"
+    head = f"🔎  *{name}*  ·  {total} findings · {len(by_rule)} rules"
     ordered = sorted(by_rule.items(), key=lambda kv: -len(kv[1]))
-    rows = [f"  • `{rid}` ({len(items)})" for rid, items in ordered[:top]]
+    rows = [f"   •  `{rid}`  _×{len(items)}_" for rid, items in ordered[:top]]
     extra = len(by_rule) - top
     if extra > 0:
-        rows.append(f"  … +{extra} more")
+        rows.append(f"   _… +{extra} more_")
     return head + "\n" + "\n".join(rows)
 
 
@@ -222,14 +222,13 @@ def main():
 
     if args.slack_file:
         header = (
-            f"*🛡️ Snyk Security Scan* — 🚨 {totals['critical']} · 🔴 {totals['high']} · "
-            f"🟠 {totals['medium']} · 🟡 {totals['low']}"
+            f"*🛡️  Snyk Security Scan*\n"
+            f"🚨 *{totals['critical']}* critical  ·  🔴 *{totals['high']}* high  ·  "
+            f"🟠 *{totals['medium']}* medium  ·  🟡 *{totals['low']}* low"
         )
+        # Scans separated by blank lines — workflow splits this on `\n\n` and emits
+        # one Slack section block per scan, so nothing gets truncated mid-line.
         body = "\n\n".join([header] + slack_parts[1:])
-        # Slack section block hard limit is 3000 chars; leave generous headroom for
-        # the shell-prepended header (icons, branch name, run URL, per-scan statuses).
-        if len(body) > 1800:
-            body = body[:1750] + "\n…truncated. See Job Summary for full report."
         with open(args.slack_file, "w") as f:
             f.write(body)
 
