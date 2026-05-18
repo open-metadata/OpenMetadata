@@ -59,7 +59,10 @@ import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../generated/entity/policies/policy';
-import { TaskAvailableTransition } from '../../../../generated/entity/tasks/task';
+import {
+  TaskAvailableTransition,
+  TaskCategory,
+} from '../../../../generated/entity/tasks/task';
 import {
   TestCaseFailureReasonType,
   TestCaseResolutionStatusTypes,
@@ -391,7 +394,11 @@ export const TaskTabNew = ({
   }, [taskFormSchema?.formSchema]);
 
   const darHeaderRows = useMemo(() => {
-    if (!isWorkflowDrivenTask || !shouldRenderTaskPayload) {
+    if (
+      !isWorkflowDrivenTask ||
+      !shouldRenderTaskPayload ||
+      task.category !== TaskCategory.DataAccess
+    ) {
       return undefined;
     }
 
@@ -431,6 +438,7 @@ export const TaskTabNew = ({
     isWorkflowDrivenTask,
     shouldRenderTaskPayload,
     t,
+    task.category,
     task.assignees,
     task.createdBy,
   ]);
