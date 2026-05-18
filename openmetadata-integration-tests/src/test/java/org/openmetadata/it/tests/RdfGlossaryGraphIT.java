@@ -435,10 +435,45 @@ public class RdfGlossaryGraphIT {
     }
   }
 
+  @Test
+  void customRelationWithNullRdfPredicateSurfacesInGraphEndpoint(TestNamespace ns)
+      throws Exception {
+    // Companion to customRdfPredicateRelationSurfacesInGraphEndpoint covering
+    // the OTHER half of the customer's actual configuration: a custom relation
+    // type registered in GlossaryTermRelationSettings WITHOUT a populated
+    // rdfPredicate (the Novartis instance had `definedby`, `enabledby`,
+    // `enrollsin` all stored with rdfPredicate=null). On the writer side
+    // getGlossaryTermRelationPredicate falls back to
+    // `https://open-metadata.org/ontology/<name>`; the reader fix must mirror
+    // that fallback or the edges still don't surface.
+    String customTypeName = "regressionNullPredRel";
+    addCustomRelationTypeToSettings(customTypeName, /* rdfPredicate */ null);
+    try {
+      Glossary glossary = GlossaryTestFactory.createWithName(ns, "nullRdfPred");
+      GlossaryTerm a = GlossaryTermTestFactory.createWithName(ns, glossary, "gamma");
+      GlossaryTerm b = GlossaryTermTestFactory.createWithName(ns, glossary, "delta");
+
+      awaitTermInGraph(glossary.getId(), a.getId());
+      awaitTermInGraph(glossary.getId(), b.getId());
+
+      addRelation(a.getId(), b.getId(), customTypeName);
+      awaitRelatedTermInDb(a.getId(), b.getId(), customTypeName);
+
+      // Without the null-rdfPredicate fallback in the reader's FILTER assembly,
+      // this edge (written as om:regressionNullPredRel) is filtered out.
+      awaitEdgeBetween(glossary.getId(), a.getId(), b.getId(), customTypeName);
+    } finally {
+      removeCustomRelationTypeFromSettings(customTypeName);
+    }
+  }
+
   /**
    * PUT a new relation type onto the system-level GlossaryTermRelationSettings.
    * Preserves whatever's already configured (defaults + any types from earlier
-   * tests still on the way out) and appends our custom one.
+   * tests still on the way out) and appends our custom one. Pass {@code null}
+   * for {@code rdfPredicate} to exercise the "operator added a type but didn't
+   * fill in the RDF predicate URI" case — the writer falls back to
+   * {@code om:<name>} and the reader must mirror that fallback.
    */
   private void addCustomRelationTypeToSettings(String name, URI rdfPredicate) throws Exception {
     JsonNode existing = fetchGlossaryTermRelationSettings();
@@ -451,7 +486,9 @@ public class RdfGlossaryGraphIT {
     }
     com.fasterxml.jackson.databind.node.ObjectNode custom = MAPPER.createObjectNode();
     custom.put("name", name);
-    custom.put("rdfPredicate", rdfPredicate.toString());
+    if (rdfPredicate != null) {
+      custom.put("rdfPredicate", rdfPredicate.toString());
+    }
     types.add(custom);
     value.set("relationTypes", types);
     payload.set("config_value", value);
