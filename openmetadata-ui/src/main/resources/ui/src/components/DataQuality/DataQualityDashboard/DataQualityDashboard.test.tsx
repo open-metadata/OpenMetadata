@@ -102,7 +102,7 @@ jest.mock('../../../components/PageHeader/PageHeader.component', () =>
 );
 
 jest.mock('../../../rest/tagAPI', () => ({
-  getTags: () => mockGetTags(),
+  getTags: (...args: unknown[]) => mockGetTags(...args),
 }));
 
 jest.mock('../../../rest/searchAPI', () => ({
@@ -1045,10 +1045,11 @@ describe('DataQualityDashboard', () => {
       ).toBeInTheDocument();
     });
 
-    it('does not call getTags API when tier is in hiddenFilters', async () => {
-      render(<DataQualityDashboard hiddenFilters={['tier']} />, {
-        wrapper: MemoryRouter,
-      });
+    it('does not call getTags API when both tier and certification are in hiddenFilters', async () => {
+      render(
+        <DataQualityDashboard hiddenFilters={['tier', 'certification']} />,
+        { wrapper: MemoryRouter }
+      );
 
       await waitFor(() => {
         expect(
@@ -1057,6 +1058,30 @@ describe('DataQualityDashboard', () => {
       });
 
       expect(mockGetTags).not.toHaveBeenCalled();
+    });
+
+    it('fetches only Certification (not Tier) when tier is in hiddenFilters', async () => {
+      render(<DataQualityDashboard hiddenFilters={['tier']} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(mockGetTags).toHaveBeenCalledWith({ parent: 'Certification' });
+      });
+
+      expect(mockGetTags).not.toHaveBeenCalledWith({ parent: 'Tier' });
+    });
+
+    it('fetches only Tier (not Certification) when certification is in hiddenFilters', async () => {
+      render(<DataQualityDashboard hiddenFilters={['certification']} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(mockGetTags).toHaveBeenCalledWith({ parent: 'Tier' });
+      });
+
+      expect(mockGetTags).not.toHaveBeenCalledWith({ parent: 'Certification' });
     });
 
     it('does not call tag search API when tags is in hiddenFilters', async () => {
