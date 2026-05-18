@@ -54,7 +54,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  * {@code false} on a cert-only ChangeDescription, the cascade never fires, and the Data Quality
  * dashboard's Certification filter keeps returning the stale cert until a full reindex.
  */
-@Execution(ExecutionMode.SAME_THREAD)
+@Execution(ExecutionMode.CONCURRENT)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class TableCertificationPropagationIT {
 
