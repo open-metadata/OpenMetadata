@@ -14,6 +14,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchIndexUtils;
 
@@ -34,16 +35,19 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
   @Override
   public Set<String> getRequiredReindexFields() {
     Set<String> fields = new java.util.HashSet<>(TaggableIndex.super.getRequiredReindexFields());
-    fields.add("testSuite");
-    fields.add("testSuites");
-    fields.add("testDefinition");
+    fields.add(TestCaseRepository.TEST_SUITE_FIELD);
+    fields.add(Entity.FIELD_TEST_SUITES);
+    fields.add(TestCaseRepository.TEST_DEFINITION_FIELD);
+    fields.add(Entity.TEST_CASE_RESULT);
+    fields.add(TestCaseRepository.INCIDENTS_FIELD);
     return java.util.Collections.unmodifiableSet(fields);
   }
 
   @Override
   public void removeNonIndexableFields(Map<String, Object> esDoc) {
     TaggableIndex.super.removeNonIndexableFields(esDoc);
-    List<Map<String, Object>> testSuites = (List<Map<String, Object>>) esDoc.get("testSuites");
+    List<Map<String, Object>> testSuites =
+        (List<Map<String, Object>>) esDoc.get(Entity.FIELD_TEST_SUITES);
     if (testSuites != null) {
       for (Map<String, Object> testSuite : testSuites) {
         SearchIndexUtils.removeNonIndexableFields(testSuite, excludeFields);
