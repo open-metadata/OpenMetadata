@@ -14,7 +14,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
@@ -49,9 +48,12 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
  * up the full bulk write path:
  *
  * <ul>
- *   <li>{@link EntityRepository#restoreChildren(UUID, String)} groups CONTAINS children by
- *       entity type and dispatches a single {@link EntityRepository#bulkRestoreSubtree(List,
- *       String)} call per type (instead of N recursive {@code Entity.restoreEntity} calls).
+ *   <li>{@link EntityRepository#restoreChildren(UUID, String)} groups CONTAINS + PARENT_OF
+ *       children by entity type and dispatches a single {@link
+ *       EntityRepository#bulkRestoreSubtree(List, String)} call per type (instead of N
+ *       recursive {@code Entity.restoreEntity} calls). The relation set matches
+ *       {@code deleteChildren} so a Team / KnowledgePage / Classification hierarchy is
+ *       restored the same way it was cascade-soft-deleted.
  *   <li>{@link EntityRepository#deleteChildren(List, boolean, String)} with
  *       {@code hardDelete=false} dispatches one {@link EntityRepository#bulkSoftDeleteSubtree(
  *       List, String)} call per type and with {@code hardDelete=true} dispatches one
@@ -150,11 +152,12 @@ class EntityRepositoryRestoreTest {
   void restoreChildren_withNoChildren_isNoOp() {
     CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
     UUID parentId = UUID.randomUUID();
-    when(relationshipDAO.findTo(eq(parentId), eq(Entity.PIPELINE), anyInt())).thenReturn(List.of());
+    when(relationshipDAO.findTo(eq(parentId), eq(Entity.PIPELINE), eq(SUBTREE_RELATIONS)))
+        .thenReturn(List.of());
 
     repo.restoreChildren(parentId, "user");
 
-    verify(relationshipDAO).findTo(eq(parentId), eq(Entity.PIPELINE), anyInt());
+    verify(relationshipDAO).findTo(eq(parentId), eq(Entity.PIPELINE), eq(SUBTREE_RELATIONS));
     assertEquals(0, repo.restoreAdditionalChildrenCalls);
   }
 
@@ -171,7 +174,8 @@ class EntityRepositoryRestoreTest {
     children.add(record(schemaA, Entity.DATABASE_SCHEMA));
     children.add(record(schemaB, Entity.DATABASE_SCHEMA));
     children.add(record(procA, Entity.STORED_PROCEDURE));
-    when(relationshipDAO.findTo(eq(parentId), eq(Entity.PIPELINE), anyInt())).thenReturn(children);
+    when(relationshipDAO.findTo(eq(parentId), eq(Entity.PIPELINE), eq(SUBTREE_RELATIONS)))
+        .thenReturn(children);
 
     EntityRepository<?> schemaRepo = mock(EntityRepository.class);
     EntityRepository<?> procRepo = mock(EntityRepository.class);
