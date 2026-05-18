@@ -637,15 +637,13 @@ export function useGraphDataBuilder({
           selectedNodeId === rep.from ||
           selectedNodeId === rep.to ||
           (selectedScopedIds != null &&
-            (selectedScopedIds.has(rep.from) ||
-              selectedScopedIds.has(rep.to)));
+            (selectedScopedIds.has(rep.from) || selectedScopedIds.has(rep.to)));
         const isDimmedBySelection =
           selectedNodeId !== null &&
           selectedNodeId !== rep.from &&
           selectedNodeId !== rep.to &&
           !(
-            selectedScopedIds?.has(rep.from) ||
-            selectedScopedIds?.has(rep.to)
+            selectedScopedIds?.has(rep.from) || selectedScopedIds?.has(rep.to)
           ) &&
           !neighborSet.has(rep.from) &&
           !neighborSet.has(rep.to);
@@ -706,7 +704,9 @@ export function useGraphDataBuilder({
 
           const labelText = showLabel
             ? singleEdge.inverseRelationType
-              ? `${formatRelationLabel(singleEdge.relationType)} / ${formatRelationLabel(singleEdge.inverseRelationType)}`
+              ? `${formatRelationLabel(
+                  singleEdge.relationType
+                )} / ${formatRelationLabel(singleEdge.inverseRelationType)}`
               : formatRelationLabel(singleEdge.relationType)
             : undefined;
 
@@ -730,7 +730,10 @@ export function useGraphDataBuilder({
 
           const labelStyle = labelText
             ? {
-                ...getEdgeRelationLabelStyle(labelText, singleEdge.relationType),
+                ...getEdgeRelationLabelStyle(
+                  labelText,
+                  singleEdge.relationType
+                ),
                 labelPosition: 'center',
                 labelAutoRotate: false,
                 labelOffsetX,

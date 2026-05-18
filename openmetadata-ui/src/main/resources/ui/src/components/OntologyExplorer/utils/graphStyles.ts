@@ -244,8 +244,10 @@ export class GlossaryCombo extends RectCombo {
   ): [number, number, number] {
     const [w, h, d] = super.getExpandedKeySize(attributes);
     const attrs = attributes as Record<string, unknown>;
-    const minW = typeof attrs.minWidth === 'number' ? (attrs.minWidth as number) : 0;
-    const minH = typeof attrs.minHeight === 'number' ? (attrs.minHeight as number) : 0;
+    const minW =
+      typeof attrs.minWidth === 'number' ? (attrs.minWidth as number) : 0;
+    const minH =
+      typeof attrs.minHeight === 'number' ? (attrs.minHeight as number) : 0;
 
     return [Math.max(w, minW), Math.max(h, minH), d];
   }
