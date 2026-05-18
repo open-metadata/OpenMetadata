@@ -16,7 +16,7 @@ Source connection handler
 import os
 from datetime import datetime
 from functools import partial
-from typing import Optional
+from typing import Any, Dict, Optional
 from urllib.parse import parse_qs, quote, urlparse
 
 from google.api_core.exceptions import NotFound
@@ -53,6 +53,7 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_TEST_STATEMENT
+from metadata.utils.bigquery_utils import get_bigquery_client
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.logger import ingestion_logger
@@ -60,25 +61,52 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
+def _add_query_parameter(url: str, parameter: str, value: Optional[str]) -> str:  # noqa: UP045
+    """
+    Attach a query parameter to the URL when available.
+    """
+    if value in (None, ""):
+        return url
+
+    parsed = urlparse(url)
+    params = parse_qs(parsed.query)
+
+    if parameter in params:
+        return url
+
+    separator = "&" if parsed.query else "?"
+    encoded_value = quote(str(value), safe="")
+    return f"{url}{separator}{parameter}={encoded_value}"
+
+
 def _add_location(url: str, connection: BigQueryConnection) -> str:
     """
     Attach the `usageLocation` value to the URL when available.
     """
-    location = getattr(connection, "usageLocation", None)
-    if not location:
-        return url
+    return _add_query_parameter(url, "location", getattr(connection, "usageLocation", None))
 
-    # Parse the URL to check if location parameter already exists
-    parsed = urlparse(url)
-    params = parse_qs(parsed.query)
 
-    if "location" in params:
-        return url
+def _get_impersonation_config(connection: BigQueryConnection) -> Dict[str, Any]:
+    impersonation = getattr(connection.credentials, "gcpImpersonateServiceAccount", None)
+    if not impersonation or not impersonation.impersonateServiceAccount:
+        return {}
 
-    # Add location parameter with proper URL encoding
-    separator = "&" if parsed.query else "?"
-    encoded_location = quote(str(location), safe="")
-    return f"{url}{separator}location={encoded_location}"
+    return {
+        "impersonate_service_account": impersonation.impersonateServiceAccount,
+        "lifetime": impersonation.lifetime,
+    }
+
+
+def _get_project_id(connection: BigQueryConnection) -> Optional[str]:  # noqa: UP045
+    project_id = getattr(connection.credentials.gcpConfig, "projectId", None)
+
+    if isinstance(project_id, SingleProjectId):
+        return project_id.root
+
+    if isinstance(project_id, MultipleProjectId):
+        return project_id.root[0] if project_id.root else None
+
+    return None
 
 
 def get_connection_url(connection: BigQueryConnection) -> str:  # noqa: C901
@@ -136,7 +164,27 @@ def get_connection_url(connection: BigQueryConnection) -> str:  # noqa: C901
     if url is None:
         url = f"{connection.scheme.value}://"
 
-    return _add_location(url, connection)
+    url = _add_location(url, connection)
+
+    if _get_impersonation_config(connection):
+        url = _add_query_parameter(url, "user_supplied_client", "true")
+
+    return url
+
+
+def get_connection_args(connection: BigQueryConnection) -> Dict[str, Any]:
+    connection_args = dict(get_connection_args_common(connection))
+    impersonation_config = _get_impersonation_config(connection)
+
+    if not impersonation_config:
+        return connection_args
+
+    connection_args["client"] = get_bigquery_client(
+        project_id=connection.billingProjectId or _get_project_id(connection),
+        location=getattr(connection, "usageLocation", None),
+        **impersonation_config,
+    )
+    return connection_args
 
 
 def get_connection(connection: BigQueryConnection) -> Engine:
@@ -151,7 +199,7 @@ def get_connection(connection: BigQueryConnection) -> Engine:
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,
-        get_connection_args_fn=get_connection_args_common,
+        get_connection_args_fn=get_connection_args,
         **kwargs,
     )
 
