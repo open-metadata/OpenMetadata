@@ -40,7 +40,10 @@ import { TagClass } from '../../../support/tag/TagClass';
 import { createAdminApiContext } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
 import { searchAndClickOnOption } from '../../../utils/explore';
-import { checkExploreSearchFilter, waitForAllLoadersToDisappear } from '../../../utils/entity';
+import {
+  checkExploreSearchFilter,
+  waitForAllLoadersToDisappear,
+} from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
 
 const TIER_FQN = 'Tier.Tier1';
@@ -166,12 +169,13 @@ export function registerFilterSeparationSuite(
 
       expect(reindexRes.status()).toBeLessThan(400);
 
-      const { serviceDisplayName } = await assertReindexedDocPreservesSeparation(
-        apiContext,
-        entity,
-        classificationTag,
-        glossaryTerm
-      );
+      const { serviceDisplayName } =
+        await assertReindexedDocPreservesSeparation(
+          apiContext,
+          entity,
+          classificationTag,
+          glossaryTerm
+        );
 
       await afterAction();
       await redirectToHomePage(page);
@@ -379,7 +383,11 @@ async function checkExploreFilterWithServiceBase(
   await page.getByTestId('search-dropdown-Service').click();
   await searchAndClickOnOption(
     page,
-    { label: 'Service', key: 'service.displayName.keyword', value: serviceName },
+    {
+      label: 'Service',
+      key: 'service.displayName.keyword',
+      value: serviceName,
+    },
     true
   );
   await page.click('[data-testid="update-btn"]');
@@ -413,9 +421,7 @@ async function assertAllFourFiltersWork(
 ): Promise<void> {
   const svcData = entity.serviceResponseData;
   const serviceName =
-    serviceDisplayName ||
-    svcData?.displayName ||
-    svcData?.name;
+    serviceDisplayName || svcData?.displayName || svcData?.name;
 
   const filters: Array<{ label: string; key: string; value: string }> = [
     { label: 'Tier', key: 'tier.tagFQN', value: TIER_FQN },
