@@ -31,6 +31,7 @@
 
 import { APIRequestContext, expect, Page, test } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import { SidebarItem } from '../../../constant/sidebar';
 import { EntityClass } from '../../../support/entity/EntityClass';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
@@ -38,7 +39,9 @@ import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { createAdminApiContext } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
-import { checkExploreSearchFilter } from '../../../utils/entity';
+import { searchAndClickOnOption } from '../../../utils/explore';
+import { checkExploreSearchFilter, waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { sidebarClick } from '../../../utils/sidebar';
 
 const TIER_FQN = 'Tier.Tier1';
 const CERTIFICATION_FQN = 'Certification.Gold';
@@ -122,12 +125,20 @@ export function registerFilterSeparationSuite(
     test('live indexing produces searchable separation for all four facets', async ({
       page,
     }) => {
+      const { apiContext, afterAction } = await createAdminApiContext();
+      let serviceDisplayName: string | undefined;
+      try {
+        ({ serviceDisplayName } = await waitForLiveIndex(apiContext, entity));
+      } finally {
+        await afterAction();
+      }
       await redirectToHomePage(page);
       await assertAllFourFiltersWork(
         page,
         entity,
         classificationTag,
-        glossaryTerm
+        glossaryTerm,
+        serviceDisplayName
       );
     });
 
@@ -154,7 +165,7 @@ export function registerFilterSeparationSuite(
 
       expect(reindexRes.status()).toBeLessThan(400);
 
-      await assertReindexedDocPreservesSeparation(
+      const { serviceDisplayName } = await assertReindexedDocPreservesSeparation(
         apiContext,
         entity,
         classificationTag,
@@ -167,7 +178,8 @@ export function registerFilterSeparationSuite(
         page,
         entity,
         classificationTag,
-        glossaryTerm
+        glossaryTerm,
+        serviceDisplayName
       );
     });
   });
@@ -229,12 +241,49 @@ async function applyAllFacets(
   });
 }
 
+async function waitForLiveIndex(
+  apiContext: APIRequestContext,
+  entity: FilterSeparationEntity
+): Promise<{ serviceDisplayName?: string }> {
+  let serviceDisplayName: string | undefined;
+
+  await expect
+    .poll(
+      async () => {
+        const res = await apiContext.get(
+          `/api/v1/search/query?q=fullyQualifiedName:%22${encodeURIComponent(
+            entity.entityResponseData.fullyQualifiedName ?? ''
+          )}%22&index=dataAsset`
+        );
+        if (res.status() !== 200) {
+          return undefined;
+        }
+        const body = await res.json();
+        const source = body?.hits?.hits?.[0]?._source;
+        if (source?.service?.displayName) {
+          serviceDisplayName = source.service.displayName as string;
+        }
+
+        return source?.tier?.tagFQN;
+      },
+      {
+        message: 'waiting for live indexing to propagate tier to ES',
+        timeout: 60_000,
+      }
+    )
+    .toEqual(TIER_FQN);
+
+  return { serviceDisplayName };
+}
+
 async function assertReindexedDocPreservesSeparation(
   apiContext: APIRequestContext,
   entity: FilterSeparationEntity,
   classificationTag: TagClass,
   glossaryTerm: GlossaryTerm
-): Promise<void> {
+): Promise<{ serviceDisplayName?: string }> {
+  let serviceDisplayName: string | undefined;
+
   await expect
     .poll(
       async () => {
@@ -250,6 +299,9 @@ async function assertReindexedDocPreservesSeparation(
         const source = body?.hits?.hits?.[0]?._source;
         if (!source) {
           return undefined;
+        }
+        if (source?.service?.displayName) {
+          serviceDisplayName = source.service.displayName as string;
         }
 
         return {
@@ -281,6 +333,8 @@ async function assertReindexedDocPreservesSeparation(
       hasGlossaryTag: true,
       tierNotInTagsBag: true,
     });
+
+  return { serviceDisplayName };
 }
 
 async function assertAllFourFiltersWorkWithRetry(
@@ -288,11 +342,18 @@ async function assertAllFourFiltersWorkWithRetry(
   entity: FilterSeparationEntity,
   classificationTag: TagClass,
   glossaryTerm: GlossaryTerm,
+  serviceDisplayName?: string,
   maxAttempts = 3
 ): Promise<void> {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      await assertAllFourFiltersWork(page, entity, classificationTag, glossaryTerm);
+      await assertAllFourFiltersWork(
+        page,
+        entity,
+        classificationTag,
+        glossaryTerm,
+        serviceDisplayName
+      );
 
       return;
     } catch (err) {
@@ -304,15 +365,61 @@ async function assertAllFourFiltersWorkWithRetry(
   }
 }
 
+async function checkExploreFilterWithServiceBase(
+  page: Page,
+  filterLabel: string,
+  filterKey: string,
+  filterValue: string,
+  entity: FilterSeparationEntity,
+  serviceName: string
+): Promise<void> {
+  await sidebarClick(page, SidebarItem.EXPLORE);
+
+  await page.getByTestId('search-dropdown-Service').click();
+  await searchAndClickOnOption(
+    page,
+    { label: 'Service', key: 'service.displayName.keyword', value: serviceName },
+    true
+  );
+  await page.click('[data-testid="update-btn"]');
+  await waitForAllLoadersToDisappear(page);
+
+  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
+  await searchAndClickOnOption(
+    page,
+    { label: filterLabel, key: filterKey, value: filterValue },
+    true
+  );
+  await page.click('[data-testid="update-btn"]');
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(
+    page.getByTestId(
+      `table-data-card_${entity.entityResponseData.fullyQualifiedName}`
+    )
+  ).toBeVisible();
+
+  await page.click('[data-testid="clear-filters"]');
+  await entity.visitEntityPage(page);
+}
+
 async function assertAllFourFiltersWork(
   page: Page,
   entity: FilterSeparationEntity,
   classificationTag: TagClass,
-  glossaryTerm: GlossaryTerm
+  glossaryTerm: GlossaryTerm,
+  serviceDisplayName?: string
 ): Promise<void> {
-  const responseData = entity.entityResponseData as Record<string, unknown>;
-  const serviceName = (responseData?.service as { name?: string } | undefined)
-    ?.name;
+  const entityRecord = entity as unknown as Record<string, unknown>;
+  const svcData =
+    (entityRecord.serviceResponseData as Record<string, unknown> | undefined) ??
+    ((entity.entityResponseData as Record<string, unknown>).service as
+      | Record<string, unknown>
+      | undefined);
+  const serviceName =
+    serviceDisplayName ||
+    (svcData?.displayName as string | undefined) ||
+    (svcData?.name as string | undefined);
 
   if (serviceName) {
     await checkExploreSearchFilter(
@@ -322,28 +429,66 @@ async function assertAllFourFiltersWork(
       serviceName,
       entity
     );
+    await checkExploreFilterWithServiceBase(
+      page,
+      'Tier',
+      'tier.tagFQN',
+      TIER_FQN,
+      entity,
+      serviceName
+    );
+    await checkExploreFilterWithServiceBase(
+      page,
+      'Certification',
+      'certification.tagLabel.tagFQN',
+      CERTIFICATION_FQN,
+      entity,
+      serviceName
+    );
+    await checkExploreFilterWithServiceBase(
+      page,
+      'Tag',
+      'tags.tagFQN',
+      classificationTag.responseData.fullyQualifiedName,
+      entity,
+      serviceName
+    );
+    await checkExploreFilterWithServiceBase(
+      page,
+      'Tag',
+      'tags.tagFQN',
+      glossaryTerm.responseData.fullyQualifiedName,
+      entity,
+      serviceName
+    );
+  } else {
+    await checkExploreSearchFilter(
+      page,
+      'Tier',
+      'tier.tagFQN',
+      TIER_FQN,
+      entity
+    );
+    await checkExploreSearchFilter(
+      page,
+      'Certification',
+      'certification.tagLabel.tagFQN',
+      CERTIFICATION_FQN,
+      entity
+    );
+    await checkExploreSearchFilter(
+      page,
+      'Tag',
+      'tags.tagFQN',
+      classificationTag.responseData.fullyQualifiedName,
+      entity
+    );
+    await checkExploreSearchFilter(
+      page,
+      'Tag',
+      'tags.tagFQN',
+      glossaryTerm.responseData.fullyQualifiedName,
+      entity
+    );
   }
-
-  await checkExploreSearchFilter(page, 'Tier', 'tier.tagFQN', TIER_FQN, entity);
-  await checkExploreSearchFilter(
-    page,
-    'Certification',
-    'certification.tagLabel.tagFQN',
-    CERTIFICATION_FQN,
-    entity
-  );
-  await checkExploreSearchFilter(
-    page,
-    'Tag',
-    'tags.tagFQN',
-    classificationTag.responseData.fullyQualifiedName,
-    entity
-  );
-  await checkExploreSearchFilter(
-    page,
-    'Tag',
-    'tags.tagFQN',
-    glossaryTerm.responseData.fullyQualifiedName,
-    entity
-  );
 }
