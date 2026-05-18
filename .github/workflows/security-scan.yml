@@ -12,7 +12,7 @@
 name: security-scan
 on:
   schedule:
-    - cron:  '0 0 */2 * *'
+    - cron: "0 0 */2 * *"
   workflow_dispatch:
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
 
       - name: Enable yarn
         run: corepack enable
@@ -145,25 +145,25 @@ jobs:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
-            tool-cache: false
-            android: true
-            dotnet: true
-            haskell: true
-            large-packages: false
-            docker-images: true
-            swap-storage: true      
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: true
+          swap-storage: true
       - uses: actions/checkout@v4
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
-          distribution: 'temurin'
+          java-version: "21"
+          distribution: "temurin"
 
       - name: Install Ubuntu dependencies
         run: |
