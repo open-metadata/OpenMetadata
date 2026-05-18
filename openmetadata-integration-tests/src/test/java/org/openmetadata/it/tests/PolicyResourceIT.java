@@ -50,6 +50,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.policies.PolicyResource;
 
 /**
@@ -476,6 +477,61 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
     Policy policy = createEntity(create);
     assertNotNull(policy.getRules());
     assertTrue(policy.getRules().get(0).getOperations().size() >= 3);
+  }
+
+  /**
+   * Reproduces the server behaviour behind “ViewBasic disappears after save” for Classification
+   * policies (GitHub #27591) when a rule includes both {@code ViewAll} and {@code ViewBasic}:
+   * {@link org.openmetadata.service.jdbi3.PolicyRepository#filterRedundantOperations} drops {@code
+   * ViewBasic} as redundant. This test should pass before and after the UI fix; it locks the
+   * contract the UI was not reflecting immediately.
+   */
+  @Test
+  void test_createPolicyClassificationViewBasicOmittedWhenRedundantWithViewAll(
+      TestNamespace ns) {
+    Rule rule =
+        new Rule()
+            .withName("classificationViewAllAndBasic")
+            .withResources(List.of(Entity.CLASSIFICATION))
+            .withOperations(
+                List.of(MetadataOperation.VIEW_ALL, MetadataOperation.VIEW_BASIC))
+            .withEffect(Effect.ALLOW);
+    CreatePolicy create =
+        new CreatePolicy()
+            .withName(ns.prefix("classificationRedundantViewOpsPolicy"))
+            .withRules(List.of(rule))
+            .withDescription("Repro: VIEW_BASIC normalized away when VIEW_ALL is present");
+    Policy policy = createEntity(create);
+    List<MetadataOperation> operations = policy.getRules().get(0).getOperations();
+    assertTrue(operations.contains(MetadataOperation.VIEW_ALL));
+    assertFalse(
+        operations.contains(MetadataOperation.VIEW_BASIC),
+        "VIEW_BASIC is removed as redundant when VIEW_ALL is present (PolicyRepository policy)");
+  }
+
+  /**
+   * Regression: explicit {@code ViewBasic} alone on the classification resource must round-trip
+   * (GitHub #27591). Fails if the API incorrectly drops a standalone VIEW_BASIC rule.
+   */
+  @Test
+  void test_createPolicyClassificationViewBasicPersists(TestNamespace ns) {
+    Rule rule =
+        new Rule()
+            .withName("classificationViewBasicOnly")
+            .withResources(List.of(Entity.CLASSIFICATION))
+            .withOperations(List.of(MetadataOperation.VIEW_BASIC))
+            .withEffect(Effect.ALLOW);
+    CreatePolicy create =
+        new CreatePolicy()
+            .withName(ns.prefix("classificationViewBasicPolicy"))
+            .withRules(List.of(rule))
+            .withDescription("VIEW_BASIC only on classification resource");
+    Policy policy = createEntity(create);
+    assertNotNull(policy.getRules());
+    assertTrue(
+        policy.getRules().get(0).getOperations().contains(MetadataOperation.VIEW_BASIC),
+        "VIEW_BASIC must remain when it is the only view operation for classification");
+    assertEquals(1, policy.getRules().get(0).getOperations().size());
   }
 
   @Test
