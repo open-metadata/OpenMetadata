@@ -326,7 +326,7 @@ const TaskPayloadSchemaFields = ({
           value.map((tag) => <Tag key={tag.tagFQN}>{tag.tagFQN}</Tag>)
         ) : (
           <Typography className="tw:text-gray-400" size="text-sm">
-            -
+            --
           </Typography>
         )}
         {description ? (

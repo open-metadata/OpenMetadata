@@ -1607,9 +1607,17 @@ export const TaskTabNew = ({
             className="task-payload-details-container"
             data-testid="task-payload-details">
             <TaskPayloadSchemaFields
-              formatters={DAR_FIELD_FORMATTERS}
+              formatters={
+                task.category === TaskCategory.DataAccess
+                  ? DAR_FIELD_FORMATTERS
+                  : undefined
+              }
               headerRows={darHeaderRows}
-              icons={DAR_FIELD_ICONS}
+              icons={
+                task.category === TaskCategory.DataAccess
+                  ? DAR_FIELD_ICONS
+                  : undefined
+              }
               mode="read"
               payload={readOnlyTaskPayload}
               schema={taskFormSchema?.formSchema}
