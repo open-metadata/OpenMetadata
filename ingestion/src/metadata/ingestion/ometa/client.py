@@ -160,15 +160,17 @@ class REST:
 
         self._limits_reached = TTLCache(config.ttl_cache)
 
-    def _request(  # pylint: disable=too-many-arguments,too-many-branches
+    def _request(  # noqa: C901, pylint: disable=too-many-arguments,too-many-branches
         self,
-        method,
-        path,
-        data=None,
-        json=None,
-        base_url: URL = None,
-        api_version: str = None,  # noqa: RUF013
-        headers: dict = None,  # noqa: RUF013
+        method: str,
+        path: str,
+        data: Any = None,
+        json: Any = None,
+        base_url: Optional[URL] = None,  # noqa: UP045
+        api_version: Optional[str] = None,  # noqa: UP045
+        headers: Optional[dict] = None,  # noqa: UP045
+        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        retries: Optional[int] = None,  # noqa: UP045
     ):
         # pylint: disable=too-many-locals
         if path in self._limits_reached:
@@ -230,10 +232,14 @@ class REST:
         if self._cert:
             opts["cert"] = self._cert
 
-        if self._timeout:
-            opts["timeout"] = self._timeout
+        effective_timeout = timeout if timeout is not None else self._timeout
+        if effective_timeout:
+            opts["timeout"] = effective_timeout
 
-        total_retries = self._retry if self._retry > 0 else 0
+        if retries is not None:
+            total_retries = retries if retries > 0 else 0
+        else:
+            total_retries = self._retry if self._retry and self._retry > 0 else 0
         retry = total_retries
         while retry >= 0:
             try:
@@ -327,7 +333,15 @@ class REST:
         return self._request("GET", path, data, headers=headers)
 
     @calculate_execution_time(context="POST")
-    def post(self, path, data=None, json=None, headers=None):
+    def post(
+        self,
+        path: str,
+        data: Any = None,
+        json: Any = None,
+        headers: Optional[dict] = None,  # noqa: UP045
+        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        retries: Optional[int] = None,  # noqa: UP045
+    ):
         """
         POST method
 
@@ -336,11 +350,70 @@ class REST:
             data ():
             json ():
             headers (dict): Optional custom headers to override default headers
+            timeout: Per-call timeout that overrides the instance default
+            retries: Per-call retry budget that overrides the instance default.
+                     Pass 0 to disable the retry/sleep loop entirely.
 
         Returns:
             Response
         """
-        return self._request("POST", path, data, json, headers=headers)
+        return self._request(
+            "POST",
+            path,
+            data,
+            json,
+            headers=headers,
+            timeout=timeout,
+            retries=retries,
+        )
+
+    def post_best_effort(
+        self,
+        path: str,
+        data: Any = None,
+        headers: Optional[dict] = None,  # noqa: UP045
+        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+    ) -> bool:
+        """Quiet POST: no retries, no sleep, no logging. Returns True on 2xx."""
+        if path in self._limits_reached:
+            return False
+        try:
+            url = URL(self._base_url + "/" + self._api_version + path)
+            req_headers = self._build_request_headers(headers)
+            kwargs = {
+                "data": data,
+                "headers": req_headers,
+                "verify": self._verify,
+                "cookies": self._cookies,
+                "allow_redirects": self.config.allow_redirects,
+            }
+            effective_timeout = timeout if timeout is not None else self._timeout
+            if effective_timeout:
+                kwargs["timeout"] = effective_timeout
+            if self._cert:
+                kwargs["cert"] = self._cert
+            resp = self._session.post(url, **kwargs)
+        except Exception:
+            return False
+        return 200 <= resp.status_code < 300
+
+    def _build_request_headers(self, headers: Optional[dict] = None):  # noqa: UP045
+        """Reader-only headers builder. Does NOT refresh auth token —
+        refresh stays on _request() to avoid concurrent refreshes from
+        post_best_effort callers sharing ClientConfig."""
+        if not headers:
+            headers = {"Content-type": "application/json"}
+        if self.config.auth_header and self.config.access_token:
+            headers[self.config.auth_header] = (
+                f"{self._auth_token_mode} {self.config.access_token}"
+                if self._auth_token_mode
+                else self.config.access_token
+            )
+        if self.config.extra_headers:
+            extra_headers: Dict[str, str] = self.config.extra_headers  # noqa: UP006
+            extra_headers = {k: (v % headers) for k, v in extra_headers.items()}
+            headers = {**headers, **extra_headers}
+        return headers
 
     @calculate_execution_time(context="PUT")
     def put(self, path, data=None, json=None, headers=None):
