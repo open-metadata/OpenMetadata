@@ -80,8 +80,12 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
       .filter(Boolean) as AppPlugin[];
   }, [applications]);
 
-  // Let plugins contribute to extension points
+  // Let plugins contribute to extension points. Reset the registry first
+  // so re-runs (which fire whenever `installedPluginInstances` re-memoizes
+  // — e.g. as `applications` arrives in stages during boot) replace the
+  // previous contributions instead of appending duplicates.
   useEffect(() => {
+    extensionRegistry.clear();
     installedPluginInstances.forEach((plugin) => {
       try {
         plugin.contributeExtensions?.(extensionRegistry);
