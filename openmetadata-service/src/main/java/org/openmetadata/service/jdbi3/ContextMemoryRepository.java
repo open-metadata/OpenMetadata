@@ -30,7 +30,6 @@ import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
-import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 @Repository(name = "ContextMemoryRepository")
@@ -60,22 +59,10 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   @Override
   public void setFullyQualifiedName(ContextMemory entity) {
-    if (entity.getPrimaryEntity() != null
-        && entity.getPrimaryEntity().getFullyQualifiedName() != null
-        && !entity.getPrimaryEntity().getFullyQualifiedName().isEmpty()) {
-      entity.setFullyQualifiedName(
-          FullyQualifiedName.add(
-              entity.getPrimaryEntity().getFullyQualifiedName(), entity.getName()));
-      return;
-    }
-    if (entity.getOwners() != null
-        && !entity.getOwners().isEmpty()
-        && entity.getOwners().get(0).getName() != null
-        && !entity.getOwners().get(0).getName().isEmpty()) {
-      entity.setFullyQualifiedName(
-          FullyQualifiedName.add(entity.getOwners().get(0).getName(), entity.getName()));
-      return;
-    }
+    // FQN is the (immutable) memory name. Deriving it from mutable fields such as
+    // primaryEntity or owners would change nameHash on update, risking unique-constraint
+    // collisions and orphaned references. The link to primaryEntity/owners is captured
+    // via the relationship table instead.
     entity.setFullyQualifiedName(entity.getName());
   }
 
@@ -138,13 +125,15 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Relationship.RELATED_TO);
     }
 
+    // Distinct relationship types so the root-ancestor and direct-parent hierarchies
+    // can be resolved independently when read back from the relationship table.
     if (entity.getRootMemory() != null) {
       addRelationship(
           entity.getRootMemory().getId(),
           entity.getId(),
           CONTEXT_MEMORY_ENTITY,
           CONTEXT_MEMORY_ENTITY,
-          Relationship.RELATED_TO);
+          Relationship.CONTAINS);
     }
 
     if (entity.getParentMemory() != null) {
@@ -153,7 +142,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           entity.getId(),
           CONTEXT_MEMORY_ENTITY,
           CONTEXT_MEMORY_ENTITY,
-          Relationship.RELATED_TO);
+          Relationship.HAS);
     }
   }
 
@@ -185,7 +174,11 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       return; // No change
     }
     Set<ContextMemoryStatus> allowed = VALID_TRANSITIONS.get(from);
-    if (allowed == null || !allowed.contains(to)) {
+    if (allowed == null) {
+      throw new BadRequestException(
+          String.format("No transitions defined for status %s", from.value()));
+    }
+    if (!allowed.contains(to)) {
       throw new BadRequestException(
           String.format(
               "Invalid memory status transition from %s to %s. Allowed transitions from %s: %s",

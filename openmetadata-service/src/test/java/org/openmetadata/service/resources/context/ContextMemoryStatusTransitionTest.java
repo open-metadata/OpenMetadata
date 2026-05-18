@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 
-class ContextMemoryResourceTest {
+class ContextMemoryStatusTransitionTest {
 
   @Test
   void testValidStatusTransitionsAreAccepted() {
