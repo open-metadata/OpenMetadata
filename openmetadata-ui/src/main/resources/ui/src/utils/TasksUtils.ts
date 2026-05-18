@@ -197,37 +197,41 @@ export const getKnowledgeCenterPagePath = (
 export const getTaskDetailPath = (task: Thread) => {
   const entityFqn = getEntityFQN(task.about) ?? '';
   const entityType = getEntityType(task.about) ?? '';
+  const threadParam = task.id ? `?threadId=${task.id}` : '';
 
   if (entityType === EntityType.TEST_CASE) {
-    return getTestCaseDetailPagePath(entityFqn, TestCasePageTabs.ISSUES);
+    return `${getTestCaseDetailPagePath(
+      entityFqn,
+      TestCasePageTabs.ISSUES
+    )}${threadParam}`;
   } else if (entityType === EntityType.USER) {
-    return getUserPath(
+    return `${getUserPath(
       entityFqn,
       EntityTabs.ACTIVITY_FEED,
       ActivityFeedTabs.TASKS
-    );
+    )}${threadParam}`;
   } else if (
     [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM].includes(entityType)
   ) {
-    return getGlossaryTermDetailsPath(
+    return `${getGlossaryTermDetailsPath(
       entityFqn,
       EntityTabs.ACTIVITY_FEED,
       ActivityFeedTabs.TASKS
-    );
+    )}${threadParam}`;
   } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
-    return getKnowledgeCenterPagePath(
+    return `${getKnowledgeCenterPagePath(
       entityFqn,
       EntityTabs.ACTIVITY_FEED,
       ActivityFeedTabs.TASKS
-    );
+    )}${threadParam}`;
   }
 
-  return getEntityDetailsPath(
+  return `${getEntityDetailsPath(
     entityType as EntityType,
     entityFqn,
     EntityTabs.ACTIVITY_FEED,
     ActivityFeedTabs.TASKS
-  );
+  )}${threadParam}`;
 };
 
 export const getDescriptionDiff = (

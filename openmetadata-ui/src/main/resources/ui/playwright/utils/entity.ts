@@ -53,6 +53,11 @@ export const waitForAllLoadersToDisappear = async (
   await expect(loaders).toHaveCount(0, { timeout });
 };
 
+export const waitForPageLoaded = async (page: Page): Promise<void> => {
+  await page.waitForLoadState('domcontentloaded');
+  await waitForAllLoadersToDisappear(page);
+};
+
 export const visitEntityPage = async (data: {
   page: Page;
   searchTerm: string;

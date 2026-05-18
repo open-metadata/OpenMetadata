@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Page, Response } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { clickOutside, descriptionBox, toastNotification } from './common';
 
@@ -26,6 +26,14 @@ export type TaskDetails = {
 const tag = 'PII.None';
 
 export const TASK_OPEN_FETCH_LINK = '/api/v1/feed**&type=Task&taskStatus=Open';
+
+export const waitForTaskListResponse = (page: Page): Promise<Response> =>
+  page.waitForResponse(
+    (r) =>
+      r.url().includes('/api/v1/feed') &&
+      r.url().includes('type=Task') &&
+      r.request().method() === 'GET'
+  );
 
 export const createDescriptionTask = async (
   page: Page,
