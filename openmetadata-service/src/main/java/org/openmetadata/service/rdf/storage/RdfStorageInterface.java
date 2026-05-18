@@ -18,6 +18,33 @@ public interface RdfStorageInterface {
   void storeEntity(String entityType, UUID entityId, Model entityModel);
 
   /**
+   * Bulk-write multiple entity models in a single SPARQL transaction.
+   *
+   * <p>The default loops over {@link #storeEntity(String, UUID, Model)} per
+   * entity — backward-compatible for backends that don't expose a batch path.
+   * Backends with a streaming/transactional protocol (e.g. Fuseki's SPARQL
+   * UPDATE) SHOULD override this to issue one combined DELETE+LOAD per batch:
+   * the per-entity path costs ~2 HTTP round trips per entity (DELETE-scope +
+   * GSP POST) and dominated re-index throughput at ~6.7 entities/s before
+   * batching, even on localhost.
+   *
+   * <p>Failure semantics: a batch is all-or-nothing — if the combined update
+   * fails, the caller MUST fall back to per-entity {@link #storeEntity} to
+   * preserve fine-grained success / failure accounting in the indexer stats.
+   */
+  default void bulkStoreEntities(List<EntityWriteRequest> requests) {
+    if (requests == null || requests.isEmpty()) {
+      return;
+    }
+    for (EntityWriteRequest req : requests) {
+      storeEntity(req.entityType(), req.entityId(), req.model());
+    }
+  }
+
+  /** Payload for {@link #bulkStoreEntities}. */
+  record EntityWriteRequest(String entityType, UUID entityId, Model model) {}
+
+  /**
    * Store a relationship between two entities
    */
   void storeRelationship(

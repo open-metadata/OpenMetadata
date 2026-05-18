@@ -656,26 +656,30 @@ class RdfIndexAppTest {
         testApp.execute(context);
       }
 
-      // Three-step recreate flow on TDB2:
+      // Four-step recreate flow on TDB2:
       //  1. clearAll()       — SPARQL CLEAR ALL (logical delete only)
       //  2. compactStorage() — physically reclaim disk via /$/compact admin
-      //                        endpoint; MUST run before reloadOntologies
-      //                        so the ontology graph isn't copied through
-      //                        compaction needlessly.
+      //                        endpoint while the dataset is empty; MUST run
+      //                        before reloadOntologies so the ontology graph
+      //                        isn't copied through compaction needlessly.
       //  3. reloadOntologies() — repopulate ontology/shapes graphs that
       //                        CLEAR ALL wiped, so post-wipe inference /
       //                        federated SPARQL queries keep working.
-      // Use InOrder so a future change reordering these calls fails this test
-      // (a plain verify would pass regardless of order).
-      InOrder clearCompactReload = inOrder(mockRdfRepository);
-      clearCompactReload.verify(mockRdfRepository).clearAll();
-      clearCompactReload.verify(mockRdfRepository).compactStorage();
-      clearCompactReload.verify(mockRdfRepository).reloadOntologies();
+      //  4. compactStorage() — final compaction at end of successful run to
+      //                        cap journal/free-list growth from the reindex
+      //                        churn itself. Fires on every successful run
+      //                        regardless of branch.
+      // Use InOrder so a future change reordering these calls fails this test.
+      InOrder recreateFlow = inOrder(mockRdfRepository);
+      recreateFlow.verify(mockRdfRepository).clearAll();
+      recreateFlow.verify(mockRdfRepository).compactStorage();
+      recreateFlow.verify(mockRdfRepository).reloadOntologies();
+      recreateFlow.verify(mockRdfRepository).compactStorage();
       assertEquals(EventPublisherJob.Status.COMPLETED, jobConfig.getStatus());
     }
 
     @Test
-    @DisplayName("Should not call compactStorage when recreateIndex is disabled")
+    @DisplayName("Should still call compactStorage at end of incremental run (free-space hygiene)")
     void testCompactStorageSkippedOnIncrementalIndex() throws Exception {
       TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
       testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
@@ -722,14 +726,17 @@ class RdfIndexAppTest {
         testApp.execute(context);
       }
 
-      // Compaction is tied to the clearAll() path — wiping everything is the
-      // expensive operation that leaves TDB2 with unreclaimed free space, so
-      // that's where compaction has to fire. Incremental runs don't accumulate
-      // anywhere near as much free space and don't justify the compact cost,
-      // so we must NOT compact on every incremental run.
-      verify(mockRdfRepository, never()).compactStorage();
+      // Incremental runs do NOT enter clearRdfData() — clearAll and the
+      // pre-reindex compactStorage live behind the recreateIndex=true branch.
       verify(mockRdfRepository, never()).clearAll();
       verify(mockRdfRepository, never()).reloadOntologies();
+      // …but the FINAL compactStorage call still fires on every successful
+      // run regardless of branch. Pre-this-PR, the incremental path's
+      // clearAllGlossaryTermRelations + re-add cycle leaked free space on
+      // every weekly run with no compaction ever — the customer's
+      // 50 GB-on-2k-entities case. End-of-run compaction caps growth at
+      // one run's worth of churn even if no recreate ever runs.
+      verify(mockRdfRepository).compactStorage();
     }
 
     @Test

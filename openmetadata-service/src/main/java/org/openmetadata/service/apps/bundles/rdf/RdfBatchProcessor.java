@@ -71,18 +71,40 @@ public class RdfBatchProcessor {
     String lastError = null;
     List<EntityInterface> indexedEntities = new ArrayList<>();
 
-    for (EntityInterface entity : entities) {
-      if (effectiveStopRequested.getAsBoolean()) {
-        break;
-      }
+    // Fast path: one combined SPARQL UPDATE for the whole batch. Per-entity
+    // storeEntity costs ~2 HTTP round trips (DELETE + GSP LOAD) — at ~75 ms RT
+    // on localhost it caps single-coordinator throughput at ~6.7 entities/s.
+    // Batching collapses those 2N round trips into 2 per batch.
+    //
+    // If the bulk write fails (one bad model rolls back the whole batch), we
+    // fall back to the per-entity loop so the indexer can still attribute the
+    // failure to a specific entity instead of failing the whole batch with a
+    // single composite error.
+    if (!effectiveStopRequested.getAsBoolean()) {
       try {
-        rdfRepository.createOrUpdate(entity);
-        indexedEntities.add(entity);
-        successCount++;
+        rdfRepository.bulkCreateOrUpdate(entities);
+        indexedEntities.addAll(entities);
+        successCount = entities.size();
       } catch (Exception e) {
-        LOG.error("Failed to index entity {} to RDF", entity.getId(), e);
-        failedCount++;
-        lastError = describeEntityError(entityType, entity.getId(), e);
+        LOG.warn(
+            "Bulk write of {} {} entities failed; falling back to per-entity to isolate the bad row. Reason: {}",
+            entities.size(),
+            entityType,
+            e.getMessage());
+        for (EntityInterface entity : entities) {
+          if (effectiveStopRequested.getAsBoolean()) {
+            break;
+          }
+          try {
+            rdfRepository.createOrUpdate(entity);
+            indexedEntities.add(entity);
+            successCount++;
+          } catch (Exception ee) {
+            LOG.error("Failed to index entity {} to RDF", entity.getId(), ee);
+            failedCount++;
+            lastError = describeEntityError(entityType, entity.getId(), ee);
+          }
+        }
       }
     }
 

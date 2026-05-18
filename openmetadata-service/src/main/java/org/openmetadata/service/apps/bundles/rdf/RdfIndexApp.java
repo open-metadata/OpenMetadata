@@ -190,6 +190,17 @@ public class RdfIndexApp extends AbstractNativeApplication {
       if (stopped) {
         updateJobStatus(EventPublisherJob.Status.STOPPED);
       } else {
+        // Final compaction after a successful run. The recreate branch already
+        // compacted *before* the reindex (against the empty post-clearAll
+        // state) to maximise the reclaim; on the incremental branch nothing
+        // had ever compacted, so weeks of incremental runs piled the TDB2
+        // free-list and journal up to tens of GB even though the live triple
+        // count stayed bounded. Running compact at the end of every successful
+        // reindex caps growth at one-run's worth of churn regardless of which
+        // path took us here. The call is best-effort (failures logged + swallowed)
+        // so a missing /$/compact endpoint or transient HTTP failure never
+        // demotes a successful indexing job to FAILED.
+        rdfRepository.compactStorage();
         updateJobStatus(EventPublisherJob.Status.COMPLETED);
       }
 

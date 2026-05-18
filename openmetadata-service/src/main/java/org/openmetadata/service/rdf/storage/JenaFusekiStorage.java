@@ -475,6 +475,57 @@ public class JenaFusekiStorage implements RdfStorageInterface {
             KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri, filterIn);
   }
 
+  /**
+   * Bulk variant: one combined DELETE update + one combined GSP POST for the
+   * whole batch. Per-entity {@link #storeEntity} costs ~2 HTTP round trips per
+   * entity (~150 ms RT on localhost = ~6.7 entities/s); batching collapses N
+   * entities into the same 2 round trips, so a batch of 100 entities runs at
+   * ~50× the per-entity throughput. Failure semantics are all-or-nothing:
+   * callers must fall back to per-entity {@link #storeEntity} on exception to
+   * preserve per-entity success/failure accounting.
+   */
+  @Override
+  public void bulkStoreEntities(List<EntityWriteRequest> requests) {
+    if (requests == null || requests.isEmpty()) {
+      return;
+    }
+    throwIfCircuitOpen("bulkStoreEntities");
+
+    StringBuilder combinedDelete = new StringBuilder();
+    Model combinedModel = ModelFactory.createDefaultModel();
+    boolean first = true;
+    for (EntityWriteRequest req : requests) {
+      String entityUri = baseUri + "entity/" + req.entityType() + "/" + req.entityId();
+      Set<String> predicatesToDelete = collectTranslatorPredicates(entityUri, req.model());
+      String deleteQuery = buildPredicateScopedDelete(entityUri, predicatesToDelete);
+      if (!first) {
+        combinedDelete.append(";\n");
+      }
+      first = false;
+      combinedDelete.append(deleteQuery);
+      combinedModel.add(req.model());
+    }
+
+    try {
+      UpdateRequest deleteRequest = UpdateFactory.create(combinedDelete.toString());
+      runWithTimeout(() -> connection.update(deleteRequest), "bulkStoreEntities delete");
+      runWithTimeout(
+          () -> connection.load(KNOWLEDGE_GRAPH, combinedModel), "bulkStoreEntities load");
+      LOG.info(
+          "Bulk-stored {} entities in {} ({} triples)",
+          requests.size(),
+          KNOWLEDGE_GRAPH,
+          combinedModel.size());
+      recordSuccess();
+    } catch (Exception e) {
+      LOG.error("Failed to bulk-store {} entities in Fuseki", requests.size(), e);
+      if (isConnectError(e)) {
+        recordFailure();
+      }
+      throw new RuntimeException("Failed to bulk-store entities in RDF", e);
+    }
+  }
+
   @Override
   public void storeEntity(String entityType, UUID entityId, Model entityModel) {
     throwIfCircuitOpen("storeEntity");

@@ -214,6 +214,37 @@ public class RdfRepository {
     }
   }
 
+  /**
+   * Bulk variant of {@link #createOrUpdate(EntityInterface)} — translates every
+   * entity to RDF and forwards the batch to the storage layer for a single
+   * round-trip write. Used by the indexer batch path; production hot path
+   * (per-entity hooks) keeps calling {@link #createOrUpdate}.
+   *
+   * <p>All-or-nothing semantics: a failure in any entity rolls back the entire
+   * batch. Callers that need per-entity success/failure granularity (e.g. the
+   * reindexer's stats reporting) must catch and fall back to looping
+   * {@link #createOrUpdate} so each entity attempt is isolated.
+   */
+  public void bulkCreateOrUpdate(List<? extends EntityInterface> entities) {
+    if (!isEnabled() || entities == null || entities.isEmpty()) {
+      return;
+    }
+    List<RdfStorageInterface.EntityWriteRequest> requests = new ArrayList<>(entities.size());
+    for (EntityInterface entity : entities) {
+      String entityType = entity.getEntityReference().getType();
+      Model rdfModel = translator.toRdf(entity);
+      requests.add(
+          new RdfStorageInterface.EntityWriteRequest(entityType, entity.getId(), rdfModel));
+    }
+    try {
+      storageService.bulkStoreEntities(requests);
+      LOG.debug("Bulk created/updated {} entities in RDF store", entities.size());
+    } catch (Exception e) {
+      LOG.error("Failed to bulk create/update {} entities in RDF", entities.size(), e);
+      throw new RuntimeException("Failed to bulk create/update entities in RDF", e);
+    }
+  }
+
   public void delete(EntityReference entityReference) {
     if (!isEnabled()) {
       return;
@@ -1225,7 +1256,22 @@ public class RdfRepository {
     queryBuilder.append(
         "    BIND(COALESCE(?glossaryDisplayName, ?glossaryRdfsLabel) AS ?glossaryName) ");
 
-    // Build relation type filter
+    // Build relation type filter.
+    //
+    // The writer side (bulkAddGlossaryTermRelations / addGlossaryTermRelation)
+    // honours user-configured custom relation types from
+    // GlossaryTermRelationSettings — operators can define types like
+    // "Enrolls In" / "Enabled By" with their own RDF predicate URIs and the
+    // writer correctly emits those triples. But this read path was hardcoded
+    // to the built-in CURIE list (om:relatedTo, skos:broader, …) and silently
+    // dropped every custom-typed edge. Result: customer environments saw
+    // their relations in the Overview tab (DB) and in the global Ontology
+    // Explorer (DB-backed scope='global') but the term-page Relations Graph
+    // (RDF-backed scope='term') rendered the source node alone, exactly as
+    // image-v6 in the bug report.
+    //
+    // Mirror clearAllGlossaryTermRelations's settings-aware predicate
+    // assembly so reader and writer stay in sync.
     List<String> relationPredicates = new ArrayList<>();
     if (relationTypes != null && !relationTypes.isEmpty()) {
       for (String relType : relationTypes.split(",")) {
@@ -1256,6 +1302,32 @@ public class RdfRepository {
       // PROV-O predicates (for calculatedFrom, usedToCalculate)
       relationPredicates.add("prov:wasDerivedFrom");
       relationPredicates.add("prov:wasInfluencedBy");
+
+      // Append user-configured custom predicates as full IRIs. Built-ins
+      // already covered above as CURIEs; custom types use arbitrary URIs that
+      // may not share any of the declared prefixes, so we always inject the
+      // expanded form in angle brackets. Deduplication is handled by SPARQL
+      // (?relationType IN (a, b, a) is equivalent to IN (a, b)).
+      try {
+        GlossaryTermRelationSettings settings =
+            SettingsCache.getSetting(
+                SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
+        if (settings != null && settings.getRelationTypes() != null) {
+          for (var configuredType : settings.getRelationTypes()) {
+            java.net.URI rdfPredicate = configuredType.getRdfPredicate();
+            if (rdfPredicate != null) {
+              String fullUri = expandPredicateCurie(rdfPredicate.toString());
+              relationPredicates.add("<" + fullUri + ">");
+            }
+          }
+        }
+      } catch (Exception e) {
+        LOG.debug(
+            "Could not load GlossaryTermRelationSettings for graph query — "
+                + "custom-typed glossary relations will be filtered out of the response. "
+                + "Cause: {}",
+            e.getMessage());
+      }
     }
 
     queryBuilder.append("    OPTIONAL { ");
