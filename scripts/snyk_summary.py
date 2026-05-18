@@ -190,7 +190,9 @@ def main():
         if args.slack_file:
             with open(args.slack_file, "w") as f:
                 f.write("*🛡️ Snyk Security Scan*\n> No JSON reports found.")
-        return
+        # Exit non-zero so the workflow's summary-guard catches silent Snyk failures
+        # (e.g., misconfigured token producing zero JSON outputs).
+        sys.exit(1)
 
     for path in files:
         name = os.path.basename(path).replace(".json", "")
@@ -224,8 +226,10 @@ def main():
             f"🟠 {totals['medium']} · 🟡 {totals['low']}"
         )
         body = "\n\n".join([header] + slack_parts[1:])
-        if len(body) > 2200:
-            body = body[:2150] + "\n…truncated. See Job Summary for full report."
+        # Slack section block hard limit is 3000 chars; leave generous headroom for
+        # the shell-prepended header (icons, branch name, run URL, per-scan statuses).
+        if len(body) > 1800:
+            body = body[:1750] + "\n…truncated. See Job Summary for full report."
         with open(args.slack_file, "w") as f:
             f.write(body)
 
