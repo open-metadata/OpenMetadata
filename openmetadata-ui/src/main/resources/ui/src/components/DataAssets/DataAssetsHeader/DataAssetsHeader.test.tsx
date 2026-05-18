@@ -248,6 +248,14 @@ jest.mock('../../../hooks/useEntityRules', () => ({
   })),
 }));
 
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getResourcePermission: jest
+      .fn()
+      .mockResolvedValue({ Create: true, Delete: false, EditAll: false }),
+  })),
+}));
+
 describe('ExtraInfoLink component', () => {
   const mockProps = {
     label: 'myLabel',
