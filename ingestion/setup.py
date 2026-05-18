@@ -324,7 +324,8 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["giturlparse"],
         "python-liquid",
     },
-    "mlflow": {"mlflow-skinny~=3.6.0"},
+    # 9 of 12 high/critical mlflow CVEs; <3.11 to avoid the MySQL SUPER-privilege regression at backend init.
+    "mlflow": {"mlflow-skinny>=3.10.0,<3.11"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
