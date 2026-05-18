@@ -12,7 +12,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React, { createRef } from 'react';
+import { createRef } from 'react';
 import { McpMessage } from '../../rest/mcpClientAPI';
 import MessageList from './MessageList';
 
@@ -50,9 +50,9 @@ describe('MessageList', () => {
   it('shows loader when isLoading is true', () => {
     render(
       <MessageList
+        isLoading
         containerRef={containerRef}
         endRef={endRef}
-        isLoading
         messages={[]}
       />
     );
@@ -109,9 +109,9 @@ describe('MessageList', () => {
     const messages = [makeMessage('y')];
     render(
       <MessageList
+        isLoading
         containerRef={containerRef}
         endRef={endRef}
-        isLoading
         messages={messages}
       />
     );

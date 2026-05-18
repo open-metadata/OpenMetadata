@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+@import (reference) '../../styles/variables.less';
+
 .message-markdown {
   font-size: 14px;
   line-height: 1.6;
@@ -66,8 +68,8 @@
   li {
     margin-bottom: 0.35rem;
 
-    > ul,
-    > ol {
+    >ul,
+    >ol {
       margin: 0.25rem 0;
     }
   }
@@ -75,13 +77,13 @@
   code {
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     font-size: 0.875em;
-    background-color: #f3f4f6;
+    background-color: var(--tw-color-bg-tertiary);
     border-radius: 3px;
     padding: 0.15em 0.35em;
   }
 
   pre {
-    background-color: #f3f4f6;
+    background-color: var(--tw-color-bg-tertiary);
     border-radius: 6px;
     padding: 0.75rem 1rem;
     overflow-x: auto;
@@ -95,10 +97,10 @@
   }
 
   blockquote {
-    border-left: 3px solid #d1d5db;
+    border-left: 3px solid var(--tw-color-border-primary);
     margin: 0.75rem 0;
     padding: 0.25rem 0 0.25rem 1rem;
-    color: #6b7280;
+    color: var(--tw-color-text-quaternary);
   }
 
   table {
@@ -109,29 +111,29 @@
 
     th,
     td {
-      border: 1px solid #e5e7eb;
+      border: 1px solid var(--tw-color-border-secondary);
       padding: 0.4rem 0.75rem;
       text-align: left;
     }
 
     th {
-      background-color: #f9fafb;
+      background-color: var(--tw-color-bg-secondary);
       font-weight: 600;
     }
   }
 
   a {
-    color: #3b82f6;
+    color: var(--tw-color-text-brand-tertiary);
     text-decoration: underline;
 
     &:hover {
-      color: #2563eb;
+      color: var(--tw-color-text-brand-secondary);
     }
   }
 
   hr {
     border: none;
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid var(--tw-color-border-secondary);
     margin: 1rem 0;
   }
 
@@ -142,4 +144,8 @@
   em {
     font-style: italic;
   }
+}
+
+.human-message {
+  background-color: @blue-29;
 }

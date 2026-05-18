@@ -13,15 +13,7 @@
 
 import { PauseOutlined, SendOutlined } from '@ant-design/icons';
 import { Button, Input } from 'antd';
-import { debounce } from 'lodash';
-import React, {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import './ChatInput.less';
 
@@ -50,17 +42,6 @@ const ChatInput: React.FC<ChatInputProps> = memo(
     useEffect(() => {
       setLocalValue(value);
     }, [value]);
-
-    const debouncedSetSearch = useMemo(
-      () => debounce((_term: string | null) => undefined, 300),
-      []
-    );
-
-    useEffect(() => {
-      return () => {
-        debouncedSetSearch.cancel();
-      };
-    }, [debouncedSetSearch]);
 
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const newValue = e.target.value;

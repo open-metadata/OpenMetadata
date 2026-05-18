@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { McpMessage } from '../../rest/mcpClientAPI';
 import MessageBubble from './MessageBubble';
 
@@ -114,9 +113,7 @@ describe('MessageBubble', () => {
     };
     render(<MessageBubble message={messageWithZeroTokens} />);
 
-    expect(
-      screen.queryByText(/label\.token-plural/)
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/label\.token-plural/)).not.toBeInTheDocument();
   });
 
   it('renders tool call display for messages with tool blocks', () => {

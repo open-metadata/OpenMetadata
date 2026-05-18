@@ -12,7 +12,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import React, { SVGProps } from 'react';
+import { SVGProps } from 'react';
 import NavItem from './NavItem';
 
 const MockIcon = (props: SVGProps<SVGSVGElement>) => (
@@ -56,7 +56,12 @@ describe('NavItem', () => {
 
   it('renders badge when provided', () => {
     render(
-      <NavItem badge="NEW" icon={MockIcon} label="New Chat" onClick={jest.fn()} />
+      <NavItem
+        badge="NEW"
+        icon={MockIcon}
+        label="New Chat"
+        onClick={jest.fn()}
+      />
     );
 
     expect(screen.getByText('NEW')).toBeInTheDocument();

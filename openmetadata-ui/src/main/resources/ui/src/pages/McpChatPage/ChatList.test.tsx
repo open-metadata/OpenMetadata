@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { McpConversation } from '../../rest/mcpClientAPI';
 import ChatList from './ChatList';
 
@@ -57,10 +56,7 @@ jest.mock('@untitledui/icons', () => ({
   Trash01: () => <svg data-testid="trash-icon" />,
 }));
 
-const makeConversation = (
-  id: string,
-  title?: string
-): McpConversation => ({
+const makeConversation = (id: string, title?: string): McpConversation => ({
   id,
   user: { id: 'user-1', name: 'admin', type: 'user' },
   createdAt: Date.now(),
@@ -125,7 +121,11 @@ describe('ChatList', () => {
     const onSelect = jest.fn();
     const conversations = [makeConversation('c1', 'Chat One')];
     render(
-      <ChatList {...defaultProps} conversations={conversations} onSelect={onSelect} />
+      <ChatList
+        {...defaultProps}
+        conversations={conversations}
+        onSelect={onSelect}
+      />
     );
 
     fireEvent.click(screen.getByText('Chat One').closest('button')!);
@@ -156,7 +156,11 @@ describe('ChatList', () => {
     const onDelete = jest.fn();
     const conversations = [makeConversation('c1', 'Chat One')];
     render(
-      <ChatList {...defaultProps} conversations={conversations} onDelete={onDelete} />
+      <ChatList
+        {...defaultProps}
+        conversations={conversations}
+        onDelete={onDelete}
+      />
     );
 
     fireEvent.click(screen.getByTestId('delete-conversation-c1'));
@@ -170,7 +174,11 @@ describe('ChatList', () => {
     const onSelect = jest.fn();
     const conversations = [makeConversation('c1', 'Chat One')];
     render(
-      <ChatList {...defaultProps} conversations={conversations} onSelect={onSelect} />
+      <ChatList
+        {...defaultProps}
+        conversations={conversations}
+        onSelect={onSelect}
+      />
     );
 
     fireEvent.click(screen.getByTestId('delete-conversation-c1'));
@@ -181,7 +189,7 @@ describe('ChatList', () => {
   it('shows loading-more indicator when isLoadingMore is true', () => {
     const conversations = [makeConversation('c1', 'Chat')];
     render(
-      <ChatList {...defaultProps} conversations={conversations} isLoadingMore />
+      <ChatList {...defaultProps} isLoadingMore conversations={conversations} />
     );
 
     expect(screen.getByTestId('loader-small')).toBeInTheDocument();

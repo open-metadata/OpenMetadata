@@ -21,7 +21,15 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Typography: ({ children, className, weight }: { children: React.ReactNode; className?: string; weight?: string }) => (
+  Typography: ({
+    children,
+    className,
+    weight,
+  }: {
+    children: React.ReactNode;
+    className?: string;
+    weight?: string;
+  }) => (
     <span className={className} data-weight={weight}>
       {children}
     </span>
@@ -50,14 +58,10 @@ jest.mock('./ChatList', () => ({
     <div data-testid="chat-list">
       {conversations.map((c) => (
         <div key={c.id}>
-          <button
-            data-testid={`select-${c.id}`}
-            onClick={() => onSelect(c.id)}>
+          <button data-testid={`select-${c.id}`} onClick={() => onSelect(c.id)}>
             {c.title ?? c.id}
           </button>
-          <button
-            data-testid={`delete-${c.id}`}
-            onClick={() => onDelete(c.id)}>
+          <button data-testid={`delete-${c.id}`} onClick={() => onDelete(c.id)}>
             Delete
           </button>
         </div>

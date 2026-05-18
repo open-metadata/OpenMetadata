@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import {
@@ -161,7 +167,11 @@ const makeConversation = (id: string, title?: string): McpConversation => ({
   title,
 });
 
-const makeMessage = (id: string, sender: 'human' | 'assistant' = 'human', text = 'hello'): McpMessage => ({
+const makeMessage = (
+  id: string,
+  sender: 'human' | 'assistant' = 'human',
+  text = 'hello'
+): McpMessage => ({
   id,
   conversationId: 'conv-1',
   sender,
@@ -357,7 +367,10 @@ describe('McpChatPage', () => {
   it('stops streaming when stop button is clicked', async () => {
     let resolveStream: () => void;
     mockStreamChatMessage.mockImplementation(
-      () => new Promise<void>((resolve) => { resolveStream = resolve; })
+      () =>
+        new Promise<void>((resolve) => {
+          resolveStream = resolve;
+        })
     );
 
     await act(async () => {
@@ -390,7 +403,10 @@ describe('McpChatPage', () => {
 
   it('updates active conversation when selecting from sidebar', async () => {
     mockListConversations.mockResolvedValue({
-      data: [makeConversation('c1', 'Chat One'), makeConversation('c2', 'Chat Two')],
+      data: [
+        makeConversation('c1', 'Chat One'),
+        makeConversation('c2', 'Chat Two'),
+      ],
       paging: { total: 2 },
     });
     mockListMessages.mockResolvedValue({ data: [] });
