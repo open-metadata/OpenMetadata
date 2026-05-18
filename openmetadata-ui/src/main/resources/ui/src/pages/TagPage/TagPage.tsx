@@ -69,6 +69,7 @@ import {
   BLACK_COLOR,
   DE_ACTIVE_COLOR,
   ROUTES,
+  TIER_CATEGORY,
 } from '../../constants/constants';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { TAGS_DOCS } from '../../constants/docs.constants';
@@ -613,10 +614,16 @@ const TagPage = () => {
             <DataQualityDashboard
               isGovernanceView
               className="data-quality-governance-tab-wrapper"
-              hiddenFilters={['tags']}
+              hiddenFilters={[
+                tagItem.classification?.name === TIER_CATEGORY
+                  ? 'tier'
+                  : 'tags',
+              ]}
               initialFilters={
                 tagItem.fullyQualifiedName
-                  ? { tags: [tagItem.fullyQualifiedName] }
+                  ? tagItem.classification?.name === TIER_CATEGORY
+                    ? { tier: [tagItem.fullyQualifiedName] }
+                    : { tags: [tagItem.fullyQualifiedName] }
                   : undefined
               }
             />
