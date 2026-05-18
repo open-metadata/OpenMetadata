@@ -2290,7 +2290,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith(
-          'message.test-login-required-before-save'
+          'server.test-login-required-before-save'
         );
       });
 
@@ -2333,7 +2333,7 @@ describe('SSOConfigurationForm', () => {
       });
 
       expect(mockShowErrorToast).not.toHaveBeenCalledWith(
-        'message.test-login-required-before-save'
+        'server.test-login-required-before-save'
       );
     });
   });

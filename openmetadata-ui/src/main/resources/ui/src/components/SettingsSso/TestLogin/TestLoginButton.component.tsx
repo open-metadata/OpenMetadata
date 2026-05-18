@@ -119,7 +119,7 @@ const TestLoginButton = ({
       try {
         parsed = JSON.parse(raw);
       } catch {
-        showErrorToast(t('message.test-login-failed'));
+        showErrorToast(t('server.test-login-failed'));
         setIsLoading(false);
 
         return;
@@ -144,7 +144,7 @@ const TestLoginButton = ({
           hasRefreshToken: Boolean(payload.hasRefreshToken),
         });
       } else {
-        showErrorToast(payload.error ?? t('message.test-login-failed'));
+        showErrorToast(payload.error ?? t('server.test-login-failed'));
       }
 
       localStorage.removeItem(TEST_LOGIN_RESULT_KEY);
@@ -163,14 +163,14 @@ const TestLoginButton = ({
       popupRef.current.close();
     }
     setIsLoading(false);
-    showErrorToast(t('message.test-login-timeout'));
+    showErrorToast(t('server.test-login-timeout'));
   }, [clearCloseWatch, t]);
 
   const failPopupClosed = useCallback(() => {
     clearTimer();
     clearCloseWatch();
     setIsLoading(false);
-    showErrorToast(t('message.test-login-popup-closed'));
+    showErrorToast(t('server.test-login-popup-closed'));
   }, [clearCloseWatch, clearTimer, t]);
 
   const startCloseWatch = useCallback(() => {
@@ -310,7 +310,7 @@ const TestLoginButton = ({
         }
       } catch {
         setIsLoading(false);
-        showErrorToast(t('message.test-login-failed'));
+        showErrorToast(t('server.test-login-failed'));
 
         return;
       }
@@ -369,12 +369,12 @@ const TestLoginButton = ({
         });
       } else {
         showErrorToast(
-          (data?.error as string | undefined) ?? t('message.test-login-failed')
+          (data?.error as string | undefined) ?? t('server.test-login-failed')
         );
       }
     } catch (error) {
       showErrorToast(
-        error instanceof Error ? error.message : t('message.test-login-failed')
+        error instanceof Error ? error.message : t('server.test-login-failed')
       );
     } finally {
       setLdapModal((s) => ({ ...s, loading: false }));

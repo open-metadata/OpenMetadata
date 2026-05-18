@@ -209,7 +209,7 @@ const CopyableUrlField = ({ label, value, testId }: CopyableUrlFieldProps) => {
       await globalThis.navigator.clipboard.writeText(value);
       showSuccessToast(t('message.copied-to-clipboard'));
     } catch {
-      showErrorToast(t('label.copy-to-clipboard'));
+      showErrorToast(t('message.copy-to-clipboard'));
     }
   };
 
@@ -1110,7 +1110,7 @@ const SSOConfigurationFormRJSF = ({
         setInternalData(next);
       }
       setTestLoginPassed(true);
-      showSuccessToast(t('message.test-login-success'));
+      showSuccessToast(t('server.test-login-success'));
     },
     [internalData, withAuthorizerSuggestionApplied, t]
   );
@@ -1147,7 +1147,7 @@ const SSOConfigurationFormRJSF = ({
       setTestLoginPassed(true);
       setClaimSelectorOpen(false);
       setTestLoginResult(null);
-      showSuccessToast(t('message.test-login-success'));
+      showSuccessToast(t('server.test-login-success'));
     },
     [internalData, withAuthorizerSuggestionApplied, t]
   );
@@ -1185,7 +1185,7 @@ const SSOConfigurationFormRJSF = ({
           testLoginPassed
         )
       ) {
-        showErrorToast(t('message.test-login-required-before-save'));
+        showErrorToast(t('server.test-login-required-before-save'));
         updateLoadingState(isModalSave, setIsLoading, false);
 
         return;
