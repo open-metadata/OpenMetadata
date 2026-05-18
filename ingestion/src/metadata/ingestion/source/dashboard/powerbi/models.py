@@ -53,11 +53,11 @@ class PowerBIDashboard(BaseModel):
     """
 
     id: str
-    displayName: str
-    webUrl: Optional[str] = None
-    embedUrl: Optional[str] = None
-    tiles: Optional[List[Tile]] = []
-    users: Optional[List[PowerBIUser]] = []
+    displayName: str | None = None  # noqa: N815
+    webUrl: Optional[str] = None  # noqa: N815, UP045
+    embedUrl: Optional[str] = None  # noqa: N815, UP045
+    tiles: Optional[List[Tile]] = []  # noqa: UP006, UP045
+    users: Optional[List[PowerBIUser]] = []  # noqa: UP006, UP045
 
 
 class PowerBIReport(BaseModel):
@@ -67,12 +67,12 @@ class PowerBIReport(BaseModel):
     """
 
     id: str
-    name: str
-    datasetId: Optional[str] = None
-    users: Optional[List[PowerBIUser]] = []
-    modifiedBy: Optional[str] = None
-    description: Optional[str] = None
-    format: Optional[str] = None
+    name: str | None = None
+    datasetId: Optional[str] = None  # noqa: N815, UP045
+    users: Optional[List[PowerBIUser]] = []  # noqa: UP006, UP045
+    modifiedBy: Optional[str] = None  # noqa: N815, UP045
+    description: Optional[str] = None  # noqa: UP045
+    format: Optional[str] = None  # noqa: UP045
 
 
 class DashboardsResponse(BaseModel):
@@ -111,10 +111,10 @@ class PowerBiColumns(BaseModel):
     Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets/datasets-get-tables-in-group#column
     """
 
-    name: str
-    dataType: Optional[str] = None
-    columnType: Optional[str] = None
-    description: Optional[str] = None
+    name: str | None = None
+    dataType: Optional[str] = None  # noqa: N815, UP045
+    columnType: Optional[str] = None  # noqa: N815, UP045
+    description: Optional[str] = None  # noqa: UP045
 
 
 class PowerBiMeasureModel(BaseModel):
@@ -122,10 +122,10 @@ class PowerBiMeasureModel(BaseModel):
     Represents a Power BI measure, used before converting to a Column instance.
     """
 
-    dataType: str
-    dataTypeDisplay: str
-    name: str
-    displayName: Optional[str] = None
+    dataType: str  # noqa: N815
+    dataTypeDisplay: str  # noqa: N815
+    name: str | None = None
+    displayName: Optional[str] = None  # noqa: N815, UP045
     description: str
 
 
@@ -135,10 +135,10 @@ class PowerBiMeasures(BaseModel):
     Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets/datasets-get-tables-in-group#measure
     """
 
-    name: str
-    expression: Optional[Union[str, List[str]]] = None
-    description: Optional[str] = None
-    isHidden: Optional[bool] = False
+    name: str | None = None
+    expression: Optional[Union[str, List[str]]] = None  # noqa: UP006, UP007, UP045
+    description: Optional[str] = None  # noqa: UP045
+    isHidden: Optional[bool] = False  # noqa: N815, UP045
 
     @field_validator("expression", mode="before")
     @classmethod
@@ -179,12 +179,12 @@ class PowerBiTable(BaseModel):
     Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets/datasets-get-tables-in-group#table
     """
 
-    name: str
-    columns: Optional[List[PowerBiColumns]] = None
-    measures: Optional[List[PowerBiMeasures]] = None
-    description: Optional[str] = None
-    source: Optional[List[PowerBITableSource]] = None
-    partitions: Optional[List[PowerBIPartition]] = None
+    name: str | None = None
+    columns: Optional[List[PowerBiColumns]] = None  # noqa: UP006, UP045
+    measures: Optional[List[PowerBiMeasures]] = None  # noqa: UP006, UP045
+    description: Optional[str] = None  # noqa: UP045
+    source: Optional[List[PowerBITableSource]] = None  # noqa: UP006, UP045
+    partitions: Optional[List[PowerBIPartition]] = None  # noqa: UP006, UP045
 
     @model_validator(mode="before")
     @classmethod
@@ -211,8 +211,8 @@ class TablesResponse(BaseModel):
 
 
 class DatasetExpression(BaseModel):
-    name: str
-    expression: Optional[Union[str, List[str]]] = None
+    name: str | None = None
+    expression: Optional[Union[str, List[str]]] = None  # noqa: UP006, UP007, UP045
 
     @field_validator("expression", mode="before")
     @classmethod
@@ -239,14 +239,14 @@ class Dataset(BaseModel):
     """
 
     id: str
-    name: str
-    tables: Optional[List[PowerBiTable]] = []
-    description: Optional[str] = None
-    users: Optional[List[PowerBIUser]] = []
-    expressions: Optional[List[DatasetExpression]] = []
-    configuredBy: Optional[str] = None
-    upstreamDataflows: Optional[List[UpstreaDataflow]] = []
-    upstreamDatasets: Optional[List[UpstreaDataset]] = []
+    name: str | None = None
+    tables: Optional[List[PowerBiTable]] = []  # noqa: UP006, UP045
+    description: Optional[str] = None  # noqa: UP045
+    users: Optional[List[PowerBIUser]] = []  # noqa: UP006, UP045
+    expressions: Optional[List[DatasetExpression]] = []  # noqa: UP006, UP045
+    configuredBy: Optional[str] = None  # noqa: N815, UP045
+    upstreamDataflows: Optional[List[UpstreaDataflow]] = []  # noqa: N815, UP006, UP045
+    upstreamDatasets: Optional[List[UpstreaDataset]] = []  # noqa: N815, UP006, UP045
 
 
 class DatasetResponse(BaseModel):
@@ -261,11 +261,11 @@ class DatasetResponse(BaseModel):
 
 class Dataflow(BaseModel):
     id: str = Field(alias="objectId")
-    name: str
-    description: Optional[str] = None
-    users: Optional[List[PowerBIUser]] = []
-    modifiedBy: Optional[str] = None
-    upstreamDataflows: Optional[List[UpstreaDataflow]] = []
+    name: str | None = None
+    description: Optional[str] = None  # noqa: UP045
+    users: Optional[List[PowerBIUser]] = []  # noqa: UP006, UP045
+    modifiedBy: Optional[str] = None  # noqa: N815, UP045
+    upstreamDataflows: Optional[List[UpstreaDataflow]] = []  # noqa: N815, UP006, UP045
 
 
 class Group(BaseModel):
@@ -358,8 +358,8 @@ class ReportPage(BaseModel):
     single report Page object
     """
 
-    name: str
-    displayName: Optional[str] = None
+    name: str | None = None
+    displayName: Optional[str] = None  # noqa: N815, UP045
 
 
 class ReportPagesAPIResponse(BaseModel):
@@ -411,9 +411,9 @@ class DataflowEntityAttribute(BaseModel):
     API doc: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin
     """
 
-    name: str
-    dataType: Optional[str] = None
-    description: Optional[str] = None
+    name: str | None = None
+    dataType: Optional[str] = None  # noqa: N815, UP045
+    description: Optional[str] = None  # noqa: UP045
 
 
 class DataflowEntity(BaseModel):
@@ -423,9 +423,9 @@ class DataflowEntity(BaseModel):
     API doc: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin
     """
 
-    name: str
-    description: Optional[str] = None
-    attributes: Optional[List[DataflowEntityAttribute]] = []
+    name: str | None = None
+    description: Optional[str] = None  # noqa: UP045
+    attributes: Optional[List[DataflowEntityAttribute]] = []  # noqa: UP006, UP045
 
 
 class DataflowQueryMetadata(BaseModel):
