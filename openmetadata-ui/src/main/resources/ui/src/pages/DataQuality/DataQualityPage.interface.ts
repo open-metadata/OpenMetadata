@@ -36,6 +36,7 @@ export type DataQualityDashboardChartFilters = {
   ownerFqn?: string;
   tags?: string[];
   tier?: string[];
+  certification?: string[];
   startTs?: number;
   endTs?: number;
   entityFQN?: string;

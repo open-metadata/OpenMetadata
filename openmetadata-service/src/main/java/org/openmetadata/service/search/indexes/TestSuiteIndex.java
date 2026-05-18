@@ -52,18 +52,22 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
     // denormalize the parent relationships for search
     EntityReference entityReference = testSuite.getBasicEntityReference();
     if (entityReference == null) return;
-    addTestSuiteParentEntityRelations(entityReference, doc);
+    Table linkedTable = addTestSuiteParentEntityRelations(entityReference, doc);
+    if (linkedTable != null && linkedTable.getCertification() != null) {
+      doc.put("certification", linkedTable.getCertification());
+    }
   }
 
-  static void addTestSuiteParentEntityRelations(
+  static Table addTestSuiteParentEntityRelations(
       EntityReference testSuiteRef, Map<String, Object> doc) {
     if (testSuiteRef.getType().equals(Entity.TABLE)) {
       try {
-        Table table = Entity.getEntity(testSuiteRef, "", Include.ALL);
+        Table table = Entity.getEntity(testSuiteRef, "certification", Include.ALL);
         doc.put("table", table.getEntityReference());
         doc.put("database", table.getDatabase());
         doc.put("databaseSchema", table.getDatabaseSchema());
         doc.put("service", table.getService());
+        return table;
       } catch (EntityNotFoundException ex) {
         LOG.warn(
             "Table [{}] not found during search indexing: {}",
@@ -71,5 +75,6 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
             ex.getMessage());
       }
     }
+    return null;
   }
 }

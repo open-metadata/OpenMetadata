@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.SneakyThrows;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
@@ -72,7 +73,11 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     }
     EntityReference entityReference = testSuite.getBasicEntityReference();
     if (entityReference != null) {
-      TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
+      Table linkedTable =
+          TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
+      if (linkedTable != null && linkedTable.getCertification() != null) {
+        doc.put("certification", linkedTable.getCertification());
+      }
     }
   }
 

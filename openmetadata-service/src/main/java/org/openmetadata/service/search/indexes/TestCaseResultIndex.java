@@ -108,12 +108,15 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
           Entity.getEntityByName(
               Entity.TABLE,
               entityLink.getEntityFQN(),
-              "database,databaseSchema,service",
+              "database,databaseSchema,service,certification",
               Include.ALL);
       esDoc.put("database", table.getDatabase());
       esDoc.put("databaseSchema", table.getDatabaseSchema());
       esDoc.put("service", table.getService());
       esDoc.put("table", table.getEntityReference());
+      if (table.getCertification() != null) {
+        esDoc.put("certification", table.getCertification());
+      }
     } catch (EntityNotFoundException ex) {
       LOG.warn(
           "Table [{}] not found during search indexing: {}",
