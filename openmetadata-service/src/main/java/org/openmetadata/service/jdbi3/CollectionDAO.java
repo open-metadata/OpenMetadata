@@ -124,6 +124,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FailedEvent;
@@ -459,6 +460,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   LearningResourceDAO learningResourceDAO();
+
+  @CreateSqlObject
+  ContextMemoryDAO contextMemoryDAO();
 
   @CreateSqlObject
   SuggestionDAO suggestionDAO();
@@ -10803,6 +10807,23 @@ public interface CollectionDAO {
     @Override
     default String getNameHashColumn() {
       return "fqnHash";
+    }
+  }
+
+  interface ContextMemoryDAO extends EntityDAO<ContextMemory> {
+    @Override
+    default String getTableName() {
+      return "context_memory";
+    }
+
+    @Override
+    default Class<ContextMemory> getEntityClass() {
+      return ContextMemory.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
     }
   }
 
