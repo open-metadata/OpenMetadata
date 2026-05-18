@@ -19,6 +19,9 @@ import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
 import { LineageSettings } from '../../generated/configuration/lineageSettings';
 import { SettingType } from '../../generated/settings/settings';
+import { DEFAULT_APP_MODE } from '../../constants/appMode.constants';
+import { useAppMode } from '../../hooks/useAppMode';
+import { useAppModeRegistry } from '../../hooks/useAppModeRegistry';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useLineageStore } from '../../hooks/useLineageStore';
@@ -42,11 +45,20 @@ const AppContainer = () => {
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
   const { isAuthenticated } = useApplicationStore();
+  const appMode = useAppMode();
+  const modeContainerClassName = useAppModeRegistry(
+    (state) => state.modes[appMode]?.containerClassName
+  );
 
   const { setConfig, bannerDetails } = useLimitStore();
   const { setLineageConfig } = useLineageStore();
 
   const renderNavBar = () => {
+    // When a non-default AppMode is active the mode owns the page chrome,
+    // so Collate's NavBar is suppressed even on otherwise-Collate routes.
+    if (appMode !== DEFAULT_APP_MODE) {
+      return null;
+    }
     if (isNewLayoutRoute(location.pathname)) {
       return null;
     }
@@ -116,9 +128,13 @@ const AppContainer = () => {
       <LimitBanner />
       <Layout
         hasSider
-        className={classNames('app-container', {
-          ['extra-banner']: Boolean(bannerDetails),
-        })}>
+        className={classNames(
+          'app-container',
+          modeContainerClassName,
+          {
+            ['extra-banner']: Boolean(bannerDetails),
+          }
+        )}>
         {/* Render left side navigation */}
         <AppSidebar />
 
