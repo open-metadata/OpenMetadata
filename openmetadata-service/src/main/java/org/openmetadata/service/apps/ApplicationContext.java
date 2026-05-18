@@ -45,7 +45,7 @@ public class ApplicationContext {
         appRepo
             .listAfter(
                 null,
-                appRepo.getFields("*"),
+                appRepo.getFields("pipelines"),
                 listFilter,
                 appRepo.getDao().listCount(listFilter),
                 "")
