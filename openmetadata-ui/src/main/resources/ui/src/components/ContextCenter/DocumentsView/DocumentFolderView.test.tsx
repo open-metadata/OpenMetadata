@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { deleteFolder, listFolders } from 'rest/assetAPI';
 import DocumentFolderView from './DocumentFolderView.component';
 import { DocFile } from './DocumentsView.interface';
@@ -37,7 +43,11 @@ jest.mock('../CreateFolderModal/CreateFolderModal.component', () =>
           <button
             data-testid="modal-create-btn"
             onClick={() =>
-              onCreated({ id: 'new-folder', name: 'new-folder', displayName: 'New Folder' })
+              onCreated({
+                id: 'new-folder',
+                name: 'new-folder',
+                displayName: 'New Folder',
+              })
             }>
             create
           </button>
@@ -90,10 +100,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       'data-testid'?: string;
       tooltip?: string;
     }) => (
-      <button
-        aria-label={tooltip}
-        data-testid={testId}
-        onClick={onClick}>
+      <button aria-label={tooltip} data-testid={testId} onClick={onClick}>
         btn
       </button>
     )
@@ -108,13 +115,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     )),
     {
       Item: jest.fn(
-        ({
-          children,
-          id,
-        }: {
-          children: React.ReactNode;
-          id: string;
-        }) => <div data-testid={`tree-item-${id}`}>{children}</div>
+        ({ children, id }: { children: React.ReactNode; id: string }) => (
+          <div data-testid={`tree-item-${id}`}>{children}</div>
+        )
       ),
       ItemContent: jest.fn(({ children }: { children: React.ReactNode }) => (
         <div>{children}</div>
@@ -156,23 +159,13 @@ describe('DocumentFolderView', () => {
 
   it('shows skeletons while loading', () => {
     (listFolders as jest.Mock).mockReturnValue(new Promise(() => undefined));
-    render(
-      <DocumentFolderView
-        files={mockFiles}
-        onSelectFolder={jest.fn()}
-      />
-    );
+    render(<DocumentFolderView files={mockFiles} onSelectFolder={jest.fn()} />);
 
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
   });
 
   it('renders folder names after loading', async () => {
-    render(
-      <DocumentFolderView
-        files={mockFiles}
-        onSelectFolder={jest.fn()}
-      />
-    );
+    render(<DocumentFolderView files={mockFiles} onSelectFolder={jest.fn()} />);
 
     await waitFor(() =>
       expect(screen.getByText('Folder One')).toBeInTheDocument()
@@ -197,12 +190,7 @@ describe('DocumentFolderView', () => {
   });
 
   it('renders files as children under their parent folder', async () => {
-    render(
-      <DocumentFolderView
-        files={mockFiles}
-        onSelectFolder={jest.fn()}
-      />
-    );
+    render(<DocumentFolderView files={mockFiles} onSelectFolder={jest.fn()} />);
 
     await waitFor(() =>
       expect(screen.getByText('Folder One')).toBeInTheDocument()
@@ -213,12 +201,7 @@ describe('DocumentFolderView', () => {
   });
 
   it('shows folder and file counts in the subtitle', async () => {
-    render(
-      <DocumentFolderView
-        files={mockFiles}
-        onSelectFolder={jest.fn()}
-      />
-    );
+    render(<DocumentFolderView files={mockFiles} onSelectFolder={jest.fn()} />);
 
     await waitFor(() =>
       expect(screen.getByText('Folder One')).toBeInTheDocument()
@@ -230,10 +213,7 @@ describe('DocumentFolderView', () => {
   it('calls onSelectFolder with folderId when a folder is clicked', async () => {
     const onSelectFolder = jest.fn();
     render(
-      <DocumentFolderView
-        files={mockFiles}
-        onSelectFolder={onSelectFolder}
-      />
+      <DocumentFolderView files={mockFiles} onSelectFolder={onSelectFolder} />
     );
 
     await waitFor(() =>
@@ -265,12 +245,7 @@ describe('DocumentFolderView', () => {
   });
 
   it('opens the create folder modal when the add button is clicked', async () => {
-    render(
-      <DocumentFolderView
-        files={mockFiles}
-        onSelectFolder={jest.fn()}
-      />
-    );
+    render(<DocumentFolderView files={mockFiles} onSelectFolder={jest.fn()} />);
 
     await waitFor(() =>
       expect(screen.getByText('Folder One')).toBeInTheDocument()
@@ -310,12 +285,7 @@ describe('DocumentFolderView', () => {
   });
 
   it('shows delete modal when delete button is clicked', async () => {
-    render(
-      <DocumentFolderView
-        files={mockFiles}
-        onSelectFolder={jest.fn()}
-      />
-    );
+    render(<DocumentFolderView files={mockFiles} onSelectFolder={jest.fn()} />);
 
     await waitFor(() =>
       expect(screen.getByText('Folder One')).toBeInTheDocument()
@@ -349,9 +319,7 @@ describe('DocumentFolderView', () => {
       fireEvent.click(screen.getByTestId('confirm-delete-btn'));
     });
 
-    await waitFor(() =>
-      expect(deleteFolder).toHaveBeenCalledWith('folder-1')
-    );
+    await waitFor(() => expect(deleteFolder).toHaveBeenCalledWith('folder-1'));
     await waitFor(() =>
       expect(screen.queryByText('Folder One')).not.toBeInTheDocument()
     );
@@ -379,18 +347,11 @@ describe('DocumentFolderView', () => {
       fireEvent.click(screen.getByTestId('confirm-delete-btn'));
     });
 
-    await waitFor(() =>
-      expect(onSelectFolder).toHaveBeenCalledWith(undefined)
-    );
+    await waitFor(() => expect(onSelectFolder).toHaveBeenCalledWith(undefined));
   });
 
   it('closes delete modal on cancel without deleting', async () => {
-    render(
-      <DocumentFolderView
-        files={mockFiles}
-        onSelectFolder={jest.fn()}
-      />
-    );
+    render(<DocumentFolderView files={mockFiles} onSelectFolder={jest.fn()} />);
 
     await waitFor(() =>
       expect(screen.getByText('Folder One')).toBeInTheDocument()

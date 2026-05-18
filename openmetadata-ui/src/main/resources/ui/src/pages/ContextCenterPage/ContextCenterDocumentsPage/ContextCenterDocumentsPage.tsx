@@ -33,6 +33,7 @@ import {
 import { SearchIndex } from '../../../enums/search.enum';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
+import { useAlertStore } from '../../../hooks/useAlertStore';
 import { deleteAsset, listContextFiles } from '../../../rest/assetAPI';
 import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
@@ -40,7 +41,6 @@ import {
   contextFileToDocumentItem,
   handleAssetDownload,
 } from '../../../utils/ContextCenterUtils';
-import { useAlertStore } from '../../../hooks/useAlertStore';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
@@ -226,7 +226,9 @@ const ContextCenterDocumentsPage: FC = () => {
           />
         </ReflexElement>
 
-        <ReflexSplitter className="splitter left-panel-splitter" style={{ zIndex: 0 }}>
+        <ReflexSplitter
+          className="splitter left-panel-splitter"
+          style={{ zIndex: 0 }}>
           <div className="panel-grabber-vertical">
             <div className="handle-icon handle-icon-vertical" />
           </div>

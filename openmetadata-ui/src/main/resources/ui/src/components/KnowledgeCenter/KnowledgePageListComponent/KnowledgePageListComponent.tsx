@@ -48,6 +48,7 @@ import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.const
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import { Paging } from '../../../generated/type/paging';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -59,7 +60,6 @@ import {
   KnowledgePage,
   PageType,
 } from '../../../interface/knowledge-center.interface';
-import { SearchIndex } from '../../../enums/search.enum';
 import {
   followKnowledgePage,
   getListKnowledgePages,
@@ -338,12 +338,25 @@ const KnowledgePageListComponent = forwardRef<
 
     useEffect(() => {
       const hasMore = knowledgePages.length < paging.total;
-      if (isInView && hasMore && !isLoadingMore && !searchQuery && hasViewPermission) {
+      if (
+        isInView &&
+        hasMore &&
+        !isLoadingMore &&
+        !searchQuery &&
+        hasViewPermission
+      ) {
         const nextOffset = pageOffset + PAGE_SIZE_MEDIUM;
         setPageOffset(nextOffset);
         fetchKnowledgePages(nextOffset);
       }
-    }, [isInView, paging.total, knowledgePages.length, isLoadingMore, searchQuery, hasViewPermission]);
+    }, [
+      isInView,
+      paging.total,
+      knowledgePages.length,
+      isLoadingMore,
+      searchQuery,
+      hasViewPermission,
+    ]);
 
     const items: MenuProps['items'] = [
       {

@@ -28,7 +28,7 @@ test.beforeAll('Setup workflow and knowledge page', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await createUserApprovalWorkflowWithOwners(apiContext, 'page');
 
-  const createResponse = await apiContext.post('/api/v1/knowledgeCenter', {
+  const createResponse = await apiContext.post('/api/v1/contextCenter/pages', {
     data: {
       name: `pw-article-${uuid()}`,
       displayName: `PW Article ${uuid()}`,
@@ -71,7 +71,7 @@ test.describe(
       await dcAfterAction();
 
       const patchResponse = await apiContext.patch(
-        `/api/v1/knowledgeCenter/${knowledgePage.id}`,
+        `/api/v1/contextCenter/pages/${knowledgePage.id}`,
         {
           data: [
             {
@@ -112,9 +112,7 @@ test.describe(
 
       await test.step('Reviewer - Check notification and approve task', async () => {
         await checkNotificationAndApproveTask(dataConsumerPage, async () => {
-          await dataConsumerPage.goto(
-            `/context-center/articles/${encodedFqn}`
-          );
+          await dataConsumerPage.goto(`/context-center/articles/${encodedFqn}`);
         });
       });
 

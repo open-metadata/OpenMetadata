@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { moveFileToFolder } from 'rest/assetAPI';
 import { DocFile } from '../DocumentsView/DocumentsView.interface';
 import MoveToFolderModal from './MoveToFolderModal.component';
@@ -86,9 +92,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       }) => {
         mockOnSelectionChange = onSelectionChange;
 
-        return (
-          <div data-testid={testId ?? 'select-root'}>{children}</div>
-        );
+        return <div data-testid={testId ?? 'select-root'}>{children}</div>;
       }
     ),
     {
@@ -180,7 +184,9 @@ describe('MoveToFolderModal', () => {
   it('excludes the current folder from select options', () => {
     render(<MoveToFolderModal {...defaultProps} />);
 
-    expect(screen.queryByTestId('select-item-folder-a')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('select-item-folder-a')
+    ).not.toBeInTheDocument();
     expect(screen.getByTestId('select-item-folder-b')).toBeInTheDocument();
     expect(screen.getByTestId('select-item-folder-c')).toBeInTheDocument();
   });

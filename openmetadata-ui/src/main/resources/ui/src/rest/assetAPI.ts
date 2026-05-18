@@ -24,13 +24,18 @@ export interface CreateFolderRequest {
 export const createFolder = async (
   data: CreateFolderRequest
 ): Promise<Folder> => {
-  const response = await APIClient.post<Folder>('/contextCenter/drive/folders', data);
+  const response = await APIClient.post<Folder>(
+    '/contextCenter/drive/folders',
+    data
+  );
 
   return response.data;
 };
 
 export const listFolders = async (): Promise<Folder[]> => {
-  const response = await APIClient.get<{ data: Folder[] }>('/contextCenter/drive/folders');
+  const response = await APIClient.get<{ data: Folder[] }>(
+    '/contextCenter/drive/folders'
+  );
 
   return response.data.data ?? [];
 };

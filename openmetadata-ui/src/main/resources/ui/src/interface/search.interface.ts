@@ -20,6 +20,7 @@ import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
+import { ContextFile } from '../generated/entity/data/contextFile';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import {
@@ -62,8 +63,6 @@ import { TestCaseResolutionStatus } from '../generated/tests/testCaseResolutionS
 import { TestSuite } from '../generated/tests/testSuite';
 import { TagLabel } from '../generated/type/tagLabel';
 import { AggregatedCostAnalysisReportDataSearchSource } from './data-insight.interface';
-import { Asset } from '../generated/attachments/asset';
-import { ContextFile } from '../generated/entity/data/contextFile';
 import { KnowledgePage } from './knowledge-center.interface';
 
 /**

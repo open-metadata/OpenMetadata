@@ -55,7 +55,10 @@ const CreateFolderModal: FC<CreateFolderModalProps> = ({
 
     try {
       setIsCreating(true);
-      const folder = await createFolder({ name: trimmed, displayName: trimmed });
+      const folder = await createFolder({
+        name: trimmed,
+        displayName: trimmed,
+      });
       onCreated(folder);
       handleClose();
     } catch (err) {

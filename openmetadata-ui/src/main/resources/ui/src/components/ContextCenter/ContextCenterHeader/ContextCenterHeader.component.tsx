@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Input, Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Card,
+  Input,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Plus, SearchMd, UploadCloud02 } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';

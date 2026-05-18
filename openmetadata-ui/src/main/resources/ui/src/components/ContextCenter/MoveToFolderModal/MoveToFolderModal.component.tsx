@@ -50,8 +50,8 @@ const MoveToFolderModal: FC<MoveToFolderModalProps> = ({
   const [isMoving, setIsMoving] = useState(false);
 
   const currentFolderName = file.folderId
-    ? (folders.find((f) => f.id === file.folderId)?.displayName ??
-      folders.find((f) => f.id === file.folderId)?.name)
+    ? folders.find((f) => f.id === file.folderId)?.displayName ??
+      folders.find((f) => f.id === file.folderId)?.name
     : undefined;
 
   const availableFolders = folders.filter((f) => f.id !== file.folderId);
@@ -95,7 +95,9 @@ const MoveToFolderModal: FC<MoveToFolderModalProps> = ({
           <Dialog.Content className="tw:flex tw:flex-col tw:gap-5 tw:pb-6">
             <div className="tw:flex tw:items-center tw:gap-2">
               <FileTypeBadge fileType={file.fileType} />
-              <Typography className="tw:text-tertiary tw:truncate" size="text-sm">
+              <Typography
+                className="tw:text-tertiary tw:truncate"
+                size="text-sm">
                 {file.name}
               </Typography>
             </div>

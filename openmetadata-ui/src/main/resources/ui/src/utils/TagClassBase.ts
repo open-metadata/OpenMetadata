@@ -47,7 +47,7 @@ type TagWidgetKeys =
   | DetailPageWidgetKeys.DOMAIN;
 
 class TagClassBase {
-  static filterClassification: string[] = []
+  static filterClassification: string[] = [];
   defaultWidgetHeight: Record<TagWidgetKeys, number>;
 
   constructor() {

@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { createFolder } from 'rest/assetAPI';
 import CreateFolderModal from './CreateFolderModal.component';
 
@@ -158,7 +164,11 @@ describe('CreateFolderModal', () => {
   });
 
   it('calls createFolder with trimmed name on submit', async () => {
-    const folder = { id: 'folder-1', name: 'my-folder', displayName: 'My Folder' };
+    const folder = {
+      id: 'folder-1',
+      name: 'my-folder',
+      displayName: 'My Folder',
+    };
     (createFolder as jest.Mock).mockResolvedValue(folder);
 
     render(<CreateFolderModal {...defaultProps} />);
@@ -178,7 +188,11 @@ describe('CreateFolderModal', () => {
   });
 
   it('calls onCreated with the returned folder on success', async () => {
-    const folder = { id: 'folder-1', name: 'my-folder', displayName: 'My Folder' };
+    const folder = {
+      id: 'folder-1',
+      name: 'my-folder',
+      displayName: 'My Folder',
+    };
     (createFolder as jest.Mock).mockResolvedValue(folder);
 
     render(<CreateFolderModal {...defaultProps} />);

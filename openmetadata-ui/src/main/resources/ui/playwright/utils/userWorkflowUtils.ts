@@ -207,7 +207,6 @@ export const createUserApprovalWorkflowWithOwners = async (
   return response.json();
 };
 
-
 const getFQN = (entity: EntityWithFQN): string => {
   if (entity instanceof TagClass && entity.responseData) {
     return entity.responseData.fullyQualifiedName || '';
@@ -221,7 +220,6 @@ const getFQN = (entity: EntityWithFQN): string => {
 
   return '';
 };
-
 
 type EntityWithFQN = DataProduct | TagClass | { fullyQualifiedName: string };
 

@@ -102,7 +102,12 @@ const FileActions: FC<FileActionsProps> = ({
 
 const FileRowSkeleton: FC = () => (
   <div className="tw:flex tw:items-center tw:gap-4 tw:px-4 tw:py-3 tw:border-b tw:border-secondary">
-    <Skeleton className="tw:shrink-0" height="40px" variant="rounded" width="40px" />
+    <Skeleton
+      className="tw:shrink-0"
+      height="40px"
+      variant="rounded"
+      width="40px"
+    />
     <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-2">
       <Skeleton height="14px" variant="rounded" width="45%" />
       <div className="tw:flex tw:items-center tw:gap-2">

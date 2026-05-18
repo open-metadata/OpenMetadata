@@ -12,11 +12,11 @@
  */
 
 import {
-    ButtonUtility,
-    Card,
-    Skeleton,
-    Tree,
-    Typography,
+  ButtonUtility,
+  Card,
+  Skeleton,
+  Tree,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -118,9 +118,15 @@ const DocumentFolderView = ({
               <Typography size="text-md" weight="semibold">
                 {t('label.folder')}
               </Typography>
-              <Typography className="tw:text-gray-500 tw:flex tw:items-center tw:gap-3" size="text-xs">
-                <span>{folders.length} {t('label.folder-plural')}</span>
-                <span>{files.length} {t('label.file-plural')}</span>
+              <Typography
+                className="tw:text-gray-500 tw:flex tw:items-center tw:gap-3"
+                size="text-xs">
+                <span>
+                  {folders.length} {t('label.folder-plural')}
+                </span>
+                <span>
+                  {files.length} {t('label.file-plural')}
+                </span>
               </Typography>
             </div>
           </div>
@@ -138,13 +144,16 @@ const DocumentFolderView = ({
           {isLoading ? (
             <div className="tw:flex tw:flex-col tw:gap-2">
               {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton height="32px" key={i} variant="rounded" width="100%" />
+                <Skeleton
+                  height="32px"
+                  key={i}
+                  variant="rounded"
+                  width="100%"
+                />
               ))}
             </div>
           ) : (
-            <Tree
-              aria-label={t('label.folder-plural')}
-              className="tw:w-full">
+            <Tree aria-label={t('label.folder-plural')} className="tw:w-full">
               {folders.map((folder) => {
                 const isSelected = selectedFolderId === folder.id;
                 const folderFiles = files.filter(
@@ -153,9 +162,7 @@ const DocumentFolderView = ({
 
                 return (
                   <Tree.Item
-                    className={
-                      isSelected ? 'tw:bg-blue-50 tw:rounded-lg' : ''
-                    }
+                    className={isSelected ? 'tw:bg-blue-50 tw:rounded-lg' : ''}
                     id={folder.id}
                     key={folder.id}
                     textValue={folder.displayName ?? folder.name}>
