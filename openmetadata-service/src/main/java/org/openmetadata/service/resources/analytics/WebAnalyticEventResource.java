@@ -609,8 +609,8 @@ public class WebAnalyticEventResource
     } else if (webAnalyticEventDataInput.getEventType().equals(WebAnalyticEventType.CUSTOM_EVENT)) {
       // Validate Json as type Custom Event
       CustomEvent customEventData = JsonUtils.convertValue(inputData, CustomEvent.class);
+      stripNullCharacters(customEventData);
       if (customEventData.getEventType().equals(CustomEvent.CustomEventTypes.CLICK)) {
-        stripNullCharacters(customEventData);
         if (containsHtml(customEventData.getEventValue())) {
           throw new IllegalArgumentException("Invalid event value for custom event.");
         }
