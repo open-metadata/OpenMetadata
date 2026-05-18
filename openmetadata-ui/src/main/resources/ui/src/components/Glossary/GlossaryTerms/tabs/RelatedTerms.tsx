@@ -44,6 +44,7 @@ import {
   getGlossaryTermRelationSettings,
   searchGlossaryTermsPaginated,
 } from '../../../../rest/glossaryAPI';
+import { getTextFromHtmlString } from '../../../../utils/BlockEditorUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
@@ -91,6 +92,7 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
   getRelationDisplayName,
   onRelatedTermClick,
 }) => {
+  const descriptionText = getTextFromHtmlString(entity.description);
   const tooltipContent = (
     <div className="tw:p-2 tw:space-y-1">
       <Typography as="p" weight="semibold">
@@ -101,9 +103,9 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
           {getRelationDisplayName(relationType)}
         </Typography>
       )}
-      {entity.description && (
+      {descriptionText && (
         <Typography as="p" size="text-xs">
-          {entity.description}
+          {descriptionText}
         </Typography>
       )}
     </div>

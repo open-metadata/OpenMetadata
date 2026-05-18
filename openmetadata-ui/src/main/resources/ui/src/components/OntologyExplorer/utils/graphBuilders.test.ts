@@ -10,9 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { TFunction } from 'i18next';
 import { Glossary } from '../../../generated/entity/data/glossary';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { GraphData } from '../../../rest/rdfAPI.interface';
-import { convertRdfGraphToOntologyGraph } from './graphBuilders';
+import {
+  buildGraphFromAllTerms,
+  convertRdfGraphToOntologyGraph,
+} from './graphBuilders';
+
+const tStub = ((key: string) => key) as unknown as TFunction;
 
 const glossaries: Glossary[] = [
   {
@@ -144,5 +151,137 @@ describe('convertRdfGraphToOntologyGraph', () => {
     const result = convertRdfGraphToOntologyGraph(rdf, glossaries);
 
     expect(result.nodes[0].label).toBe('Revenue');
+  });
+
+  it('preserves multiple relations between the same pair of terms', () => {
+    const rdf: GraphData = {
+      nodes: [
+        {
+          id: 'term-kpi-1',
+          label: 'KPI 1',
+          type: 'glossaryTerm',
+          fullyQualifiedName: 'Finance.KPI 1',
+        },
+        {
+          id: 'term-audience',
+          label: 'Audience',
+          type: 'glossaryTerm',
+          fullyQualifiedName: 'Finance.Audience',
+        },
+      ],
+      edges: [
+        {
+          from: 'term-kpi-1',
+          to: 'term-audience',
+          label: 'Related To',
+          relationType: 'relatedTo',
+        },
+        {
+          from: 'term-kpi-1',
+          to: 'term-audience',
+          label: 'Part Of',
+          relationType: 'partOf',
+        },
+      ],
+    };
+
+    const result = convertRdfGraphToOntologyGraph(rdf, glossaries);
+
+    expect(result.edges).toHaveLength(2);
+    expect(result.edges.map((e) => e.relationType).sort()).toEqual([
+      'partOf',
+      'relatedTo',
+    ]);
+  });
+});
+
+describe('buildGraphFromAllTerms', () => {
+  const baseGlossary = {
+    id: 'gloss-finance-id',
+    name: 'Finance',
+    fullyQualifiedName: 'Finance',
+    displayName: 'Finance',
+  } as Glossary;
+
+  it('preserves multiple relations between the same pair of terms', () => {
+    const terms: GlossaryTerm[] = [
+      {
+        id: '11111111-1111-1111-1111-111111111111',
+        name: 'KPI 1',
+        displayName: 'KPI 1',
+        fullyQualifiedName: 'Finance.KPI 1',
+        glossary: {
+          id: 'gloss-finance-id',
+          name: 'Finance',
+          type: 'glossary',
+        },
+        relatedTerms: [
+          {
+            term: {
+              id: '22222222-2222-2222-2222-222222222222',
+              type: 'glossaryTerm',
+              name: 'Audience',
+              fullyQualifiedName: 'Finance.Audience',
+            },
+            relationType: 'relatedTo',
+          },
+          {
+            term: {
+              id: '22222222-2222-2222-2222-222222222222',
+              type: 'glossaryTerm',
+              name: 'Audience',
+              fullyQualifiedName: 'Finance.Audience',
+            },
+            relationType: 'partOf',
+          },
+        ],
+      } as GlossaryTerm,
+      {
+        id: '22222222-2222-2222-2222-222222222222',
+        name: 'Audience',
+        displayName: 'Audience',
+        fullyQualifiedName: 'Finance.Audience',
+        glossary: {
+          id: 'gloss-finance-id',
+          name: 'Finance',
+          type: 'glossary',
+        },
+        relatedTerms: [
+          {
+            term: {
+              id: '11111111-1111-1111-1111-111111111111',
+              type: 'glossaryTerm',
+              name: 'KPI 1',
+              fullyQualifiedName: 'Finance.KPI 1',
+            },
+            relationType: 'relatedTo',
+          },
+          {
+            term: {
+              id: '11111111-1111-1111-1111-111111111111',
+              type: 'glossaryTerm',
+              name: 'KPI 1',
+              fullyQualifiedName: 'Finance.KPI 1',
+            },
+            relationType: 'hasPart',
+          },
+        ],
+      } as GlossaryTerm,
+    ];
+
+    const result = buildGraphFromAllTerms(terms, [baseGlossary], tStub);
+
+    const termTermEdges = result.edges.filter(
+      (e) => e.relationType !== 'parentOf'
+    );
+    const distinctRelationTypes = new Set(
+      termTermEdges.map((e) => e.relationType)
+    );
+
+    expect(distinctRelationTypes.has('relatedTo')).toBe(true);
+    expect(
+      distinctRelationTypes.has('partOf') ||
+        distinctRelationTypes.has('hasPart')
+    ).toBe(true);
   });
 });

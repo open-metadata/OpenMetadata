@@ -166,14 +166,9 @@ export function convertRdfGraphToOntologyGraph(
   const edgeMap = new Map<string, OntologyEdge>();
   rdfData.edges.forEach((edge) => {
     const relationType = edge.relationType || 'relatedTo';
-    const nodePairKey = [edge.from, edge.to].sort().join('-');
-    const existingEdge = edgeMap.get(nodePairKey);
-    if (
-      !existingEdge ||
-      (existingEdge.relationType === 'relatedTo' &&
-        relationType !== 'relatedTo')
-    ) {
-      edgeMap.set(nodePairKey, {
+    const edgeKey = `${[edge.from, edge.to].sort().join('-')}|${relationType}`;
+    if (!edgeMap.has(edgeKey)) {
+      edgeMap.set(edgeKey, {
         from: edge.from,
         to: edge.to,
         label: edge.label || relationType,
@@ -220,29 +215,17 @@ export function buildGraphFromAllTerms(
         const relatedTermRef = relation.term;
         const relationType = relation.relationType || 'relatedTo';
         if (relatedTermRef?.id && isValidUUID(relatedTermRef.id)) {
-          const nodePairKey = [term.id, relatedTermRef.id].sort().join('-');
-          if (!edgeSet.has(nodePairKey)) {
-            edgeSet.add(nodePairKey);
+          const edgeKey = `${[term.id, relatedTermRef.id]
+            .sort()
+            .join('-')}|${relationType}`;
+          if (!edgeSet.has(edgeKey)) {
+            edgeSet.add(edgeKey);
             edges.push({
               from: term.id,
               to: relatedTermRef.id,
               label: relationType,
               relationType,
             });
-          } else if (relationType !== 'relatedTo') {
-            const existingEdgeIndex = edges.findIndex(
-              (e) =>
-                [e.from, e.to].sort().join('-') === nodePairKey &&
-                e.relationType === 'relatedTo'
-            );
-            if (existingEdgeIndex !== -1) {
-              edges[existingEdgeIndex] = {
-                from: term.id,
-                to: relatedTermRef.id,
-                label: relationType,
-                relationType,
-              };
-            }
           }
         }
       });

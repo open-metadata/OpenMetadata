@@ -73,6 +73,31 @@ export async function clickFirstGraphNode(page: Page): Promise<void> {
   await page.mouse.click(firstPos.x, firstPos.y);
 }
 
+export interface RenderedEdge {
+  from: string;
+  to: string;
+  relationType: string;
+  inverseRelationType?: string;
+}
+
+export async function readGraphEdges(page: Page): Promise<RenderedEdge[]> {
+  await page.waitForFunction(
+    () => {
+      const el = document.querySelector<HTMLElement>('.ontology-g6-container');
+
+      return typeof el?.dataset.edges === 'string';
+    },
+    { timeout: 20000 }
+  );
+
+  return page
+    .locator('.ontology-g6-container')
+    .evaluate(
+      (el: HTMLElement) =>
+        JSON.parse(el.dataset.edges ?? '[]') as RenderedEdge[]
+    );
+}
+
 export async function createApiContext(browser: Browser) {
   const page = await browser.newPage({
     storageState: 'playwright/.auth/admin.json',
