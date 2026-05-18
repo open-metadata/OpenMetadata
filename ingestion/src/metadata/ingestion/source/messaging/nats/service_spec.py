@@ -11,4 +11,4 @@
 from metadata.ingestion.source.messaging.nats.metadata import NatsSource
 from metadata.utils.service_spec import BaseSpec
 
-ServiceSpec = BaseSpec(metadata_source_class=NatsSource)
+ServiceSpec = BaseSpec(metadata_source_class=NatsSource)  # pyright: ignore[reportArgumentType]
