@@ -35,7 +35,7 @@ import {
   UploadCloud01,
   User03,
 } from '@untitledui/icons';
-import { isEmpty, isUndefined, toString, uniqBy } from 'lodash-es';
+import { isEmpty, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';

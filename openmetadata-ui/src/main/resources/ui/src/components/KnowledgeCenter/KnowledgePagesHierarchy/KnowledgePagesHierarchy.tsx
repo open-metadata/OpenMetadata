@@ -50,7 +50,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { compare } from 'fast-json-patch';
-import { isUndefined, uniq } from 'lodash-es';
+import { isUndefined, uniq } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DragIcon } from '../../../assets/svg/drag.svg';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';

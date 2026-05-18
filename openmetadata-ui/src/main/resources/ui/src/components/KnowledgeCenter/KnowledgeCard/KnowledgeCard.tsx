@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons';
 import { Col, Divider, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash-es';
+import { isUndefined } from 'lodash';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as ThumbsUpFilled } from '../../../assets/svg/thumbs-up-filled.svg';

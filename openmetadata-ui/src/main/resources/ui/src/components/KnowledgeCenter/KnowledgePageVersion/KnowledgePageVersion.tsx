@@ -14,7 +14,7 @@ import Icon from '@ant-design/icons';
 import { Button, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { diffWordsWithSpace } from 'diff';
-import { isEmpty, map, toString } from 'lodash-es';
+import { isEmpty, map, toString } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';

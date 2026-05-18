@@ -14,7 +14,7 @@ import Icon from '@ant-design/icons';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, map } from 'lodash-es';
+import { isEmpty, map } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconArticle } from '../../../assets/svg/ic-article.svg';

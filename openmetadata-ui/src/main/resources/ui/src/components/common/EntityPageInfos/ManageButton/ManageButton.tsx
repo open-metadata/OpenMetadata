@@ -15,7 +15,7 @@ import { Button, Dropdown, Modal, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash-es';
+import { isUndefined } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';

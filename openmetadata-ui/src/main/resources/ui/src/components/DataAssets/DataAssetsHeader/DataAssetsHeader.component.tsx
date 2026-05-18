@@ -24,7 +24,7 @@ import {
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { get, isEmpty, isUndefined, toLower } from 'lodash-es';
+import { get, isEmpty, isUndefined, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';

@@ -12,7 +12,7 @@
  */
 
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { startCase } from 'lodash-es';
+import { startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import {
   GlobalSettingOptions,

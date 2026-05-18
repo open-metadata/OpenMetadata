@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
-import { capitalize, isUndefined, uniqBy, uniqueId } from 'lodash-es';
+import { capitalize, isUndefined, uniqBy, uniqueId } from 'lodash';
 import { DOMAttributes, Suspense } from 'react';
 import { Layout } from 'react-grid-layout';
 import { ReactComponent as ArrowRightIcon } from '../assets/svg/arrow-right.svg';

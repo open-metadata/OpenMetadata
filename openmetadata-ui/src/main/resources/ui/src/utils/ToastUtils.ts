@@ -16,7 +16,7 @@ import {
   WarningOutlined,
 } from '@ant-design/icons';
 import { AxiosError } from 'axios';
-import { get, isString } from 'lodash-es';
+import { get, isString } from 'lodash';
 import React from 'react';
 import { ReactComponent as SuccessIcon } from '../assets/svg/ic-alert-success.svg';
 import { AlertBarProps } from '../components/AlertBar/AlertBar.interface';

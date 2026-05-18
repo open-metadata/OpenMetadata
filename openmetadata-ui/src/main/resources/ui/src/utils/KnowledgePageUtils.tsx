@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { DataNode } from 'antd/lib/tree';
-import { cloneDeep, get, isEmpty } from 'lodash-es';
+import { cloneDeep, get, isEmpty } from 'lodash';
 import {
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_SUB_TAB,

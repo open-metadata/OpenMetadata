@@ -16,7 +16,7 @@ import {
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { isUndefined } from 'lodash-es';
+import { isUndefined } from 'lodash';
 import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ProviderType } from '../../generated/api/classification/createTag';

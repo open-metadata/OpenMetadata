@@ -13,7 +13,7 @@
 import { Form, FormProps, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, isEqual, isNil, isUndefined } from 'lodash-es';
+import { cloneDeep, isEqual, isNil, isUndefined } from 'lodash';
 
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
