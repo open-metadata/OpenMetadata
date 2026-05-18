@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -21,7 +22,10 @@ import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
@@ -455,6 +459,80 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
     assertNotNull(response);
     assertFalse(response.getData().isEmpty());
     assertTrue(response.getData().size() >= 2);
+  }
+
+  // ===================================================================
+  // OWNERSHIP TEST OVERRIDES
+  // ===================================================================
+
+  /**
+   * ContextMemory auto-assigns the creating user as owner when the create request omits owners
+   * (see {@code ContextMemoryMapper#defaultOwners}), so it deliberately diverges from the generic
+   * BaseEntityIT precondition that a freshly created entity has no owner. The PATCH contract is
+   * unchanged: setting an explicit owner replaces the creator.
+   */
+  @Test
+  @Override
+  void patch_entityUpdateOwner_200(TestNamespace ns) {
+    ContextMemory created = createEntity(createMinimalRequest(ns));
+
+    ContextMemory fetched = getEntityWithFields(created.getId().toString(), "owners");
+    assertNotNull(fetched.getOwners(), "ContextMemory should be owned by its creator initially");
+    assertEquals(
+        1, fetched.getOwners().size(), "ContextMemory creator should be the sole initial owner");
+
+    User botUser = Users.getByName("ingestion-bot");
+    EntityReference ownerRef =
+        new EntityReference()
+            .withId(botUser.getId())
+            .withType("user")
+            .withName(botUser.getName())
+            .withFullyQualifiedName(botUser.getFullyQualifiedName());
+
+    fetched.setOwners(List.of(ownerRef));
+    ContextMemory updated = patchEntity(fetched.getId().toString(), fetched);
+
+    ContextMemory updatedFetched = getEntityWithFields(updated.getId().toString(), "owners");
+    assertNotNull(updatedFetched.getOwners(), "Entity should have owners");
+    assertEquals(1, updatedFetched.getOwners().size(), "Entity should have 1 owner");
+    assertEquals(
+        botUser.getId(),
+        updatedFetched.getOwners().get(0).getId(),
+        "Owner should be ingestion-bot user");
+  }
+
+  /**
+   * ContextMemory already has the creating user as its sole owner before this PATCH (see {@code
+   * ContextMemoryMapper#defaultOwners}); the original "from null" precondition does not hold.
+   * Setting an explicit owners list still replaces it wholesale.
+   */
+  @Test
+  @Override
+  void patch_entityUpdateOwnerFromNull_200(TestNamespace ns) {
+    ContextMemory entity = createEntity(createMinimalRequest(ns));
+
+    ContextMemory fetched = getEntityWithFields(entity.getId().toString(), "owners");
+    assertNotNull(fetched.getOwners(), "ContextMemory should be owned by its creator initially");
+    assertEquals(
+        1, fetched.getOwners().size(), "ContextMemory creator should be the sole initial owner");
+
+    EntityReference owner1 =
+        new EntityReference()
+            .withId(testUser1().getId())
+            .withType("user")
+            .withName(testUser1().getName());
+    EntityReference owner2 =
+        new EntityReference()
+            .withId(testUser2().getId())
+            .withType("user")
+            .withName(testUser2().getName());
+
+    fetched.setOwners(List.of(owner1, owner2));
+    ContextMemory updated = patchEntity(fetched.getId().toString(), fetched);
+
+    ContextMemory verify = getEntityWithFields(updated.getId().toString(), "owners");
+    assertNotNull(verify.getOwners(), "Entity should have owners");
+    assertEquals(2, verify.getOwners().size(), "Entity should have 2 owners");
   }
 
   // ===================================================================
