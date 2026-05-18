@@ -103,6 +103,9 @@ def _build_connect_opts(connection: NatsConnection) -> dict:
     servers = [s.strip() for s in connection.natsServers.split(",")]
     opts: dict = {"servers": servers}
 
+    if connection.additionalConfig:
+        opts.update(connection.additionalConfig)
+
     if connection.username and connection.password:
         opts["user"] = connection.username
         opts["password"] = connection.password.get_secret_value()
@@ -114,9 +117,6 @@ def _build_connect_opts(connection: NatsConnection) -> dict:
 
     if connection.tlsConfig and connection.tlsConfig.root:
         opts["tls"] = _build_tls_context(connection.tlsConfig.root)
-
-    if connection.additionalConfig:
-        opts.update(connection.additionalConfig)
 
     return opts
 

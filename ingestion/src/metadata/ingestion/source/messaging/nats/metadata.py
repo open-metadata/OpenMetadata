@@ -95,7 +95,7 @@ class NatsSource(MessagingServiceSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
         self.nats_client: NatsClient = self.connection
-        self.generate_sample_data = self.config.sourceConfig.config.generateSampleData  # pyright: ignore[reportAttributeAccessIssue]
+        self.generate_sample_data = self.config.sourceConfig.config.generateSampleData  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
         if self.generate_sample_data and self._is_sample_data_storing_globally_disabled():
             self.generate_sample_data = False
 
@@ -107,7 +107,7 @@ class NatsSource(MessagingServiceSource):
         pipeline_name: Optional[str] = None,  # noqa: UP045
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection = config.serviceConnection.root.config
+        connection = config.serviceConnection.root.config  # pyright: ignore[reportOptionalMemberAccess]
         if not isinstance(connection, NatsConnection):
             raise InvalidSourceException(f"Expected NatsConnection, but got {connection}")
         return cls(config, metadata)
@@ -133,7 +133,7 @@ class NatsSource(MessagingServiceSource):
             logger.warning(f"Failed to fetch metadata for NATS stream {stream_name}: {err}")
             return None
 
-    def get_topic_list(self) -> Iterable[BrokerTopicDetails]:
+    def get_topic_list(self) -> Iterable[BrokerTopicDetails]:  # pyright: ignore[reportIncompatibleMethodOverride]
         if not self.service_connection.jetStreamEnabled:
             logger.warning(
                 "JetStream is disabled. Set jetStreamEnabled=true to ingest streams as topics. "
@@ -224,9 +224,9 @@ class NatsSource(MessagingServiceSource):
                 if metadata.config.retention:
                     topic_config["retention"] = metadata.config.retention
 
-            topic = CreateTopicRequest(
+            topic = CreateTopicRequest(  # pyright: ignore[reportCallIssue]
                 name=EntityName(topic_details.topic_name),
-                service=FullyQualifiedEntityName(self.context.get().messaging_service),
+                service=FullyQualifiedEntityName(self.context.get().messaging_service),  # pyright: ignore[reportAttributeAccessIssue]
                 partitions=partitions,
                 retentionTime=retention_ms,
                 retentionSize=retention_size,
@@ -235,7 +235,7 @@ class NatsSource(MessagingServiceSource):
                 cleanupPolicies=cleanup_policies,
             )
             if topic_config:
-                topic.topicConfig = topic_config
+                topic.topicConfig = topic_config  # pyright: ignore[reportAttributeAccessIssue]
 
             if kv_schema is not None:
                 schema_text, schema_type = kv_schema
@@ -249,7 +249,7 @@ class NatsSource(MessagingServiceSource):
                     schema_fields = load_parser_fn(topic_details.topic_name, text_for_parsing)
                     topic.messageSchema = TopicSchema(
                         schemaText=schema_text,
-                        schemaType=schema_type_map.get(schema_type, SchemaType.Other.value),
+                        schemaType=schema_type_map.get(schema_type, SchemaType.Other.value),  # pyright: ignore[reportArgumentType]
                         schemaFields=schema_fields if schema_fields is not None else [],
                     )
                 else:
@@ -259,11 +259,11 @@ class NatsSource(MessagingServiceSource):
             else:
                 topic.messageSchema = TopicSchema(schemaText="", schemaType=SchemaType.Other, schemaFields=[])
 
-            yield Either(right=topic)
+            yield Either(right=topic)  # pyright: ignore[reportCallIssue]
             self.register_record(topic_request=topic)
 
         except Exception as exc:
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
                     name=topic_details.topic_name,
                     error=f"Unexpected exception yielding NATS stream [{topic_details.topic_name}]: {exc}",
@@ -271,27 +271,27 @@ class NatsSource(MessagingServiceSource):
                 )
             )
 
-    def yield_topic_sample_data(self, topic_details: BrokerTopicDetails) -> Iterable[Either[OMetaTopicSampleData]]:
+    def yield_topic_sample_data(self, topic_details: BrokerTopicDetails) -> Iterable[Either[OMetaTopicSampleData]]:  # pyright: ignore[reportIncompatibleMethodOverride]
         try:
             if not self.generate_sample_data:
                 return
             topic_fqn = fqn.build(
                 metadata=self.metadata,
                 entity_type=Topic,
-                service_name=self.context.get().messaging_service,
-                topic_name=self.context.get().topic,
+                service_name=self.context.get().messaging_service,  # pyright: ignore[reportAttributeAccessIssue]
+                topic_name=self.context.get().topic,  # pyright: ignore[reportAttributeAccessIssue]
             )
-            topic_entity = self.metadata.get_by_name(entity=Topic, fqn=topic_fqn)
+            topic_entity = self.metadata.get_by_name(entity=Topic, fqn=topic_fqn)  # pyright: ignore[reportArgumentType]
             if not topic_entity:
                 return
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 right=OMetaTopicSampleData(
                     topic=topic_entity,
                     sample_data=TopicSampleData(messages=self._fetch_sample_messages(topic_details)),
                 )
             )
         except Exception as exc:
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
                     name=topic_details.topic_name,
                     error=f"Error fetching sample data for NATS stream [{topic_details.topic_name}]: {exc}",
