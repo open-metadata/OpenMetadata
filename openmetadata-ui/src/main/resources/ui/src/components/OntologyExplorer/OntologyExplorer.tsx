@@ -299,6 +299,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             nodePositions={hierarchyBakedPositions}
             nodes={graphDataToShow.nodes}
             ref={graphRef}
+            relationTypes={relationTypes}
             selectedNodeId={
               explorationMode === 'data' && expandedTermIds.size > 1
                 ? null
