@@ -327,6 +327,9 @@ class SupersetSourceMixin(DashboardServiceSource):
         suppressed by the override of yield_datamodel_dashboard_lineage so
         the chart node bridges the chain in the rendered graph.
         """
+        # Resolve the dashboard entity once per dashboard, not once per chart,
+        # to avoid an N+1 lookup against the metadata server.
+        dashboard_entity = self._get_dashboard_entity(dashboard_details)
         for chart_json in filter(
             None,
             [self.all_charts.get(chart_id) for chart_id in self._get_charts_of_dashboard(dashboard_details)],
@@ -358,7 +361,6 @@ class SupersetSourceMixin(DashboardServiceSource):
                         )
                         if dm_to_chart is not None:
                             yield dm_to_chart
-                        dashboard_entity = self._get_dashboard_entity(dashboard_details)
                         if dashboard_entity is not None:
                             chart_to_dash = self._get_add_lineage_request(
                                 to_entity=dashboard_entity,

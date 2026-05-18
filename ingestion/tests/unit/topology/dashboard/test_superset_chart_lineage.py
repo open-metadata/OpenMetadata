@@ -42,6 +42,9 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.source.dashboard.dashboard_service import (
+    DashboardServiceSource,
+)
 from metadata.ingestion.source.dashboard.superset.api_source import SupersetAPISource
 from metadata.ingestion.source.dashboard.superset.db_source import SupersetDBSource
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
@@ -185,9 +188,7 @@ class TestSupersetEmitsChartBridgeEdges(TestCase):
         source._get_input_tables = lambda chart_json: []
         source._enrich_raw_input_tables = lambda inputs, to_entity, prefix: []
         source._get_charts_of_dashboard = lambda dashboard_details: ["10"]
-        source._get_add_lineage_request = (
-            SupersetSourceMixin.__mro__[1]._get_add_lineage_request
-        )
+        source._get_add_lineage_request = DashboardServiceSource._get_add_lineage_request
         source.all_charts = {
             "10": FetchChart(
                 id=10,
