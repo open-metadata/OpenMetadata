@@ -845,3 +845,129 @@ class TestSnowflakeGetDatabaseNamesRawEagerFetch:
             names = list(source.get_database_names_raw())
 
         assert names == ["DB_A", "DB_B", "DB_C"]
+
+
+class SnowflakeBadNameIsolationTest(TestCase):
+    """
+    Regression tests for the fault-isolation paths added so that a single
+    invalid table name in a schema does not poison ingestion for unrelated
+    tables. See:
+      - snowflake/utils.py::get_schema_columns  (per-row try/except)
+      - snowflake/metadata.py::_get_table_names_and_types
+        (per-table try/except around deleted-tables FQN listcomp)
+    """
+
+    @staticmethod
+    def _column_row(table_name, column_name, ordinal):
+        """Build a row tuple in the shape _get_schema_columns iterates over."""
+        return (
+            table_name,
+            column_name,
+            "NUMBER",  # coltype
+            None,  # character_maximum_length
+            38,  # numeric_precision
+            0,  # numeric_scale
+            "YES",  # is_nullable
+            None,  # column_default
+            "NO",  # is_identity
+            None,  # comment
+            None,  # identity_start
+            None,  # identity_increment
+            ordinal,  # ordinal_position
+        )
+
+    def test_get_schema_columns_skips_invalid_table_name(self):
+        """A row in information_schema.columns whose table_name cannot be
+        FQN-quoted must be skipped, and columns for valid tables in the same
+        result must still be populated."""
+        from snowflake.sqlalchemy.snowdialect import SnowflakeDialect
+
+        from metadata.ingestion.source.database.snowflake.utils import (
+            get_schema_columns,
+        )
+
+        dialect = SnowflakeDialect()
+        # The function calls these on `self`; stub them.
+        dialect._current_database_schema = Mock(return_value=("DB", "SCHEMA"))
+        dialect._get_schema_primary_keys = Mock(return_value={})
+
+        rows = [
+            self._column_row("GOOD_TBL", "ID", 1),
+            # Unbalanced quote — quote_name raises ValueError, even with re.DOTALL.
+            self._column_row('BAD"NAME', "X", 1),
+            self._column_row("GOOD_TBL", "NAME", 2),
+        ]
+
+        mock_connection = Mock()
+        mock_connection.execute = Mock(return_value=iter(rows))
+
+        result = get_schema_columns(dialect, mock_connection, schema="SCHEMA", info_cache={})
+
+        # The good table's columns were populated even though a bad-named row
+        # appeared between them — fault isolation at the per-row level.
+        good_key = next(k for k in result if k.lower() == "good_tbl")
+        self.assertEqual(len(result[good_key]), 2)
+        self.assertEqual([c["name"].lower() for c in result[good_key]], ["id", "name"])
+        # The bad-named row was skipped, not added under any case-variant key.
+        self.assertFalse(any("bad" in k.lower() for k in result))
+
+    def test_get_table_names_skips_deleted_with_invalid_name(self):
+        """A deleted table whose name cannot be FQN-quoted must not abort the
+        listcomp that populates context.deleted_tables — valid deletions
+        before/after the bad row should still be recorded."""
+        from datetime import datetime
+
+        from metadata.ingestion.source.database.snowflake.models import (
+            SnowflakeTable,
+            SnowflakeTableList,
+        )
+
+        source = self.sources["not_incremental"] if hasattr(self, "sources") else None
+        if source is None:
+            source = next(iter(get_snowflake_sources().values()))
+
+        deleted_at = datetime(2026, 1, 1)
+        snowflake_tables = SnowflakeTableList(
+            tables=[
+                SnowflakeTable(name="GOOD_GONE", deleted=deleted_at, type_=TableType.Regular),
+                SnowflakeTable(name='BAD"GONE', deleted=deleted_at, type_=TableType.Regular),
+                SnowflakeTable(name="ALIVE_TBL", deleted=None, type_=TableType.Regular),
+            ]
+        )
+
+        mock_inspector = MagicMock()
+        mock_inspector.get_table_names = Mock(return_value=snowflake_tables)
+        source.context.get().__dict__["database_service"] = "svc"
+        source.context.get().__dict__["database"] = "db"
+        source.context.get_global().deleted_tables = []
+
+        def fake_fqn_build(*, metadata, entity_type, service_name, database_name, schema_name, table_name, **_kw):
+            from metadata.utils.fqn import quote_name
+
+            # quote_name still rejects names with embedded `"`; let that drive the failure.
+            quote_name(table_name)
+            return f"{service_name}.{database_name}.{schema_name}.{table_name}"
+
+        with (
+            patch.object(SnowflakeSource, "inspector", new_callable=PropertyMock) as p,
+            patch(
+                "metadata.ingestion.source.database.snowflake.metadata.fqn.build",
+                side_effect=fake_fqn_build,
+            ),
+        ):
+            p.return_value = mock_inspector
+            not_deleted = source._get_table_names_and_types("SCHEMA")
+
+        # Iteration completed and yielded the alive table.
+        names = [t.name for t in not_deleted]
+        self.assertEqual(names, ["ALIVE_TBL"])
+        # The good deleted FQN was recorded; the bad-named one was skipped.
+        recorded = source.context.get_global().deleted_tables
+        self.assertEqual(len(recorded), 1)
+        self.assertIn("GOOD_GONE", recorded[0])
+        self.assertNotIn("BAD", " ".join(recorded))
+
+    def setUp(self):
+        # Build a snowflake source we can mutate per-test.
+        if not hasattr(self, "sources"):
+            self.sources = get_snowflake_sources()
