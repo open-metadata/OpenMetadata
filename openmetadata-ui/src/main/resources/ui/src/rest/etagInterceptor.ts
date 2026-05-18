@@ -22,8 +22,8 @@ import Qs from 'qs';
 /**
  * Client-side ETag / If-None-Match handling for entity GETs.
  *
- * Pairs with the server-side ETagResponseFilter which emits ETag + Cache-Control on entity
- * GET responses and short-circuits to 304 when If-None-Match matches. The flow:
+ * Pairs with the server-side ETagResponseFilter which emits an ETag header on entity GET
+ * responses and short-circuits to 304 when If-None-Match matches. The flow:
  *
  *   1. First GET to /tables/{fqn} → response with ETag header. We cache (etag, body) keyed
  *      by the canonical URL+params.
@@ -99,6 +99,18 @@ const ETAG_INTERCEPTOR_INSTALLED = Symbol.for(
   '@openmetadata/etag-interceptor-installed'
 );
 
+// Per-request stash slot for the cached body that backs the `If-None-Match` header we
+// attached. The response interceptor consults this on a 304 response so we can still
+// hand the caller a 200 even if the global Map entry was evicted (LRU overflow) or
+// wiped (concurrent mutation → cache clear) between the request firing and the
+// response arriving. Without this, a concurrent POST that clears the cache while a
+// GET is in flight would surface as a 304 with `response.data === undefined`, which
+// the caller has every right to treat as a runtime error.
+const ETAG_REQUEST_SNAPSHOT = '__etagSnapshot' as const;
+type ConfigWithSnapshot = InternalAxiosRequestConfig & {
+  [ETAG_REQUEST_SNAPSHOT]?: CachedEntry;
+};
+
 /**
  * Wire ETag handling into the axios client. Idempotent — calling twice on the same client is
  * a no-op (guarded via a symbol marker on the instance). Callers that re-init axios from
@@ -142,6 +154,12 @@ export function attachEtagInterceptor(client: AxiosInstance): void {
       config.headers = new AxiosHeaders({ 'If-None-Match': entry.etag });
     }
 
+    // Stash a reference to the cached entry on the config. Safe to share by reference
+    // because the entry's `data` is the immutable snapshot we wrote at cache-write time
+    // (see the 200-handling branch below); we only ever hand consumers `structuredClone`
+    // copies of it.
+    (config as ConfigWithSnapshot)[ETAG_REQUEST_SNAPSHOT] = entry;
+
     return config;
   });
 
@@ -166,16 +184,23 @@ export function attachEtagInterceptor(client: AxiosInstance): void {
     const key = buildKey(response.config);
 
     if (response.status === 304) {
-      const entry = etagCache.get(key);
+      // Prefer the live cache entry (re-populating LRU recency) but fall back to the
+      // per-request snapshot stashed at request time. The snapshot covers two races:
+      // (1) LRU eviction pushed the entry out between request and response, and
+      // (2) a concurrent mutation cleared the entire cache. Either way the cached body
+      // is still on `response.config` and we can hand it back as a 200.
+      const entry =
+        etagCache.get(key) ??
+        (response.config as ConfigWithSnapshot)[ETAG_REQUEST_SNAPSHOT];
       if (entry) {
         touch(key, entry);
 
         // Deep-clone the cached body before handing it back. Consumers (UI components,
-        // utilities, edit handlers) routinely mutate the entity object they receive — adding
+        // utilities, edit handlers) sometimes mutate the entity object they receive — adding
         // local UI state, normalising fields, stripping properties — and a shared reference
-        // would let those mutations leak back into the cache. The next 304 would then return
-        // the mutated copy and cross-page bugs become very hard to track. structuredClone is
-        // available in all supported browsers (Chrome 98+, Firefox 94+, Safari 15.4+).
+        // would let those mutations leak back into the cache. We also clone on cache write
+        // (see the 200 branch), so this read-side clone is a defense-in-depth measure in
+        // case a future caller hands us back the same reference we stored.
         return {
           ...response,
           status: 200,
@@ -184,16 +209,22 @@ export function attachEtagInterceptor(client: AxiosInstance): void {
         };
       }
 
-      // 304 without a cached body shouldn't happen in normal flow — a stale interceptor
-      // attaching If-None-Match for a key we no longer hold. Bubble through; the caller
-      // sees 304 and decides. Better than fabricating a fake 200.
+      // 304 with no cached body and no stashed snapshot — would only happen if the request
+      // interceptor didn't run (e.g. caller built the If-None-Match header directly). Bubble
+      // through; better than fabricating a fake 200.
       return response;
     }
 
     if (response.status === 200) {
       const etag = readEtagHeader(response);
       if (etag && response.data !== undefined) {
-        touch(key, { etag, data: response.data });
+        // Clone on write so the cached entry is decoupled from the live response object the
+        // caller is about to consume. Without this, a caller that mutates `response.data`
+        // (common pattern: stamping UI-local fields onto an entity) would corrupt the cache,
+        // and the next 304 would hand the next caller a clone of the already-mutated object.
+        // structuredClone is sub-millisecond for typical OpenMetadata entities (5-50 KB JSON)
+        // and is available in all supported browsers (Chrome 98+, Firefox 94+, Safari 15.4+).
+        touch(key, { etag, data: structuredClone(response.data) });
       }
     }
 
