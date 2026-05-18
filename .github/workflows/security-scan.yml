@@ -124,8 +124,10 @@ jobs:
           # Back up JSONs because html_to_pdf.py deletes them after PDF conversion.
           mkdir -p /tmp/snyk-json-backup
           cp security-report/*.json /tmp/snyk-json-backup/ 2>/dev/null || true
+          # Remove internal metadata files so PDF exporter only processes real Snyk reports.
+          rm -f security-report/_*.json
           make export-snyk-pdf-report || true
-          # Restore JSONs alongside generated PDFs/HTMLs.
+          # Restore all JSONs alongside generated PDFs/HTMLs.
           cp /tmp/snyk-json-backup/*.json security-report/ 2>/dev/null || true
 
       - name: Upload Snyk Reports
@@ -137,7 +139,7 @@ jobs:
           retention-days: 30
 
       - name: Build Slack payload
-        id: build
+        id: slack-payload
         if: always()
         run: |
           build="${{ steps.maven-build.outcome }}"
