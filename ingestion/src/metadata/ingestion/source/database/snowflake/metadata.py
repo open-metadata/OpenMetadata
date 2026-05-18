@@ -738,24 +738,25 @@ class SnowflakeSource(
             ),
         )
 
-        self.context.get_global().deleted_tables.extend(
-            [
-                fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=schema_name,
-                    table_name=table.name,
+        deleted_fqns = []
+        for table in snowflake_tables.get_deleted():  # pyright: ignore[reportAttributeAccessIssue]
+            try:
+                deleted_fqns.append(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                        database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                        schema_name=schema_name,
+                        table_name=table.name,
+                    )
                 )
-                for table in snowflake_tables.get_deleted()
-            ]
-        )
+            except Exception as err:
+                logger.warning(f"Skipping deleted-table FQN for {table.name!r} in schema {schema_name}: {err}")
+                logger.debug(traceback.format_exc())
+        self.context.get_global().deleted_tables.extend(deleted_fqns)
 
-        return [
-            TableNameAndType(name=table.name, type_=table.type_)
-            for table in snowflake_tables.get_not_deleted()
-        ]
+        return [TableNameAndType(name=table.name, type_=table.type_) for table in snowflake_tables.get_not_deleted()]  # pyright: ignore[reportAttributeAccessIssue]
 
     def _get_stream_names_and_types(self, schema_name: str) -> List[TableNameAndType]:
         table_type = TableType.Stream
