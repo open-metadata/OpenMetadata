@@ -51,6 +51,8 @@ import {
   SERVICE_TYPES,
 } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -153,6 +155,7 @@ export const DataAssetsHeader = ({
     serviceCategory: ServiceCategory;
   }>();
   const { currentUser } = useApplicationStore();
+  const { getResourcePermission } = usePermissionProvider();
   const { selectedUserSuggestions } = useSuggestionsContext();
   const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
@@ -171,6 +174,7 @@ export const DataAssetsHeader = ({
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
   const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
+  const [canCreateTask, setCanCreateTask] = useState(false);
   const {
     isDarDisabled,
     isDarAwaitingGrant,
@@ -179,6 +183,12 @@ export const DataAssetsHeader = ({
     entityFqn: dataAsset.fullyQualifiedName,
     enabled: entityType === EntityType.TABLE,
   });
+
+  useEffect(() => {
+    getResourcePermission(ResourceEntity.TASK)
+      .then((perm) => setCanCreateTask(Boolean(perm.Create)))
+      .catch(() => setCanCreateTask(false));
+  }, [getResourcePermission]);
 
   const fetchDataContract = async (entityId: string) => {
     try {
@@ -604,12 +614,15 @@ export const DataAssetsHeader = ({
   );
 
   const requestDataAccessButton = useMemo(() => {
+    const isAdmin = Boolean(currentUser?.isAdmin);
+
     if (
       !tableClassBase.getShowRequestDataAccess() ||
       SERVICE_TYPES.includes(entityType) ||
       entityType !== EntityType.TABLE ||
       deleted ||
-      isOwner
+      isOwner ||
+      (!isAdmin && !canCreateTask)
     ) {
       return null;
     }
@@ -629,7 +642,15 @@ export const DataAssetsHeader = ({
         </Button>
       </Tooltip>
     );
-  }, [entityType, deleted, isOwner, isDarDisabled, t]);
+  }, [
+    entityType,
+    deleted,
+    isOwner,
+    isDarDisabled,
+    canCreateTask,
+    currentUser?.isAdmin,
+    t,
+  ]);
 
   useEffect(() => {
     if (dataAsset.id) {

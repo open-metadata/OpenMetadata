@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,6 +57,7 @@ import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.http.AbortableInputStream;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3AsyncClientBuilder;
@@ -83,6 +85,7 @@ import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.services.s3.model.UploadPartCopyRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartCopyResponse;
@@ -124,12 +127,16 @@ public class S3LogStorageTest {
       S3ClientBuilder mockBuilder = mock(S3ClientBuilder.class);
       when(S3Client.builder()).thenReturn(mockBuilder);
       when(mockBuilder.region(any())).thenReturn(mockBuilder);
+      when(mockBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class)))
+          .thenReturn(mockBuilder);
       when(mockBuilder.credentialsProvider(any())).thenReturn(mockBuilder);
       when(mockBuilder.build()).thenReturn(mockS3Client);
 
       S3AsyncClientBuilder mockAsyncBuilder = mock(S3AsyncClientBuilder.class);
       when(S3AsyncClient.builder()).thenReturn(mockAsyncBuilder);
       when(mockAsyncBuilder.region(any())).thenReturn(mockAsyncBuilder);
+      when(mockAsyncBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class)))
+          .thenReturn(mockAsyncBuilder);
       when(mockAsyncBuilder.credentialsProvider(any())).thenReturn(mockAsyncBuilder);
       when(mockAsyncBuilder.build()).thenReturn(mockS3AsyncClient);
 
@@ -160,6 +167,40 @@ public class S3LogStorageTest {
   void testS3LogStorageInitialization() {
     assertNotNull(s3LogStorage);
     assertEquals("s3", s3LogStorage.getStorageType());
+  }
+
+  @Test
+  void testS3ClientsUseApiCallTimeouts() throws Exception {
+    try (MockedStatic<S3Client> s3ClientMock = mockStatic(S3Client.class);
+        MockedStatic<S3AsyncClient> s3AsyncClientMock = mockStatic(S3AsyncClient.class)) {
+
+      S3ClientBuilder mockBuilder = mock(S3ClientBuilder.class);
+      when(S3Client.builder()).thenReturn(mockBuilder);
+      when(mockBuilder.region(any())).thenReturn(mockBuilder);
+      when(mockBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class)))
+          .thenReturn(mockBuilder);
+      when(mockBuilder.credentialsProvider(any())).thenReturn(mockBuilder);
+      when(mockBuilder.build()).thenReturn(mockS3Client);
+
+      S3AsyncClientBuilder mockAsyncBuilder = mock(S3AsyncClientBuilder.class);
+      when(S3AsyncClient.builder()).thenReturn(mockAsyncBuilder);
+      when(mockAsyncBuilder.region(any())).thenReturn(mockAsyncBuilder);
+      when(mockAsyncBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class)))
+          .thenReturn(mockAsyncBuilder);
+      when(mockAsyncBuilder.credentialsProvider(any())).thenReturn(mockAsyncBuilder);
+      when(mockAsyncBuilder.build()).thenReturn(mockS3AsyncClient);
+      when(mockS3Client.headBucket(any(HeadBucketRequest.class)))
+          .thenReturn(HeadBucketResponse.builder().build());
+
+      S3LogStorage storage = new S3LogStorage();
+      Map<String, Object> config = new HashMap<>();
+      config.put("config", testConfig);
+      storage.initialize(config);
+
+      verify(mockBuilder).overrideConfiguration(any(ClientOverrideConfiguration.class));
+      verify(mockAsyncBuilder).overrideConfiguration(any(ClientOverrideConfiguration.class));
+      storage.close();
+    }
   }
 
   @Test
@@ -234,6 +275,126 @@ public class S3LogStorageTest {
   }
 
   @Test
+  void testLateAppendAfterCloseIsDropped() throws Exception {
+    String streamKey = testPipelineFQN + "/" + testRunId;
+    String partialKey =
+        testPrefix
+            + "/"
+            + testPipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_")
+            + "/"
+            + testRunId
+            + "/partial.txt";
+
+    mockAsyncPutObject();
+    when(mockS3Client.getObject(
+            argThat((GetObjectRequest req) -> req != null && partialKey.equals(req.key()))))
+        .thenThrow(NoSuchKeyException.builder().build());
+    when(mockS3Client.putObject(
+            any(PutObjectRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+        .thenReturn(PutObjectResponse.builder().build());
+    when(mockS3Client.copyObject(any(CopyObjectRequest.class)))
+        .thenReturn(software.amazon.awssdk.services.s3.model.CopyObjectResponse.builder().build());
+    when(mockS3Client.deleteObject(any(DeleteObjectRequest.class)))
+        .thenReturn(DeleteObjectResponse.builder().build());
+
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "before-close\n");
+    s3LogStorage.closeStream(testPipelineFQN, testRunId);
+
+    clearInvocations(mockS3Client);
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "late-after-close\n");
+
+    @SuppressWarnings("unchecked")
+    Map<String, List<String>> pending =
+        (Map<String, List<String>>) getPrivateField(s3LogStorage, "pendingFlush");
+    assertFalse(
+        pending.containsKey(streamKey),
+        "late append after close must not recreate pendingFlush for the completed stream");
+    verify(mockS3Client, never())
+        .putObject(
+            any(PutObjectRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class));
+  }
+
+  @Test
+  void testLatePartialDoesNotOverwriteExistingLogsTxt() throws Exception {
+    String partialKey =
+        testPrefix
+            + "/"
+            + testPipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_")
+            + "/"
+            + testRunId
+            + "/partial.txt";
+    String logsKey =
+        testPrefix
+            + "/"
+            + testPipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_")
+            + "/"
+            + testRunId
+            + "/logs.txt";
+
+    mockAsyncPutObject();
+    when(mockS3Client.getObject(
+            argThat((GetObjectRequest req) -> req != null && partialKey.equals(req.key()))))
+        .thenThrow(NoSuchKeyException.builder().build());
+    when(mockS3Client.putObject(
+            any(PutObjectRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+        .thenReturn(PutObjectResponse.builder().build());
+    when(mockS3Client.headObject(
+            argThat((HeadObjectRequest req) -> req != null && logsKey.equals(req.key()))))
+        .thenReturn(HeadObjectResponse.builder().build());
+    when(mockS3Client.deleteObject(any(DeleteObjectRequest.class)))
+        .thenReturn(DeleteObjectResponse.builder().build());
+
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "late-tail\n");
+    s3LogStorage.closeStream(testPipelineFQN, testRunId);
+
+    verify(mockS3Client, never()).copyObject(any(CopyObjectRequest.class));
+    verify(mockS3Client, atLeastOnce())
+        .deleteObject(
+            argThat((DeleteObjectRequest req) -> req != null && partialKey.equals(req.key())));
+  }
+
+  @Test
+  void testLogsTxtHeadObjectGeneric404IsTreatedAsMissing() throws Exception {
+    String partialKey =
+        testPrefix
+            + "/"
+            + testPipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_")
+            + "/"
+            + testRunId
+            + "/partial.txt";
+    String logsKey =
+        testPrefix
+            + "/"
+            + testPipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_")
+            + "/"
+            + testRunId
+            + "/logs.txt";
+
+    mockAsyncPutObject();
+    when(mockS3Client.getObject(
+            argThat((GetObjectRequest req) -> req != null && partialKey.equals(req.key()))))
+        .thenThrow(NoSuchKeyException.builder().build());
+    when(mockS3Client.putObject(
+            any(PutObjectRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+        .thenReturn(PutObjectResponse.builder().build());
+    when(mockS3Client.headObject(
+            argThat((HeadObjectRequest req) -> req != null && logsKey.equals(req.key()))))
+        .thenThrow(S3Exception.builder().statusCode(404).message("Not Found").build());
+    when(mockS3Client.copyObject(any(CopyObjectRequest.class)))
+        .thenReturn(software.amazon.awssdk.services.s3.model.CopyObjectResponse.builder().build());
+    when(mockS3Client.deleteObject(any(DeleteObjectRequest.class)))
+        .thenReturn(DeleteObjectResponse.builder().build());
+
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "tail\n");
+    s3LogStorage.closeStream(testPipelineFQN, testRunId);
+
+    verify(mockS3Client)
+        .copyObject(
+            argThat(
+                (CopyObjectRequest req) -> req != null && logsKey.equals(req.destinationKey())));
+  }
+
+  @Test
   void testCloseStreamIsIdempotent() throws Exception {
     mockAsyncPutObject();
     // First close: flush writes partial.txt, then copy succeeds, then delete
@@ -250,8 +411,8 @@ public class S3LogStorageTest {
     s3LogStorage.appendLogs(testPipelineFQN, testRunId, "x\n");
     s3LogStorage.closeStream(testPipelineFQN, testRunId);
 
-    // Second close: no pending lines → writePartialLogsForStreamLocked is no-op,
-    // then copyPartialToLogs throws NoSuchKeyException → idempotent path returns.
+    // Second close: no pending lines -> writePartialLogsForStreamLocked is no-op,
+    // then copyPartialToLogs throws NoSuchKeyException -> idempotent path returns.
     when(mockS3Client.copyObject(any(CopyObjectRequest.class)))
         .thenThrow(NoSuchKeyException.builder().build());
 
@@ -535,12 +696,16 @@ public class S3LogStorageTest {
       S3ClientBuilder mockBuilder = mock(S3ClientBuilder.class);
       when(S3Client.builder()).thenReturn(mockBuilder);
       when(mockBuilder.region(any())).thenReturn(mockBuilder);
+      when(mockBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class)))
+          .thenReturn(mockBuilder);
       when(mockBuilder.credentialsProvider(any())).thenReturn(mockBuilder);
       when(mockBuilder.build()).thenReturn(mockS3Client);
 
       S3AsyncClientBuilder mockAsyncBuilder = mock(S3AsyncClientBuilder.class);
       when(S3AsyncClient.builder()).thenReturn(mockAsyncBuilder);
       when(mockAsyncBuilder.region(any())).thenReturn(mockAsyncBuilder);
+      when(mockAsyncBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class)))
+          .thenReturn(mockAsyncBuilder);
       when(mockAsyncBuilder.credentialsProvider(any())).thenReturn(mockAsyncBuilder);
       when(mockAsyncBuilder.build()).thenReturn(mockS3AsyncClient);
 
@@ -572,6 +737,8 @@ public class S3LogStorageTest {
       S3ClientBuilder mockBuilder = mock(S3ClientBuilder.class);
       when(S3Client.builder()).thenReturn(mockBuilder);
       when(mockBuilder.region(any())).thenReturn(mockBuilder);
+      when(mockBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class)))
+          .thenReturn(mockBuilder);
 
       S3LogStorage storage = new S3LogStorage();
       Map<String, Object> config = new HashMap<>();
@@ -596,12 +763,16 @@ public class S3LogStorageTest {
       S3ClientBuilder mockBuilder = mock(S3ClientBuilder.class);
       when(S3Client.builder()).thenReturn(mockBuilder);
       when(mockBuilder.region(any())).thenReturn(mockBuilder);
+      when(mockBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class)))
+          .thenReturn(mockBuilder);
       when(mockBuilder.credentialsProvider(any())).thenReturn(mockBuilder);
       when(mockBuilder.build()).thenReturn(mockS3Client);
 
       S3AsyncClientBuilder mockAsyncBuilder = mock(S3AsyncClientBuilder.class);
       when(S3AsyncClient.builder()).thenReturn(mockAsyncBuilder);
       when(mockAsyncBuilder.region(any())).thenReturn(mockAsyncBuilder);
+      when(mockAsyncBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class)))
+          .thenReturn(mockAsyncBuilder);
       when(mockAsyncBuilder.credentialsProvider(any())).thenReturn(mockAsyncBuilder);
       when(mockAsyncBuilder.build()).thenReturn(mockS3AsyncClient);
 
@@ -659,7 +830,7 @@ public class S3LogStorageTest {
     Map<String, AtomicLong> counters =
         (Map<String, AtomicLong>) getPrivateField(s3LogStorage, "totalLinesAppended");
 
-    // "line A\nline B\n" → split → ["line A", "line B", ""] → trim → 2 lines
+    // "line A\nline B\n" -> split -> ["line A", "line B", ""] -> trim -> 2 lines
     assertEquals(2, pending.get(streamKey).size(), "trailing newline must not yield an empty line");
     assertEquals(2L, counters.get(streamKey).get());
   }
@@ -1048,6 +1219,218 @@ public class S3LogStorageTest {
     Map<String, java.util.List<String>> pending =
         (Map<String, java.util.List<String>>) getPrivateField(s3LogStorage, "pendingFlush");
     assertEquals(1, pending.get(testPipelineFQN + "/" + testRunId).size());
+  }
+
+  @Test
+  void testPartialFlushAndAbandonedCleanupExecutorsAreSeparate() throws Exception {
+    Object partial = getPrivateField(s3LogStorage, "partialFlushExecutor");
+    Object cleanup = getPrivateField(s3LogStorage, "abandonedCleanupExecutor");
+    assertNotNull(partial);
+    assertNotNull(cleanup);
+    assertFalse(partial == cleanup, "executors must be distinct");
+  }
+
+  @Test
+  void testSafeScheduledTaskSwallowsThrowableSoSchedulerKeepsRunning() throws Exception {
+    java.lang.reflect.Method safe =
+        S3LogStorage.class.getDeclaredMethod("safeScheduledTask", String.class, Runnable.class);
+    safe.setAccessible(true);
+
+    final boolean[] ran = {false};
+    Runnable thrower =
+        () -> {
+          ran[0] = true;
+          throw new RuntimeException("boom");
+        };
+
+    Runnable wrapped = (Runnable) safe.invoke(s3LogStorage, "test-task", thrower);
+
+    assertDoesNotThrow(wrapped::run);
+    assertTrue(ran[0]);
+    assertDoesNotThrow(wrapped::run);
+  }
+
+  @Test
+  void testWritePartialLogsContinuesEvenIfOneStreamFails() throws Exception {
+    String runIdA = UUID.randomUUID().toString();
+    String runIdB = UUID.randomUUID().toString();
+    String streamA = testPipelineFQN + "/" + runIdA;
+    String streamB = testPipelineFQN + "/" + runIdB;
+
+    mockAsyncPutObject();
+    s3LogStorage.appendLogs(testPipelineFQN, UUID.fromString(runIdA), "from-A\n");
+    s3LogStorage.appendLogs(testPipelineFQN, UUID.fromString(runIdB), "from-B\n");
+
+    String partialKeyA =
+        testPrefix
+            + "/"
+            + testPipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_")
+            + "/"
+            + runIdA
+            + "/partial.txt";
+    String partialKeyB =
+        testPrefix
+            + "/"
+            + testPipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_")
+            + "/"
+            + runIdB
+            + "/partial.txt";
+
+    // Stream A: probe throws - its flush will be marked failed.
+    when(mockS3Client.getObject(
+            argThat((GetObjectRequest req) -> req != null && partialKeyA.equals(req.key()))))
+        .thenThrow(new RuntimeException("simulated S3 failure for stream A"));
+    // Stream B: probe returns no existing partial.txt, succeeds.
+    when(mockS3Client.getObject(
+            argThat((GetObjectRequest req) -> req != null && partialKeyB.equals(req.key()))))
+        .thenThrow(NoSuchKeyException.builder().build());
+    when(mockS3Client.putObject(
+            any(PutObjectRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+        .thenReturn(PutObjectResponse.builder().build());
+
+    // Direct call to the scheduled body - verifies the loop's per-stream
+    // exception handling, NOT the executor.
+    java.lang.reflect.Method writePartial =
+        S3LogStorage.class.getDeclaredMethod("writePartialLogs");
+    writePartial.setAccessible(true);
+    assertDoesNotThrow(() -> writePartial.invoke(s3LogStorage));
+
+    // Stream B's PUT must have happened despite A's failure.
+    org.mockito.ArgumentCaptor<PutObjectRequest> reqCap =
+        org.mockito.ArgumentCaptor.forClass(PutObjectRequest.class);
+    verify(mockS3Client, atLeastOnce())
+        .putObject(reqCap.capture(), any(software.amazon.awssdk.core.sync.RequestBody.class));
+    boolean sawBPut = reqCap.getAllValues().stream().anyMatch(r -> partialKeyB.equals(r.key()));
+    assertTrue(sawBPut, "stream B must have been flushed even though stream A failed");
+  }
+
+  @Test
+  void testWritePartialLogsUpdatesPendingMetricsAndHeartbeat() throws Exception {
+    io.micrometer.core.instrument.simple.SimpleMeterRegistry registry =
+        new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
+    org.openmetadata.service.monitoring.StreamableLogsMetrics testMetrics =
+        new org.openmetadata.service.monitoring.StreamableLogsMetrics(registry);
+
+    Field metricsField = S3LogStorage.class.getDeclaredField("metrics");
+    metricsField.setAccessible(true);
+    metricsField.set(s3LogStorage, testMetrics);
+
+    long beforeHeartbeat = testMetrics.getPartialFlushHeartbeat();
+    mockAsyncPutObject();
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "alpha\nbeta\ngamma\n");
+
+    java.lang.reflect.Method writePartial =
+        S3LogStorage.class.getDeclaredMethod("writePartialLogs");
+    writePartial.setAccessible(true);
+    writePartial.invoke(s3LogStorage);
+
+    assertTrue(testMetrics.getPartialFlushHeartbeat() > beforeHeartbeat);
+    assertEquals(1, testMetrics.getPendingStreamsCount());
+  }
+
+  @Test
+  void testFlushSuccessUpdatesLastPartialFlushTimestamp() throws Exception {
+    io.micrometer.core.instrument.simple.SimpleMeterRegistry registry =
+        new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
+    org.openmetadata.service.monitoring.StreamableLogsMetrics testMetrics =
+        new org.openmetadata.service.monitoring.StreamableLogsMetrics(registry);
+    Field metricsField = S3LogStorage.class.getDeclaredField("metrics");
+    metricsField.setAccessible(true);
+    metricsField.set(s3LogStorage, testMetrics);
+
+    String streamKey = testPipelineFQN + "/" + testRunId;
+    String partialKey =
+        testPrefix
+            + "/"
+            + testPipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_")
+            + "/"
+            + testRunId
+            + "/partial.txt";
+
+    when(mockS3Client.getObject(
+            argThat((GetObjectRequest req) -> req != null && partialKey.equals(req.key()))))
+        .thenThrow(NoSuchKeyException.builder().build());
+    when(mockS3Client.putObject(
+            any(PutObjectRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+        .thenReturn(PutObjectResponse.builder().build());
+    mockAsyncPutObject();
+
+    assertEquals(0L, testMetrics.getLastPartialFlushTimestamp());
+
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "x\ny\n");
+    java.lang.reflect.Method writeStream =
+        S3LogStorage.class.getDeclaredMethod("writePartialLogsForStream", String.class);
+    writeStream.setAccessible(true);
+    writeStream.invoke(s3LogStorage, streamKey);
+
+    assertTrue(testMetrics.getLastPartialFlushTimestamp() > 0L);
+  }
+
+  @Test
+  void testFlushFailureIncrementsFailureCounter() throws Exception {
+    io.micrometer.core.instrument.simple.SimpleMeterRegistry registry =
+        new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
+    org.openmetadata.service.monitoring.StreamableLogsMetrics testMetrics =
+        new org.openmetadata.service.monitoring.StreamableLogsMetrics(registry);
+    Field metricsField = S3LogStorage.class.getDeclaredField("metrics");
+    metricsField.setAccessible(true);
+    metricsField.set(s3LogStorage, testMetrics);
+
+    String partialKey =
+        testPrefix
+            + "/"
+            + testPipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_")
+            + "/"
+            + testRunId
+            + "/partial.txt";
+
+    when(mockS3Client.getObject(
+            argThat((GetObjectRequest req) -> req != null && partialKey.equals(req.key()))))
+        .thenThrow(new RuntimeException("simulated S3 outage"));
+
+    mockAsyncPutObject();
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "z\n");
+
+    java.lang.reflect.Method writeStream =
+        S3LogStorage.class.getDeclaredMethod("writePartialLogsForStream", String.class);
+    writeStream.setAccessible(true);
+    writeStream.invoke(s3LogStorage, testPipelineFQN + "/" + testRunId);
+
+    assertTrue(testMetrics.getFlushFailuresCount() >= 1);
+  }
+
+  @Test
+  void testWatermarkFlushSchedulesOnlyOnceWhileFlushAlreadyQueued() throws Exception {
+    ScheduledExecutorService executor = mock(ScheduledExecutorService.class);
+    Field executorField = S3LogStorage.class.getDeclaredField("partialFlushExecutor");
+    executorField.setAccessible(true);
+    executorField.set(s3LogStorage, executor);
+
+    Field watermarkField = S3LogStorage.class.getDeclaredField("earlyFlushWatermarkBytes");
+    watermarkField.setAccessible(true);
+    watermarkField.setLong(s3LogStorage, 1L);
+
+    mockAsyncPutObject();
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "first\n");
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "second\n");
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "third\n");
+
+    verify(executor, times(1)).execute(any(Runnable.class));
+  }
+
+  @Test
+  void testCleanupHeartbeatUpdates() throws Exception {
+    io.micrometer.core.instrument.simple.SimpleMeterRegistry registry =
+        new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
+    org.openmetadata.service.monitoring.StreamableLogsMetrics testMetrics =
+        new org.openmetadata.service.monitoring.StreamableLogsMetrics(registry);
+    Field metricsField = S3LogStorage.class.getDeclaredField("metrics");
+    metricsField.setAccessible(true);
+    metricsField.set(s3LogStorage, testMetrics);
+
+    long before = testMetrics.getAbandonedCleanupHeartbeat();
+    s3LogStorage.cleanupAbandonedStreams();
+    assertTrue(testMetrics.getAbandonedCleanupHeartbeat() > before);
   }
 
   private static Object getPrivateField(Object target, String name) throws Exception {

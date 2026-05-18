@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Task } from '../generated/entity/tasks/task';
 import {
   DarWorkflowStage,
   listDataAccessRequests,
-  Task,
   TaskEntityStatus,
   TaskStatusGroup,
 } from '../rest/tasksAPI';
@@ -51,7 +51,7 @@ export const useDataAccessRequest = ({
     try {
       const res = await listDataAccessRequests({
         dataset: entityFqn,
-        requestedBy: currentUser.name,
+        requestedBy: currentUser.fullyQualifiedName ?? currentUser.name,
         statusGroup: TaskStatusGroup.Active,
         fields: 'about,resolution',
         limit: 10,
@@ -104,10 +104,6 @@ export const useDataAccessRequest = ({
             | { duration?: string; expirationDate?: number }
             | undefined;
 
-          // Use the persisted approvedAt for the duration window so later
-          // workflow transitions (e.g. granting) don't shift the apparent
-          // approval timestamp via updatedAt. Fall back for older tasks
-          // that don't carry approvedAt yet.
           return isDarApprovalActive(
             task.approvedAt ?? task.updatedAt ?? task.createdAt,
             payload?.duration,

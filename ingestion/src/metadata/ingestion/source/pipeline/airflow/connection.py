@@ -228,17 +228,6 @@ def _test_task_detail_access(session) -> Optional[Any]:  # noqa: UP045
     Extracted to module level so it can be unit-tested directly.
     """
     try:
-        if IS_AIRFLOW_3:
-            # Airflow 3.x changed DAG storage: the `data` column in
-            # `serialized_dag` is NULL (data moved to bundles/compressed
-            # format). Querying it causes 'NoneType' subscript errors.
-            # Fall back to a dag_id-only query to confirm table access.
-            logger.warning(
-                "Airflow 3.x detected: skipping `data` column validation as it may be NULL. "
-                "Falling back to dag_id query to confirm `serialized_dag` table access."
-            )
-            return session.query(SerializedDagModel.dag_id).first()
-
         json_data_column = (
             SerializedDagModel._data  # For 2.3.0 onwards # pylint: disable=protected-access
             if hasattr(SerializedDagModel, "_data")
@@ -252,6 +241,13 @@ def _test_task_detail_access(session) -> Optional[Any]:  # noqa: UP045
                 "The table is accessible but empty — task detail access cannot be validated."
             )
             return None
+
+        if result[0] is None:
+            logger.debug(
+                "Serialized DAG data column is NULL — COMPRESS_SERIALIZED_DAGS is enabled. "
+                "Falling back to dag_id query to confirm `serialized_dag` table access."
+            )
+            return session.query(SerializedDagModel.dag_id).first()
 
         return result[0]["dag"]["tasks"]
     except Exception as e:

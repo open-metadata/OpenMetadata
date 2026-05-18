@@ -8,861 +8,611 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""
-Unit tests for the streamable logger module.
-"""
+"""Unit tests for the streamable logger module."""
 
 import logging
-import os
+import threading
 import time
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.streamable_logger import (
-    CircuitBreaker,
-    CircuitState,
     StreamableLogHandler,
+    StreamableLogHandlerManager,
+    _shipping_state,
     cleanup_streamable_logging,
     setup_streamable_logging_for_workflow,
 )
 
 
-class TestCircuitBreaker(unittest.TestCase):
-    """Test the circuit breaker implementation"""
-
-    def setUp(self):
-        self.breaker = CircuitBreaker(failure_threshold=3, recovery_timeout=1, success_threshold=2)
-
-    def test_initial_state_is_closed(self):
-        """Test that circuit breaker starts in CLOSED state"""
-        self.assertEqual(self.breaker.state, CircuitState.CLOSED)
-        self.assertEqual(self.breaker.failure_count, 0)
-
-    def test_opens_after_threshold_failures(self):
-        """Test that circuit opens after reaching failure threshold"""
-
-        def failing_func():
-            raise Exception("Test failure")  # noqa: TRY002
-
-        for i in range(3):  # noqa: B007
-            with self.assertRaises(Exception):  # noqa: B017
-                self.breaker.call(failing_func)
-
-        self.assertEqual(self.breaker.state, CircuitState.OPEN)
-        self.assertEqual(self.breaker.failure_count, 3)
-
-    def test_blocks_calls_when_open(self):
-        """Test that calls are blocked when circuit is open"""
-        # Open the circuit
-        self.breaker.state = CircuitState.OPEN
-        self.breaker.last_failure_time = time.time()
-
-        with self.assertRaises(Exception) as ctx:
-            self.breaker.call(lambda: "success")
-
-        self.assertIn("Circuit breaker is OPEN", str(ctx.exception))
-
-    def test_transitions_to_half_open_after_timeout(self):
-        """Test transition to HALF_OPEN state after recovery timeout"""
-        # Open the circuit
-        self.breaker.state = CircuitState.OPEN
-        self.breaker.last_failure_time = time.time() - 2  # 2 seconds ago
-
-        # Should transition to HALF_OPEN
-        def success_func():
-            return "success"
-
-        result = self.breaker.call(success_func)
-        self.assertEqual(result, "success")
-        self.assertEqual(self.breaker.state, CircuitState.HALF_OPEN)
-
-    def test_closes_after_success_threshold_in_half_open(self):
-        """Test that circuit closes after success threshold in HALF_OPEN"""
-        self.breaker.state = CircuitState.HALF_OPEN
-
-        def success_func():
-            return "success"
-
-        # First success
-        self.breaker.call(success_func)
-        self.assertEqual(self.breaker.state, CircuitState.HALF_OPEN)
-
-        # Second success - should close
-        self.breaker.call(success_func)
-        self.assertEqual(self.breaker.state, CircuitState.CLOSED)
-
-    def test_reopens_on_failure_in_half_open(self):
-        """Test that circuit reopens on failure in HALF_OPEN state"""
-        self.breaker.state = CircuitState.HALF_OPEN
-
-        def failing_func():
-            raise Exception("Test failure")  # noqa: TRY002
-
-        with self.assertRaises(Exception):  # noqa: B017
-            self.breaker.call(failing_func)
-
-        self.assertEqual(self.breaker.state, CircuitState.OPEN)
+def _make_record(msg="test message", level=logging.INFO):
+    return logging.LogRecord(
+        name="test",
+        level=level,
+        pathname="test.py",
+        lineno=1,
+        msg=msg,
+        args=(),
+        exc_info=None,
+    )
 
 
-class TestStreamableLogHandler(unittest.TestCase):
-    """Test the StreamableLogHandler class"""
+def _make_metadata_mock():
+    """Build a Mock that satisfies StreamableLogHandler's needs:
+    - send_logs_batch_best_effort / send_close_best_effort attrs
+    - .client.config (real ClientConfig) so handler can build its own REST"""
+    from metadata.ingestion.ometa.client import ClientConfig
 
-    def setUp(self):
-        """Set up test fixtures"""
-        self.mock_metadata = Mock(spec=OpenMetadata)
-        self.mock_metadata.config = Mock()
-        self.mock_metadata.config.host_port = "http://localhost:8585"
-        self.mock_metadata.config.auth_token = "test-token"
-        # Mock the _auth_header method
-        self.mock_metadata._auth_header = Mock(return_value={"Authorization": "Bearer test-token"})
+    metadata = Mock(spec=OpenMetadata)
+    metadata.client = Mock()
+    metadata.client.config = ClientConfig(base_url="http://localhost:8585")
+    metadata.send_logs_batch_best_effort = Mock(return_value=True)
+    metadata.send_close_best_effort = Mock(return_value=True)
+    return metadata
 
-        self.pipeline_fqn = "test.pipeline"
-        self.run_id = uuid4()
+
+def _make_handler(
+    metadata=None,
+    pipeline_fqn="test.pipeline",
+    run_id=None,
+    max_buffer=10000,
+    enable_streaming=False,
+):
+    if metadata is None:
+        metadata = _make_metadata_mock()
+    if run_id is None:
+        run_id = uuid4()
+    handler = StreamableLogHandler(
+        metadata=metadata,
+        pipeline_fqn=pipeline_fqn,
+        run_id=run_id,
+        max_buffer=max_buffer,
+        enable_streaming=enable_streaming,
+    )
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    return handler
+
+
+def _stop_workers(handler):
+    """Signal stop and give the drainer/senders a moment to notice.
+    Used in tests that need a quiescent handler. We don't .join() in
+    production close() - see TestNoWaitClose - but in tests we want
+    to be sure background threads aren't going to race assertions."""
+    handler._stop.set()
+    if handler._drainer:
+        handler._drainer.join(timeout=3)
+    for t in handler._senders:
+        t.join(timeout=3)
+
+
+class TestEmitNonBlocking(unittest.TestCase):
+    """emit() must be fast and must never raise."""
+
+    def test_emit_with_streaming_disabled_goes_to_fallback(self):
+        handler = _make_handler(enable_streaming=False)
+        handler.fallback_handler = Mock()
+        record = _make_record()
+
+        handler.emit(record)
+
+        handler.fallback_handler.emit.assert_called_once_with(record)
+
+    def test_emit_with_streaming_enabled_queues_to_buffer(self):
+        handler = _make_handler(enable_streaming=True)
+        _stop_workers(handler)
+
+        handler.emit(_make_record("log A"))
+        handler.emit(_make_record("log B"))
+
+        self.assertEqual(handler._buffer.qsize(), 2)
+        handler.close()
+
+    def test_emit_drops_silently_when_buffer_full(self):
+        """No stderr fallback per record on overflow - only a counter."""
+        handler = _make_handler(max_buffer=1, enable_streaming=True)
+        _stop_workers(handler)
+        handler.fallback_handler = Mock()
+        handler._buffer.put_nowait("already-here")
+
+        start = time.monotonic()
+        handler.emit(_make_record("overflow"))
+        elapsed = time.monotonic() - start
+
+        self.assertLess(elapsed, 0.05, "emit() must return immediately on overflow")
+        handler.fallback_handler.emit.assert_not_called()
+        self.assertEqual(handler.dropped_overflow, 1)
+
+    def test_emit_never_raises_when_format_fails(self):
+        handler = _make_handler(enable_streaming=True)
+        _stop_workers(handler)
+        handler.format = Mock(side_effect=ValueError("boom"))
+
+        handler.emit(_make_record())
+
+        self.assertEqual(handler.dropped_format_error, 1)
+        self.assertEqual(handler.dropped_overflow, 0)
+        handler.close()
+
+    def test_emit_after_close_increments_dedicated_counter(self):
+        handler = _make_handler(enable_streaming=True)
+        handler.close()
+        handler.emit(_make_record("post-close"))
+        self.assertEqual(handler.dropped_after_close, 1)
+        self.assertEqual(handler.dropped_overflow, 0)
+        self.assertEqual(handler.dropped_format_error, 0)
+
+    def test_emit_returns_quickly_under_high_volume(self):
+        handler = _make_handler(max_buffer=10000, enable_streaming=True)
+        _stop_workers(handler)
+
+        start = time.monotonic()
+        for i in range(1000):
+            handler.emit(_make_record(f"msg-{i}"))
+        elapsed = time.monotonic() - start
+
+        self.assertLess(elapsed, 0.5, f"1000 emits took {elapsed:.3f}s - too slow")
+
+
+class TestRecursionGuard(unittest.TestCase):
+    """The thread-local guard prevents emit() from re-entering itself
+    even if a future change reintroduces logging on the shipping path."""
 
     def tearDown(self):
-        """Clean up after tests"""
-        # Ensure any handlers are properly closed
-        if hasattr(self, "handler") and self.handler:
-            self.handler.close()
+        # Make sure the guard is clear after each test.
+        if hasattr(_shipping_state, "shipping"):
+            _shipping_state.shipping = False
 
-    def test_handler_initialization(self):
-        """Test handler initialization"""
-        handler = StreamableLogHandler(
-            metadata=self.mock_metadata,
-            pipeline_fqn=self.pipeline_fqn,
-            run_id=self.run_id,
-            enable_streaming=False,  # Disable for unit test
+    def test_emit_drops_when_shipping_flag_set(self):
+        handler = _make_handler(enable_streaming=True)
+        _stop_workers(handler)
+
+        _shipping_state.shipping = True
+        try:
+            handler.emit(_make_record("would-recurse"))
+        finally:
+            _shipping_state.shipping = False
+
+        self.assertEqual(handler._buffer.qsize(), 0)
+        self.assertEqual(handler.dropped_shipping, 1)
+
+    def test_post_thread_sets_and_clears_shipping_flag(self):
+        seen_flag = {"value": None}
+
+        def capture(*_, **__):
+            seen_flag["value"] = getattr(_shipping_state, "shipping", False)
+            return True
+
+        metadata = _make_metadata_mock()
+        metadata.send_logs_batch_best_effort = Mock(side_effect=capture)
+        metadata.send_close_best_effort = Mock(return_value=True)
+
+        handler = _make_handler(metadata=metadata, enable_streaming=True)
+        handler.emit(_make_record("trigger"))
+        for _ in range(50):
+            if metadata.send_logs_batch_best_effort.called:
+                break
+            time.sleep(0.05)
+
+        self.assertTrue(seen_flag["value"], "shipping flag must be True inside the sender")
+        handler.close()
+        # Flag must be cleared after the sender returns. Give the
+        # sender thread a moment to hit its finally block.
+        time.sleep(0.1)
+        self.assertFalse(getattr(_shipping_state, "shipping", False))
+
+
+class TestSenderPool(unittest.TestCase):
+    """Bounded send queue. Drainer never waits on a POST."""
+
+    def test_drainer_does_not_wait_on_slow_post(self):
+        slow_event = threading.Event()
+        post_started = threading.Event()
+
+        def slow_send(*_, **__):
+            post_started.set()
+            slow_event.wait(timeout=30)
+            return True
+
+        metadata = _make_metadata_mock()
+        metadata.send_logs_batch_best_effort = Mock(side_effect=slow_send)
+        metadata.send_close_best_effort = Mock(return_value=True)
+
+        handler = _make_handler(metadata=metadata, enable_streaming=True)
+        handler.emit(_make_record("first"))
+        self.assertTrue(post_started.wait(timeout=5))
+
+        start = time.monotonic()
+        for i in range(50):
+            handler.emit(_make_record(f"hangs-{i}"))
+        elapsed = time.monotonic() - start
+
+        self.assertLess(elapsed, 0.5, "emits must not block while a POST is hanging")
+
+        handler._stop.set()
+        slow_event.set()
+        handler._drainer.join(timeout=5)
+
+    def test_saturated_sender_drops_batches(self):
+        """When senders + send queue are full on a dead server, the drainer
+        drops new batches and counts them. No unbounded growth."""
+        hang = threading.Event()  # never set during the test
+
+        def block_forever(*_, **__):
+            hang.wait(timeout=30)
+            return True
+
+        metadata = _make_metadata_mock()
+        metadata.send_logs_batch_best_effort = Mock(side_effect=block_forever)
+        metadata.send_close_best_effort = Mock(return_value=True)
+
+        handler = _make_handler(metadata=metadata, enable_streaming=True)
+        # Make the test cycle faster than defaults.
+        handler.BATCH_WAIT_SEC = 0.1
+
+        # Pump 20 separately-timed batches; each wave > BATCH_WAIT_SEC so
+        # the drainer ships each as its own batch. Senders block forever
+        # on the first MAX_PENDING_BATCHES + SENDER_WORKERS; everything
+        # after that must be dropped at drainer-submit time.
+        total_waves = handler.MAX_PENDING_BATCHES + handler.SENDER_WORKERS + 10
+        for wave in range(total_waves):
+            handler.emit(_make_record(f"wave-{wave}"))
+            time.sleep(0.2)
+
+        # At least some batches must have been dropped at the send-queue
+        # boundary - we sent way more than the cap.
+        self.assertGreater(handler.dropped_saturated, 0, "saturated drainer must have dropped at least one batch")
+        # In-flight POSTs bounded by SENDER_WORKERS (others wait in queue
+        # but don't actually call send_logs_batch_best_effort).
+        self.assertLessEqual(
+            metadata.send_logs_batch_best_effort.call_count,
+            handler.SENDER_WORKERS,
         )
 
-        self.assertEqual(handler.pipeline_fqn, self.pipeline_fqn)
-        self.assertEqual(handler.run_id, self.run_id)
-        self.assertEqual(handler.batch_size, 500)
-        self.assertEqual(handler.flush_interval_sec, 10.0)
-        self.assertFalse(handler.enable_streaming)
-        self.assertIsNone(handler.worker_thread)
+        handler._stop.set()
+        hang.set()
+
+    def test_close_notify_is_ordered_after_in_flight_log_batch(self):
+        """Regression for the close-vs-late-POST race. /close must not
+        overtake an already-started log batch, otherwise the server can
+        finalize logs.txt and then receive a late tail batch."""
+        log_started = threading.Event()
+        release_log = threading.Event()
+        close_called = threading.Event()
+
+        def slow_log_send(*_, **__):
+            log_started.set()
+            release_log.wait(timeout=30)
+            return True
+
+        def close_send(*_, **__):
+            close_called.set()
+            return True
+
+        metadata = _make_metadata_mock()
+        metadata.send_logs_batch_best_effort = Mock(side_effect=slow_log_send)
+        metadata.send_close_best_effort = Mock(side_effect=close_send)
+
+        handler = _make_handler(metadata=metadata, enable_streaming=True)
+        handler.emit(_make_record("first"))
+        self.assertTrue(log_started.wait(timeout=5))
+
+        start = time.monotonic()
+        handler.close()
+        elapsed = time.monotonic() - start
+
+        self.assertLess(elapsed, 0.1, "close() must still return immediately")
+        time.sleep(0.2)
+        self.assertFalse(
+            close_called.is_set(),
+            "/close must wait behind the in-flight log batch in the sender queue",
+        )
+
+        release_log.set()
+        self.assertTrue(close_called.wait(timeout=5))
+
+
+class TestDaemonThreads(unittest.TestCase):
+    """All background threads MUST be daemon, otherwise a wedged sender
+    can keep the ingestion process alive past main-thread exit."""
+
+    def test_drainer_thread_is_daemon(self):
+        handler = _make_handler(enable_streaming=True)
+        self.assertTrue(handler._drainer.daemon, "drainer must be a daemon thread")
+        handler.close()
+
+    def test_sender_threads_are_daemon(self):
+        handler = _make_handler(enable_streaming=True)
+        self.assertEqual(len(handler._senders), handler.SENDER_WORKERS)
+        for t in handler._senders:
+            self.assertTrue(t.daemon, f"sender {t.name} must be daemon")
+        handler.close()
+
+    def test_close_notify_thread_is_daemon(self):
+        """The /close call goes out on a daemon so close() doesn't wait."""
+        seen = {"daemon": None}
+
+        def capture(*_, **__):
+            seen["daemon"] = threading.current_thread().daemon
+            return True
+
+        metadata = _make_metadata_mock()
+        metadata.send_logs_batch_best_effort = Mock(return_value=True)
+        metadata.send_close_best_effort = Mock(side_effect=capture)
+
+        handler = _make_handler(metadata=metadata, enable_streaming=True)
+        handler.close()
+        for _ in range(50):
+            if seen["daemon"] is not None:
+                break
+            time.sleep(0.05)
+        self.assertTrue(seen["daemon"], "close notify must run on a daemon sender thread")
+
+
+class TestIsolatedClient(unittest.TestCase):
+    """The handler must use its OWN REST instance (own session/cookies/
+    connection pool), not the main metadata client's."""
+
+    def test_handler_creates_dedicated_rest_client(self):
+        from metadata.ingestion.ometa.client import REST
+
+        metadata = Mock(spec=OpenMetadata)
+        # Give the mock client a real ClientConfig so REST() can copy it.
+        from metadata.ingestion.ometa.client import ClientConfig
+
+        metadata.client = Mock()
+        metadata.client.config = ClientConfig(base_url="http://localhost:8585")
+        metadata.send_logs_batch_best_effort = Mock(return_value=True)
+        metadata.send_close_best_effort = Mock(return_value=True)
+
+        handler = _make_handler(metadata=metadata, enable_streaming=True)
+
+        self.assertIsInstance(handler._client, REST)
+        self.assertIsNot(handler._client, metadata.client, "handler must own a SEPARATE REST instance")
+        self.assertIsNot(handler._client._session, metadata.client, "handler's session must not be the main client")
+        handler.close()
+
+    def test_handler_passes_isolated_client_to_post(self):
+        """The send_logs_batch_best_effort call must include the handler's
+        own client kwarg so log shipping doesn't go through the main session."""
+        from metadata.ingestion.ometa.client import ClientConfig
+
+        captured = {"client": None}
+
+        def capture(*_, client=None, **__):
+            captured["client"] = client
+            return True
+
+        metadata = Mock(spec=OpenMetadata)
+        metadata.client = Mock()
+        metadata.client.config = ClientConfig(base_url="http://localhost:8585")
+        metadata.send_logs_batch_best_effort = Mock(side_effect=capture)
+        metadata.send_close_best_effort = Mock(return_value=True)
+
+        handler = _make_handler(metadata=metadata, enable_streaming=True)
+        handler.emit(_make_record("trigger"))
+        for _ in range(50):
+            if metadata.send_logs_batch_best_effort.called:
+                break
+            time.sleep(0.05)
+
+        self.assertIs(
+            captured["client"], handler._client, "handler must pass its own _client to send_logs_batch_best_effort"
+        )
+        handler.close()
+
+    @patch("metadata.utils.streamable_logger.REST")
+    def test_handler_reuses_one_isolated_client_for_all_batches(self, mock_rest):
+        """Persistent connection pool guarantee: construct one isolated REST
+        client per handler, pass that same client for every batch, and close
+        it only when the sender exits."""
+        client = Mock()
+        mock_rest.return_value = client
+
+        metadata = Mock(spec=OpenMetadata)
+        metadata.client = Mock()
+        metadata.client.config = Mock()
+        metadata.send_logs_batch_best_effort = Mock(return_value=True)
+        metadata.send_close_best_effort = Mock(return_value=True)
+
+        handler = _make_handler(metadata=metadata, enable_streaming=True)
+
+        handler._post_batch(["first"])
+        handler._post_batch(["second"])
+
+        mock_rest.assert_called_once_with(metadata.client.config)
+        self.assertEqual(metadata.send_logs_batch_best_effort.call_count, 2)
+        first_call, second_call = metadata.send_logs_batch_best_effort.call_args_list
+        self.assertIs(first_call.kwargs["client"], client)
+        self.assertIs(second_call.kwargs["client"], client)
+        client.close.assert_not_called()
 
         handler.close()
 
-    def test_fallback_when_streaming_disabled(self):
-        """Test that logs fallback to local when streaming is disabled"""
-        handler = StreamableLogHandler(
-            metadata=self.mock_metadata,
-            pipeline_fqn=self.pipeline_fqn,
-            run_id=self.run_id,
-            enable_streaming=False,
-        )
-
-        # Mock the fallback handler
-        handler.fallback_handler = Mock()
-
-        # Create a log record
-        record = logging.LogRecord(
-            name="test",
-            level=logging.INFO,
-            pathname="test.py",
-            lineno=1,
-            msg="Test message",
-            args=(),
-            exc_info=None,
-        )
-
-        handler.emit(record)
-
-        # Should have called fallback handler
-        handler.fallback_handler.emit.assert_called_once_with(record)
+    def test_isolated_client_is_closed_by_sender_thread(self):
+        metadata = _make_metadata_mock()
+        handler = _make_handler(metadata=metadata, enable_streaming=True)
+        handler._client.close = Mock()
 
         handler.close()
+        for _ in range(50):
+            if handler._client.close.called:
+                break
+            time.sleep(0.05)
 
-    def test_log_compression(self):
-        """Test log compression for large payloads"""
-        handler = StreamableLogHandler(
-            metadata=self.mock_metadata,
-            pipeline_fqn=self.pipeline_fqn,
-            run_id=self.run_id,
-            enable_streaming=False,  # We'll test _send_logs_to_server directly
+        handler._client.close.assert_called()
+
+
+class TestNoWaitClose(unittest.TestCase):
+    """close() must return effectively instantly. It must NOT join the
+    drainer / senders and must NOT wait on the server /close response."""
+
+    def test_close_returns_in_under_100ms_when_idle(self):
+        handler = _make_handler(enable_streaming=True)
+
+        start = time.monotonic()
+        handler.close()
+        elapsed = time.monotonic() - start
+
+        self.assertLess(
+            elapsed,
+            0.1,
+            f"close() took {elapsed * 1000:.1f}ms - must not block",
         )
 
-        # Large log content (> 10KB to trigger compression)
-        large_log = "x" * 11000
+    def test_close_returns_quickly_when_close_endpoint_hangs(self):
+        hang = threading.Event()
 
-        # Mock send_logs_batch to capture the call
-        with patch.object(self.mock_metadata, "send_logs_batch") as mock_send_logs:
-            mock_send_logs.return_value = {"logs_sent": 1, "bytes_sent": len(large_log)}
+        def block_forever(*_, **__):
+            hang.wait(timeout=30)
+            return True
 
-            with patch.dict(os.environ, {"ENABLE_LOG_COMPRESSION": "true"}):
-                handler._send_logs_to_server(large_log)
+        metadata = _make_metadata_mock()
+        metadata.send_logs_batch_best_effort = Mock(return_value=True)
+        metadata.send_close_best_effort = Mock(side_effect=block_forever)
 
-            # Verify send_logs_batch was called with compression enabled
-            mock_send_logs.assert_called_once_with(
-                pipeline_fqn=self.pipeline_fqn,
-                run_id=self.run_id,
-                log_content=large_log,
-                enable_compression=True,
-            )
+        handler = _make_handler(metadata=metadata, enable_streaming=True)
 
+        start = time.monotonic()
+        handler.close()
+        elapsed = time.monotonic() - start
+
+        self.assertLess(
+            elapsed,
+            0.1,
+            f"close() took {elapsed * 1000:.1f}ms - must not wait on /close response",
+        )
+        hang.set()
+
+    def test_close_signals_stop(self):
+        handler = _make_handler(enable_streaming=True)
+        handler.close()
+        self.assertTrue(handler._stop.is_set())
+
+    def test_close_is_idempotent(self):
+        handler = _make_handler(enable_streaming=True)
+        handler.close()
+        handler.close()  # must not raise
+
+
+class TestQuietClientPath(unittest.TestCase):
+    """The handler uses the best-effort path that bypasses retries and logging."""
+
+    def test_post_uses_best_effort_method(self):
+        metadata = _make_metadata_mock()
+        metadata.send_logs_batch_best_effort = Mock(return_value=True)
+        metadata.send_close_best_effort = Mock(return_value=True)
+
+        handler = _make_handler(metadata=metadata, enable_streaming=True)
+        handler.emit(_make_record("trigger"))
+        for _ in range(50):
+            if metadata.send_logs_batch_best_effort.called:
+                break
+            time.sleep(0.05)
+
+        self.assertTrue(metadata.send_logs_batch_best_effort.called)
+        kwargs = metadata.send_logs_batch_best_effort.call_args.kwargs
+        self.assertEqual(kwargs["timeout"], StreamableLogHandler.HTTP_TIMEOUT)
         handler.close()
 
-    def test_no_compression_for_small_logs(self):
-        """Test that small logs are not compressed"""
-        handler = StreamableLogHandler(
-            metadata=self.mock_metadata,
-            pipeline_fqn=self.pipeline_fqn,
-            run_id=self.run_id,
-            enable_streaming=False,
-        )
 
-        # Small log content (< 1KB)
-        small_log = "Small log message"
-
-        # Mock send_logs_batch to capture the call
-        with patch.object(self.mock_metadata, "send_logs_batch") as mock_send_logs:
-            mock_send_logs.return_value = {"logs_sent": 1, "bytes_sent": len(small_log)}
-
-            with patch.dict(os.environ, {"ENABLE_LOG_COMPRESSION": "true"}):
-                handler._send_logs_to_server(small_log)
-
-            # Verify send_logs_batch was called with compression enabled
-            # Note: The actual compression decision is made inside send_logs_batch
-            mock_send_logs.assert_called_once_with(
-                pipeline_fqn=self.pipeline_fqn,
-                run_id=self.run_id,
-                log_content=small_log,
-                enable_compression=True,
-            )
-
-        handler.close()
-
-    def test_session_maintains_cookies(self):
-        """Test that session maintains cookies for ALB stickiness"""
-        handler = StreamableLogHandler(
-            metadata=self.mock_metadata,
-            pipeline_fqn=self.pipeline_fqn,
-            run_id=self.run_id,
-            enable_streaming=False,
-        )
-
-        # Mock send_logs_batch to capture the calls
-        with patch.object(self.mock_metadata, "send_logs_batch") as mock_send_logs:
-            mock_send_logs.return_value = {"logs_sent": 1, "bytes_sent": 100}
-
-            # Send multiple log batches
-            handler._send_logs_to_server("Log batch 1")
-            handler._send_logs_to_server("Log batch 2")
-
-            # Two requests should be made with the same metadata instance
-            self.assertEqual(mock_send_logs.call_count, 2)
-            # Verify both calls used the same metadata instance
-            calls = mock_send_logs.call_args_list
-            for call in calls:
-                self.assertEqual(call.kwargs["pipeline_fqn"], self.pipeline_fqn)
-                self.assertEqual(call.kwargs["run_id"], self.run_id)
-
-        handler.close()
-
-    def test_circuit_breaker_on_failures(self):
-        """Test circuit breaker behavior on repeated failures"""
-        handler = StreamableLogHandler(
-            metadata=self.mock_metadata,
-            pipeline_fqn=self.pipeline_fqn,
-            run_id=self.run_id,
-            enable_streaming=False,
-        )
-
-        # Mock _send_logs_to_server to always fail
-        handler._send_logs_to_server = Mock(side_effect=Exception("Network error"))
-
-        logs = ["log1", "log2", "log3"]
-
-        # First few failures should attempt to send
-        for _ in range(5):
-            handler._ship_logs(logs)
-
-        # Circuit should be open now
-        self.assertEqual(handler.circuit_breaker.state, CircuitState.OPEN)
-
-        handler.close()
-
-    def test_queue_overflow_fallback(self):
-        """Test fallback behavior when queue is full"""
-        handler = StreamableLogHandler(
-            metadata=self.mock_metadata,
-            pipeline_fqn=self.pipeline_fqn,
-            run_id=self.run_id,
-            max_queue_size=1,
-            enable_streaming=True,
-        )
-
-        # Fill the queue
-        handler.log_queue.put("existing_log")
-
-        # Mock the fallback handler
-        handler.fallback_handler = Mock()
-
-        # Try to emit when queue is full
-        record = logging.LogRecord(
-            name="test",
-            level=logging.INFO,
-            pathname="test.py",
-            lineno=1,
-            msg="Overflow message",
-            args=(),
-            exc_info=None,
-        )
-
-        handler.emit(record)
-
-        # Should have called fallback handler
-        handler.fallback_handler.emit.assert_called_once_with(record)
-
-        handler.close()
-
-    @patch("metadata.utils.streamable_logger.threading.Thread")
-    def test_worker_thread_lifecycle(self, mock_thread_class):
-        """Test worker thread start and stop"""
-        mock_thread = Mock()
-        mock_thread.is_alive.return_value = False
-        mock_thread_class.return_value = mock_thread
-
-        handler = StreamableLogHandler(
-            metadata=self.mock_metadata,
-            pipeline_fqn=self.pipeline_fqn,
-            run_id=self.run_id,
-            enable_streaming=True,
-        )
-
-        # Worker thread should be started
-        mock_thread.start.assert_called_once()
-
-        # Close handler
-        handler.close()
-
-        # Stop event should be set
-        self.assertTrue(handler.stop_event.is_set())
-
-    def test_auth_header_included(self):
-        """Test that auth header is included when available"""
-        handler = StreamableLogHandler(
-            metadata=self.mock_metadata,
-            pipeline_fqn=self.pipeline_fqn,
-            run_id=self.run_id,
-            enable_streaming=False,
-        )
-
-        # Mock the send_logs_batch method to verify it's called with correct parameters
-        with patch.object(self.mock_metadata, "send_logs_batch") as mock_send_logs:
-            mock_send_logs.return_value = {"logs_sent": 1, "bytes_sent": 100}
-
-            handler._send_logs_to_server("Test log")
-
-            # Verify send_logs_batch was called with the correct parameters
-            mock_send_logs.assert_called_once_with(
-                pipeline_fqn=self.pipeline_fqn,
-                run_id=self.run_id,
-                log_content="Test log",
-                enable_compression=False,
-            )
-
-        handler.close()
-
-    def test_drain_queue_to_buffer_empty_queue(self):
-        """Test _drain_queue_to_buffer with empty queue"""
-        handler = StreamableLogHandler(
-            metadata=self.mock_metadata,
-            pipeline_fqn=self.pipeline_fqn,
-            run_id=self.run_id,
-            enable_streaming=False,
-        )
-
-        buffer = []
-        result_buffer, flush_requested = handler._drain_queue_to_buffer(buffer)
-
-        # Buffer should be unchanged and no flush requested
-        self.assertEqual(result_buffer, [])
-        self.assertFalse(flush_requested)
-
-        handler.close()
-
-    def test_drain_queue_to_buffer_with_logs(self):
-        """Test _drain_queue_to_buffer with regular log entries"""
-        handler = StreamableLogHandler(
-            metadata=self.mock_metadata,
-            pipeline_fqn=self.pipeline_fqn,
-            run_id=self.run_id,
-            enable_streaming=False,
-        )
-
-        # Add some log entries to queue
-        handler.log_queue.put("log entry 1")
-        handler.log_queue.put("log entry 2")
-        handler.log_queue.put("log entry 3")
-
-        buffer = ["existing log"]
-        result_buffer, flush_requested = handler._drain_queue_to_buffer(buffer)
-
-        # Buffer should contain all logs
-        expected_buffer = ["existing log", "log entry 1", "log entry 2", "log entry 3"]
-        self.assertEqual(result_buffer, expected_buffer)
-        self.assertFalse(flush_requested)
-
-        handler.close()
-
-    def test_drain_queue_to_buffer_with_flush_marker(self):
-        """Test _drain_queue_to_buffer handles flush markers correctly"""
-        handler = StreamableLogHandler(
-            metadata=self.mock_metadata,
-            pipeline_fqn=self.pipeline_fqn,
-            run_id=self.run_id,
-            enable_streaming=False,
-        )
-
-        # Add log entries and a flush marker
-        handler.log_queue.put("log entry 1")
-        handler.log_queue.put(None)  # Flush marker
-        handler.log_queue.put("log entry 2")
-
-        buffer = []
-        result_buffer, flush_requested = handler._drain_queue_to_buffer(buffer)
-
-        # Buffer should contain only log entries, not the flush marker
-        expected_buffer = ["log entry 1", "log entry 2"]
-        self.assertEqual(result_buffer, expected_buffer)
-        self.assertTrue(flush_requested)
-
-        handler.close()
-
-    def test_drain_queue_to_buffer_multiple_flush_markers(self):
-        """Test _drain_queue_to_buffer with multiple flush markers"""
-        handler = StreamableLogHandler(
-            metadata=self.mock_metadata,
-            pipeline_fqn=self.pipeline_fqn,
-            run_id=self.run_id,
-            enable_streaming=False,
-        )
-
-        # Add multiple flush markers
-        handler.log_queue.put("log entry 1")
-        handler.log_queue.put(None)  # First flush marker
-        handler.log_queue.put("log entry 2")
-        handler.log_queue.put(None)  # Second flush marker
-        handler.log_queue.put("log entry 3")
-
-        buffer = []
-        result_buffer, flush_requested = handler._drain_queue_to_buffer(buffer)
-
-        # Buffer should contain all log entries
-        expected_buffer = ["log entry 1", "log entry 2", "log entry 3"]
-        self.assertEqual(result_buffer, expected_buffer)
-        self.assertTrue(flush_requested)
-
-        handler.close()
-
-    @patch("time.time")
-    def test_worker_loop_flush_logic(self, mock_time):
-        """Test worker loop flush decision logic"""
-        # Set up consistent time for testing
-        mock_time.return_value = 1000.0
-
-        handler = StreamableLogHandler(
-            metadata=self.mock_metadata,
-            pipeline_fqn=self.pipeline_fqn,
-            run_id=self.run_id,
-            enable_streaming=False,
-            batch_size=3,
-            flush_interval_sec=5.0,
-        )
-
-        # Mock the shipping method
-        handler._ship_logs = Mock()
-
-        # Test flush due to batch size
-        handler.log_queue.put("log1")
-        handler.log_queue.put("log2")
-        handler.log_queue.put("log3")
-
-        # Simulate one iteration of worker loop logic
-        buffer = []
-        last_flush = mock_time.return_value
-
-        buffer, flush_requested = handler._drain_queue_to_buffer(buffer)
-        should_flush = (
-            flush_requested
-            or len(buffer) >= handler.batch_size
-            or (mock_time.return_value - last_flush) >= handler.flush_interval_sec
-        )
-
-        self.assertTrue(should_flush)  # Should flush due to batch size
-        self.assertEqual(len(buffer), 3)
-
-        handler.close()
-
-    @patch("time.time")
-    def test_worker_loop_time_based_flush(self, mock_time):
-        """Test worker loop time-based flush logic"""
-        handler = StreamableLogHandler(
-            metadata=self.mock_metadata,
-            pipeline_fqn=self.pipeline_fqn,
-            run_id=self.run_id,
-            enable_streaming=False,
-            batch_size=10,
-            flush_interval_sec=5.0,
-        )
-
-        # Add one log (below batch size)
-        handler.log_queue.put("single log")
-
-        # Set up time progression: first call returns 1000.0, subsequent calls return 1006.0
-        mock_time.side_effect = [
-            1000.0,
-            1006.0,
-            1006.0,
-        ]  # Allow for multiple time() calls
-
-        # Simulate worker loop logic with time progression
-        buffer = []
-        last_flush = 1000.0  # Initial time
-
-        buffer, flush_requested = handler._drain_queue_to_buffer(buffer)
-        current_time = 1006.0  # Time after drainage
-
-        should_flush = (
-            flush_requested
-            or len(buffer) >= handler.batch_size
-            or (current_time - last_flush) >= handler.flush_interval_sec
-        )
-
-        self.assertTrue(should_flush)  # Should flush due to time interval (6 > 5)
-        self.assertEqual(len(buffer), 1)
-
-        handler.close()
-
-    def test_flush_marker_triggers_immediate_flush(self):
-        """Test that flush markers trigger immediate flush regardless of batch size or time"""
-        handler = StreamableLogHandler(
-            metadata=self.mock_metadata,
-            pipeline_fqn=self.pipeline_fqn,
-            run_id=self.run_id,
-            enable_streaming=False,
-            batch_size=10,  # Large batch size
-            flush_interval_sec=60.0,  # Long time interval
-        )
-
-        # Add just one log and a flush marker
-        handler.log_queue.put("single log")
-        handler.log_queue.put(None)  # Flush marker
-
-        buffer = []
-        buffer, flush_requested = handler._drain_queue_to_buffer(buffer)
-
-        # Should request flush despite small buffer and short time
-        self.assertTrue(flush_requested)
-        self.assertEqual(len(buffer), 1)
-
-        handler.close()
-
-    def test_worker_loop_final_drainage_on_shutdown(self):
-        """Test that worker loop drains queue completely on shutdown"""
-        handler = StreamableLogHandler(
-            metadata=self.mock_metadata,
-            pipeline_fqn="test.pipeline",
-            run_id=uuid4(),
-            enable_streaming=False,
-        )
-
-        # Mock _ship_logs to track what gets shipped
-        shipped_logs = []
-
-        def mock_ship_logs(logs):
-            shipped_logs.extend(logs)
-
-        handler._ship_logs = mock_ship_logs
-
-        # Add logs to queue after stop event is set (simulating final drainage)
-        handler.log_queue.put("final log 1")
-        handler.log_queue.put("final log 2")
-        handler.log_queue.put(None)  # Flush marker
-        handler.log_queue.put("final log 3")
-
-        # Simulate final cleanup drainage
-        buffer, _ = handler._drain_queue_to_buffer([])
-        if buffer:
-            handler._ship_logs(buffer)
-
-        # All logs should be shipped
-        expected_logs = ["final log 1", "final log 2", "final log 3"]
-        self.assertEqual(shipped_logs, expected_logs)
-
-        handler.close()
-
-    def test_flush_method_adds_marker_to_queue(self):
-        """Test that flush method properly adds None marker to queue"""
-        handler = StreamableLogHandler(
-            metadata=self.mock_metadata,
-            pipeline_fqn="test.pipeline",
-            run_id=uuid4(),
-            enable_streaming=False,
-        )
-
-        # Flush should add None marker
-        handler.flush()
-
-        # Verify marker was added
-        marker = handler.log_queue.get_nowait()
-        self.assertIsNone(marker)
-
-        handler.close()
-
-    def test_close_waits_for_worker_thread(self):
-        """Test that close method properly waits for worker thread"""
-        with patch("threading.Thread") as mock_thread_class:
-            mock_thread = Mock()
-            mock_thread.is_alive.return_value = True
-            mock_thread_class.return_value = mock_thread
-
-            handler = StreamableLogHandler(
-                metadata=self.mock_metadata,
-                pipeline_fqn="test.pipeline",
-                run_id=uuid4(),
-                enable_streaming=True,
-            )
-
-            # Close handler
-            handler.close()
-
-            # Verify stop event was set and thread join was called
-            self.assertTrue(handler.stop_event.is_set())
-            mock_thread.join.assert_called_once_with(timeout=5.0)
+class TestStreamableLogHandlerManager(unittest.TestCase):
+    def tearDown(self):
+        StreamableLogHandlerManager._instance = None
+
+    def test_set_handler_removes_previous_from_metadata_logger(self):
+        """set_handler must detach the old handler from the metadata logger
+        before closing it - otherwise records can still route at it during
+        close, and a closed handler stays attached after."""
+        from metadata.utils.logger import METADATA_LOGGER
+
+        first = _make_handler(enable_streaming=False)
+        second = _make_handler(enable_streaming=False)
+        metadata_logger = logging.getLogger(METADATA_LOGGER)
+        metadata_logger.addHandler(first)
+
+        StreamableLogHandlerManager.set_handler(first)
+        StreamableLogHandlerManager.set_handler(second)
+
+        self.assertNotIn(first, metadata_logger.handlers, "previous handler must be removed before being closed")
+        # Cleanup.
+        metadata_logger.handlers = [h for h in metadata_logger.handlers if not isinstance(h, StreamableLogHandler)]
+
+    def test_cleanup_clears_singleton(self):
+        handler = _make_handler(enable_streaming=False)
+        StreamableLogHandlerManager.set_handler(handler)
+        StreamableLogHandlerManager.cleanup()
+        self.assertIsNone(StreamableLogHandlerManager.get_handler())
 
 
 class TestStreamableLoggingSetup(unittest.TestCase):
-    """Test the setup and cleanup functions"""
-
     def tearDown(self):
-        """Clean up any handlers that were added to loggers during tests"""
-        # Clean up any handlers from the metadata logger
-        import logging
-
         from metadata.utils.logger import METADATA_LOGGER
-        from metadata.utils.streamable_logger import StreamableLogHandlerManager
 
         metadata_logger = logging.getLogger(METADATA_LOGGER)
-        # Remove any mock handlers
-        metadata_logger.handlers = [h for h in metadata_logger.handlers if not isinstance(h, Mock)]
-
-        # Also clean up the manager
+        metadata_logger.handlers = [
+            h for h in metadata_logger.handlers if not isinstance(h, (Mock, StreamableLogHandler))
+        ]
         StreamableLogHandlerManager._instance = None
 
     @patch("logging.getLogger")
     @patch("metadata.utils.streamable_logger.logger")
     @patch("metadata.utils.streamable_logger.StreamableLogHandler")
-    def test_setup_with_valid_config(self, mock_handler_class, mock_logger, mock_get_logger):
-        """Test setup with valid configuration"""
+    def test_setup_with_valid_config(self, mock_handler_cls, mock_logger, mock_get_logger):
         mock_metadata = Mock(spec=OpenMetadata)
-        mock_metadata.config = Mock()
-        mock_metadata.config.host_port = "http://localhost:8585"
-
         mock_handler = Mock()
-        mock_handler.level = logging.INFO  # Add level attribute
-        mock_handler_class.return_value = mock_handler
-
-        pipeline_fqn = "test.pipeline"
-        run_id = uuid4()
-
-        # Setup mock logger to prevent handler from being added to real logger
+        mock_handler.level = logging.INFO
+        mock_handler_cls.return_value = mock_handler
         mock_metadata_logger = Mock()
         mock_get_logger.return_value = mock_metadata_logger
 
-        # Test with enable_streaming=True (from IngestionPipeline config)
-        result = setup_streamable_logging_for_workflow(
-            metadata=mock_metadata,
-            pipeline_fqn=pipeline_fqn,
-            run_id=run_id,
-            enable_streaming=True,  # This would come from IngestionPipeline.enableStreamableLogs
-        )
-
-        self.assertIsNotNone(result)
-        mock_handler_class.assert_called_once_with(
-            metadata=mock_metadata,
-            pipeline_fqn=pipeline_fqn,
-            run_id=run_id,
-            enable_streaming=True,
-        )
-
-        # Cleanup
-        cleanup_streamable_logging()
-
-    def test_setup_disabled_by_config(self):
-        """Test that setup returns None when disabled by config"""
-        mock_metadata = Mock(spec=OpenMetadata)
-
-        # Test with enable_streaming=False (from IngestionPipeline config)
         result = setup_streamable_logging_for_workflow(
             metadata=mock_metadata,
             pipeline_fqn="test.pipeline",
             run_id=uuid4(),
-            enable_streaming=False,  # This would come from IngestionPipeline.enableStreamableLogs
+            enable_streaming=True,
         )
 
+        self.assertIsNotNone(result)
+        mock_metadata_logger.addHandler.assert_called_once_with(mock_handler)
+        cleanup_streamable_logging()
+
+    def test_setup_returns_none_when_disabled(self):
+        result = setup_streamable_logging_for_workflow(
+            metadata=Mock(spec=OpenMetadata),
+            pipeline_fqn="test.pipeline",
+            run_id=uuid4(),
+            enable_streaming=False,
+        )
         self.assertIsNone(result)
 
-    def test_setup_missing_parameters(self):
-        """Test that setup returns None when parameters are missing"""
-        mock_metadata = Mock(spec=OpenMetadata)
-
-        # Missing pipeline_fqn
+    def test_setup_returns_none_when_pipeline_fqn_missing(self):
         result = setup_streamable_logging_for_workflow(
-            metadata=mock_metadata,
+            metadata=Mock(spec=OpenMetadata),
             pipeline_fqn=None,
             run_id=uuid4(),
             enable_streaming=True,
         )
         self.assertIsNone(result)
 
-        # Missing run_id
+    def test_setup_returns_none_when_run_id_missing(self):
         result = setup_streamable_logging_for_workflow(
-            metadata=mock_metadata,
+            metadata=Mock(spec=OpenMetadata),
             pipeline_fqn="test.pipeline",
             run_id=None,
             enable_streaming=True,
         )
         self.assertIsNone(result)
 
-    @patch("logging.getLogger")
-    @patch("metadata.utils.streamable_logger.logger")
-    @patch("metadata.utils.streamable_logger.StreamableLogHandler")
-    def test_cleanup_removes_handler(self, mock_handler_class, mock_logger, mock_get_logger):
-        """Test that cleanup properly removes the handler"""
-        mock_metadata = Mock(spec=OpenMetadata)
-        mock_metadata.config = Mock()
-        mock_metadata.config.host_port = "http://localhost:8585"
 
-        mock_handler = Mock()
-        mock_handler.level = logging.INFO  # Add level attribute to prevent TypeError
-        mock_handler_class.return_value = mock_handler
-
-        # Setup mock logger to prevent handler from being added to real logger
-        mock_metadata_logger = Mock()
-        mock_get_logger.return_value = mock_metadata_logger
-
-        # Setup
-        handler = setup_streamable_logging_for_workflow(  # noqa: F841
-            metadata=mock_metadata,
-            pipeline_fqn="test.pipeline",
-            run_id=uuid4(),
-            enable_streaming=True,
-        )
-
-        # Cleanup
-        cleanup_streamable_logging()
-
-        mock_metadata_logger.removeHandler.assert_called_once_with(mock_handler)
-        mock_handler.close.assert_called_once()
-
-    @patch("logging.getLogger")
-    @patch("metadata.utils.streamable_logger.logger")
-    @patch("metadata.utils.streamable_logger.StreamableLogHandler")
-    def test_setup_replaces_existing_handler(self, mock_handler_class, mock_logger, mock_get_logger):
-        """Test that setup properly replaces existing handler"""
-        mock_metadata = Mock(spec=OpenMetadata)
-        mock_metadata.config = Mock()
-        mock_metadata.config.host_port = "http://localhost:8585"
-
-        mock_handler1 = Mock()
-        mock_handler1.level = logging.INFO  # Add level attribute
-        mock_handler2 = Mock()
-        mock_handler2.level = logging.INFO  # Add level attribute
-        mock_handler_class.side_effect = [mock_handler1, mock_handler2]
-
-        # Setup mock logger to prevent handler from being added to real logger
-        mock_metadata_logger = Mock()
-        mock_get_logger.return_value = mock_metadata_logger
-
-        # First setup
-        handler1 = setup_streamable_logging_for_workflow(  # noqa: F841
-            metadata=mock_metadata,
-            pipeline_fqn="test.pipeline1",
-            run_id=uuid4(),
-            enable_streaming=True,
-        )
-
-        # Second setup should close first handler
-        handler2 = setup_streamable_logging_for_workflow(  # noqa: F841
-            metadata=mock_metadata,
-            pipeline_fqn="test.pipeline2",
-            run_id=uuid4(),
-            enable_streaming=True,
-        )
-
-        # The first handler should be closed when the second one is set
-        mock_handler1.close.assert_called()
-
-        # Cleanup
-        cleanup_streamable_logging()
-
-    @patch("logging.getLogger")
-    @patch("metadata.utils.streamable_logger.logger")
-    @patch("metadata.utils.streamable_logger.StreamableLogHandler")
-    def test_cleanup_flushes_before_closing(self, mock_handler_class, mock_logger, mock_get_logger):
-        """Test that cleanup calls flush before closing handler"""
-        mock_metadata = Mock(spec=OpenMetadata)
-        mock_metadata.config = Mock()
-        mock_metadata.config.host_port = "http://localhost:8585"
-
-        mock_handler = Mock()
-        mock_handler.level = logging.INFO
-        # Mock the specific methods that should be called
-        mock_handler.flush = Mock()
-        mock_handler.close = Mock()
-        mock_handler_class.return_value = mock_handler
-
-        # Setup mock logger
-        mock_metadata_logger = Mock()
-        mock_get_logger.return_value = mock_metadata_logger
-
-        # Setup handler
-        handler = setup_streamable_logging_for_workflow(
-            metadata=mock_metadata,
-            pipeline_fqn="test.pipeline",
-            run_id=uuid4(),
-            enable_streaming=True,
-        )
-
-        # Verify handler was created and returned
-        self.assertIsNotNone(handler)
-        self.assertEqual(handler, mock_handler)
-
-        # Cleanup and verify order of operations
-        cleanup_streamable_logging()
-
-        # Verify flush was called
-        mock_handler.flush.assert_called_once()
-
-        # Verify close was called
-        mock_handler.close.assert_called_once()
-
-        # Verify handler was removed from logger
-        mock_metadata_logger.removeHandler.assert_called_once_with(mock_handler)
-
-
-class TestStreamableLogHandlerRecursionRegression(unittest.TestCase):
-    """
-    Regression test for the production hang where StreamableLogHandler.emit()
-    called logger.warning() / logger.error() from inside the handler's own
-    dispatch path. Because the handler is attached to that very same logger,
-    every internal log call re-entered emit(), recursing against a still-full
-    queue until the Python recursion limit was hit on MainThread while every
-    other thread was blocked on the logging module's internal lock.
-
-    The fix is to use a dedicated `_internal_logger` with `propagate=False`
-    for any message originating inside this module's hot path. These tests
-    fail if anyone re-introduces a `logger.*` call inside emit / _ship_logs /
-    _worker_loop.
-    """
+class TestRecursionRegression(unittest.TestCase):
+    """emit() must run exactly once per producer call even when overflow
+    or format failure would historically have triggered recursive logging."""
 
     def setUp(self):
-        self.mock_metadata = Mock(spec=OpenMetadata)
-        self.test_logger = logging.getLogger(f"test_streamable_recursion_{id(self)}")
+        self.mock_metadata = _make_metadata_mock()
+        self.test_logger = logging.getLogger(f"test_recursion_{id(self)}")
         self.test_logger.handlers = []
         self.test_logger.setLevel(logging.DEBUG)
         self.test_logger.propagate = False
@@ -870,104 +620,200 @@ class TestStreamableLogHandlerRecursionRegression(unittest.TestCase):
     def tearDown(self):
         self.test_logger.handlers = []
 
-    def _make_handler(self, max_queue_size=2):
-        handler = StreamableLogHandler(
+    def _make_handler_with_full_buffer(self):
+        handler = _make_handler(
             metadata=self.mock_metadata,
-            pipeline_fqn="test.pipeline",
-            run_id=uuid4(),
-            max_queue_size=max_queue_size,
+            max_buffer=2,
             enable_streaming=True,
         )
-        # Stop the background worker so the queue cannot drain during the test.
-        handler.stop_event.set()
-        if handler.worker_thread:
-            handler.worker_thread.join(timeout=2.0)
-        # Make the local fallback a Mock so we can assert it was called once.
-        handler.fallback_handler = Mock()
+        _stop_workers(handler)
+        handler._buffer.put_nowait("a")
+        handler._buffer.put_nowait("b")
+        self.assertTrue(handler._buffer.full())
         return handler
 
-    def test_emit_does_not_recurse_when_queue_full(self):
-        """
-        emit() must complete in a single call when the queue is full.
-        Before the fix this exploded into ~1000 recursive emit() calls.
-        """
-        handler = self._make_handler(max_queue_size=2)
-        handler.log_queue.put_nowait("entry-1")
-        handler.log_queue.put_nowait("entry-2")
-        self.assertTrue(handler.log_queue.full())
-
+    def test_emit_does_not_recurse_when_buffer_full(self):
+        handler = self._make_handler_with_full_buffer()
         self.test_logger.addHandler(handler)
 
-        call_count = {"n": 0}
+        emit_calls = {"n": 0}
         real_emit = handler.emit
 
-        def counting_emit(record):
-            call_count["n"] += 1
-            if call_count["n"] > 5:
-                raise AssertionError(
-                    "emit() recursed — regression of the streamable_logger hang. "
-                    "Check that nothing inside emit / _ship_logs / _worker_loop "
-                    "calls the module-level `logger`; use `_internal_logger` instead."
-                )
+        def counting(record):
+            emit_calls["n"] += 1
+            if emit_calls["n"] > 5:
+                raise AssertionError("emit() recursed — single-call regression")
             real_emit(record)
 
-        handler.emit = counting_emit
-
+        handler.emit = counting
         start = time.monotonic()
-        # Before the fix this call would never return — MainThread would sit
-        # recursing until Python raised RecursionError, then the outer except
-        # would log.error() which would recurse again.
-        self.test_logger.warning("trigger the overflow path")
+        self.test_logger.warning("trigger overflow")
         elapsed = time.monotonic() - start
 
-        self.assertEqual(call_count["n"], 1, "emit() must be invoked exactly once per log call")
-        self.assertLess(elapsed, 1.0, "emit() must return in bounded time when queue is full")
-        handler.fallback_handler.emit.assert_called_once()
-
-    def test_emit_does_not_recurse_when_format_raises(self):
-        """
-        If self.format(record) raises, the outer except in emit() must NOT
-        route the error back through `logger` (which would recurse).
-        """
-        handler = self._make_handler(max_queue_size=10)
-        handler.format = Mock(side_effect=ValueError("boom"))
-
-        self.test_logger.addHandler(handler)
-
-        call_count = {"n": 0}
-        real_emit = handler.emit
-
-        def counting_emit(record):
-            call_count["n"] += 1
-            if call_count["n"] > 5:
-                raise AssertionError("emit() recursed via the outer except branch — regression.")
-            real_emit(record)
-
-        handler.emit = counting_emit
-
-        start = time.monotonic()
-        self.test_logger.error("trigger the format-failure path")
-        elapsed = time.monotonic() - start
-
-        self.assertEqual(call_count["n"], 1)
+        self.assertEqual(emit_calls["n"], 1)
         self.assertLess(elapsed, 1.0)
 
-    def test_internal_logger_is_isolated_from_root(self):
-        """
-        The `_internal_logger` must not propagate, otherwise its messages
-        would still reach the root logger (and therefore re-enter this
-        handler if it is attached there).
-        """
-        from metadata.utils.streamable_logger import _internal_logger
+    def test_emit_does_not_recurse_when_format_raises(self):
+        handler = _make_handler(metadata=self.mock_metadata, enable_streaming=True)
+        _stop_workers(handler)
+        handler.format = MagicMock(side_effect=ValueError("boom"))
 
-        self.assertFalse(
-            _internal_logger.propagate,
-            "_internal_logger.propagate must be False to prevent recursion",
+        self.test_logger.addHandler(handler)
+        emit_calls = {"n": 0}
+        real_emit = handler.emit
+
+        def counting(record):
+            emit_calls["n"] += 1
+            if emit_calls["n"] > 5:
+                raise AssertionError("emit() recursed via format-failure path")
+            real_emit(record)
+
+        handler.emit = counting
+        start = time.monotonic()
+        self.test_logger.error("trigger format failure")
+        elapsed = time.monotonic() - start
+
+        self.assertEqual(emit_calls["n"], 1)
+        self.assertLess(elapsed, 1.0)
+
+
+class TestQuietClientPostMixin(unittest.TestCase):
+    """The mixin's best-effort methods must NOT log through ometa_logger
+    (which would propagate back to the streamable handler)."""
+
+    def test_send_logs_batch_best_effort_does_not_log_on_failure(self):
+        from metadata.ingestion.ometa.mixins.logs_mixin import OMetaLogsMixin
+
+        # Build a bare instance and stub the client.
+        instance = OMetaLogsMixin()
+        instance.client = Mock()
+        instance.client.post_best_effort = Mock(return_value=False)
+
+        with patch("metadata.ingestion.ometa.mixins.logs_mixin.logger") as mock_logger:
+            ok = instance.send_logs_batch_best_effort(
+                pipeline_fqn="test",
+                run_id=uuid4(),
+                log_content="x",
+                timeout=(1, 2),
+            )
+
+        self.assertFalse(ok)
+        mock_logger.error.assert_not_called()
+        mock_logger.warning.assert_not_called()
+        mock_logger.info.assert_not_called()
+        mock_logger.debug.assert_not_called()
+
+    def test_send_logs_batch_best_effort_does_not_log_on_exception(self):
+        from metadata.ingestion.ometa.mixins.logs_mixin import OMetaLogsMixin
+
+        instance = OMetaLogsMixin()
+        instance.client = Mock()
+        instance.client.post_best_effort = Mock(side_effect=RuntimeError("boom"))
+
+        with patch("metadata.ingestion.ometa.mixins.logs_mixin.logger") as mock_logger:
+            ok = instance.send_logs_batch_best_effort(
+                pipeline_fqn="test",
+                run_id=uuid4(),
+                log_content="x",
+                timeout=(1, 2),
+            )
+
+        self.assertFalse(ok)
+        mock_logger.error.assert_not_called()
+        mock_logger.warning.assert_not_called()
+
+
+class TestClientPostBestEffort(unittest.TestCase):
+    """REST.post_best_effort must NOT enter the retry/sleep loop and
+    must NOT log on failure."""
+
+    def _make_client(self):
+        from metadata.ingestion.ometa.client import REST, ClientConfig
+
+        config = ClientConfig(
+            base_url="http://localhost:8585",
+            api_version="v1",
+            auth_token=lambda: ("token", 60),
         )
-        self.assertTrue(
-            _internal_logger.handlers,
-            "_internal_logger must have its own handler so messages still reach stderr",
-        )
+        client = REST(config)
+        client._session = Mock()
+        return client
+
+    def test_post_best_effort_does_not_sleep_on_504(self):
+        client = self._make_client()
+        resp = Mock()
+        resp.status_code = 504
+        client._session.post = Mock(return_value=resp)
+
+        with patch("time.sleep") as mock_sleep:
+            start = time.monotonic()
+            ok = client.post_best_effort("/path", data="x", timeout=(1, 2))
+            elapsed = time.monotonic() - start
+
+        self.assertFalse(ok)
+        mock_sleep.assert_not_called()
+        self.assertLess(elapsed, 0.2, "post_best_effort must NOT sleep on 504")
+
+    def test_post_best_effort_does_not_log_on_failure(self):
+        client = self._make_client()
+        client._session.post = Mock(side_effect=RuntimeError("network down"))
+
+        with patch("metadata.ingestion.ometa.client.logger") as mock_logger:
+            ok = client.post_best_effort("/path", data="x", timeout=(1, 2))
+
+        self.assertFalse(ok)
+        mock_logger.error.assert_not_called()
+        mock_logger.warning.assert_not_called()
+        mock_logger.info.assert_not_called()
+
+    def test_post_best_effort_returns_true_on_2xx(self):
+        client = self._make_client()
+        resp = Mock()
+        resp.status_code = 200
+        client._session.post = Mock(return_value=resp)
+
+        self.assertTrue(client.post_best_effort("/path", data="x"))
+
+    def test_build_request_headers_does_not_refresh_token(self):
+        """Token refresh stays on _request(); concurrent refresh from the
+        sender would race the main thread on shared ClientConfig."""
+        client = self._make_client()
+        client._auth_token = Mock(return_value=("fresh-token", 60))
+        client.config.expires_in = 0
+        client.config.access_token = "stale-token"
+        client.config.auth_header = "Authorization"
+
+        headers = client._build_request_headers()
+
+        client._auth_token.assert_not_called()
+        self.assertEqual(headers["Authorization"], "Bearer stale-token")
+        self.assertEqual(client.config.expires_in, 0)
+
+
+class TestCloseOrderingRegression(unittest.TestCase):
+    """close() must enqueue CLOSE_MARKER before setting _stop, otherwise
+    the sender's get(timeout) Empty branch can race the enqueue."""
+
+    def test_close_enqueues_marker_before_setting_stop(self):
+        metadata = _make_metadata_mock()
+        handler = _make_handler(metadata=metadata, enable_streaming=True)
+        handler.close()
+        for _ in range(50):
+            if metadata.send_close_best_effort.called:
+                break
+            time.sleep(0.05)
+        metadata.send_close_best_effort.assert_called_once()
+
+    def test_close_marker_arrives_even_when_sender_was_idle(self):
+        metadata = _make_metadata_mock()
+        handler = _make_handler(metadata=metadata, enable_streaming=True)
+        time.sleep(0.2)  # let sender enter get(timeout=...)
+        handler.close()
+        for _ in range(50):
+            if metadata.send_close_best_effort.called:
+                break
+            time.sleep(0.05)
+        metadata.send_close_best_effort.assert_called_once()
 
 
 if __name__ == "__main__":
