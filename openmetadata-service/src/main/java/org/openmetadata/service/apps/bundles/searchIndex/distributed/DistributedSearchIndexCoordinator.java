@@ -888,6 +888,7 @@ public class DistributedSearchIndexCoordinator {
               .processedRecords(es.processedRecords())
               .successRecords(es.successRecords())
               .failedRecords(es.failedRecords())
+              .warningRecords(timing != null ? timing.readerWarnings() : 0)
               .totalPartitions(es.totalPartitions())
               .completedPartitions(es.completedPartitions())
               .failedPartitions(es.failedPartitions())

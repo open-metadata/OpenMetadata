@@ -42,7 +42,10 @@ public class StatsReconciler {
       for (Map.Entry<String, StepStats> entry :
           stats.getEntityStats().getAdditionalProperties().entrySet()) {
         StepStats es = entry.getValue();
-        int actual = safeGet(es.getSuccessRecords()) + safeGet(es.getFailedRecords());
+        int actual =
+            safeGet(es.getSuccessRecords())
+                + safeGet(es.getFailedRecords())
+                + safeGet(es.getWarningRecords());
         if (actual > safeGet(es.getTotalRecords())) {
           es.setTotalRecords(actual);
         }
