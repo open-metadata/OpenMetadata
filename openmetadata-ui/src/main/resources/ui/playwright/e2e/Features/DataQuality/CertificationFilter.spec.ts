@@ -10,21 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect, Page, Request } from '@playwright/test';
+import test, { expect } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { createNewPage } from '../../../utils/common';
-import { goToDataQualityDashboard } from '../../../utils/dataQuality';
+import {
+  captureReports,
+  goToDataQualityDashboard,
+} from '../../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-const certTable = new TableClass();
-const cert = new TagClass({ classification: 'Certification' });
+let certTable: TableClass;
+let cert: TagClass;
 
 test.beforeAll('setup', async ({ browser }) => {
+  certTable = new TableClass();
+  cert = new TagClass({ classification: 'Certification' });
+
   const { apiContext, afterAction } = await createNewPage(browser);
 
   await cert.create(apiContext);
@@ -59,33 +65,6 @@ test.beforeAll('setup', async ({ browser }) => {
 
   await afterAction();
 });
-
-test.afterAll('cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await createNewPage(browser);
-
-  await certTable.delete(apiContext);
-  await cert.delete(apiContext);
-
-  await afterAction();
-});
-
-function captureReports(
-  page: Page
-): { url: string; q: string; index: string }[] {
-  const captured: { url: string; q: string; index: string }[] = [];
-  page.on('request', (req: Request) => {
-    const url = req.url();
-    if (url.includes('/dataQualityReport')) {
-      const u = new URL(url);
-      captured.push({
-        url,
-        q: u.searchParams.get('q') ?? '',
-        index: u.searchParams.get('index') ?? '',
-      });
-    }
-  });
-  return captured;
-}
 
 test('Certification filter is rendered between Tier and Tag in the filter row', async ({
   page,
