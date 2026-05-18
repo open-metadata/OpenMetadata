@@ -12,7 +12,7 @@
  */
 import { Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import { isEmpty, map } from 'lodash';
+import { isEmpty, map } from 'lodash-es';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';

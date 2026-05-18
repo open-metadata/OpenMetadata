@@ -12,7 +12,7 @@
  */
 import { Col, Row, Skeleton, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
+import { isEmpty, map, uniqBy, uniqueId } from 'lodash-es';
 import { RefObject, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';

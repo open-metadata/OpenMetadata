@@ -12,7 +12,7 @@
  */
 
 import { isAxiosError } from 'axios';
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';

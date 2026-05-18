@@ -15,7 +15,7 @@ import { File06 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { DocFile } from 'components/ContextCenter/DocumentsView/DocumentsView.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { isNull, isUndefined } from 'lodash';
+import { isNull, isUndefined } from 'lodash-es';
 import { ReactComponent as DOCIcon } from '../assets/svg/ic-doc.svg';
 import { ReactComponent as ImageIcon } from '../assets/svg/ic-image.svg';
 import { ReactComponent as PDFIcon } from '../assets/svg/ic-pdf.svg';

@@ -12,7 +12,7 @@
  */
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
+import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash-es';
 import { EntityTags } from 'Models';
 import {
   FC,

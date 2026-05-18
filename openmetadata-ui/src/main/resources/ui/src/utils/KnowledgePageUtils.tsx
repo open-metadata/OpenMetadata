@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { DataNode } from 'antd/lib/tree';
-import { cloneDeep, get, isEmpty } from 'lodash';
+import { cloneDeep, get, isEmpty } from 'lodash-es';
 import {
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_SUB_TAB,
@@ -182,6 +182,7 @@ export const convertToTreeData = (
       return {
         key: page.fullyQualifiedName,
         title,
+        // mark the node as leaf if it has no children
         isLeaf: page.childrenCount === 0,
       } as DataNode;
     } else {

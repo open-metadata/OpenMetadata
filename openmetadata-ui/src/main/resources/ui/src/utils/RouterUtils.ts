@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import isUndefined from 'lodash/isUndefined';
+import { isUndefined } from 'lodash-es';
 import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import {

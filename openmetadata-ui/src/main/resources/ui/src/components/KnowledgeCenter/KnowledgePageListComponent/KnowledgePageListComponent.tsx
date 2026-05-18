@@ -23,7 +23,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
+import { isEmpty, map, uniqBy, uniqueId } from 'lodash-es';
 import React, {
   forwardRef,
   RefObject,

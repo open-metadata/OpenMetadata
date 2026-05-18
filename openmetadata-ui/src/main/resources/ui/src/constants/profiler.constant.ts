@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { map, startCase, values } from 'lodash';
+import { map, startCase, values } from 'lodash-es';
 import { DateFilterType } from 'Models';
 import { TestCaseSearchParams } from '../components/DataQuality/DataQuality.interface';
 import { SORT_ORDER } from '../enums/common.enum';

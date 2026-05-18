@@ -13,9 +13,9 @@
 
 import { Select } from 'antd';
 import cronstrue from 'cronstrue/i18n';
-import isUndefined from 'lodash/isUndefined';
-import toNumber from 'lodash/toNumber';
-import toString from 'lodash/toString';
+import { isUndefined, toNumber, toString } from 'lodash-es';
+
+
 import { RuleObject } from 'rc-field-form/es/interface';
 import {
   Combination,
@@ -222,6 +222,8 @@ export const getDefaultScheduleValue = ({
 export const getDefaultScheduleFromPeriod = (
   includePeriodOptions: string[]
 ) => {
+  // By order, return the default schedule as day, week, month and hour as a last resort
+  // if none of the previous options are included
   if (includePeriodOptions.includes('day')) {
     return DEFAULT_SCHEDULE_CRON_DAILY;
   } else if (includePeriodOptions.includes('week')) {
@@ -232,6 +234,7 @@ export const getDefaultScheduleFromPeriod = (
     return DEFAULT_SCHEDULE_CRON_HOURLY;
   }
 
+  // return the fallback schedule as daily
   return DEFAULT_SCHEDULE_CRON_DAILY;
 };
 
