@@ -148,12 +148,10 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   @Override
   public void storeRelationships(ContextMemory entity) {
-    // storeRelationships re-runs on every update; clear prior inbound edges first so a changed
-    // or removed primaryEntity/relatedEntities/root/parent link does not leave orphan rows.
-    deleteTo(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.HAS, null);
-    deleteTo(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.RELATED_TO, null);
-    deleteTo(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.CONTAINS, Entity.CONTEXT_MEMORY);
-
+    // Add-only: addRelationship upserts, so re-running on update is idempotent. Stale-edge
+    // cleanup on update is handled in ContextMemoryUpdater via updateFromRelationship(s),
+    // which deletes only the specific changed refs. A blanket deleteTo here would also wipe
+    // the framework's domain --HAS--> memory edge (storeDomains runs before storeRelationships).
     if (entity.getPrimaryEntity() != null) {
       addRelationship(
           entity.getPrimaryEntity().getId(),
@@ -172,8 +170,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Relationship.RELATED_TO);
     }
 
-    // Distinct relationship types so the root-ancestor and direct-parent hierarchies
-    // can be resolved independently when read back from the relationship table.
+    // Distinct relationship types (CONTAINS for root-ancestor, PARENT_OF for direct parent)
+    // so the two hierarchies resolve independently and neither collides with the framework's
+    // HAS edges (domains).
     if (entity.getRootMemory() != null) {
       addRelationship(
           entity.getRootMemory().getId(),
@@ -189,8 +188,12 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           entity.getId(),
           Entity.CONTEXT_MEMORY,
           Entity.CONTEXT_MEMORY,
-          Relationship.HAS);
+          Relationship.PARENT_OF);
     }
+  }
+
+  private static List<EntityReference> asRefList(EntityReference ref) {
+    return ref == null ? List.of() : List.of(ref);
   }
 
   // ------------------------------------------------------------------
@@ -253,11 +256,6 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       recordChange("answer", original.getAnswer(), updated.getAnswer());
       recordChange("memoryType", original.getMemoryType(), updated.getMemoryType());
       recordChange("memoryScope", original.getMemoryScope(), updated.getMemoryScope());
-      recordChange("primaryEntity", original.getPrimaryEntity(), updated.getPrimaryEntity());
-      recordChange(
-          "relatedEntities", original.getRelatedEntities(), updated.getRelatedEntities(), true);
-      recordChange("rootMemory", original.getRootMemory(), updated.getRootMemory());
-      recordChange("parentMemory", original.getParentMemory(), updated.getParentMemory());
       recordChange("sourceType", original.getSourceType(), updated.getSourceType());
       recordChange(
           "sourceConversation", original.getSourceConversation(), updated.getSourceConversation());
@@ -281,6 +279,42 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       recordChange("status", original.getStatus(), updated.getStatus());
 
       recordChange("shareConfig", original.getShareConfig(), updated.getShareConfig());
+
+      // Relationship-backed fields: these helpers record the version change and delete only
+      // the specific changed refs (never a blanket delete), so the framework's
+      // domain --HAS--> memory edge is left intact.
+      updateFromRelationships(
+          "primaryEntity",
+          Entity.CONTEXT_MEMORY,
+          asRefList(original.getPrimaryEntity()),
+          asRefList(updated.getPrimaryEntity()),
+          Relationship.HAS,
+          Entity.CONTEXT_MEMORY,
+          original.getId());
+      updateFromRelationships(
+          "relatedEntities",
+          Entity.CONTEXT_MEMORY,
+          listOrEmpty(original.getRelatedEntities()),
+          listOrEmpty(updated.getRelatedEntities()),
+          Relationship.RELATED_TO,
+          Entity.CONTEXT_MEMORY,
+          original.getId());
+      updateFromRelationship(
+          "rootMemory",
+          Entity.CONTEXT_MEMORY,
+          original.getRootMemory(),
+          updated.getRootMemory(),
+          Relationship.CONTAINS,
+          Entity.CONTEXT_MEMORY,
+          original.getId());
+      updateFromRelationship(
+          "parentMemory",
+          Entity.CONTEXT_MEMORY,
+          original.getParentMemory(),
+          updated.getParentMemory(),
+          Relationship.PARENT_OF,
+          Entity.CONTEXT_MEMORY,
+          original.getId());
 
       // usageCount and lastUsedAt are AI-retrieval telemetry, intentionally excluded from
       // version history so routine retrieval does not churn the entity version.
