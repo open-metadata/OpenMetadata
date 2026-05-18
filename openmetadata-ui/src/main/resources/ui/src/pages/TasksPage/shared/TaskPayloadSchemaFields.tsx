@@ -35,7 +35,14 @@ import {
   Typography as AntTypography,
 } from 'antd';
 import { uniqBy } from 'lodash';
-import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';

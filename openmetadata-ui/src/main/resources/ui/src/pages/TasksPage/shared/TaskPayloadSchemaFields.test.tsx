@@ -389,11 +389,17 @@ describe('TaskPayloadSchemaFields', () => {
       );
 
       const para = container.querySelector('p') as HTMLParagraphElement;
-      Object.defineProperty(para, 'clientHeight', { configurable: true, value: 40 });
-      Object.defineProperty(para, 'scrollHeight', { configurable: true, value: 100 });
-      jest.spyOn(para, 'getClientRects').mockReturnValue(
-        [{}] as unknown as DOMRectList
-      );
+      Object.defineProperty(para, 'clientHeight', {
+        configurable: true,
+        value: 40,
+      });
+      Object.defineProperty(para, 'scrollHeight', {
+        configurable: true,
+        value: 100,
+      });
+      jest
+        .spyOn(para, 'getClientRects')
+        .mockReturnValue([{}] as unknown as DOMRectList);
 
       await act(async () => {
         jest.runAllTimers();
@@ -417,11 +423,17 @@ describe('TaskPayloadSchemaFields', () => {
       );
 
       const para = container.querySelector('p') as HTMLParagraphElement;
-      Object.defineProperty(para, 'clientHeight', { configurable: true, value: 40 });
-      Object.defineProperty(para, 'scrollHeight', { configurable: true, value: 100 });
-      jest.spyOn(para, 'getClientRects').mockReturnValue(
-        [{}] as unknown as DOMRectList
-      );
+      Object.defineProperty(para, 'clientHeight', {
+        configurable: true,
+        value: 40,
+      });
+      Object.defineProperty(para, 'scrollHeight', {
+        configurable: true,
+        value: 100,
+      });
+      jest
+        .spyOn(para, 'getClientRects')
+        .mockReturnValue([{}] as unknown as DOMRectList);
 
       await act(async () => {
         jest.runAllTimers();
@@ -448,11 +460,17 @@ describe('TaskPayloadSchemaFields', () => {
       );
 
       const para = container.querySelector('p') as HTMLParagraphElement;
-      Object.defineProperty(para, 'clientHeight', { configurable: true, value: 40 });
-      Object.defineProperty(para, 'scrollHeight', { configurable: true, value: 100 });
-      jest.spyOn(para, 'getClientRects').mockReturnValue(
-        [{}] as unknown as DOMRectList
-      );
+      Object.defineProperty(para, 'clientHeight', {
+        configurable: true,
+        value: 40,
+      });
+      Object.defineProperty(para, 'scrollHeight', {
+        configurable: true,
+        value: 100,
+      });
+      jest
+        .spyOn(para, 'getClientRects')
+        .mockReturnValue([{}] as unknown as DOMRectList);
 
       await act(async () => {
         jest.runAllTimers();
