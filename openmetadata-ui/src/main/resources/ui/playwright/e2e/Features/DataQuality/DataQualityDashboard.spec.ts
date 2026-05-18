@@ -237,134 +237,114 @@ const waitForDashboardApiResponses = (page: Page, key: string) => {
 test('DataQualityDashboardTab', async ({ page }) => {
   test.slow();
 
-  await test.step('Navigate to Data Quality dashboard', async () => {
-    await goToDataQualityDashboard(page);
-    await waitForAllLoadersToDisappear(page);
-  });
+  await goToDataQualityDashboard(page);
+  await waitForAllLoadersToDisappear(page);
+  await page.getByRole('button', { name: 'Owner' }).click();
 
-  await test.step('Filter by Owner', async () => {
-    await page.getByRole('button', { name: 'Owner' }).click();
-    await expect(
-      page.locator("[data-testid='select-owner-tabs']")
-    ).toBeVisible();
-    await waitForAllLoadersToDisappear(page);
-    await page.getByRole('tab', { name: 'Users' }).click();
-    await waitForAllLoadersToDisappear(page);
+  await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
 
-    const searchOwner = page.waitForResponse(
-      'api/v1/search/query?q=*&index=user*'
-    );
-    await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
-    await page.fill(
-      '[data-testid="owner-select-users-search-bar"]',
-      user1.getUserDisplayName()
-    );
-    await searchOwner;
-    await waitForAllLoadersToDisappear(page);
+  await waitForAllLoadersToDisappear(page);
+  await page.getByRole('tab', { name: 'Users' }).click();
+  await waitForAllLoadersToDisappear(page);
 
-    const ownerApiResponse = waitForDashboardApiResponses(
-      page,
-      user1.responseData.name
-    );
-    await page
-      .getByRole('listitem', { name: user1.getUserDisplayName() })
-      .click();
-    for (const apiRes of ownerApiResponse) {
-      const responseData = await apiRes;
+  const searchOwner = page.waitForResponse(
+    'api/v1/search/query?q=*&index=user*'
+  );
+  await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
+  await page.fill(
+    '[data-testid="owner-select-users-search-bar"]',
+    user1.getUserDisplayName()
+  );
+  await searchOwner;
+  await waitForAllLoadersToDisappear(page);
+  const ownerApiResponse = waitForDashboardApiResponses(
+    page,
+    user1.responseData.name
+  );
+  await page
+    .getByRole('listitem', { name: user1.getUserDisplayName() })
+    .click();
+  for (const apiRes of ownerApiResponse) {
+    const responseData = await apiRes;
 
-      expect(responseData.ok()).toBeTruthy();
-    }
-  });
+    expect(responseData.ok()).toBeTruthy();
+  }
 
-  await test.step('Filter by Tier', async () => {
-    await page.getByRole('button', { name: 'Tier' }).click();
-    await page.getByTestId('search-input').click();
-    await page
-      .getByTestId('search-input')
-      .fill(tier.responseData.fullyQualifiedName);
-    await page.getByTestId(tier.responseData.fullyQualifiedName).click();
+  await page.getByRole('button', { name: 'Tier' }).click();
+  await page.getByTestId('search-input').click();
+  await page
+    .getByTestId('search-input')
+    .fill(tier.responseData.fullyQualifiedName);
+  await page.getByTestId(tier.responseData.fullyQualifiedName).click();
+  const tierApiResponse = waitForDashboardApiResponses(
+    page,
+    tier.responseData.fullyQualifiedName
+  );
+  await page.getByTestId('update-btn').click();
+  for (const apiRes of tierApiResponse) {
+    const responseData = await apiRes;
 
-    const tierApiResponse = waitForDashboardApiResponses(
-      page,
-      tier.responseData.fullyQualifiedName
-    );
-    await page.getByTestId('update-btn').click();
-    for (const apiRes of tierApiResponse) {
-      const responseData = await apiRes;
+    expect(responseData.ok()).toBeTruthy();
+  }
 
-      expect(responseData.ok()).toBeTruthy();
-    }
-  });
+  await page.getByRole('button', { name: 'Tag' }).click();
+  await page.getByTestId('search-input').click();
+  await page.getByTestId('search-input').fill(tag.data.name);
+  await page.getByText(tag.responseData.fullyQualifiedName).click();
+  const tagApiResponse = waitForDashboardApiResponses(
+    page,
+    tag.responseData.fullyQualifiedName
+  );
+  await page.getByTestId('update-btn').click();
+  for (const apiRes of tagApiResponse) {
+    const responseData = await apiRes;
 
-  await test.step('Filter by Tag', async () => {
-    await page.getByRole('button', { name: 'Tag' }).click();
-    await page.getByTestId('search-input').click();
-    await page.getByTestId('search-input').fill(tag.data.name);
-    await page.getByText(tag.responseData.fullyQualifiedName).click();
+    expect(responseData.ok()).toBeTruthy();
+  }
 
-    const tagApiResponse = waitForDashboardApiResponses(
-      page,
-      tag.responseData.fullyQualifiedName
-    );
-    await page.getByTestId('update-btn').click();
-    for (const apiRes of tagApiResponse) {
-      const responseData = await apiRes;
+  await page.getByRole('button', { name: 'Glossary Term' }).click();
+  await page.getByTestId('search-input').click();
+  const glossaryTermSearchApi = page.waitForResponse(
+    '/api/v1/search/query?*q=*index=glossaryTerm*'
+  );
+  await page.getByTestId('search-input').fill(glossaryTerm.data.name);
+  await glossaryTermSearchApi;
+  await page.getByText(glossaryTerm.responseData.fullyQualifiedName).click();
+  const glossaryTermApiResponse = waitForDashboardApiResponses(
+    page,
+    encodeURIComponent(glossaryTerm.responseData.name)
+  );
+  await page.getByTestId('update-btn').click();
+  for (const apiRes of glossaryTermApiResponse) {
+    const responseData = await apiRes;
 
-      expect(responseData.ok()).toBeTruthy();
-    }
-  });
+    expect(responseData.ok()).toBeTruthy();
+  }
 
-  await test.step('Filter by Glossary Term', async () => {
-    await page.getByRole('button', { name: 'Glossary Term' }).click();
-    await page.getByTestId('search-input').click();
-    const glossaryTermSearchApi = page.waitForResponse(
-      '/api/v1/search/query?*q=*index=glossaryTerm*'
-    );
-    await page.getByTestId('search-input').fill(glossaryTerm.data.name);
-    await glossaryTermSearchApi;
-    await page.getByText(glossaryTerm.responseData.fullyQualifiedName).click();
+  await page.getByRole('button', { name: 'Data Product' }).click();
+  await page.getByTestId('search-input').click();
+  const dataProductSearchApi = page.waitForResponse(
+    '/api/v1/search/query?*q=*index=dataProduct*'
+  );
+  await page
+    .getByTestId('search-input')
+    .fill(dataProduct.responseData.displayName ?? dataProduct.data.displayName);
+  await dataProductSearchApi;
+  await page
+    .getByText(
+      dataProduct.responseData.displayName ?? dataProduct.data.displayName
+    )
+    .click();
+  const dataProductApiResponse = waitForDashboardApiResponses(
+    page,
+    encodeURIComponent(dataProduct.data.name)
+  );
+  await page.getByTestId('update-btn').click();
+  for (const apiRes of dataProductApiResponse) {
+    const responseData = await apiRes;
 
-    const glossaryTermApiResponse = waitForDashboardApiResponses(
-      page,
-      encodeURIComponent(glossaryTerm.responseData.name)
-    );
-    await page.getByTestId('update-btn').click();
-    for (const apiRes of glossaryTermApiResponse) {
-      const responseData = await apiRes;
-
-      expect(responseData.ok()).toBeTruthy();
-    }
-  });
-
-  await test.step('Filter by Data Product', async () => {
-    await page.getByRole('button', { name: 'Data Product' }).click();
-    await page.getByTestId('search-input').click();
-    const dataProductSearchApi = page.waitForResponse(
-      '/api/v1/search/query?*q=*index=dataProduct*'
-    );
-    await page
-      .getByTestId('search-input')
-      .fill(
-        dataProduct.responseData.displayName ?? dataProduct.data.displayName
-      );
-    await dataProductSearchApi;
-    await page
-      .getByText(
-        dataProduct.responseData.displayName ?? dataProduct.data.displayName
-      )
-      .click();
-
-    const dataProductApiResponse = waitForDashboardApiResponses(
-      page,
-      encodeURIComponent(dataProduct.data.name)
-    );
-    await page.getByTestId('update-btn').click();
-    for (const apiRes of dataProductApiResponse) {
-      const responseData = await apiRes;
-
-      expect(responseData.ok()).toBeTruthy();
-    }
-  });
+    expect(responseData.ok()).toBeTruthy();
+  }
 });
 
 test('Dimension card click should redirect to test cases with applied filters', async ({
@@ -372,13 +352,12 @@ test('Dimension card click should redirect to test cases with applied filters', 
 }) => {
   test.slow();
 
-  await test.step('Navigate to Data Quality dashboard', async () => {
-    await goToDataQualityDashboard(page);
-    await expect(
-      page.locator('[data-testid="status-data-widget"]').first()
-    ).toBeVisible();
-    await waitForAllLoadersToDisappear(page);
+  await goToDataQualityDashboard(page);
+
+  await page.waitForSelector('[data-testid="status-data-widget"]', {
+    state: 'visible',
   });
+  await waitForAllLoadersToDisappear(page);
 
   const dimensions = [
     { displayText: 'Accuracy', urlValue: 'Accuracy' },
@@ -392,63 +371,60 @@ test('Dimension card click should redirect to test cases with applied filters', 
   ];
 
   for (const dimension of dimensions) {
-    await test.step(`Click ${dimension.displayText} dimension card and verify redirect`, async () => {
-      if (!page.url().includes('/data-quality/dashboard')) {
-        await goToDataQualityDashboard(page);
-        await expect(
-          page.locator('[data-testid="status-data-widget"]').first()
-        ).toBeVisible();
-        await waitForAllLoadersToDisappear(page);
-      }
+    const currentUrl = page.url();
+    if (!currentUrl.includes('/data-quality/dashboard')) {
+      await goToDataQualityDashboard(page);
+      await page.waitForSelector('[data-testid="status-data-widget"]', {
+        state: 'visible',
+      });
+      await waitForAllLoadersToDisappear(page);
+    }
 
-      const dimensionCard = page
-        .locator('[data-testid="status-data-widget"]')
-        .filter({ hasText: dimension.displayText })
-        .first();
+    const dimensionCard = page
+      .locator('[data-testid="status-data-widget"]')
+      .filter({ hasText: dimension.displayText })
+      .first();
 
-      const cardCount = await dimensionCard.count();
-      if (cardCount > 0) {
-        await expect(dimensionCard).toBeVisible();
+    const cardCount = await dimensionCard.count();
+    if (cardCount > 0) {
+      await expect(dimensionCard).toBeVisible();
 
-        const navigationPromise = page.waitForURL(
-          new RegExp(
-            `/data-quality/test-cases.*dataQualityDimension=${encodeURIComponent(
-              dimension.urlValue
-            )}`
-          )
-        );
-        await dimensionCard.click();
-        await navigationPromise;
+      const navigationPromise = page.waitForURL(
+        new RegExp(
+          `/data-quality/test-cases.*dataQualityDimension=${encodeURIComponent(
+            dimension.urlValue
+          )}`
+        )
+      );
+      await dimensionCard.click();
+      await navigationPromise;
 
-        expect(page.url()).toContain(
-          `dataQualityDimension=${encodeURIComponent(dimension.urlValue)}`
-        );
-        expect(page.url()).toContain('/data-quality/test-cases');
-      }
-    });
+      const url = page.url();
+
+      expect(url).toContain(
+        `dataQualityDimension=${encodeURIComponent(dimension.urlValue)}`
+      );
+      expect(url).toContain('/data-quality/test-cases');
+    }
   }
 });
 
 test('Entity Health pie chart segment click redirects to Test Cases with correct status', async ({
   page,
 }) => {
-  await test.step('Navigate to Data Quality dashboard', async () => {
-    await goToDataQualityDashboard(page);
-    await expect(
-      page.locator(`#${ENTITY_HEALTH_PIE_CHART_TEST_ID}`)
-    ).toBeVisible();
-    await waitForAllLoadersToDisappear(page);
-  });
+  await goToDataQualityDashboard(page);
+  await expect(
+    page.locator(`#${ENTITY_HEALTH_PIE_CHART_TEST_ID}`)
+  ).toBeVisible();
+  await waitForAllLoadersToDisappear(page);
 
-  await test.step('Click failed segment and verify redirect to failed test cases', async () => {
-    const navFailed = page.waitForURL(
-      /\/data-quality\/test-cases.*testCaseStatus=Failed/
-    );
-    await clickPieChartSegmentByIndex(page, ENTITY_HEALTH_PIE_CHART_TEST_ID, 1);
-    await navFailed;
-    await expect(page).toHaveURL(/\/data-quality\/test-cases/);
-    expect(page.url()).toContain('testCaseStatus=Failed');
-  });
+  const navFailed = page.waitForURL(
+    /\/data-quality\/test-cases.*testCaseStatus=Failed/
+  );
+  await clickPieChartSegmentByIndex(page, ENTITY_HEALTH_PIE_CHART_TEST_ID, 1);
+  await navFailed;
+  await expect(page).toHaveURL(/\/data-quality\/test-cases/);
+  expect(page.url()).toContain('testCaseStatus=Failed');
 });
 
 test('Test Case Result pie chart segment click redirects to Test Cases with correct status', async ({
@@ -456,71 +432,59 @@ test('Test Case Result pie chart segment click redirects to Test Cases with corr
 }) => {
   test.slow();
 
-  await test.step('Navigate to Data Quality dashboard', async () => {
-    await goToDataQualityDashboard(page);
-    await expect(
-      page.locator(`#${TEST_CASE_STATUS_PIE_CHART_TEST_ID}`)
-    ).toBeVisible();
-    await waitForAllLoadersToDisappear(page);
-  });
+  await goToDataQualityDashboard(page);
+  await expect(
+    page.locator(`#${TEST_CASE_STATUS_PIE_CHART_TEST_ID}`)
+  ).toBeVisible();
+  await waitForAllLoadersToDisappear(page);
 
-  await test.step('Click success segment and verify redirect', async () => {
-    const navSuccess = page.waitForURL(
-      /\/data-quality\/test-cases.*testCaseStatus=Success/
-    );
-    await clickPieChartSegmentByIndex(
-      page,
-      TEST_CASE_STATUS_PIE_CHART_TEST_ID,
-      0
-    );
-    await navSuccess;
-    await expect(page).toHaveURL(/\/data-quality\/test-cases/);
-    expect(page.url()).toContain('testCaseStatus=Success');
-  });
+  const navSuccess = page.waitForURL(
+    /\/data-quality\/test-cases.*testCaseStatus=Success/
+  );
+  await clickPieChartSegmentByIndex(
+    page,
+    TEST_CASE_STATUS_PIE_CHART_TEST_ID,
+    0
+  );
+  await navSuccess;
+  await expect(page).toHaveURL(/\/data-quality\/test-cases/);
+  expect(page.url()).toContain('testCaseStatus=Success');
 
-  await test.step('Navigate back to Data Quality dashboard', async () => {
-    await goToDataQualityDashboard(page);
-    await expect(
-      page.locator(`#${TEST_CASE_STATUS_PIE_CHART_TEST_ID}`)
-    ).toBeVisible();
-    await waitForAllLoadersToDisappear(page);
-  });
+  await goToDataQualityDashboard(page);
+  await expect(
+    page.locator(`#${TEST_CASE_STATUS_PIE_CHART_TEST_ID}`)
+  ).toBeVisible();
+  await waitForAllLoadersToDisappear(page);
 
-  await test.step('Click failed segment and verify redirect', async () => {
-    const navFailed = page.waitForURL(
-      /\/data-quality\/test-cases.*testCaseStatus=Failed/
-    );
-    await clickPieChartSegmentByIndex(
-      page,
-      TEST_CASE_STATUS_PIE_CHART_TEST_ID,
-      1
-    );
-    await navFailed;
-    await expect(page).toHaveURL(/\/data-quality\/test-cases/);
-    expect(page.url()).toContain('testCaseStatus=Failed');
-  });
+  const navFailed = page.waitForURL(
+    /\/data-quality\/test-cases.*testCaseStatus=Failed/
+  );
+  await clickPieChartSegmentByIndex(
+    page,
+    TEST_CASE_STATUS_PIE_CHART_TEST_ID,
+    1
+  );
+  await navFailed;
+  await expect(page).toHaveURL(/\/data-quality\/test-cases/);
+  expect(page.url()).toContain('testCaseStatus=Failed');
 
-  await test.step('Navigate back to Data Quality dashboard', async () => {
-    await goToDataQualityDashboard(page);
-    await expect(
-      page.locator(`#${TEST_CASE_STATUS_PIE_CHART_TEST_ID}`)
-    ).toBeVisible();
-    await waitForAllLoadersToDisappear(page);
-  });
+  await goToDataQualityDashboard(page);
+  await expect(
+    page.locator(`#${TEST_CASE_STATUS_PIE_CHART_TEST_ID}`)
+  ).toBeVisible();
+  await waitForAllLoadersToDisappear(page);
 
-  await test.step('Click aborted segment and verify redirect', async () => {
-    const navAborted = page.waitForURL(
-      /\/data-quality\/test-cases.*testCaseStatus=Aborted/
-    );
-    await clickPieChartSegmentByIndex(
-      page,
-      TEST_CASE_STATUS_PIE_CHART_TEST_ID,
-      2
-    );
-    await navAborted;
-    await expect(page).toHaveURL(/\/data-quality\/test-cases/);
-    expect(page.url()).toContain('testCaseStatus=Aborted');
-  });
+  const navAborted = page.waitForURL(
+    /\/data-quality\/test-cases.*testCaseStatus=Aborted/
+  );
+  await clickPieChartSegmentByIndex(
+    page,
+    TEST_CASE_STATUS_PIE_CHART_TEST_ID,
+    2
+  );
+  await navAborted;
+  await expect(page).toHaveURL(/\/data-quality\/test-cases/);
+  expect(page.url()).toContain('testCaseStatus=Aborted');
 });
 
 test('Data Assets Coverage pie chart segment click redirects to Test Suites and Explore', async ({
@@ -528,41 +492,33 @@ test('Data Assets Coverage pie chart segment click redirects to Test Suites and 
 }) => {
   test.slow();
 
-  await test.step('Navigate to Data Quality dashboard', async () => {
-    await goToDataQualityDashboard(page);
-    await expect(
-      page.locator(`#${DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID}`)
-    ).toBeVisible();
-    await waitForAllLoadersToDisappear(page);
-  });
+  await goToDataQualityDashboard(page);
+  await expect(
+    page.locator(`#${DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID}`)
+  ).toBeVisible();
+  await waitForAllLoadersToDisappear(page);
 
-  await test.step('Click covered segment and verify redirect to Test Suites', async () => {
-    const navTestSuites = page.waitForURL(/\/data-quality\/test-suites/);
-    await clickPieChartSegmentByIndex(
-      page,
-      DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID,
-      0
-    );
-    await navTestSuites;
-    await expect(page).toHaveURL(/\/data-quality\/test-suites/);
-  });
+  const navTestSuites = page.waitForURL(/\/data-quality\/test-suites/);
+  await clickPieChartSegmentByIndex(
+    page,
+    DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID,
+    0
+  );
+  await navTestSuites;
+  await expect(page).toHaveURL(/\/data-quality\/test-suites/);
 
-  await test.step('Navigate back to Data Quality dashboard', async () => {
-    await goToDataQualityDashboard(page);
-    await expect(
-      page.locator(`#${DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID}`)
-    ).toBeVisible();
-    await waitForAllLoadersToDisappear(page);
-  });
+  await goToDataQualityDashboard(page);
+  await expect(
+    page.locator(`#${DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID}`)
+  ).toBeVisible();
+  await waitForAllLoadersToDisappear(page);
 
-  await test.step('Click not covered segment and verify redirect to Explore', async () => {
-    const navExplore = page.waitForURL(/\/explore/);
-    await clickPieChartSegmentByIndex(
-      page,
-      DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID,
-      1
-    );
-    await navExplore;
-    await expect(page).toHaveURL(/\/explore/);
-  });
+  const navExplore = page.waitForURL(/\/explore/);
+  await clickPieChartSegmentByIndex(
+    page,
+    DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID,
+    1
+  );
+  await navExplore;
+  await expect(page).toHaveURL(/\/explore/);
 });
