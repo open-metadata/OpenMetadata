@@ -103,7 +103,6 @@ def _make_lineage_source(
     src.start = "2025-01-01 00:00:00"
     src.end = "2025-01-02 00:00:00"
     src._table_cache = {}
-    src._container_cache = {}
     src._use_access_history = False
     return src
 
