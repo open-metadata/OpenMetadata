@@ -132,10 +132,7 @@ const handleSpecialServiceConfig = (
   schema: Record<string, unknown>,
   serviceCategory: string
 ): ReactNode | null => {
-  if (
-    serviceType === EntityType.PIPELINE_SERVICE &&
-    key === 'connection'
-  ) {
+  if (serviceType === EntityType.PIPELINE_SERVICE && key === 'connection') {
     const valueType = value.type;
     if (
       typeof valueType === 'string' &&
@@ -176,10 +173,7 @@ const handleSpecialServiceConfig = (
     });
   }
 
-  if (
-    serviceType === EntityType.METADATA_SERVICE &&
-    key === 'securityConfig'
-  ) {
+  if (serviceType === EntityType.METADATA_SERVICE && key === 'securityConfig') {
     const jwtSchema = (
       schemaPropertyObject[key] as {
         oneOf: Array<{ title: string; properties?: Record<string, unknown> }>;
@@ -264,9 +258,9 @@ const handleDatabaseConfigSource = (
   const oneOf = 'oneOf';
 
   if (
-    Object.keys(
-      schemaPropertyObject[key] as Record<string, unknown>
-    ).includes(oneOf) &&
+    Object.keys(schemaPropertyObject[key] as Record<string, unknown>).includes(
+      oneOf
+    ) &&
     (securityConfig?.awsAccessKeyId || securityConfig?.awsSecretAccessKey)
   ) {
     return getKeyValues({
@@ -282,9 +276,9 @@ const handleDatabaseConfigSource = (
   }
 
   if (
-    Object.keys(
-      schemaPropertyObject[key] as Record<string, unknown>
-    ).includes(internalRef)
+    Object.keys(schemaPropertyObject[key] as Record<string, unknown>).includes(
+      internalRef
+    )
   ) {
     const definition = (schemaPropertyObject[key] as { $ref: string }).$ref
       .split('/')
