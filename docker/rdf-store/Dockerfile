@@ -1,5 +1,9 @@
 # Apache Jena Fuseki Docker Image for OpenMetadata RDF Store
-FROM openjdk:17-jdk-slim
+# eclipse-temurin replaces the deprecated `openjdk` Docker Hub images
+# (`openjdk:17-jdk-slim` was removed from the registry — CI builds against it
+# fail with "manifest unknown"). JRE is enough since this image only runs the
+# Fuseki shell launcher; no compilation happens inside the container.
+FROM eclipse-temurin:17-jre-jammy
 
 ENV FUSEKI_VERSION=5.6.0
 ENV FUSEKI_HOME=/fuseki

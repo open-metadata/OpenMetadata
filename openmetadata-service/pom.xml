@@ -1011,10 +1011,17 @@
         </exclusion>
       </exclusions>
     </dependency>
+    <!-- titanium-json-ld must match what Jena's JSON-LD writer expects. Jena
+         5.6.0 calls into the new com.apicatalog.rdf.api.RdfConsumer API
+         introduced in titanium 1.5.0; pinning 1.4.0 here let the integration
+         test `GlossaryOntologyExportIT.testExportGlossaryAsJsonLd` blow up
+         with NoClassDefFoundError com/apicatalog/rdf/api/RdfConsumerException
+         on every Jena JSON-LD export. Jena 5.6.0's parent pom uses 1.7.0; we
+         match that. -->
     <dependency>
       <groupId>com.apicatalog</groupId>
       <artifactId>titanium-json-ld</artifactId>
-      <version>1.4.0</version>
+      <version>1.7.0</version>
     </dependency>
     <dependency>
       <groupId>org.glassfish</groupId>

@@ -1,5 +1,6 @@
 # Multi-architecture Fuseki build
-FROM --platform=$TARGETPLATFORM openjdk:17-jdk-slim
+# eclipse-temurin replaces the deprecated openjdk Docker Hub images.
+FROM --platform=$TARGETPLATFORM eclipse-temurin:17-jre-jammy
 
 # Install required packages
 RUN apt-get update && \
