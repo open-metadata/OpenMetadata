@@ -1337,6 +1337,8 @@ public class IngestionPipelineResource
 
   public PipelineServiceClientResponse triggerPipelineInternal(
       UUID id, UriInfo uriInfo, SecurityContext securityContext, String botName) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.TRIGGER);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     if (pipelineServiceClient == null) {
       return new PipelineServiceClientResponse()
           .withCode(200)
@@ -1346,7 +1348,6 @@ public class IngestionPipelineResource
     IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
     CreateResourceContext<IngestionPipeline> createResourceContext =
         new CreateResourceContext<>(entityType, ingestionPipeline);
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.TRIGGER);
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     if (CommonUtil.nullOrEmpty(botName)) {
       // Use Default Ingestion Bot
