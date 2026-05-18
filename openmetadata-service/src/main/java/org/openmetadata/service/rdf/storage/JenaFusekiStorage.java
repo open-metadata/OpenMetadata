@@ -1,6 +1,7 @@
 package org.openmetadata.service.rdf.storage;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.StringWriter;
 import java.net.ConnectException;
 import java.net.URI;
@@ -45,6 +46,7 @@ import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.update.UpdateFactory;
 import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
 
@@ -1035,7 +1037,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           "Compaction wait for Fuseki dataset '{}' was interrupted; "
               + "the compact task may still be running on the server.",
           info.datasetName());
-    } catch (java.io.IOException e) {
+    } catch (IOException e) {
       LOG.warn(
           "Failed to compact Fuseki dataset '{}' — disk reclamation skipped, "
               + "indexing will continue but on-disk usage may stay elevated.",
@@ -1044,8 +1046,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
   }
 
-  private String startCompaction(DatasetEndpoint info)
-      throws java.io.IOException, InterruptedException {
+  private String startCompaction(DatasetEndpoint info) throws IOException, InterruptedException {
     HttpClient httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
     String compactUrl =
         info.serverBaseUrl() + "/$/compact/" + info.datasetName() + "?deleteOld=true";
@@ -1090,7 +1091,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       var node = JsonUtils.readTree(responseBody);
       var taskNode = node.get("taskId");
       return taskNode != null && !taskNode.isNull() ? taskNode.asText() : null;
-    } catch (org.openmetadata.schema.exception.JsonParsingException e) {
+    } catch (JsonParsingException e) {
       LOG.debug("Could not parse taskId from Fuseki compaction response: {}", responseBody, e);
       return null;
     }
@@ -1121,7 +1122,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       HttpResponse<String> pollResponse;
       try {
         pollResponse = httpClient.send(pollBuilder.build(), HttpResponse.BodyHandlers.ofString());
-      } catch (java.io.IOException e) {
+      } catch (IOException e) {
         LOG.warn("Polling Fuseki task {} failed; abandoning wait", taskId, e);
         return;
       }
@@ -1159,7 +1160,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       var node = JsonUtils.readTree(responseBody);
       var finished = node.get("finished");
       return finished != null && !finished.isNull() && !finished.asText().isBlank();
-    } catch (org.openmetadata.schema.exception.JsonParsingException e) {
+    } catch (JsonParsingException e) {
       LOG.debug("Could not parse Fuseki task status response: {}", responseBody, e);
       return false;
     }
