@@ -318,8 +318,25 @@ export const ActivityFeedTab = ({
         fqn,
         taskFilter
       );
+    } else {
+      setSearchParams(
+        (prev) => {
+          prev.delete('threadId');
+
+          return prev;
+        },
+        { replace: true }
+      );
     }
-  }, [threadId, entityThread, fqn]);
+  }, [
+    threadId,
+    entityThread,
+    fqn,
+    feedFilter,
+    threadType,
+    entityType,
+    taskFilter,
+  ]);
 
   useEffect(() => {
     if (feedCount) {
