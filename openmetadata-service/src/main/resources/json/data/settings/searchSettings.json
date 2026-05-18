@@ -1309,8 +1309,7 @@
         "displayName",
         "description",
         "dataModel.columns.name",
-        "dataModel.columns.description",
-        "dataModel.columns.children.name"
+        "dataModel.columns.description"
       ],
       "matchTypeBoostMultipliers": {
         "exactMatchMultiplier": 2.0,
