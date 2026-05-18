@@ -16,10 +16,8 @@ package org.openmetadata.service.resources.context;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.getEntityReferenceByName;
 
-import java.util.List;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
@@ -47,7 +45,7 @@ public class ContextMemoryMapper implements EntityMapper<ContextMemory, CreateCo
         .withRootMemory(create.getRootMemory())
         .withParentMemory(create.getParentMemory())
         .withMachineRepresentation(create.getMachineRepresentation())
-        .withOwners(defaultOwners(create.getOwners(), user))
+        .withOwners(create.getOwners())
         .withTags(create.getTags())
         .withDomains(
             nullOrEmpty(create.getDomains())
@@ -57,12 +55,5 @@ public class ContextMemoryMapper implements EntityMapper<ContextMemory, CreateCo
                         domain ->
                             getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED))
                     .toList());
-  }
-
-  private List<EntityReference> defaultOwners(List<EntityReference> owners, String user) {
-    if (!nullOrEmpty(owners)) {
-      return owners;
-    }
-    return List.of(getEntityReferenceByName(Entity.USER, user, Include.NON_DELETED));
   }
 }

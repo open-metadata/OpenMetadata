@@ -21,6 +21,7 @@ import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
@@ -411,6 +412,47 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
     ContextMemory memory = createEntity(request);
     assertNotNull(memory.getShareConfig());
     assertEquals(MemoryVisibility.PRIVATE, memory.getShareConfig().getVisibility());
+  }
+
+  // ===================================================================
+  // VALIDATION TESTS
+  // ===================================================================
+
+  @Test
+  void patch_contextMemorySelfParentReference_4xx(TestNamespace ns) {
+    ContextMemory memory = createEntity(createMinimalRequest(ns));
+
+    ContextMemory selfParent = getEntity(memory.getId().toString());
+    selfParent.setParentMemory(memory.getEntityReference());
+
+    assertThrows(
+        Exception.class,
+        () -> patchEntity(memory.getId().toString(), selfParent),
+        "A memory must not reference itself as parentMemory");
+  }
+
+  @Test
+  void post_contextMemoryInvalidSharedPrincipalType_4xx(TestNamespace ns) {
+    ContextMemory principalMemory = createEntity(createMinimalRequest(ns));
+
+    CreateContextMemory request =
+        new CreateContextMemory()
+            .withName(ns.prefix("bad-principal"))
+            .withDescription("Invalid shared principal type")
+            .withQuestion("Can a memory be a shared principal?")
+            .withAnswer("No - only user, team, or domain principals are allowed.")
+            .withShareConfig(
+                new MemoryShareConfig()
+                    .withVisibility(MemoryVisibility.SHARED)
+                    .withSharedWith(
+                        List.of(
+                            new MemorySharedPrincipal()
+                                .withPrincipal(principalMemory.getEntityReference()))));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Sharing with a non-user/team/domain principal must be rejected");
   }
 
   @Test

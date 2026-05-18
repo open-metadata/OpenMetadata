@@ -375,7 +375,9 @@ export enum SourceType {
 }
 
 /**
- * Lifecycle state of the memory.
+ * Lifecycle state of the memory. Any status may be set at creation (e.g. importing an
+ * already-archived memory); the Draft -> Active -> Archived transition rules are only
+ * enforced on subsequent updates.
  */
 export enum MemoryStatus {
     Active = "Active",

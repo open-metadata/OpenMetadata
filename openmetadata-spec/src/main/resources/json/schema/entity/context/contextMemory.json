@@ -35,7 +35,7 @@
     },
     "memoryStatus": {
       "javaType": "org.openmetadata.schema.entity.context.ContextMemoryStatus",
-      "description": "Lifecycle state of the memory.",
+      "description": "Lifecycle state of the memory. Any status may be set at creation (e.g. importing an already-archived memory); the Draft -> Active -> Archived transition rules are only enforced on subsequent updates.",
       "type": "string",
       "enum": ["Draft", "Active", "Archived"],
       "javaEnums": [
