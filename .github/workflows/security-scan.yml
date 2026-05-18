@@ -79,40 +79,111 @@ jobs:
         continue-on-error: true
         run: |
           source env/bin/activate
-          make snyk-report
+          rm -rf security-report
+          mkdir -p security-report
+          # Run snyk subtargets directly; skip `export-snyk-pdf-report` which deletes JSONs after PDF conversion.
+          make snyk-ingestion-report || true
+          make snyk-ingestion-base-slim-report || true
+          make snyk-airflow-apis-report || true
+          make snyk-server-report || true
+          make snyk-ui-report || true
 
-      - name: Slack on Failure
-        if: steps.security-report.outcome != 'success'
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
-          payload: |
-            {
-              "text": "🚨 Security report failed, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>. 🚨"
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      - name: Publish Snyk Summary
+        id: snyk-summary
+        if: always() && steps.maven-build.outcome == 'success'
+        run: |
+          python3 scripts/snyk_summary.py security-report \
+            --counts-file security-report/_counts.json \
+            --slack-file security-report/_slack.txt \
+            >> $GITHUB_STEP_SUMMARY
+          # Expose counts as step output for downstream gating.
+          counts=$(cat security-report/_counts.json)
+          echo "counts=$counts" >> $GITHUB_OUTPUT
+          high=$(jq '.high + .critical' security-report/_counts.json)
+          echo "high_critical=$high" >> $GITHUB_OUTPUT
 
-      - name: Slack on Success
-        if: steps.security-report.outcome == 'success'
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
-          payload: |
-            {
-              "text": "🟢 Security report generated for OpenMetadata Repo , please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      - name: Fail on high/critical Snyk findings
+        id: vuln-gate
+        if: always() && steps.snyk-summary.outcome == 'success' && steps.snyk-summary.outputs.high_critical != '' && steps.snyk-summary.outputs.high_critical != '0'
+        continue-on-error: true
+        run: |
+          echo "::error::Snyk found ${{ steps.snyk-summary.outputs.high_critical }} high/critical vulnerabilities (see Job Summary)"
+          exit 1
 
-      - name: Upload Snyk Report HTML files
-        if: steps.security-report.outcome == 'success'
+      - name: Fail if Snyk summary could not be produced
+        id: summary-guard
+        if: always() && steps.maven-build.outcome == 'success' && steps.snyk-summary.outcome == 'failure'
+        continue-on-error: true
+        run: |
+          echo "::error::snyk_summary.py failed — vulnerability counts unavailable, failing as precaution"
+          exit 1
+
+      - name: Generate Snyk HTML/PDF
+        if: always() && steps.maven-build.outcome == 'success'
+        run: |
+          # Back up JSONs because html_to_pdf.py deletes them after PDF conversion.
+          mkdir -p /tmp/snyk-json-backup
+          cp security-report/*.json /tmp/snyk-json-backup/ 2>/dev/null || true
+          make export-snyk-pdf-report || true
+          # Restore JSONs alongside generated PDFs/HTMLs.
+          cp /tmp/snyk-json-backup/*.json security-report/ 2>/dev/null || true
+
+      - name: Upload Snyk Reports
+        if: always() && steps.maven-build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: security-report
           path: security-report
+          retention-days: 30
+
+      - name: Build Slack payload
+        id: build
+        if: always()
+        run: |
+          build="${{ steps.maven-build.outcome }}"
+          scan="${{ steps.security-report.outcome }}"
+          gate="${{ steps.vuln-gate.outcome }}"
+          guard="${{ steps.summary-guard.outcome }}"
+          status_icon() {
+            case "$1" in
+              success)   echo "✅" ;;
+              cancelled) echo "⚠️ (cancelled)" ;;
+              skipped)   echo "⚠️ (skipped)" ;;
+              *)         echo "❌" ;;
+            esac
+          }
+          build_icon=$(status_icon "$build")
+          scan_icon=$(status_icon "$scan")
+          if [ "$build" = "success" ] && [ "$scan" = "success" ] && [ "$gate" != "failure" ] && [ "$guard" != "failure" ]; then
+            icon="🟢"
+          elif [ "$build" = "cancelled" ] || [ "$scan" = "cancelled" ]; then
+            icon="⚠️"
+          else
+            icon="🚨"
+          fi
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          {
+            echo "$icon *Security scan* — *OpenMetadata Repo* on branch \`${{ github.ref_name }}\`"
+            echo "• Build: $build_icon"
+            echo "• Security scan (Snyk): $scan_icon"
+            echo "<$run_url|Open run details>"
+            if [ -f security-report/_slack.txt ]; then
+              echo
+              cat security-report/_slack.txt
+            fi
+          } > slack_body.txt
+          jq -Rs '{text: ., blocks: [{type: "section", text: {type: "mrkdwn", text: .}}]}' slack_body.txt > payload.json
+
+      - name: Send Slack Notification
+        if: always()
+        uses: slackapi/slack-github-action@v1.27.1
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
+          payload-file-path: payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
       - name: Force failure
-        if: steps.maven-build.outcome != 'success' || steps.security-report.outcome != 'success'
+        if: steps.maven-build.outcome != 'success' || steps.security-report.outcome != 'success' || steps.vuln-gate.outcome == 'failure' || steps.summary-guard.outcome == 'failure'
         run: |
           exit 1
