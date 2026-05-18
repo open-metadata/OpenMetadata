@@ -95,10 +95,13 @@ public class RdfGlossaryGraphIT {
     } else {
       // No FUSEKI_DATASET_1 here: that was stain-specific. The dataset is
       // created via /$/datasets by JenaFusekiStorage.ensureDatasetExists().
+      // tmpfs the TDB2 dataset dir so writes never hit the container's
+      // writable layer — keeps a long IT run from bloating it.
       localFusekiContainer =
           new GenericContainer<>(DockerImageName.parse(FUSEKI_IMAGE))
               .withExposedPorts(FUSEKI_PORT)
               .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
+              .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m"))
               .waitingFor(
                   Wait.forHttp("/$/ping")
                       .forPort(FUSEKI_PORT)

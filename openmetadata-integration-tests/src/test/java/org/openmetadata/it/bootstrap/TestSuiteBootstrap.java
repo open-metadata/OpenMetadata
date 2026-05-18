@@ -438,6 +438,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         new GenericContainer<>(DockerImageName.parse(image))
             .withExposedPorts(FUSEKI_PORT)
             .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
+            // tmpfs the TDB2 dataset dir so each container start gets a clean
+            // store and a long IT run doesn't grow the container's writable
+            // layer. secoresearch/fuseki stores datasets under /fuseki/databases
+            // by default — mounting tmpfs there keeps writes off-disk entirely.
+            .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m"))
             .waitingFor(
                 Wait.forHttp("/$/ping")
                     .forPort(FUSEKI_PORT)

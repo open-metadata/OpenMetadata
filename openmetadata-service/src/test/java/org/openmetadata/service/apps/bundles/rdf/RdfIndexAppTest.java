@@ -680,7 +680,7 @@ class RdfIndexAppTest {
 
     @Test
     @DisplayName("Should still call compactStorage at end of incremental run (free-space hygiene)")
-    void testCompactStorageSkippedOnIncrementalIndex() throws Exception {
+    void testCompactStorageStillFiresOnIncrementalIndex() throws Exception {
       TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
       testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
 

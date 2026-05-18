@@ -79,30 +79,46 @@ public class RdfBatchProcessor {
     // If the bulk write fails (one bad model rolls back the whole batch), we
     // fall back to the per-entity loop so the indexer can still attribute the
     // failure to a specific entity instead of failing the whole batch with a
-    // single composite error.
+    // single composite error. The fallback is skipped when the storage layer
+    // has tripped its circuit breaker (connect failures, Fuseki unreachable):
+    // each of the N per-entity attempts would also fail-fast on the same
+    // breaker, wasting time and amplifying error noise. We mark the whole
+    // batch as failed instead and let the indexer move on — the breaker
+    // will close once Fuseki recovers and the next batch retries cleanly.
     if (!effectiveStopRequested.getAsBoolean()) {
       try {
         rdfRepository.bulkCreateOrUpdate(entities);
         indexedEntities.addAll(entities);
         successCount = entities.size();
       } catch (Exception e) {
-        LOG.warn(
-            "Bulk write of {} {} entities failed; falling back to per-entity to isolate the bad row. Reason: {}",
-            entities.size(),
-            entityType,
-            e.getMessage());
-        for (EntityInterface entity : entities) {
-          if (effectiveStopRequested.getAsBoolean()) {
-            break;
-          }
-          try {
-            rdfRepository.createOrUpdate(entity);
-            indexedEntities.add(entity);
-            successCount++;
-          } catch (Exception ee) {
-            LOG.error("Failed to index entity {} to RDF", entity.getId(), ee);
-            failedCount++;
-            lastError = describeEntityError(entityType, entity.getId(), ee);
+        if (isCircuitBreakerOpen(e)) {
+          LOG.warn(
+              "Bulk write of {} {} entities failed and the RDF circuit breaker is open; "
+                  + "skipping per-entity fallback. Reason: {}",
+              entities.size(),
+              entityType,
+              e.getMessage());
+          failedCount = entities.size();
+          lastError = describeError(entityType + " batch", e);
+        } else {
+          LOG.warn(
+              "Bulk write of {} {} entities failed; falling back to per-entity to isolate the bad row. Reason: {}",
+              entities.size(),
+              entityType,
+              e.getMessage());
+          for (EntityInterface entity : entities) {
+            if (effectiveStopRequested.getAsBoolean()) {
+              break;
+            }
+            try {
+              rdfRepository.createOrUpdate(entity);
+              indexedEntities.add(entity);
+              successCount++;
+            } catch (Exception ee) {
+              LOG.error("Failed to index entity {} to RDF", entity.getId(), ee);
+              failedCount++;
+              lastError = describeEntityError(entityType, entity.getId(), ee);
+            }
           }
         }
       }
@@ -160,6 +176,30 @@ public class RdfBatchProcessor {
       message = rootCause.getClass().getSimpleName();
     }
     return prefix + ": " + message;
+  }
+
+  /**
+   * Recognise a "circuit breaker tripped" failure from the RDF storage layer.
+   * JenaFusekiStorage throws a RuntimeException whose message starts with
+   * "RDF circuit breaker is open" when {@code throwIfCircuitOpen} fast-fails.
+   * The bulk-fallback path uses this to skip the per-entity retry loop —
+   * every entity would hit the same breaker and produce N noisy failures
+   * instead of one informative one.
+   */
+  private static boolean isCircuitBreakerOpen(Throwable error) {
+    Throwable cause = error;
+    while (cause != null) {
+      String msg = cause.getMessage();
+      if (msg != null && msg.contains("RDF circuit breaker is open")) {
+        return true;
+      }
+      Throwable next = cause.getCause();
+      if (next == cause) {
+        return false;
+      }
+      cause = next;
+    }
+    return false;
   }
 
   private static String describeEntityError(String entityType, UUID entityId, Throwable error) {

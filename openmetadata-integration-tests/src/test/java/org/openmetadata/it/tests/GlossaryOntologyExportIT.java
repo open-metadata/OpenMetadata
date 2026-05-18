@@ -90,10 +90,12 @@ public class GlossaryOntologyExportIT {
     } else {
       // No FUSEKI_DATASET_1 here: that was stain-specific. The dataset is
       // created via /$/datasets by JenaFusekiStorage.ensureDatasetExists().
+      // tmpfs keeps TDB2 writes off the container's writable layer.
       localFusekiContainer =
           new GenericContainer<>(DockerImageName.parse(FUSEKI_IMAGE))
               .withExposedPorts(FUSEKI_PORT)
               .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
+              .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m"))
               .waitingFor(
                   Wait.forHttp("/$/ping")
                       .forPort(FUSEKI_PORT)

@@ -176,11 +176,22 @@ public class JenaFusekiStorage implements RdfStorageInterface {
    * Parses a Fuseki endpoint URL into its server base URL and dataset name.
    * Expected endpoint shape: {@code http://host:port/datasetName} (with optional
    * trailing service path like {@code /sparql}). Returns null if the path
-   * doesn't carry a dataset name — callers should log and skip the admin
-   * operation rather than blow up.
+   * doesn't carry a dataset name or the URL is malformed — callers should
+   * log and skip the admin operation rather than blow up.
+   *
+   * <p>Preserves any {@code userInfo} ({@code http://user:pass@host:port/ds})
+   * embedded in the endpoint so admin endpoints (/$/datasets, /$/compact)
+   * reach the server with the right credentials when the operator wired auth
+   * into the URL instead of via {@code config.getUsername()}/{@code
+   * getPassword()}.
    */
   private static DatasetEndpoint parseDatasetEndpoint(String endpoint) {
-    URI uri = URI.create(endpoint);
+    URI uri;
+    try {
+      uri = URI.create(endpoint);
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
     String path = uri.getPath();
     if (path == null || path.isEmpty() || path.equals("/")) {
       return null;
@@ -189,9 +200,16 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     if (datasetName.contains("/")) {
       datasetName = datasetName.split("/")[0];
     }
-    String serverBaseUrl =
-        uri.getScheme() + "://" + uri.getHost() + (uri.getPort() > 0 ? ":" + uri.getPort() : "");
-    return new DatasetEndpoint(serverBaseUrl, datasetName);
+    StringBuilder serverBaseUrl = new StringBuilder();
+    serverBaseUrl.append(uri.getScheme()).append("://");
+    if (uri.getRawUserInfo() != null && !uri.getRawUserInfo().isEmpty()) {
+      serverBaseUrl.append(uri.getRawUserInfo()).append('@');
+    }
+    serverBaseUrl.append(uri.getHost());
+    if (uri.getPort() > 0) {
+      serverBaseUrl.append(':').append(uri.getPort());
+    }
+    return new DatasetEndpoint(serverBaseUrl.toString(), datasetName);
   }
 
   private record DatasetEndpoint(String serverBaseUrl, String datasetName) {}
@@ -511,7 +529,10 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       runWithTimeout(() -> connection.update(deleteRequest), "bulkStoreEntities delete");
       runWithTimeout(
           () -> connection.load(KNOWLEDGE_GRAPH, combinedModel), "bulkStoreEntities load");
-      LOG.info(
+      // DEBUG, not INFO: this fires per-batch in a hot reindex loop (default
+      // batchSize=100 → tens of thousands of log lines on a real reindex).
+      // Keep INFO reserved for events ops actually want to grep for.
+      LOG.debug(
           "Bulk-stored {} entities in {} ({} triples)",
           requests.size(),
           KNOWLEDGE_GRAPH,
@@ -1067,7 +1088,20 @@ public class JenaFusekiStorage implements RdfStorageInterface {
    */
   @Override
   public void compactStorage() {
-    DatasetEndpoint info = parseDatasetEndpoint(endpoint);
+    // Wrap the whole flow in a catch-all so any failure here is best-effort
+    // and never demotes a successful indexer run to FAILED. parseDatasetEndpoint
+    // already returns null on URI.create failure; this guard covers any other
+    // unexpected runtime exception that could surface from HTTP / JSON parsing.
+    DatasetEndpoint info;
+    try {
+      info = parseDatasetEndpoint(endpoint);
+    } catch (RuntimeException e) {
+      LOG.warn(
+          "Skipping compaction: could not parse Fuseki endpoint '{}'. Reason: {}",
+          endpoint,
+          e.getMessage());
+      return;
+    }
     if (info == null) {
       LOG.warn("Skipping compaction: could not parse dataset name from endpoint {}", endpoint);
       return;

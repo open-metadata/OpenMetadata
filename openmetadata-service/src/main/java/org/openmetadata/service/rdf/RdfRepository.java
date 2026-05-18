@@ -1308,6 +1308,14 @@ public class RdfRepository {
       // may not share any of the declared prefixes, so we always inject the
       // expanded form in angle brackets. Deduplication is handled by SPARQL
       // (?relationType IN (a, b, a) is equivalent to IN (a, b)).
+      //
+      // expandPredicateCurie is idempotent for full http(s) IRIs (see its
+      // early-return branch at the `startsWith("http://") || startsWith("https://")`
+      // check), so passing rdfPredicate.toString() through is safe whether
+      // the configured value is already a full IRI (the realistic case for
+      // custom types) or a CURIE-shaped URI like `skos:broader` (rare but
+      // technically valid as a java.net.URI). Either way we end up with the
+      // same fully-expanded IRI the writer used when storing the triple.
       try {
         GlossaryTermRelationSettings settings =
             SettingsCache.getSetting(
