@@ -1316,6 +1316,15 @@ public class RdfRepository {
       // custom types) or a CURIE-shaped URI like `skos:broader` (rare but
       // technically valid as a java.net.URI). Either way we end up with the
       // same fully-expanded IRI the writer used when storing the triple.
+      //
+      // When rdfPredicate is null on a configured custom type (a real-world
+      // case observed on a customer instance — operators add the type name
+      // without filling in the URI), mirror the writer's
+      // getGlossaryTermRelationPredicate fallback: use
+      // `https://open-metadata.org/ontology/<name>`. Without this fallback,
+      // the writer would store triples at om:<name> but the reader filter
+      // would not include them, exactly the symptom we just fixed for
+      // explicit URIs.
       try {
         GlossaryTermRelationSettings settings =
             SettingsCache.getSetting(
@@ -1323,10 +1332,15 @@ public class RdfRepository {
         if (settings != null && settings.getRelationTypes() != null) {
           for (var configuredType : settings.getRelationTypes()) {
             java.net.URI rdfPredicate = configuredType.getRdfPredicate();
+            String fullUri;
             if (rdfPredicate != null) {
-              String fullUri = expandPredicateCurie(rdfPredicate.toString());
-              relationPredicates.add("<" + fullUri + ">");
+              fullUri = expandPredicateCurie(rdfPredicate.toString());
+            } else if (configuredType.getName() != null && !configuredType.getName().isBlank()) {
+              fullUri = "https://open-metadata.org/ontology/" + configuredType.getName();
+            } else {
+              continue;
             }
+            relationPredicates.add("<" + fullUri + ">");
           }
         }
       } catch (Exception e) {
