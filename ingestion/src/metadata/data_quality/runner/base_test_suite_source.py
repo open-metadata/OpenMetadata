@@ -38,6 +38,7 @@ from metadata.sampler.config import (
     get_sample_data_count_config,
 )
 from metadata.sampler.models import SampleConfig
+from metadata.sampler.partition import get_partition_details
 from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sampler_interface import SamplerInterface  # noqa: TC001
 from metadata.utils.bigquery_utils import copy_service_config
@@ -143,6 +144,7 @@ class BaseTestSuiteRunner:
                     entity_config=None,
                     default_sample_data_count=SAMPLE_DATA_DEFAULT_COUNT,
                 ),
+                partition_details=get_partition_details(self.entity),
             ),
         )
 
