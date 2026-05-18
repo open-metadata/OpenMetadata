@@ -12,7 +12,7 @@
 name: security-scan
 on:
   schedule:
-    - cron:  '0 0 */2 * *'
+    - cron: "0 0 */2 * *"
   workflow_dispatch:
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
 
       - name: Enable yarn
         run: corepack enable
@@ -124,30 +124,6 @@ jobs:
                   print()
           EOF
 
-      - name: Slack on Failure
-        if: steps.retire-scan.outcome == 'failure'
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
-          payload: |
-            {
-              "text": "🚨 Vulnerability scan failed on branch `${{ github.ref_name }}`, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>. 🚨"
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-
-      - name: Slack on Success
-        if: steps.retire-scan.outcome == 'success'
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
-          payload: |
-            {
-              "text": "🟢 Vulnerability scan passed for OpenMetadata Repo on branch `${{ github.ref_name }}`, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-
       - name: Force failure on vulnerabilities found
         if: steps.retire-scan.outcome == 'failure'
         run: exit 1
@@ -163,25 +139,25 @@ jobs:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
-            tool-cache: false
-            android: true
-            dotnet: true
-            haskell: true
-            large-packages: false
-            docker-images: true
-            swap-storage: true      
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: true
+          swap-storage: true
       - uses: actions/checkout@v4
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
-          distribution: 'temurin'
+          java-version: "21"
+          distribution: "temurin"
 
       - name: Install Ubuntu dependencies
         run: |
@@ -217,30 +193,6 @@ jobs:
           source env/bin/activate
           make snyk-report
 
-      - name: Slack on Failure
-        if: steps.security-report.outcome != 'success'
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
-          payload: |
-            {
-              "text": "🚨 Security report failed on branch `${{ github.ref_name }}`, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>. 🚨"
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-
-      - name: Slack on Success
-        if: steps.security-report.outcome == 'success'
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
-          payload: |
-            {
-              "text": "🟢 Security report generated for OpenMetadata Repo on branch `${{ github.ref_name }}`, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-
       - name: Upload Snyk Report HTML files
         if: steps.security-report.outcome == 'success'
         uses: actions/upload-artifact@v4
@@ -252,3 +204,32 @@ jobs:
         if: steps.maven-build.outcome != 'success' || steps.security-report.outcome != 'success'
         run: |
           exit 1
+
+  notify:
+    runs-on: ubuntu-latest
+    environment: security-scan
+    needs: [vulnerability-scan, security-scan]
+    if: always()
+    steps:
+      - name: Build notification message
+        id: build
+        run: |
+          retire="${{ needs.vulnerability-scan.result }}"
+          snyk="${{ needs.security-scan.result }}"
+          if [ "$retire" = "success" ]; then retire_icon="✅"; elif [ "$retire" = "cancelled" ]; then retire_icon="⚠️ (cancelled)"; else retire_icon="❌"; fi
+          if [ "$snyk" = "success" ]; then snyk_icon="✅"; elif [ "$snyk" = "cancelled" ]; then snyk_icon="⚠️ (cancelled)"; else snyk_icon="❌"; fi
+          if [ "$retire" = "success" ] && [ "$snyk" = "success" ]; then icon="🟢"; elif [ "$retire" = "cancelled" ] || [ "$snyk" = "cancelled" ]; then icon="⚠️"; else icon="🚨"; fi
+          echo "icon=$icon" >> $GITHUB_OUTPUT
+          echo "retire_icon=$retire_icon" >> $GITHUB_OUTPUT
+          echo "snyk_icon=$snyk_icon" >> $GITHUB_OUTPUT
+
+      - name: Send Slack Notification
+        uses: slackapi/slack-github-action@v1.27.1
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
+          payload: |
+            {
+              "text": "${{ steps.build.outputs.icon }} Security scan for OpenMetadata Repo on branch `${{ github.ref_name }}` — Vulnerability scan: ${{ steps.build.outputs.retire_icon }} | Security scan: ${{ steps.build.outputs.snyk_icon }}. Check <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
