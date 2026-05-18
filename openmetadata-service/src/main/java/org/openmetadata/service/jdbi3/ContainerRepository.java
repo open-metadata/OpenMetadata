@@ -101,11 +101,13 @@ public class ContainerRepository extends EntityRepository<Container> {
   public void setFields(
       Container container, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(container);
-    // Always resolve parent — re-parenting via PATCH (#24294) requires the loaded entity to
-    // carry the current parent so the JSON Patch document can target an existing
-    // `/parent` member. Mirrors `GlossaryTermRepository.setFields`. `clearFields` below still
-    // strips parent from the response payload when the caller did not request it.
-    container.setParent(getContainerParent(container));
+    // Conditional load: relationship lookup only when the caller explicitly asked for the
+    // parent field. PATCH still gets the live parent because `CONTAINER_PATCH_FIELDS`
+    // includes `parent`, so the JSON-Patch flow sees an existing `/parent` member. All
+    // other GETs that don't request `parent` keep the JSON-deserialised value (no extra
+    // round-trip).
+    container.setParent(
+        fields.contains(FIELD_PARENT) ? getContainerParent(container) : container.getParent());
     if (container.getDataModel() != null) {
       populateDataModelColumnTags(
           fields.contains(FIELD_TAGS), container.getDataModel().getColumns());
@@ -1018,20 +1020,41 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   /**
    * Rewrite feed entity-links and field-relationships when a container's FQN changes (parent
-   * move). Mirrors {@code GlossaryTermRepository.updateEntityLinks}. Descendant container
-   * entity-links are also updated by walking children via {@link Relationship#CONTAINS}.
+   * move).
+   *
+   * <p>{@code renamedDescendants} is the snapshot returned by
+   * {@link EntityRepository#invalidateCacheForRenameCascade} — it contains every descendant
+   * id paired with the OLD fqn at the time of capture. We rewrite each descendant's legacy
+   * thread {@code about} link with the corresponding NEW fqn so deep subtrees (grandchildren
+   * and beyond) do not keep stale entityLinks. Direct-children-only is insufficient: a
+   * three-level move would leave grandchild feed threads pointing at the old FQN and break
+   * activity-feed navigation.
    */
-  private void updateEntityLinks(String oldFqn, String newFqn, Container updated) {
+  private void updateEntityLinks(
+      String oldFqn,
+      String newFqn,
+      Container updated,
+      List<EntityDAO.EntityIdFqnPair> renamedDescendants) {
     daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
 
     EntityLink newAbout = new EntityLink(CONTAINER, newFqn);
     feedRepository.updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
 
-    List<EntityReference> children =
-        findTo(updated.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER);
-    for (EntityReference child : children) {
-      EntityLink childAbout = new EntityLink(CONTAINER, child.getFullyQualifiedName());
-      feedRepository.updateLegacyThreadsAbout(childAbout.getLinkString(), child.getId().toString());
+    if (renamedDescendants == null || renamedDescendants.isEmpty()) {
+      return;
+    }
+    // Each descendant's old FQN begins with `oldFqn + "."`; the new FQN is obtained by
+    // swapping the prefix. This matches the same prefix-substitution that
+    // ContainerDAO.updateFqn applies at the JSON / fqnHash level, so the entity-link rewrite
+    // stays consistent with the persisted FQN.
+    for (EntityDAO.EntityIdFqnPair descendant : renamedDescendants) {
+      if (descendant.fqn == null || !descendant.fqn.startsWith(oldFqn + ".")) {
+        continue;
+      }
+      String descendantNewFqn = newFqn + descendant.fqn.substring(oldFqn.length());
+      EntityLink descendantAbout = new EntityLink(CONTAINER, descendantNewFqn);
+      feedRepository.updateLegacyThreadsAbout(
+          descendantAbout.getLinkString(), descendant.id.toString());
     }
   }
 
@@ -1336,7 +1359,7 @@ public class ContainerRepository extends EntityRepository<Container> {
           .tagUsageDAO()
           .renameByTargetFQNHash(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
 
-      updateEntityLinks(oldFqn, newFqn, updated);
+      updateEntityLinks(oldFqn, newFqn, updated, renamedContainers);
 
       PolicyConditionUpdater.updateAllPolicyConditions(
           condition ->
