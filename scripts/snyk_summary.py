@@ -40,7 +40,6 @@ def iter_projects(data):
 
 
 def collect_deps(data):
-    """Aggregate vulnerabilities by (package, version). Return (libs_dict, total_findings)."""
     libs = {}
     total = 0
     for proj in iter_projects(data):
@@ -66,7 +65,6 @@ def collect_deps(data):
 
 
 def collect_code(data):
-    """Aggregate Snyk Code SARIF results. Return (by_rule_dict, rules_desc_dict, total)."""
     runs = data.get("runs", []) if isinstance(data, dict) else []
     findings = {}
     rules = {}
@@ -128,36 +126,34 @@ def render_code_md(name, by_rule, rules, total):
 
 def render_deps_slack(name, libs, total, top):
     if not libs:
-        return f"📦 *{name}*: ✅ clean"
-    head = f"📦 *{name}*: {len(libs)} libs · {total} findings"
+        return f"📦  *{name}*  ·  ✅ clean"
+    head = f"📦  *{name}*  ·  {len(libs)} libs · {total} findings"
     rows = []
     ordered = sorted(libs.items(), key=lambda kv: sev_key(kv[1]["sev"]))
     for (pkg, ver), info in ordered[:top]:
         icon = SEV_ICON.get(info["sev"], "⚪")
         title = (sorted(info["titles"])[0] if info["titles"] else "")[:60]
-        fix = sorted(info["fixedIn"])[0] if info["fixedIn"] else "no fix"
-        rows.append(f"  {icon} `{pkg}` {ver} — {title} (fix: {fix})")
+        fix_label = f"_fix in {sorted(info['fixedIn'])[0]}_" if info["fixedIn"] else "_no fix_"
+        rows.append(f"   {icon}  `{pkg}@{ver}` — {title}  ·  {fix_label}")
     extra = len(libs) - top
     if extra > 0:
-        rows.append(f"  … +{extra} more")
+        rows.append(f"   _… +{extra} more_")
     return head + "\n" + "\n".join(rows)
 
 
 def render_code_slack(name, by_rule, rules, total, top):
     if not by_rule:
-        return f"🔎 *{name}*: ✅ clean"
-    head = f"🔎 *{name}*: {total} findings · {len(by_rule)} rules"
+        return f"🔎  *{name}*  ·  ✅ clean"
+    head = f"🔎  *{name}*  ·  {total} findings · {len(by_rule)} rules"
     ordered = sorted(by_rule.items(), key=lambda kv: -len(kv[1]))
-    rows = [f"  • `{rid}` ({len(items)})" for rid, items in ordered[:top]]
+    rows = [f"   •  `{rid}`  _×{len(items)}_" for rid, items in ordered[:top]]
     extra = len(by_rule) - top
     if extra > 0:
-        rows.append(f"  … +{extra} more")
+        rows.append(f"   _… +{extra} more_")
     return head + "\n" + "\n".join(rows)
 
 
 def count_severities(libs, by_rule):
-    """Snyk Code SARIF uses level (error/warning/note); treat error=high, warning=medium, note=low.
-    Dep libs already have explicit severity."""
     counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     for info in libs.values():
         sev = (info["sev"] or "low").lower()
@@ -166,7 +162,7 @@ def count_severities(libs, by_rule):
     for rid, items in by_rule.items():
         for uri, level, lines in items:
             mapped = {"error": "high", "warning": "medium", "note": "low"}.get(level, "medium")
-            counts[mapped] += 1  # count locations to match render_code_md total
+            counts[mapped] += 1
     return counts
 
 
@@ -179,11 +175,10 @@ def main():
     args = ap.parse_args()
 
     md_parts = ["## 🛡️ Snyk Security Scan\n"]
-    slack_parts = ["*🛡️ Snyk Security Scan*"]
+    slack_parts = ["*🛡️  Snyk Security Scan*"]
     totals = {"critical": 0, "high": 0, "medium": 0, "low": 0}
 
     files = sorted(glob.glob(os.path.join(args.src, "*.json")))
-    # exclude our own output files if present
     files = [f for f in files if not os.path.basename(f).startswith("_")]
 
     if not files:
@@ -194,8 +189,9 @@ def main():
                 json.dump({**totals, "total": 0}, f)
         if args.slack_file:
             with open(args.slack_file, "w") as f:
-                f.write("*🛡️ Snyk Security Scan*\n> No JSON reports found.")
-        return
+                f.write("*🛡️  Snyk Security Scan*\n> No JSON reports found.")
+        # Exit non-zero so the workflow's summary-guard catches silent Snyk failures.
+        sys.exit(1)
 
     for path in files:
         name = os.path.basename(path).replace(".json", "")
@@ -220,18 +216,22 @@ def main():
     sys.stdout.write("\n".join(md_parts) + "\n")
 
     if args.counts_file:
-        with open(args.counts_file, "w") as f:
+        # Atomic write: serialize to temp, then rename so a crash mid-dump
+        # cannot leave a partial file that breaks downstream `jq` parsing.
+        tmp = args.counts_file + ".tmp"
+        with open(tmp, "w") as f:
             json.dump({**totals, "total": sum(totals.values())}, f)
+        os.replace(tmp, args.counts_file)
 
     if args.slack_file:
         header = (
-            f"*🛡️ Snyk Security Scan* — 🚨 {totals['critical']} · 🔴 {totals['high']} · "
-            f"🟠 {totals['medium']} · 🟡 {totals['low']}"
+            f"*🛡️  Snyk Security Scan*\n"
+            f"🚨 *{totals['critical']}* critical  ·  🔴 *{totals['high']}* high  ·  "
+            f"🟠 *{totals['medium']}* medium  ·  🟡 *{totals['low']}* low"
         )
+        # Scans separated by blank lines — workflow splits on `\n\n` and emits one
+        # Slack section block per scan, so nothing gets truncated mid-line.
         body = "\n\n".join([header] + slack_parts[1:])
-        # Slack section block text limit 3000 chars; leave headroom for shell-added header lines.
-        if len(body) > 2500:
-            body = body[:2450] + "\n…truncated. See Job Summary for full report."
         with open(args.slack_file, "w") as f:
             f.write(body)
 

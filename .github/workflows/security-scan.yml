@@ -277,40 +277,57 @@ jobs:
 
       - name: Build Slack payload
         id: slack-payload
+        env:
+          RETIRE_RESULT: ${{ needs.vulnerability-scan.result }}
+          SNYK_RESULT: ${{ needs.security-scan.result }}
+          REF_NAME: ${{ github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          retire="${{ needs.vulnerability-scan.result }}"
-          snyk="${{ needs.security-scan.result }}"
-          status_icon() {
-            case "$1" in
-              success)   echo "✅" ;;
-              cancelled) echo "⚠️ (cancelled)" ;;
-              skipped)   echo "⚠️ (skipped)" ;;
-              *)         echo "❌" ;;
-            esac
-          }
-          retire_icon=$(status_icon "$retire")
-          snyk_icon=$(status_icon "$snyk")
-          if [ "$retire" = "success" ] && [ "$snyk" = "success" ]; then
-            icon="🟢"
-          elif [ "$retire" = "failure" ] || [ "$snyk" = "failure" ]; then
-            icon="🚨"
-          else
-            icon="⚠️"
-          fi
-          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          {
-            echo "$icon *Security scan* — *OpenMetadata Repo* on branch \`${{ github.ref_name }}\`"
-            echo "• Vulnerability scan (Retire.js): $retire_icon"
-            echo "• Security scan (Snyk): $snyk_icon"
-            echo "<$run_url|Open run details>"
-            if [ -f security-report/_slack.txt ]; then
-              echo
-              cat security-report/_slack.txt
-            fi
-          } > slack_body.txt
-          jq -Rs '{text: ., blocks: [{type: "section", text: {type: "mrkdwn", text: .}}]}' slack_body.txt > payload.json
+          python3 - <<'PY' > payload.json
+          import json, os, pathlib
+
+          retire = os.environ["RETIRE_RESULT"]
+          snyk = os.environ["SNYK_RESULT"]
+          ref_name = os.environ["REF_NAME"]
+          run_url = os.environ["RUN_URL"]
+
+          def status_icon(s):
+              return {"success": "✅", "cancelled": "⚠️ (cancelled)", "skipped": "⚠️ (skipped)"}.get(s, "❌")
+
+          if retire == "success" and snyk == "success":
+              overall = "🟢"
+          elif retire == "failure" or snyk == "failure":
+              overall = "🚨"
+          else:
+              overall = "⚠️"
+
+          header = (
+              f"{overall}  *Security scan* — *OpenMetadata Repo*\n"
+              f"_branch_ `{ref_name}`  ·  <{run_url}|Open run details>\n"
+              f"• Vulnerability scan (Retire.js): {status_icon(retire)}\n"
+              f"• Security scan (Snyk): {status_icon(snyk)}"
+          )
+
+          blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": header}}]
+
+          slack_path = pathlib.Path("security-report/_slack.txt")
+          if slack_path.exists():
+              text = slack_path.read_text().strip()
+              sections = [s.strip() for s in text.split("\n\n") if s.strip()]
+              if sections:
+                  blocks.append({"type": "divider"})
+                  # Slack: max 50 blocks per message; each section text ≤ 3000 chars.
+                  for section in sections[:48]:
+                      if len(section) > 2900:
+                          section = section[:2850].rstrip() + "\n_…truncated, see Job Summary_"
+                      blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": section}})
+
+          fallback = f"{overall} Security scan — OpenMetadata Repo on {ref_name}. {run_url}"
+          print(json.dumps({"text": fallback, "blocks": blocks}))
+          PY
 
       - name: Send Slack Notification
+        if: always() && steps.slack-payload.outcome == 'success'
         uses: slackapi/slack-github-action@v1.27.1
         with:
           channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
