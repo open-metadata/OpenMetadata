@@ -34,8 +34,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.config import (
+    get_exclude_columns,
+    get_include_columns,
     get_profile_sample_config,
     get_sample_data_count_config,
+    get_sample_query,
 )
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.partition import get_partition_details
@@ -145,6 +148,9 @@ class BaseTestSuiteRunner:
                     default_sample_data_count=SAMPLE_DATA_DEFAULT_COUNT,
                 ),
                 partition_details=get_partition_details(self.entity),
+                sample_query=get_sample_query(entity=self.entity, entity_config=None),
+                include_columns=get_include_columns(self.entity, entity_config=None) or [],
+                exclude_columns=get_exclude_columns(self.entity, entity_config=None) or [],
             ),
         )
 
