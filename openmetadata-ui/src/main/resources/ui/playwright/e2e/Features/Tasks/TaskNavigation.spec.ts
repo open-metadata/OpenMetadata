@@ -96,36 +96,33 @@ test.describe('Task Navigation - Activity Feed Widget', () => {
     await waitForPageLoaded(page);
 
     const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
+    await expect(feedWidget).toBeVisible();
 
-    if (await feedWidget.isVisible()) {
-      const taskItem = feedWidget
-        .locator(
-          '[data-testid="task-feed-card"], [data-testid="message-container"]'
-        )
-        .first();
+    const taskItem = feedWidget
+      .locator(
+        '[data-testid="task-feed-card"], [data-testid="message-container"]'
+      )
+      .first();
+    await expect(taskItem).toBeVisible();
 
-      if (await taskItem.isVisible()) {
-        const taskLink = taskItem.getByTestId('redirect-task-button-link');
+    const taskLink = taskItem.getByTestId('redirect-task-button-link');
+    await expect(taskLink).toBeVisible();
 
-        if (await taskLink.isVisible()) {
-          await taskLink.click();
-          await waitForPageLoaded(page);
+    await taskLink.click();
+    await waitForPageLoaded(page);
 
-          await expect(page.getByText('No data available')).not.toBeVisible();
-          await expect(page.locator('.error-page')).not.toBeVisible();
+    await expect(page.getByText('No data available')).not.toBeVisible();
+    await expect(page.locator('.error-page')).not.toBeVisible();
 
-          expect(page.url()).not.toMatch(/\/table\/TASK-/);
+    expect(page.url()).not.toMatch(/\/table\/TASK-/);
 
-          const entityFqn = table.entityResponseData?.fullyQualifiedName;
-          if (entityFqn) {
-            const isOnEntityPage =
-              page.url().includes(encodeURIComponent(entityFqn)) ||
-              page.url().includes('activity_feed');
+    const entityFqn = table.entityResponseData?.fullyQualifiedName;
+    if (entityFqn) {
+      const isOnEntityPage =
+        page.url().includes(encodeURIComponent(entityFqn)) ||
+        page.url().includes('activity_feed');
 
-            expect(isOnEntityPage).toBe(true);
-          }
-        }
-      }
+      expect(isOnEntityPage).toBe(true);
     }
   });
 
@@ -138,30 +135,24 @@ test.describe('Task Navigation - Activity Feed Widget', () => {
     await waitForPageLoaded(page);
 
     const tasksTab = page.getByRole('button', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
+    await expect(tasksTab).toBeVisible();
+    await tasksTab.click();
+    await waitForPageLoaded(page);
 
     const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    await expect(taskCard).toBeVisible();
 
-    if (await taskCard.isVisible()) {
-      const taskLink = taskCard.getByTestId('redirect-task-button-link');
+    const taskLink = taskCard.getByTestId('redirect-task-button-link');
+    await expect(taskLink).toBeVisible();
 
-      if (await taskLink.isVisible()) {
-        const href = await taskLink.getAttribute('href');
+    const href = await taskLink.getAttribute('href');
+    expect(href).not.toMatch(/\/table\/TASK-/);
+    expect(href).not.toMatch(/\/TASK-\d{5}$/);
 
-        if (href) {
-          expect(href).not.toMatch(/\/table\/TASK-/);
-          expect(href).not.toMatch(/\/TASK-\d{5}$/);
-        }
+    await taskLink.click();
+    await waitForPageLoaded(page);
 
-        await taskLink.click();
-        await waitForPageLoaded(page);
-
-        await expect(page.getByText('No data available')).not.toBeVisible();
-      }
-    }
+    await expect(page.getByText('No data available')).not.toBeVisible();
   });
 });
 
@@ -364,27 +355,24 @@ test.describe('Task Navigation - Notification Box', () => {
     await waitForPageLoaded(page);
 
     const notificationBell = page.getByTestId('task-notifications');
+    await expect(notificationBell).toBeVisible();
+    await notificationBell.click();
 
-    if (await notificationBell.isVisible()) {
-      await notificationBell.click();
+    const notificationBox = page.locator('.notification-box');
+    await expect(notificationBox).toBeVisible();
 
-      const notificationBox = page.locator('.notification-box');
-      await expect(notificationBox).toBeVisible();
+    const tasksTab = notificationBox.getByText('Tasks', { exact: false });
+    await expect(tasksTab).toBeVisible();
+    await tasksTab.click();
+    await waitForPageLoaded(page);
 
-      const tasksTab = notificationBox.getByText('Tasks', { exact: false });
+    const taskItems = notificationBox.locator(
+      '[data-testid^="notification-link-"], .notification-dropdown-list-btn'
+    );
 
-      if (await tasksTab.isVisible()) {
-        await tasksTab.click();
-        await waitForPageLoaded(page);
-
-        const taskItems = notificationBox.locator(
-          '[data-testid^="notification-link-"], .notification-dropdown-list-btn'
-        );
-
-        const count = await taskItems.count();
-        expect(count).toBeGreaterThanOrEqual(0);
-      }
-    }
+    await expect
+      .poll(async () => taskItems.count(), { timeout: 10_000 })
+      .toBeGreaterThanOrEqual(1);
   });
 
   test('clicking task notification should navigate correctly', async ({
@@ -395,33 +383,27 @@ test.describe('Task Navigation - Notification Box', () => {
     await waitForPageLoaded(page);
 
     const notificationBell = page.getByTestId('task-notifications');
+    await expect(notificationBell).toBeVisible();
+    await notificationBell.click();
 
-    if (await notificationBell.isVisible()) {
-      await notificationBell.click();
+    const notificationBox = page.locator('.notification-box');
+    await expect(notificationBox).toBeVisible();
 
-      const notificationBox = page.locator('.notification-box');
-      await expect(notificationBox).toBeVisible();
+    const tasksTab = notificationBox.getByText('Tasks', { exact: false });
+    await expect(tasksTab).toBeVisible();
+    await tasksTab.click();
+    await waitForPageLoaded(page);
 
-      const tasksTab = notificationBox.getByText('Tasks', { exact: false });
+    const taskLink = notificationBox
+      .locator('[data-testid^="notification-link-"]')
+      .first();
+    await expect(taskLink).toBeVisible();
 
-      if (await tasksTab.isVisible()) {
-        await tasksTab.click();
-        await waitForPageLoaded(page);
+    await taskLink.click();
+    await waitForPageLoaded(page);
 
-        const taskLink = notificationBox
-          .locator('[data-testid^="notification-link-"]')
-          .first();
-
-        if (await taskLink.isVisible()) {
-          await taskLink.click();
-          await waitForPageLoaded(page);
-
-          await expect(page.getByText('No data available')).not.toBeVisible();
-
-          expect(page.url()).not.toMatch(/\/table\/TASK-/);
-        }
-      }
-    }
+    await expect(page.getByText('No data available')).not.toBeVisible();
+    expect(page.url()).not.toMatch(/\/table\/TASK-/);
   });
 });
 

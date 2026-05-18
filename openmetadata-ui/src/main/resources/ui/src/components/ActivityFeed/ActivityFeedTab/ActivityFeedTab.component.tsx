@@ -310,13 +310,14 @@ export const ActivityFeedTab = ({
       );
     } else if (threadIdRefetchRef.current !== threadId) {
       threadIdRefetchRef.current = threadId;
+      setTaskFilter(ThreadTaskStatus.Open);
       getFeedData(
         feedFilter,
         undefined,
         threadType,
         entityType,
         fqn,
-        taskFilter
+        ThreadTaskStatus.Open
       );
     } else {
       setSearchParams(
