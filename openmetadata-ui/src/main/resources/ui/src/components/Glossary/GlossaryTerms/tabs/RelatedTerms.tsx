@@ -44,7 +44,6 @@ import {
   getGlossaryTermRelationSettings,
   searchGlossaryTermsPaginated,
 } from '../../../../rest/glossaryAPI';
-import { getTextFromHtmlString } from '../../../../utils/BlockEditorUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
@@ -104,7 +103,7 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
       )}
       {entity.description && (
         <Typography as="p" size="text-xs">
-          {getTextFromHtmlString(entity.description)}
+          {entity.description}
         </Typography>
       )}
     </div>
