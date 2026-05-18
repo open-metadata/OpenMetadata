@@ -540,7 +540,8 @@ SNOWFLAKE_ACCESS_HISTORY_LINEAGE = textwrap.dedent(
             ah.QUERY_ID,
             ah.QUERY_START_TIME,
             ah.DIRECT_OBJECTS_ACCESSED,
-            ah.OBJECTS_MODIFIED
+            ah.OBJECTS_MODIFIED,
+            qh.QUERY_TEXT
         FROM {account_usage}.ACCESS_HISTORY ah
         JOIN {account_usage}.QUERY_HISTORY qh
             ON ah.QUERY_ID = qh.QUERY_ID
@@ -557,7 +558,8 @@ SNOWFLAKE_ACCESS_HISTORY_LINEAGE = textwrap.dedent(
             upstream.value:"objectDomain"::STRING AS UPSTREAM_DOMAIN,
             downstream.value:"objectName"::STRING AS DOWNSTREAM_TABLE,
             downstream.value:"objectDomain"::STRING AS DOWNSTREAM_DOMAIN,
-            MAX_BY(ah.QUERY_ID, ah.QUERY_START_TIME) AS QUERY_ID
+            MAX_BY(ah.QUERY_ID, ah.QUERY_START_TIME) AS QUERY_ID,
+            MAX_BY(ah.QUERY_TEXT, ah.QUERY_START_TIME) AS QUERY_TEXT
         FROM access_history_filtered ah,
              LATERAL FLATTEN(input => ah.DIRECT_OBJECTS_ACCESSED) upstream,
              LATERAL FLATTEN(input => ah.OBJECTS_MODIFIED) downstream
@@ -601,14 +603,12 @@ SNOWFLAKE_ACCESS_HISTORY_LINEAGE = textwrap.dedent(
         te.DOWNSTREAM_TABLE,
         te.DOWNSTREAM_DOMAIN,
         te.QUERY_ID,
-        qh_repr.QUERY_TEXT,
+        te.QUERY_TEXT,
         ce.COLUMN_PAIRS
     FROM table_edges te
     LEFT JOIN column_edges_grouped ce
         ON te.UPSTREAM_TABLE = ce.UPSTREAM_TABLE
         AND te.DOWNSTREAM_TABLE = ce.DOWNSTREAM_TABLE
-    LEFT JOIN {account_usage}.QUERY_HISTORY qh_repr
-        ON te.QUERY_ID = qh_repr.QUERY_ID
     """
 )
 

@@ -14,7 +14,7 @@ Snowflake lineage module
 
 import json
 import traceback
-from typing import Iterable, Iterator, List, Optional, Tuple, Union  # noqa: UP035
+from typing import Any, Iterable, Iterator, List, Optional, Tuple, Union  # noqa: UP035
 
 from cachetools import LRUCache
 from sqlalchemy import text
@@ -250,6 +250,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             filter_condition=self._build_filter_condition_clause(),
         )
         emitted = 0
+        emitted_with_sql = 0
         skipped = 0
         try:
             for engine in self.get_engine():
@@ -265,13 +266,17 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
                             skipped += 1
                             continue
                         emitted += 1
+                        if row.query_text:
+                            emitted_with_sql += 1
                         yield Either(right=edge)  # pyright: ignore[reportCallIssue]
         except Exception as exc:
             logger.warning("Failed to extract lineage from ACCESS_HISTORY: %s", exc)
             logger.debug(traceback.format_exc())
         logger.info(
-            "ACCESS_HISTORY lineage: emitted %d edges, skipped %d (unresolvable downstream/upstream tables)",
+            "ACCESS_HISTORY lineage: emitted %d edges (%d with SQL text), "
+            "skipped %d (unresolvable downstream/upstream tables)",
             emitted,
+            emitted_with_sql,
             skipped,
         )
 
@@ -503,10 +508,11 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         return stage_location.lower().startswith(EXTERNAL_STAGE_PREFIXES)
 
     @staticmethod
-    def _row_to_lower_dict(row: object) -> dict:
+    def _row_to_lower_dict(row: Any) -> dict:
         """
         Snowflake returns uppercase column names; normalize to a lower-cased
-        dict so the Pydantic row models can resolve fields uniformly.
+        dict so the Pydantic row models can resolve fields uniformly. Accepts
+        anything row-like: a SQLAlchemy `Row` (has `_asdict`) or a plain dict.
         """
-        raw = row._asdict() if hasattr(row, "_asdict") else dict(row)  # pyright: ignore[reportAttributeAccessIssue]
+        raw = row._asdict() if hasattr(row, "_asdict") else dict(row)
         return {k.lower(): v for k, v in raw.items()}

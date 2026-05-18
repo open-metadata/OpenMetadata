@@ -156,8 +156,9 @@ def test_combined_lineage_sql_streams_one_row_per_edge():
         end_time="2025-01-31",
         filter_condition="",
     )
-    # Server-side dedup for table edges
+    # Server-side dedup for table edges (both QUERY_ID and QUERY_TEXT pinned to the same row)
     assert "MAX_BY(ah.QUERY_ID, ah.QUERY_START_TIME)" in rendered
+    assert "MAX_BY(ah.QUERY_TEXT, ah.QUERY_START_TIME)" in rendered
     # Column pairs aggregated server-side — no client map needed
     assert "ARRAY_AGG(DISTINCT OBJECT_CONSTRUCT(" in rendered
     assert "COLUMN_PAIRS" in rendered
@@ -166,9 +167,10 @@ def test_combined_lineage_sql_streams_one_row_per_edge():
     assert "directSources" in rendered
     # LEFT JOIN binds column array to its table edge
     assert "LEFT JOIN column_edges_grouped" in rendered
-    # SQL text is joined back from QUERY_HISTORY on the representative query_id
-    assert "qh_repr.QUERY_TEXT" in rendered
-    assert "LEFT JOIN SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY qh_repr" in rendered
+    # QUERY_TEXT now flows from the single inner JOIN inside access_history_filtered,
+    # not a second LEFT JOIN to QUERY_HISTORY — drop the qh_repr indirection.
+    assert "te.QUERY_TEXT" in rendered
+    assert "qh_repr" not in rendered
     # No per-downstream array caps
     assert "ARRAY_SLICE" not in rendered
 
