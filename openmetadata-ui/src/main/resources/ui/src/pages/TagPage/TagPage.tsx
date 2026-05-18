@@ -69,7 +69,6 @@ import {
   BLACK_COLOR,
   DE_ACTIVE_COLOR,
   ROUTES,
-  TIER_CATEGORY,
 } from '../../constants/constants';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { TAGS_DOCS } from '../../constants/docs.constants';

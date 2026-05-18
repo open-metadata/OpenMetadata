@@ -19,6 +19,7 @@ import {
   buildDataQualityDashboardFilters,
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
+  buildMustEsFilterForTier,
 } from '../utils/DataQuality/DataQualityUtils';
 import {
   fetchCountOfIncidentStatusTypeByDays,
@@ -38,6 +39,7 @@ jest.mock('./testAPI', () => ({
 jest.mock('../utils/DataQuality/DataQualityUtils', () => ({
   buildMustEsFilterForOwner: jest.fn(),
   buildMustEsFilterForTags: jest.fn(),
+  buildMustEsFilterForTier: jest.fn(),
   buildDataQualityDashboardFilters: jest.fn().mockReturnValue([]),
 }));
 
@@ -572,26 +574,29 @@ describe('dataQualityDashboardAPI', () => {
     it('should call getDataQualityReport with correct query when tags and tier are provided', async () => {
       const status = TestCaseResolutionStatusTypes.New;
       const filters = { tags: ['tag1'], tier: ['tier1'] };
-      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce({
+      const tagsFilter = {
         nested: {
           path: 'tags',
           query: {
             bool: {
-              must: [
-                { match: { 'tags.tagFQN': 'tag1' } },
-                { match: { 'tags.tagFQN': 'tier1' } },
-              ],
+              must: [{ match: { 'tags.tagFQN': 'tag1' } }],
             },
           },
         },
-      });
+      };
+      const tierFilter = {
+        bool: {
+          should: [{ term: { 'tier.tagFQN': 'tier1' } }],
+          minimum_should_match: 1,
+        },
+      };
+      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce(tagsFilter);
+      (buildMustEsFilterForTier as jest.Mock).mockReturnValueOnce(tierFilter);
 
       await fetchCountOfIncidentStatusTypeByDays(status, filters);
 
-      expect(buildMustEsFilterForTags).toHaveBeenCalledWith(
-        ['tag1', 'tier1'],
-        true
-      );
+      expect(buildMustEsFilterForTags).toHaveBeenCalledWith(['tag1'], true);
+      expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['tier1'], true);
       expect(getDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
@@ -606,19 +611,8 @@ describe('dataQualityDashboardAPI', () => {
                     },
                   },
                 },
-                {
-                  nested: {
-                    path: 'tags',
-                    query: {
-                      bool: {
-                        must: [
-                          { match: { 'tags.tagFQN': 'tag1' } },
-                          { match: { 'tags.tagFQN': 'tier1' } },
-                        ],
-                      },
-                    },
-                  },
-                },
+                tagsFilter,
+                tierFilter,
               ],
             },
           },
@@ -632,32 +626,36 @@ describe('dataQualityDashboardAPI', () => {
     it('should call getDataQualityReport with correct query when all filters are provided', async () => {
       const status = TestCaseResolutionStatusTypes.Resolved;
       const filters = { ownerFqn: 'owner1', tags: ['tag1'], tier: ['tier1'] };
-      (buildMustEsFilterForOwner as jest.Mock).mockReturnValueOnce({
+      const ownerFilter = {
         term: {
           'owners.fullyQualifiedName': 'owner1',
         },
-      });
-      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce({
+      };
+      const tagsFilter = {
         nested: {
           path: 'tags',
           query: {
             bool: {
-              must: [
-                { match: { 'tags.tagFQN': 'tag1' } },
-                { match: { 'tags.tagFQN': 'tier1' } },
-              ],
+              must: [{ match: { 'tags.tagFQN': 'tag1' } }],
             },
           },
         },
-      });
+      };
+      const tierFilter = {
+        bool: {
+          should: [{ term: { 'tier.tagFQN': 'tier1' } }],
+          minimum_should_match: 1,
+        },
+      };
+      (buildMustEsFilterForOwner as jest.Mock).mockReturnValueOnce(ownerFilter);
+      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce(tagsFilter);
+      (buildMustEsFilterForTier as jest.Mock).mockReturnValueOnce(tierFilter);
 
       await fetchCountOfIncidentStatusTypeByDays(status, filters);
 
       expect(buildMustEsFilterForOwner).toHaveBeenCalledWith('owner1', true);
-      expect(buildMustEsFilterForTags).toHaveBeenCalledWith(
-        ['tag1', 'tier1'],
-        true
-      );
+      expect(buildMustEsFilterForTags).toHaveBeenCalledWith(['tag1'], true);
+      expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['tier1'], true);
       expect(getDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
@@ -672,24 +670,9 @@ describe('dataQualityDashboardAPI', () => {
                     },
                   },
                 },
-                {
-                  term: {
-                    'owners.fullyQualifiedName': 'owner1',
-                  },
-                },
-                {
-                  nested: {
-                    path: 'tags',
-                    query: {
-                      bool: {
-                        must: [
-                          { match: { 'tags.tagFQN': 'tag1' } },
-                          { match: { 'tags.tagFQN': 'tier1' } },
-                        ],
-                      },
-                    },
-                  },
-                },
+                ownerFilter,
+                tagsFilter,
+                tierFilter,
               ],
             },
           },
@@ -833,26 +816,29 @@ describe('dataQualityDashboardAPI', () => {
         startTs: 1729073964962,
         endTs: 1729678764965,
       };
-      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce({
+      const tagsFilter = {
         nested: {
           path: 'tags',
           query: {
             bool: {
-              must: [
-                { match: { 'tags.tagFQN': 'tag1' } },
-                { match: { 'tags.tagFQN': 'tier1' } },
-              ],
+              must: [{ match: { 'tags.tagFQN': 'tag1' } }],
             },
           },
         },
-      });
+      };
+      const tierFilter = {
+        bool: {
+          should: [{ term: { 'tier.tagFQN': 'tier1' } }],
+          minimum_should_match: 1,
+        },
+      };
+      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce(tagsFilter);
+      (buildMustEsFilterForTier as jest.Mock).mockReturnValueOnce(tierFilter);
 
       await fetchIncidentTimeMetrics(type, filters);
 
-      expect(buildMustEsFilterForTags).toHaveBeenCalledWith(
-        ['tag1', 'tier1'],
-        true
-      );
+      expect(buildMustEsFilterForTags).toHaveBeenCalledWith(['tag1'], true);
+      expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['tier1'], true);
       expect(getDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
@@ -876,19 +862,8 @@ describe('dataQualityDashboardAPI', () => {
                     },
                   },
                 },
-                {
-                  nested: {
-                    path: 'tags',
-                    query: {
-                      bool: {
-                        must: [
-                          { match: { 'tags.tagFQN': 'tag1' } },
-                          { match: { 'tags.tagFQN': 'tier1' } },
-                        ],
-                      },
-                    },
-                  },
-                },
+                tagsFilter,
+                tierFilter,
               ],
             },
           },
@@ -908,30 +883,33 @@ describe('dataQualityDashboardAPI', () => {
         startTs: 1729073964962,
         endTs: 1729678764965,
       };
-      (buildMustEsFilterForOwner as jest.Mock).mockReturnValueOnce(
-        testCaseData.ownerExpectedQuery
-      );
-      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce({
+      const tagsFilter = {
         nested: {
           path: 'tags',
           query: {
             bool: {
-              must: [
-                { match: { 'tags.tagFQN': 'tag1' } },
-                { match: { 'tags.tagFQN': 'tier1' } },
-              ],
+              must: [{ match: { 'tags.tagFQN': 'tag1' } }],
             },
           },
         },
-      });
+      };
+      const tierFilter = {
+        bool: {
+          should: [{ term: { 'tier.tagFQN': 'tier1' } }],
+          minimum_should_match: 1,
+        },
+      };
+      (buildMustEsFilterForOwner as jest.Mock).mockReturnValueOnce(
+        testCaseData.ownerExpectedQuery
+      );
+      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce(tagsFilter);
+      (buildMustEsFilterForTier as jest.Mock).mockReturnValueOnce(tierFilter);
 
       await fetchIncidentTimeMetrics(type, filters);
 
       expect(buildMustEsFilterForOwner).toHaveBeenCalledWith('owner1', true);
-      expect(buildMustEsFilterForTags).toHaveBeenCalledWith(
-        ['tag1', 'tier1'],
-        true
-      );
+      expect(buildMustEsFilterForTags).toHaveBeenCalledWith(['tag1'], true);
+      expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['tier1'], true);
       expect(getDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
@@ -955,24 +933,9 @@ describe('dataQualityDashboardAPI', () => {
                     },
                   },
                 },
-                {
-                  term: {
-                    'owners.fullyQualifiedName': 'owner1',
-                  },
-                },
-                {
-                  nested: {
-                    path: 'tags',
-                    query: {
-                      bool: {
-                        must: [
-                          { match: { 'tags.tagFQN': 'tag1' } },
-                          { match: { 'tags.tagFQN': 'tier1' } },
-                        ],
-                      },
-                    },
-                  },
-                },
+                testCaseData.ownerExpectedQuery,
+                tagsFilter,
+                tierFilter,
               ],
             },
           },
@@ -1098,26 +1061,29 @@ describe('dataQualityDashboardAPI', () => {
     it('should call getDataQualityReport with correct query when tags and tier are provided', async () => {
       const status = TestCaseStatus.Aborted;
       const filters = { tags: ['tag1'], tier: ['tier1'] };
-      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce({
+      const tagsFilter = {
         nested: {
           path: 'tags',
           query: {
             bool: {
-              must: [
-                { match: { 'tags.tagFQN': 'tag1' } },
-                { match: { 'tags.tagFQN': 'tier1' } },
-              ],
+              must: [{ match: { 'tags.tagFQN': 'tag1' } }],
             },
           },
         },
-      });
+      };
+      const tierFilter = {
+        bool: {
+          should: [{ term: { 'tier.tagFQN': 'tier1' } }],
+          minimum_should_match: 1,
+        },
+      };
+      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce(tagsFilter);
+      (buildMustEsFilterForTier as jest.Mock).mockReturnValueOnce(tierFilter);
 
       await fetchTestCaseStatusMetricsByDays(status, filters);
 
-      expect(buildMustEsFilterForTags).toHaveBeenCalledWith(
-        ['tag1', 'tier1'],
-        true
-      );
+      expect(buildMustEsFilterForTags).toHaveBeenCalledWith(['tag1'], true);
+      expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['tier1'], true);
       expect(getDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
@@ -1132,19 +1098,8 @@ describe('dataQualityDashboardAPI', () => {
                     },
                   },
                 },
-                {
-                  nested: {
-                    path: 'tags',
-                    query: {
-                      bool: {
-                        must: [
-                          { match: { 'tags.tagFQN': 'tag1' } },
-                          { match: { 'tags.tagFQN': 'tier1' } },
-                        ],
-                      },
-                    },
-                  },
-                },
+                tagsFilter,
+                tierFilter,
               ],
             },
           },
@@ -1158,32 +1113,36 @@ describe('dataQualityDashboardAPI', () => {
     it('should call getDataQualityReport with correct query when all filters are provided', async () => {
       const status = TestCaseStatus.Failed;
       const filters = { ownerFqn: 'owner1', tags: ['tag1'], tier: ['tier1'] };
-      (buildMustEsFilterForOwner as jest.Mock).mockReturnValueOnce({
+      const ownerFilter = {
         term: {
           'owners.fullyQualifiedName': 'owner1',
         },
-      });
-      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce({
+      };
+      const tagsFilter = {
         nested: {
           path: 'tags',
           query: {
             bool: {
-              must: [
-                { match: { 'tags.tagFQN': 'tag1' } },
-                { match: { 'tags.tagFQN': 'tier1' } },
-              ],
+              must: [{ match: { 'tags.tagFQN': 'tag1' } }],
             },
           },
         },
-      });
+      };
+      const tierFilter = {
+        bool: {
+          should: [{ term: { 'tier.tagFQN': 'tier1' } }],
+          minimum_should_match: 1,
+        },
+      };
+      (buildMustEsFilterForOwner as jest.Mock).mockReturnValueOnce(ownerFilter);
+      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce(tagsFilter);
+      (buildMustEsFilterForTier as jest.Mock).mockReturnValueOnce(tierFilter);
 
       await fetchTestCaseStatusMetricsByDays(status, filters);
 
       expect(buildMustEsFilterForOwner).toHaveBeenCalledWith('owner1', true);
-      expect(buildMustEsFilterForTags).toHaveBeenCalledWith(
-        ['tag1', 'tier1'],
-        true
-      );
+      expect(buildMustEsFilterForTags).toHaveBeenCalledWith(['tag1'], true);
+      expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['tier1'], true);
       expect(getDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
@@ -1198,24 +1157,9 @@ describe('dataQualityDashboardAPI', () => {
                     },
                   },
                 },
-                {
-                  term: {
-                    'owners.fullyQualifiedName': 'owner1',
-                  },
-                },
-                {
-                  nested: {
-                    path: 'tags',
-                    query: {
-                      bool: {
-                        must: [
-                          { match: { 'tags.tagFQN': 'tag1' } },
-                          { match: { 'tags.tagFQN': 'tier1' } },
-                        ],
-                      },
-                    },
-                  },
-                },
+                ownerFilter,
+                tagsFilter,
+                tierFilter,
               ],
             },
           },
