@@ -22,4 +22,3 @@ registerFilterSeparationSuite({
   reindexEntityType: 'topic',
   entityFactory: () => new TopicClass(),
 });
-

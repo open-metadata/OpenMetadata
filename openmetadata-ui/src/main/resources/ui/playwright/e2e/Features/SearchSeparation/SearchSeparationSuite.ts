@@ -53,6 +53,7 @@ const CERTIFICATION_FQN = 'Certification.Gold';
  */
 export type FilterSeparationEntity = EntityClass & {
   entityResponseData: { id: string; fullyQualifiedName?: string };
+  serviceResponseData?: { name?: string; displayName?: string };
   create(apiContext: APIRequestContext): Promise<unknown>;
   delete(apiContext: APIRequestContext): Promise<unknown>;
   patch(opts: {
@@ -410,16 +411,30 @@ async function assertAllFourFiltersWork(
   glossaryTerm: GlossaryTerm,
   serviceDisplayName?: string
 ): Promise<void> {
-  const entityRecord = entity as unknown as Record<string, unknown>;
-  const svcData =
-    (entityRecord.serviceResponseData as Record<string, unknown> | undefined) ??
-    ((entity.entityResponseData as Record<string, unknown>).service as
-      | Record<string, unknown>
-      | undefined);
+  const svcData = entity.serviceResponseData;
   const serviceName =
     serviceDisplayName ||
-    (svcData?.displayName as string | undefined) ||
-    (svcData?.name as string | undefined);
+    svcData?.displayName ||
+    svcData?.name;
+
+  const filters: Array<{ label: string; key: string; value: string }> = [
+    { label: 'Tier', key: 'tier.tagFQN', value: TIER_FQN },
+    {
+      label: 'Certification',
+      key: 'certification.tagLabel.tagFQN',
+      value: CERTIFICATION_FQN,
+    },
+    {
+      label: 'Tag',
+      key: 'tags.tagFQN',
+      value: classificationTag.responseData.fullyQualifiedName,
+    },
+    {
+      label: 'Tag',
+      key: 'tags.tagFQN',
+      value: glossaryTerm.responseData.fullyQualifiedName,
+    },
+  ];
 
   if (serviceName) {
     await checkExploreSearchFilter(
@@ -429,66 +444,25 @@ async function assertAllFourFiltersWork(
       serviceName,
       entity
     );
-    await checkExploreFilterWithServiceBase(
-      page,
-      'Tier',
-      'tier.tagFQN',
-      TIER_FQN,
-      entity,
-      serviceName
-    );
-    await checkExploreFilterWithServiceBase(
-      page,
-      'Certification',
-      'certification.tagLabel.tagFQN',
-      CERTIFICATION_FQN,
-      entity,
-      serviceName
-    );
-    await checkExploreFilterWithServiceBase(
-      page,
-      'Tag',
-      'tags.tagFQN',
-      classificationTag.responseData.fullyQualifiedName,
-      entity,
-      serviceName
-    );
-    await checkExploreFilterWithServiceBase(
-      page,
-      'Tag',
-      'tags.tagFQN',
-      glossaryTerm.responseData.fullyQualifiedName,
-      entity,
-      serviceName
-    );
+    for (const filter of filters) {
+      await checkExploreFilterWithServiceBase(
+        page,
+        filter.label,
+        filter.key,
+        filter.value,
+        entity,
+        serviceName
+      );
+    }
   } else {
-    await checkExploreSearchFilter(
-      page,
-      'Tier',
-      'tier.tagFQN',
-      TIER_FQN,
-      entity
-    );
-    await checkExploreSearchFilter(
-      page,
-      'Certification',
-      'certification.tagLabel.tagFQN',
-      CERTIFICATION_FQN,
-      entity
-    );
-    await checkExploreSearchFilter(
-      page,
-      'Tag',
-      'tags.tagFQN',
-      classificationTag.responseData.fullyQualifiedName,
-      entity
-    );
-    await checkExploreSearchFilter(
-      page,
-      'Tag',
-      'tags.tagFQN',
-      glossaryTerm.responseData.fullyQualifiedName,
-      entity
-    );
+    for (const filter of filters) {
+      await checkExploreSearchFilter(
+        page,
+        filter.label,
+        filter.key,
+        filter.value,
+        entity
+      );
+    }
   }
 }
