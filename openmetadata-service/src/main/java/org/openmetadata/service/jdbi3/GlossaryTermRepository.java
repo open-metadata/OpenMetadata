@@ -525,9 +525,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     List<BulkResponse> failures = new ArrayList<>();
     List<BulkResponse> success = new ArrayList<>();
 
-    if (dryRun
-        && (CommonUtil.nullOrEmpty(glossary.getTags())
-            || CommonUtil.nullOrEmpty(request.getAssets()))) {
+    if (CommonUtil.nullOrEmpty(request.getAssets())) {
       // Nothing to Validate
       return result
           .withStatus(ApiStatus.SUCCESS)
@@ -738,11 +736,19 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   public BulkOperationResult bulkRemoveGlossaryToAssets(
       UUID glossaryTermId, AddGlossaryToAssetsRequest request) {
+    boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
+
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
 
     BulkOperationResult result =
-        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(dryRun);
     List<BulkResponse> success = new ArrayList<>();
+
+    if (nullOrEmpty(request.getAssets())) {
+      // Nothing to Validate
+      return result.withSuccessRequest(
+          List.of(new BulkResponse().withMessage("Nothing to Validate.")));
+    }
 
     // Validation for entityReferences
     EntityUtil.populateEntityReferences(request.getAssets());
@@ -755,15 +761,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       EntityInterface asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("id"));
 
-      daoCollection
-          .tagUsageDAO()
-          .deleteTagsByTagAndTargetEntity(
-              term.getFullyQualifiedName(), asset.getFullyQualifiedName());
+      // Skip the destructive tag_usage delete + ES update on dryRun so the preview
+      // surfaces the same lookup errors a real call would without mutating state.
+      if (!dryRun) {
+        daoCollection
+            .tagUsageDAO()
+            .deleteTagsByTagAndTargetEntity(
+                term.getFullyQualifiedName(), asset.getFullyQualifiedName());
+      }
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
-      // Update ES
-      searchRepository.updateEntity(ref);
+      if (!dryRun) {
+        // Update ES
+        searchRepository.updateEntity(ref);
+      }
     }
 
     return result.withSuccessRequest(success);
