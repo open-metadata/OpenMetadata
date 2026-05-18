@@ -205,31 +205,65 @@ class ContainerRepositoryParentValidationTest {
   }
 
   @Test
-  void maxReparentDescendants_defaultsTo10000WhenPropertyUnset() {
-    String previous = System.clearProperty("openmetadata.container.maxReparentDescendants");
+  void maxReparentDescendants_defaultsTo10000WhenNoOverride() {
+    ContainerRepository.clearMaxReparentDescendantsForTest();
+    String previousProperty = System.clearProperty("openmetadata.container.maxReparentDescendants");
     try {
       assertEquals(10_000, ContainerRepository.maxReparentDescendants());
       assertEquals(
           ContainerRepository.DEFAULT_MAX_REPARENT_DESCENDANTS,
           ContainerRepository.maxReparentDescendants());
     } finally {
-      if (previous != null) {
-        System.setProperty("openmetadata.container.maxReparentDescendants", previous);
+      if (previousProperty != null) {
+        System.setProperty("openmetadata.container.maxReparentDescendants", previousProperty);
       }
     }
   }
 
   @Test
-  void maxReparentDescendants_readsSystemPropertyOverride() {
-    String previous = System.setProperty("openmetadata.container.maxReparentDescendants", "42");
+  void maxReparentDescendants_testOverrideTakesPriorityOverSystemProperty() {
+    String previousProperty =
+        System.setProperty("openmetadata.container.maxReparentDescendants", "7");
     try {
+      // Without override, system property wins.
+      ContainerRepository.clearMaxReparentDescendantsForTest();
+      assertEquals(7, ContainerRepository.maxReparentDescendants());
+
+      // With override, override wins.
+      ContainerRepository.setMaxReparentDescendantsForTest(42);
       assertEquals(42, ContainerRepository.maxReparentDescendants());
     } finally {
-      if (previous == null) {
+      ContainerRepository.clearMaxReparentDescendantsForTest();
+      if (previousProperty == null) {
         System.clearProperty("openmetadata.container.maxReparentDescendants");
       } else {
-        System.setProperty("openmetadata.container.maxReparentDescendants", previous);
+        System.setProperty("openmetadata.container.maxReparentDescendants", previousProperty);
       }
+    }
+  }
+
+  @Test
+  void validateParent_shortCircuitsWhenParentUnchanged() {
+    // When the proposed parent has the same ID as the current parent, validateContainerParent
+    // must NOT fire Entity.getEntity (avoids a DB round-trip on every container PATCH/PUT
+    // that doesn't touch the parent).
+    UUID originalId = UUID.randomUUID();
+    UUID parentId = UUID.randomUUID();
+    Container original =
+        container(originalId, SERVICE_A_FQN + ".parent.child", SERVICE_A, SERVICE_A_FQN);
+    original.setParent(parentRef(parentId));
+    Container updated =
+        container(originalId, original.getFullyQualifiedName(), SERVICE_A, SERVICE_A_FQN);
+    updated.setParent(parentRef(parentId));
+
+    try (MockedStatic<Entity> mocked = mockStatic(Entity.class)) {
+      mocked
+          .when(
+              () ->
+                  Entity.getEntity(eq(CONTAINER), any(UUID.class), eq("service"), eq(NON_DELETED)))
+          .thenThrow(
+              new AssertionError("Entity.getEntity must not be called when parent is unchanged"));
+      assertDoesNotThrow(() -> ContainerRepository.validateContainerParent(original, updated));
     }
   }
 

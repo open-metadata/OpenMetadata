@@ -994,6 +994,15 @@ public interface CollectionDAO {
      * in the JSON document so column FQNs follow their container. {@code WHERE fqnHash LIKE
      * 'oldHash.%'} restricts the update to descendants — the moved row itself updates via the
      * standard {@code storeEntity} path after {@code setFullyQualifiedName} runs in memory.
+     *
+     * <p><b>On SQL interpolation:</b> mirrors the pre-existing {@link EntityDAO#updateFqn}
+     * pattern — values are spliced into the SQL via {@link String#format} because the
+     * connection-aware {@code @SqlUpdate} dispatcher takes the full statement as a single
+     * {@code <mySqlUpdate>}/{@code <postgresUpdate>} bind. The values come from server-side
+     * code (the FQN computed by {@code setFullyQualifiedName}, not user-supplied input), and
+     * {@link ListFilter#escapeApostrophe} handles the only SQL meta-character that can appear
+     * in a validated entity name. If a future code path lets arbitrary strings reach this
+     * method, swap to a parameterised form with {@code @Bind} parameters.
      */
     @Override
     default void updateFqn(String oldPrefix, String newPrefix) {

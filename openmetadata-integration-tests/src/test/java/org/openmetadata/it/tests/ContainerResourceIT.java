@@ -17,6 +17,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -40,6 +41,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.ContainerRepository;
 
 /**
  * Integration tests for Container entity operations.
@@ -3080,12 +3082,14 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   }
 
   @Test
+  @ResourceLock(value = ContainerRepository.MAX_REPARENT_DESCENDANTS_TEST_LOCK)
   void patch_containerParent_rejectsOversizedSubtree_400(TestNamespace ns) {
-    // Force a tiny threshold for this test only so we can exercise the guard without
-    // creating 10,000+ containers. The server reads this on every PATCH so the override
-    // takes effect immediately; restored in `finally` so concurrent tests see the default.
-    String property = "openmetadata.container.maxReparentDescendants";
-    String previous = System.setProperty(property, "2");
+    // Force a tiny threshold for this test only via a package-private test override. The
+    // override is read on every PATCH so it takes effect immediately. We do NOT use
+    // System.setProperty because the property is JVM-global and concurrent tests doing other
+    // re-parents would observe the artificially low value. @ResourceLock above serializes any
+    // test that mutates this override.
+    ContainerRepository.setMaxReparentDescendantsForTest(2);
     try {
       StorageService service = StorageServiceTestFactory.createS3(ns);
       Container parentA = createUnderService(ns, service, "bigA");
@@ -3115,20 +3119,16 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
       Container refetched = getEntityWithFields(child.getId().toString(), "parent");
       assertEquals(parentA.getId(), refetched.getParent().getId());
     } finally {
-      if (previous == null) {
-        System.clearProperty(property);
-      } else {
-        System.setProperty(property, previous);
-      }
+      ContainerRepository.clearMaxReparentDescendantsForTest();
     }
   }
 
   @Test
+  @ResourceLock(value = ContainerRepository.MAX_REPARENT_DESCENDANTS_TEST_LOCK)
   void patch_containerParent_allowsMoveAtConfiguredLimit_200(TestNamespace ns) {
     // Exactly at the limit (descendantCount == max) must still be allowed — the guard uses
-    // strict `>` not `>=`.
-    String property = "openmetadata.container.maxReparentDescendants";
-    String previous = System.setProperty(property, "2");
+    // strict `>` not `>=`. Same package-private test override mechanism as above.
+    ContainerRepository.setMaxReparentDescendantsForTest(2);
     try {
       StorageService service = StorageServiceTestFactory.createS3(ns);
       Container parentA = createUnderService(ns, service, "limA");
@@ -3141,11 +3141,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
       Container moved = patchEntity(child.getId().toString(), child);
       assertEquals(parentB.getId(), moved.getParent().getId());
     } finally {
-      if (previous == null) {
-        System.clearProperty(property);
-      } else {
-        System.setProperty(property, previous);
-      }
+      ContainerRepository.clearMaxReparentDescendantsForTest();
     }
   }
 

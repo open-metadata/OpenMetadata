@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -1053,17 +1054,53 @@ public class ContainerRepository extends EntityRepository<Container> {
    * row locks on the entire subtree. Past this threshold the operation is functionally a DoS
    * on the cluster, so we reject it at the front door and ask the operator to split the move.
    *
-   * <p>Overridable via the {@code openmetadata.container.maxReparentDescendants} system
-   * property for operators who have measured the impact and accept it; tests use the same
-   * knob to exercise the limit without creating thousands of fixtures.
+   * <p>Operator override: the {@code openmetadata.container.maxReparentDescendants} system
+   * property at JVM startup. Tests must not use that property because it is JVM-global and
+   * other concurrent tests would observe the artificially low value; use
+   * {@link #setMaxReparentDescendantsForTest(int)} instead, which is wrapped in {@code
+   * try/finally} and serialized by {@code @ResourceLock} on the affected tests.
    */
   static final int DEFAULT_MAX_REPARENT_DESCENDANTS = 10_000;
 
   private static final String MAX_REPARENT_DESCENDANTS_PROPERTY =
       "openmetadata.container.maxReparentDescendants";
 
+  /**
+   * Test-only override resource lock identifier. Both the override accessor and IT methods that
+   * mutate it carry {@code @ResourceLock(MAX_REPARENT_DESCENDANTS_TEST_LOCK)} so the JUnit
+   * platform serializes any test that touches the override, even though the class-level
+   * {@code @Execution(ExecutionMode.CONCURRENT)} otherwise runs tests in parallel.
+   */
+  public static final String MAX_REPARENT_DESCENDANTS_TEST_LOCK =
+      "container.maxReparentDescendants.override";
+
+  private static volatile Integer maxReparentDescendantsTestOverride;
+
   static int maxReparentDescendants() {
+    Integer override = maxReparentDescendantsTestOverride;
+    if (override != null) {
+      return override;
+    }
     return Integer.getInteger(MAX_REPARENT_DESCENDANTS_PROPERTY, DEFAULT_MAX_REPARENT_DESCENDANTS);
+  }
+
+  /**
+   * Test-only setter that bypasses the JVM-global system property so concurrent tests can run
+   * with isolated thresholds when paired with {@code @ResourceLock}. Always call {@link
+   * #clearMaxReparentDescendantsForTest()} in a {@code finally} block.
+   *
+   * <p><b>Not for production use.</b> Public so integration tests in
+   * {@code org.openmetadata.it.tests} can reach it; pair with
+   * {@code @ResourceLock(ContainerRepository.MAX_REPARENT_DESCENDANTS_TEST_LOCK)} on every
+   * test that calls this.
+   */
+  public static void setMaxReparentDescendantsForTest(int max) {
+    maxReparentDescendantsTestOverride = max;
+  }
+
+  /** Test-only counterpart to {@link #setMaxReparentDescendantsForTest(int)}. */
+  public static void clearMaxReparentDescendantsForTest() {
+    maxReparentDescendantsTestOverride = null;
   }
 
   /**
@@ -1084,12 +1121,24 @@ public class ContainerRepository extends EntityRepository<Container> {
    * as the {@code original} and that it doesn't form a cycle. Extracted as a static helper so
    * the validation logic is unit-testable without bootstrapping an {@link EntityUpdater}.
    *
+   * <p>Returns silently — without firing the DB lookup — when the parent reference hasn't
+   * changed between {@code original} and {@code updated}. This is the common case for any
+   * non-re-parent PATCH/PUT (description edits, tag additions, etc.) and we don't want to add
+   * a round-trip to every container update.
+   *
    * <p>Throws {@link IllegalArgumentException} when the parent points at a different service,
-   * at the container itself, or at a descendant of the container.
+   * at the container itself, or at a descendant of the container (FQN-prefix check). The
+   * {@link ContainerUpdater#validateAncestorChainCycle} caller adds a second-line ID-based
+   * traversal that doesn't depend on FQN state.
    */
   static void validateContainerParent(Container original, Container updated) {
     EntityReference newParent = updated.getParent();
     if (newParent == null) {
+      return;
+    }
+    UUID oldParentId = original.getParent() == null ? null : original.getParent().getId();
+    if (Objects.equals(oldParentId, newParent.getId())) {
+      // Parent hasn't changed — no need to resolve the reference or revalidate.
       return;
     }
     Container resolvedParent =
@@ -1186,9 +1235,54 @@ public class ContainerRepository extends EntityRepository<Container> {
      * Reject parent updates that would move the container under a different StorageService,
      * under itself, or under one of its descendants. Same-service-only is the user-confirmed
      * scope for #24294; cross-service moves are explicitly out of scope.
+     *
+     * <p>Two-pass cycle check:
+     * <ol>
+     *   <li>{@link ContainerRepository#validateContainerParent} runs an O(1) FQN-prefix check
+     *       against the resolved parent (no chain walk; correct for in-transaction views).
+     *   <li>{@link #validateAncestorChainCycle} then walks the actual CONTAINS edges by ID,
+     *       bypassing any FQN-derived cache, so the check holds even if a descendant's stored
+     *       FQN is briefly stale relative to the relationship table.
+     * </ol>
      */
     void validateParent() {
       validateContainerParent(original, updated);
+      EntityReference newParent = updated.getParent();
+      if (newParent == null) {
+        return;
+      }
+      UUID oldParentId = original.getParent() == null ? null : original.getParent().getId();
+      if (!Objects.equals(oldParentId, newParent.getId())) {
+        validateAncestorChainCycle(newParent.getId());
+      }
+    }
+
+    /**
+     * Walk the new parent's CONTAINS ancestor chain by ID and reject if we encounter
+     * {@code original.getId()} — i.e. the new parent is somewhere downstream of the container
+     * being moved. Cycle-safe via a visited set; bounded by the natural depth of the container
+     * hierarchy. Uses {@code relationshipDAO.findFrom} (direct DB) so a stale FQN on a
+     * descendant cannot bypass the check.
+     */
+    private void validateAncestorChainCycle(UUID newParentId) {
+      Set<UUID> visited = new HashSet<>();
+      visited.add(original.getId());
+      UUID current = newParentId;
+      while (current != null) {
+        if (!visited.add(current)) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.invalidContainerMove(
+                  original.getFullyQualifiedName(), updated.getParent().getFullyQualifiedName()));
+        }
+        List<CollectionDAO.EntityRelationshipRecord> parentRecords =
+            daoCollection
+                .relationshipDAO()
+                .findFrom(current, CONTAINER, Relationship.CONTAINS.ordinal(), CONTAINER);
+        if (parentRecords.isEmpty()) {
+          return;
+        }
+        current = parentRecords.get(0).getId();
+      }
     }
 
     /**
