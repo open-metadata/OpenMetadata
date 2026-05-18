@@ -97,6 +97,27 @@ public interface RdfStorageInterface {
   void clearGraph(String graphUri);
 
   /**
+   * Compact the underlying storage to reclaim disk space after large deletes.
+   *
+   * <p>Apache Jena TDB2 (the Fuseki backend) marks deleted triples as free space
+   * in its B+Tree indexes but never returns blocks to the OS, and its write-ahead
+   * journal grows monotonically until compaction is invoked. Without an explicit
+   * compaction call after {@code CLEAR ALL} / {@code DELETE WHERE}, the on-disk
+   * dataset keeps growing across re-index runs even though the live triple count
+   * stays bounded.
+   *
+   * <p>Implementations should run compaction synchronously (block until the task
+   * finishes on the server) so callers can safely resume writes against a fresh
+   * dataset directory. Failures should be logged and swallowed — a missing
+   * compaction degrades disk usage, not correctness, so it must not fail the
+   * caller's higher-level operation (e.g. the re-index run).
+   *
+   * <p>Default implementation is a no-op for storage backends that auto-compact
+   * or don't expose a compaction API.
+   */
+  default void compactStorage() {}
+
+  /**
    * Test connection to the remote store
    */
   boolean testConnection();

@@ -3335,6 +3335,23 @@ public class RdfRepository {
   }
 
   /**
+   * Trigger a backend storage compaction to physically reclaim disk space after
+   * large deletes. See {@link
+   * org.openmetadata.service.rdf.storage.RdfStorageInterface#compactStorage()}
+   * for why this is necessary on TDB2: {@code CLEAR ALL} only marks triples as
+   * deleted in TDB2's free-list — the on-disk dataset never shrinks until the
+   * compaction admin endpoint is called explicitly. Failures are swallowed at
+   * the storage layer; this is a best-effort housekeeping call.
+   */
+  public void compactStorage() {
+    if (!isEnabled()) {
+      return;
+    }
+    LOG.info("Compacting RDF storage to reclaim disk space");
+    storageService.compactStorage();
+  }
+
+  /**
    * Diagnostic method to dump all glossary term relations stored in RDF. Returns a map with
    * predicate URIs as keys and counts as values, plus sample triples.
    */

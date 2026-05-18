@@ -1,7 +1,7 @@
 # Apache Jena Fuseki Docker Image for OpenMetadata RDF Store
 FROM openjdk:17-jdk-slim
 
-ENV FUSEKI_VERSION=4.10.0
+ENV FUSEKI_VERSION=5.6.0
 ENV FUSEKI_HOME=/fuseki
 
 RUN apt-get update && apt-get install -y \

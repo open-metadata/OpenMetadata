@@ -258,6 +258,14 @@ public class RdfIndexApp extends AbstractNativeApplication {
     try {
       rdfRepository.clearAll();
       LOG.info("Cleared all RDF data");
+      // CLEAR ALL is a logical delete on TDB2: triples are marked free but the
+      // on-disk dataset and journal keep growing across runs. Compact NOW while
+      // the dataset is essentially empty so the next re-ingest writes into a
+      // fresh, small dataset directory. Without this, every recreateIndex run
+      // accumulates ~1x the dataset size on disk and the PVC eventually fills.
+      // Must run BEFORE reloadOntologies(), otherwise the ontology graph gets
+      // copied through compaction unnecessarily.
+      rdfRepository.compactStorage();
       // CLEAR ALL wipes the ontology and shapes graphs as well; reload them
       // before indexing starts so SPARQL queries that depend on the ontology
       // (inference, federated, etc.) work after the wipe.

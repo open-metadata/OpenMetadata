@@ -78,7 +78,9 @@ public class RdfGlossaryGraphIT {
   private static final HttpClient HTTP_CLIENT =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
-  private static final String FUSEKI_IMAGE = "stain/jena-fuseki:latest";
+  // See TestSuiteBootstrap for why we use secoresearch/fuseki:5.5.0 instead
+  // of the unmaintained stain/jena-fuseki image.
+  private static final String FUSEKI_IMAGE = "secoresearch/fuseki:5.5.0";
   private static final int FUSEKI_PORT = 3030;
   private static final String FUSEKI_DATASET = "openmetadata";
   private static final String FUSEKI_ADMIN_PASSWORD = "test-admin";
@@ -91,12 +93,12 @@ public class RdfGlossaryGraphIT {
     if (TestSuiteBootstrap.isFusekiEnabled()) {
       fusekiEndpoint = TestSuiteBootstrap.getFusekiEndpoint();
     } else {
+      // No FUSEKI_DATASET_1 here: that was stain-specific. The dataset is
+      // created via /$/datasets by JenaFusekiStorage.ensureDatasetExists().
       localFusekiContainer =
           new GenericContainer<>(DockerImageName.parse(FUSEKI_IMAGE))
               .withExposedPorts(FUSEKI_PORT)
               .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-              .withEnv("FUSEKI_DATASET_1", FUSEKI_DATASET)
-              .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m,uid=100,gid=101"))
               .waitingFor(
                   Wait.forHttp("/$/ping")
                       .forPort(FUSEKI_PORT)

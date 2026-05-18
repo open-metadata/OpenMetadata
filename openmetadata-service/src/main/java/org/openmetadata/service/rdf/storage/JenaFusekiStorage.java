@@ -44,6 +44,7 @@ import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.update.UpdateFactory;
 import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
 
 /**
@@ -74,6 +75,15 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private static final long REQUEST_TIMEOUT_MS = 10_000L;
   private static final int CIRCUIT_BREAKER_FAILURE_THRESHOLD = 5;
   private static final long CIRCUIT_BREAKER_COOLDOWN_MS = 30_000L;
+
+  // Compaction polls /$/tasks/{taskId} until the task reports finished. Fuseki
+  // does not stream progress, so we poll on a fixed cadence. Total budget is
+  // bounded so a hung compaction can never block the indexer indefinitely;
+  // exceeding the budget logs and returns — compaction may still be running on
+  // the server, the dataset stays operational, only the wait is abandoned.
+  private static final Duration COMPACT_HTTP_TIMEOUT = Duration.ofSeconds(30);
+  private static final long COMPACT_POLL_INTERVAL_MS = 2_000L;
+  private static final long COMPACT_MAX_WAIT_MS = 600_000L;
 
   // Dedicated virtual-thread executor for the timeout wrapper. We deliberately
   // do NOT share ForkJoinPool.commonPool: a timed-out Jena call continues to
@@ -160,57 +170,72 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   /**
+   * Parses a Fuseki endpoint URL into its server base URL and dataset name.
+   * Expected endpoint shape: {@code http://host:port/datasetName} (with optional
+   * trailing service path like {@code /sparql}). Returns null if the path
+   * doesn't carry a dataset name — callers should log and skip the admin
+   * operation rather than blow up.
+   */
+  private static DatasetEndpoint parseDatasetEndpoint(String endpoint) {
+    URI uri = URI.create(endpoint);
+    String path = uri.getPath();
+    if (path == null || path.isEmpty() || path.equals("/")) {
+      return null;
+    }
+    String datasetName = path.startsWith("/") ? path.substring(1) : path;
+    if (datasetName.contains("/")) {
+      datasetName = datasetName.split("/")[0];
+    }
+    String serverBaseUrl =
+        uri.getScheme() + "://" + uri.getHost() + (uri.getPort() > 0 ? ":" + uri.getPort() : "");
+    return new DatasetEndpoint(serverBaseUrl, datasetName);
+  }
+
+  private record DatasetEndpoint(String serverBaseUrl, String datasetName) {}
+
+  private static void addBasicAuth(
+      HttpRequest.Builder requestBuilder, String username, String password) {
+    if (username == null || password == null) {
+      return;
+    }
+    String auth = username + ":" + password;
+    String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
+    requestBuilder.header("Authorization", "Basic " + encodedAuth);
+  }
+
+  /**
    * Ensures the Fuseki dataset exists, creating it if necessary.
-   * Parses the endpoint URL to extract the server base URL and dataset name,
-   * then checks if the dataset exists and creates it if not.
    */
   private void ensureDatasetExists(String endpoint, String username, String password) {
     try {
-      // Parse endpoint to extract server base URL and dataset name
-      // Expected format: http://host:port/datasetName
-      URI uri = URI.create(endpoint);
-      String path = uri.getPath();
-      if (path == null || path.isEmpty() || path.equals("/")) {
+      DatasetEndpoint info = parseDatasetEndpoint(endpoint);
+      if (info == null) {
         LOG.warn("Could not extract dataset name from endpoint: {}", endpoint);
         return;
       }
 
-      // Remove leading slash and get dataset name
-      String datasetName = path.startsWith("/") ? path.substring(1) : path;
-      // Handle paths like /openmetadata/sparql -> extract just openmetadata
-      if (datasetName.contains("/")) {
-        datasetName = datasetName.split("/")[0];
-      }
+      LOG.info(
+          "Checking if Fuseki dataset '{}' exists at server {}",
+          info.datasetName(),
+          info.serverBaseUrl());
 
-      String serverBaseUrl =
-          uri.getScheme() + "://" + uri.getHost() + (uri.getPort() > 0 ? ":" + uri.getPort() : "");
-
-      LOG.info("Checking if Fuseki dataset '{}' exists at server {}", datasetName, serverBaseUrl);
-
-      // Check if dataset exists by querying the datasets admin endpoint
       HttpClient httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
-      String adminUrl = serverBaseUrl + "/$/datasets/" + datasetName;
+      String adminUrl = info.serverBaseUrl() + "/$/datasets/" + info.datasetName();
 
       HttpRequest.Builder requestBuilder = HttpRequest.newBuilder().uri(URI.create(adminUrl)).GET();
-
-      // Add basic auth if credentials provided
-      if (username != null && password != null) {
-        String auth = username + ":" + password;
-        String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
-        requestBuilder.header("Authorization", "Basic " + encodedAuth);
-      }
+      addBasicAuth(requestBuilder, username, password);
 
       HttpResponse<String> response =
           httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
 
       if (response.statusCode() == 200) {
-        LOG.info("Fuseki dataset '{}' already exists", datasetName);
+        LOG.info("Fuseki dataset '{}' already exists", info.datasetName());
         return;
       }
 
       if (response.statusCode() == 404) {
-        LOG.info("Fuseki dataset '{}' does not exist, creating it...", datasetName);
-        createDataset(serverBaseUrl, datasetName, username, password);
+        LOG.info("Fuseki dataset '{}' does not exist, creating it...", info.datasetName());
+        createDataset(info.serverBaseUrl(), info.datasetName(), username, password);
       } else {
         LOG.warn(
             "Unexpected response checking dataset existence: {} - {}",
@@ -242,12 +267,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
               .header("Content-Type", "application/x-www-form-urlencoded")
               .POST(HttpRequest.BodyPublishers.ofString(body));
 
-      // Add basic auth if credentials provided
-      if (username != null && password != null) {
-        String auth = username + ":" + password;
-        String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
-        requestBuilder.header("Authorization", "Basic " + encodedAuth);
-      }
+      addBasicAuth(requestBuilder, username, password);
 
       HttpResponse<String> response =
           httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
@@ -971,6 +991,154 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         recordFailure();
       }
       throw new RuntimeException("Failed to clear graph", e);
+    }
+  }
+
+  /**
+   * Triggers Fuseki's TDB2 compaction admin endpoint and blocks until the
+   * background task completes. {@code deleteOld=true} tells Fuseki to swap the
+   * dataset directory and delete the old one once the new copy is fully written
+   * — this is the only way to physically reclaim disk after {@code CLEAR ALL}
+   * or large {@code DELETE WHERE} updates, because TDB2 deletes are logical
+   * (free-list marker) and the write-ahead journal grows monotonically.
+   *
+   * <p>Failures are logged and swallowed. A missing or failing compaction
+   * degrades disk usage, not correctness — the caller's higher-level
+   * operation (re-index, ontology reload, …) must not fail just because the
+   * Fuseki admin endpoint is unreachable or returns a non-2xx.
+   */
+  @Override
+  public void compactStorage() {
+    DatasetEndpoint info = parseDatasetEndpoint(endpoint);
+    if (info == null) {
+      LOG.warn("Skipping compaction: could not parse dataset name from endpoint {}", endpoint);
+      return;
+    }
+    try {
+      String taskId = startCompaction(info);
+      if (taskId == null) {
+        return;
+      }
+      waitForCompactionTask(info.serverBaseUrl(), taskId);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to compact Fuseki dataset '{}' — disk reclamation skipped, "
+              + "indexing will continue but on-disk usage may stay elevated.",
+          info.datasetName(),
+          e);
+    }
+  }
+
+  private String startCompaction(DatasetEndpoint info) throws Exception {
+    HttpClient httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
+    String compactUrl =
+        info.serverBaseUrl() + "/$/compact/" + info.datasetName() + "?deleteOld=true";
+
+    HttpRequest.Builder requestBuilder =
+        HttpRequest.newBuilder()
+            .uri(URI.create(compactUrl))
+            .timeout(COMPACT_HTTP_TIMEOUT)
+            .header("Accept", "application/json")
+            .POST(HttpRequest.BodyPublishers.noBody());
+    addBasicAuth(requestBuilder, username, password);
+
+    HttpResponse<String> response =
+        httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+
+    if (response.statusCode() != 200) {
+      LOG.warn(
+          "Fuseki compaction request returned HTTP {}: {} — older Fuseki versions or "
+              + "configurations without the /$/compact admin endpoint will report this; "
+              + "disk reclamation skipped.",
+          response.statusCode(),
+          response.body());
+      return null;
+    }
+
+    String taskId = extractTaskId(response.body());
+    if (taskId == null) {
+      LOG.warn(
+          "Fuseki compaction response missing taskId; cannot wait for completion. Body: {}",
+          response.body());
+      return null;
+    }
+    LOG.info("Started Fuseki compaction for dataset '{}' (taskId={})", info.datasetName(), taskId);
+    return taskId;
+  }
+
+  private static String extractTaskId(String responseBody) {
+    if (responseBody == null || responseBody.isBlank()) {
+      return null;
+    }
+    try {
+      var node = JsonUtils.readTree(responseBody);
+      var taskNode = node.get("taskId");
+      return taskNode != null && !taskNode.isNull() ? taskNode.asText() : null;
+    } catch (Exception e) {
+      LOG.debug("Could not parse taskId from Fuseki compaction response: {}", responseBody, e);
+      return null;
+    }
+  }
+
+  private void waitForCompactionTask(String serverBaseUrl, String taskId)
+      throws InterruptedException {
+    HttpClient httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
+    String taskUrl = serverBaseUrl + "/$/tasks/" + taskId;
+    long deadline = System.currentTimeMillis() + COMPACT_MAX_WAIT_MS;
+
+    while (System.currentTimeMillis() < deadline) {
+      Thread.sleep(COMPACT_POLL_INTERVAL_MS);
+      HttpRequest.Builder pollBuilder =
+          HttpRequest.newBuilder()
+              .uri(URI.create(taskUrl))
+              .timeout(COMPACT_HTTP_TIMEOUT)
+              .header("Accept", "application/json")
+              .GET();
+      addBasicAuth(pollBuilder, username, password);
+      HttpResponse<String> pollResponse;
+      try {
+        pollResponse = httpClient.send(pollBuilder.build(), HttpResponse.BodyHandlers.ofString());
+      } catch (Exception e) {
+        LOG.warn("Polling Fuseki task {} failed; abandoning wait", taskId, e);
+        return;
+      }
+      if (pollResponse.statusCode() == 404) {
+        // Some Fuseki versions retire finished tasks from /$/tasks/{id} immediately.
+        // Treat 404-after-start as success — the task is no longer running.
+        LOG.info("Fuseki compaction task {} finished (task entry removed by server)", taskId);
+        return;
+      }
+      if (pollResponse.statusCode() != 200) {
+        LOG.warn(
+            "Polling Fuseki task {} returned HTTP {}: {}",
+            taskId,
+            pollResponse.statusCode(),
+            pollResponse.body());
+        return;
+      }
+      if (isTaskFinished(pollResponse.body())) {
+        LOG.info("Fuseki compaction task {} finished: {}", taskId, pollResponse.body());
+        return;
+      }
+    }
+    LOG.warn(
+        "Fuseki compaction task {} did not finish within {} ms; abandoning wait. "
+            + "The task may still be running on the server.",
+        taskId,
+        COMPACT_MAX_WAIT_MS);
+  }
+
+  private static boolean isTaskFinished(String responseBody) {
+    if (responseBody == null || responseBody.isBlank()) {
+      return false;
+    }
+    try {
+      var node = JsonUtils.readTree(responseBody);
+      var finished = node.get("finished");
+      return finished != null && !finished.isNull() && !finished.asText().isBlank();
+    } catch (Exception e) {
+      LOG.debug("Could not parse Fuseki task status response: {}", responseBody, e);
+      return false;
     }
   }
 

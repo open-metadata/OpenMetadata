@@ -2,7 +2,7 @@
 FROM openjdk:17-slim
 
 # Set Fuseki version and paths
-ENV FUSEKI_VERSION=4.10.0
+ENV FUSEKI_VERSION=5.6.0
 ENV FUSEKI_HOME=/fuseki
 ENV FUSEKI_BASE=/fuseki
 
