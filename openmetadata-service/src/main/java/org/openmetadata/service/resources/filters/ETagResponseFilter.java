@@ -31,17 +31,21 @@ import org.openmetadata.service.util.EntityETag;
  * revisits — the server still computes the entity body (we'd need a cheap version-stamp lookup
  * to truly skip the work, see design doc), but the network and client savings are immediate.
  *
- * <p>No {@code Cache-Control} header is emitted on purpose. Adding {@code must-revalidate,
- * private} caused the browser to actively HTTP-cache entity GETs and revalidate on
- * {@code page.reload()}; non-standard mutation paths that bump entity version without bumping
- * {@code updatedAt} (e.g. {@code DataContractRepository.updateLatestResult}) interact poorly
- * with browser-level conditional GETs and showed up as Playwright failures on the DataContract
- * specs. Our client-side Axios interceptor still gets the 304 win because it caches in memory
- * and sends {@code If-None-Match} explicitly — we just stop instructing the browser to do the
- * same.
+ * <p>{@code Cache-Control: no-store} is emitted alongside the ETag. Without an explicit
+ * Cache-Control, Chrome falls back to heuristic caching for ETag-bearing responses and reuses
+ * the cached body on a 304. That breaks any mutation path where the server returns 304 with
+ * stale-relative-to-the-client state — notably the relationship-only mutations
+ * ({@code addFollower}, {@code removeFollower}, {@code updateVote},
+ * {@code DataContractRepository.updateLatestResult}) that don't bump entity {@code version} or
+ * {@code updatedAt} and therefore leave the ETag unchanged. With {@code no-store} the browser
+ * never caches a body, so the only conditional-GET path is our explicit Axios interceptor,
+ * which already invalidates its cache on every mutation response. We keep emitting the ETag
+ * header so any future client (or our own interceptor) can opt in to conditional GETs.
  */
 @Provider
 public class ETagResponseFilter implements ContainerResponseFilter {
+
+  private static final String CACHE_CONTROL_VALUE = "no-store";
 
   @Override
   public void filter(
@@ -58,6 +62,7 @@ public class ETagResponseFilter implements ContainerResponseFilter {
         return;
       }
       responseContext.getHeaders().putSingle(HttpHeaders.ETAG, etag);
+      responseContext.getHeaders().putSingle(HttpHeaders.CACHE_CONTROL, CACHE_CONTROL_VALUE);
 
       String ifNoneMatch = requestContext.getHeaderString(HttpHeaders.IF_NONE_MATCH);
       if (ifNoneMatch == null) {

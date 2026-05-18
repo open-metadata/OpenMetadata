@@ -22,8 +22,12 @@ import Qs from 'qs';
 /**
  * Client-side ETag / If-None-Match handling for entity GETs.
  *
- * Pairs with the server-side ETagResponseFilter which emits an ETag header on entity GET
- * responses and short-circuits to 304 when If-None-Match matches. The flow:
+ * Pairs with the server-side ETagResponseFilter which emits ETag + Cache-Control: no-store on
+ * entity GET responses and short-circuits to 304 when If-None-Match matches. The server uses
+ * no-store specifically so the browser doesn't HTTP-cache and serve stale bodies on a 304 from
+ * mutation paths that don't bump the entity version (addFollower/updateVote/etc.); all
+ * conditional-GET logic lives here in the in-memory cache, which we invalidate on every
+ * non-GET response. The flow:
  *
  *   1. First GET to /tables/{fqn} → response with ETag header. We cache (etag, body) keyed
  *      by the canonical URL+params.
