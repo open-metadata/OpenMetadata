@@ -12,12 +12,14 @@
  */
 
 import { expect, test } from '@playwright/test';
+import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { getAuthContext, getToken } from '../../utils/common';
+import { getAuthContext, getToken, uuid } from '../../utils/common';
 import {
   addTermRelation,
   applyRelationTypeFilter,
+  clickDataModeAssetBadge,
   createApiContext,
   deleteEntities,
   disposeApiContext,
@@ -258,6 +260,90 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
       /[1-9]\d*\s*Relations?/i
     );
+  });
+});
+
+test.describe('Ontology Explorer - Data Mode Asset Spiral View', () => {
+  const spiralGlossary = new Glossary(`PWSpiral${uuid()}`);
+  const spiralTerm = new GlossaryTerm(spiralGlossary);
+  const spiralTable = new TableClass();
+
+  test.beforeAll(async ({ browser }) => {
+    const { page, apiContext } = await createApiContext(browser);
+    await spiralGlossary.create(apiContext);
+    await spiralTerm.create(apiContext);
+    await spiralTable.create(apiContext);
+    await spiralTable.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/tags/-',
+          value: {
+            tagFQN: spiralTerm.responseData.fullyQualifiedName,
+            labelType: 'Manual',
+            state: 'Confirmed',
+            source: 'Glossary',
+          },
+        },
+      ],
+    });
+    const glossaryFqn = spiralGlossary.responseData.fullyQualifiedName;
+    const termFqn = spiralTerm.responseData.fullyQualifiedName;
+    await expect(async () => {
+      const response = await apiContext.get(
+        '/api/v1/glossaryTerms/assets/counts',
+        { params: { parent: glossaryFqn } }
+      );
+      const counts = (await response.json()) as Record<string, number>;
+      expect(counts[termFqn] ?? 0).toBeGreaterThan(0);
+    }).toPass({ timeout: 60000, intervals: [2000] });
+
+    await disposeApiContext(page, apiContext);
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { page, apiContext } = await createApiContext(browser);
+    await deleteEntities(apiContext, spiralTerm, spiralGlossary);
+    await spiralTable.delete(apiContext);
+    await disposeApiContext(page, apiContext);
+  });
+
+  test('clicking asset count badge in data mode triggers asset search query', async ({
+    page,
+  }) => {
+    test.slow();
+
+    await navigateAndFilterByGlossary(page, spiralGlossary.responseData.id);
+
+    const assetCountsResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/glossaryTerms/assets/counts') &&
+        res.request().method() === 'GET',
+      { timeout: 30000 }
+    );
+    await page.getByRole('tab', { name: 'Data' }).click();
+    await assetCountsResponse;
+    await waitForGraphLoaded(page);
+
+    await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+      /[1-9]\d*\s*Terms?/i
+    );
+    await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+      /[1-9]\d*\s*Data\s*Assets?/i
+    );
+
+    const searchResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/search/query') &&
+        res.request().method() === 'GET',
+      { timeout: 30000 }
+    );
+    await clickDataModeAssetBadge(
+      page,
+      spiralTerm.responseData.fullyQualifiedName
+    );
+    await searchResponse;
   });
 });
 

@@ -152,7 +152,7 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "cachetools",  # Used to cache masked queries in ingestion/src/metadata/ingestion/lineage/masker.py
     "chardet==4.0.0",  # Used in the profiler
-    "cryptography>=42.0.0",
+    "cryptography>=44.0.1",
     "google-cloud-secret-manager==2.24.0",
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
@@ -168,7 +168,7 @@ base_requirements = {
     "python-dateutil>=2.8.1",
     "python-dotenv>=0.19.0",  # For environment variable support in dbt ingestion
     "PyYAML~=6.0",
-    "requests>=2.23",
+    "requests>=2.32.4",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=2.0.0,<3",
     "collate-sqllineage>=2.1.1",
@@ -249,7 +249,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["databricks-sdk"],
         VERSIONS["databricks-sql-connector"],
         "ndg-httpsclient~=0.5.1",
-        "pyOpenSSL~=24.1.0",
+        "pyOpenSSL>=24.3.0",
         "pyasn1~=0.6.0",
     },
     "datalake-azure": {
@@ -330,7 +330,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "looker": {
         VERSIONS["looker-sdk"],
         VERSIONS["lkml"],
-        "gitpython~=3.1.34",
+        "gitpython>=3.1.50",
         VERSIONS["giturlparse"],
         "python-liquid",
     },
@@ -377,7 +377,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["geoalchemy2"],
     },
     "sagemaker": {VERSIONS["boto3"]},
-    "salesforce": {"simple_salesforce~=1.11", "authlib>=1.3.1"},
+    "salesforce": {"simple_salesforce~=1.11", "authlib>=1.6.4"},
     "sample-data": {
         VERSIONS["avro"],
         VERSIONS["grpc-tools"],
@@ -490,7 +490,7 @@ test = {
     *plugins["kafka"],
     "kafka-python==2.0.2",
     *plugins["pii-processor"],
-    "requests>=2.31.0,<3",
+    "requests>=2.32.4,<3",
     f"{DATA_DIFF['mysql']}",
     *plugins["deltalake"],
     *plugins["datalake-gcs"],
