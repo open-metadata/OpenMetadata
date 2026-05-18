@@ -8,7 +8,6 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunIngestionPipelineTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.DataCompletenessTaskDefinition;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.PolicyAgentTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RejectRecognizerFeedbackTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RollbackEntityTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunAppTaskDefinition;
@@ -34,7 +33,6 @@ import org.openmetadata.service.governance.workflows.elements.nodes.automatedTas
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SinkTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.createAndRunIngestionPipeline.CreateAndRunIngestionPipelineTask;
-import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.policyAgent.PolicyAgentTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.runApp.RunAppTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.endEvent.EndEvent;
 import org.openmetadata.service.governance.workflows.elements.nodes.gateway.ParallelGateway;
@@ -83,8 +81,12 @@ public class NodeFactory {
           (ApplyRecognizerFeedbackTaskDefinition) nodeDefinition, config);
       case REJECT_RECOGNIZER_FEEDBACK_TASK -> new RejectRecognizerFeedbackTask(
           (RejectRecognizerFeedbackTaskDefinition) nodeDefinition, config);
-      case POLICY_AGENT_TASK -> new PolicyAgentTask(
-          (PolicyAgentTaskDefinition) nodeDefinition, config);
+      case POLICY_AGENT_TASK -> NodeFactoryRegistry.getInstance()
+          .create(NodeSubType.POLICY_AGENT_TASK, nodeDefinition, config, workflowDefinitionName)
+          .orElseThrow(
+              () ->
+                  new IllegalStateException(
+                      "policyAgentTask is a Collate-only feature — handler not registered"));
       default -> throw new IllegalArgumentException(
           "Unsupported node subtype: " + nodeDefinition.getSubType());
     };
