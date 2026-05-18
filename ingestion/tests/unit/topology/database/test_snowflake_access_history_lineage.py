@@ -222,34 +222,70 @@ def test_probe_sql_is_lightweight():
 # ---------------------------------------------------------------------------
 
 
+def _make_fake_workflow_config(options: dict) -> MagicMock:
+    """Build a config that mirrors `config.serviceConnection.root.config.connectionOptions.root`."""
+    fake = MagicMock()
+    fake.serviceConnection.root.config.connectionOptions = MagicMock()
+    fake.serviceConnection.root.config.connectionOptions.root = options
+    return fake
+
+
 def test_use_access_history_flag_default_off():
-    src = _make_lineage_source(connection_options={})
-    assert src._read_access_history_flag() is False
+    config = _make_fake_workflow_config({})
+    assert SnowflakeLineageSource._pop_access_history_flag(config) is False
 
 
 def test_use_access_history_flag_parses_true():
-    src = _make_lineage_source(connection_options={USE_ACCESS_HISTORY_OPTION_KEY: "true"})
-    assert src._read_access_history_flag() is True
+    config = _make_fake_workflow_config({USE_ACCESS_HISTORY_OPTION_KEY: "true"})
+    assert SnowflakeLineageSource._pop_access_history_flag(config) is True
 
 
 def test_use_access_history_flag_parses_case_insensitive():
-    src = _make_lineage_source(connection_options={USE_ACCESS_HISTORY_OPTION_KEY: "TRUE"})
-    assert src._read_access_history_flag() is True
+    config = _make_fake_workflow_config({USE_ACCESS_HISTORY_OPTION_KEY: "TRUE"})
+    assert SnowflakeLineageSource._pop_access_history_flag(config) is True
 
 
 def test_use_access_history_flag_ignores_unrelated_options():
-    src = _make_lineage_source(connection_options={"otherOpt": "value"})
-    assert src._read_access_history_flag() is False
+    config = _make_fake_workflow_config({"otherOpt": "value"})
+    assert SnowflakeLineageSource._pop_access_history_flag(config) is False
 
 
 def test_use_access_history_key_is_popped_from_options():
     """The OM-specific key must be removed so the Snowflake driver never sees it."""
     options = {USE_ACCESS_HISTORY_OPTION_KEY: "true", "OTHER": "keep"}
-    src = _make_lineage_source(connection_options=options)
-    src._read_access_history_flag()
-    # The src has its own copy in service_connection.connectionOptions.root
-    assert USE_ACCESS_HISTORY_OPTION_KEY not in src.service_connection.connectionOptions.root
-    assert "OTHER" in src.service_connection.connectionOptions.root
+    config = _make_fake_workflow_config(options)
+    SnowflakeLineageSource._pop_access_history_flag(config)
+    assert USE_ACCESS_HISTORY_OPTION_KEY not in options
+    assert "OTHER" in options
+
+
+def test_pop_runs_before_super_init():
+    """Regression test: the flag must be removed from connectionOptions before
+    the parent init builds the Snowflake URL, otherwise the driver receives
+    an unknown `useAccessHistory` param."""
+    options = {USE_ACCESS_HISTORY_OPTION_KEY: "true"}
+    config = _make_fake_workflow_config(options)
+    captured = {}
+
+    def fake_super_init(self, cfg, meta, get_engine=True):
+        captured["options_at_super_init"] = dict(cfg.serviceConnection.root.config.connectionOptions.root)
+        self.service_connection = MagicMock()
+        self.engine = None
+
+    with (
+        patch(
+            "metadata.ingestion.source.database.snowflake.lineage.SnowflakeQueryParserSource.__init__",
+            fake_super_init,
+        ),
+        patch(
+            "metadata.ingestion.source.database.snowflake.lineage.probe_access_history_available",
+            return_value=False,
+        ),
+    ):
+        src = SnowflakeLineageSource.__new__(SnowflakeLineageSource)
+        SnowflakeLineageSource.__init__(src, config, MagicMock(), get_engine=False)
+
+    assert USE_ACCESS_HISTORY_OPTION_KEY not in captured["options_at_super_init"]
 
 
 # ---------------------------------------------------------------------------
@@ -259,25 +295,27 @@ def test_use_access_history_key_is_popped_from_options():
 
 def test_probe_failure_falls_back_to_legacy():
     """A failing probe must flip _use_access_history to False even if the flag was set."""
-    with patch(
-        "metadata.ingestion.source.database.snowflake.lineage.probe_access_history_available",
-        return_value=False,
-    ):
-        # Re-run the init logic in isolation
-        src = _make_lineage_source(connection_options={USE_ACCESS_HISTORY_OPTION_KEY: "true"})
-        # Simulate the __init__ probe step
-        src._use_access_history = src._read_access_history_flag()
-        from metadata.ingestion.source.database.snowflake.lineage import (
-            probe_access_history_available,
-        )
+    config = _make_fake_workflow_config({USE_ACCESS_HISTORY_OPTION_KEY: "true"})
 
-        if (
-            src._use_access_history
-            and src.engine is not None
-            and not probe_access_history_available(src.engine, src.service_connection.accountUsageSchema)
-        ):
-            src._use_access_history = False
-        assert src._use_access_history is False
+    def fake_super_init(self, cfg, meta, get_engine=True):
+        self.service_connection = MagicMock()
+        self.service_connection.accountUsageSchema = "SNOWFLAKE.ACCOUNT_USAGE"
+        self.engine = MagicMock()
+
+    with (
+        patch(
+            "metadata.ingestion.source.database.snowflake.lineage.SnowflakeQueryParserSource.__init__",
+            fake_super_init,
+        ),
+        patch(
+            "metadata.ingestion.source.database.snowflake.lineage.probe_access_history_available",
+            return_value=False,
+        ),
+    ):
+        src = SnowflakeLineageSource.__new__(SnowflakeLineageSource)
+        SnowflakeLineageSource.__init__(src, config, MagicMock())
+
+    assert src._use_access_history is False
 
 
 # ---------------------------------------------------------------------------
@@ -427,9 +465,7 @@ def test_split_snowflake_fqn_unescapes_doubled_quotes():
 def test_split_snowflake_fqn_logs_debug_for_skips():
     from unittest.mock import patch
 
-    with patch(
-        "metadata.ingestion.source.database.snowflake.lineage.logger"
-    ) as mock_logger:
+    with patch("metadata.ingestion.source.database.snowflake.lineage.logger") as mock_logger:
         assert SnowflakeLineageSource._split_snowflake_fqn("DB.SCHEMA") is None
         debug_messages = [call.args[0] for call in mock_logger.debug.call_args_list]
         assert any("unexpected part count" in msg for msg in debug_messages)

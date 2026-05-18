@@ -14,7 +14,7 @@ Snowflake lineage module
 
 import json
 import traceback
-from typing import Dict, Iterable, Iterator, List, Optional, Tuple, Union  # noqa: UP035
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -99,10 +99,14 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         metadata: OpenMetadata,
         get_engine: bool = True,
     ):
+        # Pop the OM-specific flag from connectionOptions BEFORE the parent
+        # creates the SQLAlchemy engine — the Snowflake URL builder copies
+        # every connectionOptions entry into the URL query string, so the
+        # driver would otherwise receive an unknown `useAccessHistory` param.
+        self._use_access_history = self._pop_access_history_flag(config)
         super().__init__(config, metadata, get_engine=get_engine)
         self._table_cache: Dict[str, Optional[Table]] = {}  # noqa: UP006, UP045
         self._container_cache: Dict[str, Optional[Container]] = {}  # noqa: UP006, UP045
-        self._use_access_history = self._read_access_history_flag()
         if self._use_access_history and self.engine is not None:
             available = probe_access_history_available(self.engine, self.service_connection.accountUsageSchema)
             if not available:
@@ -114,12 +118,15 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             else:
                 logger.info("ACCESS_HISTORY-based lineage path enabled via connectionOptions.useAccessHistory.")
 
-    def _read_access_history_flag(self) -> bool:
+    @staticmethod
+    def _pop_access_history_flag(config: WorkflowSource) -> bool:
         """
-        Read and remove the OM-specific `useAccessHistory` key from connectionOptions.
-        Popping it ensures the Snowflake driver never sees it in the URL.
+        Read and remove the OM-specific `useAccessHistory` key from
+        connectionOptions on the workflow config. Called before the parent
+        init so the popped key never reaches the Snowflake driver URL.
         """
-        options = get_connection_options_dict(self.service_connection)
+        service_connection = config.serviceConnection.root.config  # pyright: ignore[reportOptionalMemberAccess]
+        options = get_connection_options_dict(service_connection)
         if not options:
             return False
         raw = options.pop(USE_ACCESS_HISTORY_OPTION_KEY, None)
@@ -209,7 +216,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         """
         if self._use_access_history:
             logger.info("Processing Query Lineage via ACCESS_HISTORY")
-            yield from self._yield_access_history_lineage()
+            yield from self._yield_access_history_lineage()  # pyright: ignore[reportReturnType]
             return
         yield from super().yield_query_lineage()
 
@@ -238,6 +245,8 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         skipped = 0
         try:
             for engine in self.get_engine():
+                if engine is None:
+                    continue
                 with engine.connect() as conn:
                     logger.debug(f"Executing combined ACCESS_HISTORY lineage query: {sql_statement}")
                     rows = conn.execution_options(stream_results=True, max_row_buffer=1000).execute(text(sql_statement))
@@ -248,7 +257,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
                             skipped += 1
                             continue
                         emitted += 1
-                        yield Either(right=edge)
+                        yield Either(right=edge)  # pyright: ignore[reportCallIssue]
         except Exception as exc:
             logger.warning(f"Failed to extract lineage from ACCESS_HISTORY: {exc}")
             logger.debug(traceback.format_exc())
@@ -276,7 +285,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         column_pairs = self._parse_column_pairs(row_dict.get("column_pairs"))
         columns_lineage = self._build_columns_lineage(downstream_entity, upstream_entity, column_pairs)
 
-        lineage_details = LineageDetails(
+        lineage_details = LineageDetails(  # pyright: ignore[reportCallIssue]
             source=LineageEdgeSource.QueryLineage,
             sqlQuery=row_dict.get("query_text") or None,
             columnsLineage=columns_lineage or None,
@@ -284,14 +293,14 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
 
         return AddLineageRequest(
             edge=EntitiesEdge(
-                fromEntity=EntityReference(id=upstream_entity.id.root, type="table"),
-                toEntity=EntityReference(id=downstream_entity.id.root, type="table"),
+                fromEntity=EntityReference(id=upstream_entity.id.root, type="table"),  # pyright: ignore[reportCallIssue]
+                toEntity=EntityReference(id=downstream_entity.id.root, type="table"),  # pyright: ignore[reportCallIssue]
                 lineageDetails=lineage_details,
             )
         )
 
     @staticmethod
-    def _parse_column_pairs(raw) -> List[Tuple[str, str]]:  # noqa: UP006
+    def _parse_column_pairs(raw: object) -> List[Tuple[str, str]]:  # noqa: UP006
         """
         Decode the `COLUMN_PAIRS` VARIANT returned by the combined SQL into
         a list of (downstream_column, upstream_column) tuples. The snowflake
@@ -333,7 +342,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             d_fqn = get_column_fqn(downstream_entity, d_col)
             u_fqn = get_column_fqn(upstream_entity, u_col)
             if d_fqn and u_fqn:
-                result.append(ColumnLineage(fromColumns=[u_fqn], toColumn=d_fqn))
+                result.append(ColumnLineage(fromColumns=[u_fqn], toColumn=d_fqn))  # pyright: ignore[reportCallIssue]
         return result
 
     def _yield_copy_history_lineage(self) -> Iterable[Either[AddLineageRequest]]:
@@ -352,6 +361,8 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         skipped_unresolved = 0
         try:
             for engine in self.get_engine():
+                if engine is None:
+                    continue
                 with engine.connect() as conn:
                     logger.debug(f"Executing COPY_HISTORY lineage query: {sql_statement}")
                     rows = conn.execute(text(sql_statement))
@@ -366,7 +377,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
                             skipped_unresolved += 1
                             continue
                         emitted += 1
-                        yield Either(right=edge)
+                        yield Either(right=edge)  # pyright: ignore[reportCallIssue]
         except Exception as exc:
             logger.warning(f"Failed to extract COPY_HISTORY lineage: {exc}")
             logger.debug(traceback.format_exc())
@@ -403,9 +414,9 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
 
         return AddLineageRequest(
             edge=EntitiesEdge(
-                fromEntity=EntityReference(id=container_entity.id.root, type="container"),
-                toEntity=EntityReference(id=downstream_entity.id.root, type="table"),
-                lineageDetails=LineageDetails(source=LineageEdgeSource.QueryLineage),
+                fromEntity=EntityReference(id=container_entity.id.root, type="container"),  # pyright: ignore[reportCallIssue]
+                toEntity=EntityReference(id=downstream_entity.id.root, type="table"),  # pyright: ignore[reportCallIssue]
+                lineageDetails=LineageDetails(source=LineageEdgeSource.QueryLineage),  # pyright: ignore[reportCallIssue]
             )
         )
 
@@ -489,7 +500,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         return stage_location.lower().startswith(EXTERNAL_STAGE_PREFIXES)
 
     @staticmethod
-    def _row_to_dict(row) -> dict:
+    def _row_to_dict(row: Any) -> dict:
         """
         SQLAlchemy result rows expose columns as attributes; normalize to a
         lower-cased dict so downstream code can use uniform keys.
