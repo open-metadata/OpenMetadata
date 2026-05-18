@@ -45,14 +45,14 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 
 @Tag(
-    name = "Context Center Folders",
-    description = "APIs for managing folders in the Context Center.")
-@Path("/v1/contextCenter/folders")
+    name = "Context Center Drive Folders",
+    description = "APIs for managing folders in the Context Center Drive.")
+@Path("/v1/contextCenter/drive/folders")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "contextCenterFolders")
+@Collection(name = "contextCenterDriveFolders")
 public class FolderResource extends EntityResource<Folder, FolderRepository> {
-  public static final String COLLECTION_PATH = "v1/contextCenter/folders/";
+  public static final String COLLECTION_PATH = "v1/contextCenter/drive/folders/";
   public static final String FIELDS = "owners,tags,parent,children,domains,followers";
   private final FolderMapper mapper = new FolderMapper();
 

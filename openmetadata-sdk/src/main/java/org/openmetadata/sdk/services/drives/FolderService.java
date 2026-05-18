@@ -9,7 +9,7 @@ import org.openmetadata.sdk.services.EntityServiceBase;
 
 public class FolderService extends EntityServiceBase<Folder> {
   public FolderService(HttpClient httpClient) {
-    super(httpClient, "/v1/contextCenter/folders");
+    super(httpClient, "/v1/contextCenter/drive/folders");
   }
 
   @Override
