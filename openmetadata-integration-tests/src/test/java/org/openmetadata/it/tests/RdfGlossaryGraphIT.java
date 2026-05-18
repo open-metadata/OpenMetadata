@@ -388,6 +388,143 @@ public class RdfGlossaryGraphIT {
   }
 
   @Test
+  void customRdfPredicateRelationSurfacesInGraphEndpoint(TestNamespace ns) throws Exception {
+    // Regression: GlossaryTermRelationSettings lets operators define custom
+    // relation types with arbitrary rdfPredicate URIs (e.g. "Enrolls In" with
+    // rdfPredicate https://example.com/ontology/enrolls). The writer
+    // (bulkAddGlossaryTermRelations / addGlossaryTermRelation) honoured those
+    // custom predicates and wrote the triples to Fuseki correctly. The reader
+    // (RdfRepository.buildGlossaryTermGraphQuery) hardcoded its SPARQL
+    // FILTER ?relationType IN (...) to the built-in CURIE list, silently
+    // dropping every custom-typed edge. Customer environments saw their
+    // relations in the Overview tab (DB-backed) but the term-page Relations
+    // Graph (the RDF-backed view) rendered only the source node alone — the
+    // image-v6 / image-v8 case in the bug report. None of the existing tests
+    // exercised this writer/reader symmetry because they all stuck to built-in
+    // relation types.
+    //
+    // This test registers a custom relation type via the settings API, points
+    // two terms at each other through it, and asserts the graph endpoint
+    // returns the edge. Cleans up the settings entry on the way out so
+    // parallel/subsequent tests aren't affected.
+    String customTypeName = "regressionCustomRel";
+    URI customPredicate = URI.create("https://example.com/regression/customRel");
+    addCustomRelationTypeToSettings(customTypeName, customPredicate);
+    try {
+      Glossary glossary = GlossaryTestFactory.createWithName(ns, "customRdfPred");
+      GlossaryTerm a = GlossaryTermTestFactory.createWithName(ns, glossary, "alpha");
+      GlossaryTerm b = GlossaryTermTestFactory.createWithName(ns, glossary, "beta");
+
+      awaitTermInGraph(glossary.getId(), a.getId());
+      awaitTermInGraph(glossary.getId(), b.getId());
+
+      addRelation(a.getId(), b.getId(), customTypeName);
+      awaitRelatedTermInDb(a.getId(), b.getId(), customTypeName);
+
+      // The fix: buildGlossaryTermGraphQuery must read configured custom
+      // predicates from GlossaryTermRelationSettings and append them to the
+      // FILTER list. Without the fix this edge is silently filtered out
+      // and the graph endpoint returns nodes-but-no-edges for the source
+      // term — exactly the customer's symptom.
+      awaitEdgeBetween(glossary.getId(), a.getId(), b.getId(), customTypeName);
+    } finally {
+      removeCustomRelationTypeFromSettings(customTypeName);
+    }
+  }
+
+  /**
+   * PUT a new relation type onto the system-level GlossaryTermRelationSettings.
+   * Preserves whatever's already configured (defaults + any types from earlier
+   * tests still on the way out) and appends our custom one.
+   */
+  private void addCustomRelationTypeToSettings(String name, URI rdfPredicate) throws Exception {
+    JsonNode existing = fetchGlossaryTermRelationSettings();
+    com.fasterxml.jackson.databind.node.ObjectNode payload = MAPPER.createObjectNode();
+    payload.put("config_type", "glossaryTermRelationSettings");
+    com.fasterxml.jackson.databind.node.ObjectNode value = MAPPER.createObjectNode();
+    com.fasterxml.jackson.databind.node.ArrayNode types = MAPPER.createArrayNode();
+    if (existing != null && existing.has("relationTypes")) {
+      existing.get("relationTypes").forEach(types::add);
+    }
+    com.fasterxml.jackson.databind.node.ObjectNode custom = MAPPER.createObjectNode();
+    custom.put("name", name);
+    custom.put("rdfPredicate", rdfPredicate.toString());
+    types.add(custom);
+    value.set("relationTypes", types);
+    payload.set("config_value", value);
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + "/v1/system/settings"))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .PUT(HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(payload)))
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    assertEquals(
+        200,
+        response.statusCode(),
+        () -> "PUT settings failed: " + response.statusCode() + " " + response.body());
+  }
+
+  private void removeCustomRelationTypeFromSettings(String name) {
+    try {
+      JsonNode existing = fetchGlossaryTermRelationSettings();
+      if (existing == null || !existing.has("relationTypes")) {
+        return;
+      }
+      com.fasterxml.jackson.databind.node.ObjectNode payload = MAPPER.createObjectNode();
+      payload.put("config_type", "glossaryTermRelationSettings");
+      com.fasterxml.jackson.databind.node.ObjectNode value = MAPPER.createObjectNode();
+      com.fasterxml.jackson.databind.node.ArrayNode kept = MAPPER.createArrayNode();
+      for (JsonNode t : existing.get("relationTypes")) {
+        if (!name.equals(t.path("name").asText(null))) {
+          kept.add(t);
+        }
+      }
+      value.set("relationTypes", kept);
+      payload.set("config_value", value);
+      HttpRequest request =
+          HttpRequest.newBuilder()
+              .uri(URI.create(SdkClients.getServerUrl() + "/v1/system/settings"))
+              .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+              .header("Content-Type", "application/json")
+              .timeout(Duration.ofSeconds(30))
+              .PUT(HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(payload)))
+              .build();
+      HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    } catch (Exception e) {
+      LOG.warn("Failed to remove custom relation type {} from settings", name, e);
+    }
+  }
+
+  private JsonNode fetchGlossaryTermRelationSettings() throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + "/v1/system/settings"))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Accept", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    if (response.statusCode() != 200) {
+      return null;
+    }
+    JsonNode all = MAPPER.readTree(response.body());
+    for (JsonNode s : all.path("data")) {
+      if ("glossaryTermRelationSettings".equals(s.path("config_type").asText(null))) {
+        JsonNode value = s.get("config_value");
+        if (value != null && value.isTextual()) {
+          return MAPPER.readTree(value.asText());
+        }
+        return value;
+      }
+    }
+    return null;
+  }
+
+  @Test
   void changingRelationTypeReplacesOldEdgeWithNewType(TestNamespace ns) throws Exception {
     // Simulates the UI "edit relation type" flow as delete-then-add. Verify
     // the resulting state is exactly one edge of the new type, no orphans.
