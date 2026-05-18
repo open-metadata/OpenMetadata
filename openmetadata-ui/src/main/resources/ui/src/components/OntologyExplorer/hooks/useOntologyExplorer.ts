@@ -748,7 +748,7 @@ export function useOntologyExplorer({
         });
 
         const existingEdgeKeys = new Set(
-          baseGraph.edges.map((e) => `${e.from}-${e.to}`)
+          baseGraph.edges.map((e) => `${e.from}-${e.to}-${e.relationType}`)
         );
         const termTermEdges: OntologyEdge[] = [];
 
@@ -766,7 +766,7 @@ export function useOntologyExplorer({
           ) {
             return;
           }
-          const key = `${fromFqn}-${toFqn}`;
+          const key = `${fromFqn}-${toFqn}-${edge.relationType}`;
           if (!existingEdgeKeys.has(key)) {
             existingEdgeKeys.add(key);
             termTermEdges.push({
@@ -961,7 +961,7 @@ export function useOntologyExplorer({
       const base = prev ?? { nodes: [], edges: [] };
       const existingNodeIds = new Set(base.nodes.map((n) => n.id));
       const existingEdgeKeys = new Set(
-        base.edges.map((e) => `${e.from}-${e.to}`)
+        base.edges.map((e) => `${e.from}-${e.to}-${e.relationType}`)
       );
       const newNodes = [...base.nodes];
       const newEdges = [...base.edges];
@@ -974,7 +974,7 @@ export function useOntologyExplorer({
           }
         });
         result.edges.forEach((e) => {
-          const key = `${e.from}-${e.to}`;
+          const key = `${e.from}-${e.to}-${e.relationType}`;
           if (!existingEdgeKeys.has(key)) {
             newEdges.push(e);
             existingEdgeKeys.add(key);
