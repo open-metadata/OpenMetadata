@@ -219,7 +219,8 @@ class DriveFileUploadIT {
 
   private ContextFile fetchFile(UUID fileId) {
     try {
-      return RestClient.admin().getById("v1/contextCenter/drive/files", fileId, "", ContextFile.class);
+      return RestClient.admin()
+          .getById("v1/contextCenter/drive/files", fileId, "", ContextFile.class);
     } catch (Exception e) {
       throw new AssertionError("Failed to fetch uploaded file " + fileId, e);
     }
