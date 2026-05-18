@@ -6697,6 +6697,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         List<Column> origColumns,
         List<Column> updatedColumns,
         BiPredicate<Column, Column> columnMatch) {
+      origColumns = listOrEmpty(origColumns);
+      updatedColumns = listOrEmpty(updatedColumns);
       List<Column> deletedColumns = new ArrayList<>();
       List<Column> addedColumns = new ArrayList<>();
       HashMap<String, String> originalUpdatedColumnFqns = new HashMap<>();
@@ -6729,7 +6731,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Add tags related to newly added columns
       for (Column added : addedColumns) {
         applyTags(
-            added.getTags().stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(),
+            listOrEmpty(added.getTags()).stream()
+                .map(tag -> tag.withAppliedBy(updatingUser.getName()))
+                .toList(),
             added.getFullyQualifiedName());
       }
 
