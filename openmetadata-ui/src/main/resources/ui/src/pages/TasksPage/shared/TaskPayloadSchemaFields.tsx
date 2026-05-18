@@ -35,7 +35,7 @@ import {
   Typography as AntTypography,
 } from 'antd';
 import { uniqBy } from 'lodash';
-import { ReactNode, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
@@ -69,13 +69,70 @@ interface TaskPayloadSchemaFieldsProps {
 }
 
 const HIDDEN_WIDGET = 'hidden';
-const TRUNCATE_LIMIT = 80;
-const ARRAY_DISPLAY_LIMIT = 1;
 
-const StringArrayDisplay = ({ items }: { items: string[] }) => {
+const ClampedText = ({ text }: { text: string }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
+  const [isClamped, setIsClamped] = useState(false);
+  const ref = useRef<HTMLParagraphElement>(null);
 
+  const checkIfClamped = useCallback(() => {
+    const el = ref.current;
+    if (!el || el.getClientRects().length === 0) {
+      return;
+    }
+    setIsClamped(el.scrollHeight > el.clientHeight + 1);
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(checkIfClamped, 100);
+    const ro = new ResizeObserver(checkIfClamped);
+    if (ref.current) {
+      ro.observe(ref.current);
+    }
+
+    return () => {
+      clearTimeout(timer);
+      ro.disconnect();
+    };
+  }, [checkIfClamped, text]);
+
+  return (
+    <div className="tw:relative">
+      <p
+        className={`tw:m-0 tw:text-sm tw:text-gray-900 tw:wrap-break-word${
+          expanded ? '' : ' tw:overflow-hidden tw:max-h-10 tw:break-all'
+        }`}
+        ref={ref}>
+        {text}
+      </p>
+      {!expanded && isClamped && (
+        <span className="tw:absolute tw:bottom-0 tw:right-0 tw:flex tw:items-end">
+          <span className="tw:inline-block tw:w-8 tw:h-5 tw:bg-linear-to-r tw:from-white/0 tw:to-white" />
+          <span className="tw:bg-white tw:text-sm tw:text-gray-900 tw:select-none tw:pr-0.5">
+            …
+          </span>
+          <Button
+            className="tw:bg-white! tw:p-0! tw:h-auto! tw:min-h-0! tw:text-sm tw:font-medium"
+            color="link-color"
+            onPress={() => setExpanded(true)}>
+            {t('label.show-more')}
+          </Button>
+        </span>
+      )}
+      {expanded && (
+        <Button
+          className="tw:p-0! tw:h-auto! tw:min-h-0! tw:text-sm tw:font-medium"
+          color="link-color"
+          onPress={() => setExpanded(false)}>
+          {t('label.show-less')}
+        </Button>
+      )}
+    </div>
+  );
+};
+
+const StringArrayDisplay = ({ items }: { items: string[] }) => {
   if (items.length === 0) {
     return (
       <Typography className="tw:text-gray-400" size="text-sm">
@@ -84,57 +141,7 @@ const StringArrayDisplay = ({ items }: { items: string[] }) => {
     );
   }
 
-  const visible = expanded ? items : items.slice(0, ARRAY_DISPLAY_LIMIT);
-  const hiddenCount = items.length - ARRAY_DISPLAY_LIMIT;
-
-  return (
-    <div>
-      <Typography className="tw:text-gray-900" size="text-sm">
-        {visible.join(', ')}
-      </Typography>
-      {hiddenCount > 0 && (
-        <Button
-          className="tw:p-0 tw:text-sm tw:font-medium tw:mt-0.5"
-          color="link-color"
-          size="sm"
-          type="button"
-          onClick={() => setExpanded((v) => !v)}>
-          {expanded
-            ? t('label.show-less')
-            : `${t('label.show-more')} (+${hiddenCount})`}
-        </Button>
-      )}
-    </div>
-  );
-};
-
-const TruncatedText = ({ text }: { text: string }) => {
-  const { t } = useTranslation();
-  const [expanded, setExpanded] = useState(false);
-
-  if (text.length <= TRUNCATE_LIMIT) {
-    return (
-      <Typography className="tw:text-gray-900" size="text-sm">
-        {text}
-      </Typography>
-    );
-  }
-
-  return (
-    <div>
-      <Typography className="tw:text-gray-900" size="text-sm">
-        {expanded ? text : `${text.slice(0, TRUNCATE_LIMIT)}…`}
-      </Typography>
-      <Button
-        className="tw:p-0 tw:text-sm tw:font-medium"
-        color="link-color"
-        size="sm"
-        type="button"
-        onClick={() => setExpanded((v) => !v)}>
-        {expanded ? t('label.show-less') : t('label.show-more')}
-      </Button>
-    </div>
-  );
+  return <ClampedText text={items.join(', ')} />;
 };
 
 const TaskPayloadSchemaFields = ({
@@ -291,7 +298,7 @@ const TaskPayloadSchemaFields = ({
       );
     }
     if (typeof value === 'string') {
-      return <TruncatedText text={value} />;
+      return <ClampedText text={value} />;
     }
 
     return (
