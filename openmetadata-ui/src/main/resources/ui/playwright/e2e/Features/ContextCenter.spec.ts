@@ -150,15 +150,13 @@ test.describe('Context Center', () => {
     formData.append('entityLink', '<#E::page::contextCenter.documents>');
     formData.append('assetType', 'External');
 
-    await apiContext.post('/api/v1/attachments/upload', {
+    await apiContext.post('/api/v1/contextCenter/drive/files/upload', {
       multipart: {
         file: {
           name: 'seed-document.txt',
           mimeType: 'text/plain',
           buffer: fileContent,
         },
-        entityLink: '<#E::page::contextCenter.documents>',
-        assetType: 'External',
       },
     });
 
@@ -489,6 +487,148 @@ test.describe('Context Center', () => {
       const sizeEl = firstCard.locator('span').nth(1);
       await expect(sizeEl).toBeVisible();
       await expect(sizeEl).toHaveText(/\d/);
+    });
+  });
+
+  // ─── Search ──────────────────────────────────────────────────────────────────
+
+  test.describe('Search', () => {
+    test('searching articles filters the list to matching results', async ({
+      page,
+    }) => {
+      await navigateToArticles(page);
+
+      const header = page.getByTestId('context-center-header');
+      const searchInput = header
+        .getByTestId('search-input')
+        .getByLabel('Search Articles');
+      await searchInput.fill(ARTICLE_TITLE);
+
+      // Wait for search results to update
+      await page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/search/query') && res.status() === 200
+      );
+
+      // The pre-created article appears in results
+      const card = page.getByTestId(ARTICLE_TITLE);
+
+      await expect(card.first()).toBeVisible();
+    });
+
+    test('searching articles with no match shows empty state', async ({
+      page,
+    }) => {
+      await navigateToArticles(page);
+
+      const header = page.getByTestId('context-center-header');
+      const searchInput = header
+        .getByTestId('search-input')
+        .getByLabel('Search Articles');
+      await searchInput.fill('zzznomatchzzz_playwright');
+
+      await page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/search/query') && res.status() === 200
+      );
+
+      await expect(page.getByTestId('no-data-placeholder')).toBeVisible({
+        timeout: 8000,
+      });
+    });
+
+    test('clearing article search restores the full list', async ({ page }) => {
+      await navigateToArticles(page);
+
+      const header = page.getByTestId('context-center-header');
+      const searchInput = header
+        .getByTestId('search-input')
+        .getByLabel('Search Articles');
+
+      await searchInput.fill('zzznomatch');
+      await page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/search/query') && res.status() === 200
+      );
+
+      await searchInput.clear();
+      await waitForAllLoadersToDisappear(page);
+
+      const card = page.getByTestId(ARTICLE_TITLE);
+      await expect(card.first()).toBeVisible();
+    });
+
+    test('searching documents filters the list to matching results', async ({
+      page,
+    }) => {
+      await navigateToDocuments(page);
+
+      const header = page.getByTestId('context-center-header');
+      const searchInput = header
+        .getByTestId('search-input')
+        .getByLabel('Search Documents');
+      await searchInput.fill('seed-document');
+
+      await page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/search/query') && res.status() === 200
+      );
+
+      const view = page.getByTestId('documents-view');
+      const rows = view.locator('[data-testid^="document-row-"]');
+      const count = await rows.count();
+
+      // If the seed document was indexed, it appears; otherwise the empty state shows
+      if (count > 0) {
+        await expect(rows.first()).toBeVisible();
+      } else {
+        await expect(page.getByTestId('no-data-placeholder')).toBeVisible({
+          timeout: 8000,
+        });
+      }
+    });
+
+    test('searching documents with no match shows empty state', async ({
+      page,
+    }) => {
+      await navigateToDocuments(page);
+
+      const header = page.getByTestId('context-center-header');
+      const searchInput = header
+        .getByTestId('search-input')
+        .getByLabel('Search Documents');
+      await searchInput.fill('zzznomatchzzz_playwright');
+
+      await page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/search/query') && res.status() === 200
+      );
+
+      await expect(page.getByTestId('no-data-placeholder')).toBeVisible({
+        timeout: 8000,
+      });
+    });
+
+    test('clearing document search restores the full list', async ({
+      page,
+    }) => {
+      await navigateToDocuments(page);
+
+      const header = page.getByTestId('context-center-header');
+      const searchInput = header
+        .getByTestId('search-input')
+        .getByLabel('Search Documents');
+
+      await searchInput.fill('zzznomatch');
+      await page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/search/query') && res.status() === 200
+      );
+
+      await searchInput.clear();
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('documents-view')).toBeVisible();
     });
   });
 

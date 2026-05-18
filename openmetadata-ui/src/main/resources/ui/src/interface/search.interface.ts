@@ -62,6 +62,8 @@ import { TestCaseResolutionStatus } from '../generated/tests/testCaseResolutionS
 import { TestSuite } from '../generated/tests/testSuite';
 import { TagLabel } from '../generated/type/tagLabel';
 import { AggregatedCostAnalysisReportDataSearchSource } from './data-insight.interface';
+import { Asset } from '../generated/attachments/asset';
+import { ContextFile } from '../generated/entity/data/contextFile';
 import { KnowledgePage } from './knowledge-center.interface';
 
 /**
@@ -243,6 +245,8 @@ export interface KnowledgePageSearchSource
   extends SearchSourceBase,
     KnowledgePage {}
 
+export interface DriveFileSearchSource extends SearchSourceBase, ContextFile {}
+
 export type ExploreSearchSource =
   | TableSearchSource
   | DashboardSearchSource
@@ -323,6 +327,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.WORKSHEET]: WorksheetSearchSource;
   [SearchIndex.COLUMN]: TableColumnSearchSource;
   [SearchIndex.KNOWLEDGE_PAGE_INDEX]: KnowledgePageSearchSource;
+  [SearchIndex.DRIVE_FILE]: DriveFileSearchSource;
   [SearchIndex.MARKETPLACE]: DataProductSearchSource | DomainSearchSource;
 };
 

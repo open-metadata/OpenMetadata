@@ -23,40 +23,25 @@ import {
 import { Download01, Share06, Trash01 } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FileTypeBadge } from 'utils/ContextCenterUtils';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { FILE_TYPE_STYLES } from '../../../constants/ContextCenter.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
-import {
-  DocFile,
-  DocFileType,
-  DocumentsViewProps,
-} from './DocumentsView.interface';
-
-const FileTypeBadge: FC<{ fileType: DocFileType }> = ({ fileType }) => {
-  const { bg, label, text } = FILE_TYPE_STYLES[fileType || 'other'];
-
-  return (
-    <span
-      className={`tw:inline-flex tw:items-center tw:justify-center tw:w-10 tw:h-10 tw:rounded-lg tw:text-xs tw:font-bold tw:shrink-0 ${bg} ${text}`}>
-      {label}
-    </span>
-  );
-};
-
-// ─── Actions dropdown ─────────────────────────────────────────────────────────
+import { DocFile, DocumentsViewProps } from './DocumentsView.interface';
 
 interface FileActionsProps {
   canDelete?: boolean;
   file: DocFile;
   onShareFile?: (file: DocFile) => void;
   onDeleteFile?: (file: DocFile) => void;
+  onMoveFile?: (file: DocFile) => void;
 }
 
 const FileActions: FC<FileActionsProps> = ({
   canDelete,
   file,
   onDeleteFile,
+  onMoveFile,
   onShareFile,
 }) => {
   const { t } = useTranslation();
@@ -74,6 +59,8 @@ const FileActions: FC<FileActionsProps> = ({
           onAction={(key) => {
             if (key === 'share') {
               onShareFile?.(file);
+            } else if (key === 'move') {
+              onMoveFile?.(file);
             } else if (key === 'delete') {
               onDeleteFile?.(file);
             }
@@ -83,6 +70,12 @@ const FileActions: FC<FileActionsProps> = ({
             icon={Share06}
             id="share"
             label={t('label.share-file')}
+          />
+          <Dropdown.Item
+            data-testid="move-btn"
+            icon={Share06}
+            id="move"
+            label={t('label.move-to-folder')}
           />
           {canDelete && (
             <Dropdown.Item data-testid="delete-btn" id="delete">
@@ -109,26 +102,15 @@ const FileActions: FC<FileActionsProps> = ({
 
 const FileRowSkeleton: FC = () => (
   <div className="tw:flex tw:items-center tw:gap-4 tw:px-4 tw:py-3 tw:border-b tw:border-secondary">
-    {/* File type badge */}
-    <Skeleton
-      className="tw:shrink-0"
-      height="40px"
-      variant="rounded"
-      width="40px"
-    />
-
-    {/* File details */}
+    <Skeleton className="tw:shrink-0" height="40px" variant="rounded" width="40px" />
     <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-2">
       <Skeleton height="14px" variant="rounded" width="45%" />
-
       <div className="tw:flex tw:items-center tw:gap-2">
         <Skeleton height="12px" variant="rounded" width="56px" />
         <Skeleton height="12px" variant="rounded" width="72px" />
         <Skeleton height="12px" variant="rounded" width="96px" />
       </div>
     </div>
-
-    {/* Actions */}
     <div className="tw:flex tw:items-center tw:gap-2 tw:shrink-0">
       <Skeleton height="32px" variant="rounded" width="32px" />
       <Skeleton height="32px" variant="rounded" width="32px" />
@@ -136,14 +118,13 @@ const FileRowSkeleton: FC = () => (
   </div>
 );
 
-// ─── File row ─────────────────────────────────────────────────────────────────
-
 interface FileRowProps {
   canDelete?: boolean;
   file: DocFile;
   onDownload?: (file: DocFile) => void;
   onShareFile?: (file: DocFile) => void;
   onDeleteFile?: (file: DocFile) => void;
+  onMoveFile?: (file: DocFile) => void;
 }
 
 const FileRow: FC<FileRowProps> = ({
@@ -151,6 +132,7 @@ const FileRow: FC<FileRowProps> = ({
   file,
   onDeleteFile,
   onDownload,
+  onMoveFile,
   onShareFile,
 }) => {
   const { t } = useTranslation();
@@ -212,6 +194,7 @@ const FileRow: FC<FileRowProps> = ({
           canDelete={canDelete}
           file={file}
           onDeleteFile={onDeleteFile}
+          onMoveFile={onMoveFile}
           onShareFile={onShareFile}
         />
       </div>
@@ -222,21 +205,19 @@ const FileRow: FC<FileRowProps> = ({
 const DocumentViewLoading = () =>
   Array.from({ length: 8 }).map((_, idx) => <FileRowSkeleton key={idx} />);
 
-// ─── Main component ───────────────────────────────────────────────────────────
-
 const DocumentsView: FC<DocumentsViewProps> = ({
   canDelete,
   data,
   isLoading,
   onDeleteFile,
   onDownload,
+  onMoveFile,
   onShareFile,
 }) => {
   return (
     <Card
-      className="tw:flex tw:h-auto tw:overflow-hidden tw:max-h-full"
+      className="tw:flex tw:overflow-hidden tw:h-full"
       data-testid="documents-view">
-      {/* Right: file list */}
       {data.length > 0 || isLoading ? (
         <div className="tw:flex tw:flex-1 tw:flex-col tw:overflow-y-auto">
           {isLoading ? (
@@ -249,6 +230,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
                 key={file.id}
                 onDeleteFile={onDeleteFile}
                 onDownload={onDownload}
+                onMoveFile={onMoveFile}
                 onShareFile={onShareFile}
               />
             ))

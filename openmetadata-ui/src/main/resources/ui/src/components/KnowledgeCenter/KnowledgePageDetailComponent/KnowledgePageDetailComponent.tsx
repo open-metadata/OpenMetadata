@@ -24,6 +24,7 @@ import {
   useState,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { TagClassBase } from 'utils/TagClassBase';
 import { useActivityFeedProvider } from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -38,6 +39,7 @@ import { QueryVoteType } from '../../../components/Database/TableQueries/TableQu
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import {
   CREATE_PAGE_HASH,
+  KNOWLEDGE_CENTER_CLASSIFICATION,
   LONG_DELAY,
   SHORT_DELAY,
 } from '../../../constants/constants';
@@ -694,6 +696,14 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     () => tabs?.find((t) => t?.key === activeTab)?.children ?? null,
     [tabs, activeTab]
   );
+
+  useEffect(() => {
+    TagClassBase.filterClassification = [];
+
+    return () => {
+      TagClassBase.filterClassification = [KNOWLEDGE_CENTER_CLASSIFICATION];
+    };
+  }, []);
 
   const pageConfig = useMemo(() => {
     let rightPanel = null;

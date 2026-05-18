@@ -64,6 +64,7 @@ import {
   QuickLinkFormModalFormData,
 } from '../QuickLinkFormModal/QuickLinkFormModal';
 
+import { getEntityName } from 'utils/EntityUtils';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
@@ -336,7 +337,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
                 className="m-b-0 d-block entity-header-display-name text-lg font-semibold cursor-pointer knowledge-card-title text-primary"
                 data-testid="entity-header-display-name"
                 ellipsis={{ tooltip: true }}>
-                {knowledgePage?.displayName || t('label.untitled')}
+                {getEntityName(knowledgePage) || t('label.untitled')}
               </Typography.Text>
               {isQuickLink && !readonly && quickLinkActions}
             </div>

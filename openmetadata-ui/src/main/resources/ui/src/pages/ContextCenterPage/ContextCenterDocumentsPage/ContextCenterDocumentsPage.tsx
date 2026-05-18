@@ -13,40 +13,53 @@
 
 import { Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import DocumentFolderView from 'components/ContextCenter/DocumentsView/DocumentFolderView.component';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
+import AlertBar from '../../../components/AlertBar/AlertBar';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import '../../../components/common/ResizablePanels/resizable-panels.less';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import DocumentsView from '../../../components/ContextCenter/DocumentsView/DocumentsView.component';
 import { DocFile } from '../../../components/ContextCenter/DocumentsView/DocumentsView.interface';
+import MoveToFolderModal from '../../../components/ContextCenter/MoveToFolderModal/MoveToFolderModal.component';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { deleteAsset } from '../../../rest/assetAPI';
+import { SearchIndex } from '../../../enums/search.enum';
+import { ContextFile } from '../../../generated/entity/data/contextFile';
+import { Folder } from '../../../generated/entity/data/folder';
+import { deleteAsset, listContextFiles } from '../../../rest/assetAPI';
+import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
-  assetToDocumentItem,
-  CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
-  fetchContextCenterDocuments,
+  contextFileToDocumentItem,
   handleAssetDownload,
 } from '../../../utils/ContextCenterUtils';
+import { useAlertStore } from '../../../hooks/useAlertStore';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const ContextCenterDocumentsPage: FC = () => {
   const { t } = useTranslation();
+  const { alert } = useAlertStore();
   const { getResourcePermission } = usePermissionProvider();
-  const [documents, setDocuments] = useState<DocFile[]>([]);
+  const [allDocuments, setAllDocuments] = useState<DocFile[]>([]);
   const [isDocumentsLoading, setIsDocumentsLoading] = useState(true);
+  const [documentSearchQuery, setDocumentSearchQuery] = useState('');
   const [isDeletingFile, setIsDeletingFile] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<DocFile>();
+  const [fileToMove, setFileToMove] = useState<DocFile>();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [permissions, setPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
+  const [selectedFolderId, setSelectedFolderId] = useState<string>();
+  const [folders, setFolders] = useState<Folder[]>([]);
 
   const { hasCreatePermission, hasDeletePermission } = useMemo(
     () => ({
@@ -56,21 +69,51 @@ const ContextCenterDocumentsPage: FC = () => {
     [permissions.Create, permissions.Delete]
   );
 
+  const selectedFolderFqn = useMemo(
+    () =>
+      selectedFolderId
+        ? folders.find((f) => f.id === selectedFolderId)?.fullyQualifiedName
+        : undefined,
+    [selectedFolderId, folders]
+  );
+
+  const documents = useMemo(() => {
+    if (!selectedFolderId) {
+      return allDocuments;
+    }
+
+    return allDocuments.filter((d) => d.folderId === selectedFolderId);
+  }, [allDocuments, selectedFolderId]);
+
   const fetchDocuments = useCallback(async () => {
     setIsDocumentsLoading(true);
     try {
-      const assets = await fetchContextCenterDocuments();
-      setDocuments(assets.map(assetToDocumentItem));
+      if (documentSearchQuery) {
+        const results = await fetchSearchResults({
+          query: documentSearchQuery,
+          searchIndex: SearchIndex.DRIVE_FILE,
+          sortField: 'updatedAt',
+          sortOrder: 'desc',
+        });
+        setAllDocuments(
+          results.hits.hits.map((hit) =>
+            contextFileToDocumentItem(hit._source as unknown as ContextFile)
+          )
+        );
+      } else {
+        const files = await listContextFiles();
+        setAllDocuments(files.map(contextFileToDocumentItem));
+      }
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
       setIsDocumentsLoading(false);
     }
-  }, []);
+  }, [documentSearchQuery]);
 
   useEffect(() => {
     fetchDocuments();
-  }, []);
+  }, [fetchDocuments]);
 
   const fetchPermission = useCallback(async () => {
     try {
@@ -102,8 +145,8 @@ const ContextCenterDocumentsPage: FC = () => {
 
     try {
       setIsDeletingFile(true);
-      await deleteAsset(fileToDelete.id, true);
-      setDocuments((prev) =>
+      await deleteAsset(fileToDelete.id, false);
+      setAllDocuments((prev) =>
         prev.filter((document) => document.id !== fileToDelete.id)
       );
       showSuccessToast(
@@ -119,10 +162,29 @@ const ContextCenterDocumentsPage: FC = () => {
     }
   }, [fileToDelete, t]);
 
+  const handleMoveFile = useCallback((file: DocFile) => {
+    setFileToMove(file);
+  }, []);
+
+  const handleFileMoved = useCallback(
+    (file: DocFile, targetFolderId: string) => {
+      setAllDocuments((prev) =>
+        prev.map((d) =>
+          d.driveFileId === file.driveFileId
+            ? { ...d, folderId: targetFolderId }
+            : d
+        )
+      );
+      setFileToMove(undefined);
+    },
+    []
+  );
+
   return (
     <div
       className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-documents-page">
+      {alert && <AlertBar message={alert.message} type={alert.type} />}
       <ContextCenterHeader
         breadcrumbs={[
           {
@@ -142,26 +204,56 @@ const ContextCenterDocumentsPage: FC = () => {
           },
         ]}
         hasPermission={hasCreatePermission}
+        searchPlaceholder={t('label.search-entity', {
+          entity: t('label.document-plural'),
+        })}
+        searchQuery={documentSearchQuery}
         subtitle={t('message.context-center-documents-subtitle')}
         title={t('label.document-plural')}
+        onSearch={setDocumentSearchQuery}
         onUploadFile={() => setIsUploadModalOpen(true)}
       />
 
-      <div className="tw:flex-1 tw:overflow-hidden">
-        <DocumentsView
-          canDelete={hasDeletePermission}
-          data={documents}
-          isLoading={isDocumentsLoading}
-          onDeleteFile={handleDeleteFile}
-          onDownload={handleAssetDownload}
-        />
-      </div>
+      <ReflexContainer
+        className="tw:flex-1 tw:overflow-hidden"
+        orientation="vertical">
+        <ReflexElement flex={0.25} minSize={200}>
+          <DocumentFolderView
+            files={allDocuments}
+            selectedFolderId={selectedFolderId}
+            onFoldersLoaded={setFolders}
+            onSelectFolder={setSelectedFolderId}
+          />
+        </ReflexElement>
+
+        <ReflexSplitter className="splitter left-panel-splitter" style={{ zIndex: 0 }}>
+          <div className="panel-grabber-vertical">
+            <div className="handle-icon handle-icon-vertical" />
+          </div>
+        </ReflexSplitter>
+
+        <ReflexElement flex={0.75} minSize={400}>
+          <DocumentsView
+            canDelete={hasDeletePermission}
+            data={documents}
+            isLoading={isDocumentsLoading}
+            onDeleteFile={handleDeleteFile}
+            onDownload={handleAssetDownload}
+            onMoveFile={handleMoveFile}
+          />
+        </ReflexElement>
+      </ReflexContainer>
 
       <UploadDocumentModal
-        entityLink={CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK}
+        folderFqn={selectedFolderFqn}
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
-        onUploaded={() => fetchDocuments()}
+        onUploaded={(newFiles) =>
+          setAllDocuments((prev) => [
+            ...prev,
+            ...newFiles.map(contextFileToDocumentItem),
+          ])
+        }
       />
 
       {fileToDelete && (
@@ -174,6 +266,16 @@ const ContextCenterDocumentsPage: FC = () => {
           open={Boolean(fileToDelete)}
           onCancel={handleCancelDelete}
           onDelete={handleConfirmDelete}
+        />
+      )}
+
+      {fileToMove && (
+        <MoveToFolderModal
+          file={fileToMove}
+          folders={folders}
+          isOpen={Boolean(fileToMove)}
+          onClose={() => setFileToMove(undefined)}
+          onMoved={handleFileMoved}
         />
       )}
     </div>

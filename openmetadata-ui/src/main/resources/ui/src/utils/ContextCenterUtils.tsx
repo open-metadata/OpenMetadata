@@ -15,22 +15,29 @@ import { File06 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isNull, isUndefined } from 'lodash';
+import { FC } from 'react';
 import { ReactComponent as DOCIcon } from '../assets/svg/ic-doc.svg';
 import { ReactComponent as ImageIcon } from '../assets/svg/ic-image.svg';
 import { ReactComponent as PDFIcon } from '../assets/svg/ic-pdf.svg';
 import { ReactComponent as XLSIcon } from '../assets/svg/ic-xls.svg';
 import { ArticleCardItem } from '../components/ContextCenter/ArticleCard/ArticleCard.interface';
-import { DocFile } from '../components/ContextCenter/DocumentsView/DocumentsView.interface';
+import { DocFile, DocFileType } from '../components/ContextCenter/DocumentsView/DocumentsView.interface';
 import { UploadedDocumentItem } from '../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
 import { CREATE_PAGE_HASH } from '../constants/constants';
+import { FILE_TYPE_STYLES } from '../constants/ContextCenter.constants';
 import { EntityType } from '../enums/entity.enum';
 import { Asset, AssetType } from '../generated/attachments/asset';
+import { ContextFile } from '../generated/entity/data/contextFile';
 import {
   CreateKnowledgePage,
   PageType,
   QuickLink,
 } from '../interface/knowledge-center.interface';
-import { downloadAsset, listAssetsByFqn } from '../rest/assetAPI';
+import {
+  downloadAsset,
+  listAssetsByFqn,
+  ListAssetsByFqnParams,
+} from '../rest/assetAPI';
 import { postKnowledgePage } from '../rest/knowledgeCenterAPI';
 import contextCenterClassBase from './ContextCenterClassBase';
 import EntityLink from './EntityLink';
@@ -114,6 +121,30 @@ export const assetToDocumentItem = (asset: Asset): UploadedDocumentItem => ({
   updatedAt: asset.updatedAt ?? 0,
 });
 
+export const contextFileToDocumentItem = (file: ContextFile): DocFile => ({
+  driveFileId: file.id,
+  fileType: extensionToFileType(file.displayName ?? file.name),
+  folderId: file.folder?.id,
+  folderFqn: file.folder?.fullyQualifiedName,
+  id: file.assetId ?? file.id,
+  name: file.displayName ?? file.name,
+  sizeLabel: formatBytes(file.fileSize),
+  updatedAt: file.updatedAt,
+  updatedBy: file.updatedBy,
+});
+
+export const contextFileToUploadedDocumentItem = (
+  file: ContextFile
+): UploadedDocumentItem => ({
+  fileType: extensionToFileType(file.displayName ?? file.name),
+  id: file.assetId ?? file.id,
+  name: file.displayName ?? file.name,
+  sizeLabel: formatBytes(file.fileSize),
+  status: 'processed',
+  updatedAt: file.updatedAt ?? 0,
+  updatedBy: file.updatedBy ?? '',
+});
+
 export const knowledgePageToArticleItem = (
   data: {
     id: string;
@@ -142,8 +173,14 @@ export const knowledgePageToArticleItem = (
   title: getEntityName(data) || untitledLabel,
 });
 
-export const fetchContextCenterDocuments = async (): Promise<Asset[]> => {
-  return listAssetsByFqn(CONTEXT_CENTER_DOCUMENTS_FQN, AssetType.External);
+export const fetchContextCenterDocuments = async (
+  params?: ListAssetsByFqnParams
+): Promise<Asset[]> => {
+  return listAssetsByFqn(
+    CONTEXT_CENTER_DOCUMENTS_FQN,
+    AssetType.External,
+    params
+  );
 };
 
 export const createArticleKnowledgePage = async (
@@ -197,4 +234,15 @@ export const handleAssetDownload = async (file: DocFile) => {
       URL.revokeObjectURL(url);
     }
   }
+};
+
+export const FileTypeBadge: FC<{ fileType: DocFileType }> = ({ fileType }) => {
+  const { bg, label, text } = FILE_TYPE_STYLES[fileType || 'other'];
+
+  return (
+    <span
+      className={`tw:inline-flex tw:items-center tw:justify-center tw:w-8 tw:h-8 tw:rounded-xl tw:text-[10px] tw:font-bold tw:shrink-0 ${bg} ${text}`}>
+      {label}
+    </span>
+  );
 };

@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
+import AlertBar from '../../../components/AlertBar/AlertBar';
 import ArticleDetailHeader from '../../../components/ContextCenter/ArticleDetailHeader/ArticleDetailHeader.component';
 import ArticleVersionHeader from '../../../components/ContextCenter/ArticleVersionHeader/ArticleVersionHeader.component';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
@@ -38,6 +39,7 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../../../enums/entity.enum';
 import LimitWrapper from '../../../hoc/LimitWrapper';
+import { useAlertStore } from '../../../hooks/useAlertStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import {
@@ -62,6 +64,7 @@ const ContextCenterArticlesPage = () => {
   const { fqn } = useFqn();
   const { version } = useRequiredParams<{ version?: string }>();
   const { currentUser } = useApplicationStore();
+  const { alert } = useAlertStore();
   const USERId = currentUser?.id ?? '';
   const { getResourcePermission } = usePermissionProvider();
   const { getResourceLimit } = useLimitStore();
@@ -79,6 +82,7 @@ const ContextCenterArticlesPage = () => {
   });
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
+  const [articleSearchQuery, setArticleSearchQuery] = useState('');
 
   const handleFetchKnowledgePageHierarchy = useCallback(
     (forceRefresh?: boolean) =>
@@ -226,8 +230,13 @@ const ContextCenterArticlesPage = () => {
           { activeTitle: true, name: t('label.article-plural'), url: '' },
         ]}
         hasPermission={permissions?.Create}
+        searchPlaceholder={t('label.search-entity', {
+          entity: t('label.article-plural'),
+        })}
+        searchQuery={articleSearchQuery}
         subtitle={t('message.internal-knowledge-base-agent-training')}
         title={t('label.article-plural')}
+        onSearch={setArticleSearchQuery}
       />
     );
   };
@@ -295,6 +304,7 @@ const ContextCenterArticlesPage = () => {
         rightPanelSlot={
           contextCenterClassBase.isEmbeddedMode() ? null : undefined
         }
+        searchQuery={articleSearchQuery}
         onPageChange={handlePageChange}
       />
     );
@@ -303,6 +313,7 @@ const ContextCenterArticlesPage = () => {
     fqn,
     isRightPanelOpen,
     permissions,
+    articleSearchQuery,
     handlePageChange,
     handleFetchKnowledgePageHierarchy,
     handleToggleRightPanel,
@@ -312,6 +323,7 @@ const ContextCenterArticlesPage = () => {
     <div
       className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-articles-page">
+      {alert && <AlertBar message={alert.message} type={alert.type} />}
       {renderHeader()}
 
       <KnowledgeCenterLayout

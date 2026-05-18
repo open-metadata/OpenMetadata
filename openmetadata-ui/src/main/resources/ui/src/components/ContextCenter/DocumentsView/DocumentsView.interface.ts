@@ -15,12 +15,14 @@ export type DocFileType = 'pdf' | 'xls' | 'csv' | 'doc' | 'image' | 'other';
 
 export interface DocFile {
   id: string;
+  driveFileId?: string;
   name: string;
   fileType: DocFileType;
   sizeLabel: string;
   updatedBy?: string;
   updatedAt?: number;
   folderId?: string;
+  folderFqn?: string;
 }
 
 export interface DocFolder {
@@ -36,4 +38,5 @@ export interface DocumentsViewProps {
   onDownload?: (file: DocFile) => void;
   onShareFile?: (file: DocFile) => void;
   onDeleteFile?: (file: DocFile) => void;
+  onMoveFile?: (file: DocFile) => void;
 }

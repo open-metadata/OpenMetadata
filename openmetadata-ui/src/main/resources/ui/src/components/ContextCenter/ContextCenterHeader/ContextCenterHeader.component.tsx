@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Typography } from '@openmetadata/ui-core-components';
-import { Plus, UploadCloud02 } from '@untitledui/icons';
+import { Button, Card, Input, Typography } from '@openmetadata/ui-core-components';
+import { Plus, SearchMd, UploadCloud02 } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
@@ -27,6 +27,9 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   onCreateArticle,
   onUploadFile,
   actionsSlot,
+  searchQuery,
+  searchPlaceholder,
+  onSearch,
 }) => {
   const { t } = useTranslation();
   const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
@@ -78,7 +81,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
             />
           </div>
         )}
-        <div className="tw:flex tw:items-center tw:justify-between">
+        <div className="tw:flex tw:items-center tw:justify-between tw:gap-4">
           <div>
             <div className="tw:mb-0.5 tw:flex tw:items-center tw:gap-2">
               <Typography as="h3">{title}</Typography>
@@ -87,7 +90,19 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
               <Typography className="tw:text-gray-700">{subtitle}</Typography>
             )}
           </div>
-          {hasPermission ? actionsSlot ?? defaultActions : null}
+          <div className="tw:flex tw:items-center tw:gap-3 tw:ml-auto tw:shrink-0">
+            {onSearch && (
+              <Input
+                data-testid="search-input"
+                icon={SearchMd}
+                inputClassName="tw:w-64"
+                placeholder={searchPlaceholder}
+                value={searchQuery ?? ''}
+                onChange={onSearch}
+              />
+            )}
+            {hasPermission ? actionsSlot ?? defaultActions : null}
+          </div>
         </div>
       </Card>
     </div>
