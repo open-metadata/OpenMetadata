@@ -448,15 +448,35 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
     def _split_snowflake_fqn(snowflake_fqn: str) -> Optional[Tuple[str, str, str]]:  # noqa: UP006, UP045
         """
         Split a Snowflake `DB.SCHEMA.TABLE` FQN into its three parts.
-        Returns None for malformed inputs; quoted names with embedded dots
-        are not handled and are skipped silently.
+        Handles quoted identifiers (`"My DB"."My.Schema"."Table"`) by
+        splitting on unquoted dots and stripping surrounding quotes per part.
+        Snowflake escapes embedded `"` inside a quoted identifier as `""`;
+        we unescape that to a single `"`.
+        Returns None for malformed inputs and logs at DEBUG.
         """
-        if not snowflake_fqn or '"' in snowflake_fqn:
+        if not snowflake_fqn:
             return None
-        parts = snowflake_fqn.split(".")
+        parts: list = []
+        current: list = []
+        inside_quotes = False
+        for ch in snowflake_fqn:
+            if ch == '"':
+                inside_quotes = not inside_quotes
+                current.append(ch)
+            elif ch == "." and not inside_quotes:
+                parts.append("".join(current))
+                current = []
+            else:
+                current.append(ch)
+        parts.append("".join(current))
         if len(parts) != 3:
+            logger.debug("Skipping FQN with unexpected part count: %s", snowflake_fqn)
             return None
-        return parts[0], parts[1], parts[2]
+        normalized = [p[1:-1].replace('""', '"') if p.startswith('"') and p.endswith('"') else p for p in parts]
+        if not all(normalized):
+            logger.debug("Skipping FQN with empty part: %s", snowflake_fqn)
+            return None
+        return normalized[0], normalized[1], normalized[2]
 
     @staticmethod
     def _is_external_stage(stage_location: str) -> bool:

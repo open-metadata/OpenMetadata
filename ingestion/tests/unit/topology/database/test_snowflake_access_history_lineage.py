@@ -388,12 +388,51 @@ def test_split_snowflake_fqn_handles_three_part_name():
     assert SnowflakeLineageSource._split_snowflake_fqn("DB.SCHEMA.TABLE") == ("DB", "SCHEMA", "TABLE")
 
 
-def test_split_snowflake_fqn_rejects_quoted_or_malformed():
+def test_split_snowflake_fqn_rejects_malformed():
     assert SnowflakeLineageSource._split_snowflake_fqn(None) is None
     assert SnowflakeLineageSource._split_snowflake_fqn("") is None
     assert SnowflakeLineageSource._split_snowflake_fqn("DB.SCHEMA") is None
-    assert SnowflakeLineageSource._split_snowflake_fqn('"DB".SCHEMA.TABLE') is None
     assert SnowflakeLineageSource._split_snowflake_fqn("DB.SCHEMA.TABLE.EXTRA") is None
+
+
+def test_split_snowflake_fqn_strips_quoted_identifiers():
+    assert SnowflakeLineageSource._split_snowflake_fqn('"DB"."SCHEMA"."TABLE"') == (
+        "DB",
+        "SCHEMA",
+        "TABLE",
+    )
+    assert SnowflakeLineageSource._split_snowflake_fqn('"My DB".PUBLIC."My Table"') == (
+        "My DB",
+        "PUBLIC",
+        "My Table",
+    )
+
+
+def test_split_snowflake_fqn_handles_embedded_dots_in_quoted_parts():
+    assert SnowflakeLineageSource._split_snowflake_fqn('"My.DB"."My.Schema"."My.Table"') == (
+        "My.DB",
+        "My.Schema",
+        "My.Table",
+    )
+
+
+def test_split_snowflake_fqn_unescapes_doubled_quotes():
+    assert SnowflakeLineageSource._split_snowflake_fqn('DB.SCHEMA."weird""name"') == (
+        "DB",
+        "SCHEMA",
+        'weird"name',
+    )
+
+
+def test_split_snowflake_fqn_logs_debug_for_skips():
+    from unittest.mock import patch
+
+    with patch(
+        "metadata.ingestion.source.database.snowflake.lineage.logger"
+    ) as mock_logger:
+        assert SnowflakeLineageSource._split_snowflake_fqn("DB.SCHEMA") is None
+        debug_messages = [call.args[0] for call in mock_logger.debug.call_args_list]
+        assert any("unexpected part count" in msg for msg in debug_messages)
 
 
 # ---------------------------------------------------------------------------
