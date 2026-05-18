@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
+import { expect } from '@playwright/test';
+import * as net from 'net';
 import {
   enableSSOEditMode,
+  expandSSOAdvancedFields,
   expectSaveDisabledForLockoutRisk,
   expectSaveEnabled,
   runTestLoginViaLdapModal,
@@ -30,24 +32,39 @@ import {
   expectPersistedSecurityConfig,
 } from '../../utils/ssoAuth';
 
-const ensureLdapFixtureReady = async (page: Page) => {
-  try {
-    const response = await page.request.head(
-      `http://localhost:${OPENLDAP_FIXTURE.port}`,
-      { timeout: 3_000 }
-    );
-    if (response.status() >= 500) {
-      throw new Error(`status ${response.status()}`);
-    }
-  } catch {
-    // HEAD against ldap:// won't speak HTTP; the connection refusing here
-    // means the port isn't bound. Skip rather than fail.
-  }
+const LDAP_HOST_PROBE_PORT = Number.parseInt(
+  process.env.LDAP_HOST_PROBE_PORT ?? '1389',
+  10
+);
+
+const probeLdapReachable = (): Promise<boolean> =>
+  new Promise((resolve) => {
+    const socket = new net.Socket();
+    const done = (ok: boolean) => {
+      socket.removeAllListeners();
+      socket.destroy();
+      resolve(ok);
+    };
+    socket.setTimeout(2_000);
+    socket.once('connect', () => done(true));
+    socket.once('timeout', () => done(false));
+    socket.once('error', () => done(false));
+    socket.connect(LDAP_HOST_PROBE_PORT, 'localhost');
+  });
+
+const ensureLdapFixtureReady = async () => {
+  const reachable = await probeLdapReachable();
+  // eslint-disable-next-line playwright/no-skipped-test -- conditional skip when the OpenLDAP fixture isn't reachable; this spec only runs against the sso-test docker profile
+  test.skip(
+    !reachable,
+    `OpenLDAP fixture not reachable at localhost:${LDAP_HOST_PROBE_PORT}. ` +
+      `Bring it up with 'docker compose -f docker/development/docker-compose.yml --profile sso-test up -d' first.`
+  );
 };
 
 test.describe('SSO Test Login — LDAP', () => {
-  test.beforeEach(async ({ page, originalConfig: _ }) => {
-    await ensureLdapFixtureReady(page);
+  test.beforeEach(async ({ originalConfig: _ }) => {
+    await ensureLdapFixtureReady();
   });
 
   test('happy path: configure → test login modal → success → save', async ({
@@ -103,7 +120,7 @@ test.describe('SSO Test Login — LDAP', () => {
       password: 'wrong-password',
     });
     expect(result.success).toBe(false);
-    expect(result.error).toBeTruthy();
+    expect(result.error ?? '').toMatch(/invalid|password|credential|ldap/i);
 
     await expect(page.getByTestId('ldap-test-login-modal')).toBeVisible();
     await page
@@ -148,6 +165,7 @@ test.describe('SSO Test Login — LDAP', () => {
 
   test('lockout-risk gate: editing dnAdminPassword disables save until re-tested', async ({
     page,
+    adminApiContext: apiContext,
   }) => {
     await enableSSOEditMode(page);
     await selectSSOProvider(page, 'ldap');
@@ -164,5 +182,67 @@ test.describe('SSO Test Login — LDAP', () => {
       .getByRole('textbox', { name: /^Admin Password/ })
       .fill('changed-admin-pass');
     await expectSaveDisabledForLockoutRisk(page);
+
+    await page
+      .getByRole('textbox', { name: /^Admin Password/ })
+      .fill(OPENLDAP_FIXTURE.adminPassword);
+
+    const retry = await runTestLoginViaLdapModal(page, {
+      email: OPENLDAP_FIXTURE.validUser.email,
+      password: OPENLDAP_FIXTURE.validUser.password,
+    });
+    expect(retry.success).toBe(true);
+    await expectSaveEnabled(page);
+
+    const saveResponsePromise = page.waitForResponse(
+      (r) =>
+        r.url().includes('/system/security/config') &&
+        ['PUT', 'PATCH'].includes(r.request().method()),
+      { timeout: TEST_LOGIN_NETWORK_TIMEOUT_MS }
+    );
+    await page.getByTestId('save-sso-configuration').click();
+    expect((await saveResponsePromise).ok()).toBe(true);
+
+    await expectPersistedSecurityConfig(apiContext, (auth) => {
+      const ldap = (auth.ldapConfiguration ?? {}) as Record<string, unknown>;
+      expect(ldap.dnAdminPassword).not.toBe('changed-admin-pass');
+      expect(ldap.dnAdminPassword).not.toBe(OPENLDAP_FIXTURE.adminPassword);
+    });
+  });
+
+  test('upgrade: existing LDAP config hydrates bind fields in main, advanced fields in Advanced accordion', async ({
+    page,
+    adminApiContext,
+    originalConfig,
+  }) => {
+    const seedPayload = await openldapProviderHelper.buildConfigPayload();
+    await applyProviderConfig(adminApiContext, originalConfig, seedPayload);
+
+    await enableSSOEditMode(page);
+    await expect(page.getByTestId('save-sso-configuration')).toBeVisible();
+
+    await expect(page.getByRole('textbox', { name: /^LDAP Host/ })).toHaveValue(
+      OPENLDAP_FIXTURE.host
+    );
+    await expect(
+      page.getByRole('spinbutton', { name: /^LDAP Port/ })
+    ).toHaveValue(String(OPENLDAP_FIXTURE.port));
+    await expect(
+      page.getByRole('textbox', { name: /^Admin Principal DN/ })
+    ).toHaveValue(OPENLDAP_FIXTURE.adminDn);
+    const adminPwField = page.getByRole('textbox', { name: /^Admin Password/ });
+    await expect(adminPwField).toBeVisible();
+    await expect(adminPwField).not.toHaveValue('');
+    await expect(
+      page.getByRole('textbox', { name: /^User Base DN/ })
+    ).toHaveValue(OPENLDAP_FIXTURE.userBaseDN);
+    await expect(
+      page.getByRole('textbox', { name: /^Mail Attribute Name/ })
+    ).toHaveValue(OPENLDAP_FIXTURE.mailAttributeName);
+
+    await expandSSOAdvancedFields(page);
+    await expect(
+      page.getByRole('spinbutton', { name: /^Max Pool Size/ })
+    ).toHaveValue('3');
   });
 });

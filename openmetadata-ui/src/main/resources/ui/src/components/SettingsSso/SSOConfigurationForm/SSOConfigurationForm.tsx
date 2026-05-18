@@ -116,7 +116,6 @@ import ClaimSelector from '../TestLogin/ClaimSelector.component';
 import EmailClaimRecommendation from '../TestLogin/EmailClaimRecommendation.component';
 import EmailClaimStatus from '../TestLogin/EmailClaimStatus.component';
 import { TestLoginResult } from '../TestLogin/TestLogin.interface';
-import { claimValueHasEmail } from '../TestLogin/TestLogin.utils';
 import TestLoginButton, {
   TestLoginButtonHandle,
 } from '../TestLogin/TestLoginButton.component';
@@ -1091,34 +1090,10 @@ const SSOConfigurationFormRJSF = ({
     (result: TestLoginResult) => {
       setTestLoginResult(result);
 
-      const existingEmailClaim = (
-        internalData?.authenticationConfiguration as
-          | { emailClaim?: string }
-          | undefined
-      )?.emailClaim;
-      const claimStillResolves =
-        Boolean(existingEmailClaim) &&
-        claimValueHasEmail(result.claims[existingEmailClaim as string]);
-
-      // Auto-close path: existing config's emailClaim still resolves to a
-      // valid email in the returned token, so re-prompting via ClaimSelector
-      // would be redundant. Capture freshness snapshot and let the user save.
-      if (claimStillResolves) {
-        const next = withAuthorizerSuggestionApplied(
-          internalData,
-          result.suggestedAdminPrincipal,
-          result.derivedPrincipalDomain
-        );
-        if (next && next !== internalData) {
-          setInternalData(next);
-        }
-        setTestLoginPassed(true);
-        setTestLoginResult(null);
-        showSuccessToast(t('message.test-login-success'));
-
-        return;
-      }
-
+      // Always prompt with ClaimSelector when the IdP returned claims — admins
+      // may have re-run Test Login precisely because they want to switch the
+      // email claim. Only the no-claims case (LDAP, providers that return an
+      // empty claim bag) falls through to the silent success path.
       const hasClaims = Object.keys(result.claims).length > 0;
       if (hasClaims) {
         setClaimSelectorOpen(true);

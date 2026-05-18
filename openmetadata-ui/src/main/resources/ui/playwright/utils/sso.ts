@@ -99,7 +99,7 @@ export interface SSOConfig {
     enableSelfSignup: boolean;
     clientType?: string;
     secret?: string;
-    oidcConfiguration?: Record<string, any>;
+    oidcConfiguration?: Record<string, unknown>;
   };
   authorizerConfiguration: {
     className: string;
@@ -477,9 +477,13 @@ export const runTestLoginViaPopup = async (
 
   // Attach close listener before any awaits — non-interactive IdPs (mock
   // OIDC) auto-close immediately and we'd miss the event otherwise.
-  const closePromise = popup.waitForEvent('close', {
-    timeout: TEST_LOGIN_POPUP_TIMEOUT_MS,
-  });
+  // If popup is already closed by the time we observe it (very fast SSO
+  // auto-completion on a second SAML test login, for example),
+  // waitForEvent('close') would never resolve, so fall back to an
+  // already-resolved promise in that case.
+  const closePromise: Promise<unknown> = popup.isClosed()
+    ? Promise.resolve()
+    : popup.waitForEvent('close', { timeout: TEST_LOGIN_POPUP_TIMEOUT_MS });
 
   await popup.waitForLoadState('domcontentloaded').catch(() => undefined);
 
@@ -491,7 +495,9 @@ export const runTestLoginViaPopup = async (
     });
   }
 
-  await closePromise;
+  if (!popup.isClosed()) {
+    await closePromise;
+  }
 
   return readTestLoginResultFromStorage(page);
 };
