@@ -92,7 +92,13 @@ jobs:
               for result in item.get("results", []):
                   key = (result.get("component", ""), result.get("version", ""))
                   if key not in libs:
-                      libs[key] = {"files": [], "vulns": result.get("vulnerabilities", [])}
+                      libs[key] = {"files": [], "vulns": []}
+                  existing_ids = {json.dumps(v.get("identifiers", {}), sort_keys=True) for v in libs[key]["vulns"]}
+                  for v in result.get("vulnerabilities", []):
+                      vid = json.dumps(v.get("identifiers", {}), sort_keys=True)
+                      if vid not in existing_ids:
+                          libs[key]["vulns"].append(v)
+                          existing_ids.add(vid)
                   if short not in libs[key]["files"]:
                       libs[key]["files"].append(short)
 
@@ -106,7 +112,7 @@ jobs:
 
               for (component, version), info in sorted(libs.items(), key=lambda x: min(
                       (SEVERITY_ORDER.get(v.get("severity", "low"), 3) for v in x[1]["vulns"]), default=3)):
-                  top_sev = min(info["vulns"], key=lambda v: SEVERITY_ORDER.get(v.get("severity", "low"), 3))
+                  top_sev = min(info["vulns"], key=lambda v: SEVERITY_ORDER.get(v.get("severity", "low"), 3), default={"severity": "low"})
                   icon = SEVERITY_ICON.get(top_sev.get("severity", "low"), "⚪")
                   print(f"### {icon} {component} {version}\n")
                   print("| Severity | CVE | Summary |")
