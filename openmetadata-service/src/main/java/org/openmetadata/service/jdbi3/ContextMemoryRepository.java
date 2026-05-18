@@ -1,0 +1,228 @@
+/*
+ *  Copyright 2024 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.jdbi3;
+
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
+import jakarta.ws.rs.BadRequestException;
+import java.util.Map;
+import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.context.ContextMemoryResource;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.FullyQualifiedName;
+
+@Slf4j
+@Repository(name = "ContextMemoryRepository")
+public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
+  public static final String CONTEXT_MEMORY_ENTITY = Entity.CONTEXT_MEMORY;
+
+  public ContextMemoryRepository() {
+    super(
+        ContextMemoryResource.COLLECTION_PATH,
+        Entity.CONTEXT_MEMORY,
+        ContextMemory.class,
+        Entity.getCollectionDAO().contextMemoryDAO(),
+        "",
+        "");
+    supportsSearch = false;
+  }
+
+  @Override
+  protected void setFields(ContextMemory entity, Fields fields, RelationIncludes relationIncludes) {
+    // ContextMemory stores its fields in the entity JSON for now.
+  }
+
+  @Override
+  protected void clearFields(ContextMemory entity, Fields fields) {
+    // ContextMemory stores its fields in the entity JSON for now.
+  }
+
+  @Override
+  public void setFullyQualifiedName(ContextMemory entity) {
+    if (entity.getPrimaryEntity() != null
+        && entity.getPrimaryEntity().getFullyQualifiedName() != null
+        && !entity.getPrimaryEntity().getFullyQualifiedName().isEmpty()) {
+      entity.setFullyQualifiedName(
+          FullyQualifiedName.add(
+              entity.getPrimaryEntity().getFullyQualifiedName(), entity.getName()));
+      return;
+    }
+    if (entity.getOwners() != null
+        && !entity.getOwners().isEmpty()
+        && entity.getOwners().get(0).getName() != null
+        && !entity.getOwners().get(0).getName().isEmpty()) {
+      entity.setFullyQualifiedName(
+          FullyQualifiedName.add(entity.getOwners().get(0).getName(), entity.getName()));
+      return;
+    }
+    entity.setFullyQualifiedName(entity.getName());
+  }
+
+  @Override
+  public void prepare(ContextMemory entity, boolean update) {
+    if (entity.getPrimaryEntity() != null) {
+      EntityReference primaryEntity =
+          Entity.getEntityReference(entity.getPrimaryEntity(), Include.NON_DELETED);
+      entity.setPrimaryEntity(primaryEntity);
+    }
+    EntityUtil.populateEntityReferences(entity.getRelatedEntities());
+
+    if (entity.getRootMemory() != null) {
+      ContextMemory rootMemory = Entity.getEntity(entity.getRootMemory(), "", Include.NON_DELETED);
+      entity.setRootMemory(rootMemory.getEntityReference());
+    }
+    if (entity.getParentMemory() != null) {
+      ContextMemory parentMemory =
+          Entity.getEntity(entity.getParentMemory(), "", Include.NON_DELETED);
+      entity.setParentMemory(parentMemory.getEntityReference());
+    }
+    if (entity.getShareConfig() != null && entity.getShareConfig().getSharedWith() != null) {
+      entity
+          .getShareConfig()
+          .getSharedWith()
+          .forEach(
+              sharedPrincipal -> {
+                if (sharedPrincipal.getPrincipal() != null) {
+                  EntityReference principal =
+                      Entity.getEntityReference(
+                          sharedPrincipal.getPrincipal(), Include.NON_DELETED);
+                  sharedPrincipal.setPrincipal(principal);
+                }
+              });
+    }
+  }
+
+  @Override
+  public void storeEntity(ContextMemory entity, boolean update) {
+    store(entity, update);
+  }
+
+  @Override
+  public void storeRelationships(ContextMemory entity) {
+    if (entity.getPrimaryEntity() != null) {
+      addRelationship(
+          entity.getPrimaryEntity().getId(),
+          entity.getId(),
+          entity.getPrimaryEntity().getType(),
+          CONTEXT_MEMORY_ENTITY,
+          Relationship.HAS);
+    }
+
+    for (var relatedEntity : listOrEmpty(entity.getRelatedEntities())) {
+      addRelationship(
+          relatedEntity.getId(),
+          entity.getId(),
+          relatedEntity.getType(),
+          CONTEXT_MEMORY_ENTITY,
+          Relationship.RELATED_TO);
+    }
+
+    if (entity.getRootMemory() != null) {
+      addRelationship(
+          entity.getRootMemory().getId(),
+          entity.getId(),
+          CONTEXT_MEMORY_ENTITY,
+          CONTEXT_MEMORY_ENTITY,
+          Relationship.RELATED_TO);
+    }
+
+    if (entity.getParentMemory() != null) {
+      addRelationship(
+          entity.getParentMemory().getId(),
+          entity.getId(),
+          CONTEXT_MEMORY_ENTITY,
+          CONTEXT_MEMORY_ENTITY,
+          Relationship.RELATED_TO);
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Lifecycle enforcement
+  // ------------------------------------------------------------------
+
+  /**
+   * Valid status transitions:
+   *   DRAFT → ACTIVE
+   *   DRAFT → ARCHIVED
+   *   ACTIVE → ARCHIVED
+   *   ARCHIVED → ACTIVE (re-activate)
+   *
+   * Invalid:
+   *   ARCHIVED → DRAFT (cannot revert to draft)
+   *   ACTIVE → DRAFT (cannot revert to draft)
+   */
+  private static final Map<ContextMemoryStatus, Set<ContextMemoryStatus>> VALID_TRANSITIONS =
+      Map.of(
+          ContextMemoryStatus.DRAFT,
+              Set.of(ContextMemoryStatus.ACTIVE, ContextMemoryStatus.ARCHIVED),
+          ContextMemoryStatus.ACTIVE, Set.of(ContextMemoryStatus.ARCHIVED),
+          ContextMemoryStatus.ARCHIVED, Set.of(ContextMemoryStatus.ACTIVE));
+
+  /** Validate that a status transition is allowed. */
+  public static void validateStatusTransition(ContextMemoryStatus from, ContextMemoryStatus to) {
+    if (from == to) {
+      return; // No change
+    }
+    Set<ContextMemoryStatus> allowed = VALID_TRANSITIONS.get(from);
+    if (allowed == null || !allowed.contains(to)) {
+      throw new BadRequestException(
+          String.format(
+              "Invalid memory status transition from %s to %s. Allowed transitions from %s: %s",
+              from.value(), to.value(), from.value(), allowed));
+    }
+  }
+
+  @Override
+  public EntityUpdater getUpdater(
+      ContextMemory original, ContextMemory updated, Operation operation, ChangeSource source) {
+    return new ContextMemoryUpdater(original, updated, operation);
+  }
+
+  public class ContextMemoryUpdater extends EntityUpdater {
+    public ContextMemoryUpdater(
+        ContextMemory original, ContextMemory updated, Operation operation) {
+      super(original, updated, operation);
+    }
+
+    @Override
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
+      recordChange("title", original.getTitle(), updated.getTitle());
+      recordChange("summary", original.getSummary(), updated.getSummary());
+      recordChange("question", original.getQuestion(), updated.getQuestion());
+      recordChange("answer", original.getAnswer(), updated.getAnswer());
+      recordChange("memoryType", original.getMemoryType(), updated.getMemoryType());
+      recordChange("memoryScope", original.getMemoryScope(), updated.getMemoryScope());
+
+      // Validate lifecycle transition before recording status change
+      if (original.getStatus() != null
+          && updated.getStatus() != null
+          && original.getStatus() != updated.getStatus()) {
+        validateStatusTransition(original.getStatus(), updated.getStatus());
+      }
+      recordChange("status", original.getStatus(), updated.getStatus());
+
+      recordChange("shareConfig", original.getShareConfig(), updated.getShareConfig());
+    }
+  }
+}
