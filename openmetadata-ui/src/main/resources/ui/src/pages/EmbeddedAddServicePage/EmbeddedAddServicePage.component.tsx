@@ -334,7 +334,7 @@ const EmbeddedAddServicePage = () => {
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
-        cardClassName: 'max-width-md m-x-auto',
+        cardClassName: 'max-width-md m-x-auto tw:my-4',
         allowScroll: true,
       }}
       hideSecondPanel={hideSecondPanel}

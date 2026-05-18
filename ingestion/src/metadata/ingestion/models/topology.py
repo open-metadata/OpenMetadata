@@ -15,7 +15,7 @@ Defines the topology for ingesting sources
 import queue
 import threading
 from functools import cache, singledispatchmethod
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar  # noqa: UP035
+from typing import Annotated, Any, Dict, Generic, List, Optional, Type, TypeVar  # noqa: UP035
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
@@ -111,14 +111,18 @@ class TopologyNode(BaseModel):
             "Each stage accepts the producer results as an argument"
         ),
     )
-    children: Optional[List[str]] = Field(None, description="Nodes to execute next")  # noqa: UP006, UP045
-    post_process: Optional[List[str]] = Field(  # noqa: UP006, UP045
-        None, description="Method to be run after the node has been fully processed"
-    )
-    threads: bool = Field(
-        False,
-        description="Flag that defines if a node is open to MultiThreading processing.",
-    )
+    children: Annotated[
+        list[str] | None,
+        Field(description="Nodes to execute next"),
+    ] = None
+    post_process: Annotated[
+        list[str] | None,
+        Field(description="Method to be run after the node has been fully processed"),
+    ] = None
+    threads: Annotated[
+        bool,
+        Field(description="Flag that defines if a node is open to MultiThreading processing."),
+    ] = False
 
 
 class ServiceTopology(BaseModel):

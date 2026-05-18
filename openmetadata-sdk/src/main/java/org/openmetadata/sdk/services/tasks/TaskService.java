@@ -215,6 +215,31 @@ public class TaskService extends EntityServiceBase<Task> {
     return deserializeListResponse(responseStr);
   }
 
+  /**
+   * List Data Access Requests with DAR-specific filters and offset-based pagination.
+   * Pre-applies category=DataAccess and type=DataAccessRequest server-side.
+   *
+   * @param filters Optional filters (dataset, service, status, statusGroup, requestedBy,
+   *     requestedById, approver, approverId, accessType, domain, sortOrder, limit, offset,
+   *     include, fields).
+   */
+  public ListResponse<Task> listDataAccessRequests(Map<String, String> filters)
+      throws OpenMetadataException {
+    String path = basePath + "/dataAccessRequests";
+    RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+    if (filters != null) {
+      filters.forEach(
+          (k, v) -> {
+            if (v != null) {
+              optionsBuilder.queryParam(k, v);
+            }
+          });
+    }
+    String responseStr =
+        httpClient.executeForString(HttpMethod.GET, path, null, optionsBuilder.build());
+    return deserializeListResponse(responseStr);
+  }
+
   // ==================== Comment Methods ====================
 
   /**

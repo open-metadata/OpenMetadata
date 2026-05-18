@@ -12,6 +12,7 @@
  */
 import { ComboData, EdgeData, NodeData } from '@antv/g6';
 import { useCallback, useMemo } from 'react';
+import { GlossaryTermRelationType } from '../../../rest/settingConfigAPI';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   DATA_MODE_ASSET_CIRCLE_SIZE,
@@ -54,89 +55,109 @@ import {
 } from '../utils/layoutCalculations';
 import { ONTOLOGY_COMBO_AWARE_POLYLINE_EDGE_TYPE } from '../utils/ontologyComboAwarePolylineEdge';
 
-const INVERSE_RELATION_PAIRS: Record<string, string> = {
-  broader: 'narrower',
-  narrower: 'broader',
-  parentOf: 'childOf',
-  childOf: 'parentOf',
-  hasPart: 'partOf',
-  partOf: 'hasPart',
-  hasA: 'componentOf',
-  componentOf: 'hasA',
-  composedOf: 'partOf',
-  owns: 'ownedBy',
-  ownedBy: 'owns',
-  manages: 'managedBy',
-  managedBy: 'manages',
-  contains: 'containedIn',
-  containedIn: 'contains',
-  hasTypes: 'typeOf',
-  typeOf: 'hasTypes',
-  usedToCalculate: 'calculatedFrom',
-  calculatedFrom: 'usedToCalculate',
-  usedBy: 'dependsOn',
-  dependsOn: 'usedBy',
-};
+interface RelationMaps {
+  inverseMap: Record<string, string>;
+  symmetricSet: Set<string>;
+}
 
-const SYMMETRIC_RELATIONS = new Set([
-  'related',
-  'relatedTo',
-  'synonym',
-  'antonym',
-  'seeAlso',
-]);
-
-function mergeEdges(inputEdges: OntologyEdge[]): MergedEdge[] {
-  const edgeMap = new Map<string, OntologyEdge>();
-  const processedPairs = new Set<string>();
-  const result: MergedEdge[] = [];
-
-  inputEdges.forEach((edge) => {
-    edgeMap.set(`${edge.from}->${edge.to}`, edge);
+function buildRelationMaps(
+  configuredTypes?: GlossaryTermRelationType[]
+): RelationMaps {
+  const inverseMap: Record<string, string> = {};
+  const symmetricSet = new Set<string>();
+  configuredTypes?.forEach((rt) => {
+    if (rt.inverseRelation) {
+      inverseMap[rt.name] = rt.inverseRelation;
+      if (!(rt.inverseRelation in inverseMap)) {
+        inverseMap[rt.inverseRelation] = rt.name;
+      }
+    }
+    if (rt.isSymmetric) {
+      symmetricSet.add(rt.name);
+    }
   });
 
+  return { inverseMap, symmetricSet };
+}
+
+function isInversePair(
+  a: string,
+  b: string,
+  inverseMap: Record<string, string>
+): boolean {
+  return inverseMap[a] === b || inverseMap[b] === a;
+}
+
+export function mergeEdges(
+  inputEdges: OntologyEdge[],
+  configuredTypes?: GlossaryTermRelationType[]
+): MergedEdge[] {
+  const { inverseMap, symmetricSet } = buildRelationMaps(configuredTypes);
+  const pairGroups = new Map<string, OntologyEdge[]>();
   inputEdges.forEach((edge) => {
     const pairKey = [edge.from, edge.to]
       .sort((a, b) => a.localeCompare(b))
       .join('::');
-    if (processedPairs.has(pairKey)) {
-      return;
-    }
-
-    const reverseEdge = edgeMap.get(`${edge.to}->${edge.from}`);
-    const inverseRelation = INVERSE_RELATION_PAIRS[edge.relationType];
-    const isSymmetric = SYMMETRIC_RELATIONS.has(edge.relationType);
-
-    if (inverseRelation && reverseEdge?.relationType === inverseRelation) {
-      processedPairs.add(pairKey);
-      result.push({
-        from: edge.from,
-        to: edge.to,
-        relationType: edge.relationType,
-        inverseRelationType: reverseEdge.relationType,
-        isBidirectional: true,
-      });
-    } else if (
-      reverseEdge &&
-      isSymmetric &&
-      edge.relationType === reverseEdge.relationType
-    ) {
-      processedPairs.add(pairKey);
-      result.push({
-        from: edge.from,
-        to: edge.to,
-        relationType: edge.relationType,
-        isBidirectional: true,
-      });
-    } else {
-      result.push({
-        from: edge.from,
-        to: edge.to,
-        relationType: edge.relationType,
-        isBidirectional: false,
-      });
-    }
+    const list = pairGroups.get(pairKey) ?? [];
+    list.push(edge);
+    pairGroups.set(pairKey, list);
   });
+
+  const result: MergedEdge[] = [];
+  for (const list of pairGroups.values()) {
+    const consumed = new Set<number>();
+    for (let i = 0; i < list.length; i++) {
+      if (consumed.has(i)) {
+        continue;
+      }
+      const edge = list[i];
+      const isSymmetric = symmetricSet.has(edge.relationType);
+
+      let matchIndex = -1;
+      for (let j = i + 1; j < list.length; j++) {
+        if (consumed.has(j)) {
+          continue;
+        }
+        const other = list[j];
+        if (other.from !== edge.to || other.to !== edge.from) {
+          continue;
+        }
+        const isSymmetricMatch =
+          isSymmetric && other.relationType === edge.relationType;
+        if (
+          isSymmetricMatch ||
+          isInversePair(edge.relationType, other.relationType, inverseMap)
+        ) {
+          matchIndex = j;
+
+          break;
+        }
+      }
+
+      consumed.add(i);
+      if (matchIndex < 0) {
+        result.push({
+          from: edge.from,
+          to: edge.to,
+          relationType: edge.relationType,
+          isBidirectional: false,
+        });
+
+        continue;
+      }
+      const match = list[matchIndex];
+      consumed.add(matchIndex);
+      result.push({
+        from: edge.from,
+        to: edge.to,
+        relationType: edge.relationType,
+        ...(edge.relationType === match.relationType
+          ? {}
+          : { inverseRelationType: match.relationType }),
+        isBidirectional: true,
+      });
+    }
+  }
 
   return result;
 }
@@ -155,6 +176,7 @@ export function useGraphDataBuilder({
   layoutType,
   hierarchyCombos = [],
   graphSearchHighlight = null,
+  relationTypes,
 }: BuildGraphDataProps) {
   const computeNodeColor = useCallback(
     (node: OntologyNode): string =>
@@ -164,7 +186,10 @@ export function useGraphDataBuilder({
     [glossaryColorMap]
   );
 
-  const mergedEdgesList = useMemo(() => mergeEdges(inputEdges), [inputEdges]);
+  const mergedEdgesList = useMemo(
+    () => mergeEdges(inputEdges, relationTypes),
+    [inputEdges, relationTypes]
+  );
 
   const neighborSet = useMemo(() => {
     const set = new Set<string>();

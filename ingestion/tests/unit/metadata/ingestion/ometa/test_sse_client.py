@@ -92,6 +92,7 @@ def mock_client_config():
     config.allow_redirects = True
     config.verify = True
     config.cookies = None
+    config.user_agent = None
     config.auth_token = Mock(return_value=("test_token", 3600))
     return config
 

@@ -74,15 +74,13 @@ export const addAssigneeFromPopoverWidget = async (data: {
 
   if (testCaseName) {
     const incidentRow = page
-      .getByRole('row', { name: new RegExp(testCaseName, 'i') })
+      .locator('tr')
+      .filter({ has: page.getByTestId(`test-case-${testCaseName}`) })
       .first();
     const editOwnerButton = incidentRow.getByTestId('edit-owner');
 
-    if (await editOwnerButton.isVisible().catch(() => false)) {
-      await editOwnerButton.click();
-    } else {
-      await incidentRow.locator('td').last().getByRole('button').click();
-    }
+    await expect(editOwnerButton).toBeVisible();
+    await editOwnerButton.click();
   } else if (await taskTabEditAssigneesButton.isVisible().catch(() => false)) {
     await taskTabEditAssigneesButton.click();
     await waitForAllLoadersToDisappear(page);
@@ -184,7 +182,7 @@ export const assignIncident = async (data: {
     .poll(
       async () => {
         const incidentRow = page
-          .getByRole('row', { name: new RegExp(testCaseName, 'i') })
+          .getByTestId(`test-case-${testCaseName}`)
           .first();
         const incidentLink = page
           .getByRole('link', { name: testCaseName })
