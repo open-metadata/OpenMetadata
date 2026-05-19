@@ -17,7 +17,6 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Globe01 } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
@@ -51,6 +50,7 @@ import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { useViewToggle } from '../common/atoms/navigation/useViewToggle';
 import { usePaginationControls } from '../common/atoms/pagination/usePaginationControls';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
+import { DomainDisplay } from '../common/DomainDisplay/DomainDisplay.component';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
@@ -246,16 +246,8 @@ const DataProductListPage = () => {
           if (!domains?.length) {
             return <Typography size="text-sm">{NO_DATA}</Typography>;
           }
-          const domain = domains[0];
 
-          return (
-            <Box align="center" direction="row" gap={1}>
-              <Globe01 size={16} style={{ flexShrink: 0 }} />
-              <Typography size="text-sm">
-                {domain.displayName || domain.name}
-              </Typography>
-            </Box>
-          );
+          return <DomainDisplay domains={domains} />;
         }
         case 'tags':
           return (

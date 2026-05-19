@@ -13,7 +13,13 @@
 import { Dropdown, Typography } from 'antd';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
+import {
+  getDomainReferenceBadgeStyle,
+  getDomainReferenceIconColor,
+  useDomainsWithStyle,
+} from '../../../utils/DomainStyleUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
 
@@ -43,20 +49,29 @@ export const DomainDisplay = ({
   showIcon = true,
   className = '',
 }: DomainDisplayProps) => {
-  if (!domains || domains.length === 0) {
+  const resolvedDomains = useDomainsWithStyle(domains);
+
+  if (!resolvedDomains || resolvedDomains.length === 0) {
     return null;
   }
 
-  if (domains.length > 1) {
-    const firstDomain = domains[0];
-    const remainingDomains = domains.slice(1);
+  if (resolvedDomains.length > 1) {
+    const firstDomain = resolvedDomains[0];
+    const remainingDomains = resolvedDomains.slice(1);
     const remainingCount = remainingDomains.length;
 
     const dropdownItems = remainingDomains.map((domain, index) => ({
       key: index,
       label: (
-        <div className="d-flex items-center gap-2">
-          <DomainIcon height={14} name="domain" width={14} />
+        <div
+          className="d-flex items-center gap-2"
+          style={getDomainReferenceBadgeStyle(domain)}>
+          <DomainIcon
+            color={getDomainReferenceIconColor(domain, DE_ACTIVE_COLOR)}
+            height={14}
+            name="domain"
+            width={14}
+          />
           <Link
             className="no-underline"
             to={getDomainPath(domain.fullyQualifiedName) ?? ''}>
@@ -73,6 +88,7 @@ export const DomainDisplay = ({
         {showIcon && (
           <div className="d-flex">
             <DomainIcon
+              color={getDomainReferenceIconColor(firstDomain, DE_ACTIVE_COLOR)}
               data-testid="domain-icon"
               height={18}
               name="domain"
@@ -81,7 +97,9 @@ export const DomainDisplay = ({
           </div>
         )}
 
-        <div className="d-flex items-center gap-2">
+        <div
+          className="d-flex items-center gap-2"
+          style={getDomainReferenceBadgeStyle(firstDomain)}>
           <DomainLink domain={firstDomain} />
 
           <Dropdown
@@ -110,6 +128,10 @@ export const DomainDisplay = ({
       {showIcon && (
         <div className="d-flex">
           <DomainIcon
+            color={getDomainReferenceIconColor(
+              resolvedDomains[0],
+              DE_ACTIVE_COLOR
+            )}
             data-testid="domain-icon"
             height={18}
             name="domain"
@@ -118,8 +140,10 @@ export const DomainDisplay = ({
         </div>
       )}
 
-      <div className="d-flex items-center gap-1">
-        <DomainLink domain={domains[0]} />
+      <div
+        className="d-flex items-center gap-1"
+        style={getDomainReferenceBadgeStyle(resolvedDomains[0])}>
+        <DomainLink domain={resolvedDomains[0]} />
       </div>
     </div>
   );

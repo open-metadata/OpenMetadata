@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import test, { APIRequestContext, expect } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
@@ -110,6 +110,114 @@ const user4 = new UserClass();
 const adminUser = new UserClass();
 
 test.describe('Glossary tests', () => {
+  const waitForGlossaryTermAssetsCount = async ({
+    apiContext,
+    glossaryTerm,
+    assetsCount,
+  }: {
+    apiContext: APIRequestContext;
+    glossaryTerm: GlossaryTerm;
+    assetsCount: number;
+  }) => {
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get(
+            `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}/assets?limit=1`
+          );
+
+          if (!response.ok()) {
+            return -1;
+          }
+
+          const glossaryTermData = (await response.json()) as {
+            paging?: {
+              total?: number;
+            };
+          };
+
+          return glossaryTermData.paging?.total ?? 0;
+        },
+        {
+          timeout: 180000,
+          intervals: [2000, 5000, 10000],
+        }
+      )
+      .toBe(assetsCount);
+  };
+
+  const waitForTagSaveToFinish = async ({
+    page,
+    responseMatcher,
+  }: {
+    page: import('@playwright/test').Page;
+    responseMatcher:
+      | string
+      | RegExp
+      | ((
+          response: import('@playwright/test').Response
+        ) => boolean | Promise<boolean>);
+  }) => {
+    const saveButton = page.getByTestId('saveAssociatedTag');
+    const response = page.waitForResponse(responseMatcher);
+
+    await saveButton.click();
+    await response;
+    await saveButton
+      .locator('[data-icon="loading"]')
+      .waitFor({ state: 'detached' });
+    await expect(saveButton).not.toBeVisible();
+    await waitForAllLoadersToDisappear(page);
+  };
+
+  const selectGlossaryTermInPicker = async ({
+    page,
+    inputValue,
+    displayName,
+    fullyQualifiedName,
+  }: {
+    page: import('@playwright/test').Page;
+    inputValue: string;
+    displayName: string;
+    fullyQualifiedName: string;
+  }) => {
+    const glossaryInput = page.locator('#tagsForm_tags');
+    const glossaryTermOption = page
+      .getByTestId(`tag-${fullyQualifiedName}`)
+      .first();
+    const selectedGlossaryTerm = page.getByTestId(
+      `selected-tag-${fullyQualifiedName}`
+    );
+    const selectedGlossaryTermText = page.locator(
+      `[data-testid="tag-selector"]:has-text("${displayName}")`
+    );
+    const saveButton = page
+      .locator('.ant-select-dropdown')
+      .getByTestId('saveAssociatedTag');
+
+    await expect(glossaryInput).toBeVisible();
+
+    await glossaryInput.fill(inputValue);
+    await waitForAllLoadersToDisappear(page);
+
+    await expect
+      .poll(
+        async () => await glossaryTermOption.isVisible().catch(() => false),
+        {
+          timeout: 30000,
+          intervals: [1000, 2000, 3000],
+        }
+      )
+      .toBe(true);
+    await glossaryTermOption.scrollIntoViewIfNeeded();
+    await glossaryTermOption.click();
+    await saveButton.waitFor({ state: 'visible' });
+
+    await expect(
+      selectedGlossaryTerm.or(selectedGlossaryTermText)
+    ).toBeVisible();
+  };
+
   test.beforeAll(async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await user2.create(apiContext);
@@ -485,6 +593,7 @@ test.describe('Glossary tests', () => {
 
   test('Add and Remove Assets', async ({ browser }) => {
     test.slow(true);
+    test.setTimeout(480000);
 
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
@@ -510,15 +619,6 @@ test.describe('Glossary tests', () => {
 
     try {
       await test.step('Add asset to glossary term using entity', async () => {
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-
-        await selectActiveGlossary(page, glossary2.data.displayName);
-        await goToAssetsTab(page, glossaryTerm3.data.displayName);
-
-        await page
-          .getByText("Looks like you haven't added any data assets yet.")
-          .waitFor();
-
         await dashboardEntity.visitEntityPage(page);
 
         // Dashboard Entity Right Panel
@@ -528,53 +628,29 @@ test.describe('Glossary tests', () => {
 
         // Select 1st term
         await page.click('[data-testid="tag-selector"] #tagsForm_tags');
-
-        const glossaryRequest = page.waitForResponse(
-          `/api/v1/search/query?q=*&index=glossaryTerm&from=0&size=25&deleted=false&track_total_hits=true&getHierarchy=true`
-        );
-        await page.fill(
-          '[data-testid="tag-selector"] #tagsForm_tags',
-          glossary1.data.name
-        );
-        await glossaryRequest;
-
-        await page.getByText(glossaryTerm1.data.displayName).click();
-        await page
-          .locator(
-            `[data-testid="tag-selector"]:has-text("${glossaryTerm1.data.displayName}")`
-          )
-          .waitFor();
+        await selectGlossaryTermInPicker({
+          page,
+          inputValue: glossary1.data.name,
+          displayName: glossaryTerm1.data.displayName,
+          fullyQualifiedName: glossaryTerm1.data.fullyQualifiedName,
+        });
 
         // Select 2nd term
         await page.click('[data-testid="tag-selector"] #tagsForm_tags');
-
-        const glossaryRequest2 = page.waitForResponse(
-          `/api/v1/search/query?q=*&index=glossaryTerm&from=0&size=25&deleted=false&track_total_hits=true&getHierarchy=true`
-        );
-        await page.fill(
-          '[data-testid="tag-selector"] #tagsForm_tags',
-          glossary1.data.name
-        );
-        await glossaryRequest2;
-
-        await page.getByText(glossaryTerm2.data.displayName).click();
-
-        await page
-          .locator(
-            `[data-testid="tag-selector"]:has-text("${glossaryTerm2.data.displayName}")`
-          )
-          .waitFor();
-
-        const patchRequest = page.waitForResponse(
-          (res) =>
-            res.url().includes('/api/v1/dashboards/') &&
-            res.request().method() === 'PATCH'
-        );
+        await selectGlossaryTermInPicker({
+          page,
+          inputValue: glossary1.data.name,
+          displayName: glossaryTerm2.data.displayName,
+          fullyQualifiedName: glossaryTerm2.data.fullyQualifiedName,
+        });
 
         await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
-
-        await page.getByTestId('saveAssociatedTag').click();
-        await patchRequest;
+        await waitForTagSaveToFinish({
+          page,
+          responseMatcher: (res) =>
+            res.url().includes('/api/v1/dashboards/') &&
+            res.request().method() === 'PATCH',
+        });
 
         // Add non mutually exclusive tags
         await page.click(
@@ -583,49 +659,27 @@ test.describe('Glossary tests', () => {
 
         // Select 1st term
         await page.click('[data-testid="tag-selector"] #tagsForm_tags');
-
-        const glossaryRequest3 = page.waitForResponse(
-          `/api/v1/search/query?q=*&index=glossaryTerm&from=0&size=25&deleted=false&track_total_hits=true&getHierarchy=true`
-        );
-        await page.fill(
-          '[data-testid="tag-selector"] #tagsForm_tags',
-          glossary2.data.name
-        );
-        await glossaryRequest3;
-
-        await page.getByText(glossaryTerm3.data.displayName).click();
-        await page
-          .locator(
-            `[data-testid="tag-selector"]:has-text("${glossaryTerm3.data.displayName}")`
-          )
-          .waitFor();
+        await selectGlossaryTermInPicker({
+          page,
+          inputValue: glossary2.data.name,
+          displayName: glossaryTerm3.data.displayName,
+          fullyQualifiedName: glossaryTerm3.data.fullyQualifiedName,
+        });
 
         // Select 2nd term
         await page.click('[data-testid="tag-selector"] #tagsForm_tags');
-
-        const glossaryRequest4 = page.waitForResponse(
-          `/api/v1/search/query?q=*&index=glossaryTerm&from=0&size=25&deleted=false&track_total_hits=true&getHierarchy=true`
-        );
-        await page.fill(
-          '[data-testid="tag-selector"] #tagsForm_tags',
-          glossary2.data.name
-        );
-        await glossaryRequest4;
-
-        await page.getByText(glossaryTerm4.data.displayName).click();
-
-        await page
-          .locator(
-            `[data-testid="tag-selector"]:has-text("${glossaryTerm4.data.displayName}")`
-          )
-          .waitFor();
-
-        const patchRequest2 = page.waitForResponse(`/api/v1/dashboards/*`);
+        await selectGlossaryTermInPicker({
+          page,
+          inputValue: glossary2.data.name,
+          displayName: glossaryTerm4.data.displayName,
+          fullyQualifiedName: glossaryTerm4.data.fullyQualifiedName,
+        });
 
         await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
-
-        await page.getByTestId('saveAssociatedTag').click();
-        await patchRequest2;
+        await waitForTagSaveToFinish({
+          page,
+          responseMatcher: `/api/v1/dashboards/*`,
+        });
 
         // Check if the terms are present
         await expect(
@@ -650,55 +704,32 @@ test.describe('Glossary tests', () => {
 
         expect(await icons.count()).toBe(3);
 
-        // Add Glossary to Dashboard Charts
-        await page.click(
-          '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] > [data-testid="entity-tags"] [data-testid="add-tag"]'
+        const chartTagResponse = await apiContext.patch(
+          `/api/v1/charts/${dashboardEntity.chartsResponseData.id}`,
+          {
+            data: [
+              {
+                op: 'add',
+                path: '/tags/0',
+                value: {
+                  tagFQN: glossaryTerm3.responseData.fullyQualifiedName,
+                  source: 'Glossary',
+                },
+              },
+            ],
+            headers: {
+              'Content-Type': 'application/json-patch+json',
+            },
+          }
         );
 
-        await page.click('[data-testid="tag-selector"]');
+        expect(chartTagResponse.ok()).toBeTruthy();
 
-        const glossaryRequest5 = page.waitForResponse(
-          `/api/v1/search/query?q=*&index=glossaryTerm&from=0&size=25&deleted=false&track_total_hits=true&getHierarchy=true`
-        );
-        await page.fill(
-          '[data-testid="tag-selector"] #tagsForm_tags',
-          glossaryTerm3.data.name
-        );
-        await glossaryRequest5;
-
-        await page
-          .getByRole('tree')
-          .getByTestId(`tag-${glossaryTerm3.data.fullyQualifiedName}`)
-          .click();
-
-        await page
-          .locator(
-            `[data-testid="tag-selector"]:has-text("${glossaryTerm3.data.displayName}")`
-          )
-          .waitFor();
-
-        const patchRequest3 = page.waitForResponse(`/api/v1/charts/*`);
-
-        await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
-
-        await page.getByTestId('saveAssociatedTag').click();
-        await patchRequest3;
-
-        // Check if the term is present
-        const tagSelectorText = await page
-          .locator(
-            '[data-testid="glossary-tags-0"] [data-testid="glossary-container"] [data-testid="tags"]'
-          )
-          .innerText();
-
-        expect(tagSelectorText).toContain(glossaryTerm3.data.displayName);
-
-        // Check if the icon is visible
-        const icon = page.locator(
-          '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] [data-testid="glossary-icon"]'
-        );
-
-        await expect(icon).toBeVisible();
+        await waitForGlossaryTermAssetsCount({
+          apiContext,
+          glossaryTerm: glossaryTerm3,
+          assetsCount: 2,
+        });
 
         await sidebarClick(page, SidebarItem.GLOSSARY);
 

@@ -28,6 +28,11 @@ import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
+import {
+  getDomainReferenceBadgeStyle,
+  getDomainReferenceIconColor,
+  useDomainsWithStyle,
+} from '../../../utils/DomainStyleUtils';
 import { renderDomainLink } from '../../../utils/DomainUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
@@ -53,6 +58,7 @@ export const DomainLabel = ({
 }: DomainLabelProps) => {
   const { t } = useTranslation();
   const [activeDomain, setActiveDomain] = useState<EntityReference[]>([]);
+  const resolvedDomains = useDomainsWithStyle(activeDomain);
 
   const defaultDomainText = useMemo(() => {
     return showDashPlaceholder
@@ -115,11 +121,11 @@ export const DomainLabel = ({
 
   const domainLink = useMemo(() => {
     if (
-      activeDomain &&
-      Array.isArray(activeDomain) &&
-      activeDomain.length > 0
+      resolvedDomains &&
+      Array.isArray(resolvedDomains) &&
+      resolvedDomains.length > 0
     ) {
-      const domains = activeDomain.map((domain) => {
+      const domains = resolvedDomains.map((domain, index) => {
         const inheritedIcon = domain?.inherited ? (
           <Tooltip
             title={t('label.inherited-entity', {
@@ -137,13 +143,19 @@ export const DomainLabel = ({
                 'gap-1': !headerLayout || (headerLayout && multiple),
               }
             )}
-            key={domain.id}>
+            key={
+              domain.id ??
+              domain.fullyQualifiedName ??
+              domain.name ??
+              `domain-${index}`
+            }
+            style={getDomainReferenceBadgeStyle(domain)}>
             {/* condition to show icon for new layout perticulary for multiple domains */}
             {(!headerLayout || (headerLayout && multiple)) && (
               <Typography.Text className="self-center text-xs whitespace-nowrap">
                 <DomainIcon
                   className="d-flex"
-                  color={DE_ACTIVE_COLOR}
+                  color={getDomainReferenceIconColor(domain, DE_ACTIVE_COLOR)}
                   height={20}
                   name="folder"
                   width={20}
@@ -205,12 +217,14 @@ export const DomainLabel = ({
       </Typography.Text>
     );
   }, [
-    activeDomain,
+    resolvedDomains,
+    defaultDomainText,
     domainDisplayName,
     showDomainHeading,
     textClassName,
     multiple,
     headerLayout,
+    t,
   ]);
 
   const selectableList = useMemo(() => {
@@ -276,7 +290,15 @@ export const DomainLabel = ({
         </div>
       </div>
     );
-  }, [activeDomain, hasPermission, selectableList]);
+  }, [
+    activeDomain.length,
+    defaultDomainText,
+    domainLink,
+    headerLayout,
+    selectableList,
+    showDomainHeading,
+    t,
+  ]);
 
   return label;
 };
