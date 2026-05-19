@@ -24,16 +24,11 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
  * <ul>
  *   <li>Tier-eligible entity (not a tag / glossaryTerm / dataProduct) with no Tier-prefixed tag
  *       gets {@code tier=NoTier}.
- *   <li>Any entity (including the non-tier-eligible types above) whose tag list contains a
- *       Tier-prefixed FQN gets that FQN as its tier value — the explicit tag overrides the
- *       NON_TIER default.
+ *   <li>Any entity (including the non-tier-eligible types above) whose tag list contains an
+ *       FQN starting with {@code "Tier"} gets that FQN as its tier value — the explicit tag
+ *       overrides the NON_TIER default.
  *   <li>Otherwise no {@code tier} key is written.
  * </ul>
- *
- * <p>The prefix match uses {@code startsWith("Tier")}, which matches both {@code Tier.Tier1}
- * and any other {@code Tier*} FQN. Intentionally more permissive than
- * {@code SearchIndexUtils.processTagAndTierSources}'s {@code "Tier."} check, which is scoped
- * to source-counting only.
  */
 public final class TierStep implements EnrichmentStep {
 
