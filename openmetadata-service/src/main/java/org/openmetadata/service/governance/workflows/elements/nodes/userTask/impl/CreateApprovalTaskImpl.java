@@ -157,6 +157,10 @@ public class CreateApprovalTaskImpl implements TaskListener {
               .withAbout(about.getLinkString())
               .withType(ThreadType.Task)
               .withTask(taskDetails)
+              .withDomains(
+                  entity.getDomains() == null
+                      ? null
+                      : entity.getDomains().stream().map(EntityReference::getId).toList())
               .withUpdatedBy(entity.getUpdatedBy())
               .withUpdatedAt(System.currentTimeMillis());
       ChangePreviewUtils.applyChangePreview(thread, entity, null);
