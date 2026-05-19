@@ -411,3 +411,74 @@ export function captureReports(page: Page): CapturedReport[] {
   });
   return captured;
 }
+
+/**
+ * Opens the Tier filter dropdown on the Data Quality dashboard, selects the
+ * given tier FQN, clicks Update, and waits for the first matching
+ * dataQualityReport response to complete.
+ */
+export async function applyDashboardTierFilter(
+  page: Page,
+  tierFqn: string
+): Promise<void> {
+  await page.getByRole('button', { name: 'Tier' }).click();
+  await page.getByTestId('search-input').click();
+  await page.getByTestId('search-input').fill(tierFqn);
+  await page.getByTestId(tierFqn).click();
+  const apiResponse = page.waitForResponse(
+    (res) =>
+      res.url().includes('/dataQualityReport') &&
+      res.url().includes(encodeURIComponent(tierFqn))
+  );
+  await page.getByTestId('update-btn').click();
+  await apiResponse;
+}
+
+/**
+ * Opens the Tag filter dropdown on the Data Quality dashboard, searches by
+ * tag name, selects the option by FQN, clicks Update, and waits for the first
+ * matching dataQualityReport response to complete.
+ */
+export async function applyDashboardTagFilter(
+  page: Page,
+  tagName: string,
+  tagFqn: string
+): Promise<void> {
+  await page.getByRole('button', { name: 'Tag' }).click();
+  await page.getByTestId('search-input').click();
+  await page.getByTestId('search-input').fill(tagName);
+  await page.getByText(tagFqn).click();
+  const apiResponse = page.waitForResponse(
+    (res) =>
+      res.url().includes('/dataQualityReport') &&
+      res.url().includes(encodeURIComponent(tagFqn))
+  );
+  await page.getByTestId('update-btn').click();
+  await apiResponse;
+}
+
+/**
+ * Asserts that captured dataQualityReport requests referencing `filterFqn`
+ * contain `expectedField` in the ES query JSON.
+ * Pass `notExpectedPattern` to guard against a field that must NOT appear
+ * (e.g. a regression check for an old wrong field path).
+ */
+export function assertEsFieldInReports(
+  reports: CapturedReport[],
+  filterFqn: string,
+  expectedField: string,
+  notExpectedPattern?: string
+): void {
+  const matching = reports.filter((r) => r.q.includes(filterFqn));
+
+  expect(matching.length).toBeGreaterThan(0);
+
+  for (const report of matching) {
+    const queryStr = JSON.stringify(JSON.parse(report.q));
+
+    expect(queryStr).toContain(expectedField);
+    if (notExpectedPattern) {
+      expect(queryStr).not.toContain(notExpectedPattern);
+    }
+  }
+}

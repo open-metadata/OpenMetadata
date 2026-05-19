@@ -28,6 +28,7 @@ import {
   fetchTestCaseStatusMetricsByDays,
   fetchTestCaseSummary,
   fetchTestCaseSummaryByDimension,
+  fetchTestCaseSummaryByNoDimension,
   fetchTotalEntityCount,
 } from './dataQualityDashboardAPI';
 import { getDataQualityReport } from './testAPI';
@@ -497,6 +498,197 @@ describe('dataQualityDashboardAPI', () => {
           aggregationQuery: testData.aggregationQuery,
         });
       });
+    });
+  });
+
+  describe('fetchTestCaseSummaryByNoDimension', () => {
+    const aggregationQuery =
+      'bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus';
+    const index = 'testCase';
+
+    it('should call getDataQualityReport with no filters', async () => {
+      await fetchTestCaseSummaryByNoDimension();
+
+      expect(getDataQualityReport).toHaveBeenCalledWith({
+        q: JSON.stringify({
+          query: {
+            bool: {
+              must: [],
+              must_not: [{ exists: { field: 'dataQualityDimension' } }],
+            },
+          },
+        }),
+        index,
+        aggregationQuery,
+        domain: undefined,
+      });
+    });
+
+    it('should call getDataQualityReport with ownerFqn filter', async () => {
+      const ownerFilter = {
+        nested: {
+          path: 'owners',
+          query: { term: { 'owners.name': 'owner1' } },
+        },
+      };
+      (buildMustEsFilterForOwner as jest.Mock).mockReturnValueOnce(ownerFilter);
+
+      await fetchTestCaseSummaryByNoDimension({ ownerFqn: 'owner1' });
+
+      expect(buildMustEsFilterForOwner).toHaveBeenCalledWith('owner1');
+      expect(getDataQualityReport).toHaveBeenCalledWith({
+        q: JSON.stringify({
+          query: {
+            bool: {
+              must: [ownerFilter],
+              must_not: [{ exists: { field: 'dataQualityDimension' } }],
+            },
+          },
+        }),
+        index,
+        aggregationQuery,
+        domain: undefined,
+      });
+    });
+
+    it('should call getDataQualityReport with tags filter using buildMustEsFilterForTags', async () => {
+      const tagsFilter = {
+        nested: {
+          path: 'tags',
+          query: {
+            bool: {
+              should: [
+                { match: { 'tags.tagFQN': 'tag1' } },
+                { match: { 'tags.tagFQN': 'tag2' } },
+              ],
+            },
+          },
+        },
+      };
+      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce(tagsFilter);
+
+      await fetchTestCaseSummaryByNoDimension({ tags: ['tag1', 'tag2'] });
+
+      expect(buildMustEsFilterForTags).toHaveBeenCalledWith(['tag1', 'tag2']);
+      expect(getDataQualityReport).toHaveBeenCalledWith({
+        q: JSON.stringify({
+          query: {
+            bool: {
+              must: [tagsFilter],
+              must_not: [{ exists: { field: 'dataQualityDimension' } }],
+            },
+          },
+        }),
+        index,
+        aggregationQuery,
+        domain: undefined,
+      });
+    });
+
+    it('should call getDataQualityReport with tier filter using buildMustEsFilterForTier (not tags)', async () => {
+      const tierFilter = {
+        bool: {
+          should: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }],
+          minimum_should_match: 1,
+        },
+      };
+      (buildMustEsFilterForTier as jest.Mock).mockReturnValueOnce(tierFilter);
+
+      await fetchTestCaseSummaryByNoDimension({ tier: ['Tier.Tier1'] });
+
+      expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['Tier.Tier1']);
+      expect(buildMustEsFilterForTags).not.toHaveBeenCalled();
+      expect(getDataQualityReport).toHaveBeenCalledWith({
+        q: JSON.stringify({
+          query: {
+            bool: {
+              must: [tierFilter],
+              must_not: [{ exists: { field: 'dataQualityDimension' } }],
+            },
+          },
+        }),
+        index,
+        aggregationQuery,
+        domain: undefined,
+      });
+    });
+
+    it('should call getDataQualityReport with separate tags and tier filters', async () => {
+      const tagsFilter = {
+        nested: {
+          path: 'tags',
+          query: {
+            bool: {
+              should: [{ match: { 'tags.tagFQN': 'tag1' } }],
+            },
+          },
+        },
+      };
+      const tierFilter = {
+        bool: {
+          should: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }],
+          minimum_should_match: 1,
+        },
+      };
+      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce(tagsFilter);
+      (buildMustEsFilterForTier as jest.Mock).mockReturnValueOnce(tierFilter);
+
+      await fetchTestCaseSummaryByNoDimension({
+        tags: ['tag1'],
+        tier: ['Tier.Tier1'],
+      });
+
+      expect(buildMustEsFilterForTags).toHaveBeenCalledWith(['tag1']);
+      expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['Tier.Tier1']);
+      expect(getDataQualityReport).toHaveBeenCalledWith({
+        q: JSON.stringify({
+          query: {
+            bool: {
+              must: [tagsFilter, tierFilter],
+              must_not: [{ exists: { field: 'dataQualityDimension' } }],
+            },
+          },
+        }),
+        index,
+        aggregationQuery,
+        domain: undefined,
+      });
+    });
+
+    it('should not add tags filter when tags array is empty', async () => {
+      await fetchTestCaseSummaryByNoDimension({ tags: [] });
+
+      expect(buildMustEsFilterForTags).not.toHaveBeenCalled();
+      expect(getDataQualityReport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          q: JSON.stringify({
+            query: {
+              bool: {
+                must: [],
+                must_not: [{ exists: { field: 'dataQualityDimension' } }],
+              },
+            },
+          }),
+        })
+      );
+    });
+
+    it('should not add tier filter when tier array is empty', async () => {
+      await fetchTestCaseSummaryByNoDimension({ tier: [] });
+
+      expect(buildMustEsFilterForTier).not.toHaveBeenCalled();
+      expect(getDataQualityReport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          q: JSON.stringify({
+            query: {
+              bool: {
+                must: [],
+                must_not: [{ exists: { field: 'dataQualityDimension' } }],
+              },
+            },
+          }),
+        })
+      );
     });
   });
 
