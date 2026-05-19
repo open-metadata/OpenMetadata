@@ -380,7 +380,7 @@ public class OpenSearchSourceBuilderFactory
               query,
               fields,
               os.org.opensearch.client.opensearch._types.query_dsl.TextQueryType.BestFields,
-              os.org.opensearch.client.opensearch._types.query_dsl.Operator.Or,
+              os.org.opensearch.client.opensearch._types.query_dsl.Operator.And,
               String.valueOf(DEFAULT_TIE_BREAKER),
               "0");
     }
