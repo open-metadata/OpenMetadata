@@ -777,41 +777,35 @@ public class FeedRepository {
   }
 
   public void deleteByAbout(UUID entityId) {
-    if (!isLegacyThreadStorageAvailable()) {
-      LOG.debug(
-          "Skipping legacy feed cleanup for entity {} because thread storage is unavailable",
-          entityId);
-      return;
-    }
-
-    List<String> threadIds;
-    try {
-      threadIds =
-          listOrEmpty(
-              dao.feedDAO().findByEntityId(getLegacyThreadTableName(), entityId.toString()));
-    } catch (Exception ex) {
-      LOG.debug(
-          "Skipping legacy feed cleanup for entity {} because thread storage is unavailable",
-          entityId,
-          ex);
-      return;
-    }
-    for (String threadId : threadIds) {
-      try {
-        deleteThreadInternal(UUID.fromString(threadId));
-      } catch (Exception ex) {
-        // Continue deletion
-      }
-    }
+    deleteByAbout(List.of(entityId));
   }
 
   public void deleteByAbout(List<UUID> entityIds) {
     if (entityIds == null || entityIds.isEmpty()) {
       return;
     }
-    for (UUID entityId : entityIds) {
-      deleteByAbout(entityId);
+    if (!isLegacyThreadStorageAvailable()) {
+      LOG.debug(
+          "Skipping legacy feed cleanup for {} entities because thread storage is unavailable",
+          entityIds.size());
+      return;
     }
+    List<String> entityIdStrings = entityIds.stream().map(UUID::toString).toList();
+    List<String> threadIds;
+    try {
+      threadIds =
+          listOrEmpty(dao.feedDAO().findByEntityIds(getLegacyThreadTableName(), entityIdStrings));
+    } catch (Exception ex) {
+      LOG.debug(
+          "Skipping legacy feed cleanup for {} entities because thread storage is unavailable",
+          entityIds.size(),
+          ex);
+      return;
+    }
+    if (threadIds.isEmpty()) {
+      return;
+    }
+    deleteThreadsInBatch(threadIds.stream().map(UUID::fromString).toList());
   }
 
   private boolean isLegacyThreadStorageAvailable() {

@@ -4125,6 +4125,10 @@ public interface CollectionDAO {
     @SqlQuery("select id from thread_entity where entityId = :entityId")
     List<String> findByEntityId(@Bind("entityId") String entityId);
 
+    @SqlQuery("select id from <tableName> where entityId IN (<entityIds>)")
+    List<String> findByEntityIds(
+        @Define("tableName") String tableName, @BindList("entityIds") List<String> entityIds);
+
     @ConnectionAwareSqlUpdate(
         value =
             "UPDATE <tableName> SET json = JSON_SET(json, '$.about', :newEntityLink)\n"
