@@ -26,9 +26,8 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 /**
  * Resolves the team name for an entity's first owner. Uses an id-based lookup so it works
  * uniformly on both hydrated and historical raw references — historical {@code entity_extension}
- * rows carry owner refs as bare {@code {id, type}} with no FQN, so any FQN-based lookup
- * (previously inlined in {@code processTeam}) NPEs there. The customer-facing CFA bug was that
- * NPE escaping the enricher and dropping every snapshot for the affected entity.
+ * rows carry owner refs as bare {@code {id, type}} with no FQN, and an FQN-based lookup would
+ * NPE on them.
  *
  * <p>Workflow-scoped cache: the {@link OwnerResolver} is instantiated once per
  * {@link org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.DataInsightsEntityEnricherProcessor},
@@ -41,18 +40,14 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 @Slf4j
 public final class OwnerResolver {
 
-  private static final long DEFAULT_MAX_CACHE_SIZE = 10_000L;
-  private static final Duration DEFAULT_TTL = Duration.ofMinutes(15);
+  private static final long MAX_CACHE_SIZE = 10_000L;
+  private static final Duration TTL = Duration.ofMinutes(15);
 
   private final Cache<UUID, Optional<String>> userTeamCache;
 
   public OwnerResolver() {
-    this(DEFAULT_MAX_CACHE_SIZE, DEFAULT_TTL);
-  }
-
-  OwnerResolver(long maxCacheSize, Duration ttl) {
     this.userTeamCache =
-        Caffeine.newBuilder().maximumSize(maxCacheSize).expireAfterWrite(ttl).build();
+        Caffeine.newBuilder().maximumSize(MAX_CACHE_SIZE).expireAfterWrite(TTL).build();
   }
 
   /**
@@ -71,9 +66,8 @@ public final class OwnerResolver {
    * historical raw refs (the type and name are part of the bare-ref shape).
    *
    * @param owner the owner reference (typically the first entry of {@code entity.getOwners()})
-   * @param shape whether the entity is hydrated or raw; today's implementation uses the same
-   *     id-based path either way, but the parameter is kept so a follow-up can short-circuit on
-   *     {@link VersionShape#LATEST_HYDRATED} when the ref already carries a populated name.
+   * @param shape carries the hydration shape of the referenced entity; informational — the
+   *     resolver uses the same id-based path for both shapes
    */
   public Optional<String> resolveTeamName(EntityReference owner, VersionShape shape) {
     if (owner == null) {

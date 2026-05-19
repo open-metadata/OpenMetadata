@@ -42,9 +42,9 @@ import org.openmetadata.service.search.SearchIndexUtils;
 
 /**
  * Behavior of {@link DataInsightsEntityEnricherProcessor#enrichEntity(EnrichmentTarget)} (the
- * pipeline body, package-private for testing). After Stage 2 the version-walk and day-fanout
- * live in {@code VersionResolver} / {@code SnapshotMaterializer} respectively and have their own
- * unit tests; this class focuses on what each enrichment step contributes to the snapshot for a
+ * pipeline body, package-private for testing). Version-walk and day-fanout live in
+ * {@code VersionResolver} / {@code SnapshotMaterializer} respectively and have their own unit
+ * tests; this class focuses on what each enrichment step contributes to the snapshot for a
  * single prepared target.
  */
 @ExtendWith(MockitoExtension.class)

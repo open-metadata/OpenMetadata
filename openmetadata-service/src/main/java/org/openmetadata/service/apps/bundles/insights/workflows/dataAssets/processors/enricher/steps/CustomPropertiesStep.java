@@ -15,11 +15,9 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
 
 /**
  * If the entity carries an {@code extension} field, copy it into a per-entity-type key (e.g.
- * {@code tableCustomProperty}, {@code dashboardCustomProperty}). Must run last in the pipeline —
- * any step that removes the {@code extension} key first would break this step's contract. The
- * original key is left in place because the DI mapping uses the per-entity-type key for indexed
- * lookups while the original {@code extension} is retained for compatibility with downstream
- * consumers.
+ * {@code tableCustomProperty}, {@code dashboardCustomProperty}). The {@code extension} key is
+ * intentionally left on the document — custom-property search filters key off it, so removing
+ * it would break those filters.
  */
 public final class CustomPropertiesStep implements EnrichmentStep {
 

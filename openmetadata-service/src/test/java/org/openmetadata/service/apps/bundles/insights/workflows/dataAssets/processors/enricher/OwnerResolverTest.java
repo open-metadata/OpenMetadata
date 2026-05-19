@@ -17,7 +17,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -147,13 +146,5 @@ class OwnerResolverTest {
       // on snapshot" without dropping the entity.
       assertFalse(resolver.resolveTeamName(userRef, VersionShape.HISTORICAL_RAW).isPresent());
     }
-  }
-
-  @Test
-  void boundedConstructor_acceptsCustomTtl() {
-    // Smoke test that the package-private constructor (used by tests) compiles and produces a
-    // working resolver. We don't assert eviction behavior here — Caffeine's own tests cover that.
-    OwnerResolver resolver = new OwnerResolver(100L, Duration.ofSeconds(1));
-    assertFalse(resolver.resolveTeamName(null, VersionShape.LATEST_HYDRATED).isPresent());
   }
 }

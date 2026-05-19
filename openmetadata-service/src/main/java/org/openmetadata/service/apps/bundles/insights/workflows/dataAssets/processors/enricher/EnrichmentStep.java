@@ -27,8 +27,14 @@ public interface EnrichmentStep {
   String name();
 
   /**
-   * Apply this step's enrichment to {@code target.entityMap()}. Implementations should be
-   * side-effect-free apart from mutating the entity map. Exceptions are caught by the pipeline;
+   * Apply this step's enrichment to {@code target.entityMap()}. Implementations are additive
+   * only: they may put new keys, but must never read keys written by sibling steps and must
+   * never remove keys. This invariant is what lets the pipeline order steps freely and lets a
+   * failing step degrade only its own contribution. Read inputs from
+   * {@link EnrichmentTarget#entity()}, {@link EnrichmentTarget#changeSummary()}, or
+   * {@link EnrichmentTarget#context()}. Reading passthrough fields seeded into
+   * {@link EnrichmentTarget#entityMap()} by {@code buildTarget} (e.g. {@code extension}) is
+   * allowed — those are not sibling contributions. Exceptions are caught by the pipeline;
    * implementations are not expected to swallow them.
    */
   void apply(EnrichmentTarget target);

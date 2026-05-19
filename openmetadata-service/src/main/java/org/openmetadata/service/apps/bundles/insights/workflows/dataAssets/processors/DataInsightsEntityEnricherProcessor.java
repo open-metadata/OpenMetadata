@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proc
 
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -58,9 +59,12 @@ public class DataInsightsEntityEnricherProcessor
    * Step pipeline: each entity-version's enrichment runs through this list once. A step that
    * throws produces no fields on that version's snapshot, but sibling steps still run and the
    * entity is still emitted to the index. See {@link EnrichmentPipeline} for the failure-isolation
-   * contract. Step ordering is load-bearing: {@link IdentityProjectionStep} must run first
-   * (seeds the entity type onto the map), {@link CustomPropertiesStep} must run last (renames
-   * the {@code extension} field which other steps may write).
+   * contract.
+   *
+   * <p>Ordering is not load-bearing for correctness — no step reads keys written by sibling
+   * steps (every step reads from {@link EnrichmentTarget#entity()},
+   * {@link EnrichmentTarget#changeSummary()}, or {@link EnrichmentTarget#context()}). If a future
+   * step starts consuming another step's contribution, re-check ordering at that point.
    */
   private final EnrichmentPipeline pipeline =
       new EnrichmentPipeline(
@@ -206,10 +210,12 @@ public class DataInsightsEntityEnricherProcessor
   }
 
   /**
-   * Runs the enrichment pipeline against a prepared target. Package-private for direct unit
-   * testing (see {@code DataInsightsEntityEnricherProcessorTest}), which can construct synthetic
-   * {@link EnrichmentTarget}s without needing to mock the version-resolver path.
+   * Runs the enrichment pipeline against a prepared target. Only the in-class orchestrator (
+   * {@link #enrichEntityToSnapshots}) and the package-local test should call this — it exists as a
+   * seam to let the test exercise the wired-up pipeline on synthetic {@link EnrichmentTarget}s
+   * without going through the version-resolver path.
    */
+  @VisibleForTesting
   void enrichEntity(EnrichmentTarget target) {
     pipeline.run(target);
   }

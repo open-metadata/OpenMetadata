@@ -28,10 +28,6 @@ import org.openmetadata.schema.system.StepStats;
  * snapshot: sibling steps still run, the entity is still emitted, and the failure is reflected in
  * per-step {@link StepStats} counters.
  *
- * <p>This is the structural answer to the "any field-enrichment failure drops every snapshot for
- * the entity" pattern that the pre-refactor code exhibited (see CFA's customer report: a single
- * NPE in {@code processTeam} silently dropped tagged tables from the DI index).
- *
  * <p>Thread-safe — the same pipeline instance is invoked concurrently from per-entity virtual
  * threads in {@link
  * org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow}.

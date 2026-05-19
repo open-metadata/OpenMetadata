@@ -18,12 +18,9 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
 
 /**
  * Resolves the first owner's team name through {@link OwnerResolver} and writes it to the
- * snapshot under {@code team}. This is the step whose pre-refactor inline implementation hit
- * customer CFA — it called {@code Entity.getEntityByName(USER, owner.getFullyQualifiedName(),
- * …)} with a null FQN on historical raw rows, NPE'd, and (before the pipeline isolation) the
- * outer enrichSingle catch dropped every snapshot for the entity. {@link OwnerResolver} now
- * resolves by id (always present) and caches negative results, so deleted-owner / null-FQN
- * scenarios degrade gracefully — the team key is just absent on those snapshots.
+ * snapshot under {@code team}. Owners that cannot be resolved (deleted user, missing id, null
+ * owner ref, no teams) degrade gracefully — the {@code team} key is simply absent on that
+ * snapshot rather than aborting the entity's enrichment.
  */
 public final class OwnerTeamStep implements EnrichmentStep {
 

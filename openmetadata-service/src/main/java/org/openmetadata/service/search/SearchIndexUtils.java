@@ -470,9 +470,7 @@ public final class SearchIndexUtils {
     }
     for (TagLabel tag : tagList) {
       // Defensive: tags deserialized from historical entity_extension rows may have null
-      // labelType or null tagFQN. Pre-this-guard, either would NPE inside the enrichment pipeline
-      // and (before the per-step isolation in EnrichmentPipeline) drop the whole entity's
-      // snapshots. We skip the malformed tag entirely — same behavior on well-formed data.
+      // labelType or null tagFQN. Skip the malformed tag entirely.
       if (tag == null) {
         continue;
       }

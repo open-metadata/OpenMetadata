@@ -30,10 +30,9 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.VersionShape;
 
 /**
- * Contract for the tier-emission step — preserves the exact behavior of the pre-refactor
- * {@code processTier}: default {@code "NoTier"} on tier-eligible entities, override from any
- * tag whose FQN starts with {@code "Tier"}, no key emitted for tag/glossaryTerm/dataProduct
- * unless they explicitly carry a Tier-prefixed tag.
+ * Contract for the tier-emission step: default {@code "NoTier"} on tier-eligible entities,
+ * override from any tag whose FQN starts with {@code "Tier"}, no key emitted for
+ * tag/glossaryTerm/dataProduct unless they explicitly carry a Tier-prefixed tag.
  */
 class TierStepTest {
 
@@ -70,8 +69,8 @@ class TierStepTest {
 
   @Test
   void nonTierEntity_withTierTag_emitsTagFqn() {
-    // Carry-over from the pre-refactor behavior: even a NON_TIER_ENTITIES type, if explicitly
-    // tagged with Tier.*, still gets the tier emitted.
+    // Even a NON_TIER_ENTITIES type, if explicitly tagged with Tier.*, still gets the tier
+    // emitted.
     EntityInterface entity = entityWithTags(List.of(tag("Tier.Tier4")));
     Map<String, Object> snapshot = run(entity, "glossaryTerm");
     assertEquals("Tier.Tier4", snapshot.get("tier"));

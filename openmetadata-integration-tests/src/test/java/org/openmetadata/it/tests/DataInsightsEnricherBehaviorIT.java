@@ -66,17 +66,16 @@ import org.openmetadata.service.util.EntityUtil;
  * EnricherBulkVsHistoryPathEquivalenceIT} (which only proves that two loading paths agree with
  * each other) by pinning <em>what the enricher actually produces</em> for known input shapes.
  *
- * <p>Together with the unit-level {@code EnrichmentPipelineTest}, this is the regression net for
- * the failure mode that hit customer CFA: the enricher silently dropping entities from the DI
- * index when one step throws on a historical version's bare references. The
- * {@code EnrichmentPipelineTest} covers the isolation contract synthetically; this IT covers it
- * end-to-end on real entities.
+ * <p>Together with the unit-level {@code EnrichmentPipelineTest}, this guards against the failure
+ * mode where the enricher silently drops entities from the DI index when one step throws on a
+ * historical version's bare references. The {@code EnrichmentPipelineTest} covers the isolation
+ * contract synthetically; this IT covers it end-to-end on real entities.
  *
  * <p>Test scope, in priority order:
  *
  * <ol>
  *   <li>Pin known snapshot field values for a canonical table — guards against silent shape drift.
- *   <li>Verify graceful degradation when an owner cannot be resolved — the original CFA path.
+ *   <li>Verify graceful degradation when an owner cannot be resolved.
  *   <li>Verify the step-failure-isolation contract end-to-end on a real entity.
  * </ol>
  */
@@ -240,15 +239,10 @@ class DataInsightsEnricherBehaviorIT {
   // ───────────────────── Test 3: owner that cannot be resolved ─────────────────────
 
   /**
-   * Owner-deleted regression. The original CFA bug was: when {@code processTeam} hit an owner ref
-   * it couldn't resolve, it threw NPE and the enricher dropped <em>every</em> snapshot for the
-   * entity. This test creates an owner, attaches it, hard-deletes the user, then enriches —
-   * asserting the snapshot is still emitted and the {@code team} key is gracefully absent rather
-   * than blowing up the entity.
-   *
-   * <p>Today this exercises the {@code EntityNotFoundException} catch in {@code processTeam}; in
-   * PR #3 it will exercise {@code OwnerTeamStep}. Either way the contract is: missing team ≠
-   * missing entity.
+   * Owner-deleted regression. When the enricher hits an owner ref it cannot resolve (e.g. a
+   * hard-deleted user), the snapshot must still be emitted with the {@code team} key gracefully
+   * absent — never aborting the entity's enrichment. Creates an owner, attaches it,
+   * hard-deletes the user, then enriches and asserts the snapshot is preserved.
    */
   @Test
   void tableEntity_ownerHardDeletedBeforeEnrichment_snapshotStillEmits_teamFieldAbsent(

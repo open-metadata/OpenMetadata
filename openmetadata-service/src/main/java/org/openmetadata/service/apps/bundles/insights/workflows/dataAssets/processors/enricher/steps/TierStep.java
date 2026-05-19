@@ -19,8 +19,7 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentTarget;
 
 /**
- * Emits the {@code tier} key on the snapshot. Behavior carried over verbatim from the pre-refactor
- * {@code DataInsightsEntityEnricherProcessor.processTier}:
+ * Emits the {@code tier} key on the snapshot:
  *
  * <ul>
  *   <li>Tier-eligible entity (not a tag / glossaryTerm / dataProduct) with no Tier-prefixed tag
@@ -31,9 +30,10 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
  *   <li>Otherwise no {@code tier} key is written.
  * </ul>
  *
- * <p>The prefix match uses {@code startsWith("Tier")} — same as the original — which matches both
- * {@code Tier.Tier1} and any other hypothetical {@code Tier*} FQN. Intentionally more permissive
- * than {@code SearchIndexUtils.processTagAndTierSources}'s {@code "Tier."} check.
+ * <p>The prefix match uses {@code startsWith("Tier")}, which matches both {@code Tier.Tier1}
+ * and any other {@code Tier*} FQN. Intentionally more permissive than
+ * {@code SearchIndexUtils.processTagAndTierSources}'s {@code "Tier."} check, which is scoped
+ * to source-counting only.
  */
 public final class TierStep implements EnrichmentStep {
 
