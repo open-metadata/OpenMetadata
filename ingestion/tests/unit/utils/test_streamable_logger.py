@@ -356,6 +356,23 @@ def test_flush_times_out_when_post_is_slow(make_v2, fake_ometa):
     assert handler.flush_timed_out == 1
 
 
+def test_flush_does_not_return_in_dequeue_post_gap(make_v2, fake_ometa):
+    """Regression: flush() must NOT report drained while a batch the worker
+    just dequeued hasn't started POSTing yet (TOCTOU between buffer.get() and
+    _post_in_flight.set())."""
+    fake_ometa.post_delay = 0.5
+    handler = make_v2()
+    handler.emit(_make_record("payload"))
+
+    # Long enough that the worker has dequeued + started its slow POST.
+    handler.flush(timeout=2.0)
+
+    # If the race fires, flush() returns before the POST runs and the fake
+    # records zero shipped batches.
+    assert len(fake_ometa.shipped_batches) >= 1
+    assert handler.flush_timed_out == 0
+
+
 # ----- Group 3: shutdown lifecycle -----
 
 

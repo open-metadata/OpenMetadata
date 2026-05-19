@@ -149,6 +149,9 @@ class StreamableLogHandler(logging.Handler):
             batch = [self._buffer.get(timeout=timeout)] if timeout > 0 else [self._buffer.get_nowait()]
         except Empty:
             return []
+        # Claim "in flight" the moment we own a batch so flush() can't return
+        # in the gap between dequeue and the POST starting.
+        self._post_in_flight.set()
         while len(batch) < self.BATCH_SIZE:
             try:
                 batch.append(self._buffer.get_nowait())
