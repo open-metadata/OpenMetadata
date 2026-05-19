@@ -29,3 +29,45 @@ export const performAdminLogin = async (browser: Browser) => {
 
   return { page, apiContext, afterAction };
 };
+
+export const createAdminApiContext = async (): Promise<{
+  apiContext: APIRequestContext;
+  afterAction: () => Promise<void>;
+}> => {
+  const loginContext = await request.newContext({
+    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL ?? 'http://localhost:8585',
+    timeout: 90000,
+  });
+
+  try {
+    const loginResponse = await loginContext.post('/api/v1/auth/login', {
+      data: {
+        email: DEFAULT_ADMIN_USER.userName,
+        password: Buffer.from(DEFAULT_ADMIN_USER.password).toString('base64'),
+      },
+    });
+
+    if (!loginResponse.ok()) {
+      throw new Error(
+        `Admin authentication failed (${loginResponse.status()}): ${await loginResponse.text()}`
+      );
+    }
+
+    const loginPayload = (await loginResponse.json()) as {
+      accessToken: string;
+    };
+    const apiContext = await getAuthContext(loginPayload.accessToken);
+
+    return {
+      apiContext,
+      afterAction: async () => {
+        await apiContext.dispose();
+        await loginContext.dispose();
+      },
+    };
+  } catch (error) {
+    await loginContext.dispose();
+
+    throw error;
+  }
+};
