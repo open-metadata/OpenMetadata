@@ -1,25 +1,11 @@
--- Boost work_mem and maintenance_work_mem for the duration of this migration
--- so the hash-aggregate scan in the dedup DELETE and the index build below
--- stay in memory instead of spilling. Mirrors the tuning pattern from
--- 1.9.9/postgres/postDataMigrationSQLScript.sql (same table, same scale).
--- Session-level (not SET LOCAL) because schemaChanges runs in autocommit mode
--- (CREATE INDEX CONCURRENTLY requires it) — SET LOCAL would reset between
--- statements. RESET at the bottom restores defaults before the connection
--- returns to the Hikari pool.
+-- Boost memory for the dedup + index build. Matches 1.9.9 pattern; RESET at end.
 SET work_mem = '256MB';
 SET maintenance_work_mem = '512MB';
 
--- Collapse duplicates so the unique index rebuild can succeed. Single hash
--- aggregate on key columns; no-op on clean DBs.
---
--- Restricted to rows where operation IS NOT NULL (i.e. table.systemProfile —
--- the only extension that populates operation). Rationale: Postgres UNIQUE
--- treats NULLs as DISTINCT, so the constraint would have permitted
--- table.tableProfile / table.columnProfile rows (operation = NULL) that share
--- the other key columns. GROUP BY here treats NULLs as equal, so without
--- this filter we would collapse rows the constraint never blocked —
--- effectively dropping retry-induced tableProfile / columnProfile history
--- that the restored constraint will continue to permit.
+-- Dedup before the unique index rebuild. NULL filter on operation: Postgres
+-- UNIQUE treats NULLs as DISTINCT, so the constraint never blocked tableProfile
+-- / columnProfile rows (operation = NULL). GROUP BY treats NULLs as equal —
+-- without the filter we'd collapse rows the constraint never rejected.
 DELETE FROM profiler_data_time_series p
 USING (
   SELECT entityFQNHash, extension, operation, "timestamp", MAX(ctid) AS keep_ctid
@@ -36,8 +22,7 @@ WHERE p.entityFQNHash = d.entityFQNHash
   AND p.ctid <> d.keep_ctid;
 
 -- Recover from a prior failed CREATE UNIQUE INDEX CONCURRENTLY: drop the
--- invalid leftover and rebuild inline (non-concurrent) so ALTER below
--- promotes it in the same pass. Probe scoped to OM's PDTS table.
+-- invalid leftover and rebuild inline so ALTER below can promote it.
 DO $$
 DECLARE
   invalid_idx oid;
@@ -72,6 +57,6 @@ ALTER TABLE profiler_data_time_series
 
 ANALYZE profiler_data_time_series;
 
--- Restore default memory settings before the connection returns to the pool.
+-- Reset session memory before the connection returns to the pool.
 RESET work_mem;
 RESET maintenance_work_mem;
