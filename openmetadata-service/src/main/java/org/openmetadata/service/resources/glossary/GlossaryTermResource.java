@@ -20,6 +20,7 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -83,6 +84,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -518,15 +520,16 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = GlossaryTerm.class))),
+                    array = @ArraySchema(schema = @Schema(implementation = GlossaryTerm.class)))),
         @ApiResponse(responseCode = "400", description = "Invalid ids parameter")
       })
   public List<GlossaryTerm> getByIds(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
-              description = "Comma-separated list of glossary term Ids (UUIDs). Max 200 per call.",
-              required = true,
+              description =
+                  "Comma-separated list of glossary term Ids (UUIDs). Max 200 per call. "
+                      + "Omit or pass blank to receive an empty list.",
               schema = @Schema(type = "string"))
           @QueryParam("ids")
           String idsParam,
@@ -546,8 +549,11 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     for (UUID id : ids) {
       try {
         result.add(getInternal(uriInfo, securityContext, id, fieldsParam, include));
-      } catch (EntityNotFoundException ex) {
-        LOG.debug("byIds: glossary term {} not found or not visible", id);
+      } catch (EntityNotFoundException | AuthorizationException ex) {
+        // Silently omit missing, deleted, or unauthorized terms so a single
+        // bad Id doesn't 404/403 the whole batch — matches the documented
+        // contract and the old Promise.allSettled semantics on the client.
+        LOG.debug("byIds: glossary term {} not found or not visible — {}", id, ex.getMessage());
       }
     }
     return result;

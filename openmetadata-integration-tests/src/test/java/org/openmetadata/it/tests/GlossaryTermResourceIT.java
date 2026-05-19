@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -3702,6 +3703,43 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     JsonNode arr = new ObjectMapper().readTree(response);
     assertTrue(arr.isArray());
     assertEquals(0, arr.size());
+  }
+
+  @Test
+  void getGlossaryTermsByIds_malformedUuid_returns400(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      byIds(client, "not-a-uuid,also-not-a-uuid", null);
+      fail("Malformed UUID in ids must produce a 400");
+    } catch (Exception e) {
+      assertTrue(
+          e.getMessage().contains("400") || e.getMessage().toLowerCase().contains("invalid"),
+          "Expected 400 / invalid in error message, got: " + e.getMessage());
+    }
+  }
+
+  @Test
+  void getGlossaryTermsByIds_tooManyIds_returns400(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // 201 > MAX_BATCH_BY_IDS (200) — exact cap is enforced server-side.
+    StringBuilder ids = new StringBuilder();
+    for (int i = 0; i < 201; i++) {
+      if (i > 0) {
+        ids.append(',');
+      }
+      ids.append(UUID.randomUUID());
+    }
+
+    try {
+      byIds(client, ids.toString(), null);
+      fail("Over-cap ids list must produce a 400");
+    } catch (Exception e) {
+      assertTrue(
+          e.getMessage().contains("400") || e.getMessage().toLowerCase().contains("too many"),
+          "Expected 400 / too many in error message, got: " + e.getMessage());
+    }
   }
 
   private String byIds(OpenMetadataClient client, String idsParam, String fieldsParam) {

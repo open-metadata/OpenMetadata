@@ -13,6 +13,7 @@
 import { expect, test } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
+import { AdminClass } from '../../../support/user/AdminClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
@@ -25,6 +26,7 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 // zero per-Id by-Id fetches with the resolution-loop fields signature when
 // visiting the tab — failing if anyone re-introduces a per-Id loop.
 
+const adminUser = new AdminClass();
 const glossaryA = new Glossary();
 const glossaryB = new Glossary();
 const termInA = new GlossaryTerm(glossaryA);
@@ -42,19 +44,23 @@ test.beforeAll(
 
     // Point termInA -> termInB so the Relations Graph for termInA has a node
     // whose Id wouldn't appear in glossaryA's term list — the exact shape
-    // that triggered the old recursive resolution N+1.
+    // that triggered the old recursive resolution N+1. The /relatedTerms
+    // path stores `TermRelation` objects ({relationType, term}), not bare
+    // EntityReferences — matches the addTermRelation helper shape.
     await termInA.patch(apiContext, [
       {
         op: 'add',
-        path: '/relatedTerms',
-        value: [
-          {
+        path: '/relatedTerms/0',
+        value: {
+          relationType: 'relatedTo',
+          term: {
             id: termInB.responseData.id,
             type: 'glossaryTerm',
-            fullyQualifiedName: termInB.responseData.fullyQualifiedName,
             name: termInB.responseData.name,
+            displayName: termInB.responseData.displayName,
+            fullyQualifiedName: termInB.responseData.fullyQualifiedName,
           },
-        ],
+        },
       },
     ]);
 
@@ -78,8 +84,11 @@ test.describe('Glossary Relations Graph — N+1 regression guard', () => {
     browser,
   }) => {
     test.slow();
+    // Authenticate the same `page` we'll attach the request listener to.
+    // Using a fresh `browser.newPage()` without explicit login would redirect
+    // to /signin and the listener would never see the API calls we care about.
     const page = await browser.newPage();
-    const { afterAction } = await performAdminLogin(browser);
+    await adminUser.login(page);
 
     const perIdRequests: string[] = [];
     const byIdsRequests: string[] = [];
@@ -105,18 +114,18 @@ test.describe('Glossary Relations Graph — N+1 regression guard', () => {
     await termInA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
 
-    // Wait for the graph endpoint to settle — using the response itself as
-    // the signal lets us avoid an arbitrary sleep and also captures any
-    // followup resolution calls before we assert.
-    const graphResponse = page.waitForResponse(
-      (response) =>
-        /\/rdf\/glossary\/graph/.test(response.url()) ||
-        /\/glossaryTerms\/byIds/.test(response.url())
+    // The new path's resolution loop calls /glossaryTerms/byIds once the
+    // initial paginated load finds termInB's Id missing from termInA's
+    // accumulated set. Using that response as the wait signal makes the
+    // test deterministic regardless of how long graph rendering takes.
+    const byIdsResponse = page.waitForResponse(
+      (response) => /\/api\/v1\/glossaryTerms\/byIds\?/.test(response.url()),
+      { timeout: 60_000 }
     );
     await page.getByRole('tab', { name: 'Relations Graph' }).click();
-    await graphResponse;
-    await waitForAllLoadersToDisappear(page);
     await expect(page.getByTestId('ontology-explorer')).toBeVisible();
+    await byIdsResponse;
+    await waitForAllLoadersToDisappear(page);
 
     // The old N+1 issued ≥8 of these. With the batch endpoint in place we
     // expect zero. Allow 0 strictly — a non-zero count means somebody added
@@ -133,6 +142,5 @@ test.describe('Glossary Relations Graph — N+1 regression guard', () => {
     ).toBeGreaterThan(0);
 
     await page.close();
-    await afterAction();
   });
 });

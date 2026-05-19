@@ -657,8 +657,13 @@ export function useOntologyExplorer({
         const loadedIds = new Set(accumulated.map((term) => term.id ?? ''));
         let missingIds = collectMissingRelatedTermIds(accumulated, loadedIds);
         let depth = 0;
+        let aborted = false;
 
-        while (missingIds.size > 0 && depth < MAX_RESOLUTION_DEPTH) {
+        while (
+          missingIds.size > 0 &&
+          depth < MAX_RESOLUTION_DEPTH &&
+          !aborted
+        ) {
           const missingIdList = Array.from(missingIds);
           for (let i = 0; i < missingIdList.length; i += BATCH_SIZE) {
             const batch = missingIdList.slice(i, i + BATCH_SIZE);
@@ -676,12 +681,19 @@ export function useOntologyExplorer({
                 loadedIds.add(term.id ?? '');
               });
             } catch {
-              // Whole batch failed — leave the missingIds in place; the next
-              // depth iteration's collect step will see they're still missing
-              // and the loop bound prevents infinite retries.
+              // A whole batch failed (e.g. server 5xx). Don't retry the same
+              // Ids on the next depth pass — `collectMissingRelatedTermIds`
+              // would just hand them back and we'd burn another MAX_DEPTH-1
+              // pointless calls. Abort the resolution loop and render with
+              // whatever we have.
+              aborted = true;
+
+              break;
             }
           }
-          missingIds = collectMissingRelatedTermIds(accumulated, loadedIds);
+          missingIds = aborted
+            ? new Set()
+            : collectMissingRelatedTermIds(accumulated, loadedIds);
           depth++;
         }
       }
@@ -825,8 +837,13 @@ export function useOntologyExplorer({
         const fetchedIds = new Set(allTerms.map((term) => term.id ?? ''));
         let missingIds = collectMissingRelatedTermIds(allTerms, fetchedIds);
         let depth = 0;
+        let aborted = false;
 
-        while (missingIds.size > 0 && depth < MAX_RESOLUTION_DEPTH) {
+        while (
+          missingIds.size > 0 &&
+          depth < MAX_RESOLUTION_DEPTH &&
+          !aborted
+        ) {
           const missingIdList = Array.from(missingIds);
           for (let i = 0; i < missingIdList.length; i += BATCH_SIZE) {
             const batch = missingIdList.slice(i, i + BATCH_SIZE);
@@ -844,12 +861,18 @@ export function useOntologyExplorer({
                 fetchedIds.add(term.id ?? '');
               });
             } catch {
-              // Whole batch failed — leave the missingIds in place; the next
-              // depth iteration's collect step will see they're still missing
-              // and the loop bound prevents infinite retries.
+              // A whole batch failed — don't retry the same Ids on the next
+              // depth pass since collectMissingRelatedTermIds would just hand
+              // them back. Abort the resolution loop and render with what
+              // we have.
+              aborted = true;
+
+              break;
             }
           }
-          missingIds = collectMissingRelatedTermIds(allTerms, fetchedIds);
+          missingIds = aborted
+            ? new Set()
+            : collectMissingRelatedTermIds(allTerms, fetchedIds);
           depth++;
         }
       }
