@@ -93,6 +93,7 @@ export default defineConfig(({ mode }) => {
 
     resolve: {
       alias: {
+        lodash: 'lodash-es',
         process: 'process/browser',
         Quill: path.resolve(__dirname, 'node_modules/quill'),
         '@': path.resolve(__dirname, 'src'),
