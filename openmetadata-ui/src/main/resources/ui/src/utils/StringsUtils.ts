@@ -20,6 +20,13 @@ export const stringToSlug = (dataString: string, slugString = '') => {
   return dataString.toLowerCase().replaceAll(' ', slugString);
 };
 
+export const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/g, '-')
+    .replaceAll(/^-+|-+$/g, '')
+    .slice(0, 48);
+
 // will add back slash "\" before quote in string if present
 export const getQueryWithSlash = (query: string): string =>
   query.replaceAll(/["']/g, String.raw`\$&`);
