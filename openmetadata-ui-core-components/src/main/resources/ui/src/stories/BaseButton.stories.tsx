@@ -72,6 +72,9 @@ export const Sizes: StoryObj = {
 export const WithLeadingIcon: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <Button color="primary" iconLeading={Plus} size="xs">
+        Add Item
+      </Button>
       <Button color="primary" iconLeading={Plus}>
         Add Item
       </Button>
@@ -88,6 +91,9 @@ export const WithLeadingIcon: StoryObj = {
 export const WithTrailingIcon: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <Button color="primary" iconTrailing={Plus} size="xs">
+        Add Item
+      </Button>
       <Button color="primary" iconTrailing={Plus}>
         Add Item
       </Button>
