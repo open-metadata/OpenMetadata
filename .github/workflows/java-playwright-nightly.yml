@@ -287,16 +287,12 @@ jobs:
           report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
 
       - name: Slack notification
-        if: ${{ always() && env.SLACK_WEBHOOK_URL != '' }}
-        # slackapi/slack-github-action v1's payload-shape requirements changed in
-        # incoming-webhook mode and the older release breaks intermittently. The
-        # `webhook-trigger` route in v2 takes a stable JSON body and is what the
-        # Anthropic-side examples have moved to.
+        if: ${{ always() && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
-          webhook: ${{ secrets.E2E_SLACK_WEBHOOK }}
+          webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
           webhook-type: incoming-webhook
           payload: |
             text: "${{ job.status == 'success' && ':white_check_mark:' || ':fire:' }} Java Playwright Nightly (${{ matrix.searchEngine }}): ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
+          SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
