@@ -802,7 +802,7 @@ test.describe('Context Center', () => {
       await page.getByTestId('confirmation-text-input').fill('DELETE');
 
       const apiDeleteRes = page.waitForResponse(
-        /\/api\/v1\/knowledgeCenter\/.+\?hardDelete=true/
+        /\/api\/v1\/contextCenter\/pages\/.+\?hardDelete=true/
       );
       await page.getByTestId('confirm-button').click();
       await apiDeleteRes;
