@@ -18,11 +18,11 @@ from metadata.ingestion.source.database.snowflake.models import (
     SnowflakeQueryLogEntry,
 )
 from metadata.profiler.metrics.system.snowflake.system import (
+    _parse_query,
+    cache,
     PUBLIC_SCHEMA,
     SnowflakeSystemMetricsComputer,
     SnowflakeTableResovler,
-    _parse_query,
-    cache,
 )
 from metadata.utils.profiler_utils import get_identifiers_from_string
 
