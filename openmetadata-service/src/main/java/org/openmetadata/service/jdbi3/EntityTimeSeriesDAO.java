@@ -392,10 +392,10 @@ public interface EntityTimeSeriesDAO {
   }
 
   @SqlUpdate(value = "DELETE from <table> WHERE id = :id")
-  void deleteById(@Define("table") String table, @Bind("id") String id);
+  int deleteById(@Define("table") String table, @Bind("id") String id);
 
-  default void deleteById(UUID id) {
-    deleteById(getTimeSeriesTableName(), id.toString());
+  default int deleteById(UUID id) {
+    return deleteById(getTimeSeriesTableName(), id.toString());
   }
 
   /** @deprecated */

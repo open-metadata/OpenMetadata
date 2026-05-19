@@ -62,6 +62,11 @@ public class TestCaseResolutionStatusRepository
   }
 
   @Override
+  protected boolean shouldCleanupRelationshipsOnDelete() {
+    return true;
+  }
+
+  @Override
   protected List<String> getExcludeSearchFields() {
     return List.of("@timestamp", "domains", "testCase", "testSuite", "fqnParts");
   }
@@ -618,5 +623,15 @@ public class TestCaseResolutionStatusRepository
         .filter(r -> r.getTimestamp() != null)
         .max((a, b) -> Long.compare(a.getTimestamp(), b.getTimestamp()))
         .orElse(records.get(records.size() - 1));
+  }
+
+  public void deleteAllRelationshipsByTestCase(UUID testCaseId) {
+    daoCollection
+        .relationshipDAO()
+        .deleteFrom(
+            testCaseId,
+            Entity.TEST_CASE,
+            Relationship.PARENT_OF.ordinal(),
+            Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 }

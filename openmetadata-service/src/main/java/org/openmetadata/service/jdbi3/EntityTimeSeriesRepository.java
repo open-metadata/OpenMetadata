@@ -388,6 +388,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return entityRecord;
   }
 
+  @Transaction
   public void deleteById(UUID id, boolean hardDelete) {
     if (!hardDelete) {
       // time series entities by definition cannot be soft deleted (i.e. they do not have a state,
@@ -395,11 +396,18 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       // soft deleted
       return;
     }
-    T entityRecord = getById(id);
-    if (entityRecord == null) {
-      return;
+    int deleted = timeSeriesDao.deleteById(id);
+    if (deleted > 0 && shouldCleanupRelationshipsOnDelete()) {
+      daoCollection.relationshipDAO().deleteAll(id, entityType);
     }
-    timeSeriesDao.deleteById(id);
+  }
+
+  /**
+   * Hook for subclasses to opt into relationship cleanup on entity deletion. Default is false to
+   * avoid unnecessary SQL round-trips for entities without relationships.
+   */
+  protected boolean shouldCleanupRelationshipsOnDelete() {
+    return false;
   }
 
   private Map<String, List<?>> getEntityList(List<String> jsons, boolean skipErrors) {

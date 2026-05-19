@@ -2665,6 +2665,54 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM entity_relationship WHERE toId = :id AND toEntity = :entity")
     void deleteAllTo(@BindUUID("id") UUID id, @Bind("entity") String entity);
 
+    /**
+     * Delete relationships where the 'from' entity no longer exists in its primary table.
+     *
+     * @param table The table name to check for entity existence. This must be a trusted,
+     *     hard-coded string to prevent SQL injection.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM entity_relationship WHERE toEntity = :toEntity AND fromEntity = :fromEntity "
+                + "AND NOT EXISTS (SELECT 1 FROM <table> t WHERE t.id = entity_relationship.fromId) "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM entity_relationship WHERE ctid IN ( "
+                + "  SELECT ctid FROM entity_relationship "
+                + "  WHERE toEntity = :toEntity AND fromEntity = :fromEntity "
+                + "  AND NOT EXISTS (SELECT 1 FROM <table> t WHERE t.id = entity_relationship.fromId) "
+                + "  LIMIT :limit "
+                + ")",
+        connectionType = POSTGRES)
+    int deleteOrphanedRelationshipsInternal(
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Define("table") String table,
+        @Bind("limit") int limit);
+
+    /**
+     * Safe wrapper for deleting orphaned relationships with table name validation and batching.
+     *
+     * @param table Table name to check. Validated against a strict allowlist.
+     */
+    default int deleteOrphanedRelationships(String fromEntity, String toEntity, String table) {
+      // Validate table name against a strict allowlist to prevent SQL injection
+      if (!java.util.Set.of("test_case").contains(table)) {
+        throw new IllegalArgumentException("Invalid table name for relationship cleanup: " + table);
+      }
+      int totalDeleted = 0;
+      int deletedInBatch;
+      int batchSize = 1000;
+      do {
+        deletedInBatch =
+            deleteOrphanedRelationshipsInternal(fromEntity, toEntity, table, batchSize);
+        totalDeleted += deletedInBatch;
+      } while (deletedInBatch > 0);
+      return totalDeleted;
+    }
+
     // Batch deletion methods for improved performance
     @Transaction
     default void batchDeleteRelationships(List<UUID> entityIds, String entityType) {
