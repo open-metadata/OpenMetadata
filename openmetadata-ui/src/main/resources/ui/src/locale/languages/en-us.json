@@ -2601,6 +2601,7 @@
     "customize-home-page-page-header-for-persona": "Personalize the Home page experience for the <0>{{persona}}</0> persona",
     "customize-your-navigation-subheader": "Manage and organize the side navigation menu for better accessibility.",
     "data-access-request-already-exists": "A pending data access request already exists for this asset.",
+    "data-access-request-already-granted": "You already have active data access for this asset.",
     "data-access-request-awaiting-grant-message": "Your access request has been approved and is awaiting provisioning. Access will be available shortly once it has been granted.",
     "data-access-request-message": "Data access request for",
     "data-asset-has-been-action-type": "Data Asset has been {{actionType}}",
