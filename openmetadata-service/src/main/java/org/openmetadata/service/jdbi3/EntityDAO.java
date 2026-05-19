@@ -616,7 +616,20 @@ public interface EntityDAO<T extends EntityInterface> {
       return 0;
     }
     List<String> stringIds = ids.stream().map(UUID::toString).toList();
-    return deleteByIds(getTableName(), stringIds);
+    // Chunk to match findEntitiesByIds — JDBI's @BindList expands every id into a
+    // separate bind parameter, and the bulk hard-delete walks 12k+ entity hierarchies,
+    // so the IN-list would otherwise blow past SQL Server's ~2100-parameter ceiling
+    // and MySQL's max_allowed_packet budget on a single statement.
+    int maxChunkSize = 30000;
+    if (stringIds.size() <= maxChunkSize) {
+      return deleteByIds(getTableName(), stringIds);
+    }
+    int deleted = 0;
+    for (int i = 0; i < stringIds.size(); i += maxChunkSize) {
+      List<String> chunk = stringIds.subList(i, Math.min(i + maxChunkSize, stringIds.size()));
+      deleted += deleteByIds(getTableName(), chunk);
+    }
+    return deleted;
   }
 
   @ConnectionAwareSqlUpdate(value = "ANALYZE TABLE <table>", connectionType = MYSQL)
