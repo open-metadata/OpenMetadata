@@ -354,4 +354,4 @@ CREATE TABLE IF NOT EXISTS context_memory (
   PRIMARY KEY (id),
   UNIQUE KEY unique_context_memory_name (nameHash),
   INDEX idx_context_memory_updated_at (updatedAt)
-) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
