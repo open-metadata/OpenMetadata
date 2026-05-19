@@ -229,6 +229,17 @@
         <artifactId>jackson-databind</artifactId>
         <version>${jackson.version}</version>
       </dependency>
+      <!-- Jackson 3.x BOM — overrides the 3.0.2 chain that jsonschema2pojo-core
+           pulls in (GHSA-72hv-8253-57qq, CVE-2026-29062, GHSA-2m67-wjpj-xhg9).
+           jsonschema2pojo-core is scope=provided in common/pom.xml, but Snyk's
+           Maven scanner still walks the provided tree, so pin the safe line. -->
+      <dependency>
+        <groupId>tools.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>3.1.3</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>
         <artifactId>dropwizard-core</artifactId>
