@@ -9,14 +9,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# Runs the Java Playwright scenario suite (embedded mode, fast subset) on PRs that
-# touch reindex / search / spec / the suite itself, when manually dispatched, or when
-# a PR is labelled `run-java-playwright`.
+# Runs the full *UIIT.java suite (containerized OM via ui-it profile, OpenSearch only)
+# on PRs that touch reindex / search / spec / the suite itself, when manually dispatched,
+# or when a PR is labelled `run-java-playwright`.
 #
-# The full suite (external mode, ES+OS matrix, distributed + crash recovery) runs
-# in java-playwright-nightly.yml.
+# The nightly variant adds the ES + OS matrix and runs against main.
 
-name: Java Playwright (Embedded, PR)
+name: Java Playwright (UIIT, PR)
 
 on:
   merge_group:
@@ -50,8 +49,9 @@ jobs:
               - 'openmetadata-service/src/main/java/org/openmetadata/service/search/**'
               - 'openmetadata-service/src/main/resources/elasticsearch/**'
               - 'openmetadata-spec/src/main/resources/json/schema/**'
-              - 'openmetadata-java-playwright/**'
-              - 'openmetadata-integration-tests/src/test/java/org/openmetadata/it/bootstrap/**'
+              - 'openmetadata-integration-tests/src/test/java/org/openmetadata/playwright/**'
+              - 'openmetadata-integration-tests/src/test/java/org/openmetadata/it/**'
+              - 'openmetadata-integration-tests/pom.xml'
               - 'openmetadata-sdk/src/main/java/org/openmetadata/sdk/services/search/**'
               - 'pom.xml'
       - id: label
@@ -63,11 +63,11 @@ jobs:
             echo "has_label=false" >> "$GITHUB_OUTPUT"
           fi
 
-  java-playwright-embedded:
+  java-playwright-uiit:
     needs: changes
     runs-on: ubuntu-latest
     if: ${{ needs.changes.outputs.should_run == 'true' }}
-    timeout-minutes: 35
+    timeout-minutes: 60
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -114,14 +114,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq
 
-      - name: Build dependencies for Java Playwright module
+      - name: Add /etc/hosts entry for mock OIDC server
+        # SSO UIITs need `om-mock-idp` to resolve to loopback both inside the Docker
+        # network and from the host-side Playwright browser, so token `iss` claims
+        # match across actors.
+        run: echo "127.0.0.1 om-mock-idp" | sudo tee -a /etc/hosts
+
+      - name: Build dependencies for integration-tests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -DskipTests clean install -pl :openmetadata-java-playwright -am
+        run: mvn -DskipTests clean install -pl :openmetadata-integration-tests -am
 
       - name: Install Playwright browsers
         run: |
-          mvn -pl :openmetadata-java-playwright dependency:build-classpath -Dmdep.outputFile=/tmp/cp.txt -q
+          mvn -pl :openmetadata-integration-tests dependency:build-classpath -Dmdep.outputFile=/tmp/cp.txt -q
           java -cp "$(cat /tmp/cp.txt)" com.microsoft.playwright.CLI install --with-deps chromium
 
       - name: Free build artifacts
@@ -131,18 +137,38 @@ jobs:
           rm -rf openmetadata-shaded-deps/*/target
           df -h /
 
-      - name: Run Java Playwright scenarios (embedded, OpenSearch)
+      - name: Run UI integration tests (OpenSearch)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          JPW_MODE: embedded
-        run: mvn verify -pl :openmetadata-java-playwright
+          # ui-it profile already defaults PW_VIDEO=true; reaffirmed here so a quick
+          # workflow read tells you videos are being captured.
+          PW_VIDEO: 'true'
+        run: mvn verify -P ui-it -pl :openmetadata-integration-tests
 
       - name: Upload Playwright traces (on failure)
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-traces-${{ github.run_id }}
-          path: openmetadata-java-playwright/target/playwright-traces
+          path: openmetadata-integration-tests/target/playwright-traces
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload Playwright videos (on failure)
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-videos-${{ github.run_id }}
+          path: openmetadata-integration-tests/target/playwright-videos
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload Failsafe Reports (on failure)
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: failsafe-reports-${{ github.run_id }}
+          path: openmetadata-integration-tests/target/failsafe-reports
           if-no-files-found: ignore
           retention-days: 7
 
@@ -152,4 +178,16 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_test_failures: true
-          report_paths: 'openmetadata-java-playwright/target/failsafe-reports/TEST-*.xml'
+          report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
+
+      - name: Slack on Failure
+        if: ${{ failure() }}
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "text": ":fire: Java Playwright PR run failed\nPR: ${{ github.event.pull_request.html_url || github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
