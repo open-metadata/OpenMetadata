@@ -7,11 +7,13 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTI
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
@@ -79,8 +81,7 @@ public class DataInsightsEntityEnricherProcessor
             step(STEP_CUSTOM_PROPERTIES, this::applyCustomPropertiesStep)));
   }
 
-  private static EnrichmentStep step(
-      String name, java.util.function.Consumer<EnrichmentTarget> body) {
+  private static EnrichmentStep step(String name, Consumer<EnrichmentTarget> body) {
     return new EnrichmentStep() {
       @Override
       public String name() {
@@ -190,7 +191,7 @@ public class DataInsightsEntityEnricherProcessor
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
 
     Long pointerTimestamp = endTimestamp;
-    List<Map<String, Object>> entityVersions = new java.util.ArrayList<>();
+    List<Map<String, Object>> entityVersions = new ArrayList<>();
     boolean historyDone = false;
     int nextOffset = 0;
 
@@ -439,7 +440,7 @@ public class DataInsightsEntityEnricherProcessor
     Long startTimestamp = (Long) entityVersionMap.remove("startTimestamp");
     Long endTimestamp = (Long) entityVersionMap.remove("endTimestamp");
 
-    List<Map<String, Object>> dailyEntitySnapshots = new java.util.ArrayList<>();
+    List<Map<String, Object>> dailyEntitySnapshots = new ArrayList<>();
 
     Long pointerTimestamp = endTimestamp;
 

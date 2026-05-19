@@ -28,6 +28,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.system.StepStats;
@@ -286,8 +287,7 @@ class EnrichmentPipelineTest {
 
   // ─────────────────────────────── helpers ───────────────────────────────
 
-  private static EnrichmentStep recordingStep(
-      String name, java.util.function.Consumer<EnrichmentTarget> body) {
+  private static EnrichmentStep recordingStep(String name, Consumer<EnrichmentTarget> body) {
     return new EnrichmentStep() {
       @Override
       public String name() {
