@@ -366,7 +366,7 @@ class SigmaSource(DashboardServiceSource):
 
         for data_model in self.data_models or []:
             try:
-                # (Fix #2) Skip non-visualization elements (text boxes, dividers,
+                # Skip non-visualization elements (text boxes, dividers,
                 # buttons, controls) to avoid Sigma API 500 errors on elements
                 # that carry no upstream lineage.
                 if not data_model.vizualizationType:
