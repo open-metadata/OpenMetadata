@@ -1,0 +1,163 @@
+#  Copyright 2025 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Nightly run of the `sso-test-login` Playwright project on `main`.
+#
+# The PR-triggered counterpart (playwright-sso-test-login.yml) only fires
+# on SSO-touching diffs. This workflow catches regressions that slip in
+# via paths the PR filter doesn't cover (e.g., shared utilities, build
+# changes, dependency bumps) and posts a Slack notification on completion.
+
+name: SSO Test Login Nightly
+
+on:
+  schedule:
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sso-test-login-nightly-${{ github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  sso-test-login-nightly:
+    runs-on: ubuntu-latest
+    environment: test
+    timeout-minutes: 60
+
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Maven Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Setup OpenMetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: '3.10'
+          args: '-d postgresql -i false'
+          ingestion_dependency: 'all'
+
+      - name: Start SSO test fixtures (mock OIDC + OpenLDAP)
+        run: |
+          cd docker/development
+          docker compose --profile sso-test build mock-oidc-provider openldap-test
+          docker compose --profile sso-test up -d mock-oidc-provider openldap-test
+          echo "Waiting for mock OIDC provider..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:9090/health > /dev/null 2>&1; then
+              echo "Mock OIDC provider is ready"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          echo "Waiting for OpenLDAP..."
+          for i in $(seq 1 30); do
+            if (echo > /dev/tcp/localhost/1389) > /dev/null 2>&1; then
+              echo "OpenLDAP is ready"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+
+      - name: Start Keycloak SAML IdP
+        run: |
+          docker compose -f docker/local-sso/keycloak-saml/docker-compose.yml up -d
+          timeout 240 bash -c 'until curl -fsS http://localhost:8080/realms/om-azure-saml >/dev/null; do sleep 2; done'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+
+      - name: Install dependencies
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: yarn --ignore-scripts --frozen-lockfile
+
+      - name: Install Playwright Browsers
+        run: npx playwright@1.57.0 install chromium --with-deps
+
+      - name: Run sso-test-login Playwright project
+        working-directory: openmetadata-ui/src/main/resources/ui
+        env:
+          SSO_USERNAME: ${{ vars.KEYCLOAK_AZURE_SAML_SSO_USERNAME }}
+          SSO_PASSWORD: ${{ vars.KEYCLOAK_AZURE_SAML_SSO_PASSWORD || secrets.KEYCLOAK_AZURE_SAML_SSO_PASSWORD }}
+          KEYCLOAK_SAML_BASE_URL: http://localhost:8080
+          MOCK_OIDC_URL: http://localhost:9090
+          PLAYWRIGHT_IS_OSS: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx playwright test --project=sso-test-login --workers=1
+
+      - name: Capture Docker logs on failure
+        if: failure()
+        run: |
+          mkdir -p docker-logs
+          cd docker/development
+          docker compose logs > ../../docker-logs/openmetadata.log 2>&1 || true
+          docker compose --profile sso-test logs mock-oidc-provider > ../../docker-logs/mock-oidc.log 2>&1 || true
+          docker compose --profile sso-test logs openldap-test > ../../docker-logs/openldap.log 2>&1 || true
+          cd ../..
+          docker compose -f docker/local-sso/keycloak-saml/docker-compose.yml logs > docker-logs/keycloak-saml.log 2>&1 || true
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sso-test-login-nightly-report
+          path: |
+            openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
+            openmetadata-ui/src/main/resources/ui/playwright/output/test-results
+            openmetadata-ui/src/main/resources/ui/playwright-report
+            openmetadata-ui/src/main/resources/ui/test-results
+            docker-logs
+          retention-days: 5
+          if-no-files-found: ignore
+
+      - name: Send Slack Notification
+        if: always()
+        working-directory: openmetadata-ui/src/main/resources/ui
+        env:
+          RUN_TITLE: "SSO Test Login Nightly (${{ github.ref_name }})"
+          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
+        run: |
+          npx playwright-slack-report -c playwright/slack-cli.config.json -j playwright/output/results.json > slack_report.json
+
+      - name: Clean Up
+        if: always()
+        run: |
+          docker compose -f docker/local-sso/keycloak-saml/docker-compose.yml down --remove-orphans 2>/dev/null || true
+          cd ./docker/development
+          docker compose --profile sso-test down --remove-orphans 2>/dev/null || true
+          docker compose down --remove-orphans 2>/dev/null || true
+          sudo rm -rf ${PWD}/docker-volume 2>/dev/null || true
