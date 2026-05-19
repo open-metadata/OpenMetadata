@@ -190,7 +190,41 @@ public class RdfIndexApp extends AbstractNativeApplication {
       if (stopped) {
         updateJobStatus(EventPublisherJob.Status.STOPPED);
       } else {
+        // Mark the job COMPLETED BEFORE compacting. compactStorage is a
+        // blocking call (up to COMPACT_MAX_WAIT_MS = 10 min while it polls
+        // /$/tasks/{id}); doing it before the status update would delay the
+        // websocket "done" notification by however long compaction takes,
+        // and a misbehaving Fuseki could leave the run looking RUNNING for
+        // up to 10 minutes after the reindex actually finished. Compaction
+        // is best-effort hygiene; surface job-completion to the UI first
+        // and run compaction as the very last step.
         updateJobStatus(EventPublisherJob.Status.COMPLETED);
+        // Final compaction after a successful run. The recreate branch already
+        // compacted *before* the reindex (against the empty post-clearAll
+        // state) to maximise the reclaim; on the incremental branch nothing
+        // had ever compacted, so weeks of incremental runs piled the TDB2
+        // free-list and journal up to tens of GB even though the live triple
+        // count stayed bounded. Running compact at the end of every successful
+        // reindex caps growth at one-run's worth of churn regardless of which
+        // path took us here.
+        //
+        // Defensive try/catch: JenaFusekiStorage.compactStorage() already
+        // catches its own exceptions, but RdfRepository.compactStorage() is
+        // a thin pass-through and a future storage backend (QLever, etc.)
+        // may not honor the same swallow-failures contract. Worse, a race
+        // between isEnabled() and storageService.compactStorage() could
+        // surface an NPE. Catch here so any unexpected runtime failure
+        // can NEVER demote a job that's already COMPLETED to FAILED via
+        // the outer catch's handleJobFailure().
+        try {
+          rdfRepository.compactStorage();
+        } catch (RuntimeException compactFailure) {
+          LOG.warn(
+              "Post-run compaction failed for this RDF reindex job; disk reclamation "
+                  + "skipped, but the job itself completed successfully. Reason: {}",
+              compactFailure.getMessage(),
+              compactFailure);
+        }
       }
 
       LOG.info("RDF Index Job Completed for Entities: {}", jobData.getEntities());
@@ -258,6 +292,14 @@ public class RdfIndexApp extends AbstractNativeApplication {
     try {
       rdfRepository.clearAll();
       LOG.info("Cleared all RDF data");
+      // CLEAR ALL is a logical delete on TDB2: triples are marked free but the
+      // on-disk dataset and journal keep growing across runs. Compact NOW while
+      // the dataset is essentially empty so the next re-ingest writes into a
+      // fresh, small dataset directory. Without this, every recreateIndex run
+      // accumulates ~1x the dataset size on disk and the PVC eventually fills.
+      // Must run BEFORE reloadOntologies(), otherwise the ontology graph gets
+      // copied through compaction unnecessarily.
+      rdfRepository.compactStorage();
       // CLEAR ALL wipes the ontology and shapes graphs as well; reload them
       // before indexing starts so SPARQL queries that depend on the ontology
       // (inference, federated, etc.) work after the wipe.
