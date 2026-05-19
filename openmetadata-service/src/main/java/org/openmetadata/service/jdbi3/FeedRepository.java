@@ -818,7 +818,28 @@ public class FeedRepository {
     if (threadIds.isEmpty()) {
       return;
     }
-    deleteThreadsInBatch(threadIds.stream().map(UUID::fromString).toList());
+    // Keep legacy feed cleanup best-effort: a malformed thread id or a DAO failure
+    // here must not blow up the caller's hard-delete @Transaction. Parse defensively
+    // (skip + log malformed ids) and swallow batch-delete failures.
+    List<UUID> threadUuids = new ArrayList<>(threadIds.size());
+    for (String threadId : threadIds) {
+      try {
+        threadUuids.add(UUID.fromString(threadId));
+      } catch (IllegalArgumentException ex) {
+        LOG.warn("Skipping malformed legacy thread id {} during feed cleanup", threadId);
+      }
+    }
+    if (threadUuids.isEmpty()) {
+      return;
+    }
+    try {
+      deleteThreadsInBatch(threadUuids);
+    } catch (Exception ex) {
+      LOG.warn(
+          "Legacy feed cleanup failed for {} threads; continuing entity delete",
+          threadUuids.size(),
+          ex);
+    }
   }
 
   private boolean isLegacyThreadStorageAvailable() {
