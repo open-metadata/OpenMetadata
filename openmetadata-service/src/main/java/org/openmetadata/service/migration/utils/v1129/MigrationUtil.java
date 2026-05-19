@@ -24,7 +24,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 /**
- * Migration utility for 1.12.8 — backfills domains on tasks so that domain-scoped users can see
+ * Migration utility for 1.12.9 — backfills domains on tasks so that domain-scoped users can see
  * tasks in the activity feed.
  *
  * <p>Two storage layouts are handled:
@@ -38,6 +38,10 @@ import org.openmetadata.service.resources.feeds.MessageParser;
  *       MENTIONED_IN} row in {@code entity_relationship}. Domains are HAS rows in the same table.
  *       A single INSERT...SELECT walking MENTIONED_IN → HAS handles all missing rows in bulk.
  * </ul>
+ *
+ * <p>After this migration completes, the search index for tasks must be rebuilt for domain-scoped
+ * feed queries that hit Elasticsearch/OpenSearch to reflect the new domain values. Operators
+ * should trigger a tasks reindex post-upgrade.
  */
 @Slf4j
 public class MigrationUtil {
@@ -85,46 +89,93 @@ public class MigrationUtil {
     Map<String, List<UUID>> domainCache = new HashMap<>();
     int withDomains = 0;
     int markedDone = 0;
+    int markedDoneOnError = 0;
 
     while (true) {
       List<String[]> batch = readThreadTaskBatch(BATCH_SIZE);
       if (batch.isEmpty()) break;
+      int processedInBatch = 0;
       for (String[] row : batch) {
         int result = processThreadTaskRow(row[0], row[1], domainCache);
         if (result == 1) withDomains++;
         else if (result == 2) markedDone++;
+        else if (result == 3) markedDoneOnError++;
+        if (result != 0) processedInBatch++;
       }
       LOG.debug(
-          "Thread task migration progress: withDomains={}, markedDone={}", withDomains, markedDone);
+          "Thread task migration progress: withDomains={}, markedDone={}, markedDoneOnError={}",
+          withDomains,
+          markedDone,
+          markedDoneOnError);
+      if (processedInBatch == 0) {
+        LOG.error(
+            "Stalled thread_entity domain migration: a full batch of {} rows produced no updates. "
+                + "Aborting to avoid infinite loop. Inspect ERROR logs above for failing thread IDs.",
+            batch.size());
+        break;
+      }
     }
 
+    int total = withDomains + markedDone + markedDoneOnError;
     LOG.info(
-        "Migrated {} thread tasks in thread_entity (withDomains={}, markedDone={})",
-        withDomains + markedDone,
+        "Migrated {} thread tasks in thread_entity (withDomains={}, markedDone={}, markedDoneOnError={})",
+        total,
         withDomains,
-        markedDone);
-    return withDomains + markedDone;
+        markedDone,
+        markedDoneOnError);
+    if (markedDoneOnError > 0) {
+      LOG.warn(
+          "{} thread tasks were marked done with empty $.domains because their target entity "
+              + "could not be resolved. Inspect WARN logs above for the specific rows.",
+          markedDoneOnError);
+    }
+    return total;
   }
 
-  // Returns: 0 = skipped (lookup failed), 1 = updated with domains, 2 = marked done (no domains)
+  /**
+   * Process a single thread row.
+   *
+   * <p>Returns 1 if domains were written, 2 if marked done with empty domains because the target
+   * entity has none, 3 if marked done with empty domains as a safe fallback because the target
+   * entity could not be resolved.
+   *
+   * <p>Unresolvable rows are still marked done to prevent an infinite loop: the read query selects
+   * on {@code $.domains IS NULL}, so any row left with NULL would be re-fetched in every subsequent
+   * batch and the loop would never terminate. Emitting {@code []} matches the legitimate
+   * "no domains" path and keeps the row out of the WHERE clause.
+   */
   private int processThreadTaskRow(String id, String json, Map<String, List<UUID>> domainCache) {
     try {
       List<UUID> domainIds = resolveThreadTaskDomains(json, domainCache);
       if (domainIds == null) {
-        // Lookup failed — skip without marking so it can be retried.
-        return 0;
+        LOG.warn(
+            "Could not resolve domains for thread id={}; marking with empty $.domains to avoid migration loop",
+            id);
+        markThreadDomainsMigrated(id);
+        return 3;
       }
       if (domainIds.isEmpty()) {
-        // Setting $.domains=[] makes JSON_EXTRACT(json,'$.domains') return []
-        // (not SQL NULL), so it drops out of the WHERE clause.
         markThreadDomainsMigrated(id);
         return 2;
       }
       updateThreadDomains(id, domainIds);
       return 1;
     } catch (Exception e) {
-      LOG.warn("Failed to migrate thread task domains for id={}: {}", id, e.getMessage());
-      return 0;
+      LOG.warn(
+          "Failed to migrate thread task domains for id={}, marking with empty $.domains: {}",
+          id,
+          e.getMessage());
+      try {
+        markThreadDomainsMigrated(id);
+        return 3;
+      } catch (Exception markEx) {
+        LOG.error(
+            "Failed to mark thread id={} as migrated after error; this row will be retried "
+                + "and may stall the migration: {}",
+            id,
+            markEx.getMessage());
+        return 0;
+      }
     }
   }
 

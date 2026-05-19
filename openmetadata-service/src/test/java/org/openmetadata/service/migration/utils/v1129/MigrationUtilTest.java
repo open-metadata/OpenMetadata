@@ -162,14 +162,21 @@ class MigrationUtilTest {
   }
 
   @Test
-  void threadEntity_rowWithMalformedJson_isSkippedWithoutUpdate() throws Exception {
+  void threadEntity_rowWithMalformedJson_isMarkedMigratedToAvoidLoop() throws Exception {
     Handle handle = mockHandle();
     stubTableExists(handle, "thread_entity");
     stubBatch(handle, rows("not-valid-json{{{"), Collections.emptyList());
+    Update mockUpdate = mock(Update.class, RETURNS_DEEP_STUBS);
+    when(handle.createUpdate(anyString())).thenReturn(mockUpdate);
 
     assertDoesNotThrow(() -> new MigrationUtil(handle, ConnectionType.MYSQL).migrateTaskDomains());
 
-    verify(handle, never()).createUpdate(anyString());
+    ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+    verify(handle, times(1)).createUpdate(sqlCaptor.capture());
+    String sql = sqlCaptor.getValue();
+    assertTrue(sql.contains("JSON_SET"));
+    assertTrue(sql.contains("'$.domains'"));
+    assertTrue(sql.contains("CAST('[]' AS JSON)"));
   }
 
   @Test
