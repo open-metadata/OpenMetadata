@@ -9,17 +9,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# Nightly run of the UI integration suite (*UIIT.java) — lives inside
-# openmetadata-integration-tests under the `ui-it` Maven profile. Expands in
-# Phase 3 to include the external-mode matrix (ES + OS), distributed reindex
-# coordination, and crash-recovery scenarios. Tracks EPIC #3731 / tickets
-# #3767, #3792.
+# Full run of the UI integration suite (*UIIT.java) — lives inside
+# openmetadata-integration-tests under the `ui-it` Maven profile. Runs the
+# external-mode matrix (ES + OS). Tracks EPIC #3731 / tickets #3767, #3792.
+#
+# The schedule trigger is intentionally disabled while the suite stabilises;
+# run on demand via workflow_dispatch (pick the branch to test as the ref).
+# Re-add `schedule: - cron: '0 2 * * *'` once the suite is green on main.
 
 name: UI Integration Tests (Nightly)
 
 on:
-  schedule:
-    - cron: '0 2 * * *'
   workflow_dispatch:
 
 permissions:
