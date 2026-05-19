@@ -315,14 +315,11 @@ describe('CustomizePageUtils', () => {
   // saved customization persists an incomplete tab set and the rendered page
   // silently drops tabs (PR #25886 lost Relations Graph this way).
   describe('glossary term tab registry consistency', () => {
-    it('getGlossaryTermDefaultTabs IDs match getGlossaryTermDetailPageTabsIds IDs', () => {
-      const defaultIds = getGlossaryTermDefaultTabs()
-        .map((t) => t.id)
-        .sort();
+    it('getGlossaryTermDefaultTabs IDs match getGlossaryTermDetailPageTabsIds IDs (same set and order)', () => {
+      const defaultIds = getGlossaryTermDefaultTabs().map((t) => t.id);
       const classBaseIds = glossaryTermClassBase
         .getGlossaryTermDetailPageTabsIds()
-        .map((t) => t.id)
-        .sort();
+        .map((t) => t.id);
 
       expect(defaultIds).toEqual(classBaseIds);
     });
