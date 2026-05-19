@@ -169,13 +169,22 @@ export const AsLink: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <Button color="primary" href="https://open-metadata.org" target="_blank">
+        <Button
+          color="primary"
+          href="https://open-metadata.org"
+          target="_blank">
           Primary Link
         </Button>
-        <Button color="secondary" href="https://open-metadata.org" target="_blank">
+        <Button
+          color="secondary"
+          href="https://open-metadata.org"
+          target="_blank">
           Secondary Link
         </Button>
-        <Button color="tertiary" href="https://open-metadata.org" target="_blank">
+        <Button
+          color="tertiary"
+          href="https://open-metadata.org"
+          target="_blank">
           Tertiary Link
         </Button>
       </div>
@@ -187,10 +196,15 @@ export const AsLink: StoryObj = {
           target="_blank">
           With Icon
         </Button>
-        <Button color="primary" href="https://open-metadata.org" iconLeading={Plus} target="_blank" />
+        <Button
+          color="primary"
+          href="https://open-metadata.org"
+          iconLeading={Plus}
+          target="_blank"
+        />
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <Button color="primary" isDisabled href="https://open-metadata.org">
+        <Button isDisabled color="primary" href="https://open-metadata.org">
           Disabled Link
         </Button>
       </div>
