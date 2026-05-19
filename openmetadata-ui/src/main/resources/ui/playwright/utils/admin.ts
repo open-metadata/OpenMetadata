@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser } from '@playwright/test';
+import { APIRequestContext, Browser, request } from '@playwright/test';
 import { AdminClass } from '../support/user/AdminClass';
+import { DEFAULT_ADMIN_USER } from '../constant/user';
 import { getAuthContext, getToken, redirectToHomePage } from './common';
 
 export const performAdminLogin = async (browser: Browser) => {
