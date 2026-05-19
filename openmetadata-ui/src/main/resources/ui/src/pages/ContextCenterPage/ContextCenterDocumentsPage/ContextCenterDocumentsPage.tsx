@@ -34,7 +34,7 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
 import { useAlertStore } from '../../../hooks/useAlertStore';
-import { deleteAsset, listContextFiles } from '../../../rest/assetAPI';
+import { deleteDriveFile, listContextFiles } from '../../../rest/assetAPI';
 import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
@@ -145,7 +145,7 @@ const ContextCenterDocumentsPage: FC = () => {
 
     try {
       setIsDeletingFile(true);
-      await deleteAsset(fileToDelete.id, false);
+      await deleteDriveFile(fileToDelete.driveFileId ?? fileToDelete.id, false);
       setAllDocuments((prev) =>
         prev.filter((document) => document.id !== fileToDelete.id)
       );

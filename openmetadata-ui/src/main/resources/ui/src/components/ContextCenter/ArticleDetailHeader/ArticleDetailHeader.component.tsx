@@ -85,7 +85,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   onToggleRightPanel,
   onVoteChange,
   onFollowChange,
-  onToggleDelete,
   onSave,
   onSetThreadLink,
   fetchKnowledgePageHierarchy,
@@ -183,7 +182,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       );
       await fetchKnowledgePageHierarchy?.(true);
       setIsDeleteModalOpen(false);
-      onToggleDelete();
       navigate(contextCenterClassBase.getArticlesListPath());
     } catch (error) {
       showErrorToast(error as AxiosError);

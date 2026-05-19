@@ -26,6 +26,11 @@ jest.mock('rest/assetAPI', () => ({
   moveFileToFolder: jest.fn(),
 }));
 
+jest.mock('utils/ToastUtils', () => ({
+  showSuccessToast: jest.fn(),
+  showErrorToast: jest.fn(),
+}));
+
 let mockOnSelectionChange: ((key: React.Key) => void) | undefined;
 
 jest.mock('@openmetadata/ui-core-components', () => ({

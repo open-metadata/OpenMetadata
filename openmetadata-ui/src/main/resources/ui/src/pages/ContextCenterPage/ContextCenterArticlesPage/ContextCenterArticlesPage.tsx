@@ -177,7 +177,6 @@ const ContextCenterArticlesPage = () => {
           onSave={page.handlers?.onSave}
           onSetThreadLink={page.handlers?.onSetThreadLink ?? (() => undefined)}
           onTabChange={page.onTabChange}
-          onToggleDelete={page.handlers?.onToggleDelete ?? (() => undefined)}
           onToggleRightPanel={handleToggleRightPanel}
           onVoteChange={page.handlers?.onVoteChange ?? (async () => undefined)}
         />

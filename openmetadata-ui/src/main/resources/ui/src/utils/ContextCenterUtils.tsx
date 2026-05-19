@@ -34,7 +34,7 @@ import {
   QuickLink,
 } from '../interface/knowledge-center.interface';
 import {
-  downloadAsset,
+  downloadDriveFile,
   listAssetsByFqn,
   ListAssetsByFqnParams,
 } from '../rest/assetAPI';
@@ -218,7 +218,7 @@ export const handleAssetDownload = async (file: DocFile) => {
   let element: HTMLAnchorElement | undefined;
 
   try {
-    const blob = await downloadAsset(file.id);
+    const blob = await downloadDriveFile(file.driveFileId ?? file.id);
     url = URL.createObjectURL(blob);
     element = document.createElement('a');
     element.href = url;
