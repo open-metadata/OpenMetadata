@@ -14,6 +14,8 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -24,9 +26,14 @@ class TestCaseRepositoryTest {
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
     when(collectionDAO.testCaseDAO()).thenReturn(mock(CollectionDAO.TestCaseDAO.class));
 
-    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+    EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
+        MockedStatic<EntityLifecycleEventDispatcher> lifecycleDispatcher =
+            Mockito.mockStatic(EntityLifecycleEventDispatcher.class);
+        MockedStatic<RdfUpdater> ignoredRdfUpdater = Mockito.mockStatic(RdfUpdater.class)) {
       entity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
       entity.when(() -> Entity.getEntityFields(TestCase.class)).thenCallRealMethod();
+      lifecycleDispatcher.when(EntityLifecycleEventDispatcher::getInstance).thenReturn(dispatcher);
 
       EntityReference basicSuiteRef = entityReference(Entity.TEST_SUITE, "basicSuite");
       TestSuite logicalSuite =
