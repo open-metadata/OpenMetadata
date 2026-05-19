@@ -1,4 +1,3 @@
-# ruff: noqa: T201
 """
 Populates a NATS JetStream KV bucket with topic schemas.
 
@@ -12,6 +11,9 @@ Usage:
 import argparse
 import asyncio
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 import nats
 
@@ -83,20 +85,20 @@ async def main(nats_url: str, bucket: str) -> None:
 
     try:
         kv = await js.key_value(bucket)
-        print(f"Using existing KV bucket '{bucket}'")
+        logger.info("Using existing KV bucket '%s'", bucket)
     except Exception:
         kv = await js.create_key_value(bucket=bucket)
-        print(f"Created KV bucket '{bucket}'")
+        logger.info("Created KV bucket '%s'", bucket)
 
     for stream_name, schema_text in SCHEMAS.items():
         await kv.put(stream_name, schema_text.encode())
-        print(f"  ✓ {stream_name}")
+        logger.info("Stored schema for stream: %s", stream_name)
 
-    print(f"\nVerifying {len(SCHEMAS)} schemas in bucket '{bucket}':")
+    logger.info("Verifying %d schemas in bucket '%s'", len(SCHEMAS), bucket)
     for stream_name in SCHEMAS:
         entry = await kv.get(stream_name)
         preview = entry.value.decode()[:60].replace("\n", " ")
-        print(f"  {stream_name}: {preview}...")
+        logger.info("%s: %s...", stream_name, preview)
 
     await nc.drain()
 
