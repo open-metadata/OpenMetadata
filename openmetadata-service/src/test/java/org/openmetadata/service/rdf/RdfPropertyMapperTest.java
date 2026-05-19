@@ -1065,6 +1065,85 @@ class RdfPropertyMapperTest {
     }
   }
 
+  @Nested
+  @DisplayName("addTypedProperty: blank xsd:string skip")
+  class AddTypedPropertyBlankString {
+
+    @Test
+    @DisplayName("Blank xsd:string value should not produce a literal triple")
+    void blankStringIsNotEmitted() throws Exception {
+      JsonNode blank = objectMapper.getNodeFactory().textNode("");
+      invokePrivate(
+          "addTypedProperty",
+          new Class[] {Resource.class, String.class, JsonNode.class, String.class, Model.class},
+          entityResource,
+          "skos:prefLabel",
+          blank,
+          "xsd:string",
+          model);
+
+      Property pref = model.createProperty(SKOS.getURI(), "prefLabel");
+      assertFalse(
+          model.contains(entityResource, pref),
+          "Blank xsd:string literals must not be emitted — they masked rdfs:label "
+              + "on the read side and rendered as empty UI labels");
+    }
+
+    @Test
+    @DisplayName("Whitespace-only xsd:string value should not produce a literal triple")
+    void whitespaceOnlyStringIsNotEmitted() throws Exception {
+      JsonNode whitespace = objectMapper.getNodeFactory().textNode("   ");
+      invokePrivate(
+          "addTypedProperty",
+          new Class[] {Resource.class, String.class, JsonNode.class, String.class, Model.class},
+          entityResource,
+          "skos:prefLabel",
+          whitespace,
+          "xsd:string",
+          model);
+
+      Property pref = model.createProperty(SKOS.getURI(), "prefLabel");
+      assertFalse(model.contains(entityResource, pref));
+    }
+
+    @Test
+    @DisplayName("Non-blank xsd:string value should still be emitted")
+    void nonBlankStringIsEmitted() throws Exception {
+      JsonNode value = objectMapper.getNodeFactory().textNode("Pretty Name");
+      invokePrivate(
+          "addTypedProperty",
+          new Class[] {Resource.class, String.class, JsonNode.class, String.class, Model.class},
+          entityResource,
+          "skos:prefLabel",
+          value,
+          "xsd:string",
+          model);
+
+      Property pref = model.createProperty(SKOS.getURI(), "prefLabel");
+      assertTrue(model.contains(entityResource, pref, "Pretty Name"));
+    }
+
+    @Test
+    @DisplayName("Blank value with a non-xsd:string type should still be emitted")
+    void blankNonStringIsEmitted() throws Exception {
+      // Non-string xsd types (numbers, booleans, dates) get their own validation
+      // path elsewhere — the skip is intentionally narrow to xsd:string so it
+      // doesn't accidentally drop "0" literals or similar.
+      JsonNode zero = objectMapper.getNodeFactory().textNode("0");
+      invokePrivate(
+          "addTypedProperty",
+          new Class[] {Resource.class, String.class, JsonNode.class, String.class, Model.class},
+          entityResource,
+          "om:counter",
+          zero,
+          "xsd:integer",
+          model);
+
+      Property counter = model.createProperty(OM_NS, "counter");
+      assertTrue(model.contains(entityResource, counter));
+    }
+  }
+
   private Object invokePrivate(String name, Class<?>[] parameterTypes, Object... args)
       throws Exception {
     java.lang.reflect.Method method =

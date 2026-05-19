@@ -112,8 +112,9 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class TestCaseRepository extends EntityRepository<TestCase> {
-  private static final String TEST_SUITE_FIELD = "testSuite";
-  private static final String INCIDENTS_FIELD = "incidentId";
+  public static final String TEST_SUITE_FIELD = "testSuite";
+  public static final String TEST_DEFINITION_FIELD = "testDefinition";
+  public static final String INCIDENTS_FIELD = "incidentId";
   private static final String UPDATE_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition,dimensionColumns,topDimensions";
   private static final String PATCH_FIELDS =

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FC } from 'react';
+import { ComponentType, lazy } from 'react';
 import ActivityFeedImg from '../assets/img/activity-feed-widget.png';
 import CuratedAssetsImg from '../assets/img/curated-assets.png';
 import DataAssetsImg from '../assets/img/data-assets-widget.png';
@@ -25,17 +25,6 @@ import MyTaskImg from '../assets/img/my-task-widget.png';
 import TotalAssetsMediumImg from '../assets/img/total-assets-medium.png';
 import TotalAssetsImg from '../assets/img/total-assets-widget.png';
 import KnowledgeCenterWidgetImg from '../assets/img/widgets/knowledge-center-widget.png';
-import KnowledgeCenterWidget from '../components/KnowledgeCenter/KnowledgeCenterWidget/KnowledgeCenterWidget';
-import { MyFeedWidget } from '../components/MyData/FeedWidget/FeedWidget.component';
-import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.component';
-import FollowingWidget from '../components/MyData/RightSidebar/FollowingWidget';
-import CuratedAssetsWidget from '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget';
-import DataAssetsWidget from '../components/MyData/Widgets/DataAssetsWidget/DataAssetsWidget.component';
-import DataProductsWidget from '../components/MyData/Widgets/DataProductsWidget/DataProductsWidget.component';
-import DomainsWidget from '../components/MyData/Widgets/DomainsWidget/DomainsWidget';
-import KPIWidget from '../components/MyData/Widgets/KPIWidget/KPIWidget.component';
-import MyTaskWidget from '../components/MyData/Widgets/MyTaskWidget/MyTaskWidget';
-import TotalDataAssetsWidget from '../components/MyData/Widgets/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
 import {
   LandingPageWidgetKeys,
   WidgetWidths,
@@ -45,6 +34,59 @@ import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../pages/CustomizablePage/CustomizablePage.interface';
+
+const KnowledgeCenterWidget = lazy(
+  () =>
+    import(
+      '../components/KnowledgeCenter/KnowledgeCenterWidget/KnowledgeCenterWidget'
+    )
+);
+const MyFeedWidget = lazy(() =>
+  import('../components/MyData/FeedWidget/FeedWidget.component').then((m) => ({
+    default: m.MyFeedWidget,
+  }))
+);
+const MyDataWidget = lazy(() =>
+  import('../components/MyData/MyDataWidget/MyDataWidget.component').then(
+    (m) => ({ default: m.MyDataWidget })
+  )
+);
+const FollowingWidget = lazy(
+  () => import('../components/MyData/RightSidebar/FollowingWidget')
+);
+const CuratedAssetsWidget = lazy(
+  () =>
+    import(
+      '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget'
+    )
+);
+const DataAssetsWidget = lazy(
+  () =>
+    import(
+      '../components/MyData/Widgets/DataAssetsWidget/DataAssetsWidget.component'
+    )
+);
+const DataProductsWidget = lazy(
+  () =>
+    import(
+      '../components/MyData/Widgets/DataProductsWidget/DataProductsWidget.component'
+    )
+);
+const DomainsWidget = lazy(
+  () => import('../components/MyData/Widgets/DomainsWidget/DomainsWidget')
+);
+const KPIWidget = lazy(
+  () => import('../components/MyData/Widgets/KPIWidget/KPIWidget.component')
+);
+const MyTaskWidget = lazy(
+  () => import('../components/MyData/Widgets/MyTaskWidget/MyTaskWidget')
+);
+const TotalDataAssetsWidget = lazy(
+  () =>
+    import(
+      '../components/MyData/Widgets/TotalDataAssetsWidget/TotalDataAssetsWidget.component'
+    )
+);
 
 class CustomizeMyDataPageClassBase {
   defaultWidgetHeight = 3;
@@ -178,7 +220,9 @@ class CustomizeMyDataPageClassBase {
     }
   >
    */
-  public getWidgetsFromKey(widgetKey: string): FC<WidgetCommonProps> {
+  public getWidgetsFromKey(
+    widgetKey: string
+  ): ComponentType<WidgetCommonProps> {
     if (widgetKey.startsWith(LandingPageWidgetKeys.DATA_ASSETS)) {
       return DataAssetsWidget;
     }

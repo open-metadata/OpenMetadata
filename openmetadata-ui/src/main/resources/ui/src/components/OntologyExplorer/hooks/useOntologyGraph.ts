@@ -213,6 +213,7 @@ interface GraphComboMeta {
   color?: string;
   glossaryName?: string;
   isDimmed?: boolean;
+  extraVerticalPadding?: number;
 }
 
 interface UseOntologyGraphProps {
@@ -1111,9 +1112,13 @@ export function useOntologyGraph({
           const d = (datum.data ?? {}) as GraphComboMeta;
           const color = d?.color ?? COMBO_COLOR_FALLBACK;
           const glossaryName = d?.glossaryName ?? '';
+          const extraVerticalPadding =
+            typeof d?.extraVerticalPadding === 'number'
+              ? d.extraVerticalPadding
+              : 0;
 
           return {
-            ...buildComboStyle(glossaryName, color),
+            ...buildComboStyle(glossaryName, color, extraVerticalPadding),
             zIndex: 0,
             opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
           };
