@@ -85,6 +85,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn -DskipTests clean install -pl :openmetadata-integration-tests -am
 
+      - name: Build openmetadata-dist tarball
+        # ContainerizedServer.buildLocalImageContainer needs
+        # openmetadata-dist/target/openmetadata-*.tar.gz to bake the local image.
+        # Dist is NOT a transitive dep of integration-tests, so the previous step
+        # doesn't produce it — build it explicitly here.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -DskipTests install -pl :openmetadata-dist -am
+
       - name: Install Playwright browsers
         run: |
           mvn -pl :openmetadata-integration-tests dependency:build-classpath -Dmdep.outputFile=/tmp/cp.txt -q

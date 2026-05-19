@@ -98,6 +98,10 @@ public final class ContainerizedServer implements AutoCloseable {
    * explicit, not bulk parallel).
    */
   public static ContainerizedServer launch(final SsoProfile profile) {
+    // Materialise the server image once, BEFORE runMigrations needs it. Without this,
+    // runMigrations tries to start a container using the jpw-snapshot tag, testcontainers
+    // attempts a registry pull, and the run fails with ContainerFetchException.
+    ensureServerImageAvailable();
     final Network network = Network.newNetwork();
     final MySQLContainer<?> mysql = newMysql(network);
     final OpensearchContainer<?> opensearch = newOpenSearch(network);
@@ -251,11 +255,29 @@ public final class ContainerizedServer implements AutoCloseable {
   }
 
   private static GenericContainer<?> buildLocalImageContainer() {
-    locateDistTarball();
-    buildLocalImageWithBuildKit();
+    // Image is materialised by ensureServerImageAvailable() at launch start; this just
+    // wraps the already-built tag in a fresh GenericContainer.
     return new GenericContainer<>(
         DockerImageName.parse(DEFAULT_LOCAL_IMAGE_TAG)
             .asCompatibleSubstituteFor("openmetadata-server"));
+  }
+
+  /**
+   * Materialise the server image so {@link #runMigrations} (which creates a transient
+   * container before {@link #newServer} runs) doesn't try to pull
+   * {@code openmetadata-server:jpw-snapshot} from a remote registry.
+   *
+   * <p>If {@code OM_TEST_IMAGE} is set we trust the override and skip the local build —
+   * testcontainers will pull or use the already-loaded image.
+   */
+  private static void ensureServerImageAvailable() {
+    final String override = lookupEnvOrSystem("OM_TEST_IMAGE");
+    if (override != null && !override.isBlank()) {
+      LOG.info("Skipping local image build — using OM_TEST_IMAGE override: {}", override);
+      return;
+    }
+    locateDistTarball();
+    buildLocalImageWithBuildKit();
   }
 
   private static void buildLocalImageWithBuildKit() {
