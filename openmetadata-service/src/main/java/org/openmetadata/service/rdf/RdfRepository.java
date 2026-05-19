@@ -1357,7 +1357,13 @@ public class RdfRepository {
             relationPredicates.add("<" + fullUri + ">");
           }
         }
-      } catch (Exception e) {
+      } catch (RuntimeException e) {
+        // SettingsCache.getSetting wraps everything as EntityNotFoundException
+        // (a RuntimeException) on miss; catching Exception was wider than
+        // necessary and would swallow programmer-error throwables. Narrow to
+        // RuntimeException, which still covers the cache miss / cast failure
+        // cases while letting checked exceptions (none today, but defensive)
+        // propagate.
         LOG.debug(
             "Could not load GlossaryTermRelationSettings for graph query — "
                 + "custom-typed glossary relations will be filtered out of the response. "
@@ -1949,7 +1955,12 @@ public class RdfRepository {
             }
           }
         }
-      } catch (Exception e) {
+      } catch (RuntimeException e) {
+        // Narrowed from Exception per project coding standards. SettingsCache
+        // surfaces all failures (cache miss, cast failure, …) as a
+        // RuntimeException (EntityNotFoundException), so RuntimeException
+        // covers the failure modes we expect while letting programmer-error
+        // throwables that signal a real bug propagate to test runs.
         LOG.debug(
             "Could not load GlossaryTermRelationSettings while extracting predicate name; "
                 + "falling back to URI local-name. Cause: {}",
