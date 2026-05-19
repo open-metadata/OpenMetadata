@@ -56,8 +56,8 @@ def sha256_hash(text: str) -> str:
 cache = LRUCache(LRU_CACHE_SIZE)
 
 
-def _normalise_dml_sql(query: str) -> str:
-    """Normalise a SQL query before DML pattern matching.
+def _normalize_dml_sql(query: str) -> str:
+    """Normalize a SQL query before DML pattern matching.
 
     Three-pass process:
     1. Replace /* ... */ block comments with a single space so they act as a
@@ -81,12 +81,12 @@ def _normalise_dml_sql(query: str) -> str:
 def _parse_query(query: str) -> Optional[str]:  # noqa: UP045
     """Parse snowflake queries to extract the identifiers.
 
-    The query is first normalised (block comments, single-line comments, and
+    The query is first normalized (block comments, single-line comments, and
     leading whitespace removed) so that re.match() can reliably find the DML
     keyword at position 0 without being confused by commented-out SQL in the
     query body.
     """
-    match = re.match(QUERY_PATTERN, _normalise_dml_sql(query), re.IGNORECASE)
+    match = re.match(QUERY_PATTERN, _normalize_dml_sql(query), re.IGNORECASE)
     try:
         # This will match results like `DATABASE.SCHEMA.TABLE1` or IDENTIFIER('TABLE1')
         # If we have `IDENTIFIER` type of queries coming from Stored Procedures, we'll need to further clean it up.
