@@ -19,7 +19,11 @@ export const SSO_COMMON_FIELDS = ['Callback URL'];
 // Main-tier OIDC fields rendered inside `oidcConfiguration` for confidential
 // providers. Other OIDC settings (scope, useNonce, preferredJwsAlgorithm,
 // disablePkce, etc.) live in the Advanced Fields accordion.
-export const OIDC_COMMON_FIELDS = ['Client ID', 'Client Secret', 'Discovery URI'];
+export const OIDC_COMMON_FIELDS = [
+  'Client ID',
+  'Client Secret',
+  'Discovery URI',
+];
 
 // Main-tier SAML form inputs rendered when the IdP section is expanded.
 // Service Provider details (entityId, acs) are surfaced via the
