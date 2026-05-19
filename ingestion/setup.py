@@ -144,7 +144,7 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "cachetools",  # Used to cache masked queries in ingestion/src/metadata/ingestion/lineage/masker.py
     "chardet==4.0.0",  # Used in the profiler
-    "cryptography>=46.0.5",
+    "cryptography>=44.0.1",
     "google-cloud-secret-manager==2.24.0",
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
