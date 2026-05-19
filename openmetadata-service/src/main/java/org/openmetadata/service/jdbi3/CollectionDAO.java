@@ -99,6 +99,7 @@ import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Chart;
@@ -459,6 +460,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   LearningResourceDAO learningResourceDAO();
+
+  @CreateSqlObject
+  ContextMemoryDAO contextMemoryDAO();
 
   @CreateSqlObject
   SuggestionDAO suggestionDAO();
@@ -10868,6 +10872,23 @@ public interface CollectionDAO {
     @Override
     default String getNameHashColumn() {
       return "fqnHash";
+    }
+  }
+
+  interface ContextMemoryDAO extends EntityDAO<ContextMemory> {
+    @Override
+    default String getTableName() {
+      return "context_memory";
+    }
+
+    @Override
+    default Class<ContextMemory> getEntityClass() {
+      return ContextMemory.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
     }
   }
 
