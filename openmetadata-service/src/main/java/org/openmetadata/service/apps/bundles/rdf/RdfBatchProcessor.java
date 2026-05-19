@@ -93,6 +93,16 @@ public class RdfBatchProcessor {
     // breaker, wasting time and amplifying error noise. We mark the whole
     // batch as failed instead and let the indexer move on — the breaker
     // will close once Fuseki recovers and the next batch retries cleanly.
+    //
+    // Caveat: the per-entity isolation only works when failures are payload-
+    // data-dependent (one entity emits a model the writer can't serialise).
+    // If the failure is predicate-SHAPE-dependent — e.g. a configured custom
+    // predicate URI contains characters the SPARQL serializer chokes on —
+    // every entity in the batch hits the same parse failure, so per-entity
+    // fallback also fails for all N entities and lastError carries the
+    // composite-style message. Predicate URIs come from the schema-validated
+    // GlossaryTermRelationSettings so this is unlikely in practice, but
+    // operator-injected custom predicates are the failure mode to watch.
     if (!effectiveStopRequested.getAsBoolean()) {
       try {
         rdfRepository.bulkCreateOrUpdate(entities);
@@ -198,16 +208,21 @@ public class RdfBatchProcessor {
    * of one informative one.
    */
   private static boolean isCircuitBreakerOpen(Throwable error) {
+    // Use an identity-equality Set for visited-tracking so multi-hop cycles
+    // (A.getCause()→B, B.getCause()→A) are detected — the previous
+    // single-hop check (next == cause) only caught immediate self-cycles.
+    // Cause chains shouldn't loop in well-behaved code, but exceptions
+    // wrapped by user-supplied frameworks or AOP layers occasionally do,
+    // and crossing the storage/repository wrap boundary makes a defensive
+    // check cheap insurance.
+    java.util.Set<Throwable> visited =
+        java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
     Throwable cause = error;
-    while (cause != null) {
+    while (cause != null && visited.add(cause)) {
       if (cause instanceof org.openmetadata.service.rdf.storage.RdfStorageCircuitOpenException) {
         return true;
       }
-      Throwable next = cause.getCause();
-      if (next == cause) {
-        return false;
-      }
-      cause = next;
+      cause = cause.getCause();
     }
     return false;
   }

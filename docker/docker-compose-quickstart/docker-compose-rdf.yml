@@ -84,7 +84,11 @@ services:
     image: openmetadata-fuseki:5.6.0
     restart: always
     environment:
+      # Local-dev defaults — production deployments MUST override via the
+      # FUSEKI_ADMIN_PASSWORD / FUSEKI_OPENMETADATA_PASSWORD env vars before
+      # bringing this stack up. The entrypoint envsubsts these into shiro.ini.
       - FUSEKI_ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
+      - FUSEKI_OPENMETADATA_PASSWORD=${FUSEKI_OPENMETADATA_PASSWORD:-openmetadata-secret}
       - JVM_ARGS=-Xmx4g -Xms2g
     ports:
       - "3030:3030"

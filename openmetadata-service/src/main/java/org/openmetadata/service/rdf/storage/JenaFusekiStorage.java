@@ -557,13 +557,22 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   /**
-   * Bulk variant: one combined DELETE update + one combined GSP POST for the
-   * whole batch. Per-entity {@link #storeEntity} costs ~2 HTTP round trips per
-   * entity (~150 ms RT on localhost = ~6.7 entities/s); batching collapses N
-   * entities into the same 2 round trips, so a batch of 100 entities runs at
-   * ~50× the per-entity throughput. Failure semantics are all-or-nothing:
-   * callers must fall back to per-entity {@link #storeEntity} on exception to
-   * preserve per-entity success/failure accounting.
+   * Bulk variant: one combined DELETE + INSERT DATA SPARQL UPDATE for the
+   * whole batch, in a SINGLE transaction at the Fuseki side. Per-entity
+   * {@link #storeEntity} costs ~2 HTTP round trips per entity (~150 ms RT on
+   * localhost = ~6.7 entities/s); batching collapses N entities into 1
+   * round trip, so a batch of 100 entities runs at ~100× the per-entity
+   * throughput.
+   *
+   * <p>Atomicity: previously the bulk path issued a SPARQL UPDATE for the
+   * DELETE and a separate GSP POST for the LOAD, which could leave the
+   * dataset in a half-applied state if the second call failed — every
+   * entity's prior translator-managed predicates would be gone but the new
+   * triples never landed. Now we serialise the combined model as N-Triples
+   * and embed it in the SAME SPARQL UPDATE via {@code INSERT DATA}; multi-
+   * statement SPARQL UPDATEs run in one Fuseki transaction so the batch is
+   * either fully applied or fully rolled back. Failure semantics stay
+   * all-or-nothing from the caller's perspective.
    */
   @Override
   public void bulkStoreEntities(List<EntityWriteRequest> requests) {
@@ -587,11 +596,28 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       combinedModel.add(req.model());
     }
 
+    // Serialise the combined model as N-Triples and embed in INSERT DATA so
+    // the whole batch — DELETE statements + INSERT DATA — executes as ONE
+    // SPARQL UPDATE transaction at Fuseki.
+    StringWriter writer = new StringWriter();
+    combinedModel.write(writer, "N-TRIPLES");
+    String triples = writer.toString();
+    StringBuilder combined = new StringBuilder(combinedDelete);
+    if (!triples.isBlank()) {
+      if (combined.length() > 0) {
+        combined.append(";\n");
+      }
+      combined
+          .append("INSERT DATA { GRAPH <")
+          .append(KNOWLEDGE_GRAPH)
+          .append("> { ")
+          .append(triples)
+          .append(" } }");
+    }
+
     try {
-      UpdateRequest deleteRequest = UpdateFactory.create(combinedDelete.toString());
-      runWithTimeout(() -> connection.update(deleteRequest), "bulkStoreEntities delete");
-      runWithTimeout(
-          () -> connection.load(KNOWLEDGE_GRAPH, combinedModel), "bulkStoreEntities load");
+      UpdateRequest updateRequest = UpdateFactory.create(combined.toString());
+      runWithTimeout(() -> connection.update(updateRequest), "bulkStoreEntities");
       // DEBUG, not INFO: this fires per-batch in a hot reindex loop (default
       // batchSize=100 → tens of thousands of log lines on a real reindex).
       // Keep INFO reserved for events ops actually want to grep for.
