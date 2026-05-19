@@ -1,0 +1,29 @@
+{
+  "properties": {
+    "customPropertiesTyped": { "$fragment": "customPropertiesTyped" },
+    "dataType": { "type": "text" },
+    "dataTypeDisplay": { "type": "text" },
+    "description": {
+      "type": "text",
+      "analyzer": "om_analyzer",
+      "similarity": "boolean",
+      "term_vector": "with_positions_offsets"
+    },
+    "extension": { "type": "flattened" },
+    "fqnParts": { "type": "keyword" },
+    "fullyQualifiedName": { "type": "keyword", "normalizer": "lowercase_normalizer" },
+    "name": {
+      "type": "text",
+      "analyzer": "om_analyzer",
+      "fields": {
+        "keyword": { "type": "keyword", "ignore_above": 256, "normalizer": "lowercase_normalizer" },
+        "ngram": { "type": "text", "analyzer": "om_ngram" }
+      }
+    },
+    "ordinalPosition": { "type": "integer" },
+    "tags": {
+      "$fragment": "tagLabel",
+      "properties": { "description": { "similarity": "boolean" } }
+    }
+  }
+}

@@ -1,0 +1,209 @@
+{
+  "entity" : "llm_service",
+  "extends" : "entity_base",
+  "settings" : {
+    "byLanguage" : {
+      "en" : { },
+      "jp" : {
+        "analysis" : {
+          "analyzer" : {
+            "om_analyzer" : {
+              "tokenizer" : "letter",
+              "filter" : [ "lowercase", "om_stemmer" ]
+            }
+          }
+        }
+      },
+      "ru" : { },
+      "zh" : { }
+    }
+  },
+  "fields" : {
+    "name" : {
+      "languages" : {
+        "zh" : {
+          "analyzer" : "om_analyzer"
+        }
+      }
+    },
+    "displayName" : {
+      "inline" : {
+        "type" : "text",
+        "analyzer" : "om_analyzer",
+        "fields" : {
+          "keyword" : {
+            "type" : "keyword",
+            "ignore_above" : 256
+          },
+          "ngram" : {
+            "type" : "text",
+            "analyzer" : "om_ngram"
+          },
+          "compound" : {
+            "type" : "text",
+            "analyzer" : "om_compound_analyzer"
+          }
+        }
+      },
+      "languages" : {
+        "zh" : {
+          "analyzer" : "om_analyzer"
+        }
+      }
+    },
+    "description" : {
+      "inline" : {
+        "type" : "text",
+        "analyzer" : "om_analyzer",
+        "index_options" : "docs",
+        "term_vector" : "with_positions_offsets"
+      },
+      "languages" : {
+        "zh" : {
+          "analyzer" : "om_analyzer"
+        }
+      },
+      "type" : null
+    },
+    "pipelines" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          },
+          "displayName" : null
+        }
+      }
+    },
+    "tier" : {
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              }
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tags" : {
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              }
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "owners" : {
+      "overrides" : {
+        "type" : "nested",
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      }
+    },
+    "dataProducts" : {
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          }
+        }
+      }
+    },
+    "domains" : {
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          }
+        }
+      }
+    },
+    "votes" : {
+      "inline" : {
+        "dynamic" : false,
+        "properties" : {
+          "upVotes" : {
+            "type" : "integer"
+          },
+          "downVotes" : {
+            "type" : "integer"
+          }
+        }
+      }
+    },
+    "upstreamLineage" : {
+      "fragment" : "upstreamLineage",
+      "overrides" : {
+        "properties" : {
+          "sqlQueryKey" : null
+        }
+      },
+      "list" : true
+    },
+    "service" : null,
+    "followers" : null,
+    "entityStatus" : null,
+    "certification" : null
+  }
+}

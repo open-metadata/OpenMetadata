@@ -1,0 +1,20 @@
+{
+  "properties": {
+    "entity": {
+      "properties": {
+        "fqnHash": {
+          "type": "text",
+          "fields": { "keyword": { "type": "keyword", "ignore_above": 512 } }
+        }
+      }
+    },
+    "relatedEntity": {
+      "properties": {
+        "fqnHash": {
+          "type": "text",
+          "fields": { "keyword": { "type": "keyword", "ignore_above": 512 } }
+        }
+      }
+    }
+  }
+}

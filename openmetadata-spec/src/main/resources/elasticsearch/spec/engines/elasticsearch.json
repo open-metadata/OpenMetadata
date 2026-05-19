@@ -1,0 +1,5 @@
+{
+  "_doc": "Elasticsearch engine profile. The canonical mapping is already ES-flavored, so no rewrites are needed. typeRewrites/overlay are here for symmetry and future use.",
+  "typeRewrites": {},
+  "overlay": {}
+}

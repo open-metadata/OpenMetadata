@@ -1,0 +1,14 @@
+{
+  "type": "object",
+  "properties": {
+    "appliedDate": {
+      "type": "date",
+      "format": "strict_date_optional_time||epoch_millis"
+    },
+    "expiryDate": {
+      "type": "date",
+      "format": "strict_date_optional_time||epoch_millis"
+    },
+    "tagLabel": { "$fragment": "tagLabel", "type": "object" }
+  }
+}

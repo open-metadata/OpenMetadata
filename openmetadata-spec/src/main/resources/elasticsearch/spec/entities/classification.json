@@ -1,0 +1,160 @@
+{
+  "entity" : "classification",
+  "extends" : "entity_base",
+  "settings" : {
+    "override" : { }
+  },
+  "fields" : {
+    "name" : {
+      "languages" : {
+        "zh" : {
+          "search_analyzer" : "ik_smart"
+        }
+      }
+    },
+    "displayName" : {
+      "type" : "text_search",
+      "languages" : {
+        "zh" : {
+          "search_analyzer" : "ik_smart"
+        }
+      }
+    },
+    "reviewers" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      },
+      "list" : true,
+      "languages" : {
+        "ru" : {
+          "properties" : {
+            "name" : {
+              "fields" : {
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            },
+            "displayName" : null
+          }
+        }
+      }
+    },
+    "description" : {
+      "languages" : {
+        "jp" : {
+          "term_vector" : null
+        },
+        "zh" : {
+          "search_analyzer" : "ik_smart",
+          "term_vector" : null
+        }
+      }
+    },
+    "updatedAt" : {
+      "languages" : {
+        "ru" : {
+          "type" : "text",
+          "format" : null
+        }
+      }
+    },
+    "disabled" : {
+      "type" : "text"
+    },
+    "votes" : {
+      "inline" : {
+        "dynamic" : false,
+        "properties" : {
+          "upVotes" : {
+            "type" : "integer"
+          },
+          "downVotes" : {
+            "type" : "integer"
+          }
+        }
+      },
+      "languages" : {
+        "zh" : null
+      }
+    },
+    "descriptionSources" : {
+      "type" : "object_no_dynamic",
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "tagSources" : {
+      "type" : "object_no_dynamic",
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "tierSources" : {
+      "type" : "object_no_dynamic",
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "domains" : {
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          }
+        }
+      },
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "owners" : {
+      "overrides" : {
+        "type" : "nested",
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      }
+    },
+    "dataProducts" : null,
+    "service" : null,
+    "followers" : null,
+    "tier" : null,
+    "tags" : null,
+    "serviceType" : null,
+    "certification" : null,
+    "classificationTags" : null,
+    "glossaryTags" : null
+  }
+}

@@ -1,0 +1,216 @@
+{
+  "entity" : "glossary",
+  "extends" : "entity_base",
+  "settings" : {
+    "byLanguage" : {
+      "en" : { },
+      "jp" : {
+        "index" : {
+          "max_ngram_diff" : 17
+        }
+      },
+      "ru" : { },
+      "zh" : {
+        "index" : {
+          "max_ngram_diff" : 17
+        }
+      }
+    }
+  },
+  "fields" : {
+    "name" : {
+      "languages" : {
+        "zh" : {
+          "type" : "keyword",
+          "analyzer" : null
+        }
+      }
+    },
+    "domains" : {
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          }
+        }
+      }
+    },
+    "displayName" : {
+      "type" : "text_search",
+      "languages" : {
+        "zh" : {
+          "search_analyzer" : "ik_smart"
+        }
+      }
+    },
+    "description" : {
+      "inline" : {
+        "type" : "text",
+        "analyzer" : "om_analyzer",
+        "index_options" : "docs",
+        "term_vector" : "with_positions_offsets"
+      },
+      "languages" : {
+        "jp" : {
+          "similarity" : "boolean",
+          "index_options" : null,
+          "term_vector" : null
+        },
+        "zh" : {
+          "search_analyzer" : "ik_smart",
+          "similarity" : "boolean",
+          "index_options" : null,
+          "term_vector" : null
+        }
+      },
+      "type" : null
+    },
+    "owners" : {
+      "overrides" : {
+        "type" : "nested",
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      }
+    },
+    "reviewers" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "displayName" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      },
+      "list" : true,
+      "languages" : {
+        "zh" : null
+      }
+    },
+    "usageCount" : {
+      "type" : "integer"
+    },
+    "tier" : {
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              },
+              "normalizer" : null
+            }
+          }
+        },
+        "ru" : {
+          "properties" : {
+            "tagFQN" : {
+              "normalizer" : null
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              },
+              "normalizer" : null
+            }
+          }
+        }
+      }
+    },
+    "tags" : {
+      "overrides" : {
+        "properties" : {
+          "tagFQN" : {
+            "fields" : null
+          }
+        }
+      }
+    },
+    "termCount" : {
+      "type" : "integer"
+    },
+    "votes" : {
+      "inline" : {
+        "dynamic" : false,
+        "properties" : {
+          "upVotes" : {
+            "type" : "integer"
+          },
+          "downVotes" : {
+            "type" : "integer"
+          }
+        }
+      },
+      "languages" : {
+        "zh" : null
+      }
+    },
+    "fingerprint" : {
+      "type" : "keyword"
+    },
+    "textToLLMContext" : {
+      "type" : "text"
+    },
+    "textToEmbed" : {
+      "type" : "text"
+    },
+    "chunkIndex" : {
+      "type" : "integer"
+    },
+    "chunkCount" : {
+      "type" : "integer"
+    },
+    "parentId" : {
+      "type" : "keyword"
+    },
+    "synonyms" : {
+      "type" : "text",
+      "languages" : {
+        "en" : null,
+        "jp" : null,
+        "ru" : null
+      }
+    },
+    "dataProducts" : null,
+    "service" : null,
+    "followers" : null,
+    "serviceType" : null,
+    "certification" : null
+  }
+}

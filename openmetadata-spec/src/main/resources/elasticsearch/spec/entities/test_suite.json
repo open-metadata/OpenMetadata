@@ -1,0 +1,323 @@
+{
+  "entity" : "test_suite",
+  "extends" : "entity_base",
+  "settings" : {
+    "byLanguage" : {
+      "en" : {
+        "analysis" : {
+          "tokenizer" : {
+            "edge_ngram_tokenizer" : {
+              "type" : "edge_ngram",
+              "min_gram" : 3,
+              "max_gram" : 20,
+              "token_chars" : [ "letter", "digit" ]
+            },
+            "n_gram_tokenizer" : null
+          },
+          "analyzer" : {
+            "om_ngram" : {
+              "tokenizer" : "edge_ngram_tokenizer"
+            }
+          }
+        },
+        "index" : null
+      },
+      "jp" : { },
+      "ru" : {
+        "analysis" : {
+          "tokenizer" : {
+            "edge_ngram_tokenizer" : {
+              "type" : "edge_ngram",
+              "min_gram" : 3,
+              "max_gram" : 20,
+              "token_chars" : [ "letter", "digit" ]
+            },
+            "n_gram_tokenizer" : null
+          },
+          "analyzer" : {
+            "om_ngram" : {
+              "tokenizer" : "edge_ngram_tokenizer"
+            }
+          }
+        },
+        "index" : null
+      },
+      "zh" : {
+        "analysis" : {
+          "analyzer" : {
+            "om_ngram" : null
+          },
+          "tokenizer" : null
+        },
+        "index" : null
+      }
+    }
+  },
+  "fields" : {
+    "name" : {
+      "languages" : {
+        "zh" : {
+          "search_analyzer" : "ik_smart",
+          "fields" : {
+            "ngram" : null
+          }
+        }
+      }
+    },
+    "description" : {
+      "inline" : {
+        "type" : "text",
+        "analyzer" : "om_analyzer",
+        "term_vector" : "with_positions_offsets"
+      },
+      "languages" : {
+        "jp" : {
+          "term_vector" : null
+        },
+        "zh" : {
+          "search_analyzer" : "ik_smart",
+          "term_vector" : null
+        }
+      },
+      "type" : null
+    },
+    "votes" : {
+      "inline" : {
+        "dynamic" : false,
+        "properties" : {
+          "upVotes" : {
+            "type" : "integer"
+          },
+          "downVotes" : {
+            "type" : "integer"
+          }
+        }
+      },
+      "languages" : {
+        "zh" : null
+      }
+    },
+    "displayName" : {
+      "inline" : {
+        "type" : "text",
+        "analyzer" : "om_analyzer",
+        "fields" : {
+          "keyword" : {
+            "type" : "keyword",
+            "ignore_above" : 256
+          },
+          "ngram" : {
+            "type" : "text",
+            "analyzer" : "om_ngram"
+          },
+          "compound" : {
+            "type" : "text",
+            "analyzer" : "om_compound_analyzer"
+          }
+        }
+      },
+      "languages" : {
+        "jp" : {
+          "fields" : {
+            "ngram" : null
+          }
+        },
+        "zh" : {
+          "search_analyzer" : "ik_smart",
+          "fields" : {
+            "ngram" : null
+          }
+        }
+      }
+    },
+    "lastResultTimestamp" : {
+      "type" : "long"
+    },
+    "owners" : {
+      "overrides" : {
+        "type" : "nested",
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      }
+    },
+    "executable" : {
+      "type" : "boolean"
+    },
+    "tags" : {
+      "overrides" : {
+        "properties" : {
+          "tagFQN" : {
+            "fields" : null
+          }
+        }
+      }
+    },
+    "tier" : {
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              },
+              "normalizer" : null
+            }
+          }
+        },
+        "ru" : {
+          "properties" : {
+            "tagFQN" : {
+              "normalizer" : null
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              },
+              "normalizer" : null
+            }
+          }
+        }
+      }
+    },
+    "certification" : {
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "tagLabel" : {
+              "properties" : {
+                "tagFQN" : {
+                  "fields" : {
+                    "text" : {
+                      "analyzer" : "om_analyzer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "tagLabel" : {
+              "properties" : {
+                "tagFQN" : {
+                  "fields" : {
+                    "text" : {
+                      "analyzer" : "om_analyzer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "domains" : {
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          }
+        }
+      }
+    },
+    "table" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "displayName" : {
+            "type" : "text"
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      }
+    },
+    "database" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      },
+      "languages" : {
+        "zh" : {
+          "properties" : {
+            "displayName" : {
+              "type" : "text"
+            }
+          }
+        }
+      }
+    },
+    "databaseSchema" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      }
+    },
+    "service" : {
+      "overrides" : {
+        "properties" : {
+          "displayName" : {
+            "type" : "text"
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      }
+    },
+    "descriptionStatus" : {
+      "languages" : {
+        "en" : null,
+        "ru" : null
+      }
+    },
+    "version" : null,
+    "updatedAt" : null,
+    "updatedBy" : null,
+    "dataProducts" : null,
+    "followers" : null,
+    "entityStatus" : null
+  }
+}

@@ -1,0 +1,1155 @@
+{
+  "entity" : "security_service",
+  "extends" : "entity_base",
+  "settings" : {
+    "byLanguage" : {
+      "en" : { },
+      "jp" : {
+        "analysis" : {
+          "analyzer" : {
+            "om_compound_analyzer" : null
+          },
+          "filter" : {
+            "compound_word_delimiter_graph" : null
+          }
+        }
+      },
+      "ru" : {
+        "analysis" : {
+          "normalizer" : {
+            "lowercase_normalizer" : {
+              "filter" : [ "lowercase" ]
+            }
+          },
+          "analyzer" : {
+            "om_analyzer" : {
+              "filter" : [ "lowercase", "word_delimiter_filter", "om_stemmer" ]
+            },
+            "om_compound_analyzer" : {
+              "filter" : [ "lowercase", "compound_word_delimiter_graph", "flatten_graph" ]
+            }
+          },
+          "filter" : {
+            "om_stemmer" : {
+              "type" : "stemmer",
+              "name" : "kstem"
+            },
+            "russian_stop" : null,
+            "english_stop" : null,
+            "russian_snowball" : null,
+            "om_kstem" : null,
+            "asciifolding" : null
+          }
+        }
+      },
+      "zh" : {
+        "analysis" : {
+          "analyzer" : {
+            "om_compound_analyzer" : null
+          },
+          "filter" : {
+            "compound_word_delimiter_graph" : null
+          },
+          "tokenizer" : {
+            "n_gram_tokenizer" : {
+              "min_gram" : 1,
+              "max_gram" : 2
+            }
+          }
+        }
+      }
+    }
+  },
+  "fields" : {
+    "id" : {
+      "inline" : {
+        "type" : "keyword",
+        "fields" : {
+          "keyword" : {
+            "type" : "keyword",
+            "ignore_above" : 36
+          }
+        }
+      },
+      "languages" : {
+        "jp" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "ignore_above" : 256
+            }
+          }
+        },
+        "zh" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "ignore_above" : 256
+            }
+          }
+        }
+      },
+      "type" : null
+    },
+    "name" : {
+      "languages" : {
+        "jp" : {
+          "fields" : {
+            "compound" : null
+          }
+        },
+        "zh" : {
+          "search_analyzer" : "ik_smart",
+          "fields" : {
+            "compound" : null
+          }
+        }
+      }
+    },
+    "displayName" : {
+      "type" : "text_search",
+      "languages" : {
+        "jp" : {
+          "fields" : {
+            "keyword" : {
+              "normalizer" : null
+            },
+            "compound" : null
+          }
+        },
+        "zh" : {
+          "search_analyzer" : "ik_smart",
+          "fields" : {
+            "keyword" : {
+              "normalizer" : null
+            },
+            "compound" : null
+          }
+        }
+      }
+    },
+    "description" : {
+      "inline" : {
+        "type" : "text",
+        "analyzer" : "om_analyzer",
+        "index_options" : "docs",
+        "term_vector" : "with_positions_offsets"
+      },
+      "languages" : {
+        "jp" : {
+          "index_options" : null,
+          "term_vector" : null
+        },
+        "zh" : {
+          "search_analyzer" : "ik_smart",
+          "index_options" : null,
+          "term_vector" : null
+        }
+      },
+      "type" : null
+    },
+    "updatedBy" : {
+      "inline" : {
+        "type" : "text",
+        "fields" : {
+          "keyword" : {
+            "type" : "keyword",
+            "normalizer" : "lowercase_normalizer",
+            "ignore_above" : 256
+          }
+        }
+      },
+      "languages" : {
+        "jp" : {
+          "fields" : {
+            "keyword" : {
+              "normalizer" : null
+            }
+          }
+        },
+        "zh" : {
+          "fields" : {
+            "keyword" : {
+              "normalizer" : null
+            }
+          }
+        }
+      },
+      "type" : null
+    },
+    "owners" : {
+      "overrides" : {
+        "type" : "nested",
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      },
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "name" : {
+              "normalizer" : "lowercase_normalizer",
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : "lowercase_normalizer"
+                }
+              }
+            },
+            "fullyQualifiedName" : {
+              "type" : "keyword",
+              "normalizer" : "lowercase_normalizer"
+            },
+            "displayName" : {
+              "type" : "text",
+              "analyzer" : "om_analyzer_jp",
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : null
+                },
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            },
+            "description" : {
+              "analyzer" : "om_analyzer_jp"
+            },
+            "deleted" : null,
+            "href" : null
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "name" : {
+              "normalizer" : "lowercase_normalizer",
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : "lowercase_normalizer"
+                }
+              }
+            },
+            "fullyQualifiedName" : {
+              "type" : "keyword",
+              "normalizer" : "lowercase_normalizer"
+            },
+            "displayName" : {
+              "type" : "text",
+              "analyzer" : "ik_max_word",
+              "search_analyzer" : "ik_smart",
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : null
+                },
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            },
+            "description" : {
+              "analyzer" : "ik_max_word",
+              "search_analyzer" : "ik_smart"
+            },
+            "deleted" : null,
+            "href" : null
+          }
+        }
+      }
+    },
+    "followers" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      },
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "name" : {
+              "normalizer" : "lowercase_normalizer",
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : "lowercase_normalizer"
+                }
+              }
+            },
+            "fullyQualifiedName" : {
+              "type" : "keyword",
+              "normalizer" : "lowercase_normalizer"
+            },
+            "displayName" : {
+              "type" : "text",
+              "analyzer" : "om_analyzer_jp",
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : null
+                },
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            },
+            "description" : {
+              "analyzer" : "om_analyzer_jp"
+            },
+            "deleted" : null,
+            "href" : null
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "name" : {
+              "normalizer" : "lowercase_normalizer",
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : "lowercase_normalizer"
+                }
+              }
+            },
+            "fullyQualifiedName" : {
+              "type" : "keyword",
+              "normalizer" : "lowercase_normalizer"
+            },
+            "displayName" : {
+              "type" : "text",
+              "analyzer" : "ik_max_word",
+              "search_analyzer" : "ik_smart",
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : null
+                },
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            },
+            "description" : {
+              "analyzer" : "ik_max_word",
+              "search_analyzer" : "ik_smart"
+            },
+            "deleted" : null,
+            "href" : null
+          }
+        }
+      },
+      "type" : null
+    },
+    "tags" : {
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "tagFQN" : {
+              "normalizer" : null,
+              "fields" : null
+            },
+            "description" : {
+              "analyzer" : "om_analyzer_jp"
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "tagFQN" : {
+              "normalizer" : null,
+              "fields" : null
+            },
+            "description" : {
+              "analyzer" : "ik_max_word",
+              "search_analyzer" : "ik_smart"
+            }
+          }
+        }
+      }
+    },
+    "tier" : {
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              },
+              "normalizer" : null
+            }
+          }
+        },
+        "ru" : {
+          "properties" : {
+            "tagFQN" : {
+              "normalizer" : null
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              },
+              "normalizer" : null
+            }
+          }
+        }
+      }
+    },
+    "connection" : {
+      "inline" : {
+        "properties" : {
+          "config" : {
+            "properties" : {
+              "type" : {
+                "type" : "keyword"
+              },
+              "hostPort" : {
+                "type" : "text"
+              },
+              "authType" : {
+                "type" : "object"
+              },
+              "verifySSL" : {
+                "type" : "keyword"
+              },
+              "sslConfig" : {
+                "type" : "object"
+              },
+              "connectionOptions" : {
+                "type" : "object"
+              },
+              "connectionArguments" : {
+                "type" : "object"
+              }
+            }
+          }
+        }
+      },
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "config" : {
+              "properties" : {
+                "hostPort" : {
+                  "type" : "keyword"
+                },
+                "authType" : null,
+                "verifySSL" : null,
+                "sslConfig" : null,
+                "connectionOptions" : null,
+                "connectionArguments" : null
+              }
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "config" : {
+              "properties" : {
+                "hostPort" : {
+                  "type" : "keyword"
+                },
+                "authType" : null,
+                "verifySSL" : null,
+                "sslConfig" : null,
+                "connectionOptions" : null,
+                "connectionArguments" : null
+              }
+            }
+          }
+        }
+      }
+    },
+    "pipelines" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          },
+          "displayName" : null
+        }
+      },
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "name" : {
+              "type" : "text",
+              "analyzer" : "om_analyzer_jp",
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : "lowercase_normalizer"
+                },
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            },
+            "fullyQualifiedName" : {
+              "type" : "keyword",
+              "normalizer" : "lowercase_normalizer"
+            },
+            "description" : {
+              "analyzer" : "om_analyzer_jp"
+            },
+            "displayName" : {
+              "type" : "text",
+              "analyzer" : "om_analyzer_jp",
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword",
+                  "ignore_above" : 256
+                },
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            },
+            "tags" : {
+              "properties" : {
+                "tagFQN" : {
+                  "type" : "keyword"
+                },
+                "labelType" : {
+                  "type" : "keyword"
+                },
+                "description" : {
+                  "type" : "text",
+                  "analyzer" : "om_analyzer_jp"
+                },
+                "source" : {
+                  "type" : "keyword"
+                },
+                "state" : {
+                  "type" : "keyword"
+                }
+              }
+            },
+            "tier" : {
+              "properties" : {
+                "tagFQN" : {
+                  "type" : "keyword",
+                  "fields" : {
+                    "text" : {
+                      "type" : "text",
+                      "analyzer" : "om_analyzer"
+                    }
+                  }
+                },
+                "labelType" : {
+                  "type" : "keyword"
+                },
+                "description" : {
+                  "type" : "text"
+                },
+                "source" : {
+                  "type" : "keyword"
+                },
+                "state" : {
+                  "type" : "keyword"
+                }
+              }
+            },
+            "owners" : {
+              "type" : "nested",
+              "properties" : {
+                "id" : {
+                  "type" : "keyword",
+                  "fields" : {
+                    "keyword" : {
+                      "type" : "keyword",
+                      "ignore_above" : 36
+                    }
+                  }
+                },
+                "type" : {
+                  "type" : "keyword"
+                },
+                "name" : {
+                  "type" : "keyword",
+                  "normalizer" : "lowercase_normalizer",
+                  "fields" : {
+                    "keyword" : {
+                      "type" : "keyword",
+                      "ignore_above" : 256,
+                      "normalizer" : "lowercase_normalizer"
+                    }
+                  }
+                },
+                "fullyQualifiedName" : {
+                  "type" : "keyword",
+                  "normalizer" : "lowercase_normalizer"
+                },
+                "displayName" : {
+                  "type" : "text",
+                  "analyzer" : "om_analyzer_jp",
+                  "fields" : {
+                    "keyword" : {
+                      "type" : "keyword",
+                      "ignore_above" : 256
+                    },
+                    "ngram" : {
+                      "type" : "text",
+                      "analyzer" : "om_ngram"
+                    }
+                  }
+                },
+                "description" : {
+                  "type" : "text",
+                  "analyzer" : "om_analyzer_jp"
+                }
+              }
+            },
+            "followers" : {
+              "properties" : {
+                "id" : {
+                  "type" : "keyword",
+                  "fields" : {
+                    "keyword" : {
+                      "type" : "keyword",
+                      "ignore_above" : 36
+                    }
+                  }
+                },
+                "type" : {
+                  "type" : "keyword"
+                },
+                "name" : {
+                  "type" : "keyword",
+                  "normalizer" : "lowercase_normalizer",
+                  "fields" : {
+                    "keyword" : {
+                      "type" : "keyword",
+                      "ignore_above" : 256,
+                      "normalizer" : "lowercase_normalizer"
+                    }
+                  }
+                },
+                "fullyQualifiedName" : {
+                  "type" : "keyword",
+                  "normalizer" : "lowercase_normalizer"
+                },
+                "displayName" : {
+                  "type" : "text",
+                  "analyzer" : "om_analyzer_jp",
+                  "fields" : {
+                    "keyword" : {
+                      "type" : "keyword",
+                      "ignore_above" : 256
+                    },
+                    "ngram" : {
+                      "type" : "text",
+                      "analyzer" : "om_ngram"
+                    }
+                  }
+                },
+                "description" : {
+                  "type" : "text",
+                  "analyzer" : "om_analyzer_jp"
+                }
+              }
+            },
+            "deleted" : null,
+            "href" : null
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "name" : {
+              "type" : "text",
+              "analyzer" : "ik_max_word",
+              "search_analyzer" : "ik_smart",
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : "lowercase_normalizer"
+                },
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            },
+            "fullyQualifiedName" : {
+              "type" : "keyword",
+              "normalizer" : "lowercase_normalizer"
+            },
+            "description" : {
+              "analyzer" : "ik_max_word",
+              "search_analyzer" : "ik_smart"
+            },
+            "displayName" : {
+              "type" : "text",
+              "analyzer" : "ik_max_word",
+              "search_analyzer" : "ik_smart",
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword",
+                  "ignore_above" : 256
+                },
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            },
+            "tags" : {
+              "properties" : {
+                "tagFQN" : {
+                  "type" : "keyword"
+                },
+                "labelType" : {
+                  "type" : "keyword"
+                },
+                "description" : {
+                  "type" : "text",
+                  "analyzer" : "ik_max_word",
+                  "search_analyzer" : "ik_smart"
+                },
+                "source" : {
+                  "type" : "keyword"
+                },
+                "state" : {
+                  "type" : "keyword"
+                }
+              }
+            },
+            "tier" : {
+              "properties" : {
+                "tagFQN" : {
+                  "type" : "keyword",
+                  "fields" : {
+                    "text" : {
+                      "type" : "text",
+                      "analyzer" : "om_analyzer"
+                    }
+                  }
+                },
+                "labelType" : {
+                  "type" : "keyword"
+                },
+                "description" : {
+                  "type" : "text"
+                },
+                "source" : {
+                  "type" : "keyword"
+                },
+                "state" : {
+                  "type" : "keyword"
+                }
+              }
+            },
+            "owners" : {
+              "type" : "nested",
+              "properties" : {
+                "id" : {
+                  "type" : "keyword",
+                  "fields" : {
+                    "keyword" : {
+                      "type" : "keyword",
+                      "ignore_above" : 36
+                    }
+                  }
+                },
+                "type" : {
+                  "type" : "keyword"
+                },
+                "name" : {
+                  "type" : "keyword",
+                  "normalizer" : "lowercase_normalizer",
+                  "fields" : {
+                    "keyword" : {
+                      "type" : "keyword",
+                      "ignore_above" : 256,
+                      "normalizer" : "lowercase_normalizer"
+                    }
+                  }
+                },
+                "fullyQualifiedName" : {
+                  "type" : "keyword",
+                  "normalizer" : "lowercase_normalizer"
+                },
+                "displayName" : {
+                  "type" : "text",
+                  "analyzer" : "ik_max_word",
+                  "search_analyzer" : "ik_smart",
+                  "fields" : {
+                    "keyword" : {
+                      "type" : "keyword",
+                      "ignore_above" : 256
+                    },
+                    "ngram" : {
+                      "type" : "text",
+                      "analyzer" : "om_ngram"
+                    }
+                  }
+                },
+                "description" : {
+                  "type" : "text",
+                  "analyzer" : "ik_max_word",
+                  "search_analyzer" : "ik_smart"
+                }
+              }
+            },
+            "followers" : {
+              "properties" : {
+                "id" : {
+                  "type" : "keyword",
+                  "fields" : {
+                    "keyword" : {
+                      "type" : "keyword",
+                      "ignore_above" : 36
+                    }
+                  }
+                },
+                "type" : {
+                  "type" : "keyword"
+                },
+                "name" : {
+                  "type" : "keyword",
+                  "normalizer" : "lowercase_normalizer",
+                  "fields" : {
+                    "keyword" : {
+                      "type" : "keyword",
+                      "ignore_above" : 256,
+                      "normalizer" : "lowercase_normalizer"
+                    }
+                  }
+                },
+                "fullyQualifiedName" : {
+                  "type" : "keyword",
+                  "normalizer" : "lowercase_normalizer"
+                },
+                "displayName" : {
+                  "type" : "text",
+                  "analyzer" : "ik_max_word",
+                  "search_analyzer" : "ik_smart",
+                  "fields" : {
+                    "keyword" : {
+                      "type" : "keyword",
+                      "ignore_above" : 256
+                    },
+                    "ngram" : {
+                      "type" : "text",
+                      "analyzer" : "om_ngram"
+                    }
+                  }
+                },
+                "description" : {
+                  "type" : "text",
+                  "analyzer" : "ik_max_word",
+                  "search_analyzer" : "ik_smart"
+                }
+              }
+            },
+            "deleted" : null,
+            "href" : null
+          }
+        }
+      }
+    },
+    "testConnectionResult" : {
+      "inline" : {
+        "properties" : {
+          "lastUpdatedAt" : {
+            "type" : "date",
+            "format" : "epoch_second"
+          },
+          "status" : {
+            "type" : "keyword"
+          },
+          "steps" : {
+            "properties" : {
+              "name" : {
+                "type" : "text"
+              },
+              "mandatory" : {
+                "type" : "boolean"
+              },
+              "description" : {
+                "type" : "text"
+              },
+              "passed" : {
+                "type" : "boolean"
+              },
+              "message" : {
+                "type" : "text"
+              },
+              "errorLog" : {
+                "type" : "text"
+              }
+            }
+          }
+        }
+      },
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "domains" : {
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          }
+        }
+      },
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "dataProducts" : {
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "displayName" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          }
+        }
+      },
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "ingestionRunner" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      },
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "changeDescription" : {
+      "inline" : {
+        "type" : "object"
+      },
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "fieldsAdded" : {
+              "properties" : {
+                "name" : {
+                  "type" : "keyword"
+                },
+                "newValue" : {
+                  "type" : "text"
+                }
+              }
+            },
+            "fieldsUpdated" : {
+              "properties" : {
+                "name" : {
+                  "type" : "keyword"
+                },
+                "newValue" : {
+                  "type" : "text"
+                },
+                "oldValue" : {
+                  "type" : "text"
+                }
+              }
+            },
+            "fieldsDeleted" : {
+              "properties" : {
+                "name" : {
+                  "type" : "keyword"
+                },
+                "oldValue" : {
+                  "type" : "text"
+                }
+              }
+            }
+          },
+          "type" : null
+        },
+        "zh" : {
+          "properties" : {
+            "fieldsAdded" : {
+              "properties" : {
+                "name" : {
+                  "type" : "keyword"
+                },
+                "newValue" : {
+                  "type" : "text"
+                }
+              }
+            },
+            "fieldsUpdated" : {
+              "properties" : {
+                "name" : {
+                  "type" : "keyword"
+                },
+                "newValue" : {
+                  "type" : "text"
+                },
+                "oldValue" : {
+                  "type" : "text"
+                }
+              }
+            },
+            "fieldsDeleted" : {
+              "properties" : {
+                "name" : {
+                  "type" : "keyword"
+                },
+                "oldValue" : {
+                  "type" : "text"
+                }
+              }
+            }
+          },
+          "type" : null
+        }
+      },
+      "type" : null
+    },
+    "incrementalChangeDescription" : {
+      "inline" : {
+        "type" : "object"
+      },
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      },
+      "type" : null
+    },
+    "suggest" : {
+      "inline" : {
+        "type" : "completion",
+        "contexts" : {
+          "name" : "deleted",
+          "type" : "category"
+        }
+      },
+      "languages" : {
+        "jp" : {
+          "contexts" : [ {
+            "name" : "deleted",
+            "type" : "category"
+          } ]
+        },
+        "zh" : {
+          "contexts" : [ {
+            "name" : "deleted",
+            "type" : "category"
+          } ]
+        }
+      }
+    },
+    "domain" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer"
+          },
+          "fullyQualifiedName" : {
+            "normalizer" : "lowercase_normalizer"
+          },
+          "displayName" : {
+            "type" : "text",
+            "analyzer" : "om_analyzer_jp",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              },
+              "ngram" : {
+                "type" : "text",
+                "analyzer" : "om_ngram"
+              }
+            }
+          },
+          "description" : {
+            "analyzer" : "om_analyzer_jp"
+          },
+          "deleted" : null,
+          "href" : null
+        }
+      },
+      "languages" : {
+        "en" : null,
+        "ru" : null,
+        "zh" : {
+          "properties" : {
+            "displayName" : {
+              "analyzer" : "ik_max_word",
+              "search_analyzer" : "ik_smart"
+            },
+            "description" : {
+              "analyzer" : "ik_max_word",
+              "search_analyzer" : "ik_smart"
+            }
+          }
+        }
+      }
+    },
+    "service" : null,
+    "entityStatus" : null,
+    "totalVotes" : null,
+    "votes" : null,
+    "descriptionStatus" : null,
+    "certification" : null
+  }
+}

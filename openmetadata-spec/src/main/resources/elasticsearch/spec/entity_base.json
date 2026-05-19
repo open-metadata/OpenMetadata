@@ -1,0 +1,103 @@
+{
+  "fields" : {
+    "changeDescription" : {
+      "type" : "disabled"
+    },
+    "incrementalChangeDescription" : {
+      "type" : "disabled"
+    },
+    "id" : {
+      "type" : "id"
+    },
+    "name" : {
+      "type" : "text_search"
+    },
+    "fullyQualifiedName" : {
+      "type" : "keyword_lc"
+    },
+    "description" : {
+      "type" : "description"
+    },
+    "fqnParts" : {
+      "type" : "keyword"
+    },
+    "version" : {
+      "type" : "float"
+    },
+    "updatedAt" : {
+      "type" : "date_epoch_second"
+    },
+    "updatedBy" : {
+      "type" : "text"
+    },
+    "href" : {
+      "type" : "text"
+    },
+    "dataProducts" : {
+      "fragment" : "entityReference",
+      "list" : true
+    },
+    "domains" : {
+      "fragment" : "entityReference",
+      "list" : true
+    },
+    "owners" : {
+      "fragment" : "entityReference",
+      "list" : true
+    },
+    "service" : {
+      "fragment" : "entityReference"
+    },
+    "deleted" : {
+      "type" : "boolean"
+    },
+    "followers" : {
+      "type" : "keyword",
+      "list" : true
+    },
+    "tier" : {
+      "fragment" : "tagLabel"
+    },
+    "tags" : {
+      "fragment" : "tagLabel",
+      "list" : true
+    },
+    "serviceType" : {
+      "type" : "keyword_lc"
+    },
+    "entityType" : {
+      "type" : "entity_type"
+    },
+    "entityStatus" : {
+      "type" : "keyword_lc"
+    },
+    "totalVotes" : {
+      "type" : "long_default_zero"
+    },
+    "votes" : {
+      "inline" : {
+        "type" : "object"
+      }
+    },
+    "descriptionStatus" : {
+      "type" : "keyword"
+    },
+    "certification" : {
+      "fragment" : "certification"
+    },
+    "ownerDisplayName" : {
+      "type" : "keyword_lc"
+    },
+    "ownerName" : {
+      "type" : "keyword_lc"
+    },
+    "classificationTags" : {
+      "type" : "keyword_lc",
+      "list" : true
+    },
+    "glossaryTags" : {
+      "type" : "keyword_lc",
+      "list" : true
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "_doc": "Closed registry of semantic field types. Each entry carries the ES mapping recipe plus `_javaType` for the generated index-doc class. `_`-prefixed keys are metadata and are stripped from the emitted mapping.",
+
+  "text_search": {
+    "_javaType": "String",
+    "type": "text",
+    "analyzer": "om_analyzer",
+    "fields": {
+      "compound": { "type": "text", "analyzer": "om_compound_analyzer" },
+      "keyword": { "type": "keyword", "ignore_above": 256, "normalizer": "lowercase_normalizer" },
+      "ngram": { "type": "text", "analyzer": "om_ngram" }
+    }
+  },
+  "text_search_full": {
+    "_javaType": "String",
+    "type": "text",
+    "analyzer": "om_analyzer",
+    "fields": {
+      "actualCase": { "type": "keyword", "ignore_above": 256 },
+      "compound": { "type": "text", "analyzer": "om_compound_analyzer" },
+      "keyword": { "type": "keyword", "ignore_above": 256, "normalizer": "lowercase_normalizer" },
+      "ngram": { "type": "text", "analyzer": "om_ngram" }
+    }
+  },
+  "description": {
+    "_javaType": "String",
+    "type": "text",
+    "analyzer": "om_analyzer",
+    "similarity": "boolean",
+    "term_vector": "with_positions_offsets"
+  },
+
+  "text": { "_javaType": "String", "type": "text" },
+  "keyword": { "_javaType": "String", "type": "keyword" },
+  "keyword_lc": { "_javaType": "String", "type": "keyword", "normalizer": "lowercase_normalizer" },
+  "boolean": { "_javaType": "Boolean", "type": "boolean" },
+  "integer": { "_javaType": "Integer", "type": "integer" },
+  "long": { "_javaType": "Long", "type": "long" },
+  "long_default_zero": { "_javaType": "Long", "type": "long", "null_value": 0 },
+  "float": { "_javaType": "Double", "type": "float" },
+  "date_epoch_second": { "_javaType": "Long", "type": "date", "format": "epoch_second" },
+  "flattened": { "_javaType": "java.util.Map<String, Object>", "type": "flattened" },
+
+  "entity_type": {
+    "_javaType": "String",
+    "type": "keyword",
+    "fields": {
+      "keyword": { "type": "keyword", "ignore_above": 256, "normalizer": "lowercase_normalizer" }
+    }
+  },
+  "id": {
+    "_javaType": "String",
+    "type": "text",
+    "fields": { "keyword": { "type": "keyword", "ignore_above": 256 } }
+  },
+  "fqn_hash": {
+    "_javaType": "String",
+    "type": "text",
+    "fields": { "keyword": { "type": "keyword", "ignore_above": 512 } }
+  },
+
+  "disabled": { "_javaType": "Object", "enabled": false },
+  "object_no_dynamic": { "_javaType": "Object", "type": "object", "dynamic": false },
+  "object_disabled": { "_javaType": "Object", "type": "object", "enabled": false }
+}

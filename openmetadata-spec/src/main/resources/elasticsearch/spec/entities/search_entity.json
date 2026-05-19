@@ -1,0 +1,459 @@
+{
+  "entity" : "search_entity",
+  "extends" : "entity_base",
+  "settings" : {
+    "byLanguage" : {
+      "en" : {
+        "analysis" : {
+          "tokenizer" : {
+            "edge_ngram_tokenizer" : {
+              "type" : "edge_ngram",
+              "min_gram" : 3,
+              "max_gram" : 20,
+              "token_chars" : [ "letter", "digit" ]
+            },
+            "n_gram_tokenizer" : null
+          },
+          "analyzer" : {
+            "om_ngram" : {
+              "tokenizer" : "edge_ngram_tokenizer"
+            }
+          }
+        }
+      },
+      "jp" : { },
+      "ru" : {
+        "analysis" : {
+          "tokenizer" : {
+            "edge_ngram_tokenizer" : {
+              "type" : "edge_ngram",
+              "min_gram" : 3,
+              "max_gram" : 20,
+              "token_chars" : [ "letter", "digit" ]
+            },
+            "n_gram_tokenizer" : null
+          },
+          "analyzer" : {
+            "om_ngram" : {
+              "tokenizer" : "edge_ngram_tokenizer"
+            }
+          }
+        }
+      },
+      "zh" : { }
+    }
+  },
+  "fields" : {
+    "name" : {
+      "languages" : {
+        "zh" : {
+          "search_analyzer" : "ik_smart"
+        }
+      }
+    },
+    "displayName" : {
+      "type" : "text_search_full",
+      "languages" : {
+        "zh" : {
+          "search_analyzer" : "ik_smart"
+        }
+      }
+    },
+    "description" : {
+      "languages" : {
+        "jp" : {
+          "similarity" : null,
+          "term_vector" : null
+        },
+        "zh" : {
+          "search_analyzer" : "ik_smart",
+          "similarity" : null,
+          "term_vector" : null
+        }
+      }
+    },
+    "tier" : {
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              },
+              "normalizer" : null
+            }
+          }
+        },
+        "ru" : {
+          "properties" : {
+            "tagFQN" : {
+              "normalizer" : null
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              },
+              "normalizer" : null
+            }
+          }
+        }
+      }
+    },
+    "fields" : {
+      "fragment" : "columns",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "ngram" : null
+            }
+          },
+          "description" : {
+            "index_options" : "docs",
+            "similarity" : null
+          },
+          "fullyQualifiedName" : {
+            "type" : "text",
+            "normalizer" : null
+          },
+          "tags" : {
+            "properties" : {
+              "description" : {
+                "similarity" : null
+              }
+            }
+          },
+          "children" : {
+            "properties" : {
+              "name" : {
+                "type" : "keyword",
+                "normalizer" : "lowercase_normalizer",
+                "fields" : {
+                  "keyword" : {
+                    "type" : "keyword",
+                    "ignore_above" : 256
+                  }
+                }
+              },
+              "dataType" : {
+                "type" : "text"
+              },
+              "dataTypeDisplay" : {
+                "type" : "text"
+              },
+              "fullyQualifiedName" : {
+                "type" : "text"
+              },
+              "description" : {
+                "type" : "text"
+              },
+              "tags" : {
+                "properties" : {
+                  "tagFQN" : {
+                    "type" : "keyword",
+                    "normalizer" : "lowercase_normalizer"
+                  },
+                  "labelType" : {
+                    "type" : "keyword"
+                  },
+                  "description" : {
+                    "type" : "text"
+                  },
+                  "source" : {
+                    "type" : "keyword"
+                  },
+                  "state" : {
+                    "type" : "keyword"
+                  }
+                }
+              }
+            }
+          },
+          "customPropertiesTyped" : null,
+          "extension" : null,
+          "fqnParts" : null,
+          "ordinalPosition" : null
+        }
+      },
+      "list" : true,
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "name" : {
+              "fields" : {
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            },
+            "description" : {
+              "norms" : false,
+              "term_vector" : null
+            },
+            "tags" : {
+              "properties" : {
+                "tagFQN" : {
+                  "fields" : {
+                    "text" : {
+                      "analyzer" : "om_analyzer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "name" : {
+              "type" : "keyword",
+              "normalizer" : "lowercase_normalizer",
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : null
+                }
+              },
+              "analyzer" : null
+            },
+            "description" : {
+              "analyzer" : "om_analyzer",
+              "norms" : false
+            },
+            "tags" : {
+              "properties" : {
+                "tagFQN" : {
+                  "fields" : {
+                    "text" : {
+                      "analyzer" : "om_analyzer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "upstreamLineage" : {
+      "fragment" : "upstreamLineage",
+      "list" : true
+    },
+    "service" : {
+      "overrides" : {
+        "properties" : {
+          "fullyQualifiedName" : {
+            "type" : "text",
+            "fields" : {
+              "keyword" : {
+                "type" : "keyword",
+                "normalizer" : "lowercase_normalizer",
+                "ignore_above" : 256
+              }
+            }
+          }
+        }
+      }
+    },
+    "owners" : {
+      "overrides" : {
+        "type" : "nested",
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      }
+    },
+    "tags" : {
+      "overrides" : {
+        "properties" : {
+          "tagFQN" : {
+            "fields" : null
+          }
+        }
+      }
+    },
+    "lifeCycle" : {
+      "type" : "object_no_dynamic"
+    },
+    "domains" : {
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          }
+        }
+      }
+    },
+    "extension" : {
+      "type" : "flattened"
+    },
+    "dataProducts" : {
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          }
+        }
+      },
+      "languages" : {
+        "ru" : {
+          "properties" : {
+            "displayName" : {
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : null
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "votes" : {
+      "inline" : {
+        "dynamic" : false,
+        "properties" : {
+          "upVotes" : {
+            "type" : "integer"
+          },
+          "downVotes" : {
+            "type" : "integer"
+          }
+        }
+      },
+      "languages" : {
+        "zh" : null
+      }
+    },
+    "descriptionSources" : {
+      "type" : "object_no_dynamic",
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "tagSources" : {
+      "type" : "object_no_dynamic",
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "tierSources" : {
+      "type" : "object_no_dynamic",
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "certification" : {
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "tagLabel" : {
+              "properties" : {
+                "tagFQN" : {
+                  "fields" : {
+                    "text" : {
+                      "analyzer" : "om_analyzer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "tagLabel" : {
+              "properties" : {
+                "tagFQN" : {
+                  "fields" : {
+                    "text" : {
+                      "analyzer" : "om_analyzer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "indexType" : {
+      "type" : "text"
+    },
+    "fqnHash" : {
+      "type" : "fqn_hash"
+    },
+    "customPropertiesTyped" : {
+      "fragment" : "customPropertiesTyped",
+      "list" : true,
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "textValue" : {
+              "analyzer" : "om_analyzer"
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "textValue" : {
+              "analyzer" : "om_analyzer"
+            }
+          }
+        }
+      }
+    },
+    "fingerprint" : {
+      "type" : "keyword"
+    },
+    "textToLLMContext" : {
+      "type" : "text"
+    },
+    "textToEmbed" : {
+      "type" : "text"
+    },
+    "chunkIndex" : {
+      "type" : "integer"
+    },
+    "chunkCount" : {
+      "type" : "integer"
+    },
+    "parentId" : {
+      "type" : "keyword"
+    },
+    "lineageSqlQueries" : {
+      "type" : "object_disabled"
+    }
+  }
+}

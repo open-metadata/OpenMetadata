@@ -1,0 +1,669 @@
+{
+  "entity" : "spreadsheet",
+  "extends" : "entity_base",
+  "settings" : {
+    "byLanguage" : {
+      "en" : { },
+      "jp" : {
+        "analysis" : {
+          "analyzer" : {
+            "om_analyzer" : {
+              "tokenizer" : "letter",
+              "filter" : [ "lowercase", "om_stemmer" ]
+            }
+          }
+        }
+      },
+      "ru" : { },
+      "zh" : {
+        "analysis" : {
+          "analyzer" : {
+            "om_ngram" : null
+          },
+          "tokenizer" : null
+        },
+        "index" : {
+          "max_ngram_diff" : null
+        }
+      }
+    }
+  },
+  "fields" : {
+    "name" : {
+      "languages" : {
+        "zh" : {
+          "search_analyzer" : "ik_smart"
+        }
+      }
+    },
+    "displayName" : {
+      "type" : "text_search_full",
+      "languages" : {
+        "zh" : {
+          "search_analyzer" : "ik_smart"
+        }
+      }
+    },
+    "description" : {
+      "languages" : {
+        "jp" : {
+          "similarity" : null,
+          "term_vector" : null
+        },
+        "ru" : {
+          "similarity" : null,
+          "term_vector" : null
+        },
+        "zh" : {
+          "search_analyzer" : "ik_smart",
+          "similarity" : null,
+          "term_vector" : null
+        }
+      }
+    },
+    "serviceType" : {
+      "languages" : {
+        "ru" : {
+          "normalizer" : null
+        }
+      }
+    },
+    "service" : {
+      "overrides" : {
+        "properties" : {
+          "fullyQualifiedName" : {
+            "type" : "text",
+            "fields" : {
+              "keyword" : {
+                "type" : "keyword",
+                "normalizer" : "lowercase_normalizer",
+                "ignore_above" : 256
+              }
+            }
+          }
+        }
+      },
+      "languages" : {
+        "ru" : {
+          "properties" : {
+            "id" : {
+              "fields" : null
+            },
+            "name" : {
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : null
+                }
+              }
+            },
+            "displayName" : {
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : null
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "version" : {
+      "languages" : {
+        "ru" : null
+      }
+    },
+    "dataProducts" : {
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          }
+        }
+      },
+      "languages" : {
+        "ru" : null
+      }
+    },
+    "updatedAt" : {
+      "languages" : {
+        "ru" : null
+      }
+    },
+    "updatedBy" : {
+      "languages" : {
+        "ru" : null
+      }
+    },
+    "href" : {
+      "languages" : {
+        "ru" : null
+      }
+    },
+    "sourceUrl" : {
+      "type" : "text",
+      "languages" : {
+        "jp" : null,
+        "ru" : null,
+        "zh" : null
+      }
+    },
+    "extension" : {
+      "type" : "flattened",
+      "languages" : {
+        "jp" : null,
+        "ru" : null,
+        "zh" : null
+      }
+    },
+    "directory" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "id" : {
+            "fields" : null
+          },
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      },
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "id" : {
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword",
+                  "ignore_above" : 36
+                }
+              }
+            },
+            "name" : {
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : "lowercase_normalizer"
+                }
+              },
+              "normalizer" : null
+            }
+          }
+        },
+        "ru" : {
+          "properties" : {
+            "name" : {
+              "normalizer" : null
+            },
+            "displayName" : {
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : null
+                }
+              }
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "id" : {
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword",
+                  "ignore_above" : 36
+                }
+              }
+            },
+            "name" : {
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : "lowercase_normalizer"
+                }
+              },
+              "normalizer" : null
+            }
+          }
+        }
+      }
+    },
+    "mimeType" : {
+      "type" : "keyword"
+    },
+    "path" : {
+      "inline" : {
+        "type" : "text",
+        "analyzer" : "om_analyzer",
+        "fields" : {
+          "keyword" : {
+            "type" : "keyword",
+            "ignore_above" : 256
+          }
+        }
+      },
+      "languages" : {
+        "jp" : {
+          "type" : "keyword",
+          "analyzer" : null,
+          "fields" : null
+        },
+        "zh" : {
+          "type" : "keyword",
+          "analyzer" : null,
+          "fields" : null
+        }
+      }
+    },
+    "driveFileId" : {
+      "type" : "keyword",
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "size" : {
+      "type" : "long"
+    },
+    "fileVersion" : {
+      "type" : "keyword",
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "createdTime" : {
+      "inline" : {
+        "type" : "date"
+      },
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "modifiedTime" : {
+      "inline" : {
+        "type" : "date"
+      },
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "lastModifiedBy" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "id" : {
+            "fields" : null
+          },
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          },
+          "displayName" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          }
+        }
+      },
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "worksheetNames" : {
+      "inline" : {
+        "type" : "text",
+        "analyzer" : "om_analyzer",
+        "fields" : {
+          "keyword" : {
+            "type" : "keyword",
+            "ignore_above" : 256
+          }
+        }
+      },
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "worksheetNamesFuzzy" : {
+      "inline" : {
+        "type" : "text",
+        "analyzer" : "om_analyzer"
+      },
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "owners" : {
+      "overrides" : {
+        "type" : "nested",
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      },
+      "languages" : {
+        "ru" : {
+          "properties" : {
+            "id" : {
+              "fields" : null
+            },
+            "name" : {
+              "normalizer" : null
+            },
+            "displayName" : {
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : null
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "domains" : {
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          }
+        }
+      },
+      "languages" : {
+        "ru" : {
+          "properties" : {
+            "id" : {
+              "fields" : null
+            },
+            "displayName" : {
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : null
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "followers" : {
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "totalVotes" : {
+      "type" : "long",
+      "languages" : {
+        "jp" : {
+          "null_value" : 0
+        },
+        "zh" : {
+          "null_value" : 0
+        }
+      }
+    },
+    "tags" : {
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "properties" : {
+            "tagFQN" : {
+              "normalizer" : null,
+              "fields" : null
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tier" : {
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              },
+              "normalizer" : null
+            }
+          }
+        },
+        "ru" : {
+          "properties" : {
+            "tagFQN" : {
+              "normalizer" : null,
+              "fields" : null
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              },
+              "normalizer" : null
+            }
+          }
+        }
+      }
+    },
+    "descriptionSources" : {
+      "type" : "object_no_dynamic",
+      "languages" : {
+        "jp" : null,
+        "ru" : null,
+        "zh" : null
+      }
+    },
+    "tagSources" : {
+      "type" : "object_no_dynamic",
+      "languages" : {
+        "jp" : null,
+        "ru" : null,
+        "zh" : null
+      }
+    },
+    "tierSources" : {
+      "type" : "object_no_dynamic",
+      "languages" : {
+        "jp" : null,
+        "ru" : null,
+        "zh" : null
+      }
+    },
+    "upstreamLineage" : {
+      "fragment" : "upstreamLineage",
+      "list" : true
+    },
+    "certification" : {
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "tagLabel" : {
+              "properties" : {
+                "tagFQN" : {
+                  "fields" : {
+                    "text" : {
+                      "analyzer" : "om_analyzer"
+                    }
+                  }
+                }
+              }
+            },
+            "updatedBy" : {
+              "type" : "keyword"
+            },
+            "updatedAt" : {
+              "type" : "date"
+            },
+            "appliedDate" : null,
+            "expiryDate" : null
+          }
+        },
+        "ru" : {
+          "properties" : {
+            "updatedBy" : {
+              "type" : "keyword"
+            },
+            "updatedAt" : {
+              "type" : "date"
+            },
+            "appliedDate" : null,
+            "expiryDate" : null
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "tagLabel" : {
+              "properties" : {
+                "tagFQN" : {
+                  "fields" : {
+                    "text" : {
+                      "analyzer" : "om_analyzer"
+                    }
+                  }
+                }
+              }
+            },
+            "updatedBy" : {
+              "type" : "keyword"
+            },
+            "updatedAt" : {
+              "type" : "date"
+            },
+            "appliedDate" : null,
+            "expiryDate" : null
+          }
+        }
+      }
+    },
+    "suggest" : {
+      "inline" : {
+        "type" : "completion",
+        "contexts" : [ {
+          "name" : "deleted",
+          "type" : "category",
+          "path" : "deleted"
+        } ]
+      },
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "fqnHash" : {
+      "type" : "fqn_hash"
+    },
+    "customPropertiesTyped" : {
+      "fragment" : "customPropertiesTyped",
+      "list" : true,
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "textValue" : {
+              "analyzer" : "om_analyzer"
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "textValue" : {
+              "analyzer" : "om_analyzer"
+            }
+          }
+        }
+      }
+    },
+    "fingerprint" : {
+      "type" : "keyword"
+    },
+    "textToLLMContext" : {
+      "type" : "text"
+    },
+    "textToEmbed" : {
+      "type" : "text"
+    },
+    "chunkIndex" : {
+      "type" : "integer"
+    },
+    "chunkCount" : {
+      "type" : "integer"
+    },
+    "parentId" : {
+      "type" : "keyword"
+    },
+    "lineageSqlQueries" : {
+      "type" : "object_disabled"
+    },
+    "usageSummary" : {
+      "fragment" : "usageSummary",
+      "languages" : {
+        "en" : null,
+        "ru" : null
+      }
+    },
+    "votes" : null
+  }
+}

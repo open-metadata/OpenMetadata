@@ -1,0 +1,17 @@
+{
+  "type": "nested",
+  "properties": {
+    "doubleValue": { "type": "double" },
+    "end": { "type": "long" },
+    "longValue": { "type": "long" },
+    "name": { "type": "keyword" },
+    "propertyType": { "type": "keyword" },
+    "refFqn": { "type": "keyword" },
+    "refId": { "type": "keyword" },
+    "refName": { "type": "keyword" },
+    "refType": { "type": "keyword" },
+    "start": { "type": "long" },
+    "stringValue": { "type": "keyword" },
+    "textValue": { "type": "text", "analyzer": "om_analyzer" }
+  }
+}

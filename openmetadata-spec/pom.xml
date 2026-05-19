@@ -168,6 +168,57 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- Generate per-engine ES/OS index mappings and typed *IndexDoc classes
+                 from elasticsearch/spec/. Must run before jsonschema2pojo. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>generate-index-artifacts</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>org.openmetadata.codegen.IndexCodegen</mainClass>
+                            <arguments>
+                                <argument>${basedir}/src/main/resources/elasticsearch/spec</argument>
+                                <argument>${project.build.directory}/generated-resources/index-mappings</argument>
+                                <argument>${project.build.directory}/generated-sources/index-docs</argument>
+                                <argument>${basedir}/src/main/resources/elasticsearch</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.open-metadata</groupId>
+                        <artifactId>common</artifactId>
+                        <version>${project.version}</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>add-index-doc-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.build.directory}/generated-sources/index-docs</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.jsonschema2pojo</groupId>
                 <artifactId>jsonschema2pojo-maven-plugin</artifactId>

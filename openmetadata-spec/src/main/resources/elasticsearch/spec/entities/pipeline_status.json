@@ -1,0 +1,174 @@
+{
+  "entity" : "pipeline_status",
+  "extends" : "entity_base",
+  "settings" : {
+    "byLanguage" : {
+      "en" : {
+        "index" : {
+          "number_of_shards" : 1,
+          "number_of_replicas" : 1
+        },
+        "analysis" : {
+          "tokenizer" : null,
+          "analyzer" : null,
+          "filter" : null
+        }
+      },
+      "jp" : {
+        "index" : {
+          "max_ngram_diff" : 17,
+          "number_of_shards" : 1,
+          "number_of_replicas" : 1
+        },
+        "analysis" : {
+          "analyzer" : null,
+          "filter" : null,
+          "tokenizer" : null
+        }
+      },
+      "ru" : {
+        "index" : {
+          "number_of_shards" : 1,
+          "number_of_replicas" : 1
+        },
+        "analysis" : {
+          "normalizer" : {
+            "lowercase_normalizer" : {
+              "filter" : [ "lowercase" ]
+            }
+          },
+          "tokenizer" : null,
+          "analyzer" : null,
+          "filter" : null
+        }
+      },
+      "zh" : {
+        "index" : {
+          "max_ngram_diff" : 17,
+          "number_of_shards" : 1,
+          "number_of_replicas" : 1
+        },
+        "analysis" : {
+          "analyzer" : null,
+          "filter" : null,
+          "tokenizer" : null
+        }
+      }
+    }
+  },
+  "fields" : {
+    "pipelineId" : {
+      "inline" : {
+        "type" : "keyword",
+        "fields" : {
+          "keyword" : {
+            "type" : "keyword",
+            "ignore_above" : 36
+          }
+        }
+      }
+    },
+    "pipelineFqn" : {
+      "type" : "keyword_lc"
+    },
+    "pipelineName" : {
+      "inline" : {
+        "type" : "text",
+        "fields" : {
+          "keyword" : {
+            "type" : "keyword",
+            "normalizer" : "lowercase_normalizer",
+            "ignore_above" : 256
+          }
+        }
+      }
+    },
+    "serviceName" : {
+      "inline" : {
+        "type" : "keyword",
+        "normalizer" : "lowercase_normalizer",
+        "fields" : {
+          "keyword" : {
+            "type" : "keyword",
+            "ignore_above" : 256
+          }
+        }
+      }
+    },
+    "executionStatus" : {
+      "type" : "keyword_lc"
+    },
+    "timestamp" : {
+      "inline" : {
+        "type" : "date",
+        "format" : "epoch_millis"
+      }
+    },
+    "endTime" : {
+      "inline" : {
+        "type" : "date",
+        "format" : "epoch_millis"
+      }
+    },
+    "startTime" : {
+      "inline" : {
+        "type" : "date",
+        "format" : "epoch_millis"
+      }
+    },
+    "lastRunTime" : {
+      "inline" : {
+        "type" : "date",
+        "format" : "epoch_millis"
+      }
+    },
+    "runtime" : {
+      "type" : "long"
+    },
+    "scheduleInterval" : {
+      "type" : "keyword"
+    },
+    "tableId" : {
+      "inline" : {
+        "type" : "keyword",
+        "fields" : {
+          "keyword" : {
+            "type" : "keyword",
+            "ignore_above" : 36
+          }
+        }
+      }
+    },
+    "tableFqn" : {
+      "type" : "keyword_lc"
+    },
+    "entityType" : {
+      "type" : "keyword"
+    },
+    "id" : null,
+    "name" : null,
+    "fullyQualifiedName" : null,
+    "description" : null,
+    "fqnParts" : null,
+    "version" : null,
+    "updatedAt" : null,
+    "updatedBy" : null,
+    "href" : null,
+    "dataProducts" : null,
+    "domains" : null,
+    "owners" : null,
+    "service" : null,
+    "followers" : null,
+    "tier" : null,
+    "tags" : null,
+    "entityStatus" : null,
+    "totalVotes" : null,
+    "votes" : null,
+    "descriptionStatus" : null,
+    "certification" : null,
+    "ownerDisplayName" : null,
+    "ownerName" : null,
+    "classificationTags" : null,
+    "glossaryTags" : null
+  }
+}

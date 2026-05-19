@@ -1,0 +1,418 @@
+{
+  "entity" : "glossary_term",
+  "extends" : "entity_base",
+  "settings" : {
+    "byLanguage" : {
+      "en" : { },
+      "jp" : {
+        "index" : {
+          "max_ngram_diff" : 17
+        }
+      },
+      "ru" : { },
+      "zh" : {
+        "index" : {
+          "max_ngram_diff" : 17
+        }
+      }
+    }
+  },
+  "fields" : {
+    "name" : {
+      "languages" : {
+        "zh" : {
+          "type" : "keyword",
+          "analyzer" : null
+        }
+      }
+    },
+    "domains" : {
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          }
+        }
+      },
+      "languages" : {
+        "zh" : {
+          "properties" : {
+            "displayName" : {
+              "fields" : {
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "displayName" : {
+      "type" : "text_search_full",
+      "languages" : {
+        "zh" : {
+          "search_analyzer" : "ik_smart"
+        }
+      }
+    },
+    "description" : {
+      "inline" : {
+        "type" : "text",
+        "analyzer" : "om_analyzer",
+        "index_options" : "docs",
+        "term_vector" : "with_positions_offsets"
+      },
+      "languages" : {
+        "jp" : {
+          "similarity" : "boolean",
+          "index_options" : null,
+          "term_vector" : null
+        },
+        "zh" : {
+          "search_analyzer" : "ik_smart",
+          "similarity" : "boolean",
+          "index_options" : null,
+          "term_vector" : null
+        }
+      },
+      "type" : null
+    },
+    "owners" : {
+      "overrides" : {
+        "type" : "nested",
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      }
+    },
+    "synonyms" : {
+      "type" : "id",
+      "languages" : {
+        "jp" : {
+          "fields" : {
+            "ngram" : {
+              "type" : "text",
+              "analyzer" : "om_ngram"
+            }
+          }
+        },
+        "zh" : {
+          "fields" : null
+        }
+      }
+    },
+    "glossary" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "type" : "text"
+          },
+          "displayName" : {
+            "type" : "text",
+            "analyzer" : "om_analyzer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          },
+          "mutuallyExclusive" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "name" : {
+              "type" : "keyword",
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : null
+                },
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            },
+            "displayName" : {
+              "fields" : {
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            },
+            "description" : {
+              "analyzer" : "om_analyzer_jp",
+              "similarity" : "boolean"
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "name" : {
+              "type" : "keyword",
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : null
+                }
+              }
+            },
+            "fullyQualifiedName" : {
+              "analyzer" : "ik_max_word",
+              "search_analyzer" : "ik_smart"
+            },
+            "description" : {
+              "analyzer" : "ik_max_word",
+              "search_analyzer" : "ik_smart"
+            },
+            "displayName" : null
+          }
+        }
+      }
+    },
+    "children" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          },
+          "displayName" : null
+        }
+      },
+      "languages" : {
+        "zh" : {
+          "properties" : {
+            "fullyQualifiedName" : {
+              "analyzer" : "ik_max_word",
+              "search_analyzer" : "ik_smart"
+            },
+            "description" : {
+              "analyzer" : "ik_max_word",
+              "search_analyzer" : "ik_smart"
+            }
+          }
+        }
+      }
+    },
+    "relatedTerms" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          },
+          "displayName" : null
+        }
+      }
+    },
+    "reviewers" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "displayName" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      },
+      "list" : true,
+      "languages" : {
+        "zh" : {
+          "properties" : {
+            "fullyQualifiedName" : {
+              "analyzer" : "ik_max_word",
+              "search_analyzer" : "ik_smart"
+            },
+            "description" : {
+              "analyzer" : "ik_max_word",
+              "search_analyzer" : "ik_smart"
+            }
+          }
+        }
+      }
+    },
+    "usageCount" : {
+      "type" : "integer"
+    },
+    "tier" : {
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              },
+              "normalizer" : null
+            }
+          }
+        },
+        "ru" : {
+          "properties" : {
+            "tagFQN" : {
+              "normalizer" : null
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              },
+              "normalizer" : null
+            }
+          }
+        }
+      }
+    },
+    "tags" : {
+      "overrides" : {
+        "properties" : {
+          "tagFQN" : {
+            "fields" : null
+          }
+        }
+      },
+      "languages" : {
+        "zh" : {
+          "properties" : {
+            "state" : {
+              "normalizer" : "lowercase_normalizer"
+            }
+          }
+        }
+      }
+    },
+    "entityType" : {
+      "languages" : {
+        "zh" : {
+          "fields" : null
+        }
+      }
+    },
+    "votes" : {
+      "inline" : {
+        "dynamic" : false,
+        "properties" : {
+          "upVotes" : {
+            "type" : "integer"
+          },
+          "downVotes" : {
+            "type" : "integer"
+          }
+        }
+      },
+      "languages" : {
+        "zh" : null
+      }
+    },
+    "descriptionSources" : {
+      "type" : "object_no_dynamic",
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "tagSources" : {
+      "type" : "object_no_dynamic",
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "tierSources" : {
+      "type" : "object_no_dynamic",
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "childrenCount" : {
+      "type" : "integer",
+      "languages" : {
+        "zh" : null
+      }
+    },
+    "mutuallyExclusive" : {
+      "type" : "boolean"
+    },
+    "fingerprint" : {
+      "type" : "keyword"
+    },
+    "textToLLMContext" : {
+      "type" : "text"
+    },
+    "textToEmbed" : {
+      "type" : "text"
+    },
+    "chunkIndex" : {
+      "type" : "integer"
+    },
+    "chunkCount" : {
+      "type" : "integer"
+    },
+    "parentId" : {
+      "type" : "keyword"
+    },
+    "dataProducts" : null,
+    "service" : null,
+    "followers" : null,
+    "serviceType" : null,
+    "certification" : null
+  }
+}

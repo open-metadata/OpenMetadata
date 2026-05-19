@@ -1,0 +1,203 @@
+{
+  "entity" : "user",
+  "extends" : "entity_base",
+  "settings" : {
+    "byLanguage" : {
+      "en" : { },
+      "jp" : { },
+      "ru" : { },
+      "zh" : {
+        "analysis" : {
+          "analyzer" : {
+            "om_analyzer" : null,
+            "om_ngram" : null
+          },
+          "tokenizer" : null
+        },
+        "index" : null
+      }
+    }
+  },
+  "fields" : {
+    "name" : {
+      "inline" : {
+        "type" : "text",
+        "fields" : {
+          "keyword" : {
+            "type" : "keyword",
+            "ignore_above" : 256,
+            "normalizer" : "lowercase_normalizer"
+          },
+          "ngram" : {
+            "type" : "text",
+            "analyzer" : "om_ngram"
+          },
+          "compound" : {
+            "type" : "text",
+            "analyzer" : "om_compound_analyzer"
+          }
+        }
+      },
+      "type" : null
+    },
+    "fullyQualifiedName" : {
+      "inline" : {
+        "type" : "text",
+        "fields" : {
+          "keyword" : {
+            "type" : "keyword",
+            "normalizer" : "lowercase_normalizer"
+          }
+        }
+      },
+      "type" : null
+    },
+    "displayName" : {
+      "type" : "text_search",
+      "languages" : {
+        "jp" : {
+          "fields" : {
+            "keyword" : {
+              "normalizer" : null
+            }
+          }
+        },
+        "zh" : {
+          "type" : "keyword",
+          "fields" : {
+            "keyword" : {
+              "normalizer" : null
+            }
+          },
+          "analyzer" : null
+        }
+      }
+    },
+    "email" : {
+      "type" : "id",
+      "languages" : {
+        "jp" : {
+          "fields" : null
+        },
+        "zh" : {
+          "fields" : null
+        }
+      }
+    },
+    "isAdmin" : {
+      "type" : "boolean",
+      "languages" : {
+        "jp" : {
+          "type" : "text"
+        },
+        "zh" : {
+          "type" : "text"
+        }
+      }
+    },
+    "isBot" : {
+      "type" : "boolean",
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "domains" : {
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          }
+        }
+      }
+    },
+    "teams" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          },
+          "displayName" : null
+        }
+      }
+    },
+    "roles" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          },
+          "displayName" : null
+        }
+      }
+    },
+    "inheritedRoles" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          },
+          "displayName" : null
+        }
+      }
+    },
+    "votes" : {
+      "inline" : {
+        "dynamic" : false,
+        "properties" : {
+          "upVotes" : {
+            "type" : "integer"
+          },
+          "downVotes" : {
+            "type" : "integer"
+          }
+        }
+      },
+      "languages" : {
+        "zh" : null
+      }
+    },
+    "description" : null,
+    "dataProducts" : null,
+    "owners" : null,
+    "service" : null,
+    "followers" : null,
+    "tier" : null,
+    "tags" : null,
+    "serviceType" : null,
+    "entityStatus" : null,
+    "certification" : null,
+    "ownerDisplayName" : null,
+    "ownerName" : null,
+    "classificationTags" : null,
+    "glossaryTags" : null
+  }
+}

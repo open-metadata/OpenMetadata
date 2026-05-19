@@ -1,0 +1,637 @@
+{
+  "entity" : "test_case",
+  "extends" : "entity_base",
+  "settings" : {
+    "byLanguage" : {
+      "en" : {
+        "analysis" : {
+          "tokenizer" : {
+            "edge_ngram_tokenizer" : {
+              "type" : "edge_ngram",
+              "min_gram" : 3,
+              "max_gram" : 20,
+              "token_chars" : [ "letter", "digit", "custom" ],
+              "custom_token_chars" : "_"
+            },
+            "n_gram_tokenizer" : null
+          },
+          "analyzer" : {
+            "om_ngram" : {
+              "tokenizer" : "edge_ngram_tokenizer"
+            }
+          }
+        },
+        "index" : null
+      },
+      "jp" : {
+        "analysis" : {
+          "analyzer" : {
+            "om_analyzer" : {
+              "tokenizer" : "letter",
+              "filter" : [ "lowercase", "om_stemmer" ]
+            }
+          }
+        }
+      },
+      "ru" : {
+        "analysis" : {
+          "tokenizer" : {
+            "edge_ngram_tokenizer" : {
+              "type" : "edge_ngram",
+              "min_gram" : 3,
+              "max_gram" : 20,
+              "token_chars" : [ "letter", "digit" ]
+            },
+            "n_gram_tokenizer" : null
+          },
+          "analyzer" : {
+            "om_ngram" : {
+              "tokenizer" : "edge_ngram_tokenizer"
+            }
+          }
+        },
+        "index" : null
+      },
+      "zh" : {
+        "analysis" : {
+          "tokenizer" : {
+            "n_gram_tokenizer" : {
+              "min_gram" : 1,
+              "max_gram" : 2
+            }
+          }
+        }
+      }
+    }
+  },
+  "fields" : {
+    "fullyQualifiedName" : {
+      "inline" : {
+        "type" : "text",
+        "analyzer" : "om_analyzer",
+        "fields" : {
+          "keyword" : {
+            "type" : "keyword",
+            "normalizer" : "lowercase_normalizer"
+          }
+        }
+      },
+      "type" : null
+    },
+    "displayName" : {
+      "inline" : {
+        "type" : "text",
+        "analyzer" : "om_analyzer",
+        "fields" : {
+          "keyword" : {
+            "type" : "keyword",
+            "ignore_above" : 256
+          },
+          "ngram" : {
+            "type" : "text",
+            "analyzer" : "om_ngram"
+          },
+          "compound" : {
+            "type" : "text",
+            "analyzer" : "om_compound_analyzer"
+          }
+        }
+      }
+    },
+    "description" : {
+      "inline" : {
+        "type" : "text",
+        "analyzer" : "om_analyzer",
+        "term_vector" : "with_positions_offsets"
+      },
+      "languages" : {
+        "jp" : {
+          "term_vector" : null
+        },
+        "zh" : {
+          "fields" : {
+            "ngram" : {
+              "type" : "text",
+              "analyzer" : "om_ngram"
+            }
+          },
+          "term_vector" : null
+        }
+      },
+      "type" : null
+    },
+    "votes" : {
+      "inline" : {
+        "dynamic" : false,
+        "properties" : {
+          "upVotes" : {
+            "type" : "integer"
+          },
+          "downVotes" : {
+            "type" : "integer"
+          }
+        }
+      },
+      "languages" : {
+        "zh" : null
+      }
+    },
+    "entityLink" : {
+      "inline" : {
+        "type" : "keyword",
+        "normalizer" : "lowercase_normalizer",
+        "fields" : {
+          "nonNormalized" : {
+            "type" : "keyword"
+          }
+        }
+      }
+    },
+    "testPlatforms" : {
+      "type" : "keyword_lc"
+    },
+    "entityFQN" : {
+      "type" : "keyword_lc"
+    },
+    "parameterValues" : {
+      "inline" : {
+        "properties" : {
+          "name" : {
+            "type" : "text",
+            "analyzer" : "om_analyzer",
+            "fields" : {
+              "keyword" : {
+                "type" : "keyword",
+                "ignore_above" : 256
+              }
+            }
+          },
+          "value" : {
+            "type" : "text"
+          }
+        }
+      },
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "name" : {
+              "fields" : {
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "name" : {
+              "fields" : {
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "testDefinition" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "id" : {
+            "type" : "text",
+            "fields" : null
+          },
+          "name" : {
+            "type" : "text",
+            "analyzer" : "om_analyzer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "normalizer" : "lowercase_normalizer"
+          },
+          "displayName" : {
+            "type" : "text",
+            "analyzer" : "om_analyzer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "deleted" : null,
+          "href" : null
+        }
+      },
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "name" : {
+              "fields" : {
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            },
+            "displayName" : {
+              "fields" : {
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            },
+            "description" : {
+              "analyzer" : "om_analyzer_jp"
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "name" : {
+              "fields" : {
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            },
+            "displayName" : {
+              "fields" : {
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            },
+            "description" : {
+              "analyzer" : "ik_max_word",
+              "fields" : {
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "testCaseType" : {
+      "type" : "keyword"
+    },
+    "dataQualityDimension" : {
+      "type" : "keyword"
+    },
+    "owners" : {
+      "overrides" : {
+        "type" : "nested",
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "displayName" : {
+            "type" : "text"
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      }
+    },
+    "domains" : {
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          }
+        }
+      }
+    },
+    "dataProducts" : {
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          }
+        }
+      }
+    },
+    "testSuite" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "displayName" : {
+            "type" : "text",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          },
+          "executable" : {
+            "type" : "text"
+          },
+          "type" : null
+        }
+      }
+    },
+    "testSuites" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "type" : "nested",
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "displayName" : {
+            "type" : "text",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          },
+          "executable" : {
+            "type" : "text"
+          },
+          "type" : null
+        }
+      }
+    },
+    "testCaseResult" : {
+      "inline" : {
+        "properties" : {
+          "result" : {
+            "type" : "text"
+          },
+          "testCaseStatus" : {
+            "type" : "keyword",
+            "normalizer" : "lowercase_normalizer"
+          },
+          "testResultValue" : {
+            "properties" : {
+              "name" : {
+                "type" : "text",
+                "fields" : {
+                  "keyword" : {
+                    "type" : "keyword",
+                    "ignore_above" : 256
+                  }
+                }
+              },
+              "value" : {
+                "type" : "text",
+                "fields" : {
+                  "keyword" : {
+                    "type" : "keyword",
+                    "ignore_above" : 256
+                  }
+                }
+              }
+            }
+          },
+          "timestamp" : {
+            "type" : "date",
+            "format" : "strict_date_optional_time||epoch_millis"
+          }
+        }
+      }
+    },
+    "tags" : {
+      "overrides" : {
+        "properties" : {
+          "description" : {
+            "index_options" : "docs"
+          }
+        },
+        "type" : "nested"
+      },
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : null
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : null
+            }
+          }
+        }
+      }
+    },
+    "tier" : {
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              },
+              "normalizer" : null
+            }
+          }
+        },
+        "ru" : {
+          "properties" : {
+            "tagFQN" : {
+              "normalizer" : null
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "tagFQN" : {
+              "fields" : {
+                "text" : {
+                  "analyzer" : "om_analyzer"
+                }
+              },
+              "normalizer" : null
+            }
+          }
+        }
+      }
+    },
+    "certification" : {
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "tagLabel" : {
+              "properties" : {
+                "tagFQN" : {
+                  "fields" : {
+                    "text" : {
+                      "analyzer" : "om_analyzer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "tagLabel" : {
+              "properties" : {
+                "tagFQN" : {
+                  "fields" : {
+                    "text" : {
+                      "analyzer" : "om_analyzer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "createdBy" : {
+      "type" : "text"
+    },
+    "originEntityFQN" : {
+      "type" : "keyword_lc"
+    },
+    "table" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "displayName" : {
+            "type" : "text"
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      }
+    },
+    "database" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      },
+      "languages" : {
+        "zh" : {
+          "properties" : {
+            "displayName" : {
+              "type" : "text"
+            }
+          }
+        }
+      }
+    },
+    "databaseSchema" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      }
+    },
+    "service" : {
+      "overrides" : {
+        "properties" : {
+          "displayName" : {
+            "type" : "text"
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      }
+    },
+    "reviewers" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "displayName" : {
+            "type" : "text"
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      },
+      "list" : true
+    },
+    "descriptionStatus" : {
+      "languages" : {
+        "en" : null,
+        "ru" : null
+      }
+    },
+    "followers" : null,
+    "serviceType" : null
+  }
+}

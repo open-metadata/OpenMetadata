@@ -1,0 +1,13 @@
+{
+  "properties": {
+    "description": { "type": "text" },
+    "labelType": { "type": "keyword" },
+    "source": { "type": "keyword" },
+    "state": { "type": "keyword" },
+    "tagFQN": {
+      "type": "keyword",
+      "normalizer": "lowercase_normalizer",
+      "fields": { "text": { "type": "text", "analyzer": "om_analyzer" } }
+    }
+  }
+}

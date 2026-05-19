@@ -1,0 +1,11 @@
+{
+  "_doc": "Maps each fragment to the Java type used in generated index-doc classes. Kept separate so the ES-mapping fragment files stay purely about Elasticsearch.",
+  "entityReference": "org.openmetadata.schema.type.EntityReference",
+  "tagLabel": "org.openmetadata.schema.type.TagLabel",
+  "certification": "org.openmetadata.schema.type.AssetCertification",
+  "usageSummary": "org.openmetadata.schema.type.UsageDetails",
+  "upstreamLineage": "org.openmetadata.schema.api.lineage.EsLineageData",
+  "columns": "Object",
+  "customPropertiesTyped": "Object",
+  "entityRelationship": "Object"
+}

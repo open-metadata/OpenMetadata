@@ -1,0 +1,221 @@
+{
+  "entity" : "tag",
+  "extends" : "entity_base",
+  "settings" : {
+    "override" : { }
+  },
+  "fields" : {
+    "name" : {
+      "languages" : {
+        "zh" : {
+          "search_analyzer" : "ik_smart"
+        }
+      }
+    },
+    "displayName" : {
+      "type" : "text_search_full",
+      "languages" : {
+        "zh" : {
+          "search_analyzer" : "ik_smart"
+        }
+      }
+    },
+    "description" : {
+      "languages" : {
+        "jp" : {
+          "similarity" : null,
+          "term_vector" : null
+        },
+        "zh" : {
+          "search_analyzer" : "ik_smart",
+          "fields" : {
+            "ngram" : {
+              "type" : "text",
+              "analyzer" : "om_ngram"
+            }
+          },
+          "similarity" : null,
+          "term_vector" : null
+        }
+      }
+    },
+    "deleted" : {
+      "languages" : {
+        "jp" : {
+          "type" : "text"
+        }
+      }
+    },
+    "disabled" : {
+      "type" : "boolean"
+    },
+    "reviewers" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      },
+      "list" : true,
+      "languages" : {
+        "ru" : {
+          "properties" : {
+            "name" : {
+              "fields" : {
+                "ngram" : {
+                  "type" : "text",
+                  "analyzer" : "om_ngram"
+                }
+              }
+            },
+            "displayName" : null
+          }
+        }
+      }
+    },
+    "domains" : {
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          }
+        }
+      },
+      "languages" : {
+        "jp" : null,
+        "zh" : null
+      }
+    },
+    "classification" : {
+      "fragment" : "entityReference",
+      "overrides" : {
+        "properties" : {
+          "name" : {
+            "type" : "text",
+            "analyzer" : "om_analyzer"
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          },
+          "displayName" : null
+        }
+      },
+      "languages" : {
+        "jp" : {
+          "properties" : {
+            "name" : {
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : null
+                }
+              },
+              "analyzer" : null
+            },
+            "deleted" : {
+              "type" : "text"
+            }
+          }
+        },
+        "zh" : {
+          "properties" : {
+            "name" : {
+              "fields" : {
+                "keyword" : {
+                  "normalizer" : null
+                }
+              },
+              "analyzer" : null
+            }
+          }
+        }
+      }
+    },
+    "totalVotes" : {
+      "languages" : {
+        "jp" : {
+          "null_value" : null
+        }
+      }
+    },
+    "votes" : {
+      "inline" : {
+        "dynamic" : false,
+        "properties" : {
+          "upVotes" : {
+            "type" : "integer"
+          },
+          "downVotes" : {
+            "type" : "integer"
+          }
+        }
+      },
+      "languages" : {
+        "zh" : null
+      }
+    },
+    "owners" : {
+      "overrides" : {
+        "type" : "nested",
+        "properties" : {
+          "name" : {
+            "normalizer" : "lowercase_normalizer",
+            "fields" : {
+              "keyword" : {
+                "normalizer" : null
+              }
+            }
+          },
+          "fullyQualifiedName" : {
+            "type" : "text"
+          }
+        }
+      }
+    },
+    "fingerprint" : {
+      "type" : "keyword"
+    },
+    "textToLLMContext" : {
+      "type" : "text"
+    },
+    "textToEmbed" : {
+      "type" : "text"
+    },
+    "chunkIndex" : {
+      "type" : "integer"
+    },
+    "chunkCount" : {
+      "type" : "integer"
+    },
+    "parentId" : {
+      "type" : "keyword"
+    },
+    "fqnParts" : {
+      "languages" : {
+        "en" : null,
+        "ru" : null
+      }
+    },
+    "dataProducts" : null,
+    "service" : null,
+    "followers" : null,
+    "tier" : null,
+    "tags" : null,
+    "serviceType" : null,
+    "certification" : null,
+    "classificationTags" : null,
+    "glossaryTags" : null
+  }
+}

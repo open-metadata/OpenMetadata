@@ -1,0 +1,26 @@
+{
+  "properties": {
+    "dailyStats": {
+      "properties": {
+        "count": { "type": "long" },
+        "percentileRank": { "type": "long" }
+      }
+    },
+    "date": {
+      "type": "date",
+      "format": "strict_date_optional_time||yyyy-MM-dd HH:mm:ss||epoch_millis"
+    },
+    "monthlyStats": {
+      "properties": {
+        "count": { "type": "long" },
+        "percentileRank": { "type": "long" }
+      }
+    },
+    "weeklyStats": {
+      "properties": {
+        "count": { "type": "long" },
+        "percentileRank": { "type": "long" }
+      }
+    }
+  }
+}

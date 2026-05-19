@@ -1,0 +1,10 @@
+{
+  "_doc": "OpenSearch engine profile. Mirrors OsUtils.enrichIndexMappingForOpenSearch: typeRewrites renames ES field types (flattened -> flat_object); keyRenames applies the stemmer filter rename (ES `name` -> OpenSearch `language`). The runtime knn_vector enrichment is intentionally not here (it depends on live embedding config).",
+  "typeRewrites": {
+    "flattened": "flat_object"
+  },
+  "keyRenames": [
+    { "at": "settings/analysis/filter/om_stemmer", "from": "name", "to": "language" }
+  ],
+  "overlay": {}
+}

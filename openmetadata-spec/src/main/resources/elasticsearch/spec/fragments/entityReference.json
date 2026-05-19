@@ -1,0 +1,25 @@
+{
+  "properties": {
+    "deleted": { "type": "boolean" },
+    "description": { "type": "text" },
+    "displayName": {
+      "type": "keyword",
+      "fields": {
+        "keyword": { "type": "keyword", "ignore_above": 256, "normalizer": "lowercase_normalizer" }
+      }
+    },
+    "fullyQualifiedName": { "type": "keyword" },
+    "href": { "type": "text" },
+    "id": {
+      "type": "keyword",
+      "fields": { "keyword": { "type": "keyword", "ignore_above": 36 } }
+    },
+    "name": {
+      "type": "keyword",
+      "fields": {
+        "keyword": { "type": "keyword", "ignore_above": 256, "normalizer": "lowercase_normalizer" }
+      }
+    },
+    "type": { "type": "keyword" }
+  }
+}

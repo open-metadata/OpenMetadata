@@ -1,0 +1,41 @@
+{
+  "analyzers" : { },
+  "settings" : {
+    "analysis" : {
+      "normalizer" : {
+        "lowercase_normalizer" : {
+          "filter" : [ "lowercase", "asciifolding" ]
+        }
+      },
+      "analyzer" : {
+        "om_analyzer" : {
+          "filter" : [ "word_delimiter_filter", "lowercase", "asciifolding", "russian_stop", "russian_snowball", "english_stop", "om_kstem" ]
+        },
+        "om_compound_analyzer" : {
+          "filter" : [ "compound_word_delimiter_graph", "lowercase", "flatten_graph" ]
+        }
+      },
+      "filter" : {
+        "russian_stop" : {
+          "type" : "stop",
+          "stopwords" : "_russian_"
+        },
+        "english_stop" : {
+          "type" : "stop",
+          "stopwords" : "_english_"
+        },
+        "russian_snowball" : {
+          "name" : "russian",
+          "type" : "stemmer"
+        },
+        "om_kstem" : {
+          "type" : "kstem"
+        },
+        "asciifolding" : {
+          "type" : "asciifolding"
+        },
+        "om_stemmer" : null
+      }
+    }
+  }
+}
