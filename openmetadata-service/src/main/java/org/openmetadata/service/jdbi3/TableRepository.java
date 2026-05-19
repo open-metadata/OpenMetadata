@@ -24,6 +24,7 @@ import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
+import static org.openmetadata.service.Entity.FIELD_CERTIFICATION;
 import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -1763,6 +1764,13 @@ public class TableRepository extends EntityRepository<Table> {
             FIELD_DATA_PRODUCTS,
             PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST,
             null));
+    // Required so SearchRepository.requiresPropagation opens the gate on a cert-only PATCH;
+    // the actual cascade onto child docs (test_case, test_case_result, test_case_resolution_status,
+    // test_suite, column) is handled by SearchRepository.cascadeCertificationToChildren, not by
+    // the generic descriptor-driven script.
+    descriptors.add(
+        new PropagationDescriptor(
+            FIELD_CERTIFICATION, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
     return descriptors;
   }
 

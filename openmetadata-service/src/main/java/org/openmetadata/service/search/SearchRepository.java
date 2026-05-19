@@ -2062,6 +2062,9 @@ public class SearchRepository {
         script.append(
             String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
       }
+      case EXTERNAL_HANDLER -> {
+        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
+      }
     }
     script.append(" ");
   }
@@ -2112,6 +2115,9 @@ public class SearchRepository {
         data.put(field.getName(), field.getOldValue());
         script.append(
             String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
+      }
+      case EXTERNAL_HANDLER -> {
+        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
       }
     }
     script.append(" ");
@@ -2175,6 +2181,9 @@ public class SearchRepository {
         data.put(field.getName(), field.getNewValue());
         script.append(
             String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
+      }
+      case EXTERNAL_HANDLER -> {
+        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
       }
     }
     script.append(" ");
