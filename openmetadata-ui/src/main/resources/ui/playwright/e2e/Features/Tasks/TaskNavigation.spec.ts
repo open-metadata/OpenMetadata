@@ -588,8 +588,6 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
   test('clicking task notification while on entity task tab refreshes the task list', async ({
     page,
   }) => {
-    test.slow();
-
     await test.step('Log in and navigate to entity page', async () => {
       await adminUser.login(page);
       const entityFqn = table.entityResponseData?.fullyQualifiedName ?? '';
@@ -601,7 +599,8 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
     await test.step('Open Activity Feed & Tasks tab and stay there', async () => {
       const feedResponse = page.waitForResponse(
         (r) =>
-          r.url().includes('/api/v1/feed') && r.request().method() === 'GET'
+          r.url().includes('/api/v1/feed') && r.request().method() === 'GET',
+        { timeout: 15_000 }
       );
       await page.getByTestId('activity_feed').click();
       await feedResponse;
@@ -632,21 +631,29 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       const notificationBell = page.getByTestId('task-notifications');
       await expect(notificationBell).toBeVisible();
 
-      const notifFeedResponse = page.waitForResponse(
-        (r) =>
-          r.url().includes('/api/v1/tasks/assigned') &&
-          r.url().includes('status=Open')
-      );
-      await notificationBell.click();
-      await notifFeedResponse;
-
       const notificationBox = page.locator('.notification-box');
-      await expect(notificationBox).toBeVisible();
-
       const latestNotification = notificationBox
         .locator('li.ant-list-item.notification-dropdown-list-btn')
         .first();
-      await expect(latestNotification).toBeVisible();
+
+      await expect
+        .poll(
+          async () => {
+            if (await notificationBox.isVisible()) {
+              await page.keyboard.press('Escape');
+            }
+            await notificationBell.click();
+            await notificationBox.waitFor({ state: 'visible', timeout: 5_000 });
+
+            return latestNotification.count();
+          },
+          {
+            message: 'Waiting for task notification to appear in bell',
+            timeout: 30_000,
+            intervals: [2000, 3000, 5000],
+          }
+        )
+        .toBeGreaterThanOrEqual(1);
 
       const taskListRefresh = waitForTaskListResponse(page);
       await latestNotification.click();
@@ -673,7 +680,6 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
   test('two sessions: admin on Columns tab creates task, assignee sees refresh on notification click', async ({
     browser,
   }) => {
-    test.slow();
 
     const entityFqn = table.entityResponseData?.fullyQualifiedName ?? '';
 
@@ -703,7 +709,8 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
         await waitForAllLoadersToDisappear(userPage);
         const feedResponse = userPage.waitForResponse(
           (r) =>
-            r.url().includes('/api/v1/feed') && r.request().method() === 'GET'
+            r.url().includes('/api/v1/feed') && r.request().method() === 'GET',
+          { timeout: 15_000 }
         );
         await userPage.getByTestId('activity_feed').click();
         await feedResponse;
@@ -733,21 +740,32 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
         const notificationBell = userPage.getByTestId('task-notifications');
         await expect(notificationBell).toBeVisible();
 
-        const notifFeedResponse = userPage.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/tasks/assigned') &&
-            r.url().includes('status=Open')
-        );
-        await notificationBell.click();
-        await notifFeedResponse;
-
         const notificationBox = userPage.locator('.notification-box');
-        await expect(notificationBox).toBeVisible();
-
         const latestNotification = notificationBox
           .locator('li.ant-list-item.notification-dropdown-list-btn')
           .first();
-        await expect(latestNotification).toBeVisible();
+
+        await expect
+          .poll(
+            async () => {
+              if (await notificationBox.isVisible()) {
+                await userPage.keyboard.press('Escape');
+              }
+              await notificationBell.click();
+              await notificationBox.waitFor({
+                state: 'visible',
+                timeout: 5_000,
+              });
+
+              return latestNotification.count();
+            },
+            {
+              message: 'Waiting for task notification to appear in bell',
+              timeout: 30_000,
+              intervals: [2000, 3000, 5000],
+            }
+          )
+          .toBeGreaterThanOrEqual(1);
 
         const taskListRefresh = waitForTaskListResponse(userPage);
         await latestNotification.click();
