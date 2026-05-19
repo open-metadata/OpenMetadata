@@ -30,6 +30,7 @@ interface UseDataAccessRequestParams {
 interface UseDataAccessRequestResult {
   isDarDisabled: boolean;
   isDarAwaitingGrant: boolean;
+  isDarGranted: boolean;
   refetch: () => void;
 }
 
@@ -152,5 +153,39 @@ export const useDataAccessRequest = ({
     [existingDarTasks]
   );
 
-  return { isDarDisabled, isDarAwaitingGrant, refetch: fetchExistingDar };
+  const isDarGranted = useMemo(
+    () =>
+      existingDarTasks.some((task) => {
+        const stage = (
+          task.workflowStageDisplayName ??
+          task.workflowStageId ??
+          ''
+        ).toLowerCase();
+        const isGranted =
+          task.status === TaskEntityStatus.Granted ||
+          stage === DarWorkflowStage.Granted;
+
+        if (!isGranted) {
+          return false;
+        }
+
+        const payload = task.payload as
+          | { duration?: string; expirationDate?: number }
+          | undefined;
+
+        return isDarApprovalActive(
+          task.approvedAt ?? task.updatedAt ?? task.createdAt,
+          payload?.duration,
+          payload?.expirationDate
+        );
+      }),
+    [existingDarTasks]
+  );
+
+  return {
+    isDarDisabled,
+    isDarAwaitingGrant,
+    isDarGranted,
+    refetch: fetchExistingDar,
+  };
 };
