@@ -144,7 +144,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       this.connection =
           RDFConnectionFuseki.create().destination(endpoint).httpClient(httpClient).build();
     }
-    LOG.info("Connected to Apache Jena Fuseki at {}", endpoint);
+    LOG.info("Connected to Apache Jena Fuseki at {}", maskUserInfo(endpoint));
     loadOntology();
   }
 
@@ -166,9 +166,9 @@ public class JenaFusekiStorage implements RdfStorageInterface {
               "RDF storage is not accessible at %s after attempting dataset creation. "
                   + "Verify the configured RDF endpoint URL, credentials, that the Fuseki dataset "
                   + "exists, and that the configured user has permission to create it.",
-              endpoint));
+              maskUserInfo(endpoint)));
     }
-    LOG.info("Fuseki dataset at {} is now ready", endpoint);
+    LOG.info("Fuseki dataset at {} is now ready", maskUserInfo(endpoint));
     loadOntology();
   }
 
@@ -214,6 +214,37 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   private record DatasetEndpoint(String serverBaseUrl, String datasetName) {}
 
+  /**
+   * Replace any {@code user:pass@} userInfo in a URL with {@code ***@} for
+   * safe logging. parseDatasetEndpoint preserves embedded credentials so the
+   * admin HTTP calls reach the server with the right auth, but logs must not
+   * carry those credentials to disk / log aggregators.
+   */
+  private static String maskUserInfo(String urlOrEndpoint) {
+    if (urlOrEndpoint == null) {
+      return null;
+    }
+    try {
+      URI u = URI.create(urlOrEndpoint);
+      if (u.getRawUserInfo() == null || u.getRawUserInfo().isEmpty()) {
+        return urlOrEndpoint;
+      }
+      StringBuilder sb = new StringBuilder();
+      sb.append(u.getScheme()).append("://").append("***@").append(u.getHost());
+      if (u.getPort() > 0) {
+        sb.append(':').append(u.getPort());
+      }
+      if (u.getRawPath() != null) {
+        sb.append(u.getRawPath());
+      }
+      return sb.toString();
+    } catch (RuntimeException e) {
+      // Don't let a logging helper take down the caller; fall back to a
+      // crude regex replacement.
+      return urlOrEndpoint.replaceAll("://[^@/]+@", "://***@");
+    }
+  }
+
   private static void addBasicAuth(
       HttpRequest.Builder requestBuilder, String username, String password) {
     if (username == null || password == null) {
@@ -235,7 +266,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     try {
       DatasetEndpoint info = parseDatasetEndpoint(endpoint);
       if (info == null) {
-        LOG.warn("Could not extract dataset name from endpoint: {}", endpoint);
+        LOG.warn("Could not extract dataset name from endpoint: {}", maskUserInfo(endpoint));
         return;
       }
 
@@ -346,8 +377,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   private void throwIfCircuitOpen(String operation) {
     if (isCircuitOpen()) {
-      throw new RuntimeException(
-          "RDF circuit breaker is open; skipping " + operation + " until Fuseki recovers");
+      throw new RdfStorageCircuitOpenException(operation);
     }
   }
 
@@ -1092,18 +1122,30 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     // and never demotes a successful indexer run to FAILED. parseDatasetEndpoint
     // already returns null on URI.create failure; this guard covers any other
     // unexpected runtime exception that could surface from HTTP / JSON parsing.
+    //
+    // Skip the call entirely if the circuit breaker is open. The breaker
+    // trips on connect failures (Fuseki unreachable), and a compact-then-
+    // poll cycle would burn its two-call budget hitting timeouts on the
+    // same dead server. The next reindex run can try again once Fuseki
+    // recovers and the breaker closes.
+    if (isCircuitOpen()) {
+      LOG.warn("Skipping compaction; Fuseki circuit breaker is open");
+      return;
+    }
     DatasetEndpoint info;
     try {
       info = parseDatasetEndpoint(endpoint);
     } catch (RuntimeException e) {
       LOG.warn(
           "Skipping compaction: could not parse Fuseki endpoint '{}'. Reason: {}",
-          endpoint,
+          maskUserInfo(endpoint),
           e.getMessage());
       return;
     }
     if (info == null) {
-      LOG.warn("Skipping compaction: could not parse dataset name from endpoint {}", endpoint);
+      LOG.warn(
+          "Skipping compaction: could not parse dataset name from endpoint {}",
+          maskUserInfo(endpoint));
       return;
     }
     try {

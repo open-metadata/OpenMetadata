@@ -76,6 +76,14 @@ public class RdfBatchProcessor {
     // on localhost it caps single-coordinator throughput at ~6.7 entities/s.
     // Batching collapses those 2N round trips into 2 per batch.
     //
+    // The bulk write is atomic at the Fuseki side (single SPARQL UPDATE +
+    // single GSP POST) — there's no mid-batch checkpoint where a stop signal
+    // could partially commit, so we check it once before issuing the call and
+    // once after, mirroring the previous per-entity loop's check-at-iteration
+    // semantics. A stop signal landing mid-HTTP-call still completes the
+    // current batch (preferable to leaving Fuseki in a half-applied state)
+    // and is honored on the next batch boundary.
+    //
     // If the bulk write fails (one bad model rolls back the whole batch), we
     // fall back to the per-entity loop so the indexer can still attribute the
     // failure to a specific entity instead of failing the whole batch with a
@@ -180,17 +188,19 @@ public class RdfBatchProcessor {
 
   /**
    * Recognise a "circuit breaker tripped" failure from the RDF storage layer.
-   * JenaFusekiStorage throws a RuntimeException whose message starts with
-   * "RDF circuit breaker is open" when {@code throwIfCircuitOpen} fast-fails.
-   * The bulk-fallback path uses this to skip the per-entity retry loop —
-   * every entity would hit the same breaker and produce N noisy failures
-   * instead of one informative one.
+   * The storage layer throws {@link
+   * org.openmetadata.service.rdf.storage.RdfStorageCircuitOpenException} when
+   * a fast-fail trips; that exception may travel through a wrapper layer
+   * (e.g. RdfRepository.bulkCreateOrUpdate catches and re-throws as a
+   * generic RuntimeException), so we walk the cause chain to find it. The
+   * bulk-fallback path uses this to skip the per-entity retry loop — every
+   * entity would hit the same breaker and produce N noisy failures instead
+   * of one informative one.
    */
   private static boolean isCircuitBreakerOpen(Throwable error) {
     Throwable cause = error;
     while (cause != null) {
-      String msg = cause.getMessage();
-      if (msg != null && msg.contains("RDF circuit breaker is open")) {
+      if (cause instanceof org.openmetadata.service.rdf.storage.RdfStorageCircuitOpenException) {
         return true;
       }
       Throwable next = cause.getCause();

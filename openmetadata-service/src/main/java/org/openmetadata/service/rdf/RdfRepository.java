@@ -216,14 +216,28 @@ public class RdfRepository {
 
   /**
    * Bulk variant of {@link #createOrUpdate(EntityInterface)} — translates every
-   * entity to RDF and forwards the batch to the storage layer for a single
-   * round-trip write. Used by the indexer batch path; production hot path
-   * (per-entity hooks) keeps calling {@link #createOrUpdate}.
+   * entity to RDF and forwards the batch to the storage layer. Used by the
+   * indexer batch path; production hot path (per-entity hooks) keeps calling
+   * {@link #createOrUpdate}.
    *
-   * <p>All-or-nothing semantics: a failure in any entity rolls back the entire
-   * batch. Callers that need per-entity success/failure granularity (e.g. the
-   * reindexer's stats reporting) must catch and fall back to looping
-   * {@link #createOrUpdate} so each entity attempt is isolated.
+   * <p>From the caller's perspective: all-or-nothing — a single thrown
+   * exception means the caller should retry the whole batch (or fall back to
+   * per-entity {@link #createOrUpdate} for per-row error attribution). The
+   * indexer in {@code RdfBatchProcessor.processEntities} does the latter.
+   *
+   * <p>Implementation note: under the hood {@link
+   * org.openmetadata.service.rdf.storage.JenaFusekiStorage#bulkStoreEntities}
+   * issues TWO Fuseki operations — a combined SPARQL UPDATE that DELETEs
+   * the predicate-scoped triples for every entity in the batch, then a GSP
+   * POST that loads the combined N-Triples body. If the second call fails
+   * after the first commits, the batch is left in an INCONSISTENT state on
+   * Fuseki (every entity's prior translator-managed predicates are gone but
+   * the new triples never landed). The caller's fall-back to per-entity
+   * recreates each affected entity's triples cleanly, so the inconsistency
+   * is self-healing within one batch's worth of retries. Fully atomic
+   * delete+insert in a single transaction would require switching the load
+   * to {@code INSERT DATA} via {@code /update} instead of GSP POST to
+   * {@code /data}; that's worth doing but out of scope for this PR.
    */
   public void bulkCreateOrUpdate(List<? extends EntityInterface> entities) {
     if (!isEnabled() || entities == null || entities.isEmpty()) {
@@ -1909,7 +1923,42 @@ public class RdfRepository {
       }
     }
 
-    // Extract local name from URI
+    // Look up the configured relation type whose rdfPredicate matches this
+    // URI exactly. Customers can configure custom types with arbitrary
+    // predicate IRIs where the local name does NOT match the type name —
+    // e.g. operator-defined `enrolledIn` mapped to
+    // `https://acme.com/ns#enrolls`. Without this lookup the graph endpoint
+    // would surface `enrolls` as the relationType (the URI's local name)
+    // instead of `enrolledIn` (the user's chosen type name), and round-trip
+    // assertions like "the type I sent on POST /relations equals the type
+    // the graph returns" would fail.
+    if (predicateUri != null) {
+      try {
+        GlossaryTermRelationSettings settings =
+            SettingsCache.getSetting(
+                SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
+        if (settings != null && settings.getRelationTypes() != null) {
+          for (var configuredType : settings.getRelationTypes()) {
+            java.net.URI rdfPredicate = configuredType.getRdfPredicate();
+            String configuredUri =
+                rdfPredicate != null
+                    ? expandPredicateCurie(rdfPredicate.toString())
+                    : "https://open-metadata.org/ontology/" + configuredType.getName();
+            if (predicateUri.equals(configuredUri)) {
+              return configuredType.getName();
+            }
+          }
+        }
+      } catch (Exception e) {
+        LOG.debug(
+            "Could not load GlossaryTermRelationSettings while extracting predicate name; "
+                + "falling back to URI local-name. Cause: {}",
+            e.getMessage());
+      }
+    }
+
+    // Extract local name from URI as a final fallback (built-in om:* predicates
+    // that aren't in the hardcoded mapping above land here)
     if (predicateUri.contains("#")) {
       return predicateUri.substring(predicateUri.lastIndexOf('#') + 1);
     } else if (predicateUri.contains("/")) {
