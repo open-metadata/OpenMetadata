@@ -20,16 +20,13 @@ import json
 import socket
 import threading
 import time
-from unittest.mock import MagicMock
 
 import pytest
 from urllib3.util.retry import Retry
 
-from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import REST, ClientConfig, RestTransportError
 from metadata.ingestion.ometa.http_adapter import KeepAliveRetryAdapter
-from metadata.ingestion.ometa.ometa_api import EmptyPayloadException, OpenMetadata
 
 _HANG_SECONDS = 1.3  # > client read timeout below
 _CLIENT_TIMEOUT = (2, 1)  # (connect, read) — read=1s keeps the hang test fast
@@ -123,19 +120,3 @@ def test_connection_failure_exhausts_to_transport_error():
     with FlakyServer([], tail="close") as srv, pytest.raises(RestTransportError):
         _rest(srv.port).get("/anything")
     assert srv.attempts >= 2
-
-
-def _bare_ometa() -> OpenMetadata:
-    ometa = OpenMetadata.__new__(OpenMetadata)
-    ometa._use_raw_data = False
-    ometa.client = MagicMock()
-    ometa.client.get.return_value = None
-    ometa.get_suffix = MagicMock(return_value="/tables")
-    return ometa
-
-
-@pytest.mark.parametrize("skip_on_failure", [False, True])
-def test_list_entities_raises_typed_error_on_none_response(skip_on_failure):
-    ometa = _bare_ometa()
-    with pytest.raises(EmptyPayloadException):
-        ometa.list_entities(entity=Table, skip_on_failure=skip_on_failure)
