@@ -86,9 +86,12 @@ class SearchAvailableDuringReindexUIIT {
     ReindexHelpers.triggerSearchIndexAndWait(server);
 
     Set<String> baselineIds = captureBaselineIds(server);
-    assertThat(baselineIds)
-        .as("baseline probe should see every ingested table after the warm-up reindex")
-        .hasSize(seeded.countOf(EntityKind.TABLE));
+    // OM container is shared across the suite; baseline may include residual entities
+    // from earlier tests. We only require the freshly-seeded cohort to be visible —
+    // assertEventualConsistency then checks none of them are lost across the reindex.
+    assertThat(baselineIds.size())
+        .as("baseline probe should see at least every ingested table after the warm-up reindex")
+        .isGreaterThanOrEqualTo(seeded.countOf(EntityKind.TABLE));
 
     smokeCheckSearchIndexAppPageLoads(ui);
 

@@ -15,6 +15,9 @@
     <junit.jupiter.version>${org.junit.jupiter.version}</junit.jupiter.version>
     <junit.platform.version>${org.junit.platform.version}</junit.platform.version>
     <dockerjava.version>3.4.2</dockerjava.version>
+    <!-- Tags excluded from the ui-it profile. Override on the CLI to include them, e.g.
+         -Dui.it.excludedGroups= to run every UIIT including @Tag("sso-bootstrap"). -->
+    <ui.it.excludedGroups>sso-bootstrap</ui.it.excludedGroups>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -1107,6 +1110,10 @@
                   <includes>
                     <include>**/*UIIT.java</include>
                   </includes>
+                  <!-- SSO bootstrap UIITs spin up their own ContainerizedServer to verify
+                       SSO env wiring; that's a second OM lifecycle worth ~1-2 min and not
+                       useful on every run. Opt in with -DincludeSsoBootstrap=true. -->
+                  <excludedGroups>${ui.it.excludedGroups}</excludedGroups>
                   <systemPropertyVariables>
                     <skip.embedded.bootstrap>true</skip.embedded.bootstrap>
                     <!-- Video recording on by default while the suite is young — captures

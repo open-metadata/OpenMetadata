@@ -2,6 +2,7 @@ package org.openmetadata.playwright.scenarios.search.reindex;
 
 import java.time.Duration;
 import java.util.Map;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
@@ -56,6 +57,11 @@ class SimpleReindexTriggerUIIT {
 
   private static final Duration REINDEX_TIMEOUT = Duration.ofMinutes(10);
   private static final String STATUS_SUCCESS = "Success";
+  // After Run Now reports Success the alias has swapped, but ES refresh on the new index
+  // can lag by a refresh interval (default 1s) plus aggregation cache TTL. We re-issue
+  // the search aggregation on each retry rather than relying on DOM polling alone.
+  private static final Duration EXPLORE_COUNT_TIMEOUT = Duration.ofMinutes(2);
+  private static final Duration EXPLORE_COUNT_POLL_INTERVAL = Duration.ofSeconds(3);
 
   // Entity name base for each kind — must match what EntityLoader uses internally.
   private static final Map<EntityKind, String> NAME_BASE_PER_KIND =
@@ -102,11 +108,31 @@ class SimpleReindexTriggerUIIT {
 
   private static void assertExploreCount(
       final UiSession ui, final TestNamespace ns, final EntityKind kind, final int expected) {
-    String namePrefix = ns.prefix(NAME_BASE_PER_KIND.get(kind));
-    Tab tab = EXPLORE_TAB_PER_KIND.get(kind);
+    final String namePrefix = ns.prefix(NAME_BASE_PER_KIND.get(kind));
+    final Tab tab = EXPLORE_TAB_PER_KIND.get(kind);
     LOG.info("Asserting Explore[{}] count == {} for prefix '{}'", tab, expected, namePrefix);
 
-    ExplorePage explore = ExplorePage.openWithSearch(ui, tab, namePrefix);
-    explore.assertCountForTab(tab, expected);
+    // Re-open Explore on each tick to re-issue the search aggregation against the (now
+    // possibly more refreshed) new index. DOM-only polling can wedge against a stale
+    // aggregation cache and never converge.
+    Awaitility.await(
+            "Explore[" + tab + "] count == " + expected + " for prefix '" + namePrefix + "'")
+        .atMost(EXPLORE_COUNT_TIMEOUT)
+        .pollInterval(EXPLORE_COUNT_POLL_INTERVAL)
+        .pollDelay(Duration.ZERO)
+        .ignoreNoExceptions()
+        .untilAsserted(
+            () -> {
+              final ExplorePage explore = ExplorePage.openWithSearch(ui, tab, namePrefix);
+              if (explore.countForTab(tab) != expected) {
+                throw new AssertionError(
+                    "Explore["
+                        + tab
+                        + "] expected "
+                        + expected
+                        + " got "
+                        + explore.countForTab(tab));
+              }
+            });
   }
 }

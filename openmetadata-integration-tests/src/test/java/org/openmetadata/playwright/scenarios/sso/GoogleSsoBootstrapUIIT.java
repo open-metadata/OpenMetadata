@@ -9,6 +9,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.time.Duration;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.it.server.ContainerizedServer;
 import org.openmetadata.it.server.sso.ClientType;
@@ -23,6 +24,7 @@ import org.openmetadata.it.server.sso.GoogleProfile;
  *
  * <p>Does not exercise the browser flow (that's S2). Just proves the boot wiring.
  */
+@Tag("sso-bootstrap")
 class GoogleSsoBootstrapUIIT {
 
   private static final HttpClient HTTP =

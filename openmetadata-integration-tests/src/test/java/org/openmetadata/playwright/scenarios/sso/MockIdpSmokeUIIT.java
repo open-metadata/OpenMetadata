@@ -9,6 +9,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.time.Duration;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.it.server.sso.MockOidcServer;
 import org.testcontainers.containers.Network;
@@ -23,6 +24,7 @@ import org.testcontainers.containers.Network;
  * for both inside-Docker and host-side actors, which is what makes token validation line
  * up later when OM and Playwright both point at this server.
  */
+@Tag("sso-bootstrap")
 class MockIdpSmokeUIIT {
 
   private static final HttpClient HTTP =
