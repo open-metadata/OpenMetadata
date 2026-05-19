@@ -13,21 +13,17 @@
 
 package org.openmetadata.service.resources.context;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.getEntityReferenceByName;
-
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
 
 public class ContextMemoryMapper implements EntityMapper<ContextMemory, CreateContextMemory> {
   @Override
   public ContextMemory createToEntity(CreateContextMemory create, String user) {
+    // copy() owns the common fields: it sanitizes description and validates owners,
+    // domains, and reviewers. Re-setting them here would reintroduce the raw
+    // (unsanitized/unvalidated) values, so only ContextMemory-specific fields are set.
     return copy(new ContextMemory(), create, user)
-        .withDisplayName(create.getDisplayName())
-        .withDescription(create.getDescription())
         .withTitle(create.getTitle())
         .withSummary(create.getSummary())
         .withQuestion(create.getQuestion())
@@ -44,16 +40,6 @@ public class ContextMemoryMapper implements EntityMapper<ContextMemory, CreateCo
         .withSourceAssistantMessage(create.getSourceAssistantMessage())
         .withRootMemory(create.getRootMemory())
         .withParentMemory(create.getParentMemory())
-        .withMachineRepresentation(create.getMachineRepresentation())
-        .withOwners(create.getOwners())
-        .withTags(create.getTags())
-        .withDomains(
-            nullOrEmpty(create.getDomains())
-                ? null
-                : create.getDomains().stream()
-                    .map(
-                        domain ->
-                            getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED))
-                    .toList());
+        .withMachineRepresentation(create.getMachineRepresentation());
   }
 }

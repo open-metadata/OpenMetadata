@@ -509,9 +509,9 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
 
   /**
    * ContextMemory auto-assigns the creating user as owner when the create request omits owners
-   * (see {@code ContextMemoryMapper#defaultOwners}), so it deliberately diverges from the generic
-   * BaseEntityIT precondition that a freshly created entity has no owner. The PATCH contract is
-   * unchanged: setting an explicit owner replaces the creator.
+   * (see {@code ContextMemoryRepository#setCreatorAsDefaultOwner}), so it deliberately diverges
+   * from the generic BaseEntityIT precondition that a freshly created entity has no owner. The
+   * PATCH contract is unchanged: setting an explicit owner replaces the creator.
    */
   @Test
   @Override
@@ -545,8 +545,8 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
 
   /**
    * ContextMemory already has the creating user as its sole owner before this PATCH (see {@code
-   * ContextMemoryMapper#defaultOwners}); the original "from null" precondition does not hold.
-   * Setting an explicit owners list still replaces it wholesale.
+   * ContextMemoryRepository#setCreatorAsDefaultOwner}); the original "from null" precondition does
+   * not hold. Setting an explicit owners list still replaces it wholesale.
    */
   @Test
   @Override

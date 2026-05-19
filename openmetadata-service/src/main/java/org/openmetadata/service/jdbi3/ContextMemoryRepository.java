@@ -83,7 +83,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Entity.getEntityReference(entity.getPrimaryEntity(), Include.NON_DELETED);
       entity.setPrimaryEntity(primaryEntity);
     }
-    EntityUtil.populateEntityReferences(entity.getRelatedEntities());
+    entity.setRelatedEntities(EntityUtil.populateEntityReferences(entity.getRelatedEntities()));
 
     if (entity.getRootMemory() != null) {
       ContextMemory rootMemory = Entity.getEntity(entity.getRootMemory(), "", Include.NON_DELETED);
