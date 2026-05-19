@@ -1,3 +1,14 @@
+-- Boost work_mem and maintenance_work_mem for the duration of this migration
+-- so the hash-aggregate scan in the dedup DELETE and the index build below
+-- stay in memory instead of spilling. Mirrors the tuning pattern from
+-- 1.9.9/postgres/postDataMigrationSQLScript.sql (same table, same scale).
+-- Session-level (not SET LOCAL) because schemaChanges runs in autocommit mode
+-- (CREATE INDEX CONCURRENTLY requires it) — SET LOCAL would reset between
+-- statements. RESET at the bottom restores defaults before the connection
+-- returns to the Hikari pool.
+SET work_mem = '256MB';
+SET maintenance_work_mem = '512MB';
+
 -- Collapse duplicates so the unique index rebuild can succeed. Single hash
 -- aggregate on key columns; no-op on clean DBs.
 --
@@ -60,3 +71,7 @@ ALTER TABLE profiler_data_time_series
     UNIQUE USING INDEX profiler_data_time_series_unique_hash_extension_ts;
 
 ANALYZE profiler_data_time_series;
+
+-- Restore default memory settings before the connection returns to the pool.
+RESET work_mem;
+RESET maintenance_work_mem;
