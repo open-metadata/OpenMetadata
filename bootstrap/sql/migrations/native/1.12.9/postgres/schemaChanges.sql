@@ -1,27 +1,3 @@
--- Recovery guard: drop any leftover INVALID index from a prior failed
--- CREATE UNIQUE INDEX CONCURRENTLY attempt, and clear its migration-log
--- entry so the CREATE statement below re-runs and rebuilds a clean index.
--- CREATE UNIQUE INDEX CONCURRENTLY aborts when it hits existing duplicate
--- keys but leaves indisvalid=false behind; a later migration retry no-ops
--- on IF NOT EXISTS and gets logged as successful, after which ADD
--- CONSTRAINT USING INDEX fails permanently with "index ... is not valid".
--- The guard fires only when an invalid index is present, so it is a true
--- no-op on fresh databases and on already-migrated environments.
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM pg_class c
-    JOIN pg_index i ON i.indexrelid = c.oid
-    WHERE c.relname = 'profiler_data_time_series_unique_hash_extension_ts'
-      AND NOT i.indisvalid
-  ) THEN
-    EXECUTE 'DROP INDEX profiler_data_time_series_unique_hash_extension_ts';
-    DELETE FROM server_migration_sql_logs
-    WHERE version = '1.12.9'
-      AND sqlstatement LIKE '%CREATE UNIQUE INDEX%profiler_data_time_series_unique_hash_extension_ts%';
-  END IF;
-END $$;
-
 -- Collapse duplicate rows on the unique key so the CREATE UNIQUE INDEX
 -- below can succeed. Duplicates accumulated on Postgres only, during the
 -- 1.9.9 -> 1.12.9 window where the constraint was missing and the
@@ -41,6 +17,48 @@ WHERE p.entityFQNHash = d.entityFQNHash
   AND p.operation     = d.operation
   AND p."timestamp"   = d."timestamp"
   AND p.ctid <> d.keep_ctid;
+
+-- Recovery guard: in-place rebuild of any leftover INVALID index from a
+-- prior failed CREATE UNIQUE INDEX CONCURRENTLY attempt.
+--
+-- Why this exists: CREATE UNIQUE INDEX CONCURRENTLY aborts when it hits
+-- existing duplicate keys but leaves indisvalid=false behind. On a later
+-- migration retry, IF NOT EXISTS no-ops (the name is taken) and the
+-- statement gets checksum-logged as successful — after which ADD
+-- CONSTRAINT USING INDEX fails permanently with "index ... is not valid".
+--
+-- Why the work is inline (not a "clear the log and re-run" pattern):
+-- MigrationFile.parseSQLFiles filters already-logged statements at parse
+-- time, before any statement executes. So clearing the log inside this
+-- block does not bring the original CREATE statement back into this
+-- pass's execution list — it would only re-run on the next migration
+-- cycle, leaving the same-pass ALTER to fail again. Instead, we rebuild
+-- the index inline (non-concurrent, brief ACCESS EXCLUSIVE on this
+-- table) so a valid index exists before the ALTER statement runs in this
+-- same pass. The lock cost is acceptable because this path fires only
+-- when the environment is already in a degraded state.
+--
+-- The probe is anchored via i.indrelid = 'profiler_data_time_series'::regclass
+-- so an unrelated invalid index of the same name in a different schema
+-- cannot trigger this branch. The DROP targets the specific index by OID.
+DO $$
+DECLARE
+  invalid_idx oid;
+BEGIN
+  SELECT i.indexrelid INTO invalid_idx
+  FROM pg_index i
+  JOIN pg_class idx ON idx.oid = i.indexrelid
+  WHERE idx.relname = 'profiler_data_time_series_unique_hash_extension_ts'
+    AND i.indrelid = 'profiler_data_time_series'::regclass
+    AND NOT i.indisvalid;
+
+  IF invalid_idx IS NOT NULL THEN
+    EXECUTE 'DROP INDEX ' || invalid_idx::regclass;
+    EXECUTE 'CREATE UNIQUE INDEX profiler_data_time_series_unique_hash_extension_ts '
+         || 'ON profiler_data_time_series '
+         || '(entityFQNHash, extension, operation, "timestamp")';
+  END IF;
+END $$;
 
 -- Restore the unique constraint dropped in 1.9.9. Closes the 1.9.9 regression that caused
 -- /columns?fields=profile 504s, and brings Postgres back in line with MySQL (which never
