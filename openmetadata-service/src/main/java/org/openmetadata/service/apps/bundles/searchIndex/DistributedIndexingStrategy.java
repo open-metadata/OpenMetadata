@@ -411,15 +411,23 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
     return ExecutionResult.Status.COMPLETED;
   }
 
+  /**
+   * A reindex is considered errored only when there are real failures ({@code failedRecords > 0}).
+   *
+   * <p>It deliberately does not treat {@code successRecords < totalRecords} as an error.
+   * {@code totalRecords} is a pre-count estimate ({@code getEntityTotal} runs {@code COUNT(*)}
+   * before reading), and the gap is made up of records that cannot be indexed but are not
+   * failures — chiefly stale-relationship warnings (e.g. a {@code testCaseResolutionStatus} whose
+   * parent test case was hard-deleted) and rows deleted between the count and the read. Escalating
+   * that benign gap marked clean jobs as {@code failed} with {@code failedRecords: 0}.
+   */
   private boolean hasIncompleteProcessing(Stats stats) {
     if (stats == null || stats.getJobStats() == null) {
       return false;
     }
     StepStats jobStats = stats.getJobStats();
     long failed = jobStats.getFailedRecords() != null ? jobStats.getFailedRecords() : 0;
-    long processed = jobStats.getSuccessRecords() != null ? jobStats.getSuccessRecords() : 0;
-    long total = jobStats.getTotalRecords() != null ? jobStats.getTotalRecords() : 0;
-    return failed > 0 || (total > 0 && processed < total);
+    return failed > 0;
   }
 
   private boolean finalizeAllEntityReindex(
@@ -624,7 +632,9 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
             .getDao()
             .listCount(new ListFilter(Include.ALL));
       } else {
-        ListFilter listFilter = new ListFilter(null);
+        // Include.ALL to match PartitionCalculator's time-series entity count — the two counts
+        // must use identical filters or the job total and the partition plan drift apart.
+        ListFilter listFilter = new ListFilter(Include.ALL);
         EntityTimeSeriesRepository<?> repository;
 
         if (isDataInsightIndex(correctedType)) {

@@ -37,7 +37,10 @@ public class StatsReconciler {
         && stats.getEntityStats().getAdditionalProperties() != null) {
       int reconciledTotal = 0;
       for (StepStats es : stats.getEntityStats().getAdditionalProperties().values()) {
-        int actual = safeGet(es.getSuccessRecords()) + safeGet(es.getFailedRecords());
+        int actual =
+            safeGet(es.getSuccessRecords())
+                + safeGet(es.getFailedRecords())
+                + safeGet(es.getWarningRecords());
         if (actual > safeGet(es.getTotalRecords())) {
           es.setTotalRecords(actual);
         }
@@ -59,10 +62,10 @@ public class StatsReconciler {
     jobStats.setFailedRecords(jobFailed);
     jobStats.setWarningRecords(jobWarnings);
 
-    int computedTotal = jobSuccess + jobFailed;
+    int computedTotal = jobSuccess + jobFailed + jobWarnings;
     if (computedTotal != jobTotal && jobTotal > 0) {
       LOG.warn(
-          "Stats discrepancy detected: total={}, success+failed={}. "
+          "Stats discrepancy detected: total={}, success+failed+warnings={}. "
               + "Reader: total={}, failed={}, warnings={}. Process: failed={}. Sink: success={}, failed={}, warnings={}",
           jobTotal,
           computedTotal,

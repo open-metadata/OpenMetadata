@@ -660,6 +660,12 @@ public class DistributedSearchIndexCoordinator {
     // Get per-entity stats
     List<EntityStatsRecord> entityStatsList = partitionDAO.getEntityStats(jobId.toString());
 
+    Map<String, Long> warningsByEntityType = new HashMap<>();
+    for (CollectionDAO.SearchIndexServerStatsDAO.EntityStats es :
+        collectionDAO.searchIndexServerStatsDAO().getStatsByEntityType(jobId.toString())) {
+      warningsByEntityType.merge(es.entityType(), es.readerWarnings(), Long::sum);
+    }
+
     Map<String, SearchIndexJob.EntityTypeStats> entityStatsMap = new HashMap<>();
     // Calculate totals from entity stats for consistency (entity stats are always accurate)
     long totalProcessed = 0;
@@ -667,19 +673,21 @@ public class DistributedSearchIndexCoordinator {
     long totalFailed = 0;
 
     for (EntityStatsRecord es : entityStatsList) {
+      long entityWarnings = warningsByEntityType.getOrDefault(es.entityType(), 0L);
       entityStatsMap.put(
           es.entityType(),
           SearchIndexJob.EntityTypeStats.builder()
               .entityType(es.entityType())
               .totalRecords(es.totalRecords())
-              .processedRecords(es.processedRecords())
+              .processedRecords(es.processedRecords() + entityWarnings)
               .successRecords(es.successRecords())
               .failedRecords(es.failedRecords())
+              .warningRecords(entityWarnings)
               .totalPartitions(es.totalPartitions())
               .completedPartitions(es.completedPartitions())
               .failedPartitions(es.failedPartitions())
               .build());
-      totalProcessed += es.processedRecords();
+      totalProcessed += es.processedRecords() + entityWarnings;
       totalSuccess += es.successRecords();
       totalFailed += es.failedRecords();
     }
