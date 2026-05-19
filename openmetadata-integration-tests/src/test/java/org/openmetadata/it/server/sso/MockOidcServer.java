@@ -3,7 +3,9 @@ package org.openmetadata.it.server.sso;
 import com.github.dockerjava.api.model.ExposedPort;
 import com.github.dockerjava.api.model.PortBinding;
 import com.github.dockerjava.api.model.Ports;
+import java.io.IOException;
 import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.time.Duration;
@@ -38,7 +40,15 @@ public final class MockOidcServer implements AutoCloseable {
   private static final Logger LOG = LoggerFactory.getLogger(MockOidcServer.class);
 
   public static final String NETWORK_ALIAS = "om-mock-idp";
-  public static final int PORT = 1080;
+
+  /**
+   * Host/container port for the mock IdP. The same value must be reachable from the OM
+   * container, the host-side Playwright browser, AND match the {@code iss} claim baked
+   * into tokens, so a single shared port is unavoidable. Override via system property
+   * {@code -Dom.mockOidc.port=NNNN} to side-step host port conflicts (e.g. for parallel
+   * CI shards).
+   */
+  public static final int PORT = Integer.getInteger("om.mockOidc.port", 1080);
 
   private static final String IMAGE = "ghcr.io/navikt/mock-oauth2-server:2.1.10";
   private static final Duration STARTUP_TIMEOUT = Duration.ofMinutes(2);
@@ -51,6 +61,7 @@ public final class MockOidcServer implements AutoCloseable {
 
   public static MockOidcServer launch(final Network network) {
     verifyHostEntry();
+    verifyPortAvailable();
     final GenericContainer<?> container =
         new GenericContainer<>(DockerImageName.parse(IMAGE))
             .withNetwork(network)
@@ -96,6 +107,19 @@ public final class MockOidcServer implements AutoCloseable {
 
   private static String externalUrl(final String path) {
     return "http://" + NETWORK_ALIAS + ":" + PORT + path;
+  }
+
+  private static void verifyPortAvailable() {
+    try (ServerSocket probe = new ServerSocket(PORT)) {
+      probe.setReuseAddress(true);
+    } catch (IOException e) {
+      throw new IllegalStateException(
+          "Host port "
+              + PORT
+              + " is already in use; cannot bind mock IdP container. Stop the conflicting"
+              + " process or override the port with -Dom.mockOidc.port=NNNN.",
+          e);
+    }
   }
 
   private static void verifyHostEntry() {

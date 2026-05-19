@@ -44,7 +44,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 class IndexFieldExplosionIT {
 
   private static final String TABLE_ALIAS = "table_search_index";
-  private static final String SCHEMA_ALIAS = "databaseSchema_search_index";
+  private static final String SCHEMA_ALIAS = "database_schema_search_index";
   private static final int CUSTOM_PROPERTIES_TO_ADD = 30;
   private static final int CHILD_TABLES = 50;
 

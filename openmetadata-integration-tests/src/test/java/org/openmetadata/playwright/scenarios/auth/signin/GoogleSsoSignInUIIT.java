@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.auth.AuthAssumptions;
 import org.openmetadata.it.auth.NoPreloadAuth;
+import org.openmetadata.it.server.sso.MockOidcServer;
 import org.openmetadata.playwright.ui.UiSession;
 import org.openmetadata.playwright.ui.UiSessionExtension;
 import org.openmetadata.playwright.ui.pages.MockIdpLoginPage;
@@ -27,7 +28,7 @@ import org.openmetadata.playwright.ui.pages.SignInPage;
 class GoogleSsoSignInUIIT {
 
   private static final String ADMIN_EMAIL = "admin@open-metadata.org";
-  private static final Pattern AUTHENTICATED_URL = Pattern.compile(".*/(my-data|explore|)\\??.*");
+  private static final Pattern AUTHENTICATED_URL = Pattern.compile(".*/(my-data|explore)\\??.*");
 
   @Test
   @NoPreloadAuth
@@ -38,7 +39,7 @@ class GoogleSsoSignInUIIT {
     signIn.ssoButton("Google").click();
 
     final Page page = signIn.rawPage();
-    page.waitForURL(Pattern.compile(".*om-mock-idp:1080/.*"));
+    page.waitForURL(Pattern.compile(".*om-mock-idp:" + MockOidcServer.PORT + "/.*"));
     new MockIdpLoginPage(page, ui).signInAs(ADMIN_EMAIL);
 
     page.waitForURL(AUTHENTICATED_URL);

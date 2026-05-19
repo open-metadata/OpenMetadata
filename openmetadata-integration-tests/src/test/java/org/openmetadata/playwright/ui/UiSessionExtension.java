@@ -3,6 +3,7 @@ package org.openmetadata.playwright.ui;
 import com.microsoft.playwright.Browser.NewContextOptions;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.Video;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -71,9 +72,12 @@ public final class UiSessionExtension
     if (context == null) {
       return;
     }
-    final List<Path> videosBeforeClose = collectVideoPaths(context);
+    // Snapshot Video handles BEFORE close (pages() is empty after close), but resolve
+    // .path() only AFTER close — Playwright finalizes the file on close, so the path
+    // call would block/fail otherwise.
+    final List<Video> videos = collectVideos(context);
     context.close();
-    renameVideos(videosBeforeClose, traceStem(extensionContext));
+    renameVideos(resolveVideoPaths(videos), traceStem(extensionContext));
   }
 
   @Override
@@ -130,13 +134,15 @@ public final class UiSessionExtension
     return Boolean.parseBoolean(env);
   }
 
-  private static List<Path> collectVideoPaths(final BrowserContext context) {
+  private static List<Video> collectVideos(final BrowserContext context) {
     if (!isVideoEnabled()) {
       return List.of();
     }
-    return context.pages().stream()
-        .map(Page::video)
-        .filter(Objects::nonNull)
+    return context.pages().stream().map(Page::video).filter(Objects::nonNull).toList();
+  }
+
+  private static List<Path> resolveVideoPaths(final List<Video> videos) {
+    return videos.stream()
         .map(
             video -> {
               try {

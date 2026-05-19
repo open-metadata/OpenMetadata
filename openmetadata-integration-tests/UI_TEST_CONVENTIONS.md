@@ -6,19 +6,22 @@ consistent as we migrate 258 specs.
 ## Layering — strict, top-only depends down
 
 ```
-scenarios.ui.<domain>.*UIIT.java        — tests
+playwright.scenarios.<domain>.*UIIT.java        — tests
         ↓
-ui.pages.*Page.java                     — Page Objects (locators + actions)
+playwright.ui.pages.*Page.java                  — Page Objects (locators + actions)
         ↓
-ui.{SessionBrowser,UiSession,UiSessionExtension,TraceRecorder}
-ui.auth.{AuthStrategy,AdminJwtAuth,…}
+playwright.ui.{SessionBrowser,UiSession,UiSessionExtension,TraceRecorder}
+it.auth.{AuthBackend,AuthSession,BasicJwtBackend,OidcBackend,…}
         ↓
-server.*, search.*                      — server lifecycle + SDK helpers
+it.server.*, it.search.*                        — server lifecycle + SDK helpers
 ```
 
-**Rule:** tests never reference `Locator`, `Page`, `BrowserContext`, or `addInitScript`.
-Page Objects do. If a test touches Playwright primitives directly, it's a smell — promote
-the interaction into the Page Object.
+**Rule:** prefer keeping `Locator` / `Page` / `BrowserContext` use inside Page Objects.
+Page Objects may expose `Locator`-returning accessors when a test legitimately needs to
+make a Playwright-level assertion on a specific element, and `PageObject.rawPage()` is a
+documented escape hatch for URL assertions and SSO redirect flows. If a test reaches for
+Playwright primitives for routine interactions (clicks, typing, navigation), promote the
+interaction into a Page Object method.
 
 ## Test skeleton
 
@@ -124,12 +127,11 @@ npx playwright show-trace target/playwright-traces/trace-<class>-<test>-<ts>.zip
 
 Typical local debug recipe — slow it down enough to follow, capture video for review:
 ```
-PW_HEADED=true PW_SLOWMO=500 PW_VIDEO=true mvn verify -pl :openmetadata-java-playwright \
-  -Dit.test=TopicUIIT
+PW_HEADED=true PW_SLOWMO=500 PW_VIDEO=true mvn verify -P ui-it \
+  -pl :openmetadata-integration-tests -Dit.test='SimpleReindexTriggerUIIT'
 ```
 
 ## When in doubt
 
-- Read `MIGRATION_TRACKING.md` at the module root for the phased plan and the parallel-
-  safety taxonomy.
-- Read `SearchAfterReindexUIIT` as the canonical reference test.
+- Read `REINDEX_TEST_PLAN.md` at the module root for the reindex scenario coverage map.
+- Read `SimpleReindexTriggerUIIT` as the canonical reference test.

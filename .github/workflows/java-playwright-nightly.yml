@@ -115,12 +115,17 @@ jobs:
           # to target/playwright-videos when true. Kept off locally; on in CI for triage.
           PW_VIDEO: 'true'
         run: |
+          # Nightly bumps the per-test cohort sizes up to the historical stress numbers.
+          # PR runs use the smaller defaults baked into each test so `mvn verify` is fast.
+          STRESS_PROPS="-Djpw.simpleReindex.tables=5000 -Djpw.simpleReindex.topics=1500 \
+            -Djpw.simpleReindex.dashboards=1500 -Djpw.simpleReindex.pipelines=2000 \
+            -Djpw.searchAvailable.tables=5000"
           if [ "${{ matrix.searchEngine }}" = "elasticsearch" ]; then
-            mvn verify -P ui-it -pl :openmetadata-integration-tests \
+            mvn verify -P ui-it -pl :openmetadata-integration-tests $STRESS_PROPS \
               -DsearchType=elasticsearch \
               -DsearchImage=docker.elastic.co/elasticsearch/elasticsearch:9.3.0
           else
-            mvn verify -P ui-it -pl :openmetadata-integration-tests
+            mvn verify -P ui-it -pl :openmetadata-integration-tests $STRESS_PROPS
           fi
 
       - name: Upload Playwright traces

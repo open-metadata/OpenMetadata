@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
@@ -51,11 +53,12 @@ class SearchAvailableDuringReindexUIIT {
   private static final Logger LOG = LoggerFactory.getLogger(SearchAvailableDuringReindexUIIT.class);
 
   // Cohort sized to make reindex span enough wall-time for ~5+ probes to observe
-  // mid-flight state under the constrained config below. OM's reindex is fast even with
-  // small batchSize/threads, so we lean on cohort size to extend the observation window.
-  private static final int TABLES = 5_000;
-  private static final int COLUMNS_PER_TABLE = 5;
-  private static final int PARALLEL_INGEST_WORKERS = 16;
+  // mid-flight state under the constrained config below. Default is PR-friendly; nightly
+  // overrides via -Djpw.searchAvailable.tables=5000 for stress coverage.
+  private static final int TABLES = Integer.getInteger("jpw.searchAvailable.tables", 500);
+  private static final int COLUMNS_PER_TABLE = Integer.getInteger("jpw.searchAvailable.cols", 5);
+  private static final int PARALLEL_INGEST_WORKERS =
+      Integer.getInteger("jpw.searchAvailable.workers", 16);
 
   // Slow-down knobs applied to the in-flight reindex so probes have time to observe
   // mid-flight state. Inline trigger config — does not persist on the app. Distributed
@@ -75,7 +78,7 @@ class SearchAvailableDuringReindexUIIT {
 
   @Test
   void searchStaysAvailableAndDuplicateFreeWhileRecreateReindexRuns(
-      final UiSession ui, final TestNamespace ns) throws InterruptedException {
+      final UiSession ui, final TestNamespace ns) {
     EntityLoadSummary seeded = ingestCohort(ns);
     final ServerHandle server = ui.server();
 
@@ -96,19 +99,27 @@ class SearchAvailableDuringReindexUIIT {
     ReindexHelpers.waitForRunStartedSince(
         server, ReindexHelpers.SEARCH_INDEX_APP, triggerTime, Duration.ofSeconds(30));
 
-    int probeCount = 0;
-    while (!ReindexHelpers.freshRunIsTerminal(
-        server, ReindexHelpers.SEARCH_INDEX_APP, triggerTime)) {
-      probeCount++;
-      assertMidFlightProbe(server, probeCount);
-      Thread.sleep(PROBE_INTERVAL.toMillis());
-    }
+    final AtomicInteger probeCount = new AtomicInteger();
+    Awaitility.await("reindex run to reach terminal state")
+        .atMost(REINDEX_TIMEOUT)
+        .pollInterval(PROBE_INTERVAL)
+        .pollDelay(Duration.ZERO)
+        .ignoreNoExceptions()
+        .until(
+            () -> {
+              assertMidFlightProbe(server, probeCount.incrementAndGet());
+              return ReindexHelpers.freshRunIsTerminal(
+                  server, ReindexHelpers.SEARCH_INDEX_APP, triggerTime);
+            });
     LOG.info(
-        "Reindex reached terminal status after {} mid-flight probes; sleeping {}ms for ES"
+        "Reindex reached terminal status after {} mid-flight probes; waiting {}ms for ES"
             + " refresh before asserting eventual consistency",
-        probeCount,
+        probeCount.get(),
         POST_REINDEX_REFRESH_GRACE.toMillis());
-    Thread.sleep(POST_REINDEX_REFRESH_GRACE.toMillis());
+    Awaitility.await("post-reindex ES refresh grace period")
+        .pollDelay(POST_REINDEX_REFRESH_GRACE)
+        .atMost(POST_REINDEX_REFRESH_GRACE.plusSeconds(1))
+        .until(() -> true);
     assertEventualConsistency(server, baselineIds);
   }
 

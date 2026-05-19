@@ -45,13 +45,14 @@ class SimpleReindexTriggerUIIT {
 
   private static final Logger LOG = LoggerFactory.getLogger(SimpleReindexTriggerUIIT.class);
 
-  // Scale knobs — change these to scale the test up to 50k for stress runs.
-  private static final int TABLES = 5_000;
-  private static final int TOPICS = 1_500;
-  private static final int DASHBOARDS = 1_500;
-  private static final int PIPELINES = 2_000;
-  private static final int COLUMNS_PER_TABLE = 5;
-  private static final int PARALLEL_WORKERS = 16;
+  // Scale knobs — defaults are PR-friendly. Override via system properties
+  // (-Djpw.simpleReindex.tables=5000 ...) for nightly stress runs.
+  private static final int TABLES = Integer.getInteger("jpw.simpleReindex.tables", 200);
+  private static final int TOPICS = Integer.getInteger("jpw.simpleReindex.topics", 100);
+  private static final int DASHBOARDS = Integer.getInteger("jpw.simpleReindex.dashboards", 100);
+  private static final int PIPELINES = Integer.getInteger("jpw.simpleReindex.pipelines", 100);
+  private static final int COLUMNS_PER_TABLE = Integer.getInteger("jpw.simpleReindex.cols", 5);
+  private static final int PARALLEL_WORKERS = Integer.getInteger("jpw.simpleReindex.workers", 16);
 
   private static final Duration REINDEX_TIMEOUT = Duration.ofMinutes(10);
   private static final String STATUS_SUCCESS = "Success";

@@ -19,7 +19,8 @@ import java.util.Locale;
 public final class ClipboardHelper {
 
   private static final String TEXTAREA_ID = "__jpw_clipboard_reader__";
-  private static final int CLIPBOARD_WRITE_DELAY_MS = 300;
+  private static final int MAX_PASTE_ATTEMPTS = 30;
+  private static final int PASTE_ATTEMPT_INTERVAL_MS = 100;
   private static final String CREATE_TEXTAREA =
       """
       (id) => {
@@ -42,18 +43,32 @@ public final class ClipboardHelper {
   public static String copyAndRead(final Page page, final Locator copyButton) {
     copyButton.hover();
     copyButton.click(new ClickOptions().setForce(true));
-    page.waitForTimeout(CLIPBOARD_WRITE_DELAY_MS);
     return readViaPaste(page);
   }
 
+  /**
+   * The browser's clipboard write happens asynchronously after the copy click. Rather
+   * than sleeping a fixed interval (flaky under CI load), we retry the paste-into-hidden-
+   * textarea read until the value is non-empty or we exhaust the attempt budget.
+   */
   private static String readViaPaste(final Page page) {
     page.evaluate(CREATE_TEXTAREA, TEXTAREA_ID);
-    final Locator textarea = page.locator(idSelector(TEXTAREA_ID));
-    textarea.focus();
-    page.keyboard().press("ControlOrMeta+V");
-    final String value = textarea.inputValue();
-    page.evaluate(REMOVE_TEXTAREA, TEXTAREA_ID);
-    return value;
+    try {
+      final Locator textarea = page.locator(idSelector(TEXTAREA_ID));
+      for (int attempt = 0; attempt < MAX_PASTE_ATTEMPTS; attempt++) {
+        textarea.focus();
+        textarea.evaluate("(el) => { el.value = ''; }");
+        page.keyboard().press("ControlOrMeta+V");
+        final String value = textarea.inputValue();
+        if (value != null && !value.isEmpty()) {
+          return value;
+        }
+        page.waitForTimeout(PASTE_ATTEMPT_INTERVAL_MS);
+      }
+      return textarea.inputValue();
+    } finally {
+      page.evaluate(REMOVE_TEXTAREA, TEXTAREA_ID);
+    }
   }
 
   private static String idSelector(final String id) {

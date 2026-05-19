@@ -46,12 +46,12 @@ public final class EntityLoader {
 
   private EntityLoader() {}
 
-  public static EntityLoadSummary load(EntityLoadSpec spec, TestNamespace ns) {
+  public static EntityLoadSummary load(final EntityLoadSpec spec, final TestNamespace ns) {
     LOG.info(
         "EntityLoader starting: total={} parallelWorkers={}", spec.total(), spec.parallelWorkers());
-    Instant start = Instant.now();
-    EntityLoadSummary.Builder summary = new EntityLoadSummary.Builder();
-    ExecutorService executor = Executors.newFixedThreadPool(spec.parallelWorkers());
+    final Instant start = Instant.now();
+    final EntityLoadSummary.Builder summary = new EntityLoadSummary.Builder();
+    final ExecutorService executor = Executors.newFixedThreadPool(spec.parallelWorkers());
     try {
       runIfRequested(
           EntityKind.TABLE, spec, summary, () -> loadTables(spec, ns, executor, summary));
@@ -64,7 +64,7 @@ public final class EntityLoader {
     } finally {
       shutdown(executor);
     }
-    EntityLoadSummary built = summary.build(Duration.between(start, Instant.now()));
+    final EntityLoadSummary built = summary.build(Duration.between(start, Instant.now()));
     LOG.info(
         "EntityLoader done: created={} columns={} duration={}",
         built.totalEntities(),
@@ -74,30 +74,33 @@ public final class EntityLoader {
   }
 
   private static void runIfRequested(
-      EntityKind kind, EntityLoadSpec spec, EntityLoadSummary.Builder summary, Runnable loader) {
-    int requested = spec.countOf(kind);
+      final EntityKind kind,
+      final EntityLoadSpec spec,
+      final EntityLoadSummary.Builder summary,
+      final Runnable loader) {
+    final int requested = spec.countOf(kind);
     if (requested <= 0) {
       return;
     }
-    Instant start = Instant.now();
+    final Instant start = Instant.now();
     LOG.info("Loading {} {}", requested, kind);
     loader.run();
     summary.recordKindDuration(kind, Duration.between(start, Instant.now()));
   }
 
   private static void loadTables(
-      EntityLoadSpec spec,
-      TestNamespace ns,
-      ExecutorService executor,
-      EntityLoadSummary.Builder summary) {
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
-    String schemaFqn = schema.getFullyQualifiedName();
-    int count = spec.countOf(EntityKind.TABLE);
-    int columns = spec.columnsPerTable();
-    String namePrefix = ns.prefix("table") + "_";
+      final EntityLoadSpec spec,
+      final TestNamespace ns,
+      final ExecutorService executor,
+      final EntityLoadSummary.Builder summary) {
+    final DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    final String schemaFqn = schema.getFullyQualifiedName();
+    final int count = spec.countOf(EntityKind.TABLE);
+    final int columns = spec.columnsPerTable();
+    final String namePrefix = ns.prefix("table") + "_";
 
-    List<Future<Void>> futures = new ArrayList<>(count);
+    final List<Future<Void>> futures = new ArrayList<>(count);
     for (int i = 0; i < count; i++) {
       final int index = i;
       futures.add(
@@ -117,22 +120,22 @@ public final class EntityLoader {
   }
 
   private static void loadTopics(
-      EntityLoadSpec spec,
-      TestNamespace ns,
-      ExecutorService executor,
-      EntityLoadSummary.Builder summary) {
-    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
-    String serviceFqn = service.getFullyQualifiedName();
-    int count = spec.countOf(EntityKind.TOPIC);
-    String namePrefix = ns.prefix("topic") + "_";
+      final EntityLoadSpec spec,
+      final TestNamespace ns,
+      final ExecutorService executor,
+      final EntityLoadSummary.Builder summary) {
+    final MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+    final String serviceFqn = service.getFullyQualifiedName();
+    final int count = spec.countOf(EntityKind.TOPIC);
+    final String namePrefix = ns.prefix("topic") + "_";
 
-    List<Future<Void>> futures = new ArrayList<>(count);
+    final List<Future<Void>> futures = new ArrayList<>(count);
     for (int i = 0; i < count; i++) {
       final int index = i;
       futures.add(
           executor.submit(
               () -> {
-                CreateTopic request =
+                final CreateTopic request =
                     new CreateTopic()
                         .withName(namePrefix + index)
                         .withService(serviceFqn)
@@ -146,22 +149,22 @@ public final class EntityLoader {
   }
 
   private static void loadDashboards(
-      EntityLoadSpec spec,
-      TestNamespace ns,
-      ExecutorService executor,
-      EntityLoadSummary.Builder summary) {
-    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
-    String serviceFqn = service.getFullyQualifiedName();
-    int count = spec.countOf(EntityKind.DASHBOARD);
-    String namePrefix = ns.prefix("dashboard") + "_";
+      final EntityLoadSpec spec,
+      final TestNamespace ns,
+      final ExecutorService executor,
+      final EntityLoadSummary.Builder summary) {
+    final DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
+    final String serviceFqn = service.getFullyQualifiedName();
+    final int count = spec.countOf(EntityKind.DASHBOARD);
+    final String namePrefix = ns.prefix("dashboard") + "_";
 
-    List<Future<Void>> futures = new ArrayList<>(count);
+    final List<Future<Void>> futures = new ArrayList<>(count);
     for (int i = 0; i < count; i++) {
       final int index = i;
       futures.add(
           executor.submit(
               () -> {
-                CreateDashboard request =
+                final CreateDashboard request =
                     new CreateDashboard().withName(namePrefix + index).withService(serviceFqn);
                 SdkClients.adminClient().dashboards().create(request);
                 return null;
@@ -172,22 +175,22 @@ public final class EntityLoader {
   }
 
   private static void loadPipelines(
-      EntityLoadSpec spec,
-      TestNamespace ns,
-      ExecutorService executor,
-      EntityLoadSummary.Builder summary) {
-    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
-    String serviceFqn = service.getFullyQualifiedName();
-    int count = spec.countOf(EntityKind.PIPELINE);
-    String namePrefix = ns.prefix("pipeline") + "_";
+      final EntityLoadSpec spec,
+      final TestNamespace ns,
+      final ExecutorService executor,
+      final EntityLoadSummary.Builder summary) {
+    final PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    final String serviceFqn = service.getFullyQualifiedName();
+    final int count = spec.countOf(EntityKind.PIPELINE);
+    final String namePrefix = ns.prefix("pipeline") + "_";
 
-    List<Future<Void>> futures = new ArrayList<>(count);
+    final List<Future<Void>> futures = new ArrayList<>(count);
     for (int i = 0; i < count; i++) {
       final int index = i;
       futures.add(
           executor.submit(
               () -> {
-                CreatePipeline request =
+                final CreatePipeline request =
                     new CreatePipeline().withName(namePrefix + index).withService(serviceFqn);
                 SdkClients.adminClient().pipelines().create(request);
                 return null;
@@ -197,36 +200,36 @@ public final class EntityLoader {
     summary.recordCreated(EntityKind.PIPELINE, count);
   }
 
-  private static List<Column> buildColumns(int n) {
-    List<Column> columns = new ArrayList<>(n);
+  private static List<Column> buildColumns(final int n) {
+    final List<Column> columns = new ArrayList<>(n);
     for (int i = 0; i < n; i++) {
       columns.add(new Column().withName("col_" + i).withDataType(ColumnDataType.STRING));
     }
     return columns;
   }
 
-  private static void awaitAll(List<Future<Void>> futures, EntityKind kind) {
-    for (Future<Void> f : futures) {
+  private static void awaitAll(final List<Future<Void>> futures, final EntityKind kind) {
+    for (final Future<Void> f : futures) {
       try {
         f.get(FUTURE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
+      } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
         throw new IllegalStateException("Interrupted while loading " + kind, e);
-      } catch (ExecutionException e) {
+      } catch (final ExecutionException e) {
         throw new IllegalStateException("Failed to load " + kind, e.getCause());
-      } catch (java.util.concurrent.TimeoutException e) {
+      } catch (final java.util.concurrent.TimeoutException e) {
         throw new IllegalStateException("Timed out loading " + kind, e);
       }
     }
   }
 
-  private static void shutdown(ExecutorService executor) {
+  private static void shutdown(final ExecutorService executor) {
     executor.shutdown();
     try {
       if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
         executor.shutdownNow();
       }
-    } catch (InterruptedException e) {
+    } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       executor.shutdownNow();
     }

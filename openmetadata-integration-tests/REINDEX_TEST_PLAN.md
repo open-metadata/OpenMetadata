@@ -29,6 +29,15 @@ Owner: search infra. Status column updates as each lands.
 All under `org.openmetadata.it.search.*` so the Collate module re-uses them
 via the test-jar.
 
+> **Status:** the table below is the planned shape — only the helpers actually
+> needed by shipped scenarios have been implemented so far. Today the codebase
+> ships `IndexAliasInspector` (with `fieldCount(alias)` and bounded
+> `aliasToIndex()`), `ReindexHelpers` (the `ReindexController`-equivalent
+> wrapper over `Apps.searchIndexing()`), and `SearchQueryHelper` (probe via
+> `/v1/search/query`). The remaining helpers (`DbCountQuerier`,
+> `EsCountQuerier`, `EsOutageInjector`, `BulkEntityLoader`, `CpuSampler`,
+> `HealthProbe`) will land as the scenarios that need them are ported.
+
 | Helper | API surface | Used by |
 |---|---|---|
 | `IndexAliasInspector` | `Map<String,String> aliasToIndex()`, `long docCount(alias)`, `JsonNode mapping(alias)`, `long fieldCount(alias)`, `Set<String> declaredAliases()` (reads from `IndexMappingLoader`) | #1, #4, #5, #11, #13 |

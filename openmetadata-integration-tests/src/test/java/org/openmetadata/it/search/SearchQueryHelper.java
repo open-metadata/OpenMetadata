@@ -85,8 +85,16 @@ public final class SearchQueryHelper {
    * Result of a single search probe: every hit ID, the deduplicated set, and the true
    * total from the response's {@code hits.total.value} (which can exceed {@code ids.size}
    * when the response is paginated by the {@code size} param).
+   *
+   * <p>Defensive copies on construction and accessors keep the internal collections
+   * immutable so callers can't mutate one probe's state and pollute another's assertions.
    */
   public record SearchProbe(List<String> ids, Set<String> uniqueIds, long totalHits) {
+
+    public SearchProbe {
+      ids = List.copyOf(ids);
+      uniqueIds = Set.copyOf(uniqueIds);
+    }
 
     public int total() {
       return ids.size();

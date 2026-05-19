@@ -13,7 +13,7 @@ import org.openmetadata.playwright.ui.UiSession;
  * Page object for {@code /explore/<tab>} — the entity discovery surface.
  *
  * <p>Use {@link #open(UiSession, Tab)} to land on a specific entity tab without a search,
- * or {@link #openWithSearch(UiSession, String)} to navigate directly to a filtered view.
+ * or {@link #openWithSearch(UiSession, Tab, String)} to navigate directly to a filtered view.
  * Read results via {@link #firstResultByName(String)} or {@link #countForTab(Tab)}.
  */
 public final class ExplorePage extends PageObject {
@@ -117,7 +117,7 @@ public final class ExplorePage extends PageObject {
       case CONTAINERS -> "containers-tab";
       case SEARCH_INDEXES -> "search indexes-tab";
       case DASHBOARD_DATA_MODELS -> "dashboard data models-tab";
-      case GLOSSARY_TERMS -> "glossaries-tab";
+      case GLOSSARY_TERMS -> "glossary terms-tab";
       case TAGS -> "tags-tab";
     };
   }
@@ -137,7 +137,7 @@ public final class ExplorePage extends PageObject {
     ML_MODELS("mlmodels"),
     CONTAINERS("containers"),
     SEARCH_INDEXES("searchIndexes"),
-    DASHBOARD_DATA_MODELS("dashboardDataModels"),
+    DASHBOARD_DATA_MODELS("dashboardDataModel"),
     GLOSSARY_TERMS("glossaries"),
     TAGS("tags");
 

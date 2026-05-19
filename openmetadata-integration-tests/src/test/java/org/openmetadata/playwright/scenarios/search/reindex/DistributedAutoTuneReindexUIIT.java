@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.awaitility.Awaitility;
@@ -123,12 +122,11 @@ class DistributedAutoTuneReindexUIIT {
   }
 
   private static Map<String, Object> distributedAutoTuneConfig() {
-    Map<String, Object> config = new HashMap<>();
-    config.put("entities", java.util.List.of("table", "topic", "dashboard", "pipeline"));
-    config.put("recreateIndex", true);
-    config.put("useDistributedIndexing", true);
-    config.put("autoTune", true);
-    return config;
+    return Map.of(
+        "entities", java.util.List.of("table", "topic", "dashboard", "pipeline"),
+        "recreateIndex", true,
+        "useDistributedIndexing", true,
+        "autoTune", true);
   }
 
   private static void assertPerTypeCounts(
