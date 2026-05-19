@@ -14,6 +14,12 @@ import { expect, Page } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { clickOutside, descriptionBox, toastNotification } from './common';
 
+export const waitForTaskListResponse = (page: Page) =>
+  page.waitForResponse(
+    (r) => r.url().includes('/api/v1/feed') && r.request().method() === 'GET',
+    { timeout: 30_000 }
+  );
+
 export type TaskDetails = {
   term: string;
   assignee?: string;

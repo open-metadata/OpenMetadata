@@ -556,7 +556,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       const { apiContext, afterAction } = await performAdminLogin(browser);
       try {
         if (taskId) {
-          await apiContext.delete(`/api/v1/tasks/${taskId}`);
+          await apiContext.delete(`/api/v1/feed/${taskId}`);
         }
         await table.delete(apiContext);
         await adminUser.delete(apiContext);
@@ -611,13 +611,20 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       const entityFqn = table.entityResponseData?.fullyQualifiedName ?? '';
       const { apiContext, afterAction } = await getApiContext(page);
       try {
-        const response = await apiContext.post('/api/v1/tasks', {
+        const response = await apiContext.post('/api/v1/feed', {
           data: {
-            about: entityFqn,
-            aboutType: 'table',
-            type: 'DescriptionUpdate',
-            category: 'MetadataUpdate',
-            assignees: [adminUser.responseData.name],
+            from: adminUser.responseData.name,
+            message: `Update description for table ${entityFqn}`,
+            about: `<#E::table::${entityFqn}>`,
+            type: 'Task',
+            taskDetails: {
+              assignees: [
+                { id: adminUser.responseData.id, type: 'user' },
+              ],
+              suggestion: '',
+              type: 'UpdateDescription',
+              oldValue: '',
+            },
           },
         });
         const created = await response.json();
@@ -646,6 +653,10 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
             await notificationBell.click();
             await notificationBox
               .waitFor({ state: 'visible', timeout: 5_000 })
+              .catch(() => {});
+            await notificationBox
+              .getByTestId('loader')
+              .waitFor({ state: 'detached', timeout: 10_000 })
               .catch(() => {});
 
             return latestNotification.count();
@@ -722,13 +733,20 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       await test.step('Admin creates a task via API and assigns to other user', async () => {
         const { apiContext, afterAction } = await getApiContext(adminPage);
         try {
-          const response = await apiContext.post('/api/v1/tasks', {
+          const response = await apiContext.post('/api/v1/feed', {
             data: {
-              about: entityFqn,
-              aboutType: 'table',
-              type: 'DescriptionUpdate',
-              category: 'MetadataUpdate',
-              assignees: [otherUser.responseData.name],
+              from: adminUser.responseData.name,
+              message: `Update description for table ${entityFqn}`,
+              about: `<#E::table::${entityFqn}>`,
+              type: 'Task',
+              taskDetails: {
+                assignees: [
+                  { id: otherUser.responseData.id, type: 'user' },
+                ],
+                suggestion: '',
+                type: 'UpdateDescription',
+                oldValue: '',
+              },
             },
           });
           const created = await response.json();
@@ -760,6 +778,10 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
                   state: 'visible',
                   timeout: 5_000,
                 })
+                .catch(() => {});
+              await notificationBox
+                .getByTestId('loader')
+                .waitFor({ state: 'detached', timeout: 10_000 })
                 .catch(() => {});
 
               return latestNotification.count();
