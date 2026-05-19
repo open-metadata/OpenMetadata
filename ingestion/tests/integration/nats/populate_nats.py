@@ -16,9 +16,9 @@ import random
 import time
 import uuid
 
-logger = logging.getLogger(__name__)
-
 import nats
+
+logger = logging.getLogger(__name__)
 
 STREAMS = [
     {
