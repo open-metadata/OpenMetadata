@@ -116,7 +116,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
   private static final String DEFAULT_OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.4.0";
 
-  private static final String DEFAULT_FUSEKI_IMAGE = "stain/jena-fuseki:latest";
+  // secoresearch/fuseki:5.5.0 over stain/jena-fuseki: stain's image is
+  // unmaintained (capped at 5.1.0) and missing the two 2025 admin-side CVE
+  // fixes that Jena shipped in 5.5.0 (CVE-2025-49656, CVE-2025-50151). The
+  // secoresearch image is maintained, exposes the same ADMIN_PASSWORD env
+  // var, and uses the standard Fuseki admin endpoints — JenaFusekiStorage's
+  // ensureDatasetExists() handles dataset creation via /$/datasets, so we
+  // don't need stain's `FUSEKI_DATASET_1` shortcut here.
+  private static final String DEFAULT_FUSEKI_IMAGE = "secoresearch/fuseki:5.5.0";
   private static final int FUSEKI_PORT = 3030;
   private static final String FUSEKI_DATASET = "openmetadata";
   private static final String FUSEKI_ADMIN_PASSWORD = "test-admin";
@@ -445,11 +452,20 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private void startFuseki() {
     String image = System.getProperty("rdfContainerImage", DEFAULT_FUSEKI_IMAGE);
     LOG.info("Starting Fuseki SPARQL container...");
+    // FUSEKI_DATASET_1 was a stain/jena-fuseki convenience env var to
+    // pre-create a dataset at container start. The maintained image we use
+    // now doesn't provide it; JenaFusekiStorage.ensureDatasetExists() creates
+    // the dataset via the /$/datasets admin endpoint on first connection
+    // instead, so the test path is fine without it.
     FUSEKI_CONTAINER =
         new GenericContainer<>(DockerImageName.parse(image))
             .withExposedPorts(FUSEKI_PORT)
             .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-            .withEnv("FUSEKI_DATASET_1", FUSEKI_DATASET)
+            // tmpfs the TDB2 dataset dir so each container start gets a clean
+            // store and a long IT run doesn't grow the container's writable
+            // layer. secoresearch/fuseki stores datasets under /fuseki/databases
+            // by default — mounting tmpfs there keeps writes off-disk entirely.
+            .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m"))
             .waitingFor(
                 Wait.forHttp("/$/ping")
                     .forPort(FUSEKI_PORT)

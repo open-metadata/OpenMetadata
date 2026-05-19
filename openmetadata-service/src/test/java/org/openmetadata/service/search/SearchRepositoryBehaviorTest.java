@@ -929,9 +929,7 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, String>> matchCaptor = ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
         .updateChildren(
-            eq(List.of("cluster_column_search_index")),
-            matchCaptor.capture(),
-            updatesCaptor.capture());
+            eq(List.of("cluster_tableColumn")), matchCaptor.capture(), updatesCaptor.capture());
     assertEquals("table.id", matchCaptor.getValue().getLeft());
     assertEquals(entityId.toString(), matchCaptor.getValue().getRight());
     assertEquals(SearchClient.CASCADE_CERTIFICATION_SCRIPT, updatesCaptor.getValue().getLeft());
@@ -960,7 +958,7 @@ class SearchRepositoryBehaviorTest {
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
         .updateChildren(
-            eq(List.of("cluster_column_search_index")), any(Pair.class), updatesCaptor.capture());
+            eq(List.of("cluster_tableColumn")), any(Pair.class), updatesCaptor.capture());
     assertEquals(SearchClient.CASCADE_CERTIFICATION_SCRIPT, updatesCaptor.getValue().getLeft());
     assertNull(updatesCaptor.getValue().getRight().get("certification"));
   }
