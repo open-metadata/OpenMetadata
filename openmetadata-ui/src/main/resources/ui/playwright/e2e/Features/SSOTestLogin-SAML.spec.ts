@@ -37,12 +37,14 @@ const username = process.env[SSO_ENV.USERNAME] ?? '';
 const password = process.env[SSO_ENV.PASSWORD] ?? '';
 
 test.describe('SSO Test Login — SAML', () => {
-  // eslint-disable-next-line playwright/no-skipped-test -- conditional skip when Keycloak SAML credentials aren't provided; the suite only runs when CI or the developer supplies them
-  test.skip(
-    !username || !password,
-    `SAML Test Login spec needs ${SSO_ENV.USERNAME} and ${SSO_ENV.PASSWORD}` +
-      ' (Keycloak realm credentials). Set them or run via the nightly workflow.'
-  );
+  test.beforeAll(() => {
+    if (!username || !password) {
+      throw new Error(
+        `SAML Test Login spec needs ${SSO_ENV.USERNAME} and ${SSO_ENV.PASSWORD}` +
+          ' (Keycloak realm credentials). Set them in the environment before running the suite.'
+      );
+    }
+  });
 
   let cachedSamlPayload: ProviderConfigOverride | undefined;
   const getSamlPayload = async (): Promise<ProviderConfigOverride> => {

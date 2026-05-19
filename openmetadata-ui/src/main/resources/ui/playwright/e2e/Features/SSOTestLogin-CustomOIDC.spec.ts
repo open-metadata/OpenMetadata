@@ -45,9 +45,7 @@ const ensureFixtureReady = async (request: APIRequestContext) => {
   try {
     await waitForMockOidcReady(request, 5_000);
   } catch (error) {
-    // eslint-disable-next-line playwright/no-skipped-test -- conditional skip when the mock OIDC fixture isn't reachable; this spec only runs against the sso-test docker profile
-    test.skip(
-      true,
+    throw new Error(
       `Mock OIDC provider not reachable at localhost:9090. ` +
         `Bring it up with 'docker compose --profile sso-test up -d' first. ` +
         `Underlying error: ${(error as Error).message}`

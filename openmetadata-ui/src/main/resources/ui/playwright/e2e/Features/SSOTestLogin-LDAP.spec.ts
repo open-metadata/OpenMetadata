@@ -54,12 +54,12 @@ const probeLdapReachable = (): Promise<boolean> =>
 
 const ensureLdapFixtureReady = async () => {
   const reachable = await probeLdapReachable();
-  // eslint-disable-next-line playwright/no-skipped-test -- conditional skip when the OpenLDAP fixture isn't reachable; this spec only runs against the sso-test docker profile
-  test.skip(
-    !reachable,
-    `OpenLDAP fixture not reachable at localhost:${LDAP_HOST_PROBE_PORT}. ` +
-      `Bring it up with 'docker compose -f docker/development/docker-compose.yml --profile sso-test up -d' first.`
-  );
+  if (!reachable) {
+    throw new Error(
+      `OpenLDAP fixture not reachable at localhost:${LDAP_HOST_PROBE_PORT}. ` +
+        `Bring it up with 'docker compose -f docker/development/docker-compose.yml --profile sso-test up -d' first.`
+    );
+  }
 };
 
 test.describe('SSO Test Login — LDAP', () => {
