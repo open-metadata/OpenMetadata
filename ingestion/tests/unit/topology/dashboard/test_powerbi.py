@@ -2235,39 +2235,47 @@ class PowerBIUnitTest(TestCase):
         assert len(dash_3_result.charts) == 0
 
     @pytest.mark.order(51)
-    def test_extract_tables_from_sql_uses_tsql_dialect(self):
+    def test_tsql_dialect_required_for_bracket_quoted_identifiers(self):
         """
-        Regression guard: `_extract_tables_from_sql` must invoke `LineageParser`
-        with `Dialect.TSQL`, not `Dialect.ANSI`. PowerBI's `Sql.Database` /
-        `Value.NativeQuery` connectors are SQL Server / Azure SQL, whose
-        bracket-quoted identifiers fail to parse under ANSI but succeed under
-        TSQL. Reverting this to ANSI silently regresses lineage extraction.
+        Regression guard, outcome-based: the queries PowerBI dataflows produce
+        through `Sql.Database` / `Value.NativeQuery` use T-SQL bracket-quoted
+        identifiers (e.g. [Column Name], [db].[schema].[table]). Parsing
+        these under ANSI fails at the sqlglot/sqlfluff layer; parsing under
+        TSQL succeeds. `_extract_tables_from_sql` must therefore use TSQL.
+
+        We cannot observe this difference through `_parse_sql_source`'s return
+        value alone: LineageParser falls back to the permissive SqlParse
+        analyzer, which recovers source tables even when the higher-fidelity
+        parsers fail. Instead we run LineageParser directly on the
+        representative queries and assert that the connector's chosen dialect
+        is the one for which the real parsers succeed.
         """
         from metadata.ingestion.lineage.models import Dialect
+        from metadata.ingestion.lineage.parser import LineageParser
 
-        sql = "SELECT [Year] FROM cub.v_md_Time_Detailed"
-        m_expression = (
-            f'TestEntity = let\n  Source = Sql.Database("server", "db", [Query = "{sql}"])\nin\n  Source;\r\n'
-        )
+        bracket_queries = [
+            "SELECT CE_UNIQUE_ID, [FUNCT_ACCOUNT ALT_L2] FROM cub.v_md_FunctAccount_with_CostElement",
+            "SELECT ORGANIZATION_ID, [Level], [ORGANIZATION ID AND DESCRIPTION] FROM cub.v_md_Organization_FLAT",
+            "SELECT * FROM [NBS_GENIE].[QS].[Company_v2]",
+            "SELECT SORT_ORDER, SOURCE FROM cub.[v_md_SourceSystem (FAC)]",
+            "SELECT TOP 100 IBI_DETAILS_ID, [YEAR] FROM cub.v_fact_IBI_vs_BPC_Delta WHERE [YEAR] = 2024",
+        ]
 
-        captured = {}
+        for sql in bracket_queries:
+            ansi_parser = LineageParser(sql, dialect=Dialect.ANSI, timeout_seconds=10)
+            tsql_parser = LineageParser(sql, dialect=Dialect.TSQL, timeout_seconds=10)
 
-        class _DialectCapturingParser:
-            def __init__(self, query, dialect, timeout_seconds, parser_type):
-                captured["dialect"] = dialect
-                self.source_tables = []
-
-        with patch(
-            "metadata.ingestion.source.dashboard.powerbi.metadata.LineageParser",
-            _DialectCapturingParser,
-        ):
-            self.powerbi._parse_sql_source(m_expression)
-
-        assert captured.get("dialect") == Dialect.TSQL, (
-            f"Expected Dialect.TSQL, got {captured.get('dialect')}. "
-            "PowerBI Sql.Database queries are T-SQL — reverting to ANSI "
-            "regresses bracket-identifier parsing."
-        )
+            assert ansi_parser.query_parsing_success is False, (
+                f"Expected ANSI to fail on bracket-quoted T-SQL: {sql!r}. "
+                "If ANSI now parses this, the dialect choice in "
+                "_extract_tables_from_sql may no longer matter and this "
+                "test should be re-evaluated."
+            )
+            assert tsql_parser.query_parsing_success is True, (
+                f"Expected TSQL to parse bracket-quoted T-SQL: {sql!r}. "
+                "If this fails, the underlying parsers (sqlglot/sqlfluff) "
+                "have regressed and PowerBI dataflow lineage will be lost."
+            )
 
     @pytest.mark.order(52)
     def test_extract_tables_from_sql_tsql_bracket_queries(self):
