@@ -3597,4 +3597,120 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     return refreshed.getTags() != null
         && refreshed.getTags().stream().anyMatch(t -> tagFqn.equals(t.getTagFQN()));
   }
+
+  // -------------------------------------------------------------------------
+  // GET /glossaryTerms/byIds — batch fetch tests
+  //
+  // Regression coverage for the Sentry-reported N+1 on the Relations Graph
+  // tab: the UI used to fan out N parallel `GET /glossaryTerms/{id}` calls
+  // (~180ms each) to hydrate related-term graphs. The byIds endpoint replaces
+  // that with a single batched call.
+  // -------------------------------------------------------------------------
+
+  @Test
+  void getGlossaryTermsByIds_returnsAllRequestedTerms_inOneCall(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    GlossaryTerm term1 =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("byids_term1"))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("byIds test term 1"));
+    GlossaryTerm term2 =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("byids_term2"))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("byIds test term 2"));
+    GlossaryTerm term3 =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("byids_term3"))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("byIds test term 3"));
+
+    String idsParam = term1.getId() + "," + term2.getId() + "," + term3.getId();
+    String response = byIds(client, idsParam, null);
+
+    JsonNode arr = new ObjectMapper().readTree(response);
+    assertTrue(arr.isArray(), "Response must be a JSON array");
+    assertEquals(3, arr.size(), "All 3 requested terms should be returned");
+  }
+
+  @Test
+  void getGlossaryTermsByIds_honorsFieldsParam_hydratesRelatedTerms(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    GlossaryTerm related =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("byids_related"))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("Related term"));
+    GlossaryTerm focused =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("byids_focused"))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("Focused term")
+                .withRelatedTerms(List.of(related.getFullyQualifiedName())));
+
+    String response =
+        byIds(client, focused.getId().toString(), "relatedTerms,children,parent,owners");
+
+    JsonNode arr = new ObjectMapper().readTree(response);
+    assertEquals(1, arr.size());
+    JsonNode node = arr.get(0);
+    JsonNode relatedTerms = node.path("relatedTerms");
+    assertTrue(
+        relatedTerms.isArray() && relatedTerms.size() == 1,
+        "relatedTerms should be hydrated when requested via fields=relatedTerms");
+    assertEquals(related.getId().toString(), relatedTerms.get(0).path("id").asText());
+  }
+
+  @Test
+  void getGlossaryTermsByIds_silentlyOmitsMissingIds(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    GlossaryTerm real =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("byids_real"))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("Real term"));
+    UUID fake = UUID.randomUUID();
+
+    String response = byIds(client, real.getId() + "," + fake, null);
+
+    JsonNode arr = new ObjectMapper().readTree(response);
+    assertEquals(
+        1, arr.size(), "Missing Ids must be silently dropped, not raise a 404 for the batch");
+    assertEquals(real.getId().toString(), arr.get(0).path("id").asText());
+  }
+
+  @Test
+  void getGlossaryTermsByIds_emptyIdsParam_returnsEmptyArray(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String response = byIds(client, "", null);
+
+    JsonNode arr = new ObjectMapper().readTree(response);
+    assertTrue(arr.isArray());
+    assertEquals(0, arr.size());
+  }
+
+  private String byIds(OpenMetadataClient client, String idsParam, String fieldsParam) {
+    RequestOptions.Builder opts = RequestOptions.builder().queryParam("ids", idsParam);
+    if (fieldsParam != null) {
+      opts.queryParam("fields", fieldsParam);
+    }
+    return client
+        .getHttpClient()
+        .executeForString(HttpMethod.GET, "/v1/glossaryTerms/byIds", null, opts.build());
+  }
 }

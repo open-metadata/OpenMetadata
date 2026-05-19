@@ -24,7 +24,7 @@ import {
   getGlossariesList,
   getGlossaryTerms,
   getGlossaryTermsAssetCounts,
-  getGlossaryTermsById,
+  getGlossaryTermsByIds,
 } from '../../../rest/glossaryAPI';
 import { getMetrics } from '../../../rest/metricsAPI';
 import {
@@ -649,7 +649,10 @@ export function useOntologyExplorer({
       );
 
       if (!isDataMode) {
-        const CONCURRENCY = 8;
+        // BATCH_SIZE caps how many Ids we send to /glossaryTerms/byIds per
+        // round-trip. The backend caps at 200; keeping it well below that
+        // keeps URLs short and isolates a single bad Id to one batch.
+        const BATCH_SIZE = 100;
         const MAX_RESOLUTION_DEPTH = 5;
         const loadedIds = new Set(accumulated.map((term) => term.id ?? ''));
         let missingIds = collectMissingRelatedTermIds(accumulated, loadedIds);
@@ -657,26 +660,26 @@ export function useOntologyExplorer({
 
         while (missingIds.size > 0 && depth < MAX_RESOLUTION_DEPTH) {
           const missingIdList = Array.from(missingIds);
-          for (let i = 0; i < missingIdList.length; i += CONCURRENCY) {
-            const batch = missingIdList.slice(i, i + CONCURRENCY);
-            const fetched = await Promise.allSettled(
-              batch.map((id) =>
-                getGlossaryTermsById(id, {
-                  fields: [
-                    TabSpecificField.RELATED_TERMS,
-                    TabSpecificField.CHILDREN,
-                    TabSpecificField.PARENT,
-                    TabSpecificField.OWNERS,
-                  ],
-                })
-              )
-            );
-            fetched.forEach((r) => {
-              if (r.status === 'fulfilled') {
-                accumulated.push(r.value);
-                loadedIds.add(r.value.id ?? '');
-              }
-            });
+          for (let i = 0; i < missingIdList.length; i += BATCH_SIZE) {
+            const batch = missingIdList.slice(i, i + BATCH_SIZE);
+            try {
+              const fetched = await getGlossaryTermsByIds(batch, {
+                fields: [
+                  TabSpecificField.RELATED_TERMS,
+                  TabSpecificField.CHILDREN,
+                  TabSpecificField.PARENT,
+                  TabSpecificField.OWNERS,
+                ],
+              });
+              fetched.forEach((term) => {
+                accumulated.push(term);
+                loadedIds.add(term.id ?? '');
+              });
+            } catch {
+              // Whole batch failed — leave the missingIds in place; the next
+              // depth iteration's collect step will see they're still missing
+              // and the loop bound prevents infinite retries.
+            }
           }
           missingIds = collectMissingRelatedTermIds(accumulated, loadedIds);
           depth++;
@@ -814,6 +817,10 @@ export function useOntologyExplorer({
       }
 
       if (glossaryIdParam) {
+        // BATCH_SIZE caps how many Ids we send to /glossaryTerms/byIds per
+        // round-trip. The backend caps at 200; keeping it well below that
+        // keeps URLs short and isolates a single bad Id to one batch.
+        const BATCH_SIZE = 100;
         const MAX_RESOLUTION_DEPTH = 5;
         const fetchedIds = new Set(allTerms.map((term) => term.id ?? ''));
         let missingIds = collectMissingRelatedTermIds(allTerms, fetchedIds);
@@ -821,26 +828,26 @@ export function useOntologyExplorer({
 
         while (missingIds.size > 0 && depth < MAX_RESOLUTION_DEPTH) {
           const missingIdList = Array.from(missingIds);
-          for (let i = 0; i < missingIdList.length; i += CONCURRENCY) {
-            const batch = missingIdList.slice(i, i + CONCURRENCY);
-            const fetched = await Promise.allSettled(
-              batch.map((id) =>
-                getGlossaryTermsById(id, {
-                  fields: [
-                    TabSpecificField.RELATED_TERMS,
-                    TabSpecificField.CHILDREN,
-                    TabSpecificField.PARENT,
-                    TabSpecificField.OWNERS,
-                  ],
-                })
-              )
-            );
-            fetched.forEach((r) => {
-              if (r.status === 'fulfilled') {
-                allTerms.push(r.value);
-                fetchedIds.add(r.value.id ?? '');
-              }
-            });
+          for (let i = 0; i < missingIdList.length; i += BATCH_SIZE) {
+            const batch = missingIdList.slice(i, i + BATCH_SIZE);
+            try {
+              const fetched = await getGlossaryTermsByIds(batch, {
+                fields: [
+                  TabSpecificField.RELATED_TERMS,
+                  TabSpecificField.CHILDREN,
+                  TabSpecificField.PARENT,
+                  TabSpecificField.OWNERS,
+                ],
+              });
+              fetched.forEach((term) => {
+                allTerms.push(term);
+                fetchedIds.add(term.id ?? '');
+              });
+            } catch {
+              // Whole batch failed — leave the missingIds in place; the next
+              // depth iteration's collect step will see they're still missing
+              // and the loop bound prevents infinite retries.
+            }
           }
           missingIds = collectMissingRelatedTermIds(allTerms, fetchedIds);
           depth++;

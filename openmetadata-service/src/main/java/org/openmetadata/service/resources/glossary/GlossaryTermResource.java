@@ -48,9 +48,11 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.VoteRequest;
@@ -72,6 +74,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
@@ -92,6 +95,7 @@ import org.openmetadata.service.util.MoveGlossaryTermResponse;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
+@Slf4j
 @Path("/v1/glossaryTerms")
 @Tag(
     name = "Glossaries",
@@ -107,6 +111,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public static final String COLLECTION_PATH = "/v1/glossaryTerms/";
   static final String FIELDS =
       "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount";
+  private static final int MAX_BATCH_BY_IDS = 200;
 
   @Override
   public GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {
@@ -493,6 +498,83 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("includeRelations")
           String includeRelations) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
+  }
+
+  @GET
+  @Path("/byIds")
+  @Operation(
+      operationId = "getGlossaryTermsByIds",
+      summary = "Get multiple glossary terms by Ids",
+      description =
+          "Get multiple glossary terms in a single request by passing a comma-separated list of UUIDs. "
+              + "Exists to eliminate the per-Id round-trip pattern when hydrating related-term "
+              + "graphs in the UI. Ids that are missing, deleted, or not visible to the caller "
+              + "are silently omitted from the response, so callers should compare the response "
+              + "size against the input.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of glossary terms (may be shorter than the input ids list)",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTerm.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid ids parameter")
+      })
+  public List<GlossaryTerm> getByIds(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Comma-separated list of glossary term Ids (UUIDs). Max 200 per call.",
+              required = true,
+              schema = @Schema(type = "string"))
+          @QueryParam("ids")
+          String idsParam,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    List<UUID> ids = parseIdsParam(idsParam);
+    List<GlossaryTerm> result = new ArrayList<>(ids.size());
+    for (UUID id : ids) {
+      try {
+        result.add(getInternal(uriInfo, securityContext, id, fieldsParam, include));
+      } catch (EntityNotFoundException ex) {
+        LOG.debug("byIds: glossary term {} not found or not visible", id);
+      }
+    }
+    return result;
+  }
+
+  private List<UUID> parseIdsParam(String idsParam) {
+    if (idsParam == null || idsParam.isBlank()) {
+      return List.of();
+    }
+    List<UUID> ids;
+    try {
+      ids =
+          Arrays.stream(idsParam.split(","))
+              .map(String::trim)
+              .filter(s -> !s.isEmpty())
+              .map(UUID::fromString)
+              .toList();
+    } catch (IllegalArgumentException ex) {
+      throw new IllegalArgumentException("ids parameter contains an invalid UUID");
+    }
+    if (ids.size() > MAX_BATCH_BY_IDS) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Too many ids: %d (max %d). Split the request into multiple batches.",
+              ids.size(), MAX_BATCH_BY_IDS));
+    }
+    return ids;
   }
 
   @GET
