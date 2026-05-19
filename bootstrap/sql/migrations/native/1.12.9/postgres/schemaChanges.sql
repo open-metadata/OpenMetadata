@@ -1,9 +1,20 @@
 -- Collapse duplicates so the unique index rebuild can succeed. Single hash
 -- aggregate on key columns; no-op on clean DBs.
+--
+-- Restricted to rows where operation IS NOT NULL (i.e. table.systemProfile —
+-- the only extension that populates operation). Rationale: Postgres UNIQUE
+-- treats NULLs as DISTINCT, so the constraint would have permitted
+-- table.tableProfile / table.columnProfile rows (operation = NULL) that share
+-- the other key columns. GROUP BY here treats NULLs as equal, so without
+-- this filter we would collapse rows the constraint never blocked —
+-- effectively dropping retry-induced tableProfile / columnProfile history
+-- that the restored constraint will continue to permit.
 DELETE FROM profiler_data_time_series p
 USING (
   SELECT entityFQNHash, extension, operation, "timestamp", MAX(ctid) AS keep_ctid
   FROM profiler_data_time_series
+  WHERE operation IS NOT NULL
+    AND entityFQNHash IS NOT NULL
   GROUP BY entityFQNHash, extension, operation, "timestamp"
   HAVING COUNT(*) > 1
 ) d
