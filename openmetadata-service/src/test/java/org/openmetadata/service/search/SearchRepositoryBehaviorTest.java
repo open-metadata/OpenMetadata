@@ -297,6 +297,9 @@ class SearchRepositoryBehaviorTest {
               Entity.FIELD_DATA_PRODUCTS,
               PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST,
               null));
+      descriptors.add(
+          new PropagationDescriptor(
+              "certification", PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
     } else if (Entity.GLOSSARY_TERM.equals(entityType)) {
       descriptors.add(
           new PropagationDescriptor(
@@ -1808,6 +1811,52 @@ class SearchRepositoryBehaviorTest {
                 List.of()),
             Entity.TAG,
             tag));
+  }
+
+  @Test
+  void requiresPropagationReturnsTrueForTableCertificationUpdate() throws Exception {
+    // Regression for issue #28229: a cert-only PATCH on a Table must open the propagation gate
+    // so cascadeCertificationToChildren can push the new cert onto every denormalized child doc
+    // (test_case, test_case_result, test_case_resolution_status, test_suite, column).
+    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    assertTrue(
+        invokeRequiresPropagation(
+            changeDescription(
+                List.of(),
+                List.of(
+                    new FieldChange()
+                        .withName("certification")
+                        .withOldValue("{}")
+                        .withNewValue("{}")),
+                List.of()),
+            Entity.TABLE,
+            table));
+  }
+
+  @Test
+  void requiresPropagationReturnsTrueForTableCertificationAdded() throws Exception {
+    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    assertTrue(
+        invokeRequiresPropagation(
+            changeDescription(
+                List.of(new FieldChange().withName("certification").withNewValue("{}")),
+                List.of(),
+                List.of()),
+            Entity.TABLE,
+            table));
+  }
+
+  @Test
+  void requiresPropagationReturnsTrueForTableCertificationRemoved() throws Exception {
+    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    assertTrue(
+        invokeRequiresPropagation(
+            changeDescription(
+                List.of(),
+                List.of(),
+                List.of(new FieldChange().withName("certification").withOldValue("{}"))),
+            Entity.TABLE,
+            table));
   }
 
   @Test
