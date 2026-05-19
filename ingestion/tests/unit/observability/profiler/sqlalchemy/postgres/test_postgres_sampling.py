@@ -27,6 +27,7 @@ from metadata.sampler.models import (
     ProfileSampleConfig,
     SampleConfig,
 )
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sqlalchemy.postgres.sampler import PostgresSampler
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
@@ -86,13 +87,15 @@ class SampleTest(TestCase):
             service_connection_config=self.psql_conn,
             ometa_client=None,
             entity=self.table_entity,
-            sample_config=SampleConfig(
-                profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=SampleConfigType.STATIC,
-                    config=StaticSamplingConfig(
-                        profileSample=50.0,
-                        profileSampleType=ProfileSampleType.PERCENTAGE,
-                    ),
+            config=DatabaseSamplerConfig(
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=SampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=50.0,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    )
                 )
             ),
         )
@@ -112,14 +115,16 @@ class SampleTest(TestCase):
                 service_connection_config=self.psql_conn,
                 ometa_client=None,
                 entity=self.table_entity,
-                sample_config=SampleConfig(
-                    profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=SampleConfigType.STATIC,
-                        config=StaticSamplingConfig(
-                            profileSample=50.0,
-                            profileSampleType=ProfileSampleType.PERCENTAGE,
-                            samplingMethodType=sampling_method_type,
-                        ),
+                config=DatabaseSamplerConfig(
+                    sample_config=SampleConfig(
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType=SampleConfigType.STATIC,
+                            config=StaticSamplingConfig(
+                                profileSample=50.0,
+                                profileSampleType=ProfileSampleType.PERCENTAGE,
+                                samplingMethodType=sampling_method_type,
+                            ),
+                        )
                     )
                 ),
             )
@@ -135,20 +140,22 @@ class SampleTest(TestCase):
             service_connection_config=self.psql_conn,
             ometa_client=None,
             entity=self.table_entity,
-            sample_config=SampleConfig(
-                profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=SampleConfigType.STATIC,
-                    config=StaticSamplingConfig(
-                        profileSample=50.0,
-                        profileSampleType=ProfileSampleType.PERCENTAGE,
-                    ),
-                )
-            ),
-            partition_details=PartitionProfilerConfig(
-                enablePartitioning=True,
-                partitionColumnName="id",
-                partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
-                partitionValues=["1", "2"],
+            config=DatabaseSamplerConfig(
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=SampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=50.0,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    )
+                ),
+                partition_details=PartitionProfilerConfig(
+                    enablePartitioning=True,
+                    partitionColumnName="id",
+                    partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                    partitionValues=["1", "2"],
+                ),
             ),
         )
         query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)

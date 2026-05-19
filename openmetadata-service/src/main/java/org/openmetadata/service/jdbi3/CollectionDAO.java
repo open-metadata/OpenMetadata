@@ -99,6 +99,7 @@ import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Chart;
@@ -459,6 +460,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   LearningResourceDAO learningResourceDAO();
+
+  @CreateSqlObject
+  ContextMemoryDAO contextMemoryDAO();
 
   @CreateSqlObject
   SuggestionDAO suggestionDAO();
@@ -10871,6 +10875,23 @@ public interface CollectionDAO {
     }
   }
 
+  interface ContextMemoryDAO extends EntityDAO<ContextMemory> {
+    @Override
+    default String getTableName() {
+      return "context_memory";
+    }
+
+    @Override
+    default Class<ContextMemory> getEntityClass() {
+      return ContextMemory.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+  }
+
   interface SuggestionDAO {
     default String getTableName() {
       return "suggestions";
@@ -12512,6 +12533,15 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT COUNT(*) FROM search_index_failures WHERE jobId = :jobId")
     int countByJobId(@Bind("jobId") String jobId);
+
+    /**
+     * Count only real failures for a job, excluding {@code READER_RELATIONSHIP_WARNING} rows —
+     * stale-relationship warnings are recorded for visibility but are not failures.
+     */
+    @SqlQuery(
+        "SELECT COUNT(*) FROM search_index_failures WHERE jobId = :jobId "
+            + "AND failureStage <> 'READER_RELATIONSHIP_WARNING'")
+    int countFailuresByJobId(@Bind("jobId") String jobId);
 
     @SqlUpdate("DELETE FROM search_index_failures WHERE timestamp < :cutoffTime")
     int deleteOlderThan(@Bind("cutoffTime") long cutoffTime);
