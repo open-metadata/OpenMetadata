@@ -78,7 +78,10 @@ let articleTags: TagClass[] = [];
 let viewOnlyUser: UserClass;
 let quickLinkId = '';
 
-test.describe('Context Center', () => {
+// @quarantine: routed to the dedicated quarantine job in nightly AUT
+// (see openmetadata-nightly k8s-aut-mysql.yml) until the underlying flakiness
+// around knowledge-center listing/render under post-warmup load is fixed.
+test.describe('Context Center', { tag: ['@quarantine'] }, () => {
   test.slow(true);
 
   test.beforeAll(async ({ browser }) => {
