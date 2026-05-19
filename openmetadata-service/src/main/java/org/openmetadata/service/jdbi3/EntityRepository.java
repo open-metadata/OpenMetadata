@@ -5683,6 +5683,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<T> deletedEntities =
         entities.stream().filter(e -> Boolean.TRUE.equals(e.getDeleted())).toList();
     if (!deletedEntities.isEmpty()) {
+      // Hydrate relationship fields with Include.ALL before the PUT updater diff runs.
+      // loadForBulk returned only the storage JSON, so HAS-style children
+      // (e.g., dashboard.charts, dashboard.dataModels) are null on the parsed entity.
+      // The PUT updater's compareAndUpdate("charts", ...) fires unconditionally and the
+      // update(...) lambda does deleteFrom(... HAS ...) followed by re-adding from
+      // updated.getCharts() — if updated.getCharts() is null/empty, every HAS row is
+      // wiped before the restoreAdditionalChildren hook ever runs to restore them.
+      // Using Include.ALL ensures the cascade-deleted charts/dataModels are visible to
+      // both sides of the diff so the relationships round-trip cleanly. Matches the
+      // single-entity restoreEntity contract (see the comment at the find/setFields call
+      // earlier in this file).
+      hydrateRelationsForBulkUpdater(deletedEntities);
       List<EntityUpdater> updaters =
           buildBulkUpdaters(deletedEntities, updatedBy, Operation.PUT, "bulkRestoreUpdaters", null);
       List<EntityUpdater> changed = filterChanged(updaters);
@@ -5827,6 +5839,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entities.isEmpty()) {
       return;
     }
+    // Same reason as hydrateRelationsForBulkUpdater — buildBulkUpdaters uses bare JSON, and a
+    // PUT-style updater (e.g. DashboardUpdater.entitySpecificUpdate) calls
+    // deleteFrom(... HAS ...) then re-adds from updated.getCharts(). Without hydration
+    // both lists are empty and the soft-delete wipes the HAS rows that softDeleteAdditional-
+    // Children later needs to walk. Include.ALL handles both shapes: charts that are still
+    // live (parent soft-deleted in isolation) and charts already cascade-soft-deleted
+    // (parent soft-deleted as part of a wider sweep).
+    hydrateRelationsForBulkUpdater(entities);
     List<EntityUpdater> updaters =
         buildBulkUpdaters(
             entities,
@@ -5936,6 +5956,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
         } catch (Exception ignored) {
           // postDelete subclass overrides must remain null-safe for cascade-deleted parents.
         }
+      }
+    }
+  }
+
+  /**
+   * Per-entity hydration with {@link Include#ALL} for the bulk restore path. The bulk
+   * {@link #setFieldsInBulk} variant hard-codes {@code NON_DELETED} when batch-fetching
+   * relationship references (see {@code DashboardRepository.batchFetchCharts}), so a
+   * cascade-deleted chart wouldn't show up in {@code dashboard.charts} — exactly the
+   * scenario where we need it to. Falling back to per-entity {@link #setFieldsInternal}
+   * routes through the subclass's {@code setFields(entity, fields, relationIncludes)} which
+   * honours the include passed in. Restore batches are typically small (single subtree
+   * level), so the extra DB round-trips are acceptable for the correctness this buys.
+   */
+  private void hydrateRelationsForBulkUpdater(List<T> entities) {
+    for (T entity : entities) {
+      try {
+        setFieldsInternal(entity, putFields, ALL);
+      } catch (Exception ignored) {
+        // Best-effort: if hydration fails on a single entity, the PUT updater may wipe its
+        // HAS rows — restoreAdditionalChildren will still attempt to put them back.
       }
     }
   }
