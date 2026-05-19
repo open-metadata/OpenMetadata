@@ -39,11 +39,11 @@ import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { createAdminApiContext } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
-import { searchAndClickOnOption } from '../../../utils/explore';
 import {
   checkExploreSearchFilter,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
+import { searchAndClickOnOption } from '../../../utils/explore';
 import { sidebarClick } from '../../../utils/sidebar';
 
 const TIER_FQN = 'Tier.Tier1';
