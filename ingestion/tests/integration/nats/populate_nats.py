@@ -1,4 +1,3 @@
-# ruff: noqa: T201
 """
 Creates JetStream streams and publishes sample messages for testing the NATS connector.
 
@@ -12,9 +11,12 @@ Usage:
 import argparse
 import asyncio
 import json
+import logging
 import random
 import time
 import uuid
+
+logger = logging.getLogger(__name__)
 
 import nats
 
@@ -124,7 +126,7 @@ async def _delete_stream(nc, name: str) -> None:
         resp = await nc.request(f"$JS.API.STREAM.DELETE.{name}", b"", timeout=5)
         data = json.loads(resp.data)
         if "error" not in data:
-            print(f"  ~ {name} (deleted old stream)")
+            logger.info("Deleted old stream: %s", name)
     except Exception:
         pass
 
@@ -143,43 +145,43 @@ async def _create_stream(nc, stream_cfg: dict) -> bool:
                 resp = await nc.request(f"$JS.API.STREAM.CREATE.{name}", payload, timeout=5)
                 data = json.loads(resp.data)
                 if "error" in data:
-                    print(f"  ✗ {name}: {data['error']}")
+                    logger.warning("Failed to create stream %s: %s", name, data["error"])
                     return False
             else:
-                print(f"  ✗ {name}: {data['error']}")
+                logger.warning("Failed to create stream %s: %s", name, data["error"])
                 return False
     except Exception as e:
-        print(f"  ✗ {name}: {e}")
+        logger.warning("Failed to create stream %s: %s", name, e)
         return False
     else:
-        print(f"  ✓ {name} (created)")
+        logger.info("Created stream: %s", name)
         return True
 
 
 async def main(nats_url: str, n_messages: int) -> None:
-    print(f"Connecting to NATS at {nats_url}...")
+    logger.info("Connecting to NATS at %s", nats_url)
     nc = await nats.connect(nats_url)
 
-    print("\nCreating streams:")
+    logger.info("Creating streams")
     created = set()
     for cfg in STREAMS:
         ok = await _create_stream(nc, cfg)
         if ok:
             created.add(cfg["name"])
 
-    print(f"\nPublishing {n_messages} messages per stream:")
+    logger.info("Publishing %d messages per stream", n_messages)
     for stream_name, factory in STREAM_FACTORY.items():
         if stream_name not in created:
-            print(f"  - {stream_name}: skipped (stream not ready)")
+            logger.warning("Skipping stream %s: stream not ready", stream_name)
             continue
         for i in range(1, n_messages + 1):
             subject, payload = factory(i)
             await nc.publish(subject, json.dumps(payload).encode())
-        print(f"  ✓ {stream_name}: {n_messages} messages")
+        logger.info("Published %d messages to stream: %s", n_messages, stream_name)
 
     await nc.flush()
     await nc.drain()
-    print("\nDone. Streams are ready for OpenMetadata ingestion.")
+    logger.info("Done. Streams are ready for OpenMetadata ingestion.")
 
 
 if __name__ == "__main__":
