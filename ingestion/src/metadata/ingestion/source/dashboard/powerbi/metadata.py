@@ -1853,8 +1853,10 @@ class PowerbiSource(DashboardServiceSource):
         server: Optional[str],  # noqa: UP045
     ) -> Optional[List[dict]]:  # noqa: UP006, UP045
         """
-        Extract table references from a SQL query found in a dataflow M expression.
-        Uses LineageParser to parse the SQL and extract source tables.
+        Extract table references from a T-SQL query found in a dataflow M expression
+        sourced from the Power Query Sql.Database / Value.NativeQuery connector
+        (SQL Server / Azure SQL). Uses LineageParser with the TSQL dialect so
+        bracket-quoted identifiers like [Column Name] parse correctly.
         """
         try:
             # Clean PowerBI special characters
@@ -1869,7 +1871,7 @@ class PowerbiSource(DashboardServiceSource):
             try:
                 parser = LineageParser(
                     cleaned_sql,
-                    dialect=Dialect.ANSI,
+                    dialect=Dialect.TSQL,
                     timeout_seconds=30,
                     parser_type=self.get_query_parser_type(),
                 )
@@ -1878,7 +1880,7 @@ class PowerbiSource(DashboardServiceSource):
                 return None
 
             if not parser.source_tables:
-                logger.debug("No source tables found in dataflow SQL query")
+                logger.debug("No source tables found in Power Query M SQL")
                 return None
 
             lineage_tables = []
