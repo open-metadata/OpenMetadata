@@ -879,14 +879,16 @@ public class DistributedSearchIndexCoordinator {
     for (EntityStatsRecord es : entityStatsList) {
       CollectionDAO.SearchIndexServerStatsDAO.EntityStats timing =
           entityTimingByType.get(es.entityType());
+      long entityWarnings = timing != null ? timing.readerWarnings() : 0;
       entityStatsMap.put(
           es.entityType(),
           SearchIndexJob.EntityTypeStats.builder()
               .entityType(es.entityType())
               .totalRecords(es.totalRecords())
-              .processedRecords(es.processedRecords())
+              .processedRecords(es.processedRecords() + entityWarnings)
               .successRecords(es.successRecords())
               .failedRecords(es.failedRecords())
+              .warningRecords(entityWarnings)
               .totalPartitions(es.totalPartitions())
               .completedPartitions(es.completedPartitions())
               .failedPartitions(es.failedPartitions())
@@ -895,7 +897,7 @@ public class DistributedSearchIndexCoordinator {
               .sinkTimeMs(timing != null ? timing.sinkTimeMs() : 0)
               .vectorTimeMs(timing != null ? timing.vectorTimeMs() : 0)
               .build());
-      totalProcessed += es.processedRecords();
+      totalProcessed += es.processedRecords() + entityWarnings;
       totalSuccess += es.successRecords();
       totalFailed += es.failedRecords();
     }
