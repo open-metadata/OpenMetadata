@@ -273,6 +273,9 @@
                 "type": "keyword"
               }
             }
+          },
+          "children": {
+            "type": "flattened"
           }
         }
       },
