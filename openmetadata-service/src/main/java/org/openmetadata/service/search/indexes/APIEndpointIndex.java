@@ -117,11 +117,9 @@ public class APIEndpointIndex implements DataAssetIndex {
     fields.put("requestSchema.schemaFields.name.keyword", 5.0f);
     fields.put("requestSchema.schemaFields.description", 1.0f);
     fields.put("requestSchema.schemaFields.children.name", 7.0f);
-    fields.put("requestSchema.schemaFields.children.keyword", 5.0f);
     fields.put("responseSchema.schemaFields.name.keyword", 5.0f);
     fields.put("responseSchema.schemaFields.description", 1.0f);
     fields.put("responseSchema.schemaFields.children.name", 7.0f);
-    fields.put("responseSchema.schemaFields.children.keyword", 5.0f);
     return fields;
   }
 }

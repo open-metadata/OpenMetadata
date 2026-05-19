@@ -597,11 +597,15 @@ export function useGraphDataBuilder({
           )
         : null;
 
-    const BADGE_V_STEP = 36; // px between badge centres (badge height ~22px + gap)
+    const BADGE_V_STEP = 44; // px between badge centres (badge height ~22px + gap)
 
+    // Use an undirected (sorted) pair key so that edges between the same two
+    // nodes are always in the same group regardless of which direction they
+    // travel (e.g. A→B "narrower/broader" and B→A "partOf" must share a group
+    // so their badges are offset together rather than drawn as two overlapping lines).
     const directedGroupMap = new Map<string, MergedEdge[]>();
     edgesForGraph.forEach((edge) => {
-      const key = `${edge.from}::${edge.to}`;
+      const key = [edge.from, edge.to].sort().join('::');
       const group = directedGroupMap.get(key) ?? [];
       group.push(edge);
       directedGroupMap.set(key, group);
@@ -712,11 +716,19 @@ export function useGraphDataBuilder({
 
           // Offset badges perpendicular to the edge direction so they never
           // stack along the edge (which breaks for vertical edges).
+          // Use the canonical (sorted) node ordering so that edges travelling
+          // in opposite directions between the same pair of nodes always get the
+          // same perpendicular vector — preventing both badges from being offset
+          // to the same side when one edge is reversed.
           const step = i - (n - 1) / 2;
           let labelOffsetX = 0;
           let labelOffsetY = Math.round(step * BADGE_V_STEP);
-          const fromPos = nodePositions?.[singleEdge.from];
-          const toPos = nodePositions?.[singleEdge.to];
+          const [canonicalFrom, canonicalTo] = [
+            singleEdge.from,
+            singleEdge.to,
+          ].sort();
+          const fromPos = nodePositions?.[canonicalFrom];
+          const toPos = nodePositions?.[canonicalTo];
           if (fromPos && toPos) {
             const dx = toPos.x - fromPos.x;
             const dy = toPos.y - fromPos.y;

@@ -13,7 +13,7 @@
 
 import { test } from '@playwright/test';
 import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
-import { registerFilterSeparationSuite } from './searchSeparationSuite';
+import { registerFilterSeparationSuite } from './SearchSeparationSuite';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
