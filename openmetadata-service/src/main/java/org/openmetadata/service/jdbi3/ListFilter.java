@@ -977,10 +977,21 @@ public class ListFilter extends Filter<ListFilter> {
     return name.replace("'", "''");
   }
 
+  /**
+   * Defence-in-depth: when a value is embedded inside a single-quoted SQL string literal,
+   * escape backslashes before apostrophes (MySQL treats {@code \} as a string-literal escape
+   * by default, and Postgres does too when {@code standard_conforming_strings = off}). Run
+   * this BEFORE {@link #escapeApostrophe} so the {@code \\} we just inserted isn't itself
+   * re-doubled.
+   */
+  public static String escapeBackslashAndApostrophe(String name) {
+    return escapeApostrophe(name.replace("\\", "\\\\"));
+  }
+
   public static String escape(String name) {
     // Escape string to be using in LIKE clause
     // "'" is used for indicated start and end of the string. Use "''" to escape it.
-    name = escapeApostrophe(name);
+    name = escapeBackslashAndApostrophe(name);
     // "_" is a wildcard and looks for any single character. Add "\\" in front of it to escape it
     return name.replaceAll("_", "\\\\_");
   }

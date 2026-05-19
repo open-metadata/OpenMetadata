@@ -15,7 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.jdbi3.ListFilter.escape;
-import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
+import static org.openmetadata.service.jdbi3.ListFilter.escapeBackslashAndApostrophe;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -55,6 +55,17 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 public interface EntityDAO<T extends EntityInterface> {
   org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(EntityDAO.class);
+
+  /**
+   * Maximum number of values expanded into a single SQL IN-list. JDBI's {@code @BindList}
+   * produces one bind parameter per element, and the bulk hard-delete + bulk lookup paths
+   * walk 12k+ entity hierarchies — past SQL Server's ~2100-parameter ceiling and MySQL's
+   * {@code max_allowed_packet} budget. Callers that may exceed this size must chunk their
+   * input lists; helpers in this interface ({@link #findEntitiesByIds},
+   * {@link #findEntityByNames}, {@link #findReferencesByFqns}, {@link #deleteByIds}) already
+   * do.
+   */
+  int MAX_IN_LIST_CHUNK_SIZE = 30_000;
 
   /** Methods that need to be overridden by interfaces extending this */
   String getTableName();
@@ -272,7 +283,7 @@ public interface EntityDAO<T extends EntityInterface> {
     }
     List<String> nameHashes =
         entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList();
-    int maxChunkSize = 30000;
+    int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
     if (nameHashes.size() <= maxChunkSize) {
       return findReferenceRows(nameHashes, include).stream()
           .map(row -> row.toEntityReference(Entity.getEntityTypeFromClass(getEntityClass())))
@@ -325,6 +336,10 @@ public interface EntityDAO<T extends EntityInterface> {
     if (!getNameHashColumn().equals("fqnHash")) {
       return;
     }
+    // escape() handles the regex source pattern (backslash + apostrophe + LIKE underscore).
+    // For the regex replacement, we still need backslash escaping (MySQL's default mode
+    // treats {@code \} as a string-literal escape char, so a stray "\n" in newPrefix would
+    // be parsed as a newline before REGEXP_REPLACE ever sees it).
     String mySqlUpdate =
         String.format(
             "UPDATE %s SET json = "
@@ -333,11 +348,16 @@ public interface EntityDAO<T extends EntityInterface> {
                 + "WHERE fqnHash LIKE '%s.%%'",
             getTableName(),
             escape(oldPrefix),
-            escapeApostrophe(newPrefix),
+            escapeBackslashAndApostrophe(newPrefix),
             FullyQualifiedName.buildHash(oldPrefix),
             FullyQualifiedName.buildHash(newPrefix),
             FullyQualifiedName.buildHash(oldPrefix));
 
+    // Postgres path embeds the prefixes inside a double-quoted JSON pattern, so escape
+    // backslashes and apostrophes first (so a literal "\\" or "''" isn't reparsed by the
+    // SQL string-literal layer), then escape double-quotes so the JSON-pattern delimiter
+    // can't be broken out of. Apostrophe escaping is still required because the JSON
+    // pattern itself sits inside a single-quoted SQL string literal.
     String postgresUpdate =
         String.format(
             "UPDATE %s SET json = "
@@ -346,8 +366,8 @@ public interface EntityDAO<T extends EntityInterface> {
                 + ", fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
                 + "WHERE fqnHash LIKE '%s.%%'",
             getTableName(),
-            ReindexingUtil.escapeDoubleQuotes(escapeApostrophe(oldPrefix)),
-            ReindexingUtil.escapeDoubleQuotes(escapeApostrophe(newPrefix)),
+            ReindexingUtil.escapeDoubleQuotes(escapeBackslashAndApostrophe(oldPrefix)),
+            ReindexingUtil.escapeDoubleQuotes(escapeBackslashAndApostrophe(newPrefix)),
             FullyQualifiedName.buildHash(oldPrefix),
             FullyQualifiedName.buildHash(newPrefix),
             FullyQualifiedName.buildHash(oldPrefix));
@@ -616,11 +636,7 @@ public interface EntityDAO<T extends EntityInterface> {
       return 0;
     }
     List<String> stringIds = ids.stream().map(UUID::toString).toList();
-    // Chunk to match findEntitiesByIds — JDBI's @BindList expands every id into a
-    // separate bind parameter, and the bulk hard-delete walks 12k+ entity hierarchies,
-    // so the IN-list would otherwise blow past SQL Server's ~2100-parameter ceiling
-    // and MySQL's max_allowed_packet budget on a single statement.
-    int maxChunkSize = 30000;
+    int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
     if (stringIds.size() <= maxChunkSize) {
       return deleteByIds(getTableName(), stringIds);
     }
@@ -718,7 +734,7 @@ public interface EntityDAO<T extends EntityInterface> {
     }
 
     List<String> distinctIds = ids.stream().map(UUID::toString).distinct().toList();
-    int maxChunkSize = 30000;
+    int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
 
     if (distinctIds.size() <= maxChunkSize) {
       return findByIds(getTableName(), distinctIds, getCondition(include)).stream()
@@ -763,7 +779,7 @@ public interface EntityDAO<T extends EntityInterface> {
     }
 
     List<String> names = entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList();
-    int maxChunkSize = 30000;
+    int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
 
     if (names.size() <= maxChunkSize) {
       return findByNames(getTableName(), getNameHashColumn(), names, getCondition(include)).stream()
