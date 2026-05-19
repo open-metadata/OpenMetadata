@@ -429,6 +429,25 @@ class SigmaUnitTest(TestCase):
         self.assertEqual(results, [])
         self.sigma._get_datamodel.assert_not_called()
 
+    def test_yield_datamodel_skips_nonviz_elements(self):
+        """
+        Verify that yield_datamodel skips non-visualization elements (no vizualizationType)
+        so that DataModel entries are not created for text boxes, buttons, etc.
+        """
+        self.sigma.source_config.includeDataModels = True
+
+        viz_element = Elements(elementId="viz1", name="chart1", vizualizationType="table")
+        non_viz_element = Elements(elementId="nv1", name="text_box", columns=[])
+
+        self.sigma.client.get_chart_details = lambda *_: [viz_element, non_viz_element]
+
+        results = [
+            r.right for r in self.sigma.yield_datamodel(MOCK_DASHBOARD_DETAILS) if r.right
+        ]
+        # Only the visualization element should produce a DataModel request
+        self.assertEqual(len(results), 1)
+        self.assertEqual(str(results[0].name.root), "viz1")
+
     def test_get_column_info_with_truncation(self):
         """
         Test that column names are properly truncated

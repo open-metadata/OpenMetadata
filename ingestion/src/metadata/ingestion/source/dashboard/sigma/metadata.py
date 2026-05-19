@@ -461,6 +461,10 @@ class SigmaSource(DashboardServiceSource):
         if self.source_config.includeDataModels:
             self.data_models = self.client.get_chart_details(dashboard_details.workbookId)
             for data_model in self.data_models or []:
+                # Skip non-visualization elements (text boxes, dividers, buttons, controls)
+                # to avoid creating DataModel entries for elements that have no data source.
+                if not data_model.vizualizationType:
+                    continue
                 try:
                     data_model_request = CreateDashboardDataModelRequest(
                         name=EntityName(data_model.elementId),
