@@ -55,7 +55,7 @@ public class NodeFactoryRegistry {
       LOG.warn("No workflow node factory registered for subtype: {}", subType);
       return Optional.empty();
     }
-    return Optional.of(ext.create(nodeDefinition, config, workflowDefinitionName));
+    return Optional.ofNullable(ext.create(nodeDefinition, config, workflowDefinitionName));
   }
 
   /** Factory interface for creating {@link NodeInterface} instances. */

@@ -24,9 +24,9 @@ import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import java.time.Duration;
-import java.time.LocalDate;
 import java.time.Period;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -743,9 +743,8 @@ public class CreateTask implements TaskListener {
       // Duration.parse does not support month/year designators; try Period
     }
     try {
-      return LocalDate.now(ZoneOffset.UTC)
+      return ZonedDateTime.now(ZoneOffset.UTC)
           .plus(Period.parse(duration))
-          .atStartOfDay(ZoneOffset.UTC)
           .toInstant()
           .toEpochMilli();
     } catch (DateTimeParseException e) {
