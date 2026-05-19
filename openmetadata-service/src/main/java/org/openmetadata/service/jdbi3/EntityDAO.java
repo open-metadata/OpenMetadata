@@ -58,12 +58,17 @@ public interface EntityDAO<T extends EntityInterface> {
 
   /**
    * Maximum number of values expanded into a single SQL IN-list. JDBI's {@code @BindList}
-   * produces one bind parameter per element, and the bulk hard-delete + bulk lookup paths
-   * walk 12k+ entity hierarchies — past SQL Server's ~2100-parameter ceiling and MySQL's
-   * {@code max_allowed_packet} budget. Callers that may exceed this size must chunk their
-   * input lists; helpers in this interface ({@link #findEntitiesByIds},
-   * {@link #findEntityByNames}, {@link #findReferencesByFqns}, {@link #deleteByIds}) already
-   * do.
+   * produces one bind parameter per element. OpenMetadata supports MySQL and PostgreSQL —
+   * PostgreSQL's protocol caps each statement at 65535 bind parameters
+   * (the {@code int2}-size {@code numParams} field), and MySQL's {@code max_allowed_packet}
+   * caps total statement size. 30k UUID/hash strings stays comfortably under both: each
+   * UUID is ~36 chars, so an IN-list of this size is ~1MB on the wire (well below the 64MB
+   * MySQL default) and still leaves headroom for Postgres's parameter ceiling. Callers that
+   * may exceed this size must chunk their input lists; helpers in this interface
+   * ({@link #findEntitiesByIds}, {@link #findEntityByNames}, {@link #findReferencesByFqns},
+   * {@link #deleteByIds}) already do. (SQL Server isn't a supported connection type here —
+   * its ~2100 sp_executesql cap would require a separate, much smaller constant if it ever
+   * is.)
    */
   int MAX_IN_LIST_CHUNK_SIZE = 30_000;
 

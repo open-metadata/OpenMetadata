@@ -793,23 +793,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     PutResponse<T> response =
         repository.restoreEntity(securityContext.getUserPrincipal().getName(), id);
     if (response == null) {
-      // EntityRepository.restoreEntity returns null when find(id, DELETED) throws —
-      // either the entity doesn't exist at all (→ 404) or it exists but isn't deleted
-      // (→ 400). Probe with Include.ALL to tell them apart. The try block deliberately
-      // ONLY traps EntityNotFoundException so unrelated failures (DB connectivity, auth,
-      // etc.) propagate as 500 rather than being mis-mapped to 400.
-      boolean entityExists;
-      try {
-        repository.find(id, Include.ALL);
-        entityExists = true;
-      } catch (EntityNotFoundException missing) {
-        entityExists = false;
-      }
-      if (entityExists) {
-        throw new BadRequestException(
-            String.format("Entity %s:%s is not in deleted state", entityType, id));
-      }
-      throw new EntityNotFoundException(CatalogExceptionMessage.entityNotFound(entityType, id));
+      // EntityRepository.restoreEntity now calls find(id, Include.ALL) up front, so a truly
+      // missing id has already propagated EntityNotFoundException (→ 404) before we got
+      // here. A null response can only mean "entity exists but is not in DELETED state" —
+      // map that to 400.
+      throw new BadRequestException(
+          String.format("Entity %s:%s is not in deleted state", entityType, id));
     }
     repository.restoreFromSearch(response.getEntity());
     addHref(uriInfo, response.getEntity());

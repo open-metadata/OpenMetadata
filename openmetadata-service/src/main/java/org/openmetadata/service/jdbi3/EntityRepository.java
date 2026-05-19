@@ -5974,9 +5974,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (T entity : entities) {
       try {
         setFieldsInternal(entity, putFields, ALL);
-      } catch (Exception ignored) {
-        // Best-effort: if hydration fails on a single entity, the PUT updater may wipe its
-        // HAS rows — restoreAdditionalChildren will still attempt to put them back.
+      } catch (Exception ex) {
+        // Best-effort: if hydration fails on a single entity the PUT updater may wipe its
+        // HAS rows. restoreAdditionalChildren will still attempt to put them back, but log
+        // so operators can correlate any missing-relationship reports with hydration noise
+        // rather than digging through change-event history.
+        LOG.warn(
+            "Hydration failed for {} {}; HAS rows may be wiped before restore hook runs",
+            entityType,
+            entity.getId(),
+            ex);
       }
     }
   }

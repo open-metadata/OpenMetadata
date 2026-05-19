@@ -760,8 +760,12 @@ public class FeedRepository {
     dao.feedDAO().delete(getLegacyThreadTableName(), id);
   }
 
-  // Keep IN-list expansions well under SQL Server's 2100 bind-parameter ceiling and
-  // MySQL's max_allowed_packet budget. Mirrors EntityRepository.RELATION_DELETE_BATCH_SIZE.
+  // Keep IN-list expansions well under MySQL's max_allowed_packet budget and within
+  // PostgreSQL's bind-parameter ceiling. 500 also matches the existing
+  // EntityRepository.RELATION_DELETE_BATCH_SIZE used for the same reason on the
+  // relationship side. Smaller than EntityDAO.MAX_IN_LIST_CHUNK_SIZE because the
+  // feed cleanup path issues three IN-list statements per chunk (relationships,
+  // field_relationship, thread_entity) and each has its own packet/parameter budget.
   private static final int FEED_IN_BATCH_SIZE = 500;
 
   @Transaction
