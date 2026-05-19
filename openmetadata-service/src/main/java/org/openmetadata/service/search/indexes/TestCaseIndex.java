@@ -73,8 +73,7 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     }
     EntityReference entityReference = testSuite.getBasicEntityReference();
     if (entityReference != null) {
-      Table linkedTable =
-          TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
+      Table linkedTable = TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
       if (linkedTable != null && linkedTable.getCertification() != null) {
         doc.put("certification", linkedTable.getCertification());
       }
