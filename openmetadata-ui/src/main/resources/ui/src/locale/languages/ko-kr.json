@@ -2601,6 +2601,7 @@
     "customize-home-page-page-header-for-persona": "<0>{{persona}}</0> 페르소나를 위한 홈페이지 경험을 개인화하세요",
     "customize-your-navigation-subheader": "더 나은 접근성을 위해 사이드 내비게이션 메뉴를 관리하고 구성하세요.",
     "data-access-request-already-exists": "A pending data access request already exists for this asset.",
+    "data-access-request-already-granted": "You already have active data access for this asset.",
     "data-access-request-awaiting-grant-message": "Your access request has been approved and is awaiting provisioning. Access will be available shortly once it has been granted.",
     "data-access-request-message": "데이터 액세스 요청 대상:",
     "data-asset-has-been-action-type": "데이터 자산이 {{actionType}}되었습니다",

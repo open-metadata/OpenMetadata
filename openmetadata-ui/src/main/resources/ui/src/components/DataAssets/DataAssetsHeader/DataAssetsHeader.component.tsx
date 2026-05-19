@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { Alert } from '@openmetadata/ui-core-components';
 import {
-  Alert,
   Button,
   Col,
   Divider,
@@ -93,6 +93,7 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import tableClassBase from '../../../utils/TableClassBase';
+import { getDarButtonTooltip } from '../../../utils/TasksUtils';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -178,6 +179,7 @@ export const DataAssetsHeader = ({
   const {
     isDarDisabled,
     isDarAwaitingGrant,
+    isDarGranted,
     refetch: refetchExistingDar,
   } = useDataAccessRequest({
     entityFqn: dataAsset.fullyQualifiedName,
@@ -614,22 +616,23 @@ export const DataAssetsHeader = ({
   );
 
   const requestDataAccessButton = useMemo(() => {
-    const isAdmin = Boolean(currentUser?.isAdmin);
-
     if (
       !tableClassBase.getShowRequestDataAccess() ||
       SERVICE_TYPES.includes(entityType) ||
       entityType !== EntityType.TABLE ||
       deleted ||
       isOwner ||
-      (!isAdmin && !canCreateTask)
+      !canCreateTask
     ) {
       return null;
     }
 
-    const tooltipTitle = isDarDisabled
-      ? t('message.data-access-request-already-exists')
-      : undefined;
+    const tooltipTitle = getDarButtonTooltip(
+      isDarDisabled,
+      isDarGranted,
+      isDarAwaitingGrant,
+      t
+    );
 
     return (
       <Tooltip title={tooltipTitle}>
@@ -647,8 +650,9 @@ export const DataAssetsHeader = ({
     deleted,
     isOwner,
     isDarDisabled,
+    isDarAwaitingGrant,
+    isDarGranted,
     canCreateTask,
-    currentUser?.isAdmin,
     t,
   ]);
 
@@ -667,14 +671,11 @@ export const DataAssetsHeader = ({
         {isDarAwaitingGrant && (
           <Col span={24}>
             <Alert
-              showIcon
               data-testid="dar-awaiting-grant-banner"
-              description={t(
-                'message.data-access-request-awaiting-grant-message'
-              )}
-              message={t('label.data-access-request-awaiting-grant')}
-              type="info"
-            />
+              title={t('label.data-access-request-awaiting-grant')}
+              variant="brand">
+              {t('message.data-access-request-awaiting-grant-message')}
+            </Alert>
           </Col>
         )}
         <Col
