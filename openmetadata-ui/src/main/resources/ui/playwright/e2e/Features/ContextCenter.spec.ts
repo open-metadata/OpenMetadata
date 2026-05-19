@@ -744,7 +744,7 @@ test.describe('Context Center', () => {
       await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
       const deleteRes = page.waitForResponse(
-        '/api/v1/knowledgeCenter/*?hardDelete=true&recursive=false'
+        '/api/v1/contextCenter/pages/*?hardDelete=true&recursive=false'
       );
       await page.getByTestId('confirm-button').click();
       const res = await deleteRes;

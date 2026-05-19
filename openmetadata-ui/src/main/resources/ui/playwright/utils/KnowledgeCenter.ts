@@ -47,7 +47,7 @@ export const deletePage = async (
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const deleteResponse = page.waitForResponse(
-    `/api/v1/knowledgeCenter/*?hardDelete=true&recursive=${!isQuickLink}`
+    `/api/v1/contextCenter/pages/*?hardDelete=true&recursive=${!isQuickLink}`
   );
 
   // Register before clicking so we don't miss the response the app fires
