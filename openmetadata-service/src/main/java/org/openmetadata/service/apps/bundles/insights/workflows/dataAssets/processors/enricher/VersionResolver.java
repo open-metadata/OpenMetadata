@@ -54,14 +54,12 @@ public final class VersionResolver {
     long startTs = context.workflowWindowStartTimestamp();
     long endTs = context.workflowWindowEndTimestamp();
 
-    // N+1 optimization. If the entity has not been touched inside the window, the latest hydrated
-    // form covers every day. Skip the listVersionsWithOffset query entirely.
-    Long updatedAt = latest.getUpdatedAt();
-    if (updatedAt != null) {
-      long entityUpdatedDay = TimestampUtils.getStartOfDayTimestamp(updatedAt);
-      if (entityUpdatedDay < startTs) {
-        return List.of(new VersionedWindow(latest, startTs, endTs, VersionShape.LATEST_HYDRATED));
-      }
+    // N+1 optimization: if the latest entity wasn't touched within the window, one hydrated
+    // window covers all days. Skip the listVersionsWithOffset query entirely.
+    Long latestUpdatedAt = latest.getUpdatedAt();
+    if (latestUpdatedAt != null
+        && TimestampUtils.getStartOfDayTimestamp(latestUpdatedAt) < startTs) {
+      return List.of(new VersionedWindow(latest, startTs, endTs, VersionShape.LATEST_HYDRATED));
     }
 
     EntityRepository<?> entityRepository = Entity.getEntityRepository(context.entityType());
@@ -71,52 +69,46 @@ public final class VersionResolver {
     List<VersionedWindow> windows = new ArrayList<>();
     long pointerTimestamp = endTs;
     boolean isFirst = true;
-    boolean historyDone = false;
     int nextOffset = 0;
 
-    while (!historyDone) {
+    while (true) {
       EntityRepository.EntityHistoryWithOffset page =
           entityRepository.listVersionsWithOffset(latest.getId(), VERSION_PAGE_SIZE, nextOffset);
       List<Object> versions = page.entityHistory().getVersions();
       if (versions.isEmpty()) {
-        break;
+        return windows;
       }
       nextOffset = page.nextOffset();
 
       for (Object version : versions) {
         EntityInterface versionEntity = JsonUtils.readOrConvertValue(version, entityClass);
-        Long rawUpdatedAt = versionEntity.getUpdatedAt();
-        if (rawUpdatedAt == null) {
-          // Degenerate row with no updatedAt — skip rather than NPE on unboxing. The walk
-          // continues; the entity still emits windows from any sibling rows that are well-formed.
-          isFirst = false;
-          continue;
-        }
-        long versionTimestamp = TimestampUtils.getStartOfDayTimestamp(rawUpdatedAt);
-        VersionShape shape = isFirst ? VersionShape.LATEST_HYDRATED : VersionShape.HISTORICAL_RAW;
+        // Consume isFirst up front: every continue/return below leaves it correctly false.
+        boolean wasFirst = isFirst;
         isFirst = false;
 
+        Long versionUpdatedAt = versionEntity.getUpdatedAt();
+        if (versionUpdatedAt == null) {
+          continue; // degenerate row: no timestamp to slice on
+        }
+        long versionTimestamp = TimestampUtils.getStartOfDayTimestamp(versionUpdatedAt);
         if (versionTimestamp > pointerTimestamp) {
-          // Future version relative to pointer (e.g. a later same-day update). Skip — the
-          // pointer already covers it.
-          continue;
+          continue; // later same-day update; the pointer already covers this row's day
         }
+
+        VersionShape shape = wasFirst ? VersionShape.LATEST_HYDRATED : VersionShape.HISTORICAL_RAW;
+
         if (versionTimestamp < startTs) {
-          // Version older than the window start. It still covers the remaining days from
-          // startTs through pointer.
+          // Version older than the window start: covers the remaining days from startTs to pointer.
           windows.add(new VersionedWindow(versionEntity, startTs, pointerTimestamp, shape));
-          historyDone = true;
-          break;
+          return windows;
         }
-        // In-window version. It covers [end-of-its-day, pointer]. Move pointer back to
-        // end-of-day before this version's day.
+
+        // In-window version: covers [endOfDay(versionTs), pointer]; advance pointer past its day.
         long windowSliceStart = TimestampUtils.getEndOfDayTimestamp(versionTimestamp);
         windows.add(new VersionedWindow(versionEntity, windowSliceStart, pointerTimestamp, shape));
         pointerTimestamp =
             TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(versionTimestamp, 1));
       }
     }
-
-    return windows;
   }
 }
