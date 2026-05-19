@@ -1,10 +1,5 @@
--- Collapse duplicate rows on the unique key so the CREATE UNIQUE INDEX
--- below can succeed. Duplicates accumulated on Postgres only, during the
--- 1.9.9 -> 1.12.9 window where the constraint was missing and the
--- time-series sink uses plain INSERT (no ON CONFLICT). On multi-million-
--- row tables the subquery is a single hash aggregate on key columns (no
--- json read); the outer DELETE only touches rows in duplicate groups, so
--- on clean DBs it is a no-op.
+-- Collapse duplicates so the unique index rebuild can succeed. Single hash
+-- aggregate on key columns; no-op on clean DBs.
 DELETE FROM profiler_data_time_series p
 USING (
   SELECT entityFQNHash, extension, operation, "timestamp", MAX(ctid) AS keep_ctid
@@ -18,29 +13,9 @@ WHERE p.entityFQNHash = d.entityFQNHash
   AND p."timestamp"   = d."timestamp"
   AND p.ctid <> d.keep_ctid;
 
--- Recovery guard: in-place rebuild of any leftover INVALID index from a
--- prior failed CREATE UNIQUE INDEX CONCURRENTLY attempt.
---
--- Why this exists: CREATE UNIQUE INDEX CONCURRENTLY aborts when it hits
--- existing duplicate keys but leaves indisvalid=false behind. On a later
--- migration retry, IF NOT EXISTS no-ops (the name is taken) and the
--- statement gets checksum-logged as successful — after which ADD
--- CONSTRAINT USING INDEX fails permanently with "index ... is not valid".
---
--- Why the work is inline (not a "clear the log and re-run" pattern):
--- MigrationFile.parseSQLFiles filters already-logged statements at parse
--- time, before any statement executes. So clearing the log inside this
--- block does not bring the original CREATE statement back into this
--- pass's execution list — it would only re-run on the next migration
--- cycle, leaving the same-pass ALTER to fail again. Instead, we rebuild
--- the index inline (non-concurrent, brief ACCESS EXCLUSIVE on this
--- table) so a valid index exists before the ALTER statement runs in this
--- same pass. The lock cost is acceptable because this path fires only
--- when the environment is already in a degraded state.
---
--- The probe is anchored via i.indrelid = 'profiler_data_time_series'::regclass
--- so an unrelated invalid index of the same name in a different schema
--- cannot trigger this branch. The DROP targets the specific index by OID.
+-- Recover from a prior failed CREATE UNIQUE INDEX CONCURRENTLY: drop the
+-- invalid leftover and rebuild inline (non-concurrent) so ALTER below
+-- promotes it in the same pass. Probe scoped to OM's PDTS table.
 DO $$
 DECLARE
   invalid_idx oid;
