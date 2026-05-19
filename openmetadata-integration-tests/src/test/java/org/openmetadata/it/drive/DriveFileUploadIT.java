@@ -720,8 +720,13 @@ class DriveFileUploadIT {
 
     rest.hardDelete("v1/contextCenter/drive/files", file.getId());
 
+    // Hard delete is asynchronous: the server returns 200 immediately, then a background
+    // worker soft-deletes (if needed), removes search/relationship state, drops the row,
+    // and unlinks the object from MinIO. Under CI load this chain can take well over 10s,
+    // so poll with a generous ceiling rather than gambling on a tight window.
     await()
-        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofMillis(200))
+        .atMost(Duration.ofSeconds(30))
         .untilAsserted(
             () -> {
               try (Response deletedResponse =
