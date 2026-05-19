@@ -38,7 +38,7 @@ public class OpenMetadataAssetServlet extends AssetServlet {
   private static final Set<String> STATIC_FILE_EXTENSIONS =
       Set.of(
           "js", "css", "map", "json", "txt", "html", "ico", "png", "jpg", "jpeg", "svg", "gif",
-          "webp", "woff", "woff2", "ttf", "eot", "otf", "pdf");
+          "webp", "woff", "woff2", "ttf", "eot", "otf", "pdf", "md");
 
   private final OMWebConfiguration webConfiguration;
   private final String basePath;

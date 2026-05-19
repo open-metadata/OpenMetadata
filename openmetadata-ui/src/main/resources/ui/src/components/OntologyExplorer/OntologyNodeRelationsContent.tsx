@@ -160,10 +160,10 @@ export const OntologyNodeRelationsContent: React.FC<
                       {getDisplayName(rel.relationType)}
                     </Badge>
                     <div className="tw:min-w-0">
-                      <Tooltip placement="top" title={labelText}>
+                      <Tooltip arrow placement="top" title={labelText}>
                         <TooltipTrigger className="tw:block tw:w-full">
                           <Typography
-                            as="span"
+                            as="p"
                             className="tw:block tw:truncate tw:text-left tw:text-primary"
                             size="text-sm"
                             weight="regular">

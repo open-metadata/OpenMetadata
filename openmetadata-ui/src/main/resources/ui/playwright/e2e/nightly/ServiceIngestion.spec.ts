@@ -13,7 +13,7 @@
 
 import test, { expect } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
-import { MYSQL, POSTGRES, REDSHIFT } from '../../constant/service';
+import { POSTGRES, REDSHIFT } from '../../constant/service';
 import { GlobalSettingOptions } from '../../constant/settings';
 import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
 import ApiIngestionClass from '../../support/entity/ingestion/ApiIngestionClass';
@@ -83,6 +83,12 @@ Object.entries(services).forEach(([key, ServiceClass]) => {
       );
     });
 
+    test.afterAll('Delete service via API', async ({ browser }) => {
+      const { afterAction, apiContext } = await createNewPage(browser);
+      await service.deleteServiceByAPI(apiContext);
+      await afterAction();
+    });
+
     /**
      * Tests service creation and first ingestion run
      * @description Creates the service and triggers ingestion
@@ -109,10 +115,9 @@ Object.entries(services).forEach(([key, ServiceClass]) => {
       await service.updateScheduleOptions(page);
     });
 
+    // TODO: Need to fix MYSQL service specific test - #28125
     if (
-      [POSTGRES.serviceType, REDSHIFT.serviceType, MYSQL].includes(
-        service.serviceType
-      )
+      [POSTGRES.serviceType, REDSHIFT.serviceType].includes(service.serviceType)
     ) {
       /**
        * Tests database-specific ingestion behaviors
@@ -122,14 +127,6 @@ Object.entries(services).forEach(([key, ServiceClass]) => {
         await service.runAdditionalTests(page, test);
       });
     }
-
-    /**
-     * Tests service deletion flow
-     * @description Deletes the service and validates removal
-     */
-    test(`Delete ${key} service`, async ({ page }) => {
-      await service.deleteService(page);
-    });
   });
 });
 

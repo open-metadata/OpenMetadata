@@ -14,6 +14,7 @@ Interface for sampler
 
 import traceback
 from abc import ABC, abstractmethod
+from functools import cached_property
 from typing import Any, List, Optional, Set  # noqa: UP035
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
@@ -37,6 +38,8 @@ from metadata.generated.schema.entity.services.storageService import StorageConn
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     ProcessingEngine,
 )
+from metadata.generated.schema.type.samplingConfig import SampleConfigType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.types import ClassifiableEntityType
 from metadata.profiler.api.models import TableConfig
@@ -47,6 +50,7 @@ from metadata.sampler.config import (
     get_profile_sample_config,
     get_sample_data_count_config,
     get_sample_query,
+    resolve_static_sampling_config,
 )
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.partition import get_partition_details
@@ -100,6 +104,8 @@ class SamplerInterface(ABC):
 
         self.service_connection_config = service_connection_config
         self.connection = get_ssl_connection(self.service_connection_config)
+        self._row_count = None
+        self._sample_config: StaticSamplingConfig | None = None
 
     # pylint: disable=too-many-arguments, too-many-locals
     @classmethod
@@ -175,7 +181,29 @@ class SamplerInterface(ABC):
 
         return self._columns
 
-    def _get_excluded_columns(self) -> Set[str]:  # noqa: UP006
+    @cached_property
+    def _resolve_sample_config(self) -> StaticSamplingConfig | None:
+        """Get the static sampling config. Use cached_property to cache the
+        result since it can be used multiple times during the sampling process
+        and contains a potentially expensive computation.
+
+        Returns:
+            StaticSamplingConfig | None: _description_
+        """
+        self._sample_config = resolve_static_sampling_config(
+            sample_config=self.sample_config.profileSampleConfig,
+            row_count=(
+                self._get_asset_row_count()
+                if (
+                    self.sample_config.profileSampleConfig
+                    and self.sample_config.profileSampleConfig.sampleConfigType == SampleConfigType.DYNAMIC
+                )
+                else None
+            ),
+        )
+        return self._sample_config
+
+    def _get_excluded_columns(self) -> set[str]:
         """Get excluded  columns for table being profiled"""
         if self.exclude_columns:
             return set(self.exclude_columns)
@@ -226,6 +254,17 @@ class SamplerInterface(ABC):
     def get_columns(self) -> List[SQALikeColumn]:  # noqa: UP006
         """get columns"""
         raise NotImplementedError
+
+    def _get_asset_row_count(self) -> int:
+        """
+        Get the row count of the asset being profiled. This is used for dynamic sampling.
+        Default implementation returns 0 and should be overridden by implementations that support fetching row count.
+        """
+        logger.info(
+            "Row count fetching is not implemented for this sampler. "
+            "Returning 0 as default row count. Dynamic sampling will be ignored."
+        )
+        return self._row_count or 0
 
     @staticmethod
     def _truncate_cell(value: Any) -> Any:

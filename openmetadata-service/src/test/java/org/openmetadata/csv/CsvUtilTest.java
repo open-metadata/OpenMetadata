@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TermRelation;
 
 public class CsvUtilTest {
   @Test
@@ -241,6 +242,70 @@ public class CsvUtilTest {
     assertTrue(extensionField.contains("metadata:{key=value}"));
     assertTrue(extensionField.contains("matrix:alpha,beta|gamma"));
     assertTrue(extensionField.contains("delta,with,comma"));
+  }
+
+  @Test
+  void testAddTermRelationsHandlesNullAndEmptyInputs() {
+    List<String> csvRecord = new ArrayList<>();
+    CsvUtil.addTermRelations(csvRecord, null);
+    assertEquals(Collections.singletonList(null), csvRecord);
+
+    csvRecord = new ArrayList<>();
+    CsvUtil.addTermRelations(csvRecord, Collections.emptyList());
+    assertEquals(Collections.singletonList(null), csvRecord);
+  }
+
+  @Test
+  void testAddTermRelationsOmitsRelatedToPrefix() {
+    List<String> csvRecord = new ArrayList<>();
+    CsvUtil.addTermRelations(
+        csvRecord,
+        List.of(
+            new TermRelation()
+                .withRelationType("relatedTo")
+                .withTerm(new EntityReference().withFullyQualifiedName("Glossary.Alpha"))));
+    assertEquals(List.of("Glossary.Alpha"), csvRecord);
+  }
+
+  @Test
+  void testAddTermRelationsTreatsNullRelationTypeAsRelatedTo() {
+    List<String> csvRecord = new ArrayList<>();
+    CsvUtil.addTermRelations(
+        csvRecord,
+        List.of(
+            new TermRelation()
+                .withTerm(new EntityReference().withFullyQualifiedName("Glossary.Alpha"))));
+    assertEquals(List.of("Glossary.Alpha"), csvRecord);
+  }
+
+  @Test
+  void testAddTermRelationsEmitsPrefixForNonDefaultType() {
+    List<String> csvRecord = new ArrayList<>();
+    CsvUtil.addTermRelations(
+        csvRecord,
+        List.of(
+            new TermRelation()
+                .withRelationType("synonym")
+                .withTerm(new EntityReference().withFullyQualifiedName("Glossary.Alpha"))));
+    assertEquals(List.of("synonym:Glossary.Alpha"), csvRecord);
+  }
+
+  @Test
+  void testAddTermRelationsSortsAndMixesTypes() {
+    List<String> csvRecord = new ArrayList<>();
+    CsvUtil.addTermRelations(
+        csvRecord,
+        List.of(
+            new TermRelation()
+                .withRelationType("synonym")
+                .withTerm(new EntityReference().withFullyQualifiedName("Glossary.Zeta")),
+            new TermRelation()
+                .withRelationType("relatedTo")
+                .withTerm(new EntityReference().withFullyQualifiedName("Glossary.Alpha")),
+            new TermRelation()
+                .withRelationType("broader")
+                .withTerm(new EntityReference().withFullyQualifiedName("Glossary.Beta"))));
+    assertEquals(List.of("Glossary.Alpha;broader:Glossary.Beta;synonym:Glossary.Zeta"), csvRecord);
   }
 
   public static void assertCsv(String expectedCsv, String actualCsv) {

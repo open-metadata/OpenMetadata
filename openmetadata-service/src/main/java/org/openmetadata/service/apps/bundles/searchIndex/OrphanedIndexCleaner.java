@@ -25,7 +25,7 @@ import org.openmetadata.service.search.SearchClient;
  * considered orphaned if:
  *
  * <ul>
- *   <li>It contains "_rebuild_" in its name (created during recreateIndex=true)
+ *   <li>It contains "_rebuild_" in its name (created during staged reindexing)
  *   <li>It has ZERO aliases pointing to it (not serving any traffic)
  * </ul>
  *

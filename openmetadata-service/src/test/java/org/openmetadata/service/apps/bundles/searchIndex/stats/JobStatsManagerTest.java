@@ -48,6 +48,10 @@ class JobStatsManagerTest {
             org.mockito.ArgumentMatchers.eq(0L),
             org.mockito.ArgumentMatchers.eq(0L),
             org.mockito.ArgumentMatchers.eq(0L),
+            org.mockito.ArgumentMatchers.eq(0L),
+            org.mockito.ArgumentMatchers.eq(0L),
+            org.mockito.ArgumentMatchers.eq(0L),
+            org.mockito.ArgumentMatchers.eq(0L),
             org.mockito.ArgumentMatchers.eq(0),
             org.mockito.ArgumentMatchers.eq(0),
             org.mockito.ArgumentMatchers.anyLong());
@@ -66,6 +70,10 @@ class JobStatsManagerTest {
             org.mockito.ArgumentMatchers.eq(0L),
             org.mockito.ArgumentMatchers.eq(0L),
             org.mockito.ArgumentMatchers.eq(0L),
+            org.mockito.ArgumentMatchers.eq(0L),
+            org.mockito.ArgumentMatchers.eq(0L),
+            org.mockito.ArgumentMatchers.eq(0L),
+            org.mockito.ArgumentMatchers.eq(0L),
             org.mockito.ArgumentMatchers.eq(0),
             org.mockito.ArgumentMatchers.eq(0),
             org.mockito.ArgumentMatchers.anyLong());
@@ -78,13 +86,15 @@ class JobStatsManagerTest {
         mock(CollectionDAO.SearchIndexServerStatsDAO.class);
     when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(statsDAO);
 
+    // Counts (9), then 4 timing fields (readerTimeMs/processTimeMs/sinkTimeMs/vectorTimeMs),
+    // then 2 partition fields. Same shape as the DAO record after the timing additions.
     CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats aggregated =
         new CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats(
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 10, 11);
     List<CollectionDAO.SearchIndexServerStatsDAO.EntityStats> entityStats =
         List.of(
             new CollectionDAO.SearchIndexServerStatsDAO.EntityStats(
-                "table", 1, 2, 3, 4, 5, 6, 7, 8, 9));
+                "table", 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0));
     when(statsDAO.getAggregatedStats("job")).thenReturn(aggregated);
     when(statsDAO.getStatsByEntityType("job")).thenReturn(entityStats);
 

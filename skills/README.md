@@ -56,6 +56,7 @@ The `openmetadata-workflow` meta-skill is loaded at session start and directs Cl
 | [Systematic Debugging](systematic-debugging/SKILL.md) | `/systematic-debugging` | 4-phase root cause analysis |
 | [Code Review](code-review/SKILL.md) | `/code-review` | Two-stage review: spec compliance then code quality |
 | [Verification](verification/SKILL.md) | `/verification` | Evidence-based completion — show test output, not claims |
+| [PR Checklist](pr-checklist/SKILL.md) | `/pr-checklist` | Walk the PR template (issue link, design, tests + coverage, UI recording, manual tests) and draft the PR body |
 
 ### Connector Skills
 
