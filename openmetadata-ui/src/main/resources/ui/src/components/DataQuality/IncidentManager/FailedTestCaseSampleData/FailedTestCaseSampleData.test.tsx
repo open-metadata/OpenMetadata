@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import React, { Fragment } from 'react';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
 import { getTestCaseFailedSampleData } from '../../../../rest/testAPI';
@@ -19,54 +20,69 @@ import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterC
 import FailedTestCaseSampleData from './FailedTestCaseSampleData.component';
 
 jest.mock('@openmetadata/ui-core-components', () => {
-  const Table = Object.assign(
-    jest
-      .fn()
-      .mockImplementation(({ children }: { children: React.ReactNode }) => (
-        <table data-testid="sample-data-table">{children}</table>
-      )),
+  type Col = { id: string; label?: React.ReactNode };
+  type Row = Record<string, unknown> & { __rowKey: number | string };
+
+  const TableMock = Object.assign(
+    ({ children, ...rest }: React.PropsWithChildren<unknown>) => (
+      <table {...rest}>{children}</table>
+    ),
     {
-      Header: jest
-        .fn()
-        .mockImplementation(
-          ({
-            children,
-            columns,
-          }: {
-            children: (col: unknown) => React.ReactNode;
-            columns?: unknown[];
-          }) => <thead>{columns?.map(children)}</thead>
-        ),
-      Head: jest
-        .fn()
-        .mockImplementation(({ label }: { label: string }) => <th>{label}</th>),
-      Body: jest
-        .fn()
-        .mockImplementation(
-          ({
-            children,
-            items,
-          }: {
-            children: (item: unknown) => React.ReactNode;
-            items?: unknown[];
-          }) => <tbody>{items?.map(children)}</tbody>
-        ),
-      Row: jest
-        .fn()
-        .mockImplementation(({ children }: { children: React.ReactNode }) => (
-          <tr>{children}</tr>
-        )),
-      Cell: jest
-        .fn()
-        .mockImplementation(({ children }: { children: React.ReactNode }) => (
-          <td>{children}</td>
-        )),
+      Header: ({
+        columns,
+        children,
+      }: {
+        columns?: Col[];
+        children: (col: Col) => React.ReactNode;
+      }) => (
+        <thead>
+          <tr>
+            {columns?.map((col) => (
+              <Fragment key={col.id}>{children(col)}</Fragment>
+            ))}
+          </tr>
+        </thead>
+      ),
+      Head: ({ label, id }: { label?: React.ReactNode; id?: string }) => (
+        <th data-testid={`head-${id}`}>{label}</th>
+      ),
+      Body: ({
+        items,
+        children,
+      }: {
+        items?: Row[];
+        children: (item: Row) => React.ReactNode;
+      }) => (
+        <tbody>
+          {items?.map((item) => (
+            <Fragment key={String(item.__rowKey)}>{children(item)}</Fragment>
+          ))}
+        </tbody>
+      ),
+      Row: ({
+        columns,
+        children,
+        id,
+      }: {
+        columns?: Col[];
+        children: (col: Col) => React.ReactNode;
+        id?: React.Key;
+      }) => (
+        <tr data-row-id={id}>
+          {columns?.map((col) => (
+            <Fragment key={col.id}>{children(col)}</Fragment>
+          ))}
+        </tr>
+      ),
+      Cell: ({ children }: React.PropsWithChildren<unknown>) => (
+        <td>{children}</td>
+      ),
     }
   );
 
   return {
-    Table,
-    Typography: ({ children }: { children: React.ReactNode }) => (
+    Table: TableMock,
+    Typography: ({ children }: React.PropsWithChildren<unknown>) => (
       <span>{children}</span>
     ),
   };
@@ -163,15 +179,13 @@ describe('FailedTestCaseSampleData - observabilityRouterClassBase migration', ()
       '../../../../utils/RouterUtils'
     );
 
-    await act(async () => {
-      render(<FailedTestCaseSampleData testCaseData={mockTestCase} />);
-    });
+    render(<FailedTestCaseSampleData testCaseData={mockTestCase} />);
 
     const exploreBtn = await screen.findByTestId('explore-with-query');
     const link = exploreBtn.closest('a');
 
     expect(link).not.toBeNull();
-    expect(link?.getAttribute('data-to')).toBe(
+    expect(link?.dataset.to).toBe(
       observabilityRouterClassBase.getTestCaseDetailPagePath(
         FQN,
         TestCasePageTabs.SQL_QUERY

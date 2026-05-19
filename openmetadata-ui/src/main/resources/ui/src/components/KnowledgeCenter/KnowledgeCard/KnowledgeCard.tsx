@@ -56,7 +56,6 @@ import { getFrontEndFormat } from '../../../utils/FeedUtils';
 import { t } from '../../../utils/i18next/LocalUtil';
 import {
   addToKnowledgeCenterRecentViewed,
-  getKnowledgePagePath,
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -67,6 +66,7 @@ import {
 } from '../QuickLinkFormModal/QuickLinkFormModal';
 
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import './knowledge-card.less';
 
 export interface KnowledgeCardProps {
@@ -160,7 +160,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
   const isFollowing = Boolean(followers?.some(({ id }) => id === USERId));
   const path = isQuickLink
     ? (knowledgePage.page as QuickLink).url
-    : getKnowledgePagePath(knowledgePage.fullyQualifiedName);
+    : contextCenterClassBase.getArticlePath(knowledgePage.fullyQualifiedName);
 
   const handleVoteChange = async (type: QueryVoteType) => {
     let updatedVoteType;
@@ -316,7 +316,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           target={isQuickLink ? '_blank' : '_self'}
           to={path}
           onClick={handleQuickLinkRecentView}>
-          <Space direction="vertical" size={8}>
+          <Space className="tw:w-full" direction="vertical" size={8}>
             <div className="flex items-center gap-2">
               {isQuickLink ? (
                 <LinkIcon

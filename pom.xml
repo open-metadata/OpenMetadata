@@ -94,7 +94,7 @@
     <jdbi3.version>3.37.1</jdbi3.version>
     <commons-cli.version>1.9.0</commons-cli.version>
     <commons-io.version>2.17.0</commons-io.version>
-    <redshift-jdbc.version>2.1.0.30</redshift-jdbc.version>
+    <redshift-jdbc.version>2.2.2</redshift-jdbc.version>
     <gson.version>2.13.1</gson.version>
     <mysql.connector.version>9.3.0</mysql.connector.version>
     <postgres.connector.version>42.7.11</postgres.connector.version>
@@ -115,6 +115,14 @@
     <handlebars.version>4.5.0</handlebars.version>
     <fernet.version>1.5.0</fernet.version>
     <antlr.version>4.13.2</antlr.version>
+    <!-- Apache Jena RDF client libraries. Pinned project-wide so
+         openmetadata-service and openmetadata-integration-tests stay on the
+         same classpath; the previous split (4.10.0 vs 5.0.0) forced
+         JenaFusekiStorage to abstract over API differences between Jena 4 and
+         Jena 5 with a CompletableFuture wrapper around every RDFConnection
+         call. Jena 6 requires Java 21 — already our project minimum, so no
+         JDK bump needed. -->
+    <jena.version>5.6.0</jena.version>
 
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
     <sonar.moduleKey>${project.artifactId}</sonar.moduleKey>
@@ -765,7 +773,7 @@
         <enabled>false</enabled>
       </snapshots>
       <id>central</id>
-      <url>https://repo1.maven.org/maven2/</url>
+      <url>https://repo.maven.apache.org/maven2/</url>
     </repository>
     <repository>
       <releases>

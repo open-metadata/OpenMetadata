@@ -1899,10 +1899,6 @@ export enum LineageLayer {
  */
 export interface LogStorageConfiguration {
     /**
-     * Size of async buffer in MB for batching log writes
-     */
-    asyncBufferSizeMB?: number;
-    /**
      * AWS credentials configuration
      */
     awsConfig?: AWSCredentials;
@@ -1910,6 +1906,14 @@ export interface LogStorageConfiguration {
      * S3 bucket name for storing logs (required for S3 type)
      */
     bucketName?: string;
+    /**
+     * How often the sweeper wakes up to check for abandoned streams
+     */
+    cleanupIntervalMinutes?: number;
+    /**
+     * Triggers an out-of-band flush when pendingFlush exceeds this size
+     */
+    earlyFlushWatermarkBytes?: number;
     /**
      * Enable it for pipelines deployed in the server
      */
@@ -1931,6 +1935,14 @@ export interface LogStorageConfiguration {
      */
     maxConcurrentStreams?: number;
     /**
+     * Periodic cadence for flushing pendingFlush to partial.txt
+     */
+    partialFlushIntervalMinutes?: number;
+    /**
+     * Emit an alerting metric after this many consecutive failed flushes for a stream
+     */
+    pendingFlushAlertAfterFailures?: number;
+    /**
      * S3 key prefix for organizing logs
      */
     prefix?: string;
@@ -1943,7 +1955,7 @@ export interface LogStorageConfiguration {
      */
     storageClass?: StorageClass;
     /**
-     * Timeout in minutes for idle log streams before automatic cleanup
+     * Idle threshold in minutes before the abandoned-run sweeper finalizes a stream
      */
     streamTimeoutMinutes?: number;
     /**

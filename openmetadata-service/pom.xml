@@ -972,12 +972,31 @@
       <version>2.1.0</version>
     </dependency>
 
-    <!-- Apache Jena RDF Dependencies -->
+    <!-- Apache Jena RDF Dependencies (client side only). We talk to a REMOTE
+         Fuseki server, so we don't ship the embedded TDB1/TDB2 stores. Pulling
+         them in via `apache-jena-libs` causes static-init failures on Jena 5/6
+         (jena-tdb1's InitTDB → ReorderFixed → RDF.Alt fires while
+         org.apache.jena.vocabulary.RDF is still being class-initialized; the
+         result is an ExceptionInInitializerError on the first touch of any
+         Jena class). Listing only the jars we actually use sidesteps that and
+         keeps the wire surface explicit. Pinned to a single version across
+         the project: previously openmetadata-service was on 4.10.0 and
+         openmetadata-integration-tests on 5.0.0, leaving two classpaths that
+         disagreed on RDFConnection/QueryExecution API shape. -->
     <dependency>
       <groupId>org.apache.jena</groupId>
-      <artifactId>apache-jena-libs</artifactId>
-      <version>4.10.0</version>
-      <type>pom</type>
+      <artifactId>jena-core</artifactId>
+      <version>${jena.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.jena</groupId>
+      <artifactId>jena-arq</artifactId>
+      <version>${jena.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.jena</groupId>
+      <artifactId>jena-rdfconnection</artifactId>
+      <version>${jena.version}</version>
     </dependency>
     
     <!-- Apache Calcite for SQL parsing -->
@@ -992,10 +1011,17 @@
         </exclusion>
       </exclusions>
     </dependency>
+    <!-- titanium-json-ld must match what Jena's JSON-LD writer expects. Jena
+         5.6.0 calls into the new com.apicatalog.rdf.api.RdfConsumer API
+         introduced in titanium 1.5.0; pinning 1.4.0 here let the integration
+         test `GlossaryOntologyExportIT.testExportGlossaryAsJsonLd` blow up
+         with NoClassDefFoundError com/apicatalog/rdf/api/RdfConsumerException
+         on every Jena JSON-LD export. Jena 5.6.0's parent pom uses 1.7.0; we
+         match that. -->
     <dependency>
       <groupId>com.apicatalog</groupId>
       <artifactId>titanium-json-ld</artifactId>
-      <version>1.4.0</version>
+      <version>1.7.0</version>
     </dependency>
     <dependency>
       <groupId>org.glassfish</groupId>
