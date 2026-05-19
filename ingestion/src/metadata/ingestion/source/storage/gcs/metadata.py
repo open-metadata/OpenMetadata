@@ -303,7 +303,8 @@ class GcsSource(StorageServiceSource):
         client = self.gcs_clients.storage_client.clients[bucket_response.project_id]
         bucket_client = client.bucket(bucket_name)
         blob = GCSBlobAdapter(bucket_client, archive_path)
-        with open_archive_reader(blob, metadata_entry.structureFormat) as reader:
+        structure_format = metadata_entry.structureFormat or ""
+        with open_archive_reader(blob, structure_format) as reader:
             for entry, columns, entry_format in iter_archive_entries_with_schema(reader):
                 yield from self._generate_inner_file_container(
                     entry=entry,

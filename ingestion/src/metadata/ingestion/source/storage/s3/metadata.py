@@ -338,7 +338,8 @@ class S3Source(StorageServiceSource):
         archive_ref = EntityReference(id=archive_entity.id.root, type="container")
 
         blob = S3BlobAdapter(self.s3_client, bucket_name, archive_path)
-        with open_archive_reader(blob, metadata_entry.structureFormat) as reader:
+        structure_format = metadata_entry.structureFormat or ""
+        with open_archive_reader(blob, structure_format) as reader:
             for entry, columns, entry_format in iter_archive_entries_with_schema(reader):
                 yield from self._generate_inner_file_container(
                     entry=entry,
