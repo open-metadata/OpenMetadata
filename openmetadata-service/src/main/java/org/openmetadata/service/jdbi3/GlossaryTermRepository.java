@@ -644,7 +644,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       String canonicalType = computeCanonicalRelationType(entity.getId(), toId, relationType);
       String json = String.format("{\"relationType\":\"%s\"}", canonicalType);
       addRelationship(
-          entity.getId(), toId, GLOSSARY_TERM, GLOSSARY_TERM, Relationship.RELATED_TO, json, true);
+          entity.getId(),
+          toId,
+          GLOSSARY_TERM,
+          GLOSSARY_TERM,
+          Relationship.RELATED_TO,
+          canonicalType,
+          json,
+          true);
       RdfUpdater.addGlossaryTermRelation(entity.getId(), toId, relationType);
     }
   }
@@ -676,7 +683,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     String canonicalType = computeCanonicalRelationType(id, termRef.getId(), relationType);
     String json = String.format("{\"relationType\":\"%s\"}", canonicalType);
     addRelationship(
-        id, termRef.getId(), GLOSSARY_TERM, GLOSSARY_TERM, Relationship.RELATED_TO, json, true);
+        id,
+        termRef.getId(),
+        GLOSSARY_TERM,
+        GLOSSARY_TERM,
+        Relationship.RELATED_TO,
+        canonicalType,
+        json,
+        true);
     RdfUpdater.addGlossaryTermRelation(id, termRef.getId(), relationType);
     RequestEntityCache.invalidate(entityType, id, null);
     return get(null, id, getFields("relatedTerms"), Include.NON_DELETED, false);
@@ -1072,9 +1086,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     List<BulkResponse> failures = new ArrayList<>();
     List<BulkResponse> success = new ArrayList<>();
 
-    if (dryRun
-        && (CommonUtil.nullOrEmpty(glossary.getTags())
-            || CommonUtil.nullOrEmpty(request.getAssets()))) {
+    if (CommonUtil.nullOrEmpty(request.getAssets())) {
       // Nothing to Validate
       return result
           .withStatus(ApiStatus.SUCCESS)
@@ -1364,11 +1376,19 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   public BulkOperationResult bulkRemoveGlossaryToAssets(
       UUID glossaryTermId, AddGlossaryToAssetsRequest request) {
+    boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
+
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
 
     BulkOperationResult result =
-        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(dryRun);
     List<BulkResponse> success = new ArrayList<>();
+
+    if (nullOrEmpty(request.getAssets())) {
+      // Nothing to Validate
+      return result.withSuccessRequest(
+          List.of(new BulkResponse().withMessage("Nothing to Validate.")));
+    }
 
     // Validation for entityReferences
     EntityUtil.populateEntityReferences(request.getAssets());
@@ -1380,7 +1400,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // Handle column assets specially - columns don't have their own repository
       if (Entity.TABLE_COLUMN.equals(ref.getType())) {
         try {
-          removeTagFromColumn(ref, term, success, result);
+          removeTagFromColumn(ref, term, dryRun, success, result);
         } catch (Exception ex) {
           LOG.error("Error removing glossary tag from column: {}", ref.getFullyQualifiedName(), ex);
           result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
@@ -1392,15 +1412,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       EntityInterface asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("id"));
 
-      daoCollection
-          .tagUsageDAO()
-          .deleteTagsByTagAndTargetEntity(
-              term.getFullyQualifiedName(), asset.getFullyQualifiedName());
+      // Skip the destructive tag_usage delete + ES update on dryRun so the preview
+      // surfaces the same lookup errors a real call would without mutating state.
+      if (!dryRun) {
+        daoCollection
+            .tagUsageDAO()
+            .deleteTagsByTagAndTargetEntity(
+                term.getFullyQualifiedName(), asset.getFullyQualifiedName());
+      }
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
-      // Update ES
-      searchRepository.updateEntity(ref);
+      if (!dryRun) {
+        // Update ES
+        searchRepository.updateEntity(ref);
+      }
     }
 
     return result.withSuccessRequest(success);
@@ -1412,6 +1438,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private void removeTagFromColumn(
       EntityReference columnRef,
       GlossaryTerm term,
+      boolean dryRun,
       List<BulkResponse> success,
       BulkOperationResult result) {
     String columnFqn = columnRef.getFullyQualifiedName();
@@ -1422,19 +1449,23 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Extract table FQN from column FQN (format: service.database.schema.table.column[.nested...])
     String tableFqn = FullyQualifiedName.getTableFQN(columnFqn);
 
-    // Get the table
+    // Get the table — also validates that the column's parent table exists
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
     Table table = tableRepository.getByName(null, tableFqn, tableRepository.getFields("columns"));
 
-    // Remove the tag from the column
-    daoCollection
-        .tagUsageDAO()
-        .deleteTagsByTagAndTargetEntity(term.getFullyQualifiedName(), columnFqn);
+    if (!dryRun) {
+      // Remove the tag from the column
+      daoCollection
+          .tagUsageDAO()
+          .deleteTagsByTagAndTargetEntity(term.getFullyQualifiedName(), columnFqn);
+    }
     success.add(new BulkResponse().withRequest(columnRef));
     result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
-    // Update the parent table's search index
-    searchRepository.updateEntity(table.getEntityReference());
+    if (!dryRun) {
+      // Update the parent table's search index
+      searchRepository.updateEntity(table.getEntityReference());
+    }
   }
 
   protected EntityReference getGlossary(GlossaryTerm term) {
@@ -2134,6 +2165,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             GLOSSARY_TERM,
             GLOSSARY_TERM,
             Relationship.RELATED_TO,
+            canonicalType,
             json,
             true);
         RdfUpdater.addGlossaryTermRelation(origTerm.getId(), toId, relationType);

@@ -12,6 +12,8 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URLConnection;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
@@ -290,12 +292,62 @@ public class AttachmentResource {
   @GET
   @Path("/fqn/{fqn}/{assetType}")
   public Response listAttachmentsByFqn(
-      @PathParam("fqn") String fqn, @PathParam("assetType") AssetType assetType) {
+      @PathParam("fqn") String fqn,
+      @PathParam("assetType") AssetType assetType,
+      @QueryParam("sortBy") String sortBy,
+      @QueryParam("sortOrder") String sortOrder,
+      @QueryParam("limit") Integer limit,
+      @QueryParam("offset") @DefaultValue("0") int offset) {
     List<Asset> assets = assetRepository.getByFQN(fqn, assetType);
     if (assets == null) {
       return Response.status(Response.Status.NOT_FOUND).build();
     }
-    return Response.ok(assets).build();
+    List<Asset> result = applySortAndPaginate(assets, sortBy, sortOrder, limit, offset);
+    return Response.ok(result).build();
+  }
+
+  private static List<Asset> applySortAndPaginate(
+      List<Asset> assets, String sortBy, String sortOrder, Integer limit, int offset) {
+    if (offset < 0) {
+      throw new IllegalArgumentException("'offset' must be >= 0");
+    }
+    boolean hasSort = sortBy != null && !sortBy.isEmpty();
+    boolean hasPagination = offset > 0 || limit != null;
+    if (!hasSort && sortOrder != null && !sortOrder.isEmpty()) {
+      throw new IllegalArgumentException("'sortOrder' is only valid when 'sortBy' is provided.");
+    }
+    if (!hasSort && !hasPagination) {
+      return assets;
+    }
+    List<Asset> ordered = new ArrayList<>(assets);
+    if (hasSort) {
+      ordered.sort(buildComparator(sortBy, sortOrder));
+    } else {
+      // Stable default ordering so paged results are deterministic across requests.
+      ordered.sort(Comparator.comparing(Asset::getId, Comparator.nullsLast(String::compareTo)));
+    }
+    int from = Math.min(offset, ordered.size());
+    int to = limit == null ? ordered.size() : Math.min(from + Math.max(limit, 0), ordered.size());
+    return ordered.subList(from, to);
+  }
+
+  private static Comparator<Asset> buildComparator(String sortBy, String sortOrder) {
+    Comparator<Asset> comparator =
+        switch (sortBy) {
+          case "name" -> Comparator.comparing(
+              Asset::getFileName, Comparator.nullsLast(String::compareToIgnoreCase));
+          case "createdAt", "updatedAt" -> Comparator.comparing(
+              Asset::getUpdatedAt, Comparator.nullsLast(Long::compareTo));
+          default -> throw new IllegalArgumentException(
+              "Unsupported sortBy value '" + sortBy + "'. Allowed: name, createdAt, updatedAt.");
+        };
+    String direction = sortOrder == null || sortOrder.isEmpty() ? "desc" : sortOrder;
+    return switch (direction) {
+      case "asc" -> comparator;
+      case "desc" -> comparator.reversed();
+      default -> throw new IllegalArgumentException(
+          "Unsupported sortOrder value '" + sortOrder + "'. Allowed: asc, desc.");
+    };
   }
 
   private Asset buildAsset(CreateAsset createAsset, String url, String updatedBy) {

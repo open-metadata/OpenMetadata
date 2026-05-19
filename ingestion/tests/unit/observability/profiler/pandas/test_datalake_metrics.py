@@ -103,7 +103,7 @@ class DatalakeMetricsTest(TestCase):
         return_value=FakeConnection(),
     )
     @mock.patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=FakeConnection(),
     )
     def setUpClass(cls, mock_get_connection, mock_sample_get_connection):

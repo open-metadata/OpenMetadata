@@ -1,7 +1,10 @@
 package org.openmetadata.service.migration.postgres.v1129;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
+import static org.openmetadata.service.migration.utils.v1129.MigrationUtil.addTriggerOperationToDefaultBotPolicies;
+import static org.openmetadata.service.migration.utils.v1129.MigrationUtil.addTriggerRuleToDataStewardPolicy;
 
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
@@ -15,7 +18,10 @@ public class Migration extends MigrationProcessImpl {
   }
 
   @Override
+  @SneakyThrows
   public void runDataMigration() {
+    addTriggerOperationToDefaultBotPolicies(collectionDAO);
+    addTriggerRuleToDataStewardPolicy(collectionDAO);
     try {
       MigrationUtil migrationUtil = new MigrationUtil(handle, POSTGRES);
       migrationUtil.migrateTaskDomains();
