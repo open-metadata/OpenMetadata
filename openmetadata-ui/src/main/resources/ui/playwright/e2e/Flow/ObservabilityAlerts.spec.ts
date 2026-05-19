@@ -148,6 +148,7 @@ test.beforeAll(async ({ browser }) => {
     tableName1: table1.entityResponseData.fullyQualifiedName ?? '',
     tableName2: table2.entityResponseData.fullyQualifiedName ?? '',
     testSuiteFQN: table1.testSuiteResponseData.fullyQualifiedName ?? '',
+    testSuiteName: table1.testSuiteResponseData.name ?? '',
     testCaseName: table1.testCasesResponseData[0]?.fullyQualifiedName ?? '',
     ingestionPipelineName:
       pipeline.ingestionPipelineResponseData.fullyQualifiedName ?? '',
