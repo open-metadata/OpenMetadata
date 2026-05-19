@@ -443,6 +443,7 @@
     "create-entity": "إنشاء {{entity}}",
     "create-lowercase": "إنشاء",
     "create-new-bundle-suite": "إنشاء مجموعة حزمة جديدة",
+    "create-new-folder": "إنشاء مجلد جديد",
     "create-new-test-suite": "إنشاء مجموعة اختبار جديدة",
     "create-new-workflow": "إنشاء سير عمل جديد",
     "create-widget": "إنشاء أداة",

@@ -19,6 +19,7 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { FolderPlus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { Folder } from 'generated/entity/data/folder';
 import { FC, useState } from 'react';
@@ -74,14 +75,23 @@ const CreateFolderModal: FC<CreateFolderModalProps> = ({
       isOpen={isOpen}
       onOpenChange={(open) => !open && !isCreating && handleClose()}>
       <Modal>
-        <Dialog
-          showCloseButton
-          title={t('label.create-entity', { entity: t('label.folder') })}
-          width={440}
-          onClose={handleClose}>
+        <Dialog showCloseButton width={440} onClose={handleClose}>
           <Dialog.Content className="tw:flex tw:flex-col tw:gap-4 tw:pb-6">
+            <div className="tw:bg-brand-primary tw:p-2 tw:mb-2 tw:w-max tw:leading-0 tw:rounded-xl">
+              <FolderPlus
+                className="tw:text-brand-700"
+                height={32}
+                width={32}
+              />
+            </div>
+            <Typography className="tw:mb-3" size="text-md" weight="semibold">
+              {t('label.create-new-folder')}
+            </Typography>
             <div className="tw:flex tw:flex-col tw:gap-1.5">
-              <Typography size="text-sm" weight="medium">
+              <Typography
+                className="tw:text-gry-700"
+                size="text-sm"
+                weight="medium">
                 {t('label.entity-name', { entity: t('label.folder') })}
               </Typography>
               <Input
@@ -95,7 +105,7 @@ const CreateFolderModal: FC<CreateFolderModalProps> = ({
               />
             </div>
 
-            <div className="tw:flex tw:justify-end tw:gap-3">
+            <div className="tw:flex tw:justify-end tw:gap-3 tw:mt-6">
               <Button
                 color="secondary"
                 isDisabled={isCreating}
@@ -110,7 +120,7 @@ const CreateFolderModal: FC<CreateFolderModalProps> = ({
                 isLoading={isCreating}
                 size="sm"
                 onPress={handleCreate}>
-                {t('label.create-entity', { entity: t('label.folder') })}
+                {t('label.save')}
               </Button>
             </div>
           </Dialog.Content>

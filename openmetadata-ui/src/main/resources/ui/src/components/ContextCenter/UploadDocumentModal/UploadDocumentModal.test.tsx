@@ -296,7 +296,9 @@ describe('UploadDocumentModal', () => {
   });
 
   it('shows the failed state in the progress bar on upload error', async () => {
-    (uploadDriveFile as jest.Mock).mockRejectedValue(new Error('upload failed'));
+    (uploadDriveFile as jest.Mock).mockRejectedValue(
+      new Error('upload failed')
+    );
 
     render(<UploadDocumentModal {...defaultProps} />);
 
@@ -312,7 +314,9 @@ describe('UploadDocumentModal', () => {
   });
 
   it('shows retry button for failed uploads', async () => {
-    (uploadDriveFile as jest.Mock).mockRejectedValue(new Error('upload failed'));
+    (uploadDriveFile as jest.Mock).mockRejectedValue(
+      new Error('upload failed')
+    );
 
     render(<UploadDocumentModal {...defaultProps} />);
 

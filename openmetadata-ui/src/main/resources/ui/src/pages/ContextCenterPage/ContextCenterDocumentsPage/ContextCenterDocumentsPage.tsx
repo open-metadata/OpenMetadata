@@ -22,8 +22,10 @@ import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import '../../../components/common/ResizablePanels/resizable-panels.less';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import DocumentsView from '../../../components/ContextCenter/DocumentsView/DocumentsView.component';
-import { DocFile } from '../../../components/ContextCenter/DocumentsView/DocumentsView.interface';
-import MoveToFolderModal from '../../../components/ContextCenter/MoveToFolderModal/MoveToFolderModal.component';
+import {
+  DocFile,
+  FolderOption,
+} from '../../../components/ContextCenter/DocumentsView/DocumentsView.interface';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -53,7 +55,6 @@ const ContextCenterDocumentsPage: FC = () => {
   const [documentSearchQuery, setDocumentSearchQuery] = useState('');
   const [isDeletingFile, setIsDeletingFile] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<DocFile>();
-  const [fileToMove, setFileToMove] = useState<DocFile>();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [permissions, setPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
@@ -75,6 +76,15 @@ const ContextCenterDocumentsPage: FC = () => {
         ? folders.find((f) => f.id === selectedFolderId)?.fullyQualifiedName
         : undefined,
     [selectedFolderId, folders]
+  );
+
+  const folderOptions = useMemo<FolderOption[]>(
+    () =>
+      folders.map((f) => ({
+        id: f.id,
+        name: f.displayName ?? f.name,
+      })),
+    [folders]
   );
 
   const documents = useMemo(() => {
@@ -162,10 +172,6 @@ const ContextCenterDocumentsPage: FC = () => {
     }
   }, [fileToDelete, t]);
 
-  const handleMoveFile = useCallback((file: DocFile) => {
-    setFileToMove(file);
-  }, []);
-
   const handleFileMoved = useCallback(
     (file: DocFile, targetFolderId: string) => {
       setAllDocuments((prev) =>
@@ -175,7 +181,6 @@ const ContextCenterDocumentsPage: FC = () => {
             : d
         )
       );
-      setFileToMove(undefined);
     },
     []
   );
@@ -238,10 +243,11 @@ const ContextCenterDocumentsPage: FC = () => {
           <DocumentsView
             canDelete={hasDeletePermission}
             data={documents}
+            folders={folderOptions}
             isLoading={isDocumentsLoading}
             onDeleteFile={handleDeleteFile}
             onDownload={handleAssetDownload}
-            onMoveFile={handleMoveFile}
+            onFileMoved={handleFileMoved}
           />
         </ReflexElement>
       </ReflexContainer>
@@ -268,16 +274,6 @@ const ContextCenterDocumentsPage: FC = () => {
           open={Boolean(fileToDelete)}
           onCancel={handleCancelDelete}
           onDelete={handleConfirmDelete}
-        />
-      )}
-
-      {fileToMove && (
-        <MoveToFolderModal
-          file={fileToMove}
-          folders={folders}
-          isOpen={Boolean(fileToMove)}
-          onClose={() => setFileToMove(undefined)}
-          onMoved={handleFileMoved}
         />
       )}
     </div>

@@ -443,6 +443,7 @@
     "create-entity": "{{entity}}を作成",
     "create-lowercase": "作成",
     "create-new-bundle-suite": "新しいBundle Suiteを作成",
+    "create-new-folder": "新しいフォルダを作成",
     "create-new-test-suite": "新しいテストスイートを作成",
     "create-new-workflow": "新規ワークフローを作成",
     "create-widget": "ウィジェットを作成",

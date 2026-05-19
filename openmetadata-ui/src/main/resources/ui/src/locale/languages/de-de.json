@@ -443,6 +443,7 @@
     "create-entity": "{{entity}} erstellen",
     "create-lowercase": "erstellen",
     "create-new-bundle-suite": "Neue Bundle-Suite erstellen",
+    "create-new-folder": "Neuen Ordner erstellen",
     "create-new-test-suite": "Neuen Testsuite erstellen",
     "create-new-workflow": "Neuen Workflow erstellen",
     "create-widget": "Widget erstellen",

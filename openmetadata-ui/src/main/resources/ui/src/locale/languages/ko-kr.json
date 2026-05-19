@@ -443,6 +443,7 @@
     "create-entity": "{{entity}} 생성",
     "create-lowercase": "생성",
     "create-new-bundle-suite": "새 Bundle Suite 만들기",
+    "create-new-folder": "새 폴더 만들기",
     "create-new-test-suite": "새 테스트 스위트 생성",
     "create-new-workflow": "새 워크플로 만들기",
     "create-widget": "위젯 생성",

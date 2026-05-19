@@ -876,7 +876,7 @@ test.describe('Context Center', () => {
       await card.getByTestId('delete-quick-link-btn').click();
 
       const deleteRes = page.waitForResponse(
-        '/api/v1/contextCenter/pages/*?hardDelete=true&recursive=false'
+        /\/api\/v1\/contextCenter\/pages\/[^?]+\?hardDelete=true&recursive=false/
       );
       await page.getByTestId('confirm-button').click();
       const res = await deleteRes;
@@ -922,7 +922,7 @@ test.describe('Context Center', () => {
       await page.getByTestId('delete-btn').click();
 
       const apiDeleteRes = page.waitForResponse(
-        '/api/v1/contextCenter/pages/*?hardDelete=false&recursive=true'
+        /\/api\/v1\/contextCenter\/pages\/[^?]+\?hardDelete=false&recursive=true/
       );
       await page.getByTestId('confirm-button').click();
       await apiDeleteRes;
@@ -1009,7 +1009,9 @@ test.describe('Context Center', () => {
       await expect(modal.getByText('test-upload.txt').first()).toBeVisible();
 
       // Attach the file
-      const uploadRes = page.waitForResponse('/api/v1/contextCenter/drive/files/upload');
+      const uploadRes = page.waitForResponse(
+        '/api/v1/contextCenter/drive/files/upload'
+      );
       await modal.getByRole('button', { name: /attach/i }).click();
 
       // Progress bar / uploading state

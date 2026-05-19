@@ -20,31 +20,70 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Download01, Pin02, Share06, Trash01 } from '@untitledui/icons';
-import { FC } from 'react';
+import {
+  ChevronRight,
+  Download01,
+  Pin02,
+  Share06,
+  Trash01,
+} from '@untitledui/icons';
+import { AxiosError } from 'axios';
+import { FC, useState } from 'react';
+import {
+  Menu as AriaMenu,
+  MenuItem as AriaMenuItem,
+  Popover as AriaPopover,
+  SubmenuTrigger,
+} from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { FileTypeBadge } from 'utils/ContextCenterUtils';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { moveFileToFolder } from '../../../rest/assetAPI';
+import { FileTypeBadge } from '../../../utils/ContextCenterUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
-import { DocFile, DocumentsViewProps } from './DocumentsView.interface';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import {
+  DocFile,
+  DocumentsViewProps,
+  FolderOption,
+} from './DocumentsView.interface';
 
 interface FileActionsProps {
   canDelete?: boolean;
   file: DocFile;
+  folders?: FolderOption[];
   onShareFile?: (file: DocFile) => void;
   onDeleteFile?: (file: DocFile) => void;
-  onMoveFile?: (file: DocFile) => void;
+  onFileMoved?: (file: DocFile, targetFolderId: string) => void;
 }
 
 const FileActions: FC<FileActionsProps> = ({
   canDelete,
   file,
+  folders = [],
   onDeleteFile,
-  onMoveFile,
+  onFileMoved,
   onShareFile,
 }) => {
   const { t } = useTranslation();
+  const [isMoving, setIsMoving] = useState(false);
+
+  const availableFolders = folders.filter((f) => f.id !== file.folderId);
+
+  const handleMoveToFolder = async (folderId: string) => {
+    try {
+      setIsMoving(true);
+      await moveFileToFolder(file.driveFileId ?? file.id, folderId);
+      onFileMoved?.(file, folderId);
+      showSuccessToast(
+        t('message.entity-moved-successfully', { entity: t('label.document') })
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsMoving(false);
+    }
+  };
 
   return (
     <Dropdown.Root>
@@ -59,10 +98,6 @@ const FileActions: FC<FileActionsProps> = ({
           onAction={(key) => {
             if (key === 'share') {
               onShareFile?.(file);
-            } else if (key === 'move') {
-              onMoveFile?.(file);
-            } else if (key === 'delete') {
-              onDeleteFile?.(file);
             }
           }}>
           <Dropdown.Item
@@ -71,12 +106,68 @@ const FileActions: FC<FileActionsProps> = ({
             id="share"
             label={t('label.share-file')}
           />
-          <Dropdown.Item
-            data-testid="move-btn"
-            icon={Pin02}
-            id="move"
-            label={t('label.move-to-folder')}
-          />
+
+          <SubmenuTrigger>
+            <AriaMenuItem
+              className={(state) =>
+                `tw:group tw:block tw:cursor-pointer tw:px-1.5 tw:py-px tw:outline-hidden${
+                  state.isDisabled ? ' tw:cursor-not-allowed tw:opacity-50' : ''
+                }`
+              }
+              data-testid="move-btn"
+              isDisabled={isMoving || availableFolders.length === 0}>
+              {() => (
+                <div
+                  className={
+                    'tw:relative tw:flex tw:items-center tw:gap-2 ' +
+                    'tw:rounded-md tw:px-2.5 tw:py-2 tw:outline-focus-ring ' +
+                    'tw:transition tw:duration-100 tw:ease-linear ' +
+                    'tw:group-hover:bg-primary_hover'
+                  }>
+                  <Pin02
+                    aria-hidden="true"
+                    className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-fg-quaternary"
+                  />
+                  <span className="tw:grow tw:truncate tw:text-sm tw:font-semibold tw:text-secondary">
+                    {t('label.move-to-folder')}
+                  </span>
+                  <ChevronRight
+                    aria-hidden="true"
+                    className="tw:ml-auto tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                  />
+                </div>
+              )}
+            </AriaMenuItem>
+            <AriaPopover
+              className="tw:z-50 tw:w-52 tw:rounded-lg tw:bg-primary tw:py-1 tw:shadow-lg tw:ring-1 tw:ring-secondary_alt"
+              offset={4}
+              placement="right top">
+              <AriaMenu className="tw:max-h-48 tw:overflow-y-auto tw:outline-hidden tw:select-none">
+                {availableFolders.map((folder) => (
+                  <AriaMenuItem
+                    className={(state) =>
+                      `tw:group tw:block tw:cursor-pointer tw:px-1.5 tw:py-px tw:outline-hidden${
+                        state.isDisabled ? ' tw:cursor-not-allowed' : ''
+                      }`
+                    }
+                    data-testid={`move-to-folder-${folder.id}`}
+                    id={folder.id}
+                    key={folder.id}
+                    textValue={folder.name}
+                    onAction={() => handleMoveToFolder(folder.id)}>
+                    {() => (
+                      <div className="tw:flex tw:items-center tw:gap-2 tw:rounded-md tw:px-2.5 tw:py-2 tw:transition tw:duration-100 tw:ease-linear tw:group-hover:bg-primary_hover">
+                        <span className="tw:grow tw:truncate tw:text-sm tw:font-semibold tw:text-secondary">
+                          {folder.name}
+                        </span>
+                      </div>
+                    )}
+                  </AriaMenuItem>
+                ))}
+              </AriaMenu>
+            </AriaPopover>
+          </SubmenuTrigger>
+
           {canDelete && (
             <Dropdown.Item data-testid="delete-btn" id="delete">
               <div className="tw:flex tw:items-center tw:gap-2">
@@ -126,18 +217,20 @@ const FileRowSkeleton: FC = () => (
 interface FileRowProps {
   canDelete?: boolean;
   file: DocFile;
+  folders?: FolderOption[];
   onDownload?: (file: DocFile) => void;
   onShareFile?: (file: DocFile) => void;
   onDeleteFile?: (file: DocFile) => void;
-  onMoveFile?: (file: DocFile) => void;
+  onFileMoved?: (file: DocFile, targetFolderId: string) => void;
 }
 
 const FileRow: FC<FileRowProps> = ({
   canDelete,
   file,
+  folders,
   onDeleteFile,
   onDownload,
-  onMoveFile,
+  onFileMoved,
   onShareFile,
 }) => {
   const { t } = useTranslation();
@@ -198,8 +291,9 @@ const FileRow: FC<FileRowProps> = ({
         <FileActions
           canDelete={canDelete}
           file={file}
+          folders={folders}
           onDeleteFile={onDeleteFile}
-          onMoveFile={onMoveFile}
+          onFileMoved={onFileMoved}
           onShareFile={onShareFile}
         />
       </div>
@@ -213,10 +307,11 @@ const DocumentViewLoading = () =>
 const DocumentsView: FC<DocumentsViewProps> = ({
   canDelete,
   data,
+  folders,
   isLoading,
   onDeleteFile,
   onDownload,
-  onMoveFile,
+  onFileMoved,
   onShareFile,
 }) => {
   return (
@@ -232,10 +327,11 @@ const DocumentsView: FC<DocumentsViewProps> = ({
               <FileRow
                 canDelete={canDelete}
                 file={file}
+                folders={folders}
                 key={file.id}
                 onDeleteFile={onDeleteFile}
                 onDownload={onDownload}
-                onMoveFile={onMoveFile}
+                onFileMoved={onFileMoved}
                 onShareFile={onShareFile}
               />
             ))

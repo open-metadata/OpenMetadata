@@ -443,6 +443,7 @@
     "create-entity": "Создать объект «{{entity}}»",
     "create-lowercase": "создать",
     "create-new-bundle-suite": "Создать новый Bundle Suite",
+    "create-new-folder": "Создать новую папку",
     "create-new-test-suite": "Создать новый набор тестов",
     "create-new-workflow": "Создать новый рабочий процесс",
     "create-widget": "Создать виджет",

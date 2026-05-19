@@ -443,6 +443,7 @@
     "create-entity": "建立 {{entity}}",
     "create-lowercase": "建立",
     "create-new-bundle-suite": "建立新的 Bundle Suite",
+    "create-new-folder": "建立新資料夾",
     "create-new-test-suite": "建立新測試套件",
     "create-new-workflow": "建立新工作流程",
     "create-widget": "建立小工具",

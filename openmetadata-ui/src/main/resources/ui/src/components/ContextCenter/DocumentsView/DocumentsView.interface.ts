@@ -31,12 +31,18 @@ export interface DocFolder {
   files: DocFile[];
 }
 
+export interface FolderOption {
+  id: string;
+  name: string;
+}
+
 export interface DocumentsViewProps {
   canDelete?: boolean;
   data: DocFile[];
+  folders?: FolderOption[];
   isLoading: boolean;
   onDownload?: (file: DocFile) => void;
   onShareFile?: (file: DocFile) => void;
   onDeleteFile?: (file: DocFile) => void;
-  onMoveFile?: (file: DocFile) => void;
+  onFileMoved?: (file: DocFile, targetFolderId: string) => void;
 }

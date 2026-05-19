@@ -443,6 +443,7 @@
     "create-entity": "สร้าง {{entity}}",
     "create-lowercase": "สร้าง",
     "create-new-bundle-suite": "สร้าง Bundle Suite ใหม่",
+    "create-new-folder": "สร้างโฟลเดอร์ใหม่",
     "create-new-test-suite": "สร้างชุดทดสอบใหม่",
     "create-new-workflow": "สร้างเวิร์กโฟลว์ใหม่",
     "create-widget": "สร้างวิดเจ็ต",
