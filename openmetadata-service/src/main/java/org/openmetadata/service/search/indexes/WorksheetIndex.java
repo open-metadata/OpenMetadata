@@ -40,6 +40,17 @@ public record WorksheetIndex(Worksheet worksheet) implements ColumnIndex, DataAs
     return worksheet.getServiceType();
   }
 
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    // WorksheetRepository.clearFields nulls columns when "columns" is absent from the field set,
+    // so reindex must request it explicitly. Without it, columnNames / columnNamesFuzzy /
+    // columnDescriptionStatus / child column tags are dropped from worksheet_search_index and
+    // column-name search in Explore → Worksheets returns no results.
+    fields.add("columns");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     if (worksheet.getColumns() != null) {
       List<FlattenColumn> cols = new ArrayList<>();
