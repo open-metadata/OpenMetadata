@@ -232,15 +232,19 @@ export class OverviewPageObject extends RightPanelBase {
     // Wait for the tag selection modal to be visible
     await this.selectableList.waitFor({ state: 'visible' });
 
-    // Use semantic search bar selector
-    await this.tagSearchBar.fill(tagName);
+    // Wait for the tag search API matching the typed query instead of relying on
+    // the loader, which can flicker out before results render under parallel load.
+    // Match q=*<tagName>* so we don't resolve on the popover's initial open fetch.
+    await this.tagSearchBar.waitFor({ state: 'visible' });
 
-    // Scope loader to the selectable-list to avoid strict-mode violations when
-    // multiple [data-testid="loader"] elements coexist on the page during
-    // parallel test runs (e.g. one inside lineage section, one inside the popover).
-    await this.selectableList
-      .getByTestId('loader')
-      .waitFor({ state: 'hidden' });
+    const tagSearchPromise = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('index=tag')
+    );
+    await this.tagSearchBar.fill(tagName);
+    const tagSearchResponse = await tagSearchPromise;
+    expect(tagSearchResponse.status()).toBe(200);
 
     // Use getByTitle to target the outer .selectable-list-item wrapper, which carries the
     // 'active' CSS class when the tag is already selected.
@@ -280,14 +284,20 @@ export class OverviewPageObject extends RightPanelBase {
 
     await this.selectableList.waitFor({ state: 'visible' });
 
-    // Use semantic search bar selector
-    await this.glossaryTermSearchBar.fill(termName);
+    // Wait for the glossaryTerm search API matching the typed query instead of
+    // relying on the loader, which can flicker out before results render under
+    // parallel load. Match q=*<termName>* so we don't resolve on the popover's
+    // initial open fetch.
+    await this.glossaryTermSearchBar.waitFor({ state: 'visible' });
 
-    // Scope loader to selectableList to avoid strict-mode violations when a
-    // parallel test has a lineage or other section loader visible at the same time.
-    await this.selectableList
-      .getByTestId('loader')
-      .waitFor({ state: 'hidden' });
+    const glossarySearchPromise = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('index=glossaryTerm')
+    );
+    await this.glossaryTermSearchBar.fill(termName);
+    const glossarySearchResponse = await glossarySearchPromise;
+    expect(glossarySearchResponse.status()).toBe(200);
 
     // Use getByTitle to target the outer .selectable-list-item wrapper, which carries the
     // 'active' CSS class when the term is already selected.
@@ -367,9 +377,15 @@ export class OverviewPageObject extends RightPanelBase {
       await this.loader.waitFor({ state: 'detached' });
       await this.domainSearchBar.waitFor({ state: 'visible' });
       await this.domainSearchBar.scrollIntoViewIfNeeded();
-      await this.domainSearchBar.fill(domainName);
 
-      await this.loader.waitFor({ state: 'detached' });
+      const domainSearchPromise = this.page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=domain')
+      );
+      await this.domainSearchBar.fill(domainName);
+      const domainSearchResponse = await domainSearchPromise;
+      expect(domainSearchResponse.status()).toBe(200);
 
       await this.domainTreeNode
         .filter({ hasText: domainName })
@@ -446,8 +462,16 @@ export class OverviewPageObject extends RightPanelBase {
     await this.editOwnersIcon.click({ force: true });
     await this.userSearchBar.waitFor({ state: 'visible' });
     await this.userSearchBar.scrollIntoViewIfNeeded();
+
+    const userSearchPromise = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('index=user')
+    );
     await this.userSearchBar.fill(ownerName);
-    await this.loader.waitFor({ state: 'hidden' });
+    const userSearchResponse = await userSearchPromise;
+    expect(userSearchResponse.status()).toBe(200);
+
     await this.userListItem
       .filter({ hasText: ownerName })
       .waitFor({ state: 'visible' });
@@ -488,7 +512,16 @@ export class OverviewPageObject extends RightPanelBase {
 
       await expect(this.selectOwnerTabsLoader).toHaveCount(0);
       await searchBar.waitFor({ state: 'visible' });
+
+      const indexFragment = type === 'Users' ? 'index=user' : 'index=team';
+      const ownerSearchPromise = this.page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes(indexFragment)
+      );
       await searchBar.fill(ownerName);
+      const ownerSearchResponse = await ownerSearchPromise;
+      expect(ownerSearchResponse.status()).toBe(200);
 
       const ownerItem = this.listItem.filter({ hasText: ownerName });
       await ownerItem.waitFor({ state: 'visible' });
@@ -570,7 +603,14 @@ export class OverviewPageObject extends RightPanelBase {
       .waitFor({ state: 'detached' });
 
     for (const termName of termDisplayNames) {
+      const removeGlossarySearchPromise = this.page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=glossaryTerm')
+      );
       await this.glossaryTermSearchBar.fill(termName);
+      const removeGlossarySearchResponse = await removeGlossarySearchPromise;
+      expect(removeGlossarySearchResponse.status()).toBe(200);
 
       const termItem = this.listItem.filter({ hasText: termName });
       await termItem.waitFor({ state: 'visible' });
@@ -628,11 +668,12 @@ export class OverviewPageObject extends RightPanelBase {
     const searchDomainPromise = this.page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes(`q=`)
+        response.url().includes('index=domain')
     );
 
     await this.domainSearchBar.fill(domainName);
-    await searchDomainPromise;
+    const searchDomainResponse = await searchDomainPromise;
+    expect(searchDomainResponse.status()).toBe(200);
 
     const domainItem = this.domainTreeNode.filter({ hasText: domainName });
     const patchPromise = this.waitForPatchResponse();
