@@ -1,4 +1,4 @@
--- Boost memory for the dedup + index build. Matches 1.9.9 pattern; RESET at end.
+-- Boost memory for the dedup + index build. RESET at end.
 SET work_mem = '256MB';
 SET maintenance_work_mem = '512MB';
 
