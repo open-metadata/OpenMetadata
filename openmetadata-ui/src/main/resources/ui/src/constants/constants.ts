@@ -363,6 +363,7 @@ export const SOCKET_EVENTS = {
   DELETE_ENTITY_CHANNEL: 'deleteEntityChannel',
   MOVE_GLOSSARY_TERM_CHANNEL: 'moveGlossaryTermChannel',
   CHART_DATA_STREAM: 'chartDataStream',
+  QUERY_RUNNER_CHANNEL: 'queryRunnerChannel',
 };
 
 export const CACHE_WARMUP_APPLICATION_NAME = 'CacheWarmupApplication';

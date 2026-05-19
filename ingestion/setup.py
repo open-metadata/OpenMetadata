@@ -339,7 +339,11 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
     "mssql": {
-        "sqlalchemy-pytds~=0.3",
+        # 1.0+ moved internal `tds.skipall` calls to `tds_base.skipall`, matching
+        # the python-tds 1.x layout. 0.3.x raises AttributeError on every
+        # server-side cursor fetch (TABNAME / COLINFO tokens) when paired with
+        # python-tds 1.x.
+        "sqlalchemy-pytds~=1.0",
         DATA_DIFF["mssql"],
     },
     "mssql-odbc": {

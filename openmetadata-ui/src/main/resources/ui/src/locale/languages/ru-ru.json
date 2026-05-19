@@ -2601,6 +2601,7 @@
     "customize-home-page-page-header-for-persona": "Персонализируйте опыт домашней страницы для <0>{{persona}}</0> персоны",
     "customize-your-navigation-subheader": "Управляйте и организуйте боковое меню навигации для лучшей доступности.",
     "data-access-request-already-exists": "Для этого ресурса уже существует ожидающий запрос на доступ к данным.",
+    "data-access-request-already-granted": "У вас уже есть активный доступ к данным для этого ресурса.",
     "data-access-request-awaiting-grant-message": "Ваш запрос на доступ одобрен и ожидает предоставления. Доступ будет доступен в ближайшее время после его предоставления.",
     "data-access-request-message": "Запрос доступа к данным для",
     "data-asset-has-been-action-type": "Объект данных был {{actionType}}",
