@@ -272,9 +272,9 @@ export const ActivityFeedTab = ({
   const handleFeedFetchFromFeedList = useCallback(
     (after?: string) => {
       setIsFirstLoad(false);
-      getFeedData(feedFilter, after, threadType, entityType, fqn, taskFilter);
+      getFeedData(feedFilter, after, threadType, entityType, fqn, );
     },
-    [threadType, feedFilter, entityType, fqn, taskFilter, getFeedData]
+    [threadType, feedFilter, entityType, fqn, , getFeedData]
   );
 
   useEffect(() => {
@@ -285,7 +285,7 @@ export const ActivityFeedTab = ({
         threadType,
         entityType,
         fqn,
-        taskFilter
+        // taskFilter
       );
     }
   }, [feedFilter, threadType, fqn]);
