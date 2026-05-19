@@ -760,20 +760,29 @@ public class FeedRepository {
     dao.feedDAO().delete(getLegacyThreadTableName(), id);
   }
 
+  // Keep IN-list expansions well under SQL Server's 2100 bind-parameter ceiling and
+  // MySQL's max_allowed_packet budget. Mirrors EntityRepository.RELATION_DELETE_BATCH_SIZE.
+  private static final int FEED_IN_BATCH_SIZE = 500;
+
   @Transaction
   public int deleteThreadsInBatch(List<UUID> threadUUIDs) {
     if (CommonUtil.nullOrEmpty(threadUUIDs)) return 0;
 
     List<String> threadIds = threadUUIDs.stream().map(UUID::toString).toList();
+    int deleted = 0;
+    for (int i = 0; i < threadIds.size(); i += FEED_IN_BATCH_SIZE) {
+      List<String> chunk = threadIds.subList(i, Math.min(i + FEED_IN_BATCH_SIZE, threadIds.size()));
 
-    // Delete all the relationships to other entities
-    dao.relationshipDAO().deleteAllByThreadIds(threadIds, Entity.THREAD);
+      // Delete all the relationships to other entities
+      dao.relationshipDAO().deleteAllByThreadIds(chunk, Entity.THREAD);
 
-    // Delete all the field relationships to other entities
-    dao.fieldRelationshipDAO().deleteAllByPrefixes(threadIds);
+      // Delete all the field relationships to other entities
+      dao.fieldRelationshipDAO().deleteAllByPrefixes(chunk);
 
-    // Delete the thread and return the count
-    return dao.feedDAO().deleteByIds(getLegacyThreadTableName(), threadIds);
+      // Delete the threads in this chunk and tally the count
+      deleted += dao.feedDAO().deleteByIds(getLegacyThreadTableName(), chunk);
+    }
+    return deleted;
   }
 
   public void deleteByAbout(UUID entityId) {
@@ -791,16 +800,20 @@ public class FeedRepository {
       return;
     }
     List<String> entityIdStrings = entityIds.stream().map(UUID::toString).toList();
-    List<String> threadIds;
-    try {
-      threadIds =
-          listOrEmpty(dao.feedDAO().findByEntityIds(getLegacyThreadTableName(), entityIdStrings));
-    } catch (Exception ex) {
-      LOG.debug(
-          "Skipping legacy feed cleanup for {} entities because thread storage is unavailable",
-          entityIds.size(),
-          ex);
-      return;
+    List<String> threadIds = new ArrayList<>();
+    for (int i = 0; i < entityIdStrings.size(); i += FEED_IN_BATCH_SIZE) {
+      List<String> chunk =
+          entityIdStrings.subList(i, Math.min(i + FEED_IN_BATCH_SIZE, entityIdStrings.size()));
+      try {
+        threadIds.addAll(
+            listOrEmpty(dao.feedDAO().findByEntityIds(getLegacyThreadTableName(), chunk)));
+      } catch (Exception ex) {
+        LOG.debug(
+            "Skipping legacy feed cleanup for chunk of {} entities (offset {}) because thread storage is unavailable",
+            chunk.size(),
+            i,
+            ex);
+      }
     }
     if (threadIds.isEmpty()) {
       return;
