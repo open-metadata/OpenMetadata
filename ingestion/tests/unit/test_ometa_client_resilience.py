@@ -24,7 +24,6 @@ import time
 import pytest
 from urllib3.util.retry import Retry
 
-from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import REST, ClientConfig, RestTransportError
 from metadata.ingestion.ometa.http_adapter import KeepAliveRetryAdapter
 
@@ -93,13 +92,11 @@ def _rest(port: int) -> REST:
     return REST(ClientConfig(base_url=f"http://127.0.0.1:{port}", timeout=_CLIENT_TIMEOUT))
 
 
-def test_rest_and_tracked_rest_carry_keepalive_retry_adapter():
+def test_rest_carries_keepalive_retry_adapter():
     rest = REST(ClientConfig(base_url="http://localhost:8585"))
-    tracked = TrackedREST(ClientConfig(base_url="http://localhost:8585"))
-    for client in (rest, tracked):
-        adapter = client._session.get_adapter("https://localhost:8585")
-        assert isinstance(adapter, KeepAliveRetryAdapter)
-        assert isinstance(adapter.max_retries, Retry)
+    adapter = rest._session.get_adapter("https://localhost:8585")
+    assert isinstance(adapter, KeepAliveRetryAdapter)
+    assert isinstance(adapter.max_retries, Retry)
 
 
 def test_read_timeout_is_retried_and_recovers():
