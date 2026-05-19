@@ -43,7 +43,7 @@ public class SetEntityCertificationImpl implements JavaDelegate {
                   varHandler.getNamespacedVariable(
                       inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
       String entityType = entityLink.getEntityType();
-      EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+      EntityInterface entity = Entity.getEntity(entityLink, "certification", Include.ALL);
 
       String certification =
           Optional.ofNullable(certificationExpr)
