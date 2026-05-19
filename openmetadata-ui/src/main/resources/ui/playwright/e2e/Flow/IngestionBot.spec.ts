@@ -88,6 +88,7 @@ test.describe('Ingestion Bot ', () => {
     ingestionBotPage,
     page,
   }) => {
+    test.slow(true);
     const { assets: domainAsset1, assetCleanup: assetCleanup1 } =
       await setupAssetsForDomain(page);
     const { assets: domainAsset2, assetCleanup: assetCleanup2 } =
