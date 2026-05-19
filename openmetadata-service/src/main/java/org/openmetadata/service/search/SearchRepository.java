@@ -969,6 +969,23 @@ public class SearchRepository {
       }
     }
 
+    // Issue #28229: open the gate when a Table's certification is added, changed, or removed
+    // so cascadeCertificationToChildren fires and pushes the new cert onto every denormalized
+    // child search doc (test_case, test_case_result, test_case_resolution_status, test_suite,
+    // column). Without this the gate stays closed on a cert-only PATCH, the cascade is dead
+    // code, and the DQ dashboard's Certification filter keeps returning the stale cert until
+    // a full reindex.
+    if (entityType.equalsIgnoreCase(Entity.TABLE)) {
+      hasInheritableChanges =
+          hasInheritableChanges
+              || changeDescription.getFieldsAdded().stream()
+                  .anyMatch(field -> field.getName().equals(Entity.FIELD_CERTIFICATION))
+              || changeDescription.getFieldsUpdated().stream()
+                  .anyMatch(field -> field.getName().equals(Entity.FIELD_CERTIFICATION))
+              || changeDescription.getFieldsDeleted().stream()
+                  .anyMatch(field -> field.getName().equals(Entity.FIELD_CERTIFICATION));
+    }
+
     // Check for relationship changes that need propagation
     if (changeDescription.getFieldsAdded().stream()
             .anyMatch(field -> field.getName().equals("upstreamEntityRelationship"))
