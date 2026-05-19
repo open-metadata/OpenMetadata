@@ -358,16 +358,19 @@ public class MigrationUtil {
         + "  AND er_domain.relation = "
         + RELATION_HAS
         + " "
+        + "  AND er_domain.deleted = FALSE "
         + "WHERE er_about.toEntity = 'task' "
         + "  AND er_about.relation = "
         + RELATION_MENTIONED_IN
         + " "
+        + "  AND er_about.deleted = FALSE "
         + "  AND NOT EXISTS ("
         + "    SELECT 1 FROM entity_relationship ex "
         + "    WHERE ex.fromId = er_domain.fromId "
         + "    AND ex.toId = er_about.toId AND ex.toEntity = 'task' "
         + "    AND ex.fromEntity = 'domain' AND ex.relation = "
         + RELATION_HAS
+        + "    AND ex.deleted = FALSE "
         + "  ) "
         + "LIMIT "
         + BATCH_SIZE;
@@ -387,16 +390,19 @@ public class MigrationUtil {
         + "  AND er_domain.relation = "
         + RELATION_HAS
         + " "
+        + "  AND er_domain.deleted = FALSE "
         + "WHERE er_about.toEntity = 'task' "
         + "  AND er_about.relation = "
         + RELATION_MENTIONED_IN
         + " "
+        + "  AND er_about.deleted = FALSE "
         + "  AND NOT EXISTS ("
         + "    SELECT 1 FROM entity_relationship ex "
         + "    WHERE ex.fromId = er_domain.fromId "
         + "    AND ex.toId = er_about.toId AND ex.toEntity = 'task' "
         + "    AND ex.fromEntity = 'domain' AND ex.relation = "
         + RELATION_HAS
+        + "    AND ex.deleted = FALSE "
         + "  ) "
         + "LIMIT "
         + BATCH_SIZE

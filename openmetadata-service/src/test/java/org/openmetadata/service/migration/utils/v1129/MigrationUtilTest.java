@@ -287,4 +287,40 @@ class MigrationUtilTest {
     assertTrue(sql.contains("ON CONFLICT"));
     assertTrue(sql.contains("DO NOTHING"));
   }
+
+  @Test
+  void taskEntity_mysqlSqlFiltersOutDeletedRelationships() throws Exception {
+    Handle handle = mockHandle();
+    stubTableExists(handle, "task_entity");
+    Update mockUpdate = mock(Update.class, RETURNS_DEEP_STUBS);
+    when(handle.createUpdate(anyString())).thenReturn(mockUpdate);
+    when(mockUpdate.execute()).thenReturn(0);
+
+    new MigrationUtil(handle, ConnectionType.MYSQL).migrateTaskDomains();
+
+    ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+    verify(handle, times(1)).createUpdate(sqlCaptor.capture());
+    String sql = sqlCaptor.getValue();
+    assertTrue(sql.contains("er_about.deleted = FALSE"));
+    assertTrue(sql.contains("er_domain.deleted = FALSE"));
+    assertTrue(sql.contains("ex.deleted = FALSE"));
+  }
+
+  @Test
+  void taskEntity_postgresSqlFiltersOutDeletedRelationships() throws Exception {
+    Handle handle = mockHandle();
+    stubTableExists(handle, "task_entity");
+    Update mockUpdate = mock(Update.class, RETURNS_DEEP_STUBS);
+    when(handle.createUpdate(anyString())).thenReturn(mockUpdate);
+    when(mockUpdate.execute()).thenReturn(0);
+
+    new MigrationUtil(handle, ConnectionType.POSTGRES).migrateTaskDomains();
+
+    ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+    verify(handle, times(1)).createUpdate(sqlCaptor.capture());
+    String sql = sqlCaptor.getValue();
+    assertTrue(sql.contains("er_about.deleted = FALSE"));
+    assertTrue(sql.contains("er_domain.deleted = FALSE"));
+    assertTrue(sql.contains("ex.deleted = FALSE"));
+  }
 }
