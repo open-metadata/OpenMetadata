@@ -42,6 +42,9 @@ class StreamableLogHandler(logging.Handler):
     BATCH_WAIT_SEC = 2.0
     HTTP_TIMEOUT = (2.0, 10.0)
     CLOSE_TIMEOUT_SEC = 30.0
+    FLUSH_DEFAULT_SEC = 5.0  # flush() default deadline
+    FLUSH_POLL_SEC = 0.05  # how often flush() rechecks state
+    FORCE_STOP_JOIN_SEC = 2.0  # secondary worker join after force-stop
 
     # pylint: disable=too-many-arguments,too-many-instance-attributes
     def __init__(
@@ -179,15 +182,17 @@ class StreamableLogHandler(logging.Handler):
             _shipping_state.shipping = False
             self._post_in_flight.clear()
 
-    def flush(self, timeout: float = 5.0) -> None:
+    def flush(self, timeout: float | None = None) -> None:
         """Block until queue is drained, or until deadline."""
         if not self.enable_streaming or self._worker is None:
             return
-        deadline = time.monotonic() + timeout
+        deadline = time.monotonic() + (timeout if timeout is not None else self.FLUSH_DEFAULT_SEC)
         while time.monotonic() < deadline:
             if self._buffer.empty() and not self._post_in_flight.is_set():
                 return
-            time.sleep(0.05)
+            # Poll: no single condition covers both "buffer drained" and
+            # "in-flight POST returned", so we re-check at FLUSH_POLL_SEC.
+            time.sleep(self.FLUSH_POLL_SEC)
         self.flush_timed_out += 1
 
     def shutdown(self, timeout: float | None = None) -> None:
@@ -224,7 +229,7 @@ class StreamableLogHandler(logging.Handler):
                 with contextlib.suppress(Exception):
                     if self._client is not None:
                         self._client.close()
-                self._worker.join(timeout=2.0)
+                self._worker.join(timeout=self.FORCE_STOP_JOIN_SEC)
                 with contextlib.suppress(Exception):
                     self._client = REST(self.metadata.client.config)
 
