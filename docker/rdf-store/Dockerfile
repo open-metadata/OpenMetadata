@@ -40,7 +40,7 @@ RUN mkdir -p /fuseki-data
 # render it at container start with the actual passwords. The entrypoint
 # does that via envsubst.
 COPY config.ttl /fuseki/config.ttl
-COPY shiro.ini /fuseki/shiro.ini.template
+COPY shiro.ini.template /fuseki/shiro.ini.template
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

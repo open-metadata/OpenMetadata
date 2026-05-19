@@ -1,4 +1,16 @@
-# Apache Shiro configuration for Fuseki security
+# Apache Shiro configuration for Fuseki security — TEMPLATE FILE.
+#
+# Do NOT mount or copy this file as-is into /fuseki/shiro.ini. It contains
+# `${FUSEKI_ADMIN_PASSWORD}` and `${FUSEKI_OPENMETADATA_PASSWORD}` placeholders
+# that Apache Shiro's INI realm does NOT interpolate — if Fuseki loads the
+# raw template, the literal string `${FUSEKI_ADMIN_PASSWORD}` becomes the
+# admin password, which silently lets `${FUSEKI_ADMIN_PASSWORD}` log in.
+#
+# The entrypoint.sh in this image envsubsts the file into /fuseki/shiro.ini
+# at container start. If you need a different layout, render the substituted
+# file yourself and bind-mount it onto /fuseki/shiro.ini WITH
+# FUSEKI_RENDER_SHIRO=false set on the container.
+#
 # This integrates with OpenMetadata's authentication
 
 [main]

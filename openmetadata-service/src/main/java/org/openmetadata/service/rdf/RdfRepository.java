@@ -1354,13 +1354,10 @@ public class RdfRepository {
                 SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
         if (settings != null && settings.getRelationTypes() != null) {
           for (var configuredType : settings.getRelationTypes()) {
-            java.net.URI rdfPredicate = configuredType.getRdfPredicate();
-            String fullUri;
-            if (rdfPredicate != null) {
-              fullUri = expandPredicateCurie(rdfPredicate.toString());
-            } else if (configuredType.getName() != null && !configuredType.getName().isBlank()) {
-              fullUri = "https://open-metadata.org/ontology/" + configuredType.getName();
-            } else {
+            String fullUri =
+                resolveConfiguredTypeUri(
+                    configuredType.getRdfPredicate(), configuredType.getName());
+            if (fullUri == null) {
               continue;
             }
             relationPredicates.add("<" + fullUri + ">");
@@ -1650,12 +1647,11 @@ public class RdfRepository {
               SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
       if (settings != null && settings.getRelationTypes() != null) {
         for (var configuredType : settings.getRelationTypes()) {
-          java.net.URI rdfPredicate = configuredType.getRdfPredicate();
           String configuredUri =
-              rdfPredicate != null
-                  ? expandPredicateCurie(rdfPredicate.toString())
-                  : "https://open-metadata.org/ontology/" + configuredType.getName();
-          map.putIfAbsent(configuredUri, configuredType.getName());
+              resolveConfiguredTypeUri(configuredType.getRdfPredicate(), configuredType.getName());
+          if (configuredUri != null) {
+            map.putIfAbsent(configuredUri, configuredType.getName());
+          }
         }
       }
     } catch (RuntimeException e) {
@@ -3177,6 +3173,26 @@ public class RdfRepository {
   //
   // Throw on null/empty rather than defaulting silently. The cleanup path
   // already guards on the caller side; if a future caller forgets, a
+  /**
+   * Resolve a {@code GlossaryTermRelationSettings.RelationType} to its full
+   * canonical predicate IRI string. Single source of truth for the
+   * settings-driven URI shape used by both the reader (graph query filter,
+   * predicate-name cache) and any future writer-side helper that needs the
+   * IRI as a String (not a Jena {@code Property}).
+   *
+   * <p>Returns {@code null} if neither {@code rdfPredicate} nor {@code name}
+   * is usable — callers must skip the type instead of fabricating a URI.
+   */
+  private static String resolveConfiguredTypeUri(java.net.URI rdfPredicate, String name) {
+    if (rdfPredicate != null) {
+      return expandPredicateCurie(rdfPredicate.toString());
+    }
+    if (name != null && !name.isBlank()) {
+      return "https://open-metadata.org/ontology/" + name;
+    }
+    return null;
+  }
+
   // misconfigured "rdfPredicate: null" entry would silently target relatedTo
   // and skip cleaning the real predicate — better to fail loudly.
   private static String expandPredicateCurie(String uri) {

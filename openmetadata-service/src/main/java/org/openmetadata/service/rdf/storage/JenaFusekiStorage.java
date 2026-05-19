@@ -1348,6 +1348,15 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         LOG.info("Fuseki compaction task {} finished: {}", taskId, pollResponse.body());
         return;
       }
+      // Re-check the deadline AFTER the HTTP send. The loop-top check could
+      // pass with a few ms left, then the send could hang up to
+      // COMPACT_HTTP_TIMEOUT (30 s) before timing out — that would put total
+      // elapsed up to ~30 s past COMPACT_MAX_WAIT_MS before we'd otherwise
+      // notice. Break here so we abandon the wait promptly when the deadline
+      // is already blown by a slow-responding server.
+      if (System.currentTimeMillis() >= deadline) {
+        break;
+      }
     }
     LOG.warn(
         "Fuseki compaction task {} did not finish within {} ms; abandoning wait. "

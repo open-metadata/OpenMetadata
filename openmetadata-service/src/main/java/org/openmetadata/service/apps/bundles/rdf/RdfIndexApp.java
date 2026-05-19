@@ -206,10 +206,25 @@ public class RdfIndexApp extends AbstractNativeApplication {
         // free-list and journal up to tens of GB even though the live triple
         // count stayed bounded. Running compact at the end of every successful
         // reindex caps growth at one-run's worth of churn regardless of which
-        // path took us here. The call is best-effort (failures logged + swallowed)
-        // so a missing /$/compact endpoint or transient HTTP failure never
-        // demotes a successful indexing job to FAILED.
-        rdfRepository.compactStorage();
+        // path took us here.
+        //
+        // Defensive try/catch: JenaFusekiStorage.compactStorage() already
+        // catches its own exceptions, but RdfRepository.compactStorage() is
+        // a thin pass-through and a future storage backend (QLever, etc.)
+        // may not honor the same swallow-failures contract. Worse, a race
+        // between isEnabled() and storageService.compactStorage() could
+        // surface an NPE. Catch here so any unexpected runtime failure
+        // can NEVER demote a job that's already COMPLETED to FAILED via
+        // the outer catch's handleJobFailure().
+        try {
+          rdfRepository.compactStorage();
+        } catch (RuntimeException compactFailure) {
+          LOG.warn(
+              "Post-run compaction failed for this RDF reindex job; disk reclamation "
+                  + "skipped, but the job itself completed successfully. Reason: {}",
+              compactFailure.getMessage(),
+              compactFailure);
+        }
       }
 
       LOG.info("RDF Index Job Completed for Entities: {}", jobData.getEntities());
