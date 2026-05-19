@@ -233,13 +233,15 @@ describe('StringsUtils', () => {
       expect(slugify('abc123xyz')).toBe('abc123xyz');
     });
 
-    it('should truncate to 48 characters', () => {
+    it('should handle long strings without truncation', () => {
       const longString =
         'this-is-a-very-long-string-that-exceeds-the-maximum-length-limit';
       const result = slugify(longString);
 
-      expect(result.length).toBe(48);
-      expect(result).toBe('this-is-a-very-long-string-that-exceeds-the-maxi');
+      expect(result).toBe(
+        'this-is-a-very-long-string-that-exceeds-the-maximum-length-limit'
+      );
+      expect(result.length).toBeGreaterThan(48);
     });
 
     it('should handle empty string', () => {
@@ -285,15 +287,6 @@ describe('StringsUtils', () => {
       expect(slugify('hello\u00A0world')).toBe('hello-world');
       expect(slugify('café')).toBe('caf');
       expect(slugify('naïve')).toBe('na-ve');
-    });
-
-    it('should handle truncation with trailing hyphens', () => {
-      const longStringWithSpecialChar =
-        'this-is-a-very-long-string-that-exceeds-limit@@@';
-      const result = slugify(longStringWithSpecialChar);
-
-      expect(result.length).toBeLessThanOrEqual(48);
-      expect(result.endsWith('-')).toBe(false);
     });
   });
 

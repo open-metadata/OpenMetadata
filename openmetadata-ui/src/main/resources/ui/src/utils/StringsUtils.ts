@@ -24,8 +24,7 @@ export const slugify = (value: string) =>
   value
     .toLowerCase()
     .replaceAll(/[^a-z0-9]+/g, '-')
-    .replaceAll(/^-+|-+$/g, '')
-    .slice(0, 48);
+    .replaceAll(/^-+|-+$/g, '');
 
 // will add back slash "\" before quote in string if present
 export const getQueryWithSlash = (query: string): string =>
