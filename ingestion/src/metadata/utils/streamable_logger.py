@@ -10,9 +10,11 @@
 #  limitations under the License.
 """Best-effort streamable log handler for OpenMetadata ingestion pipelines."""
 
+import atexit
 import contextlib
 import logging
 import threading
+import time
 from queue import Empty, Full, Queue
 from typing import Optional
 from uuid import UUID
@@ -27,19 +29,19 @@ logger = ingestion_logger()
 # Recursion guard: sender threads set shipping=True so emit() returns
 # immediately if it ever fires from inside the shipping path.
 _shipping_state = threading.local()
-_CLOSE_MARKER = object()
 
 
 class StreamableLogHandler(logging.Handler):
-    """Fire-and-forget log shipper."""
+    """Ship ingestion log records to the OM server.
+
+    Caller invokes shutdown() to flush and close synchronously; an atexit
+    hook covers callers that forget.
+    """
 
     BATCH_SIZE = 500
     BATCH_WAIT_SEC = 2.0
-    SENDER_TICK_SEC = 1.0
-    HTTP_TIMEOUT = (1.0, 2.0)
-    SENDER_WORKERS = 1
-    MAX_PENDING_BATCHES = 4
-    CLOSE_TIMEOUT_SEC = 2.0
+    HTTP_TIMEOUT = (2.0, 10.0)
+    CLOSE_TIMEOUT_SEC = 30.0
 
     # pylint: disable=too-many-arguments,too-many-instance-attributes
     def __init__(
@@ -47,7 +49,7 @@ class StreamableLogHandler(logging.Handler):
         metadata: OpenMetadata,
         pipeline_fqn: str,
         run_id: UUID,
-        max_buffer: int = 10000,
+        max_buffer: int = 30_000,
         enable_streaming: bool = True,
     ):
         super().__init__()
@@ -59,11 +61,10 @@ class StreamableLogHandler(logging.Handler):
         self.fallback_handler = logging.StreamHandler()
 
         self._buffer: Queue = Queue(maxsize=max_buffer)
-        self._send_queue: Queue = Queue(maxsize=self.MAX_PENDING_BATCHES)
-        self._stop = threading.Event()
+        self._stop_event = threading.Event()
         self._closed = False
-        self._drainer: Optional[threading.Thread] = None  # noqa: UP045
-        self._senders: list = []
+        self._worker: Optional[threading.Thread] = None  # noqa: UP045
+        self._post_in_flight = threading.Event()
 
         # Isolated session/connection pool; shares ClientConfig so token
         # refresh on the main client is visible here.
@@ -71,64 +72,81 @@ class StreamableLogHandler(logging.Handler):
             REST(metadata.client.config) if enable_streaming else None
         )
 
+        # Counters surfaced at shutdown.
+        self.shipped_records = 0
+        self.shipped_batches = 0
+        self.failed_posts = 0
         self.dropped_overflow = 0
-        self.dropped_saturated = 0
-        self.dropped_shipping = 0
         self.dropped_after_close = 0
+        self.dropped_shipping = 0
         self.dropped_format_error = 0
+        self.flush_timed_out = 0
+        self.shutdown_timed_out = 0
+        self.worker_errors = 0
 
+        self._atexit_registered = False
         if self.enable_streaming:
-            self._start_workers()
-
-    def _start_workers(self):
-        self._drainer = threading.Thread(
-            target=self._drain_loop,
-            daemon=True,
-            name=f"log-drain-{self.pipeline_fqn[:24]}",
-        )
-        self._drainer.start()
-        for i in range(self.SENDER_WORKERS):
-            t = threading.Thread(
-                target=self._sender_loop,
+            # daemon=True so a hung OM can't block process exit; atexit +
+            # shutdown() handle the normal-exit drain.
+            self._worker = threading.Thread(
+                target=self._worker_loop,
                 daemon=True,
-                name=f"log-ship-{self.pipeline_fqn[:16]}-{i}",
+                name=f"log-ship-{self.pipeline_fqn[:24]}",
             )
-            t.start()
-            self._senders.append(t)
+            self._worker.start()
+            atexit.register(self.shutdown)
+            self._atexit_registered = True
 
     def emit(self, record: logging.LogRecord):
-        # Recursion guard must be the very first check.
+        # Recursion guard: shipping thread must not enqueue while shipping.
         if getattr(_shipping_state, "shipping", False):
             self.dropped_shipping += 1
             return
         if self._closed:
             self.dropped_after_close += 1
             return
+        if not self.enable_streaming:
+            self.fallback_handler.emit(record)
+            return
         try:
-            if not self.enable_streaming:
-                self.fallback_handler.emit(record)
-                return
             log_entry = self.format(record)
-            try:
-                self._buffer.put_nowait(log_entry)
-            except Full:
-                self.dropped_overflow += 1
         except Exception:
             self.dropped_format_error += 1
-
-    def _drain_loop(self):
-        while not self._stop.is_set():
-            batch = self._collect_batch()
-            if not batch:
-                continue
-            try:
-                self._send_queue.put_nowait(batch)
-            except Full:
-                self.dropped_saturated += len(batch)
-
-    def _collect_batch(self) -> list:
+            return
+        # Drop fast on full buffer — must not block the producer.
         try:
-            batch = [self._buffer.get(timeout=self.BATCH_WAIT_SEC)]
+            self._buffer.put_nowait(log_entry)
+        except Full:
+            self.dropped_overflow += 1
+
+    def _worker_loop(self):
+        try:
+            while not self._stop_event.is_set():
+                # Catch per-iteration so a single failure can't kill the worker.
+                try:
+                    batch = self._collect_batch(timeout=self.BATCH_WAIT_SEC)
+                    if batch:
+                        self._post_batch(batch)
+                except Exception:
+                    self.worker_errors += 1
+            while True:
+                try:
+                    batch = self._collect_batch(timeout=0)
+                    if not batch:
+                        break
+                    self._post_batch(batch)
+                except Exception:
+                    self.worker_errors += 1
+                    # Persistent failure during drain: bail to avoid infinite loop.
+                    break
+        finally:
+            with contextlib.suppress(Exception):
+                if self._client is not None:
+                    self._client.close()
+
+    def _collect_batch(self, timeout: float) -> list:
+        try:
+            batch = [self._buffer.get(timeout=timeout)] if timeout > 0 else [self._buffer.get_nowait()]
         except Empty:
             return []
         while len(batch) < self.BATCH_SIZE:
@@ -138,83 +156,140 @@ class StreamableLogHandler(logging.Handler):
                 break
         return batch
 
-    def _sender_loop(self):
-        try:
-            while True:
-                try:
-                    item = self._send_queue.get(timeout=self.SENDER_TICK_SEC)
-                except Empty:
-                    if self._stop.is_set():
-                        return
-                    continue
-                if item is _CLOSE_MARKER:
-                    self._notify_close()
-                    return
-                self._post_batch(item)
-        finally:
-            with contextlib.suppress(Exception):
-                if self._client is not None:
-                    self._client.close()
-
     def _post_batch(self, batch: list):
+        self._post_in_flight.set()
         _shipping_state.shipping = True
         try:
-            self.metadata.send_logs_batch_best_effort(
+            ok = self.metadata.send_logs_batch_best_effort(
                 pipeline_fqn=self.pipeline_fqn,
                 run_id=self.run_id,
                 log_content="\n".join(batch) + "\n",
                 timeout=self.HTTP_TIMEOUT,
                 client=self._client,
             )
+            if ok:
+                self.shipped_records += len(batch)
+                self.shipped_batches += 1
+            else:
+                self.failed_posts += 1
         finally:
             _shipping_state.shipping = False
+            self._post_in_flight.clear()
 
-    def close(self):
+    def flush(self, timeout: float = 5.0) -> None:
+        """Block until queue is drained, or until deadline."""
+        if not self.enable_streaming or self._worker is None:
+            return
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if self._buffer.empty() and not self._post_in_flight.is_set():
+                return
+            time.sleep(0.05)
+        self.flush_timed_out += 1
+
+    def shutdown(self, timeout: float | None = None) -> None:
+        """Synchronous flush + close. Idempotent."""
         if self._closed:
             return
         self._closed = True
 
-        if self.enable_streaming:
-            self._drain_remaining_buffer()
-            with contextlib.suppress(Full):
-                self._send_queue.put_nowait(_CLOSE_MARKER)
+        if self._atexit_registered:
+            with contextlib.suppress(Exception):
+                atexit.unregister(self.shutdown)
+            self._atexit_registered = False
 
-        # Set _stop AFTER enqueueing — sender's get(timeout) Empty branch
-        # checks _stop, so setting it first can race the enqueue and drop
-        # the CLOSE_MARKER on a quiet send queue.
-        self._stop.set()
+        if not self.enable_streaming:
+            self._print_shutdown_metrics(self._format_shutdown_metrics())
+            with contextlib.suppress(Exception):
+                self.fallback_handler.close()
+            super().close()
+            return
 
+        deadline_total = timeout if timeout is not None else self.CLOSE_TIMEOUT_SEC
+        flush_budget = deadline_total / 2
+        self.flush(timeout=flush_budget)
+
+        self._stop_event.set()
+        if self._worker is not None:
+            self._worker.join(timeout=deadline_total - flush_budget)
+            if self._worker.is_alive():
+                self.shutdown_timed_out += 1
+                # Force-stop the worker by closing its session so any in-flight
+                # POST raises; the worker then exits via _stop_event. Open a
+                # fresh REST so the metrics + /close POSTs below have a session
+                # that the dying worker can't race.
+                with contextlib.suppress(Exception):
+                    if self._client is not None:
+                        self._client.close()
+                self._worker.join(timeout=2.0)
+                with contextlib.suppress(Exception):
+                    self._client = REST(self.metadata.client.config)
+
+        metrics_line = self._format_shutdown_metrics()
+        with contextlib.suppress(Exception):
+            _shipping_state.shipping = True
+            try:
+                self.metadata.send_logs_batch_best_effort(
+                    pipeline_fqn=self.pipeline_fqn,
+                    run_id=self.run_id,
+                    log_content=metrics_line + "\n",
+                    timeout=self.HTTP_TIMEOUT,
+                    client=self._client,
+                )
+            finally:
+                _shipping_state.shipping = False
+
+        with contextlib.suppress(Exception):
+            _shipping_state.shipping = True
+            try:
+                self.metadata.send_close_best_effort(
+                    pipeline_fqn=self.pipeline_fqn,
+                    run_id=self.run_id,
+                    timeout=(2.0, self.CLOSE_TIMEOUT_SEC),
+                    client=self._client,
+                )
+            finally:
+                _shipping_state.shipping = False
+
+        self._print_shutdown_metrics(metrics_line)
         with contextlib.suppress(Exception):
             self.fallback_handler.close()
         super().close()
 
-    def _drain_remaining_buffer(self):
-        while True:
-            batch = []
-            while len(batch) < self.BATCH_SIZE:
-                try:
-                    batch.append(self._buffer.get_nowait())
-                except Empty:
-                    break
-            if not batch:
-                return
-            try:
-                self._send_queue.put_nowait(batch)
-            except Full:
-                self.dropped_saturated += len(batch)
-                return
+    def close(self):
+        self.shutdown()
 
-    def _notify_close(self):
-        _shipping_state.shipping = True
+    def _format_shutdown_metrics(self) -> str:
+        lines = [
+            "streamable_logger shutdown:",
+            f"  shipped:  records={self.shipped_records} batches={self.shipped_batches}",
+            f"  failed:   posts={self.failed_posts}",
+            (
+                f"  dropped:  overflow={self.dropped_overflow}"
+                f" after_close={self.dropped_after_close}"
+                f" shipping={self.dropped_shipping}"
+                f" format_error={self.dropped_format_error}"
+            ),
+            f"  errors:   worker={self.worker_errors}",
+            f"  timeouts: flush={self.flush_timed_out} shutdown={self.shutdown_timed_out}",
+        ]
+        return "\n".join(lines)
+
+    def _print_shutdown_metrics(self, msg: str) -> None:
+        """Print metrics to stderr via the fallback handler."""
         try:
-            self.metadata.send_close_best_effort(
-                pipeline_fqn=self.pipeline_fqn,
-                run_id=self.run_id,
-                timeout=(1.0, self.CLOSE_TIMEOUT_SEC),
-                client=self._client,
+            record = logging.LogRecord(
+                name=METADATA_LOGGER,
+                level=logging.INFO,
+                pathname=__file__,
+                lineno=0,
+                msg=msg,
+                args=None,
+                exc_info=None,
             )
-        finally:
-            _shipping_state.shipping = False
+            self.fallback_handler.emit(record)
+        except Exception:
+            pass
 
 
 class StreamableLogHandlerManager:
@@ -256,8 +331,10 @@ def setup_streamable_logging_for_workflow(
 ) -> Optional[StreamableLogHandler]:  # noqa: UP045
     if not enable_streaming or not pipeline_fqn or not run_id:
         logger.debug(
-            f"Streamable logging not configured: enable={enable_streaming}, "
-            f"pipeline_fqn={pipeline_fqn}, run_id={run_id}"
+            "Streamable logging not configured: enable=%s, pipeline_fqn=%s, run_id=%s",
+            enable_streaming,
+            pipeline_fqn,
+            run_id,
         )
         return None
 
@@ -281,11 +358,15 @@ def setup_streamable_logging_for_workflow(
         metadata_logger.addHandler(handler)
         StreamableLogHandlerManager.set_handler(handler)
 
-        logger.info(f"Streamable logging configured for pipeline: {pipeline_fqn}, run_id: {model_str(run_id)}")
+        logger.info(
+            "Streamable logging configured for pipeline: %s, run_id: %s",
+            pipeline_fqn,
+            model_str(run_id),
+        )
         return handler  # noqa: TRY300
 
     except Exception as e:
-        logger.warning(f"Failed to setup streamable logging: {e}")
+        logger.warning("Failed to setup streamable logging: %s", e)
         return None
 
 
