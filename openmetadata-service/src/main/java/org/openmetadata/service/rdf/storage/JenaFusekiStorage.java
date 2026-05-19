@@ -188,7 +188,10 @@ public class JenaFusekiStorage implements RdfStorageInterface {
    * {@link #addBasicAuth(HttpRequest.Builder, String, String, String)},
    * which encodes it into the {@code Authorization} header.
    */
-  private static DatasetEndpoint parseDatasetEndpoint(String endpoint) {
+  // Package-private (vs private) so the test class in the same package can
+  // exercise URL-parsing edge cases directly. Same rationale applies to the
+  // other static helpers below.
+  static DatasetEndpoint parseDatasetEndpoint(String endpoint) {
     URI uri;
     try {
       uri = URI.create(endpoint);
@@ -216,11 +219,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   /** URL-encode a path segment for safe interpolation into request URIs. */
-  private static String encodePathSegment(String segment) {
+  static String encodePathSegment(String segment) {
     return java.net.URLEncoder.encode(segment, StandardCharsets.UTF_8).replace("+", "%20");
   }
 
-  private record DatasetEndpoint(String serverBaseUrl, String datasetName, String userInfo) {}
+  record DatasetEndpoint(String serverBaseUrl, String datasetName, String userInfo) {}
 
   /**
    * Replace any {@code user:pass@} userInfo in a URL with {@code ***@} for
@@ -228,7 +231,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
    * admin HTTP calls reach the server with the right auth, but logs must not
    * carry those credentials to disk / log aggregators.
    */
-  private static String maskUserInfo(String urlOrEndpoint) {
+  static String maskUserInfo(String urlOrEndpoint) {
     if (urlOrEndpoint == null) {
       return null;
     }
@@ -1284,7 +1287,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     return taskId;
   }
 
-  private static String extractTaskId(String responseBody) {
+  static String extractTaskId(String responseBody) {
     if (responseBody == null || responseBody.isBlank()) {
       return null;
     }
@@ -1353,7 +1356,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         COMPACT_MAX_WAIT_MS);
   }
 
-  private static boolean isTaskFinished(String responseBody) {
+  static boolean isTaskFinished(String responseBody) {
     if (responseBody == null || responseBody.isBlank()) {
       return false;
     }
