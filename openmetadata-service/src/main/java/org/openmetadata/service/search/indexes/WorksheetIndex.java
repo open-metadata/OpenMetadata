@@ -48,7 +48,7 @@ public record WorksheetIndex(Worksheet worksheet) implements ColumnIndex, DataAs
     // columnDescriptionStatus / child column tags are dropped from worksheet_search_index and
     // column-name search in Explore → Worksheets returns no results.
     fields.add("columns");
-    return java.util.Collections.unmodifiableSet(fields);
+    return Set.copyOf(fields);
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {

@@ -33,7 +33,7 @@ public class QueryIndex implements TaggableIndex {
     // setFieldsInBulk when explicitly requested. Without it, reindex drops the field from
     // query_search_index and Table → Queries renders the empty state.
     fields.add("queryUsedIn");
-    return java.util.Collections.unmodifiableSet(fields);
+    return Set.copyOf(fields);
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {

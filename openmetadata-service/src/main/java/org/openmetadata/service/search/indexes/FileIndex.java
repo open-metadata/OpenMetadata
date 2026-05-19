@@ -41,7 +41,7 @@ public class FileIndex implements DataAssetIndex {
     // Without requesting it, file column-name search breaks after reindex — same pattern as
     // WorksheetIndex.
     fields.add("columns");
-    return java.util.Collections.unmodifiableSet(fields);
+    return Set.copyOf(fields);
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
