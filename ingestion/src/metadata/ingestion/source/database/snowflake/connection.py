@@ -19,6 +19,7 @@ from urllib.parse import quote_plus
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from pydantic import BaseModel, SecretStr
+from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
 
