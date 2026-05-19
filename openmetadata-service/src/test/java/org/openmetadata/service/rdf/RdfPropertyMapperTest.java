@@ -313,7 +313,7 @@ class RdfPropertyMapperTest {
     }
 
     @Test
-    @DisplayName("Column lineage should be stored with fromColumn and toColumn properties")
+    @DisplayName("Column lineage should emit URI references plus FQN strings for back-compat")
     void testColumnLineage() throws Exception {
       ArrayNode upstreamEdges = objectMapper.createArrayNode();
       ObjectNode edge = objectMapper.createObjectNode();
@@ -328,10 +328,10 @@ class RdfPropertyMapperTest {
       ObjectNode colLineage = objectMapper.createObjectNode();
 
       ArrayNode fromColumns = objectMapper.createArrayNode();
-      fromColumns.add("source_table.column_a");
-      fromColumns.add("source_table.column_b");
+      fromColumns.add("service.db.schema.source_table.column_a");
+      fromColumns.add("service.db.schema.source_table.column_b");
       colLineage.set("fromColumns", fromColumns);
-      colLineage.put("toColumn", "target_table.merged_column");
+      colLineage.put("toColumn", "service.db.schema.target_table.merged_column");
       colLineage.put("function", "CONCAT(column_a, column_b)");
 
       columnsLineage.add(colLineage);
@@ -346,22 +346,437 @@ class RdfPropertyMapperTest {
       method.setAccessible(true);
       method.invoke(propertyMapper, "upstreamEdges", upstreamEdges, entityResource, model);
 
-      // Find column lineage in the model
       Property hasColumnLineage = model.createProperty(OM_NS, "hasColumnLineage");
       StmtIterator stmts = model.listStatements(null, hasColumnLineage, (Resource) null);
       assertTrue(stmts.hasNext(), "Should have column lineage");
+      Resource colLineageResource = stmts.next().getObject().asResource();
 
-      // Verify fromColumn is stored
-      Property fromColumnProp = model.createProperty(OM_NS, "fromColumn");
-      assertTrue(model.contains(null, fromColumnProp), "Should have fromColumn properties");
+      Resource expectedFromA =
+          model.createResource(
+              RdfUtils.columnUri(BASE_URI, "service.db.schema.source_table.column_a"));
+      Resource expectedFromB =
+          model.createResource(
+              RdfUtils.columnUri(BASE_URI, "service.db.schema.source_table.column_b"));
+      Resource expectedTo =
+          model.createResource(
+              RdfUtils.columnUri(BASE_URI, "service.db.schema.target_table.merged_column"));
 
-      // Verify toColumn is stored
-      Property toColumnProp = model.createProperty(OM_NS, "toColumn");
-      assertTrue(model.contains(null, toColumnProp), "Should have toColumn property");
+      Property fromColumn = model.createProperty(OM_NS, "fromColumn");
+      Property toColumn = model.createProperty(OM_NS, "toColumn");
+      assertTrue(
+          model.contains(colLineageResource, fromColumn, expectedFromA),
+          "fromColumn should reference URI for column_a");
+      assertTrue(
+          model.contains(colLineageResource, fromColumn, expectedFromB),
+          "fromColumn should reference URI for column_b");
+      assertTrue(
+          model.contains(colLineageResource, toColumn, expectedTo),
+          "toColumn should reference URI for merged_column");
 
-      // Verify transformation function is stored
-      Property transformFuncProp = model.createProperty(OM_NS, "transformFunction");
-      assertTrue(model.contains(null, transformFuncProp), "Should have transformFunction property");
+      Property fromColumnFqn = model.createProperty(OM_NS, "fromColumnFqn");
+      Property toColumnFqn = model.createProperty(OM_NS, "toColumnFqn");
+      assertTrue(
+          model.contains(
+              colLineageResource, fromColumnFqn, "service.db.schema.source_table.column_a"),
+          "fromColumnFqn literal should be retained for back-compat");
+      assertTrue(
+          model.contains(
+              colLineageResource, toColumnFqn, "service.db.schema.target_table.merged_column"),
+          "toColumnFqn literal should be retained for back-compat");
+
+      Resource columnClass = model.createResource(OM_NS + "Column");
+      assertTrue(
+          model.contains(expectedFromA, RDF.type, columnClass),
+          "Source column resource should be typed as om:Column");
+      assertTrue(
+          model.contains(expectedTo, RDF.type, columnClass),
+          "Target column resource should be typed as om:Column");
+
+      Property transformFunc = model.createProperty(OM_NS, "transformFunction");
+      assertTrue(
+          model.contains(colLineageResource, transformFunc, "CONCAT(column_a, column_b)"),
+          "transformFunction should be stored as a literal on the column-lineage resource");
+    }
+  }
+
+  @Nested
+  @DisplayName("P1.1: Column resource emission")
+  class ColumnResourceTests {
+
+    @Test
+    @DisplayName("Table.columns should be emitted as named om:Column resources at FQN-derived URIs")
+    void testTableColumnsEmittedAsNamedResources() throws Exception {
+      Map<String, Object> contextCache = new HashMap<>();
+      contextCache.put("dataAsset-complete", Map.of());
+      propertyMapper = new RdfPropertyMapper(BASE_URI, objectMapper, contextCache);
+
+      ArrayNode columns = objectMapper.createArrayNode();
+      ObjectNode pkColumn = objectMapper.createObjectNode();
+      pkColumn.put("name", "id");
+      pkColumn.put("dataType", "BIGINT");
+      pkColumn.put("constraint", "PRIMARY_KEY");
+      pkColumn.put("ordinalPosition", 0);
+      pkColumn.put("description", "Primary key");
+      pkColumn.put("fullyQualifiedName", "service.db.schema.orders.id");
+      columns.add(pkColumn);
+
+      ObjectNode amountColumn = objectMapper.createObjectNode();
+      amountColumn.put("name", "amount");
+      amountColumn.put("dataType", "DECIMAL");
+      amountColumn.put("ordinalPosition", 1);
+      amountColumn.put("fullyQualifiedName", "service.db.schema.orders.amount");
+      columns.add(amountColumn);
+
+      invokePrivate(
+          "emitColumns",
+          new Class[] {JsonNode.class, Resource.class, Model.class},
+          columns,
+          entityResource,
+          model);
+
+      Resource pkResource =
+          model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.schema.orders.id"));
+      Resource amountResource =
+          model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.schema.orders.amount"));
+
+      Property hasColumn = model.createProperty(OM_NS, "hasColumn");
+      assertTrue(
+          model.contains(entityResource, hasColumn, pkResource),
+          "Table should link to PK column via om:hasColumn");
+      assertTrue(
+          model.contains(entityResource, hasColumn, amountResource),
+          "Table should link to amount column via om:hasColumn");
+
+      Resource columnClass = model.createResource(OM_NS + "Column");
+      assertTrue(model.contains(pkResource, RDF.type, columnClass));
+      assertTrue(
+          model.contains(pkResource, model.createProperty(OM_NS, "columnDataType"), "BIGINT"));
+      assertTrue(
+          model.getProperty(pkResource, model.createProperty(OM_NS, "isPrimaryKey")).getBoolean(),
+          "Primary key constraint should set om:isPrimaryKey true");
+      assertFalse(
+          model.getProperty(pkResource, model.createProperty(OM_NS, "isNullable")).getBoolean(),
+          "Primary key implies om:isNullable false");
+      assertTrue(
+          model.contains(amountResource, model.createProperty(OM_NS, "columnDataType"), "DECIMAL"));
+    }
+
+    @Test
+    @DisplayName("Nested struct/map columns should link via om:hasChildColumn")
+    void testNestedChildColumns() throws Exception {
+      ArrayNode columns = objectMapper.createArrayNode();
+      ObjectNode struct = objectMapper.createObjectNode();
+      struct.put("name", "address");
+      struct.put("dataType", "STRUCT");
+      struct.put("fullyQualifiedName", "service.db.schema.users.address");
+
+      ArrayNode children = objectMapper.createArrayNode();
+      ObjectNode street = objectMapper.createObjectNode();
+      street.put("name", "street");
+      street.put("dataType", "VARCHAR");
+      street.put("fullyQualifiedName", "service.db.schema.users.address.street");
+      children.add(street);
+      struct.set("children", children);
+
+      columns.add(struct);
+
+      invokePrivate(
+          "emitColumns",
+          new Class[] {JsonNode.class, Resource.class, Model.class},
+          columns,
+          entityResource,
+          model);
+
+      Resource addressResource =
+          model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.schema.users.address"));
+      Resource streetResource =
+          model.createResource(
+              RdfUtils.columnUri(BASE_URI, "service.db.schema.users.address.street"));
+
+      assertTrue(
+          model.contains(
+              addressResource, model.createProperty(OM_NS, "hasChildColumn"), streetResource),
+          "Parent struct column should link to child via om:hasChildColumn");
+      assertTrue(model.contains(streetResource, RDF.type, model.createResource(OM_NS + "Column")));
+    }
+
+    @Test
+    @DisplayName("Per-column constraints map to isPrimaryKey, isNullable, and isUnique")
+    void testPerColumnConstraintFlags() throws Exception {
+      ArrayNode columns = objectMapper.createArrayNode();
+      columns.add(columnNode("id", "BIGINT", "service.db.s.t.id", "PRIMARY_KEY"));
+      columns.add(columnNode("email", "VARCHAR", "service.db.s.t.email", "UNIQUE"));
+      columns.add(columnNode("country", "VARCHAR", "service.db.s.t.country", "NOT_NULL"));
+      columns.add(columnNode("nickname", "VARCHAR", "service.db.s.t.nickname", "NULL"));
+
+      invokePrivate(
+          "emitColumns",
+          new Class[] {JsonNode.class, Resource.class, Model.class},
+          columns,
+          entityResource,
+          model);
+
+      Resource id = model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.s.t.id"));
+      Resource email = model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.s.t.email"));
+      Resource country =
+          model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.s.t.country"));
+      Resource nickname =
+          model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.s.t.nickname"));
+
+      Property isPrimaryKey = model.createProperty(OM_NS, "isPrimaryKey");
+      Property isUnique = model.createProperty(OM_NS, "isUnique");
+      Property isNullable = model.createProperty(OM_NS, "isNullable");
+
+      assertTrue(model.getProperty(id, isPrimaryKey).getBoolean());
+      assertTrue(model.getProperty(id, isUnique).getBoolean());
+      assertFalse(model.getProperty(id, isNullable).getBoolean());
+
+      assertTrue(model.getProperty(email, isUnique).getBoolean());
+      assertFalse(
+          model.contains(email, isPrimaryKey),
+          "UNIQUE alone should not imply primary-key membership");
+
+      assertFalse(model.getProperty(country, isNullable).getBoolean());
+      assertTrue(model.getProperty(nickname, isNullable).getBoolean());
+    }
+
+    @Test
+    @DisplayName("FOREIGN_KEY table constraint emits om:references and TableConstraint resource")
+    void testForeignKeyTableConstraint() throws Exception {
+      ArrayNode constraints = objectMapper.createArrayNode();
+      ObjectNode fk = objectMapper.createObjectNode();
+      fk.put("constraintType", "FOREIGN_KEY");
+      fk.put("relationshipType", "MANY_TO_ONE");
+      ArrayNode cols = objectMapper.createArrayNode();
+      cols.add("customer_id");
+      fk.set("columns", cols);
+      ArrayNode referred = objectMapper.createArrayNode();
+      referred.add("service.db.s.customers.id");
+      fk.set("referredColumns", referred);
+      constraints.add(fk);
+
+      invokePrivate(
+          "emitTableConstraints",
+          new Class[] {JsonNode.class, String.class, Resource.class, Model.class},
+          constraints,
+          "service.db.s.orders",
+          entityResource,
+          model);
+
+      Resource customerIdCol =
+          model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.s.orders.customer_id"));
+      Resource referredCol =
+          model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.s.customers.id"));
+
+      Property references = model.createProperty(OM_NS, "references");
+      assertTrue(
+          model.contains(customerIdCol, references, referredCol),
+          "FK should produce direct om:references triple between source and referred column");
+
+      Property hasConstraint = model.createProperty(OM_NS, "hasConstraint");
+      Resource constraintResource =
+          model.listObjectsOfProperty(entityResource, hasConstraint).next().asResource();
+      assertTrue(
+          model.contains(
+              constraintResource, RDF.type, model.createResource(OM_NS + "TableConstraint")));
+      assertTrue(
+          model.contains(
+              constraintResource, model.createProperty(OM_NS, "constraintType"), "FOREIGN_KEY"));
+      assertTrue(
+          model.contains(
+              constraintResource, model.createProperty(OM_NS, "relationshipType"), "MANY_TO_ONE"));
+      assertTrue(
+          model.contains(
+              constraintResource,
+              model.createProperty(OM_NS, "hasConstrainedColumn"),
+              customerIdCol));
+      assertTrue(
+          model.contains(
+              constraintResource, model.createProperty(OM_NS, "hasReferredColumn"), referredCol));
+    }
+
+    @Test
+    @DisplayName("Multi-column PRIMARY_KEY constraint marks every member column")
+    void testMultiColumnPrimaryKey() throws Exception {
+      ArrayNode constraints = objectMapper.createArrayNode();
+      ObjectNode pk = objectMapper.createObjectNode();
+      pk.put("constraintType", "PRIMARY_KEY");
+      ArrayNode cols = objectMapper.createArrayNode();
+      cols.add("tenant_id");
+      cols.add("user_id");
+      pk.set("columns", cols);
+      constraints.add(pk);
+
+      invokePrivate(
+          "emitTableConstraints",
+          new Class[] {JsonNode.class, String.class, Resource.class, Model.class},
+          constraints,
+          "service.db.s.users",
+          entityResource,
+          model);
+
+      Resource tenantId =
+          model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.s.users.tenant_id"));
+      Resource userId =
+          model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.s.users.user_id"));
+
+      Property isPrimaryKey = model.createProperty(OM_NS, "isPrimaryKey");
+      assertTrue(model.getProperty(tenantId, isPrimaryKey).getBoolean());
+      assertTrue(model.getProperty(userId, isPrimaryKey).getBoolean());
+    }
+
+    private ObjectNode columnNode(String name, String dataType, String fqn, String constraint) {
+      ObjectNode col = objectMapper.createObjectNode();
+      col.put("name", name);
+      col.put("dataType", dataType);
+      col.put("fullyQualifiedName", fqn);
+      if (constraint != null) {
+        col.put("constraint", constraint);
+      }
+      return col;
+    }
+
+    @Test
+    @DisplayName("Column.profile is emitted as DQV measurements rather than a JSON literal")
+    void testColumnProfileEmittedAsDqv() throws Exception {
+      ArrayNode columns = objectMapper.createArrayNode();
+      ObjectNode col = objectMapper.createObjectNode();
+      col.put("name", "email");
+      col.put("dataType", "VARCHAR");
+      col.put("fullyQualifiedName", "service.db.s.users.email");
+      ObjectNode profile = objectMapper.createObjectNode();
+      profile.put("valuesCount", 1000);
+      profile.put("nullCount", 12);
+      profile.put("nullProportion", 0.012);
+      profile.put("uniqueCount", 985);
+      profile.put("timestamp", 1714300000000L);
+      col.set("profile", profile);
+      columns.add(col);
+
+      invokePrivate(
+          "emitColumns",
+          new Class[] {JsonNode.class, Resource.class, Model.class},
+          columns,
+          entityResource,
+          model);
+
+      Resource emailColumn =
+          model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.s.users.email"));
+      Property hasMeasurement =
+          model.createProperty("http://www.w3.org/ns/dqv#", "hasQualityMeasurement");
+      java.util.List<Resource> measurements =
+          model.listObjectsOfProperty(emailColumn, hasMeasurement).toList().stream()
+              .map(node -> node.asResource())
+              .toList();
+      assertEquals(
+          4,
+          measurements.size(),
+          "Expected 4 numeric profile metrics (valuesCount, nullCount, nullProportion, uniqueCount)");
+
+      Property isMeasurementOf =
+          model.createProperty("http://www.w3.org/ns/dqv#", "isMeasurementOf");
+      Property dqvValue = model.createProperty("http://www.w3.org/ns/dqv#", "value");
+      java.util.Map<String, Double> byMetric = new java.util.HashMap<>();
+      for (Resource m : measurements) {
+        Resource metric = model.getProperty(m, isMeasurementOf).getObject().asResource();
+        double v = model.getProperty(m, dqvValue).getDouble();
+        byMetric.put(metric.getURI(), v);
+      }
+      assertEquals(1000.0, byMetric.get(OM_NS + "ValuesCountMetric"), 0.0);
+      assertEquals(12.0, byMetric.get(OM_NS + "NullCountMetric"), 0.0);
+      assertEquals(0.012, byMetric.get(OM_NS + "NullProportionMetric"), 1e-9);
+      assertEquals(985.0, byMetric.get(OM_NS + "UniqueCountMetric"), 0.0);
+
+      // Each measurement should also be tied back to the column via dqv:computedOn.
+      Property computedOn = model.createProperty("http://www.w3.org/ns/dqv#", "computedOn");
+      for (Resource m : measurements) {
+        assertTrue(model.contains(m, computedOn, emailColumn));
+      }
+    }
+
+    @Test
+    @DisplayName("Pipeline run is emitted as a prov:Activity tied to inputs and outputs")
+    void testPipelineRunEmitsProvActivity() throws Exception {
+      ObjectNode pipelineStatus = objectMapper.createObjectNode();
+      pipelineStatus.put("timestamp", 1714300000000L);
+      pipelineStatus.put("endTime", 1714300120000L);
+      pipelineStatus.put("executionStatus", "Successful");
+      pipelineStatus.put("executionId", "airflow-run-123");
+      ArrayNode inputs = objectMapper.createArrayNode();
+      ObjectNode in = objectMapper.createObjectNode();
+      in.put("datasetFQN", "service.db.s.source");
+      inputs.add(in);
+      pipelineStatus.set("inputs", inputs);
+      ArrayNode outputs = objectMapper.createArrayNode();
+      ObjectNode out = objectMapper.createObjectNode();
+      out.put("datasetFQN", "service.db.s.target");
+      outputs.add(out);
+      pipelineStatus.set("outputs", outputs);
+      ObjectNode executedBy = objectMapper.createObjectNode();
+      executedBy.put("id", UUID.randomUUID().toString());
+      executedBy.put("type", "user");
+      pipelineStatus.set("executedBy", executedBy);
+
+      java.lang.reflect.Method method =
+          org.openmetadata.service.rdf.translator.RdfActivityMapper.class.getDeclaredMethod(
+              "emitPipelineActivity",
+              JsonNode.class,
+              String.class,
+              Resource.class,
+              String.class,
+              Model.class);
+      method.setAccessible(true);
+      method.invoke(
+          null, pipelineStatus, "service.pipeline.daily_etl", entityResource, BASE_URI, model);
+
+      Property hasExecution = model.createProperty(OM_NS, "hasExecution");
+      Resource activity =
+          model.listObjectsOfProperty(entityResource, hasExecution).next().asResource();
+
+      assertTrue(
+          model.contains(
+              activity, RDF.type, model.createResource("http://www.w3.org/ns/prov#Activity")));
+      assertTrue(
+          model.contains(activity, model.createProperty(OM_NS, "executionStatus"), "Successful"));
+      assertTrue(
+          model.contains(activity, model.createProperty(OM_NS, "executionId"), "airflow-run-123"));
+      // PROV-O: activity-to-activity relation. Pipeline run wasInformedBy pipeline definition.
+      assertTrue(
+          model.contains(
+              activity,
+              model.createProperty("http://www.w3.org/ns/prov#", "wasInformedBy"),
+              entityResource));
+      assertTrue(
+          model.contains(
+              activity, model.createProperty("http://www.w3.org/ns/prov#", "startedAtTime")));
+      assertTrue(
+          model.contains(
+              activity, model.createProperty("http://www.w3.org/ns/prov#", "endedAtTime")));
+      assertTrue(
+          model.contains(activity, model.createProperty("http://www.w3.org/ns/prov#", "used")),
+          "Activity should reference its input dataset via prov:used");
+      assertTrue(
+          model.contains(activity, model.createProperty("http://www.w3.org/ns/prov#", "generated")),
+          "Activity should reference its output dataset via prov:generated");
+      assertTrue(
+          model.contains(
+              activity, model.createProperty("http://www.w3.org/ns/prov#", "wasAssociatedWith")),
+          "Activity should record who triggered the run via prov:wasAssociatedWith");
+    }
+
+    @Test
+    @DisplayName("RdfUtils.columnUri should be deterministic and percent-encode FQNs")
+    void testColumnUri() {
+      String uri = RdfUtils.columnUri(BASE_URI, "service.db.schema.orders.amount");
+      assertEquals(BASE_URI + "entity/column/service.db.schema.orders.amount", uri);
+
+      String specialUri = RdfUtils.columnUri(BASE_URI, "service db.weird name");
+      assertTrue(
+          specialUri.contains("service+db.weird+name") || specialUri.contains("service%20db"),
+          "FQN with whitespace should be percent-encoded");
+
+      assertNull(RdfUtils.columnUri(BASE_URI, null));
+      assertNull(RdfUtils.columnUri(BASE_URI, ""));
     }
   }
 
