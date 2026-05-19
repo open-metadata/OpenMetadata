@@ -13,60 +13,26 @@
 package org.openmetadata.codegen;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * Emits a typed index-document class for an entity. The class {@code extends} the entity POJO
- * declared by the spec's {@code javaEntity} (e.g. {@code TableIndexDoc extends Table}), so every
- * entity field keeps its exact type ({@code id} is {@code UUID}, {@code changeDescription} is
- * {@code ChangeDescription}, ...). Only the denormalized search-only fields are declared here.
- * An entity with no {@code javaEntity} (no backing POJO) yields a standalone class.
+ * Emits a typed index-document class for an entity. The class {@code extends} the spec's
+ * {@code javaEntity} (e.g. {@code TableIndexDoc extends Table}), so every entity field keeps its
+ * exact type. The entity's own field set is read from <em>that entity's schema</em> — the entity
+ * declares what it has; the generator declares only the remaining (denormalized) search fields.
  */
 final class IndexDocGenerator {
   private static final String PACKAGE = "org.openmetadata.schema.search";
-
-  /**
-   * Fields every entity POJO carries via {@code EntityInterface}, even when the entity's own
-   * schema does not list them in {@code properties}. They are always inherited, never declared.
-   */
-  private static final Set<String> ENTITY_INTERFACE_FIELDS =
-      Set.of(
-          "id",
-          "name",
-          "displayName",
-          "fullyQualifiedName",
-          "description",
-          "version",
-          "updatedAt",
-          "updatedBy",
-          "href",
-          "owners",
-          "changeDescription",
-          "incrementalChangeDescription",
-          "deleted",
-          "entityStatus",
-          "votes",
-          "domains",
-          "dataProducts",
-          "extension",
-          "followers",
-          "reviewers",
-          "experts",
-          "tags",
-          "certification",
-          "lifeCycle",
-          "style",
-          "provider",
-          "children",
-          "dataContract",
-          "service",
-          "usageSummary");
-
-  /** Fields every time-series POJO carries via {@code EntityTimeSeriesInterface}. */
-  private static final Set<String> TIME_SERIES_INTERFACE_FIELDS = Set.of("id", "timestamp");
+  private static final Pattern GETTER = Pattern.compile("\\b(?:get|is)([A-Z]\\w*)\\s*\\(\\s*\\)");
 
   private static final String LICENSE =
       """
@@ -141,12 +107,18 @@ final class IndexDocGenerator {
   private final JsonNode fragmentTypes;
   private final Spec spec;
   private final EntitySchemas entitySchemas;
+  private final Set<String> entityInterfaceFields;
+  private final Set<String> timeSeriesInterfaceFields;
 
   IndexDocGenerator(Spec spec) {
     this.spec = spec;
     this.fieldTypes = spec.fieldTypes();
     this.fragmentTypes = spec.fragmentJavaTypes();
     this.entitySchemas = new EntitySchemas(spec.schemaRoot());
+    Path javaRoot = spec.schemaJavaRoot();
+    this.entityInterfaceFields = interfaceFields(javaRoot.resolve("EntityInterface.java"));
+    this.timeSeriesInterfaceFields =
+        interfaceFields(javaRoot.resolve("EntityTimeSeriesInterface.java"));
   }
 
   static String className(String entity) {
@@ -162,14 +134,15 @@ final class IndexDocGenerator {
   String generate(String entity) {
     String className = className(entity);
     JsonNode entitySpec = spec.entity(entity);
-    EntitySchemas.Info schema = resolveSchema(entitySpec);
-    Set<String> inherited = inheritedFields(schema);
+    JsonNode javaEntityNode = entitySpec.get("javaEntity");
+    String javaEntity = javaEntityNode == null ? null : javaEntityNode.asText();
+    Set<String> inherited = inheritedFields(javaEntity);
     TreeSet<String> imports = new TreeSet<>();
     StringBuilder members = new StringBuilder();
     Set<String> usedNames = new HashSet<>();
     for (Map.Entry<String, JsonNode> field : entitySpec.get("fields").properties()) {
       if (inherited.contains(field.getKey())) {
-        continue; // inherited from the entity POJO with its exact type
+        continue; // the entity declares this field — inherited with its exact type
       }
       String javaName = uniqueName(sanitize(field.getKey()), usedNames);
       appendMember(
@@ -180,24 +153,42 @@ final class IndexDocGenerator {
           members,
           imports);
     }
-    return render(className, schema, imports, members.toString());
+    return render(className, javaEntity, imports, members.toString());
   }
 
-  private EntitySchemas.Info resolveSchema(JsonNode entitySpec) {
-    JsonNode javaEntity = entitySpec.get("javaEntity");
+  /** The fields the entity already declares — read from the entity's own schema. */
+  private Set<String> inheritedFields(String javaEntity) {
     if (javaEntity == null) {
-      return null;
-    }
-    return entitySchemas.byJavaType(javaEntity.asText()).orElse(null);
-  }
-
-  private Set<String> inheritedFields(EntitySchemas.Info schema) {
-    if (schema == null) {
       return Set.of();
     }
-    Set<String> inherited = new HashSet<>(schema.fields());
-    inherited.addAll(schema.timeSeries() ? TIME_SERIES_INTERFACE_FIELDS : ENTITY_INTERFACE_FIELDS);
+    EntitySchemas.Info entity = entitySchemas.byJavaType(javaEntity).orElse(null);
+    if (entity == null) {
+      return Set.of();
+    }
+    Set<String> inherited = new HashSet<>(entity.fields());
+    if (entity.kind() == EntitySchemas.Kind.ENTITY) {
+      inherited.addAll(entityInterfaceFields);
+    } else if (entity.kind() == EntitySchemas.Kind.TIME_SERIES) {
+      inherited.addAll(timeSeriesInterfaceFields);
+    }
     return inherited;
+  }
+
+  /** Derives an interface's field set from its getters — the authoritative contract. */
+  private Set<String> interfaceFields(Path javaFile) {
+    String source;
+    try {
+      source = Files.readString(javaFile);
+    } catch (IOException e) {
+      throw new UncheckedIOException("Failed to read " + javaFile, e);
+    }
+    Set<String> fields = new HashSet<>();
+    Matcher matcher = GETTER.matcher(source);
+    while (matcher.find()) {
+      String name = matcher.group(1);
+      fields.add(Character.toLowerCase(name.charAt(0)) + name.substring(1));
+    }
+    return fields;
   }
 
   // ---- field naming ----
@@ -300,12 +291,12 @@ final class IndexDocGenerator {
   }
 
   private String render(
-      String className, EntitySchemas.Info schema, TreeSet<String> imports, String members) {
+      String className, String javaEntity, TreeSet<String> imports, String members) {
     imports.add("com.fasterxml.jackson.annotation.JsonInclude");
     String extendsClause = "";
-    if (schema != null) {
-      imports.add(schema.javaType());
-      extendsClause = " extends " + simpleName(schema.javaType());
+    if (javaEntity != null) {
+      imports.add(javaEntity);
+      extendsClause = " extends " + simpleName(javaEntity);
     }
     StringBuilder sb = new StringBuilder(LICENSE);
     sb.append("package ").append(PACKAGE).append(";\n\n");

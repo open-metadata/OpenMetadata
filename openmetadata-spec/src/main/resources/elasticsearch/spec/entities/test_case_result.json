@@ -1,7 +1,7 @@
 {
   "entity" : "test_case_result",
   "extends" : "entity_base",
-  "javaEntity" : "org.openmetadata.schema.tests.type.TestCaseResult",
+  "javaEntity" : "org.openmetadata.schema.entity.feed.TestCaseResultFeedInfo",
   "settings" : {
     "byLanguage" : {
       "en" : {

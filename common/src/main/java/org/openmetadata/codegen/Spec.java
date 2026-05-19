@@ -97,6 +97,17 @@ final class Spec {
     return dir.getParent().getParent().resolve("json").resolve("schema");
   }
 
+  /** Directory of the hand-written schema interfaces ({@code EntityInterface.java}, ...). */
+  Path schemaJavaRoot() {
+    return dir.getParent()
+        .getParent()
+        .getParent()
+        .resolve("java")
+        .resolve("org")
+        .resolve("openmetadata")
+        .resolve("schema");
+  }
+
   List<String> entityNames() {
     try (Stream<Path> files = Files.list(dir.resolve("entities"))) {
       List<String> names = new ArrayList<>();

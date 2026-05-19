@@ -1,6 +1,7 @@
 {
   "entity" : "column",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.type.Column",
   "settings" : {
     "byLanguage" : {
       "en" : {

@@ -355,7 +355,7 @@ public final class SpecExtractor {
     ObjectNode spec = Json.MAPPER.createObjectNode();
     spec.put("entity", entity);
     spec.put("extends", "entity_base");
-    resolveJavaEntity(entity).ifPresent(javaType -> spec.put("javaEntity", javaType));
+    resolveSchema(entity).ifPresent(schema -> spec.put("javaEntity", schema.javaType()));
     spec.set("settings", settingsRef);
     ObjectNode delta = Json.MAPPER.createObjectNode();
     fields.properties().forEach(e -> addFieldDelta(delta, baseFields, e.getKey(), e.getValue()));
@@ -442,11 +442,9 @@ public final class SpecExtractor {
   }
 
   /** Resolves the entity POJO an index should extend, baked into the spec as {@code javaEntity}. */
-  private java.util.Optional<String> resolveJavaEntity(String entity) {
+  private java.util.Optional<EntitySchemas.Info> resolveSchema(String entity) {
     String stem = camelCase(entity);
-    return entitySchemas
-        .byFileStem(SCHEMA_ALIASES.getOrDefault(stem, stem))
-        .map(EntitySchemas.Info::javaType);
+    return entitySchemas.byFileStem(SCHEMA_ALIASES.getOrDefault(stem, stem));
   }
 
   private String camelCase(String entity) {
