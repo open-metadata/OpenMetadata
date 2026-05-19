@@ -2233,3 +2233,91 @@ class PowerBIUnitTest(TestCase):
 
         dash_3_result = next(d for d in dashboards if d.name.root == "dash-3")
         assert len(dash_3_result.charts) == 0
+
+    @pytest.mark.order(51)
+    def test_extract_tables_from_sql_uses_tsql_dialect(self):
+        """
+        Regression guard: `_extract_tables_from_sql` must invoke `LineageParser`
+        with `Dialect.TSQL`, not `Dialect.ANSI`. PowerBI's `Sql.Database` /
+        `Value.NativeQuery` connectors are SQL Server / Azure SQL, whose
+        bracket-quoted identifiers fail to parse under ANSI but succeed under
+        TSQL. Reverting this to ANSI silently regresses lineage extraction.
+        """
+        from metadata.ingestion.lineage.models import Dialect
+
+        sql = "SELECT [Year] FROM cub.v_md_Time_Detailed"
+        m_expression = (
+            f'TestEntity = let\n  Source = Sql.Database("server", "db", [Query = "{sql}"])\nin\n  Source;\r\n'
+        )
+
+        captured = {}
+
+        class _DialectCapturingParser:
+            def __init__(self, query, dialect, timeout_seconds, parser_type):
+                captured["dialect"] = dialect
+                self.source_tables = []
+
+        with patch(
+            "metadata.ingestion.source.dashboard.powerbi.metadata.LineageParser",
+            _DialectCapturingParser,
+        ):
+            self.powerbi._parse_sql_source(m_expression)
+
+        assert captured.get("dialect") == Dialect.TSQL, (
+            f"Expected Dialect.TSQL, got {captured.get('dialect')}. "
+            "PowerBI Sql.Database queries are T-SQL — reverting to ANSI "
+            "regresses bracket-identifier parsing."
+        )
+
+    @pytest.mark.order(52)
+    def test_extract_tables_from_sql_tsql_bracket_queries(self):
+        """
+        End-to-end smoke test: 5 representative T-SQL queries from the
+        production PowerBI ingestion log that previously failed parsing under
+        the ANSI dialect. With the TSQL dialect, each must successfully parse
+        and yield the expected source table.
+
+        Cases:
+          1. Bracket-quoted column with embedded space  ([FUNCT_ACCOUNT ALT_L2])
+          2. Multi-word bracket-quoted column           ([ORGANIZATION ID AND DESCRIPTION])
+          3. Three-part fully-bracketed table reference ([db].[schema].[table])
+          4. Bracket-quoted table with space + parens   (cub.[v_md_SourceSystem (FAC)])
+          5. T-SQL TOP clause with bracket-quoted col   (SELECT TOP n ... [YEAR])
+        """
+        cases = [
+            (
+                "bracket-quoted column with space",
+                "SELECT CE_UNIQUE_ID, [FUNCT_ACCOUNT ALT_L2] FROM cub.v_md_FunctAccount_with_CostElement",
+                "v_md_FunctAccount_with_CostElement",
+            ),
+            (
+                "multi-word bracket-quoted column",
+                "SELECT ORGANIZATION_ID, [Level], [ORGANIZATION ID AND DESCRIPTION] FROM cub.v_md_Organization_FLAT",
+                "v_md_Organization_FLAT",
+            ),
+            (
+                "three-part bracketed table reference",
+                "SELECT * FROM [NBS_GENIE].[QS].[Company_v2]",
+                "Company_v2",
+            ),
+            (
+                "bracketed table name with space and parens",
+                "SELECT SORT_ORDER, SOURCE FROM cub.[v_md_SourceSystem (FAC)]",
+                "v_md_SourceSystem (FAC)",
+            ),
+            (
+                "T-SQL TOP clause with bracket-quoted reserved word",
+                "SELECT TOP 100 IBI_DETAILS_ID, [YEAR] FROM cub.v_fact_IBI_vs_BPC_Delta WHERE [YEAR] = 2024",
+                "v_fact_IBI_vs_BPC_Delta",
+            ),
+        ]
+
+        for label, sql, expected_table in cases:
+            m_expression = (
+                f'TestEntity = let\n  Source = Sql.Database("server", "db", [Query = "{sql}"])\nin\n  Source;\r\n'
+            )
+            result = self.powerbi._parse_sql_source(m_expression)
+            assert result is not None, f"[{label}] _parse_sql_source returned None"
+            assert any(expected_table.lower() in t["table"].lower() for t in result), (
+                f"[{label}] expected table '{expected_table}' not found in result {[t['table'] for t in result]}"
+            )
