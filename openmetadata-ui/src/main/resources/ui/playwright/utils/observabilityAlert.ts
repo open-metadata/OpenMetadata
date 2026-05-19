@@ -651,6 +651,14 @@ export const createCommonObservabilityAlert = async ({
 
     if (action.inputs && action.inputs.length > 0) {
       for (const input of action.inputs) {
+        // Focus the combobox first. Ant Design Select with mode="multiple" renders
+        // the search input as readonly until focused; without the click, page.fill()
+        // (even with force: true) doesn't trigger AsyncSelect's onSearch handler, so
+        // the API call never fires and no options appear in the dropdown.
+        await page.click(
+          `[data-testid="${input.inputSelector}"] [role="combobox"]`
+        );
+
         const getSearchResult = page.waitForResponse(
           '/api/v1/search/query?q=*'
         );
