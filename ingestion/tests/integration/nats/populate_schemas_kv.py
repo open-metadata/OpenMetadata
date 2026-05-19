@@ -13,9 +13,9 @@ import asyncio
 import json
 import logging
 
-logger = logging.getLogger(__name__)
-
 import nats
+
+logger = logging.getLogger(__name__)
 
 SCHEMAS = {
     # Avro — detected by {"type": "record", ...} at root
