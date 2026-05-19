@@ -40,9 +40,13 @@ public final class SearchQueryHelper {
     final String path =
         String.format(
             "/v1/search/query?q=%s&index=%s&from=0&size=%d&deleted=false&track_total_hits=true",
-            query, indexAlias, size);
+            urlEncode(query), urlEncode(indexAlias), size);
     final Map<String, Object> response = http.execute(HttpMethod.GET, path, null, Map.class);
     return parse(response);
+  }
+
+  private static String urlEncode(final String value) {
+    return java.net.URLEncoder.encode(value, java.nio.charset.StandardCharsets.UTF_8);
   }
 
   @SuppressWarnings("unchecked")

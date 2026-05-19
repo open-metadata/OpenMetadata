@@ -80,7 +80,7 @@ public final class OidcBackend implements AuthBackend {
     return requestTokens(
         idp,
         "grant_type=password&username=%s&password=%s&scope=%s"
-            .formatted(DEFAULT_USER, DEFAULT_PASSWORD, urlEncode(SCOPE)));
+            .formatted(urlEncode(DEFAULT_USER), urlEncode(DEFAULT_PASSWORD), urlEncode(SCOPE)));
   }
 
   @Override

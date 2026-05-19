@@ -52,8 +52,10 @@ public final class SearchClient {
                   .build(),
               HttpResponse.BodyHandlers.discarding());
       return response.statusCode() >= 200 && response.statusCode() < 300;
-    } catch (IOException | InterruptedException e) {
+    } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
+      throw new SearchClientException("HEAD " + path + " interrupted", e);
+    } catch (final IOException e) {
       throw new SearchClientException("HEAD " + path + " failed", e);
     }
   }
@@ -67,8 +69,10 @@ public final class SearchClient {
             "HTTP " + response.statusCode() + " from " + request.uri() + ": " + response.body());
       }
       return MAPPER.readTree(response.body());
-    } catch (IOException | InterruptedException e) {
+    } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
+      throw new SearchClientException(request.method() + " " + request.uri() + " interrupted", e);
+    } catch (final IOException e) {
       throw new SearchClientException(request.method() + " " + request.uri() + " failed", e);
     }
   }
