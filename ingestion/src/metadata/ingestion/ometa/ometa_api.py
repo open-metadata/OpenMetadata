@@ -645,6 +645,9 @@ class OpenMetadata(
             data=params,
         )
 
+        if resp is None:
+            raise EmptyPayloadException(f"Got an empty response when listing entities for {suffix}")
+
         if self._use_raw_data:
             return resp
 
