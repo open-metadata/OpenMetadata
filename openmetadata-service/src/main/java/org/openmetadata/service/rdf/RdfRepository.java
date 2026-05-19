@@ -237,19 +237,16 @@ public class RdfRepository {
    * per-entity {@link #createOrUpdate} for per-row error attribution). The
    * indexer in {@code RdfBatchProcessor.processEntities} does the latter.
    *
-   * <p>Implementation note: under the hood {@link
+   * <p>Implementation note: {@link
    * org.openmetadata.service.rdf.storage.JenaFusekiStorage#bulkStoreEntities}
-   * issues TWO Fuseki operations — a combined SPARQL UPDATE that DELETEs
-   * the predicate-scoped triples for every entity in the batch, then a GSP
-   * POST that loads the combined N-Triples body. If the second call fails
-   * after the first commits, the batch is left in an INCONSISTENT state on
-   * Fuseki (every entity's prior translator-managed predicates are gone but
-   * the new triples never landed). The caller's fall-back to per-entity
-   * recreates each affected entity's triples cleanly, so the inconsistency
-   * is self-healing within one batch's worth of retries. Fully atomic
-   * delete+insert in a single transaction would require switching the load
-   * to {@code INSERT DATA} via {@code /update} instead of GSP POST to
-   * {@code /data}; that's worth doing but out of scope for this PR.
+   * runs the batch as a SINGLE SPARQL UPDATE containing both the combined
+   * per-entity DELETE statements and an {@code INSERT DATA} block with the
+   * unioned N-Triples body. Fuseki executes multi-statement UPDATEs in one
+   * transaction, so the write is atomic at the storage side — either the
+   * whole batch lands or nothing does. The per-entity fallback in
+   * {@code RdfBatchProcessor.processEntities} therefore only runs on
+   * payload-shape failures (a single bad RDF model the writer can't
+   * serialise), not on partial-commit recovery.
    */
   public void bulkCreateOrUpdate(List<? extends EntityInterface> entities) {
     if (!isEnabled() || entities == null || entities.isEmpty()) {
@@ -1584,7 +1581,13 @@ public class RdfRepository {
 
               String extractedRelationType = extractPredicateName(relationTypeUri);
               String formattedLabel = formatGlossaryRelationType(relationTypeUri);
-              LOG.info(
+              // DEBUG, not INFO: this fires once per edge in the parsed
+              // SPARQL result set. A typical graph response with hundreds
+              // of edges would emit hundreds of INFO log lines per request
+              // and dominate log-aggregation cost. The "RDF query returned
+              // {} nodes and {} edges" summary log further down covers the
+              // per-request signal at INFO level.
+              LOG.debug(
                   "RDF Edge: {} -> {}, predicateUri={}, extractedType={}, label={}",
                   extractEntityIdFromUri(term1Uri),
                   extractEntityIdFromUri(term2Uri),
