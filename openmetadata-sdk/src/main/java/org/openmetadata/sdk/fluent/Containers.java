@@ -148,6 +148,33 @@ public final class Containers {
       return this;
     }
 
+    /**
+     * Create the container as a child of {@code parent}. Mirrors {@code GlossaryTerms.under(...)}.
+     * The parent must belong to the same StorageService as set via {@link #in(String)}.
+     */
+    public ContainerCreator under(Container parent) {
+      if (parent == null) {
+        request.setParent(null);
+        return this;
+      }
+      return under(
+          new EntityReference()
+              .withId(parent.getId())
+              .withType("container")
+              .withFullyQualifiedName(parent.getFullyQualifiedName()));
+    }
+
+    public ContainerCreator under(EntityReference parentRef) {
+      request.setParent(parentRef);
+      return this;
+    }
+
+    public ContainerCreator underFqn(String parentFqn) {
+      request.setParent(
+          new EntityReference().withType("container").withFullyQualifiedName(parentFqn));
+      return this;
+    }
+
     public Container execute() {
       return client.containers().create(request);
     }
@@ -341,6 +368,43 @@ public final class Containers {
 
     public FluentContainer withDisplayName(String displayName) {
       container.setDisplayName(displayName);
+      modified = true;
+      return this;
+    }
+
+    /**
+     * Re-parent this container under {@code parent}. The {@link #save()} call routes through the
+     * service update, which generates a JSON Patch and issues PATCH — the backend (see issue
+     * #24294) cascades the FQN change to descendants, column FQNs, tags, and the search index.
+     * The new parent must belong to the same StorageService.
+     */
+    public FluentContainer withParent(Container parent) {
+      if (parent == null) {
+        return withoutParent();
+      }
+      return withParent(
+          new EntityReference()
+              .withId(parent.getId())
+              .withType("container")
+              .withFullyQualifiedName(parent.getFullyQualifiedName()));
+    }
+
+    public FluentContainer withParent(EntityReference parentRef) {
+      container.setParent(parentRef);
+      modified = true;
+      return this;
+    }
+
+    public FluentContainer withParentFqn(String parentFqn) {
+      container.setParent(
+          new EntityReference().withType("container").withFullyQualifiedName(parentFqn));
+      modified = true;
+      return this;
+    }
+
+    /** Promote this container to be a direct child of its StorageService. */
+    public FluentContainer withoutParent() {
+      container.setParent(null);
       modified = true;
       return this;
     }

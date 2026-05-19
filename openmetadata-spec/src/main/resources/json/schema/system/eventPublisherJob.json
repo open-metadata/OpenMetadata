@@ -236,6 +236,13 @@
       "description": "This schema publisher run modes.",
       "type": "boolean"
     },
+    "minSuccessRatio": {
+      "description": "Minimum per-entity success ratio (successRecords / totalRecords) required to mark a per-entity reindex as fully successful. Below this threshold the per-entity run is flagged as not fully successful; promotion still proceeds when the staged index contains at least one document, through the existing doc-count rescue in DefaultRecreateHandler. Default 0.95.",
+      "type": "number",
+      "default": 0.95,
+      "minimum": 0,
+      "maximum": 1
+    },
     "batchSize": {
       "description": "Maximum number of events sent in a batch (Default 10).",
       "type": "integer",
