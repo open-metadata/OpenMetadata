@@ -139,14 +139,14 @@ test.describe('Knowledge Center', () => {
         page,
         ownerNames: [user.responseData.displayName],
         activatorBtnDataTestId: 'edit-owner',
-        endpoint: knowledgePageArticle.entityType as EntityTypeEndpoint,
+        endpoint: 'contextCenter/pages' as EntityTypeEndpoint,
         type: 'Users',
       });
 
       // remove owner
       await removeOwner({
         page,
-        endpoint: knowledgePageArticle.entityType as EntityTypeEndpoint,
+        endpoint: 'contextCenter/pages' as EntityTypeEndpoint,
         ownerName: user.responseData.displayName,
         type: 'Users',
         dataTestId: 'add-owner',
@@ -157,7 +157,7 @@ test.describe('Knowledge Center', () => {
         page,
         ownerNames: [user.responseData.displayName],
         activatorBtnDataTestId: 'add-owner',
-        endpoint: knowledgePageArticle.entityType as EntityTypeEndpoint,
+        endpoint: 'contextCenter/pages' as EntityTypeEndpoint,
         type: 'Users',
       });
 
