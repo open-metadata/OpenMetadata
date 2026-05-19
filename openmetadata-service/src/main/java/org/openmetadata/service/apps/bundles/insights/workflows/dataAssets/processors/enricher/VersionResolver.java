@@ -85,7 +85,14 @@ public final class VersionResolver {
 
       for (Object version : versions) {
         EntityInterface versionEntity = JsonUtils.readOrConvertValue(version, entityClass);
-        long versionTimestamp = TimestampUtils.getStartOfDayTimestamp(versionEntity.getUpdatedAt());
+        Long rawUpdatedAt = versionEntity.getUpdatedAt();
+        if (rawUpdatedAt == null) {
+          // Degenerate row with no updatedAt — skip rather than NPE on unboxing. The walk
+          // continues; the entity still emits windows from any sibling rows that are well-formed.
+          isFirst = false;
+          continue;
+        }
+        long versionTimestamp = TimestampUtils.getStartOfDayTimestamp(rawUpdatedAt);
         VersionShape shape = isFirst ? VersionShape.LATEST_HYDRATED : VersionShape.HISTORICAL_RAW;
         isFirst = false;
 
