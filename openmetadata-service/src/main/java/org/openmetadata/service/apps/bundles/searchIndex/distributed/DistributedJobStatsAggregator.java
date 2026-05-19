@@ -357,6 +357,7 @@ public class DistributedJobStatsAggregator {
         stepStats.setTotalRecords(safeToInt(es.getTotalRecords()));
         stepStats.setSuccessRecords(safeToInt(es.getSuccessRecords()));
         stepStats.setFailedRecords(safeToInt(es.getFailedRecords()));
+        stepStats.setWarningRecords(safeToInt(es.getWarningRecords()));
 
         CollectionDAO.SearchIndexServerStatsDAO.EntityStats vectorEntityStats =
             vectorByEntity.get(entry.getKey());

@@ -249,6 +249,9 @@
           },
           "ordinalPosition": {
             "type": "integer"
+          },
+          "children": {
+            "type": "flattened"
           }
         }
       },

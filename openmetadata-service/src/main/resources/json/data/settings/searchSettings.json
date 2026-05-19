@@ -335,7 +335,7 @@
           "matchType": "exact"
         },
         {
-          "field": "columns.children.name.keyword",
+          "field": "columns.children.name",
           "boost": 1.0,
           "matchType": "exact"
         },
@@ -606,7 +606,7 @@
           "matchType": "exact"
         },
         {
-          "field": "messageSchema.schemaFields.children.name.keyword",
+          "field": "messageSchema.schemaFields.children.name",
           "boost": 1.0,
           "matchType": "exact"
         },
@@ -1207,8 +1207,7 @@
         "displayName",
         "description",
         "dataModel.columns.name",
-        "dataModel.columns.description",
-        "dataModel.columns.children.name"
+        "dataModel.columns.description"
       ],
       "matchTypeBoostMultipliers": {
         "exactMatchMultiplier": 2.0,
@@ -1285,7 +1284,7 @@
           "matchType": "exact"
         },
         {
-          "field": "responseSchema.schemaFields.children.keyword",
+          "field": "responseSchema.schemaFields.children.name",
           "boost": 5.0,
           "matchType": "exact"
         },
@@ -1295,7 +1294,7 @@
           "matchType": "exact"
         },
         {
-          "field": "requestSchema.schemaFields.children.keyword",
+          "field": "requestSchema.schemaFields.children.name",
           "boost": 5.0,
           "matchType": "exact"
         }
@@ -2359,7 +2358,7 @@
           "description": "Exact match on column display names. Useful for finding tables with columns having specific user-friendly names."
         },
         {
-          "name": "columns.children.name.keyword",
+          "name": "columns.children.name",
           "description": "Search for nested columns within complex data types. Helps find tables with specific nested fields."
         },
         {
@@ -2552,10 +2551,6 @@
         {
           "name": "messageSchema.schemaFields.children.name",
           "description": "Search on nested field names within complex schema structures."
-        },
-        {
-          "name": "messageSchema.schemaFields.children.name.keyword",
-          "description": "Exact match on nested field names for precise lookups of nested structures."
         },
         {
           "name": "tags.tagFQN.text",
@@ -3081,10 +3076,6 @@
           "description": "Search on nested field names within complex response schema structures."
         },
         {
-          "name": "responseSchema.schemaFields.children.keyword",
-          "description": "Exact match on nested field names in the response schema."
-        },
-        {
           "name": "requestSchema.schemaFields.name",
           "description": "Search on field names in the API request schema to find endpoints accepting specific data fields."
         },
@@ -3099,10 +3090,6 @@
         {
           "name": "requestSchema.schemaFields.children.name",
           "description": "Search on nested field names within complex request schema structures."
-        },
-        {
-          "name": "requestSchema.schemaFields.children.keyword",
-          "description": "Exact match on nested field names in the request schema."
         },
         {
           "name": "tags.tagFQN.text",

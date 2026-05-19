@@ -108,7 +108,6 @@ public class TopicIndex implements SearchIndex {
     fields.put("messageSchema.schemaFields.name.keyword", 5.0f);
     fields.put("messageSchema.schemaFields.description", 1.0f);
     fields.put("messageSchema.schemaFields.children.name", 7.0f);
-    fields.put("messageSchema.schemaFields.children.keyword", 5.0f);
     return fields;
   }
 }
