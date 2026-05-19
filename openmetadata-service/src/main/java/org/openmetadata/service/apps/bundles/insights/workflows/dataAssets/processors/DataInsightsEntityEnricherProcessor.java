@@ -1,14 +1,9 @@
 package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors;
 
-import static org.openmetadata.schema.EntityInterface.ENTITY_TYPE_TO_CLASS_MAP;
-import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
-import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -29,14 +24,15 @@ import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentContext;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentPipeline;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentTarget;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.SnapshotMaterializer;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.VersionResolver;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.VersionedWindow;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.workflows.interfaces.Processor;
 
@@ -64,6 +60,9 @@ public class DataInsightsEntityEnricherProcessor
    * contract.
    */
   private final EnrichmentPipeline pipeline = buildPipeline();
+
+  private final VersionResolver versionResolver = new VersionResolver();
+  private final SnapshotMaterializer snapshotMaterializer = new SnapshotMaterializer();
 
   public DataInsightsEntityEnricherProcessor(int total) {
     this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
@@ -108,20 +107,14 @@ public class DataInsightsEntityEnricherProcessor
   public List<Map<String, Object>> process(
       ResultList<? extends EntityInterface> input, Map<String, Object> contextData)
       throws SearchIndexException {
-    List<Map<String, Object>> enrichedMaps;
     try {
-      enrichedMaps =
+      EnrichmentContext context = buildAndValidateContext(contextData);
+      List<Map<String, Object>> enrichedMaps =
           input.getData().stream()
-              .flatMap(
-                  entity ->
-                      getEntityVersions(entity, contextData).stream()
-                          .flatMap(
-                              entityVersionMap ->
-                                  generateDailyEntitySnapshots(
-                                      enrichEntity(entityVersionMap, contextData))
-                                      .stream()))
+              .flatMap(entity -> enrichEntityToSnapshots(entity, context).stream())
               .toList();
       updateStats(input.getData().size(), 0);
+      return enrichedMaps;
     } catch (Exception e) {
       IndexingError error =
           new IndexingError()
@@ -137,18 +130,13 @@ public class DataInsightsEntityEnricherProcessor
       updateStats(0, input.getData().size());
       throw new SearchIndexException(error);
     }
-    return enrichedMaps;
   }
 
   public List<Map<String, Object>> enrichSingle(
       EntityInterface entity, Map<String, Object> contextData) throws SearchIndexException {
     try {
-      return getEntityVersions(entity, contextData).stream()
-          .flatMap(
-              entityVersionMap ->
-                  generateDailyEntitySnapshots(enrichEntity(entityVersionMap, contextData))
-                      .stream())
-          .toList();
+      EnrichmentContext context = buildAndValidateContext(contextData);
+      return enrichEntityToSnapshots(entity, context);
     } catch (Exception e) {
       IndexingError error =
           new IndexingError()
@@ -169,107 +157,55 @@ public class DataInsightsEntityEnricherProcessor
     }
   }
 
-  private List<Map<String, Object>> getEntityVersions(
-      EntityInterface entity, Map<String, Object> contextData) {
-    String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
-    Long endTimestamp = (Long) contextData.get(END_TIMESTAMP_KEY);
-    Long startTimestamp = (Long) contextData.get(START_TIMESTAMP_KEY);
-
-    // Skip version history queries for entities unchanged during the window (N+1 optimization).
-    Long updatedAt = entity.getUpdatedAt();
-    if (updatedAt != null) {
-      Long entityUpdatedDay = TimestampUtils.getStartOfDayTimestamp(updatedAt);
-      if (entityUpdatedDay < startTimestamp) {
-        Map<String, Object> versionMap = new HashMap<>();
-        versionMap.put("endTimestamp", endTimestamp);
-        versionMap.put("startTimestamp", startTimestamp);
-        versionMap.put("versionEntity", entity);
-        return List.of(versionMap);
-      }
-    }
-
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-
-    Long pointerTimestamp = endTimestamp;
-    List<Map<String, Object>> entityVersions = new ArrayList<>();
-    boolean historyDone = false;
-    int nextOffset = 0;
-
-    while (!historyDone) {
-      EntityRepository.EntityHistoryWithOffset entityHistoryWithOffset =
-          entityRepository.listVersionsWithOffset(entity.getId(), 100, nextOffset);
-      List<Object> versions = entityHistoryWithOffset.entityHistory().getVersions();
-      if (versions.isEmpty()) {
-        break;
-      }
-      nextOffset = entityHistoryWithOffset.nextOffset();
-
-      for (Object version : versions) {
-        EntityInterface versionEntity =
-            JsonUtils.readOrConvertValue(
-                version, ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase()));
-        Long versionTimestamp = TimestampUtils.getStartOfDayTimestamp(versionEntity.getUpdatedAt());
-        if (versionTimestamp > pointerTimestamp) {
-          continue;
-        } else if (versionTimestamp < startTimestamp) {
-          Map<String, Object> versionMap = new HashMap<>();
-
-          versionMap.put("endTimestamp", pointerTimestamp);
-          versionMap.put("startTimestamp", startTimestamp);
-          versionMap.put("versionEntity", versionEntity);
-
-          entityVersions.add(versionMap);
-          historyDone = true;
-          break;
-        } else {
-          Map<String, Object> versionMap = new HashMap<>();
-
-          versionMap.put("endTimestamp", pointerTimestamp);
-          versionMap.put("startTimestamp", TimestampUtils.getEndOfDayTimestamp(versionTimestamp));
-          versionMap.put("versionEntity", versionEntity);
-
-          entityVersions.add(versionMap);
-          pointerTimestamp =
-              TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(versionTimestamp, 1));
-        }
-      }
-    }
-
-    return entityVersions;
-  }
-
-  @SuppressWarnings("unchecked")
-  private Map<String, Object> enrichEntity(
-      Map<String, Object> entityVersionMap, Map<String, Object> contextData) {
-    EntityInterface entity = (EntityInterface) entityVersionMap.get("versionEntity");
-    Long startTimestamp = (Long) entityVersionMap.get("startTimestamp");
-    Long endTimestamp = (Long) entityVersionMap.get("endTimestamp");
-
+  private EnrichmentContext buildAndValidateContext(Map<String, Object> contextData) {
     EnrichmentContext context = EnrichmentContext.from(contextData);
     if (CommonUtil.nullOrEmpty(context.entityType())) {
       throw new IllegalArgumentException(
           "[EsEntitiesProcessor] entityType cannot be null or empty.");
     }
+    return context;
+  }
 
-    // Pre-pipeline setup. These mutations are deterministic given a valid entity; failure here
-    // (e.g. a corrupt entity blob) is an entity-level loss and bubbles up to enrichSingle's catch,
-    // matching the pre-refactor behavior.
+  /**
+   * Per-entity orchestration: resolve version windows → enrich each → fan out across days. One
+   * entity in, N daily snapshots out. The only way to lose the entity entirely is if version
+   * resolution itself throws — step failures only drop their own fields, not the entity (see
+   * {@link EnrichmentPipeline}).
+   */
+  private List<Map<String, Object>> enrichEntityToSnapshots(
+      EntityInterface entity, EnrichmentContext context) {
+    List<Map<String, Object>> snapshots = new ArrayList<>();
+    for (VersionedWindow window : versionResolver.resolve(entity, context)) {
+      EnrichmentTarget target = buildTarget(window, context);
+      enrichEntity(target);
+      snapshots.addAll(snapshotMaterializer.materialize(window, target.entityMap()));
+    }
+    return snapshots;
+  }
+
+  private EnrichmentTarget buildTarget(VersionedWindow window, EnrichmentContext context) {
+    EntityInterface entity = window.entity();
     Map<String, Object> entityMap = JsonUtils.getMap(entity);
     entityMap.keySet().retainAll(context.entityTypeFields());
     stripNestedColumnChildren(entityMap);
-
     Map<String, ChangeSummary> changeSummary = SearchIndexUtils.getChangeSummaryMap(entity);
+    return new EnrichmentTarget(
+        entity,
+        entityMap,
+        changeSummary,
+        window.windowStartTimestamp(),
+        window.windowEndTimestamp(),
+        context,
+        window.shape());
+  }
 
-    EnrichmentTarget target =
-        new EnrichmentTarget(
-            entity, entityMap, changeSummary, startTimestamp, endTimestamp, context);
-
-    // Each step contributes additive fields to entityMap. A step that throws produces no fields
-    // but does not abort the entity's enrichment — pipeline.run() catches per-step, records the
-    // failure in per-step StepStats (via getEntityStats()), and emits a rate-limited LOG.warn.
+  /**
+   * Runs the enrichment pipeline against a prepared target. Package-private for direct unit
+   * testing (see {@code DataInsightsEntityEnricherProcessorTest}), which can construct synthetic
+   * {@link EnrichmentTarget}s without needing to mock the version-resolver path.
+   */
+  void enrichEntity(EnrichmentTarget target) {
     pipeline.run(target);
-
-    return entityMap;
   }
 
   // ─────────────────────────────── Step implementations ───────────────────────────────
@@ -278,8 +214,10 @@ public class DataInsightsEntityEnricherProcessor
 
   private void applyIdentityStep(EnrichmentTarget target) {
     target.entityMap().put(ENTITY_TYPE_KEY, target.context().entityType());
-    target.entityMap().put("startTimestamp", target.windowStartTimestamp());
-    target.entityMap().put("endTimestamp", target.windowEndTimestamp());
+    // Per-version window timestamps live on the VersionedWindow and are read directly by the
+    // SnapshotMaterializer; they are intentionally NOT put on the entityMap. Pre-Stage-2 they
+    // were briefly written here only to be removed again by the day-fanout — clearer to skip
+    // the round-trip. The final daily snapshot has @timestamp set by the materializer.
   }
 
   private void applyDescriptionSourcesStep(EnrichmentTarget target) {
@@ -433,27 +371,6 @@ public class DataInsightsEntityEnricherProcessor
     }
 
     return entityTier;
-  }
-
-  private List<Map<String, Object>> generateDailyEntitySnapshots(
-      Map<String, Object> entityVersionMap) {
-    Long startTimestamp = (Long) entityVersionMap.remove("startTimestamp");
-    Long endTimestamp = (Long) entityVersionMap.remove("endTimestamp");
-
-    List<Map<String, Object>> dailyEntitySnapshots = new ArrayList<>();
-
-    Long pointerTimestamp = endTimestamp;
-
-    while (pointerTimestamp >= startTimestamp) {
-      Map<String, Object> dailyEntitySnapshot = new HashMap<>(entityVersionMap);
-
-      dailyEntitySnapshot.put(
-          TIMESTAMP_KEY, TimestampUtils.getStartOfDayTimestamp(pointerTimestamp));
-      dailyEntitySnapshots.add(dailyEntitySnapshot);
-
-      pointerTimestamp = TimestampUtils.subtractDays(pointerTimestamp, 1);
-    }
-    return dailyEntitySnapshots;
   }
 
   @Override

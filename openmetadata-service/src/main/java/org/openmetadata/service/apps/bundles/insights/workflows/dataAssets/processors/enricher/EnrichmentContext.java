@@ -10,6 +10,8 @@
  */
 package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher;
 
+import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
+import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
 import static org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow.ENTITY_TYPE_FIELDS_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 
@@ -22,13 +24,24 @@ import java.util.Map;
  * downstream processors and {@link
  * org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow} continue
  * to use the {@code Map<String, Object> contextData} contract.
+ *
+ * <p>{@code workflowWindowStartTimestamp} / {@code workflowWindowEndTimestamp} are the full
+ * backfill window — used by {@code VersionResolver} to decide which versions of an entity matter.
+ * They are distinct from the per-version-window timestamps carried on {@link VersionedWindow},
+ * which are slices of this overall window.
  */
-public record EnrichmentContext(String entityType, List<String> entityTypeFields) {
+public record EnrichmentContext(
+    String entityType,
+    List<String> entityTypeFields,
+    long workflowWindowStartTimestamp,
+    long workflowWindowEndTimestamp) {
 
   @SuppressWarnings("unchecked")
   public static EnrichmentContext from(Map<String, Object> contextData) {
     return new EnrichmentContext(
         (String) contextData.get(ENTITY_TYPE_KEY),
-        (List<String>) contextData.get(ENTITY_TYPE_FIELDS_KEY));
+        (List<String>) contextData.get(ENTITY_TYPE_FIELDS_KEY),
+        (Long) contextData.get(START_TIMESTAMP_KEY),
+        (Long) contextData.get(END_TIMESTAMP_KEY));
   }
 }

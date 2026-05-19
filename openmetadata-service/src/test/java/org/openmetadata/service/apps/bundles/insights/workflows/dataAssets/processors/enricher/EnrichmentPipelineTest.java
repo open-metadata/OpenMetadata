@@ -252,7 +252,13 @@ class EnrichmentPipelineTest {
     // entity null is degenerate but the pipeline should not NPE on log-formatting paths.
     EnrichmentTarget target =
         new EnrichmentTarget(
-            null, new HashMap<>(), Map.of(), 0L, 0L, new EnrichmentContext("table", List.of()));
+            null,
+            new HashMap<>(),
+            Map.of(),
+            0L,
+            0L,
+            new EnrichmentContext("table", List.of(), 0L, 0L),
+            VersionShape.LATEST_HYDRATED);
     StepFailure failure = pipeline.run(target).get(0);
 
     assertNotNull(failure.entityFqn());
@@ -314,6 +320,7 @@ class EnrichmentPipelineTest {
         Map.of(),
         0L,
         86_400_000L,
-        new EnrichmentContext("table", List.of()));
+        new EnrichmentContext("table", List.of(), 0L, 86_400_000L),
+        VersionShape.LATEST_HYDRATED);
   }
 }

@@ -10,23 +10,19 @@
  */
 package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher;
 
-import java.util.Map;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.type.change.ChangeSummary;
 
 /**
- * Per-version input + accumulator handed to each {@link EnrichmentStep}. The {@code entityMap} is
- * the mutable snapshot accumulator: steps add their derived fields to it. {@code
- * windowStartTimestamp} / {@code windowEndTimestamp} describe the version's slice of the backfill
- * window (computed by the version resolver, expanded across days by the materializer). {@code
- * shape} tells steps whether the entity's references are hydrated (have FQN, name, …) or bare
- * (only {@code id} / {@code type}).
+ * One version's coverage within the backfill window: an entity (at a specific version) plus the
+ * inclusive day-range it's responsible for, plus a hint about whether its references are hydrated
+ * or bare.
+ *
+ * <p>Produced by {@code VersionResolver}, consumed by the enrichment pipeline (which writes
+ * derived fields into the snapshot) and by {@code SnapshotMaterializer} (which fans the snapshot
+ * out across the days in the range).
  */
-public record EnrichmentTarget(
+public record VersionedWindow(
     EntityInterface entity,
-    Map<String, Object> entityMap,
-    Map<String, ChangeSummary> changeSummary,
     long windowStartTimestamp,
     long windowEndTimestamp,
-    EnrichmentContext context,
     VersionShape shape) {}

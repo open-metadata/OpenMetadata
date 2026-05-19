@@ -57,6 +57,7 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentTarget;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.StepFailure;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.VersionShape;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -334,9 +335,10 @@ class DataInsightsEnricherBehaviorIT {
                 lambdaStep("last", t -> t.entityMap().put("lastStepKey", "last"))));
 
     Map<String, Object> entityMap = JsonUtils.getMap(table);
-    EnrichmentContext context = new EnrichmentContext("table", TABLE_FIELDS);
+    EnrichmentContext context = new EnrichmentContext("table", TABLE_FIELDS, 0L, 86_400_000L);
     EnrichmentTarget target =
-        new EnrichmentTarget(table, entityMap, Map.of(), 0L, 86_400_000L, context);
+        new EnrichmentTarget(
+            table, entityMap, Map.of(), 0L, 86_400_000L, context, VersionShape.LATEST_HYDRATED);
 
     List<StepFailure> failures = customPipeline.run(target);
 
