@@ -359,6 +359,10 @@ class SigmaUnitTest(TestCase):
             Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")
         ]
 
+        # Mock metadata methods
+        self.sigma._get_datamodel = MagicMock(return_value=MOCK_DATA_MODEL)
+        self.sigma._get_table_entity_from_node = MagicMock(return_value=MOCK_TABLE_ENTITY)
+
         # Execute
         results = list(  # noqa: F841
             self.sigma.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
