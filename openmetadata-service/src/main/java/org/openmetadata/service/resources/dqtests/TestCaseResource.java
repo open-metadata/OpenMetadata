@@ -35,7 +35,9 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -707,7 +709,27 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             new AuthRequest(tableOpContext, tableResourceContext),
             new AuthRequest(testCaseOpContext, testCaseResourceContext));
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+    // Validate logical suites upfront — fail-fast before entity creation
+    List<TestSuite> logicalSuites =
+        resolveAndValidateLogicalSuites(create.getTestSuites(), securityContext);
     test = addHref(uriInfo, repository.create(uriInfo, test));
+    // Attach the created test case to the requested logical test suites.
+    // This is best-effort because the test case has already been persisted at this point.
+    // If suite attachment fails, return the created test case and log the failure.
+    for (TestSuite suite : logicalSuites) {
+      try {
+        repository.addTestCasesToLogicalTestSuite(suite, List.of(test.getId()));
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to attach created test case '{}' ({}) to logical test suite '{}' ({}). "
+                + "Returning the created test case because creation already succeeded.",
+            test.getName(),
+            test.getId(),
+            suite.getFullyQualifiedName() != null ? suite.getFullyQualifiedName() : suite.getName(),
+            suite.getId(),
+            e);
+      }
+    }
     return Response.created(test.getHref()).entity(test).build();
   }
 
@@ -759,6 +781,15 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
     limits.enforceBulkSizeLimit(entityType, createTestCases.size());
 
+    // Collect all unique logical suite FQNs across all requests — ONE batch validation
+    Set<String> allSuiteFQNs =
+        createTestCases.stream()
+            .filter(c -> !nullOrEmpty(c.getTestSuites()))
+            .flatMap(c -> c.getTestSuites().stream())
+            .collect(Collectors.toSet());
+    List<TestSuite> validatedSuites =
+        resolveAndValidateLogicalSuites(allSuiteFQNs, securityContext);
+
     createTestCases.forEach(
         create -> {
           TestCase test =
@@ -770,6 +801,35 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           testCases.add(test);
         });
     repository.createMany(uriInfo, testCases);
+    // Attach test cases to their requested logical suites
+    if (!validatedSuites.isEmpty()) {
+      Map<String, List<UUID>> suiteToTestCaseIds = new HashMap<>();
+      for (int i = 0; i < createTestCases.size(); i++) {
+        Set<String> fqns = createTestCases.get(i).getTestSuites();
+        if (!nullOrEmpty(fqns)) {
+          TestCase tc = testCases.get(i);
+          for (String fqn : fqns) {
+            suiteToTestCaseIds.computeIfAbsent(fqn, k -> new ArrayList<>()).add(tc.getId());
+          }
+        }
+      }
+      for (TestSuite suite : validatedSuites) {
+        List<UUID> ids = suiteToTestCaseIds.get(suite.getFullyQualifiedName());
+        if (ids != null) {
+          try {
+            repository.addTestCasesToLogicalTestSuite(suite, ids);
+          } catch (Exception e) {
+            LOG.warn(
+                "Best-effort suite attachment failed for logical test suite '{}' ({}) during bulk creation.",
+                suite.getFullyQualifiedName() != null
+                    ? suite.getFullyQualifiedName()
+                    : suite.getName(),
+                suite.getId(),
+                e);
+          }
+        }
+      }
+    }
     return Response.ok(testCases).build();
   }
 
@@ -862,8 +922,28 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     repository.prepareInternal(test, true);
+    List<TestSuite> logicalSuites =
+        resolveAndValidateLogicalSuites(create.getTestSuites(), securityContext);
     PutResponse<TestCase> response =
         repository.createOrUpdate(uriInfo, test, securityContext.getUserPrincipal().getName());
+    if (response.getStatus() == Response.Status.CREATED) {
+      for (TestSuite suite : logicalSuites) {
+        try {
+          repository.addTestCasesToLogicalTestSuite(suite, List.of(test.getId()));
+        } catch (Exception e) {
+          LOG.warn(
+              "Failed to attach created test case '{}' ({}) to logical test suite '{}' ({}). "
+                  + "Returning the created test case because creation already succeeded.",
+              test.getName(),
+              test.getId(),
+              suite.getFullyQualifiedName() != null
+                  ? suite.getFullyQualifiedName()
+                  : suite.getName(),
+              suite.getId(),
+              e);
+        }
+      }
+    }
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -1563,6 +1643,48 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             authRequests);
 
     return PIIMasker.getTestCases(tests, authorizer, securityContext);
+  }
+
+  /**
+   * Batch-resolve and validate logical test suite FQNs. Uses a single DB call via
+   * Entity.getEntityByNames() to avoid N+1 fetches. Rejects basic (executable) suites and
+   * non-existent suite FQNs upfront so the caller gets a clear error before entity creation.
+   */
+  private List<TestSuite> resolveAndValidateLogicalSuites(
+      Set<String> suiteFQNs, SecurityContext securityContext) {
+    if (nullOrEmpty(suiteFQNs)) {
+      return List.of();
+    }
+    List<TestSuite> suites =
+        Entity.getEntityByNames(
+            Entity.TEST_SUITE, new ArrayList<>(suiteFQNs), "owners,domains", Include.NON_DELETED);
+    if (suites.size() != suiteFQNs.size()) {
+      Set<String> foundFQNs =
+          suites.stream().map(TestSuite::getFullyQualifiedName).collect(Collectors.toSet());
+      List<String> missingFQNs =
+          suiteFQNs.stream().filter(fqn -> !foundFQNs.contains(fqn)).toList();
+      throw new IllegalArgumentException("Logical test suites not found: " + missingFQNs);
+    }
+    List<TestSuite> validSuites = new ArrayList<>();
+    for (TestSuite suite : suites) {
+      if (Boolean.TRUE.equals(suite.getBasic())) {
+        throw new IllegalArgumentException(
+            "Cannot attach test cases to basic (executable) test suite '"
+                + suite.getFullyQualifiedName()
+                + "'. Only logical test suites are accepted.");
+      }
+      OperationContext editTestsOp =
+          new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
+      ResourceContextInterface suiteRC = TestCaseResourceContext.builder().entity(suite).build();
+      OperationContext editAllOp =
+          new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_ALL);
+      authorizer.authorizeRequests(
+          securityContext,
+          List.of(new AuthRequest(editTestsOp, suiteRC), new AuthRequest(editAllOp, suiteRC)),
+          AuthorizationLogic.ANY);
+      validSuites.add(suite);
+    }
+    return validSuites;
   }
 
   private void validateTestSuiteOps(TestSuite testSuite, SecurityContext securityContext) {
