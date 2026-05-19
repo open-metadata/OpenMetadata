@@ -190,6 +190,15 @@ public class RdfIndexApp extends AbstractNativeApplication {
       if (stopped) {
         updateJobStatus(EventPublisherJob.Status.STOPPED);
       } else {
+        // Mark the job COMPLETED BEFORE compacting. compactStorage is a
+        // blocking call (up to COMPACT_MAX_WAIT_MS = 10 min while it polls
+        // /$/tasks/{id}); doing it before the status update would delay the
+        // websocket "done" notification by however long compaction takes,
+        // and a misbehaving Fuseki could leave the run looking RUNNING for
+        // up to 10 minutes after the reindex actually finished. Compaction
+        // is best-effort hygiene; surface job-completion to the UI first
+        // and run compaction as the very last step.
+        updateJobStatus(EventPublisherJob.Status.COMPLETED);
         // Final compaction after a successful run. The recreate branch already
         // compacted *before* the reindex (against the empty post-clearAll
         // state) to maximise the reclaim; on the incremental branch nothing
@@ -201,7 +210,6 @@ public class RdfIndexApp extends AbstractNativeApplication {
         // so a missing /$/compact endpoint or transient HTTP failure never
         // demotes a successful indexing job to FAILED.
         rdfRepository.compactStorage();
-        updateJobStatus(EventPublisherJob.Status.COMPLETED);
       }
 
       LOG.info("RDF Index Job Completed for Entities: {}", jobData.getEntities());

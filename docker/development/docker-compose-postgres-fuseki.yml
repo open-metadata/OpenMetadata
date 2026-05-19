@@ -579,7 +579,10 @@ services:
     ports:
       - "3030:3030"
     environment:
-      - FUSEKI_ADMIN_PASSWORD=admin
+      # Local-dev default — production deployments MUST override via
+      # FUSEKI_ADMIN_PASSWORD / FUSEKI_OPENMETADATA_PASSWORD env vars.
+      - FUSEKI_ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
+      - FUSEKI_OPENMETADATA_PASSWORD=${FUSEKI_OPENMETADATA_PASSWORD:-openmetadata-secret}
       - JVM_ARGS=-Xmx4g -Xms2g
     volumes:
       # See docker-compose-fuseki.yml for why the volume was renamed from

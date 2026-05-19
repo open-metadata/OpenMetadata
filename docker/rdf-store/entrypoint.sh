@@ -11,18 +11,28 @@
 # deployment manifest — that override now actually takes effect.
 #
 # Operators who need to fully replace shiro.ini (different role layout,
-# custom realms, …) can bind-mount their own file onto /fuseki/shiro.ini —
-# the entrypoint overwrites that path so the mount would lose; in that case
-# replace the entrypoint via `--entrypoint` on `docker run` or override
-# `entrypoint:` in compose so this script doesn't render.
+# custom realms, …) have two options:
+#
+#   1. Bind-mount your file onto /fuseki/shiro.ini AND set
+#      FUSEKI_RENDER_SHIRO=false — the entrypoint then skips the
+#      envsubst render and leaves the mounted file in place.
+#
+#   2. Bind-mount onto /fuseki/shiro.ini.template instead of /fuseki/shiro.ini
+#      and the entrypoint will envsubst your template (handy if you want
+#      env-driven password injection in your custom realm too).
+#
+# Defaulting FUSEKI_RENDER_SHIRO=true preserves the prior, password-injection
+# behavior for every dev/quickstart compose deployment that doesn't override
+# it.
 
 set -eu
 
 : "${FUSEKI_ADMIN_PASSWORD:=admin}"
 : "${FUSEKI_OPENMETADATA_PASSWORD:=openmetadata-secret}"
+: "${FUSEKI_RENDER_SHIRO:=true}"
 export FUSEKI_ADMIN_PASSWORD FUSEKI_OPENMETADATA_PASSWORD
 
-if [ -f /fuseki/shiro.ini.template ]; then
+if [ "$FUSEKI_RENDER_SHIRO" = "true" ] && [ -f /fuseki/shiro.ini.template ]; then
     # Restrict envsubst to the two variables we expect. Without an explicit
     # list, envsubst would interpret any `${...}` in the template — including
     # comments — which would silently blank out unrelated placeholders if

@@ -179,11 +179,14 @@ public class JenaFusekiStorage implements RdfStorageInterface {
    * doesn't carry a dataset name or the URL is malformed — callers should
    * log and skip the admin operation rather than blow up.
    *
-   * <p>Preserves any {@code userInfo} ({@code http://user:pass@host:port/ds})
-   * embedded in the endpoint so admin endpoints (/$/datasets, /$/compact)
-   * reach the server with the right credentials when the operator wired auth
-   * into the URL instead of via {@code config.getUsername()}/{@code
-   * getPassword()}.
+   * <p>Hoists any embedded {@code user:pass@} userInfo OUT of the URL into a
+   * separate field on {@link DatasetEndpoint}. The {@code serverBaseUrl}
+   * returned to callers is credential-free so it can be safely concatenated
+   * into request URIs without risking leakage to JDK HttpClient debug logs
+   * or downstream proxies. Operators who configured auth via URL get the
+   * same effective auth — callers pass the {@code userInfo} field into
+   * {@link #addBasicAuth(HttpRequest.Builder, String, String, String)},
+   * which encodes it into the {@code Authorization} header.
    */
   private static DatasetEndpoint parseDatasetEndpoint(String endpoint) {
     URI uri;
@@ -201,18 +204,23 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       datasetName = datasetName.split("/")[0];
     }
     StringBuilder serverBaseUrl = new StringBuilder();
-    serverBaseUrl.append(uri.getScheme()).append("://");
-    if (uri.getRawUserInfo() != null && !uri.getRawUserInfo().isEmpty()) {
-      serverBaseUrl.append(uri.getRawUserInfo()).append('@');
-    }
-    serverBaseUrl.append(uri.getHost());
+    serverBaseUrl.append(uri.getScheme()).append("://").append(uri.getHost());
     if (uri.getPort() > 0) {
       serverBaseUrl.append(':').append(uri.getPort());
     }
-    return new DatasetEndpoint(serverBaseUrl.toString(), datasetName);
+    String userInfo = uri.getRawUserInfo();
+    return new DatasetEndpoint(
+        serverBaseUrl.toString(),
+        datasetName,
+        userInfo != null && !userInfo.isEmpty() ? userInfo : null);
   }
 
-  private record DatasetEndpoint(String serverBaseUrl, String datasetName) {}
+  /** URL-encode a path segment for safe interpolation into request URIs. */
+  private static String encodePathSegment(String segment) {
+    return java.net.URLEncoder.encode(segment, StandardCharsets.UTF_8).replace("+", "%20");
+  }
+
+  private record DatasetEndpoint(String serverBaseUrl, String datasetName, String userInfo) {}
 
   /**
    * Replace any {@code user:pass@} userInfo in a URL with {@code ***@} for
@@ -260,6 +268,30 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   /**
+   * Three-argument overload that prefers explicit {@code username/password} when
+   * present and falls back to URL-embedded {@code userInfo}. Used by the admin
+   * HTTP paths so credentials from either source are encoded into the
+   * {@code Authorization} header instead of being left in the request URI.
+   */
+  private static void addBasicAuth(
+      HttpRequest.Builder requestBuilder, String username, String password, String userInfo) {
+    if (username != null && password != null) {
+      addBasicAuth(requestBuilder, username, password);
+      return;
+    }
+    if (userInfo == null || userInfo.isEmpty()) {
+      return;
+    }
+    // userInfo is URL-encoded (RFC 3986 percent-encoded); decode before
+    // re-encoding into a Basic auth header. The base64 layer is independent of
+    // the URL encoding.
+    String decoded = java.net.URLDecoder.decode(userInfo, StandardCharsets.UTF_8);
+    String encodedAuth =
+        Base64.getEncoder().encodeToString(decoded.getBytes(StandardCharsets.UTF_8));
+    requestBuilder.header("Authorization", "Basic " + encodedAuth);
+  }
+
+  /**
    * Ensures the Fuseki dataset exists, creating it if necessary.
    */
   private void ensureDatasetExists(String endpoint, String username, String password) {
@@ -276,10 +308,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           info.serverBaseUrl());
 
       HttpClient httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
-      String adminUrl = info.serverBaseUrl() + "/$/datasets/" + info.datasetName();
+      String adminUrl =
+          info.serverBaseUrl() + "/$/datasets/" + encodePathSegment(info.datasetName());
 
       HttpRequest.Builder requestBuilder = HttpRequest.newBuilder().uri(URI.create(adminUrl)).GET();
-      addBasicAuth(requestBuilder, username, password);
+      addBasicAuth(requestBuilder, username, password, info.userInfo());
 
       HttpResponse<String> response =
           httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
@@ -1153,7 +1186,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       if (taskId == null) {
         return;
       }
-      waitForCompactionTask(info.serverBaseUrl(), taskId);
+      waitForCompactionTask(info.serverBaseUrl(), info.userInfo(), taskId);
     } catch (InterruptedException e) {
       // Re-assert the interrupt flag so downstream blocking calls (e.g. the
       // surrounding Quartz job's shutdown path) see the cancellation request.
@@ -1170,13 +1203,28 @@ public class JenaFusekiStorage implements RdfStorageInterface {
               + "indexing will continue but on-disk usage may stay elevated.",
           info.datasetName(),
           e);
+    } catch (RuntimeException e) {
+      // The Javadoc on compactStorage promises "Failures are logged and
+      // swallowed". The HTTP path can throw IllegalArgumentException (URI),
+      // RdfStorageCircuitOpenException (if state flips mid-run), the
+      // CompletableFuture wrappers' RuntimeException re-throws, or any of
+      // Jena's runtime exceptions. Catch them all so a stray RuntimeException
+      // never demotes a successful reindex to FAILED.
+      LOG.warn(
+          "Unexpected runtime error compacting Fuseki dataset '{}' — disk "
+              + "reclamation skipped, indexing will continue.",
+          info.datasetName(),
+          e);
     }
   }
 
   private String startCompaction(DatasetEndpoint info) throws IOException, InterruptedException {
     HttpClient httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
     String compactUrl =
-        info.serverBaseUrl() + "/$/compact/" + info.datasetName() + "?deleteOld=true";
+        info.serverBaseUrl()
+            + "/$/compact/"
+            + encodePathSegment(info.datasetName())
+            + "?deleteOld=true";
 
     HttpRequest.Builder requestBuilder =
         HttpRequest.newBuilder()
@@ -1184,7 +1232,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
             .timeout(COMPACT_HTTP_TIMEOUT)
             .header("Accept", "application/json")
             .POST(HttpRequest.BodyPublishers.noBody());
-    addBasicAuth(requestBuilder, username, password);
+    addBasicAuth(requestBuilder, username, password, info.userInfo());
 
     HttpResponse<String> response =
         httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
@@ -1224,10 +1272,10 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
   }
 
-  private void waitForCompactionTask(String serverBaseUrl, String taskId)
+  private void waitForCompactionTask(String serverBaseUrl, String userInfo, String taskId)
       throws InterruptedException {
     HttpClient httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
-    String taskUrl = serverBaseUrl + "/$/tasks/" + taskId;
+    String taskUrl = serverBaseUrl + "/$/tasks/" + encodePathSegment(taskId);
     long deadline = System.currentTimeMillis() + COMPACT_MAX_WAIT_MS;
     // Poll-then-sleep ordering: the very first iteration checks immediately so
     // a compaction that finished by the time we'd issued the POST (the empty
@@ -1245,7 +1293,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
               .timeout(COMPACT_HTTP_TIMEOUT)
               .header("Accept", "application/json")
               .GET();
-      addBasicAuth(pollBuilder, username, password);
+      addBasicAuth(pollBuilder, username, password, userInfo);
       HttpResponse<String> pollResponse;
       try {
         pollResponse = httpClient.send(pollBuilder.build(), HttpResponse.BodyHandlers.ofString());

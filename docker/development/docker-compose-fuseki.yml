@@ -51,7 +51,12 @@ services:
     networks:
       - local_app_net
     environment:
-      - FUSEKI_ADMIN_PASSWORD=admin
+      # Default for local dev only — production deployments MUST override
+      # via the FUSEKI_ADMIN_PASSWORD env var (and FUSEKI_OPENMETADATA_PASSWORD)
+      # before bringing this stack up. The entrypoint envsubsts these into
+      # shiro.ini at container start so the override actually takes effect.
+      - FUSEKI_ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
+      - FUSEKI_OPENMETADATA_PASSWORD=${FUSEKI_OPENMETADATA_PASSWORD:-openmetadata-secret}
       - JVM_ARGS=${FUSEKI_JVM_ARGS:--Xmx1500m -Xms256m}
     volumes:
       # New volume name (was `fuseki-data` mounted at `/fuseki`). The in-repo
