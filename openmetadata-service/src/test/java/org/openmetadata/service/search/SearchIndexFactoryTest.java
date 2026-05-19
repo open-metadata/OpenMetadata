@@ -224,6 +224,42 @@ class SearchIndexFactoryTest {
   }
 
   @Test
+  void queryReindexFieldsIncludeQueryUsedIn() {
+    // Regression: queryUsedIn is stripped from storage JSON (QueryRepository
+    // getFieldsStrippedFromStorageJson returns ["queryUsedIn", "users"]) and is only
+    // populated by setFieldsInBulk when explicitly requested. Without it in the reindex field
+    // set, QueryRepository.clearFields nulls queryUsedIn out and QueryIndex writes a doc with
+    // no queryUsedIn array. Reload of Table → Queries tab then shows the "Add new query" empty
+    // state even though the tab counter still says "1".
+    Set<String> queryFields = factory.getReindexFieldsFor(Entity.QUERY);
+    assertTrue(
+        queryFields.contains("queryUsedIn"),
+        () -> "Query reindex fields must include 'queryUsedIn'; got " + queryFields);
+  }
+
+  @Test
+  void worksheetReindexFieldsIncludeColumns() {
+    // Regression: WorksheetRepository.clearFields nulls columns when "columns" is not in the
+    // fields set. WorksheetIndex.buildSearchIndexDocInternal then sees null and skips writing
+    // columnNames / columnNamesFuzzy / columnDescriptionStatus / child tags. Column-name search
+    // in Explore → Worksheets returns "No result found" for any worksheet after a reindex.
+    Set<String> worksheetFields = factory.getReindexFieldsFor(Entity.WORKSHEET);
+    assertTrue(
+        worksheetFields.contains("columns"),
+        () -> "Worksheet reindex fields must include 'columns'; got " + worksheetFields);
+  }
+
+  @Test
+  void fileReindexFieldsIncludeColumns() {
+    // Regression: FileRepository.clearFields nulls columns when "columns" is not in the fields
+    // set, same pattern as Worksheet. File column-name search breaks after reindex.
+    Set<String> fileFields = factory.getReindexFieldsFor(Entity.FILE);
+    assertTrue(
+        fileFields.contains("columns"),
+        () -> "File reindex fields must include 'columns'; got " + fileFields);
+  }
+
+  @Test
   void reindexFieldsOmitKnownFanOutFields() {
     // These are the "blow up the heap" relationships we explicitly do NOT want fetched during
     // reindex. They either live in the Index's getExcludedFields() (stripped post-hoc) or
