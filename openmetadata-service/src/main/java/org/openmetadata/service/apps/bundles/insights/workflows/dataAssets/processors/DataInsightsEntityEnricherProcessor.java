@@ -3,7 +3,6 @@ package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proc
 import static org.openmetadata.schema.EntityInterface.ENTITY_TYPE_TO_CLASS_MAP;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
-import static org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow.ENTITY_TYPE_FIELDS_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
@@ -29,6 +28,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentContext;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentPipeline;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentStep;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentTarget;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -42,8 +45,62 @@ public class DataInsightsEntityEnricherProcessor
   private final StepStats stats = new StepStats();
   private static final Set<String> NON_TIER_ENTITIES = Set.of("tag", "glossaryTerm", "dataProduct");
 
+  // Step name constants — also used as the key under which each step's StepStats is exposed via
+  // {@link #getEntityStats()} and merged into the workflow-level stats.
+  static final String STEP_IDENTITY = "identity";
+  static final String STEP_DESCRIPTION_SOURCES = "descriptionSources";
+  static final String STEP_TAG_TIER_SOURCES = "tagAndTierSources";
+  static final String STEP_TEAM = "team";
+  static final String STEP_TIER = "tier";
+  static final String STEP_DESCRIPTION_STATS = "descriptionStats";
+  static final String STEP_CUSTOM_PROPERTIES = "customProperties";
+
+  /**
+   * Step pipeline: each entity-version's enrichment runs through this list once. A step that
+   * throws produces no fields on that version's snapshot, but sibling steps still run and the
+   * entity is still emitted to the index. See {@link EnrichmentPipeline} for the failure-isolation
+   * contract.
+   */
+  private final EnrichmentPipeline pipeline = buildPipeline();
+
   public DataInsightsEntityEnricherProcessor(int total) {
     this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
+  }
+
+  private EnrichmentPipeline buildPipeline() {
+    return new EnrichmentPipeline(
+        List.of(
+            step(STEP_IDENTITY, this::applyIdentityStep),
+            step(STEP_DESCRIPTION_SOURCES, this::applyDescriptionSourcesStep),
+            step(STEP_TAG_TIER_SOURCES, this::applyTagAndTierSourcesStep),
+            step(STEP_TEAM, this::applyTeamStep),
+            step(STEP_TIER, this::applyTierStep),
+            step(STEP_DESCRIPTION_STATS, this::applyDescriptionStatsStep),
+            step(STEP_CUSTOM_PROPERTIES, this::applyCustomPropertiesStep)));
+  }
+
+  private static EnrichmentStep step(
+      String name, java.util.function.Consumer<EnrichmentTarget> body) {
+    return new EnrichmentStep() {
+      @Override
+      public String name() {
+        return name;
+      }
+
+      @Override
+      public void apply(EnrichmentTarget target) {
+        body.accept(target);
+      }
+    };
+  }
+
+  /**
+   * Per-step {@link StepStats} accumulated by the pipeline across this processor's lifetime. The
+   * workflow merges these into its aggregate workflow stats so operators can attribute failures to
+   * a specific enrichment concern.
+   */
+  public Map<String, StepStats> getEntityStats() {
+    return pipeline.snapshotStats();
   }
 
   @Override
@@ -180,70 +237,104 @@ public class DataInsightsEntityEnricherProcessor
     return entityVersions;
   }
 
+  @SuppressWarnings("unchecked")
   private Map<String, Object> enrichEntity(
       Map<String, Object> entityVersionMap, Map<String, Object> contextData) {
     EntityInterface entity = (EntityInterface) entityVersionMap.get("versionEntity");
     Long startTimestamp = (Long) entityVersionMap.get("startTimestamp");
     Long endTimestamp = (Long) entityVersionMap.get("endTimestamp");
 
-    Map<String, Object> entityMap = JsonUtils.getMap(entity);
-    entityMap.keySet().retainAll((List<String>) contextData.get(ENTITY_TYPE_FIELDS_KEY));
-    stripNestedColumnChildren(entityMap);
-
-    String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
-
-    Map<String, ChangeSummary> changeSummaryMap = SearchIndexUtils.getChangeSummaryMap(entity);
-
-    // Enrich with EntityType
-    if (CommonUtil.nullOrEmpty(entityType)) {
+    EnrichmentContext context = EnrichmentContext.from(contextData);
+    if (CommonUtil.nullOrEmpty(context.entityType())) {
       throw new IllegalArgumentException(
           "[EsEntitiesProcessor] entityType cannot be null or empty.");
     }
 
-    entityMap.put(ENTITY_TYPE_KEY, entityType);
+    // Pre-pipeline setup. These mutations are deterministic given a valid entity; failure here
+    // (e.g. a corrupt entity blob) is an entity-level loss and bubbles up to enrichSingle's catch,
+    // matching the pre-refactor behavior.
+    Map<String, Object> entityMap = JsonUtils.getMap(entity);
+    entityMap.keySet().retainAll(context.entityTypeFields());
+    stripNestedColumnChildren(entityMap);
 
-    // Enrich with Timestamp
-    entityMap.put("startTimestamp", startTimestamp);
-    entityMap.put("endTimestamp", endTimestamp);
+    Map<String, ChangeSummary> changeSummary = SearchIndexUtils.getChangeSummaryMap(entity);
 
-    // Process Description Source
-    entityMap.put(
-        "descriptionSources", SearchIndexUtils.processDescriptionSources(entity, changeSummaryMap));
+    EnrichmentTarget target =
+        new EnrichmentTarget(
+            entity, entityMap, changeSummary, startTimestamp, endTimestamp, context);
 
-    // Process Tag Source
-    SearchIndexUtils.TagAndTierSources tagAndTierSources =
-        SearchIndexUtils.processTagAndTierSources(entity);
-    entityMap.put("tagSources", tagAndTierSources.getTagSources());
-    entityMap.put("tierSources", tagAndTierSources.getTierSources());
-
-    // Process Team
-    Optional.ofNullable(processTeam(entity)).ifPresent(team -> entityMap.put("team", team));
-
-    // Process Tier
-    Optional.ofNullable(processTier(entity)).ifPresent(tier -> entityMap.put("tier", tier));
-
-    // Enrich with Description Stats
-    entityMap.put("hasDescription", CommonUtil.nullOrEmpty(entity.getDescription()) ? 0 : 1);
-
-    if (SearchIndexUtils.hasColumns(entity)) {
-      entityMap.put("numberOfColumns", ((ColumnsEntityInterface) entity).getColumns().size());
-      int columnsWithDescription =
-          ((ColumnsEntityInterface) entity)
-              .getColumns().stream()
-                  .map(column -> CommonUtil.nullOrEmpty(column.getDescription()) ? 0 : 1)
-                  .reduce(0, Integer::sum);
-      entityMap.put("numberOfColumnsWithDescription", columnsWithDescription);
-      entityMap.put(
-          "hasColumnDescription",
-          columnsWithDescription == ((ColumnsEntityInterface) entity).getColumns().size() ? 1 : 0);
-    }
-
-    // Modify Custom Property key
-    Optional<Object> oCustomProperties = Optional.ofNullable(entityMap.get("extension"));
-    oCustomProperties.ifPresent(
-        o -> entityMap.put(String.format("%sCustomProperty", entityType), o));
+    // Each step contributes additive fields to entityMap. A step that throws produces no fields
+    // but does not abort the entity's enrichment — pipeline.run() catches per-step, records the
+    // failure in per-step StepStats (via getEntityStats()), and emits a rate-limited LOG.warn.
+    pipeline.run(target);
 
     return entityMap;
+  }
+
+  // ─────────────────────────────── Step implementations ───────────────────────────────
+  // Each method below is the body of one EnrichmentStep registered in buildPipeline(). They
+  // mutate target.entityMap() additively and never read each other's output.
+
+  private void applyIdentityStep(EnrichmentTarget target) {
+    target.entityMap().put(ENTITY_TYPE_KEY, target.context().entityType());
+    target.entityMap().put("startTimestamp", target.windowStartTimestamp());
+    target.entityMap().put("endTimestamp", target.windowEndTimestamp());
+  }
+
+  private void applyDescriptionSourcesStep(EnrichmentTarget target) {
+    target
+        .entityMap()
+        .put(
+            "descriptionSources",
+            SearchIndexUtils.processDescriptionSources(target.entity(), target.changeSummary()));
+  }
+
+  private void applyTagAndTierSourcesStep(EnrichmentTarget target) {
+    SearchIndexUtils.TagAndTierSources tagAndTierSources =
+        SearchIndexUtils.processTagAndTierSources(target.entity());
+    target.entityMap().put("tagSources", tagAndTierSources.getTagSources());
+    target.entityMap().put("tierSources", tagAndTierSources.getTierSources());
+  }
+
+  private void applyTeamStep(EnrichmentTarget target) {
+    String team = processTeam(target.entity());
+    if (team != null) {
+      target.entityMap().put("team", team);
+    }
+  }
+
+  private void applyTierStep(EnrichmentTarget target) {
+    String tier = processTier(target.entity());
+    if (tier != null) {
+      target.entityMap().put("tier", tier);
+    }
+  }
+
+  private void applyDescriptionStatsStep(EnrichmentTarget target) {
+    EntityInterface entity = target.entity();
+    Map<String, Object> entityMap = target.entityMap();
+    entityMap.put("hasDescription", CommonUtil.nullOrEmpty(entity.getDescription()) ? 0 : 1);
+    if (!SearchIndexUtils.hasColumns(entity)) {
+      return;
+    }
+    ColumnsEntityInterface columnsEntity = (ColumnsEntityInterface) entity;
+    int totalColumns = columnsEntity.getColumns().size();
+    int columnsWithDescription =
+        columnsEntity.getColumns().stream()
+            .map(column -> CommonUtil.nullOrEmpty(column.getDescription()) ? 0 : 1)
+            .reduce(0, Integer::sum);
+    entityMap.put("numberOfColumns", totalColumns);
+    entityMap.put("numberOfColumnsWithDescription", columnsWithDescription);
+    entityMap.put("hasColumnDescription", columnsWithDescription == totalColumns ? 1 : 0);
+  }
+
+  private void applyCustomPropertiesStep(EnrichmentTarget target) {
+    Object customProperties = target.entityMap().get("extension");
+    if (customProperties != null) {
+      target
+          .entityMap()
+          .put(String.format("%sCustomProperty", target.context().entityType()), customProperties);
+    }
   }
 
   /**
