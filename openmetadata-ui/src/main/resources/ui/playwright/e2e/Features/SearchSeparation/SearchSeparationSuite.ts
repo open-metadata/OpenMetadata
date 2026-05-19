@@ -411,6 +411,43 @@ async function checkExploreFilterWithServiceBase(
   await page.click('[data-testid="clear-filters"]');
   await entity.visitEntityPage(page);
 }
+async function checkExploreFilterWithTagBase(
+  page: Page,
+  filterLabel: string,
+  filterKey: string,
+  filterValue: string,
+  entity: FilterSeparationEntity,
+  uniqueTagFqn: string
+): Promise<void> {
+  await sidebarClick(page, SidebarItem.EXPLORE);
+
+  await page.getByTestId('search-dropdown-Tag').click();
+  await searchAndClickOnOption(
+    page,
+    { label: 'Tag', key: 'tags.tagFQN', value: uniqueTagFqn },
+    true
+  );
+  await page.click('[data-testid="update-btn"]');
+  await waitForAllLoadersToDisappear(page);
+
+  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
+  await searchAndClickOnOption(
+    page,
+    { label: filterLabel, key: filterKey, value: filterValue },
+    true
+  );
+  await page.click('[data-testid="update-btn"]');
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(
+    page.getByTestId(
+      `table-data-card_${entity.entityResponseData.fullyQualifiedName}`
+    )
+  ).toBeVisible();
+
+  await page.click('[data-testid="clear-filters"]');
+  await entity.visitEntityPage(page);
+}
 
 async function assertAllFourFiltersWork(
   page: Page,
@@ -423,23 +460,24 @@ async function assertAllFourFiltersWork(
   const serviceName =
     serviceDisplayName || svcData?.displayName || svcData?.name;
 
-  const filters: Array<{ label: string; key: string; value: string }> = [
+  const classificationTagFqn =
+    classificationTag.responseData.fullyQualifiedName;
+  const glossaryTermFqn = glossaryTerm.responseData.fullyQualifiedName;
+
+  // Tier and Certification are constant values shared across all parallel test runs.
+  // classificationTag and glossaryTerm FQNs contain a per-run UUID so they are unique.
+  const sharedFilters: Array<{ label: string; key: string; value: string }> = [
     { label: 'Tier', key: 'tier.tagFQN', value: TIER_FQN },
     {
       label: 'Certification',
       key: 'certification.tagLabel.tagFQN',
       value: CERTIFICATION_FQN,
     },
-    {
-      label: 'Tag',
-      key: 'tags.tagFQN',
-      value: classificationTag.responseData.fullyQualifiedName,
-    },
-    {
-      label: 'Tag',
-      key: 'tags.tagFQN',
-      value: glossaryTerm.responseData.fullyQualifiedName,
-    },
+  ];
+
+  const uniqueFilters: Array<{ label: string; key: string; value: string }> = [
+    { label: 'Tag', key: 'tags.tagFQN', value: classificationTagFqn },
+    { label: 'Tag', key: 'tags.tagFQN', value: glossaryTermFqn },
   ];
 
   if (serviceName) {
@@ -450,7 +488,7 @@ async function assertAllFourFiltersWork(
       serviceName,
       entity
     );
-    for (const filter of filters) {
+    for (const filter of [...sharedFilters, ...uniqueFilters]) {
       await checkExploreFilterWithServiceBase(
         page,
         filter.label,
@@ -461,7 +499,22 @@ async function assertAllFourFiltersWork(
       );
     }
   } else {
-    for (const filter of filters) {
+    // Shared filters: pre-narrow by the per-run unique classificationTag so the
+    // target entity is always on page 1, regardless of how many other parallel-run
+    // entities also carry Tier.Tier1 or Certification.Gold.
+    for (const filter of sharedFilters) {
+      await checkExploreFilterWithTagBase(
+        page,
+        filter.label,
+        filter.key,
+        filter.value,
+        entity,
+        classificationTagFqn
+      );
+    }
+    // Unique filters: classificationTag and glossaryTerm FQNs are unique per run,
+    // so a standalone check is sufficient — only this test's entity has them.
+    for (const filter of uniqueFilters) {
       await checkExploreSearchFilter(
         page,
         filter.label,
