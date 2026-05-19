@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { startCase } from 'lodash';
 import React from 'react';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import { Thread } from '../../generated/entity/feed/thread';
@@ -23,6 +24,8 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => ({
 
 const mockPrepareFeedLink = jest.fn();
 const mockGetTaskDetailPath = jest.fn();
+
+const mockNavigate = jest.fn();
 
 jest.mock('../../utils/FeedUtils', () => ({
   entityDisplayName: jest.fn().mockReturnValue('database.schema.table'),
@@ -40,12 +43,21 @@ jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
     .mockImplementation(
-      ({ children, to }: { children: React.ReactNode; to: string }) => (
-        <p data-testid="link" data-to={to}>
+      ({
+        children,
+        to,
+        onClick,
+      }: {
+        children: React.ReactNode;
+        to: string;
+        onClick?: (e: React.MouseEvent) => void;
+      }) => (
+        <p data-testid="link" data-to={to} onClick={onClick}>
           {children}
         </p>
       )
     ),
+  useNavigate: jest.fn(() => mockNavigate),
 }));
 jest.mock('../../utils/EntityUtils', () => ({
   getEntityLinkFromType: jest.fn().mockReturnValue('/mock-entity-link'),
@@ -109,6 +121,60 @@ const mockProps = {
   feedType: ThreadType.Task,
 };
 
+it('calls navigate with tasksRefreshKey state when the task notification card is clicked', async () => {
+  mockGetTaskDetailPath.mockReturnValue('/mock-task-link');
+
+  await act(async () => {
+    render(<NotificationFeedCard {...mockProps} />);
+  });
+
+  const outerLink = screen.getAllByTestId('link')[0];
+  fireEvent.click(outerLink);
+
+  expect(mockNavigate).toHaveBeenCalledWith('/mock-task-link', {
+    state: { tasksRefreshKey: expect.any(Number) },
+  });
+});
+
+it('calls navigate with tasksRefreshKey state when the inner task ID link is clicked', async () => {
+  mockGetTaskDetailPath.mockReturnValue('/mock-task-link');
+
+  await act(async () => {
+    render(<NotificationFeedCard {...mockProps} />);
+  });
+
+  const links = screen.getAllByTestId('link');
+  const innerTaskLink = links[links.length - 1];
+  fireEvent.click(innerTaskLink);
+
+  expect(mockNavigate).toHaveBeenCalledWith('/mock-task-link', {
+    state: { tasksRefreshKey: expect.any(Number) },
+  });
+});
+
+it('does not call navigate when a mention notification is clicked', async () => {
+  mockPrepareFeedLink.mockReturnValue('/entity/activity_feed/all');
+
+  await act(async () => {
+    render(
+      <NotificationFeedCard
+        isConversationFeed
+        createdBy="admin"
+        entityFQN="Article_sQDEeTK6"
+        entityType="page"
+        feedType={ThreadType.Conversation}
+        task={mockThread as Thread}
+        timestamp={mockThread.threadTs}
+      />
+    );
+  });
+
+  const outerLink = screen.getAllByTestId('link')[0];
+  fireEvent.click(outerLink);
+
+  expect(mockNavigate).not.toHaveBeenCalled();
+});
+
 describe('Test NotificationFeedCard Component', () => {
   it('Check if it has all child elements', async () => {
     await act(async () => {
@@ -128,7 +194,9 @@ describe('Test NotificationFeedCard Component', () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText(`#${mockThread.task.id} ${mockThread.task.type}`)
+      screen.getByText(
+        `#${mockThread.task.id} ${startCase(mockThread.task.type)}`
+      )
     ).toBeInTheDocument();
   });
 
@@ -258,8 +326,7 @@ describe('Test NotificationFeedCard Component', () => {
         render(<NotificationFeedCard {...conversationProps} />);
       });
 
-      // Should be called twice - once for main link, once for entity name link
-      expect(mockGetTaskDetailPath).toHaveBeenCalledTimes(2);
+      expect(mockGetTaskDetailPath).toHaveBeenCalledTimes(1);
       expect(mockGetTaskDetailPath).toHaveBeenCalledWith(mockThread);
     });
 

@@ -13,6 +13,7 @@
 import { expect, Page } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { clickOutside, descriptionBox, toastNotification } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export type TaskDetails = {
   term: string;
@@ -173,4 +174,18 @@ export const checkTaskCountInActivityFeed = async (
     .last();
 
   expect(await closedTaskItem.textContent()).toBe(String(closedTask));
+};
+
+export const waitForTaskListResponse = (page: Page) =>
+  page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/feed') &&
+      response.url().includes('entityLink='),
+    { timeout: 30_000 }
+  );
+
+export const waitForPageLoaded = async (page: Page) => {
+  await page.waitForLoadState('domcontentloaded');
+  await waitForAllLoadersToDisappear(page);
 };
