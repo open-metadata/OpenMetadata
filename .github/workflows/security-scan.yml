@@ -16,6 +16,124 @@ on:
   workflow_dispatch:
 
 jobs:
+  vulnerability-scan:
+    runs-on: ubuntu-latest
+    environment: security-scan
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
+
+      - name: Enable yarn
+        run: corepack enable
+
+      - name: Install UI dependencies
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: yarn install --frozen-lockfile --ignore-scripts
+
+      - name: Run Retire.js scan
+        id: retire-scan
+        continue-on-error: true
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: |
+          npx retire@5 \
+            --path node_modules/ \
+            --severity high \
+            --outputformat json \
+            --outputpath retire-report.json
+
+      - name: Verify report was generated
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: |
+          if [ ! -f retire-report.json ]; then
+            echo '::error::retire-report.json was not generated — retire scan may have crashed'
+            exit 1
+          fi
+
+      - name: Upload Retire.js Report
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: retire-js-report
+          path: openmetadata-ui/src/main/resources/ui/retire-report.json
+          retention-days: 30
+
+      - name: Publish Retire.js Summary
+        if: success()
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: |
+          python3 - << 'EOF' >> $GITHUB_STEP_SUMMARY
+          import json
+
+          SEVERITY_ICON = {"critical": "🚨", "high": "🔴", "medium": "🟠", "low": "🟡"}
+          SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+          NM = "node_modules/"
+
+          def escape(text):
+              return str(text).replace('|', '\\|').replace('`', "'")
+
+          try:
+              with open("retire-report.json") as f:
+                  data = json.load(f)
+          except FileNotFoundError:
+              print("## Retire.js Scan Results\n\n> Report file not found — scan may not have run.")
+              raise SystemExit(0)
+
+          findings = data.get("data", [])
+          libs = {}
+          for item in findings:
+              filepath = item.get("file", "")
+              short = filepath[filepath.find(NM) + len(NM):] if NM in filepath else filepath
+              for result in item.get("results", []):
+                  key = (result.get("component", ""), result.get("version", ""))
+                  if key not in libs:
+                      libs[key] = {"files": [], "vulns": []}
+                  existing_ids = {json.dumps(v.get("identifiers", {}), sort_keys=True) for v in libs[key]["vulns"]}
+                  for v in result.get("vulnerabilities", []):
+                      vid = json.dumps(v.get("identifiers", {}), sort_keys=True)
+                      if vid not in existing_ids:
+                          libs[key]["vulns"].append(v)
+                          existing_ids.add(vid)
+                  if short not in libs[key]["files"]:
+                      libs[key]["files"].append(short)
+
+          print("## Retire.js Scan Results\n")
+
+          if not libs:
+              print("✅ No vulnerable libraries found.")
+          else:
+              total_vulns = sum(len(v["vulns"]) for v in libs.values())
+              print(f"> **{len(libs)} vulnerable librar{'y' if len(libs) == 1 else 'ies'} · {total_vulns} CVE{'s' if total_vulns != 1 else ''} found**\n")
+
+              for (component, version), info in sorted(libs.items(), key=lambda x: min(
+                      (SEVERITY_ORDER.get(v.get("severity", "low"), 3) for v in x[1]["vulns"]), default=3)):
+                  top_sev = min(info["vulns"], key=lambda v: SEVERITY_ORDER.get(v.get("severity", "low"), 3), default={"severity": "low"})
+                  icon = SEVERITY_ICON.get(top_sev.get("severity", "low"), "⚪")
+                  print(f"### {icon} {component} {version}\n")
+                  print("| Severity | CVE | Summary |")
+                  print("|---|---|---|")
+                  for vuln in sorted(info["vulns"], key=lambda v: SEVERITY_ORDER.get(v.get("severity", "low"), 3)):
+                      sev = vuln.get("severity", "")
+                      ids = vuln.get("identifiers", {})
+                      cves = ids.get("CVE", [])
+                      summary = ids.get("summary", "").split("\n")[0][:120]
+                      cve_str = ", ".join(f"[{c}](https://nvd.nist.gov/vuln/detail/{c})" for c in cves) if cves else ids.get("githubID", "—")
+                      print(f"| {SEVERITY_ICON.get(sev, '')} {sev} | {escape(cve_str)} | {escape(summary)} |")
+                  print("\n**Bundled in:**")
+                  for f in info["files"]:
+                      print(f"- `{f}`")
+                  print()
+          EOF
+
+      - name: Force failure on vulnerabilities found
+        if: steps.retire-scan.outcome == 'failure'
+        run: exit 1
+
   security-scan:
     runs-on: ubuntu-latest
     environment: security-scan
@@ -79,40 +197,140 @@ jobs:
         continue-on-error: true
         run: |
           source env/bin/activate
-          make snyk-report
+          rm -rf security-report
+          mkdir -p security-report
+          # Run snyk subtargets directly; skip `export-snyk-pdf-report` which deletes JSONs after PDF conversion.
+          make snyk-ingestion-report || true
+          make snyk-ingestion-base-slim-report || true
+          make snyk-airflow-apis-report || true
+          make snyk-server-report || true
+          make snyk-ui-report || true
 
-      - name: Slack on Failure
-        if: steps.security-report.outcome != 'success'
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
-          payload: |
-            {
-              "text": "🚨 Security report failed, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>. 🚨"
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      - name: Publish Snyk Summary
+        id: snyk-summary
+        if: always() && steps.maven-build.outcome == 'success'
+        run: |
+          python3 scripts/snyk_summary.py security-report \
+            --counts-file security-report/_counts.json \
+            --slack-file security-report/_slack.txt \
+            >> $GITHUB_STEP_SUMMARY
+          # Expose counts as step output for downstream gating.
+          counts=$(cat security-report/_counts.json)
+          echo "counts=$counts" >> $GITHUB_OUTPUT
+          high=$(jq '.high + .critical' security-report/_counts.json)
+          echo "high_critical=$high" >> $GITHUB_OUTPUT
 
-      - name: Slack on Success
-        if: steps.security-report.outcome == 'success'
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
-          payload: |
-            {
-              "text": "🟢 Security report generated for OpenMetadata Repo , please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      - name: Fail on high/critical Snyk findings
+        id: vuln-gate
+        if: always() && steps.snyk-summary.outcome == 'success' && steps.snyk-summary.outputs.high_critical != '' && steps.snyk-summary.outputs.high_critical != '0'
+        continue-on-error: true
+        run: |
+          echo "::error::Snyk found ${{ steps.snyk-summary.outputs.high_critical }} high/critical vulnerabilities (see Job Summary)"
+          exit 1
 
-      - name: Upload Snyk Report HTML files
-        if: steps.security-report.outcome == 'success'
+      - name: Fail if Snyk summary could not be produced
+        id: summary-guard
+        if: always() && steps.maven-build.outcome == 'success' && steps.snyk-summary.outcome == 'failure'
+        continue-on-error: true
+        run: |
+          echo "::error::snyk_summary.py failed — vulnerability counts unavailable, failing as precaution"
+          exit 1
+
+      - name: Generate Snyk HTML/PDF
+        if: always() && steps.maven-build.outcome == 'success'
+        run: |
+          # Back up JSONs because html_to_pdf.py deletes them after PDF conversion.
+          mkdir -p /tmp/snyk-json-backup
+          cp security-report/*.json /tmp/snyk-json-backup/ 2>/dev/null || true
+          # Remove internal metadata files so PDF exporter only processes real Snyk reports.
+          rm -f security-report/_*.json
+          make export-snyk-pdf-report || true
+          # Restore all JSONs alongside generated PDFs/HTMLs.
+          cp /tmp/snyk-json-backup/*.json security-report/ 2>/dev/null || true
+
+      - name: Upload Snyk Reports
+        if: always() && steps.maven-build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: security-report
           path: security-report
+          retention-days: 30
 
       - name: Force failure
-        if: steps.maven-build.outcome != 'success' || steps.security-report.outcome != 'success'
+        if: steps.maven-build.outcome != 'success' || steps.security-report.outcome != 'success' || steps.vuln-gate.outcome == 'failure' || steps.summary-guard.outcome == 'failure'
         run: |
           exit 1
+
+  notify:
+    runs-on: ubuntu-latest
+    environment: security-scan
+    needs: [vulnerability-scan, security-scan]
+    if: always()
+    steps:
+      - name: Download Snyk artifact
+        if: needs.security-scan.result != 'skipped'
+        uses: actions/download-artifact@v4
+        with:
+          name: security-report
+          path: security-report
+        continue-on-error: true
+
+      - name: Build Slack payload
+        id: slack-payload
+        env:
+          RETIRE_RESULT: ${{ needs.vulnerability-scan.result }}
+          SNYK_RESULT: ${{ needs.security-scan.result }}
+          REF_NAME: ${{ github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 - <<'PY' > payload.json
+          import json, os, pathlib
+
+          retire = os.environ["RETIRE_RESULT"]
+          snyk = os.environ["SNYK_RESULT"]
+          ref_name = os.environ["REF_NAME"]
+          run_url = os.environ["RUN_URL"]
+
+          def status_icon(s):
+              return {"success": "✅", "cancelled": "⚠️ (cancelled)", "skipped": "⚠️ (skipped)"}.get(s, "❌")
+
+          if retire == "success" and snyk == "success":
+              overall = "🟢"
+          elif retire == "failure" or snyk == "failure":
+              overall = "🚨"
+          else:
+              overall = "⚠️"
+
+          header = (
+              f"{overall}  *Security scan* — *OpenMetadata Repo*\n"
+              f"_branch_ `{ref_name}`  ·  <{run_url}|Open run details>\n"
+              f"• Vulnerability scan (Retire.js): {status_icon(retire)}\n"
+              f"• Security scan (Snyk): {status_icon(snyk)}"
+          )
+
+          blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": header}}]
+
+          slack_path = pathlib.Path("security-report/_slack.txt")
+          if slack_path.exists():
+              text = slack_path.read_text().strip()
+              sections = [s.strip() for s in text.split("\n\n") if s.strip()]
+              if sections:
+                  blocks.append({"type": "divider"})
+                  # Slack: max 50 blocks per message; each section text ≤ 3000 chars.
+                  for section in sections[:48]:
+                      if len(section) > 2900:
+                          section = section[:2850].rstrip() + "\n_…truncated, see Job Summary_"
+                      blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": section}})
+
+          fallback = f"{overall} Security scan — OpenMetadata Repo on {ref_name}. {run_url}"
+          print(json.dumps({"text": fallback, "blocks": blocks}))
+          PY
+
+      - name: Send Slack Notification
+        if: always() && steps.slack-payload.outcome == 'success'
+        uses: slackapi/slack-github-action@v1.27.1
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
+          payload-file-path: payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
