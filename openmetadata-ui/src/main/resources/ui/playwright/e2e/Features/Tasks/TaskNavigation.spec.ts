@@ -619,9 +619,12 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
           async () => {
             if (await notificationBox.isVisible()) {
               await page.keyboard.press('Escape');
+              await page.waitForTimeout(500);
             }
             await notificationBell.click();
-            await notificationBox.waitFor({ state: 'visible', timeout: 5_000 });
+            await notificationBox
+              .waitFor({ state: 'visible', timeout: 5_000 })
+              .catch(() => {});
 
             return latestNotification.count();
           },
@@ -738,12 +741,15 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
             async () => {
               if (await notificationBox.isVisible()) {
                 await userPage.keyboard.press('Escape');
+                await userPage.waitForTimeout(500);
               }
               await notificationBell.click();
-              await notificationBox.waitFor({
-                state: 'visible',
-                timeout: 5_000,
-              });
+              await notificationBox
+                .waitFor({
+                  state: 'visible',
+                  timeout: 5_000,
+                })
+                .catch(() => {});
 
               return latestNotification.count();
             },
