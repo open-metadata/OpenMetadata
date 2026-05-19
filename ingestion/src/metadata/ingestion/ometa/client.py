@@ -21,6 +21,7 @@ from requests.exceptions import HTTPError, JSONDecodeError
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.ometa.credentials import URL, get_api_version
+from metadata.ingestion.ometa.http_adapter import mount_resilient_adapter
 from metadata.ingestion.ometa.ttl_cache import TTLCache
 from metadata.ingestion.ometa.utils import sanitize_user_agent
 from metadata.utils.execution_time_tracker import calculate_execution_time
@@ -39,6 +40,16 @@ class LimitsException(Exception):
     """
     API Client Feature Limit exception
     """
+
+
+class RestTransportError(Exception):
+    """Request failed at the transport layer (connection / timeout / retry exhaustion)."""
+
+    def __init__(self, method: str, url: object, cause: BaseException) -> None:
+        super().__init__(f"Transport failure on {method} {url}: {cause}")
+        self.method = method
+        self.url = url
+        self.cause = cause
 
 
 class APIError(Exception):
@@ -138,6 +149,7 @@ class REST:
         self._base_url: URL = URL(self.config.base_url)
         self._api_version = get_api_version(self.config.api_version)
         self._session = requests.Session()
+        mount_resilient_adapter(self._session)
         user_agent = sanitize_user_agent(self.config.user_agent)
         if user_agent:
             self._session.headers["User-Agent"] = user_agent
@@ -305,16 +317,14 @@ class REST:
                     raise APIError(error, http_error) from http_error
             else:
                 raise
-        except requests.ConnectionError as conn:
-            # Trying to solve https://github.com/psf/requests/issues/4664
-            try:
-                return self._session.request(method, url, **opts).json()
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Unexpected error while retrying after a connection error - {exc}"
-                )
-                raise conn
+        except (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.Timeout,
+            requests.exceptions.RetryError,
+            requests.exceptions.ChunkedEncodingError,
+        ) as exc:
+            logger.warning("Transport failure calling [%s] with method [%s]: %s", url, method, exc)
+            raise RestTransportError(method, url, exc) from exc
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
