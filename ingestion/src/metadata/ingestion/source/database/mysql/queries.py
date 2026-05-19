@@ -14,11 +14,13 @@ SQL Queries used during ingestion
 
 import textwrap
 
+# general_log.argument and slow_log.sql_text are MEDIUMTEXT on older MySQL and MEDIUMBLOB on 5.7+;
+# CONVERT(... USING utf8mb4) unifies behavior for SELECT/WHERE.
 MYSQL_SQL_STATEMENT = textwrap.dedent(
     """
 SELECT 
 	NULL `database_name`,
-	argument `query_text`,
+	CONVERT(argument USING utf8mb4) `query_text`,
 	event_time `start_time`,
     NULL `end_time`,
 	NULL `duration`,
@@ -29,8 +31,8 @@ SELECT
 FROM mysql.general_log
 WHERE command_type = 'Query' 
     AND event_time between '{start_time}' and '{end_time}'
-    AND argument NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-    AND argument NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+    AND CONVERT(argument USING utf8mb4) NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+    AND CONVERT(argument USING utf8mb4) NOT LIKE '/* {{"app": "dbt", %%}} */%%'
     {filters}
 ORDER BY event_time desc
 LIMIT {result_limit};
@@ -42,7 +44,7 @@ MYSQL_SQL_STATEMENT_SLOW_LOGS = textwrap.dedent(
     """
 SELECT 
 	NULL `database_name`,
-	sql_text `query_text`,
+	CONVERT(sql_text USING utf8mb4) `query_text`,
 	start_time `start_time`,
     NULL `end_time`,
 	NULL  `duration`,
@@ -52,8 +54,8 @@ SELECT
     NULL `aborted`
 FROM mysql.slow_log
 WHERE start_time between '{start_time}' and '{end_time}'
-    AND sql_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-    AND sql_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+    AND CONVERT(sql_text USING utf8mb4) NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+    AND CONVERT(sql_text USING utf8mb4) NOT LIKE '/* {{"app": "dbt", %%}} */%%'
     {filters}
 ORDER BY start_time desc
 LIMIT {result_limit};
@@ -62,13 +64,13 @@ LIMIT {result_limit};
 
 MYSQL_TEST_GET_QUERIES = textwrap.dedent(
     """
-SELECT `argument` from mysql.general_log limit 1;
+SELECT CONVERT(argument USING utf8mb4) AS query_text FROM mysql.general_log LIMIT 1;
 """
 )
 
 MYSQL_TEST_GET_QUERIES_SLOW_LOGS = textwrap.dedent(
     """
-SELECT `sql_text` from mysql.slow_log limit 1;
+SELECT CONVERT(sql_text USING utf8mb4) AS query_text FROM mysql.slow_log LIMIT 1;
 """
 )
 
