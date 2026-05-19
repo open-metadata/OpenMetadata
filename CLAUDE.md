@@ -229,6 +229,14 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - This keeps the codebase modular and prevents generic utilities from becoming cluttered with connector-specific edge cases
 - **Use `model_str()` for Pydantic RootModel to string conversion** — OpenMetadata schema types like `ColumnName`, `EntityName`, `FullyQualifiedEntityName`, and `UUID` are Pydantic `RootModel[str]` subclasses where `str()` returns `"root='value'"` instead of the raw value. Always use `model_str()` from `metadata.ingestion.ometa.utils` instead of manual `hasattr(x, "root")` / `str(x.root)` checks.
 
+### Caching
+- **All caches MUST be bounded.** Never use a bare `dict` / `HashMap` / `Map` as a cache without an explicit size cap — they grow with the input and cause OOMs on large catalogs/ingestions. The only exception is when the user explicitly asks for an unbounded cache for a specific case.
+- Pick a sane default (typically 100–1000 entries depending on entity size); if you're unsure, ask the user.
+- **Python**: use `collections.OrderedDict` with `popitem(last=False)` eviction after insert, `@functools.lru_cache(maxsize=N)`, or `cachetools.LRUCache`. Cache both hits and misses (negative caching) — repeated unresolvable lookups are a common hot path.
+- **Java**: use Caffeine (`Caffeine.newBuilder().maximumSize(N).build()`) or Guava `CacheBuilder.newBuilder().maximumSize(N).build()`. Never a bare `HashMap`.
+- **TypeScript**: use `lru-cache` — never a bare `Map` or plain object.
+- **Before adding a cache, check whether the underlying call is already cached at a lower layer.** Example: `OpenMetadata._search_es_entity` is `@lru_cache(maxsize=512)`, so wrapping `get_entity_from_es` / `es_search_container_by_path` calls in a local dict cache is redundant — drop the local cache and rely on the existing LRU.
+
 ### Testing Philosophy
 - **Test real behavior, not mock wiring** - if a test requires mocking 3+ classes just to verify a method call, it's testing the wrong thing
 - **Prefer integration tests** over heavily-mocked unit tests. This project has full integration test infrastructure (OpenMetadataApplicationTest, Docker containers, real OpenSearch). Use it.
