@@ -267,41 +267,47 @@ public class DataInsightsEntityEnricherProcessor
   }
 
   private String processTeam(EntityInterface entity) {
-    String team = null;
     Optional<List<EntityReference>> oEntityOwners = Optional.ofNullable(entity.getOwners());
-    if (oEntityOwners.isPresent() && !oEntityOwners.get().isEmpty()) {
-      EntityReference entityOwner = oEntityOwners.get().get(0);
-      String ownerType = entityOwner.getType();
-      if (ownerType.equals(Entity.TEAM)) {
-        team = entityOwner.getName();
-      } else {
-        try {
-          Optional<User> oOwner =
-              Optional.ofNullable(
-                  Entity.getEntityByName(
-                      Entity.USER, entityOwner.getFullyQualifiedName(), "teams", Include.ALL));
-
-          if (oOwner.isPresent()) {
-            User owner = oOwner.get();
-            List<EntityReference> teams = owner.getTeams();
-
-            if (!teams.isEmpty()) {
-              team = teams.get(0).getName();
-            }
-          }
-        } catch (EntityNotFoundException ex) {
-          // Note: If the Owner is deleted we can't infer the Teams for which the Data Asset
-          // belonged.
-          LOG.debug(
-              "Owner {} for {} '{}' version '{}' not found.",
-              entityOwner.getFullyQualifiedName(),
-              Entity.getEntityTypeFromObject(entity),
-              entity.getFullyQualifiedName(),
-              entity.getVersion());
-        }
-      }
+    if (oEntityOwners.isEmpty() || oEntityOwners.get().isEmpty()) {
+      return null;
     }
-    return team;
+    EntityReference entityOwner = oEntityOwners.get().get(0);
+    if (Entity.TEAM.equals(entityOwner.getType())) {
+      return entityOwner.getName();
+    }
+    // Historical version rows from entity_extension carry owners as bare {id, type}
+    // refs with no fullyQualifiedName — only the latest version returned by
+    // listVersionsWithOffset is hydrated. Resolve by id instead of by FQN so the
+    // lookup works on both shapes; the id is always present.
+    if (entityOwner.getId() == null) {
+      return null;
+    }
+    try {
+      User owner = Entity.getEntity(Entity.USER, entityOwner.getId(), "teams", Include.ALL);
+      if (owner != null && owner.getTeams() != null && !owner.getTeams().isEmpty()) {
+        return owner.getTeams().get(0).getName();
+      }
+    } catch (EntityNotFoundException ex) {
+      // Owner deleted — we can't infer the team for this historical snapshot.
+      LOG.debug(
+          "Owner {} for {} '{}' version '{}' not found.",
+          entityOwner.getId(),
+          Entity.getEntityTypeFromObject(entity),
+          entity.getFullyQualifiedName(),
+          entity.getVersion());
+    } catch (Exception ex) {
+      // Defensive: a per-version team-resolution failure must not drop the
+      // entity's snapshots. Better to emit a snapshot without `team` than lose
+      // every day's record for this entity.
+      LOG.warn(
+          "Failed to resolve team for owner {} of {} '{}' version '{}': {}",
+          entityOwner.getId(),
+          Entity.getEntityTypeFromObject(entity),
+          entity.getFullyQualifiedName(),
+          entity.getVersion(),
+          ex.toString());
+    }
+    return null;
   }
 
   private String processTier(EntityInterface entity) {
