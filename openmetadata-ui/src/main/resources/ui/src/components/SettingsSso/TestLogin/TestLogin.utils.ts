@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ClaimValue } from './TestLogin.interface';
+import { ClaimValue, TestLoginResult } from './TestLogin.interface';
 
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -24,4 +24,57 @@ export const claimValueHasEmail = (value: ClaimValue): boolean => {
   }
 
   return isEmailString(value);
+};
+
+export const formatClaimValue = (value: ClaimValue): string => {
+  if (Array.isArray(value)) {
+    return value.join(', ');
+  }
+
+  return String(value ?? '');
+};
+
+export const splitEmail = (
+  email: string
+): { local: string; domain: string } => {
+  const trimmed = email.trim();
+  const at = trimmed.indexOf('@');
+  if (at <= 0) {
+    return { local: trimmed, domain: '' };
+  }
+
+  return { local: trimmed.slice(0, at), domain: trimmed.slice(at + 1) };
+};
+
+export const pickEmailFromClaim = (value: ClaimValue): string | null => {
+  if (Array.isArray(value)) {
+    const match = value.find(isEmailString);
+
+    return typeof match === 'string' ? match.trim() : null;
+  }
+
+  return isEmailString(value) ? String(value).trim() : null;
+};
+
+export const deriveAdminAndDomain = (
+  result: TestLoginResult,
+  claimName: string
+): { adminPrincipal: string; principalDomain: string; hasEmail: boolean } => {
+  const raw = result.claims[claimName];
+  if (raw === undefined) {
+    return { adminPrincipal: '', principalDomain: '', hasEmail: false };
+  }
+
+  const email = pickEmailFromClaim(raw);
+  if (email === null) {
+    return { adminPrincipal: '', principalDomain: '', hasEmail: false };
+  }
+
+  const { local, domain } = splitEmail(email);
+
+  return {
+    adminPrincipal: local || result.suggestedAdminPrincipal || '',
+    principalDomain: domain || result.derivedPrincipalDomain || '',
+    hasEmail: true,
+  };
 };

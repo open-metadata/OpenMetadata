@@ -19,25 +19,12 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ClaimSelectorProps, ClaimValue } from './TestLogin.interface';
-import { claimValueHasEmail } from './TestLogin.utils';
-
-const formatClaimValue = (value: ClaimValue): string => {
-  if (Array.isArray(value)) {
-    return value.join(', ');
-  }
-
-  return String(value ?? '');
-};
-
-const splitEmail = (email: string): { local: string; domain: string } => {
-  const at = email.indexOf('@');
-  if (at <= 0) {
-    return { local: email, domain: '' };
-  }
-
-  return { local: email.slice(0, at), domain: email.slice(at + 1) };
-};
+import { ClaimSelectorProps } from './TestLogin.interface';
+import {
+  claimValueHasEmail,
+  deriveAdminAndDomain,
+  formatClaimValue,
+} from './TestLogin.utils';
 
 const ClaimSelector = ({
   open,
@@ -67,23 +54,16 @@ const ClaimSelector = ({
       }));
   }, [result]);
 
-  const { adminPrincipal, principalDomain } = useMemo(() => {
+  const { adminPrincipal, principalDomain, hasEmail } = useMemo(() => {
     if (!result || !selectedClaim) {
-      return { adminPrincipal: '', principalDomain: '' };
+      return { adminPrincipal: '', principalDomain: '', hasEmail: false };
     }
 
-    const raw = result.claims[selectedClaim];
-    const value = Array.isArray(raw) ? String(raw[0] ?? '') : String(raw ?? '');
-    const { local, domain } = splitEmail(value);
-
-    return {
-      adminPrincipal: local || result.suggestedAdminPrincipal || '',
-      principalDomain: domain || result.derivedPrincipalDomain || '',
-    };
+    return deriveAdminAndDomain(result, selectedClaim);
   }, [result, selectedClaim]);
 
   const handleConfirm = () => {
-    if (!selectedClaim) {
+    if (!selectedClaim || !hasEmail) {
       return;
     }
 
@@ -191,7 +171,7 @@ const ClaimSelector = ({
             <Button
               color="primary"
               data-testid="sso-claim-selector-confirm"
-              isDisabled={!selectedClaim}
+              isDisabled={!selectedClaim || !hasEmail}
               size="md"
               onPress={handleConfirm}>
               {t('label.confirm-email-claim')}
