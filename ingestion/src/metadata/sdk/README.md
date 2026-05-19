@@ -187,13 +187,13 @@ patched = Tables.update(updated_table)
 ```
 
 For specialized patch flows that are not covered by a facade helper, use the
-underlying OpenMetadata client.
+underlying ingestion client from the SDK wrapper.
 
 ```python
 from metadata.generated.schema.entity.data.table import Table
 from metadata.sdk import client
 
-metadata = client()
+metadata = client().ometa
 current = metadata.get_by_id(entity=Table, entity_id="table-id", fields=["tags"])
 destination = current.model_copy(deep=True)
 destination.tags = []
@@ -220,6 +220,39 @@ sample_data = TableData(columns=["id", "status"], rows=[[1, "COMPLETE"]])
 Tables.add_sample_data("table-id", sample_data)
 table_with_sample_data = Tables.get_sample_data("table-id")
 ```
+
+## Governance Tags
+
+Use the plural governance facades to create or retrieve classifications and
+tags, then assign tag FQNs to assets with `Tables.add_tag()` or `update()`.
+
+```python
+from metadata.generated.schema.api.classification.createClassification import (
+    CreateClassificationRequest,
+)
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.sdk import Classifications, Tables, Tags
+
+classification = Classifications.create(
+    CreateClassificationRequest(
+        name="PII",
+        description="Personally identifiable information",
+    )
+)
+
+tag = Tags.create(
+    CreateTagRequest(
+        classification=classification.fullyQualifiedName.root,
+        name="Sensitive",
+        description="Sensitive customer data",
+    )
+)
+
+table = Tables.add_tag("table-id", tag.fullyQualifiedName.root)
+```
+
+To replace tags instead of appending one, retrieve the table with `fields=["tags"]`,
+mutate a copy, and call `Tables.update(destination)`.
 
 ## CSV Import and Export
 
@@ -311,7 +344,7 @@ The current SDK exports these facade classes:
 - Data quality: `TestCases`, `TestDefinitions`, `TestSuites`
 
 If a facade does not exist for an entity yet, use the underlying
-OpenMetadata client returned by `metadata.sdk.client()` or the ingestion
+ingestion client returned by `metadata.sdk.client().ometa` or the ingestion
 client APIs directly.
 
 ## Entity References

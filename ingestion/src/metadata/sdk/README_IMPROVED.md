@@ -139,7 +139,7 @@ For lower-level patch flows, use the default OpenMetadata client:
 from metadata.generated.schema.entity.data.table import Table
 from metadata.sdk import client
 
-metadata = client()
+metadata = client().ometa
 source = metadata.get_by_id(entity=Table, entity_id="table-id", fields=["tags"])
 destination = source.model_copy(deep=True)
 destination.tags = []
@@ -158,6 +158,59 @@ methods only; examples should not use `Tables.create_async()` or
 from metadata.sdk.api import Search
 
 results = await Search.search_async("customer", index="table_search_index")
+```
+
+## Governance Tags
+
+Use `Classifications` and `Tags` for governance taxonomy CRUD. Use
+`Tables.add_tag(table_id, "Classification.Tag")` to append a table tag, or
+retrieve the table with `fields=["tags"]`, replace `tags` on a copied entity,
+and call `Tables.update(destination)` when reassignment is required.
+
+```python
+from metadata.generated.schema.api.classification.createClassification import (
+    CreateClassificationRequest,
+)
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.sdk import Classifications, Tables, Tags
+
+classification = Classifications.create(
+    CreateClassificationRequest(name="PII", description="PII taxonomy")
+)
+tag = Tags.create(
+    CreateTagRequest(
+        classification=classification.fullyQualifiedName.root,
+        name="Sensitive",
+        description="Sensitive data",
+    )
+)
+
+table = Tables.add_tag("table-id", tag.fullyQualifiedName.root)
+```
+
+## Lineage
+
+Lineage operations live under `metadata.sdk.api.Lineage`, not the entity
+facades. Add edges by entity IDs and types, or retrieve lineage by FQN or ID.
+
+```python
+from metadata.generated.schema.entity.data.table import Table
+from metadata.sdk.api import Lineage
+
+Lineage.add_lineage(
+    from_entity_id="source-table-id",
+    from_entity_type="table",
+    to_entity_id="target-table-id",
+    to_entity_type="table",
+    description="Curated order facts",
+)
+
+lineage = Lineage.get_entity_lineage(
+    entity_type=Table,
+    entity_id="target-table-id",
+    upstream_depth=2,
+    downstream_depth=1,
+)
 ```
 
 ## CSV Operations
