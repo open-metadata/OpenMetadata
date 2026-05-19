@@ -75,9 +75,14 @@ public final class SpecExtractor {
           "apiEndpoints",
           "mlHyperParameters");
 
+  /** camelCase index names whose entity schema file is named differently. */
+  private static final Map<String, String> SCHEMA_ALIASES =
+      Map.of("searchEntity", "searchIndex", "dataProducts", "dataProduct");
+
   private final Path specDir;
   private final Map<String, JsonNode> fieldTypeRecipes = new LinkedHashMap<>();
   private final Map<String, JsonNode> fragmentShapes = new LinkedHashMap<>();
+  private final EntitySchemas entitySchemas;
 
   public SpecExtractor(Path specDir) {
     this.specDir = specDir;
@@ -87,6 +92,7 @@ public final class SpecExtractor {
     for (String fragment : FIELD_FRAGMENTS) {
       fragmentShapes.put(fragment, generator.resolvedFragment(fragment));
     }
+    this.entitySchemas = new EntitySchemas(spec.schemaRoot());
   }
 
   public static void main(String[] args) {
@@ -349,6 +355,7 @@ public final class SpecExtractor {
     ObjectNode spec = Json.MAPPER.createObjectNode();
     spec.put("entity", entity);
     spec.put("extends", "entity_base");
+    resolveJavaEntity(entity).ifPresent(javaType -> spec.put("javaEntity", javaType));
     spec.set("settings", settingsRef);
     ObjectNode delta = Json.MAPPER.createObjectNode();
     fields.properties().forEach(e -> addFieldDelta(delta, baseFields, e.getKey(), e.getValue()));
@@ -432,6 +439,25 @@ public final class SpecExtractor {
 
   private JsonNode properties(ObjectNode mapping) {
     return mapping == null ? null : mapping.get("mappings").get("properties");
+  }
+
+  /** Resolves the entity POJO an index should extend, baked into the spec as {@code javaEntity}. */
+  private java.util.Optional<String> resolveJavaEntity(String entity) {
+    String stem = camelCase(entity);
+    return entitySchemas
+        .byFileStem(SCHEMA_ALIASES.getOrDefault(stem, stem))
+        .map(EntitySchemas.Info::javaType);
+  }
+
+  private String camelCase(String entity) {
+    String[] parts = entity.split("_");
+    StringBuilder sb = new StringBuilder(parts[0]);
+    for (int i = 1; i < parts.length; i++) {
+      if (!parts[i].isEmpty()) {
+        sb.append(Character.toUpperCase(parts[i].charAt(0))).append(parts[i].substring(1));
+      }
+    }
+    return sb.toString();
   }
 
   private String entityName(Path mappingFile) {

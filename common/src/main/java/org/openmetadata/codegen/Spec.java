@@ -92,6 +92,11 @@ final class Spec {
     return Json.loadFile(dir.resolve("settings").resolve("base.json"));
   }
 
+  /** Root of the entity JSON schemas — the source of truth for entity field types. */
+  Path schemaRoot() {
+    return dir.getParent().getParent().resolve("json").resolve("schema");
+  }
+
   List<String> entityNames() {
     try (Stream<Path> files = Files.list(dir.resolve("entities"))) {
       List<String> names = new ArrayList<>();

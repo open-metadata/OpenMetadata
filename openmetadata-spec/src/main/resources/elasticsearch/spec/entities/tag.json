@@ -1,6 +1,7 @@
 {
   "entity" : "tag",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.classification.Tag",
   "settings" : {
     "override" : { }
   },

@@ -1,6 +1,7 @@
 {
   "entity" : "domain",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.domains.Domain",
   "settings" : {
     "byLanguage" : {
       "en" : { },

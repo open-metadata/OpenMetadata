@@ -1,6 +1,7 @@
 {
   "entity" : "data_products",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.domains.DataProduct",
   "settings" : {
     "byLanguage" : {
       "en" : { },

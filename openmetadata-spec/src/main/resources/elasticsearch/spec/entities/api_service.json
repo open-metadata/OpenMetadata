@@ -1,6 +1,7 @@
 {
   "entity" : "api_service",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.services.ApiService",
   "settings" : {
     "byLanguage" : {
       "en" : { },

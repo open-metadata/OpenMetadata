@@ -1,6 +1,7 @@
 {
   "entity" : "prompt_template",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.ai.PromptTemplate",
   "settings" : {
     "byLanguage" : {
       "en" : { },

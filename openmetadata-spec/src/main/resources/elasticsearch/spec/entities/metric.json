@@ -1,6 +1,7 @@
 {
   "entity" : "metric",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.data.Metric",
   "settings" : {
     "override" : { }
   },

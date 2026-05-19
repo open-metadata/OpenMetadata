@@ -1,6 +1,7 @@
 {
   "entity" : "chart",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.data.Chart",
   "settings" : {
     "override" : { }
   },

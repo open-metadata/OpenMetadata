@@ -1,6 +1,7 @@
 {
   "entity" : "topic",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.data.Topic",
   "settings" : {
     "byLanguage" : {
       "en" : {

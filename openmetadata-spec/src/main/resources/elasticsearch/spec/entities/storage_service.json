@@ -1,6 +1,7 @@
 {
   "entity" : "storage_service",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.services.StorageService",
   "settings" : {
     "byLanguage" : {
       "en" : { },

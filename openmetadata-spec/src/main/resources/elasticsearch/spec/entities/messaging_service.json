@@ -1,6 +1,7 @@
 {
   "entity" : "messaging_service",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.services.MessagingService",
   "settings" : {
     "byLanguage" : {
       "en" : { },

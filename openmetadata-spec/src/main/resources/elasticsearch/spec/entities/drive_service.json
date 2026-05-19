@@ -1,6 +1,7 @@
 {
   "entity" : "drive_service",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.services.DriveService",
   "settings" : {
     "byLanguage" : {
       "en" : { },

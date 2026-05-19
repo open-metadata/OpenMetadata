@@ -1,6 +1,7 @@
 {
   "entity" : "mlmodel",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.data.MlModel",
   "settings" : {
     "override" : { }
   },

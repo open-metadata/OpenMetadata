@@ -1,6 +1,7 @@
 {
   "entity" : "mlmodel_service",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.services.MlModelService",
   "settings" : {
     "byLanguage" : {
       "en" : { },

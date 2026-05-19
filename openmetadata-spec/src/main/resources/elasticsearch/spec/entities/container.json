@@ -1,6 +1,7 @@
 {
   "entity" : "container",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.data.Container",
   "settings" : {
     "byLanguage" : {
       "en" : {

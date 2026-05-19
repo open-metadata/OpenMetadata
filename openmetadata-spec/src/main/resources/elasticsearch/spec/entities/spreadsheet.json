@@ -1,6 +1,7 @@
 {
   "entity" : "spreadsheet",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.data.Spreadsheet",
   "settings" : {
     "byLanguage" : {
       "en" : { },

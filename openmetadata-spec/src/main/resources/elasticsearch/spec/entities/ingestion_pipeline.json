@@ -1,6 +1,7 @@
 {
   "entity" : "ingestion_pipeline",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline",
   "settings" : {
     "override" : { }
   },

@@ -19,13 +19,55 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * Emits a typed index-document class for an entity from the same per-entity
- * spec that drives {@link MappingGenerator}. Callers populate this class and
- * hand it to the ES/OS client directly — no {@code Map<String,Object>}. The
- * document shape is engine-independent; only the mapping forks per engine.
+ * Emits a typed index-document class for an entity. The class {@code extends} the entity POJO
+ * declared by the spec's {@code javaEntity} (e.g. {@code TableIndexDoc extends Table}), so every
+ * entity field keeps its exact type ({@code id} is {@code UUID}, {@code changeDescription} is
+ * {@code ChangeDescription}, ...). Only the denormalized search-only fields are declared here.
+ * An entity with no {@code javaEntity} (no backing POJO) yields a standalone class.
  */
 final class IndexDocGenerator {
   private static final String PACKAGE = "org.openmetadata.schema.search";
+
+  /**
+   * Fields every entity POJO carries via {@code EntityInterface}, even when the entity's own
+   * schema does not list them in {@code properties}. They are always inherited, never declared.
+   */
+  private static final Set<String> ENTITY_INTERFACE_FIELDS =
+      Set.of(
+          "id",
+          "name",
+          "displayName",
+          "fullyQualifiedName",
+          "description",
+          "version",
+          "updatedAt",
+          "updatedBy",
+          "href",
+          "owners",
+          "changeDescription",
+          "incrementalChangeDescription",
+          "deleted",
+          "entityStatus",
+          "votes",
+          "domains",
+          "dataProducts",
+          "extension",
+          "followers",
+          "reviewers",
+          "experts",
+          "tags",
+          "certification",
+          "lifeCycle",
+          "style",
+          "provider",
+          "children",
+          "dataContract",
+          "service",
+          "usageSummary");
+
+  /** Fields every time-series POJO carries via {@code EntityTimeSeriesInterface}. */
+  private static final Set<String> TIME_SERIES_INTERFACE_FIELDS = Set.of("id", "timestamp");
+
   private static final String LICENSE =
       """
       /*
@@ -98,11 +140,13 @@ final class IndexDocGenerator {
   private final JsonNode fieldTypes;
   private final JsonNode fragmentTypes;
   private final Spec spec;
+  private final EntitySchemas entitySchemas;
 
   IndexDocGenerator(Spec spec) {
     this.spec = spec;
     this.fieldTypes = spec.fieldTypes();
     this.fragmentTypes = spec.fragmentJavaTypes();
+    this.entitySchemas = new EntitySchemas(spec.schemaRoot());
   }
 
   static String className(String entity) {
@@ -117,19 +161,47 @@ final class IndexDocGenerator {
 
   String generate(String entity) {
     String className = className(entity);
+    JsonNode entitySpec = spec.entity(entity);
+    EntitySchemas.Info schema = resolveSchema(entitySpec);
+    Set<String> inherited = inheritedFields(schema);
     TreeSet<String> imports = new TreeSet<>();
     StringBuilder members = new StringBuilder();
     Set<String> usedNames = new HashSet<>();
-    for (Map.Entry<String, JsonNode> field : spec.entity(entity).get("fields").properties()) {
-      String esName = field.getKey();
-      String javaName = uniqueName(sanitize(esName), usedNames);
-      String javaType = javaType(field.getValue(), imports);
-      appendMember(esName, javaName, javaType, className, members, imports);
+    for (Map.Entry<String, JsonNode> field : entitySpec.get("fields").properties()) {
+      if (inherited.contains(field.getKey())) {
+        continue; // inherited from the entity POJO with its exact type
+      }
+      String javaName = uniqueName(sanitize(field.getKey()), usedNames);
+      appendMember(
+          field.getKey(),
+          javaName,
+          javaType(field.getValue(), imports),
+          className,
+          members,
+          imports);
     }
-    return render(className, imports, members.toString());
+    return render(className, schema, imports, members.toString());
   }
 
-  /** Maps an ES field name to a valid, unique Java identifier (e.g. {@code @timestamp}). */
+  private EntitySchemas.Info resolveSchema(JsonNode entitySpec) {
+    JsonNode javaEntity = entitySpec.get("javaEntity");
+    if (javaEntity == null) {
+      return null;
+    }
+    return entitySchemas.byJavaType(javaEntity.asText()).orElse(null);
+  }
+
+  private Set<String> inheritedFields(EntitySchemas.Info schema) {
+    if (schema == null) {
+      return Set.of();
+    }
+    Set<String> inherited = new HashSet<>(schema.fields());
+    inherited.addAll(schema.timeSeries() ? TIME_SERIES_INTERFACE_FIELDS : ENTITY_INTERFACE_FIELDS);
+    return inherited;
+  }
+
+  // ---- field naming ----
+
   private String sanitize(String name) {
     StringBuilder sb = new StringBuilder();
     boolean capitalizeNext = false;
@@ -161,6 +233,8 @@ final class IndexDocGenerator {
     }
     return name;
   }
+
+  // ---- field types ----
 
   private String javaType(JsonNode fieldDef, TreeSet<String> imports) {
     String base = baseType(fieldDef);
@@ -202,6 +276,8 @@ final class IndexDocGenerator {
     return generics < 0 ? type : type.substring(0, generics);
   }
 
+  // ---- rendering ----
+
   private void appendMember(
       String esName,
       String javaName,
@@ -223,15 +299,22 @@ final class IndexDocGenerator {
     sb.append("    return this;\n  }\n\n");
   }
 
-  private String render(String className, TreeSet<String> imports, String members) {
+  private String render(
+      String className, EntitySchemas.Info schema, TreeSet<String> imports, String members) {
     imports.add("com.fasterxml.jackson.annotation.JsonInclude");
+    String extendsClause = "";
+    if (schema != null) {
+      imports.add(schema.javaType());
+      extendsClause = " extends " + simpleName(schema.javaType());
+    }
     StringBuilder sb = new StringBuilder(LICENSE);
     sb.append("package ").append(PACKAGE).append(";\n\n");
     imports.forEach(imp -> sb.append("import ").append(imp).append(";\n"));
     sb.append("\n/** Generated index document — do not edit. Source: elasticsearch/spec/.\n");
-    sb.append(" *  The same spec drives the ES/OS mappings, so doc and mapping cannot drift. */\n");
+    sb.append(" *  Entity fields are inherited with their exact types; only denormalized\n");
+    sb.append(" *  search-only fields are declared here. */\n");
     sb.append("@JsonInclude(JsonInclude.Include.NON_NULL)\n");
-    sb.append("public class ").append(className).append(" {\n\n");
+    sb.append("public class ").append(className).append(extendsClause).append(" {\n\n");
     sb.append(members).append("}\n");
     return sb.toString();
   }

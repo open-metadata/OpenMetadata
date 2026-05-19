@@ -1,6 +1,7 @@
 {
   "entity" : "glossary_term",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.data.GlossaryTerm",
   "settings" : {
     "byLanguage" : {
       "en" : { },

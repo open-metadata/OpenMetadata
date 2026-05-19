@@ -1,6 +1,7 @@
 {
   "entity" : "api_endpoint",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.data.APIEndpoint",
   "settings" : {
     "byLanguage" : {
       "en" : { },

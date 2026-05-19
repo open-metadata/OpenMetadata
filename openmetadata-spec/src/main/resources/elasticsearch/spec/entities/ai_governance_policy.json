@@ -1,6 +1,7 @@
 {
   "entity" : "ai_governance_policy",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.ai.AIGovernancePolicy",
   "settings" : {
     "byLanguage" : {
       "en" : { },

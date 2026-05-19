@@ -1,6 +1,7 @@
 {
   "entity" : "table",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.data.Table",
   "settings" : {
     "byLanguage" : {
       "en" : { },

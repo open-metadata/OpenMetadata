@@ -1,6 +1,7 @@
 {
   "entity" : "search_entity",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.data.SearchIndex",
   "settings" : {
     "byLanguage" : {
       "en" : {

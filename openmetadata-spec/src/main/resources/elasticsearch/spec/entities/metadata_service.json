@@ -1,6 +1,7 @@
 {
   "entity" : "metadata_service",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.services.MetadataService",
   "settings" : {
     "byLanguage" : {
       "en" : { },

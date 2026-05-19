@@ -1,6 +1,7 @@
 {
   "entity" : "team",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.teams.Team",
   "settings" : {
     "byLanguage" : {
       "en" : { },

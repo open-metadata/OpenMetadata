@@ -1,6 +1,7 @@
 {
   "entity" : "mcp_execution",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.ai.McpExecution",
   "settings" : {
     "byLanguage" : {
       "en" : {

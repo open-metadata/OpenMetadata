@@ -1,6 +1,7 @@
 {
   "entity" : "test_case_resolution_status",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.tests.type.TestCaseResolutionStatus",
   "settings" : {
     "byLanguage" : {
       "en" : {

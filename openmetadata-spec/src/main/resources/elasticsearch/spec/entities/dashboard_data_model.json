@@ -1,6 +1,7 @@
 {
   "entity" : "dashboard_data_model",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.data.DashboardDataModel",
   "settings" : {
     "byLanguage" : {
       "en" : { },

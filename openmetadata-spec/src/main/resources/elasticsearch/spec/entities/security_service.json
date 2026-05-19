@@ -1,6 +1,7 @@
 {
   "entity" : "security_service",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.services.SecurityService",
   "settings" : {
     "byLanguage" : {
       "en" : { },

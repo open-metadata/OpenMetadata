@@ -1,6 +1,7 @@
 {
   "entity" : "pipeline",
   "extends" : "entity_base",
+  "javaEntity" : "org.openmetadata.schema.entity.data.Pipeline",
   "settings" : {
     "override" : { }
   },
