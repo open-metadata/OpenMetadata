@@ -99,9 +99,7 @@ class S3BlobAdapter:
 
     def read_range(self, offset: int, length: int) -> bytes:
         range_header = f"bytes={offset}-{offset + length - 1}"
-        return self._client.get_object(
-            Bucket=self._bucket, Key=self._key, Range=range_header
-        )["Body"].read()
+        return self._client.get_object(Bucket=self._bucket, Key=self._key, Range=range_header)["Body"].read()
 
     def read_all(self) -> bytes:
         return self._client.get_object(Bucket=self._bucket, Key=self._key)["Body"].read()

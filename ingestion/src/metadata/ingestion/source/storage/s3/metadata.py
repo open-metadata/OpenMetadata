@@ -314,9 +314,7 @@ class S3Source(StorageServiceSource):
         yield S3ContainerDetails(
             name=archive_path,
             prefix=prefix,
-            creation_date=(
-                bucket_response.creation_date.isoformat() if bucket_response.creation_date else None
-            ),
+            creation_date=(bucket_response.creation_date.isoformat() if bucket_response.creation_date else None),
             size=archive_size,
             file_formats=[],
             data_model=None,
@@ -458,9 +456,7 @@ class S3Source(StorageServiceSource):
                         parent=parent,
                     )
                 except (ValueError, OSError) as exc:
-                    logger.warning(
-                        f"Failed processing archive {metadata_entry.dataPath!r}: {exc}"
-                    )
+                    logger.warning(f"Failed processing archive {metadata_entry.dataPath!r}: {exc}")
                     logger.debug(traceback.format_exc())
                 except Exception as exc:
                     logger.error(
