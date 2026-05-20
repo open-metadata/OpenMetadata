@@ -14,12 +14,35 @@ Hive Metastore MSSQL Dialect
 
 from sqlalchemy.dialects import registry
 
-from .dialect import HiveMssqlMetaStoreDialect
+from metadata.ingestion.source.database.hive.metastore_dialects.mssql.dialect import (
+    HiveMssqlMetaStoreDialect,
+    HiveMssqlPymssqlMetaStoreDialect,
+    HiveMssqlPyodbcMetaStoreDialect,
+)
 
 __version__ = "0.1.0"
-__all__ = ["HiveMssqlMetaStoreDialect"]
+__all__ = [
+    "HiveMssqlMetaStoreDialect",
+    "HiveMssqlPymssqlMetaStoreDialect",
+    "HiveMssqlPyodbcMetaStoreDialect",
+]
 registry.register(
     "hive.mssql",
     "metadata.ingestion.source.database.hive.metastore_dialects.mssql.dialect",
     "HiveMssqlMetaStoreDialect",
+)
+registry.register(
+    "hive.mssql.pytds",
+    "metadata.ingestion.source.database.hive.metastore_dialects.mssql.dialect",
+    "HiveMssqlMetaStoreDialect",
+)
+registry.register(
+    "hive.mssql.pyodbc",
+    "metadata.ingestion.source.database.hive.metastore_dialects.mssql.dialect",
+    "HiveMssqlPyodbcMetaStoreDialect",
+)
+registry.register(
+    "hive.mssql.pymssql",
+    "metadata.ingestion.source.database.hive.metastore_dialects.mssql.dialect",
+    "HiveMssqlPymssqlMetaStoreDialect",
 )

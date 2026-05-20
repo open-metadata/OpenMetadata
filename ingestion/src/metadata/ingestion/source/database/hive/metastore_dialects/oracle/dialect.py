@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+# pyright: reportIncompatibleMethodOverride=false
 """
 Hive Metastore Oracle Dialect Mixin
 """
@@ -41,9 +42,7 @@ class HiveOracleMetaStoreDialect(HiveMetaStoreDialectMixin, OracleDialect_cx_ora
 
     def get_schema_names(self, connection, **kw):
         # Equivalent to SHOW DATABASES
-        schema_names = [
-            row[0] for row in connection.execute(text('SELECT "NAME" FROM "DBS"'))
-        ]
+        schema_names = [row[0] for row in connection.execute(text('SELECT "NAME" FROM "DBS"'))]
         logger.debug(f"Fetched schema names: {schema_names}")
         return schema_names
 

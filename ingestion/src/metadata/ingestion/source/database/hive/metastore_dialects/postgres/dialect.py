@@ -71,9 +71,9 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
         query = f"""
             WITH regular_columns AS (
                 -- Get regular table columns from COLUMNS_V2
-                SELECT 
+                SELECT
                     col."COLUMN_NAME",
-                    col."TYPE_NAME", 
+                    col."TYPE_NAME",
                     col."COMMENT"
                 FROM "COLUMNS_V2" col
                 JOIN "CDS" cds ON col."CD_ID" = cds."CD_ID"
@@ -84,7 +84,7 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
             ),
             partition_columns AS (
                 -- Get partition key columns from PARTITION_KEYS
-                SELECT 
+                SELECT
                     pk."PKEY_NAME" as "COLUMN_NAME",
                     pk."PKEY_TYPE" as "TYPE_NAME",
                     pk."PKEY_COMMENT" as "COMMENT"
@@ -120,13 +120,13 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
     def get_view_definition(self, connection, view_name, schema=None, **kw):
         query = """
             SELECT 
-                dbs."NAME" "schema", 
-                tbls."TBL_NAME" view_name, 
+                dbs."NAME" "schema",
+                tbls."TBL_NAME" view_name,
                 tbls."VIEW_ORIGINAL_TEXT" view_def
-            from 
-                "TBLS" tbls 
-                JOIN "DBS" dbs on tbls."DB_ID" = dbs."DB_ID" 
-            where 
+            from
+                "TBLS" tbls
+                JOIN "DBS" dbs on tbls."DB_ID" = dbs."DB_ID"
+            where
                 tbls."VIEW_ORIGINAL_TEXT" is not null;
         """  # noqa: W291
         return get_view_definition_wrapper(
@@ -141,14 +141,14 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
     def get_table_comment(self, connection, table_name, schema=None, **kw):
         query = """
             SELECT 
-                "DBS"."NAME" AS "schema", 
-                "TBLS"."TBL_NAME" AS table_name, 
-                "TABLE_PARAMS"."PARAM_VALUE" AS table_comment 
-            FROM 
-                "DBS" 
-            JOIN 
-                "TBLS" ON "DBS"."DB_ID" = "TBLS"."DB_ID" 
-                LEFT JOIN "TABLE_PARAMS" ON "TBLS"."TBL_ID" = "TABLE_PARAMS"."TBL_ID" 
+                "DBS"."NAME" AS "schema",
+                "TBLS"."TBL_NAME" AS table_name,
+                "TABLE_PARAMS"."PARAM_VALUE" AS table_comment
+            FROM
+                "DBS"
+            JOIN
+                "TBLS" ON "DBS"."DB_ID" = "TBLS"."DB_ID"
+                LEFT JOIN "TABLE_PARAMS" ON "TBLS"."TBL_ID" = "TABLE_PARAMS"."TBL_ID"
                 and "TABLE_PARAMS"."PARAM_KEY" = 'comment'
         """  # noqa: W291
         return get_table_comment_wrapper(

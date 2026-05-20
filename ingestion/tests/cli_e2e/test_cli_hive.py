@@ -57,7 +57,7 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             FROM e2e_cli_tests.persons
     """
 
-    insert_data_queries: List[str] = [
+    insert_data_queries: List[str] = [  # noqa: RUF012, UP006
         """
     INSERT INTO e2e_cli_tests.persons (person_id, full_name, birthdate) VALUES
         (1,'Peter Parker', '2004-08-10'),

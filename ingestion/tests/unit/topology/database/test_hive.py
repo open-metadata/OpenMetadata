@@ -67,6 +67,7 @@ from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.source.database.hive.connection import (
     get_connection,
     get_connection_url,
+    get_mssql_metastore_connection_url,
 )
 from metadata.ingestion.source.database.hive.connection import (
     test_connection as hive_test_connection,
@@ -358,15 +359,9 @@ class HiveUnitTest(TestCase):
         self.thread_id = self.hive.context.get_current_thread_id()
         self.hive._inspector_map[self.thread_id] = types.SimpleNamespace()
 
-        self.hive._inspector_map[
-            self.thread_id
-        ].get_pk_constraint = lambda table_name, schema_name: []
-        self.hive._inspector_map[
-            self.thread_id
-        ].get_unique_constraints = lambda table_name, schema_name: []
-        self.hive._inspector_map[
-            self.thread_id
-        ].get_foreign_keys = lambda table_name, schema_name: []
+        self.hive._inspector_map[self.thread_id].get_pk_constraint = lambda table_name, schema_name: []
+        self.hive._inspector_map[self.thread_id].get_unique_constraints = lambda table_name, schema_name: []
+        self.hive._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema_name: []
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [either.right for either in self.hive.yield_database(MOCK_DATABASE.name.root)]  # noqa: SIM300
@@ -1242,3 +1237,59 @@ class HiveSourceMetastoreValidationTest(TestCase):
         result = self.hive._get_validated_metastore_connection()
         self.assertIsInstance(result, OracleConnection)
         self.assertEqual(result.username, "oracle_user")
+
+    def test_mssql_metastore_url_preserves_pytds_driver(self):
+        """
+        Test MSSQL Hive metastore URL keeps the configured pytds DBAPI.
+        """
+        mssql_conn = types.SimpleNamespace(
+            username="mssql_user",
+            password=CustomSecretStr("password"),
+            hostPort="localhost:1433",
+            database="hive_metastore",
+            scheme=types.SimpleNamespace(value="hive+mssql.pytds"),
+            connectionOptions=None,
+        )
+
+        assert (
+            get_mssql_metastore_connection_url(mssql_conn)
+            == "hive+mssql.pytds://mssql_user:password@localhost:1433/hive_metastore"
+        )
+
+    def test_mssql_metastore_url_preserves_pymssql_driver(self):
+        """
+        Test MSSQL Hive metastore URL keeps the configured pymssql DBAPI.
+        """
+        mssql_conn = types.SimpleNamespace(
+            username="mssql_user",
+            password=CustomSecretStr("password"),
+            hostPort="localhost:1433",
+            database="hive_metastore",
+            scheme=types.SimpleNamespace(value="hive+mssql.pymssql"),
+            connectionOptions=None,
+        )
+
+        assert (
+            get_mssql_metastore_connection_url(mssql_conn)
+            == "hive+mssql.pymssql://mssql_user:password@localhost:1433/hive_metastore"
+        )
+
+    def test_mssql_metastore_url_preserves_pyodbc_driver(self):
+        """
+        Test MSSQL Hive metastore URL keeps pyodbc driver query parameters.
+        """
+        mssql_conn = types.SimpleNamespace(
+            username="mssql_user",
+            password=CustomSecretStr("password"),
+            hostPort="localhost:1433",
+            database="hive_metastore",
+            scheme=types.SimpleNamespace(value="hive+mssql.pyodbc"),
+            driver="ODBC Driver 18 for SQL Server",
+            connectionOptions=None,
+        )
+
+        assert (
+            get_mssql_metastore_connection_url(mssql_conn)
+            == "hive+mssql.pyodbc://mssql_user:password@localhost:1433/hive_metastore"
+            "?driver=ODBC+Driver+18+for+SQL+Server"
+        )

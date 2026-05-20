@@ -16,6 +16,8 @@ from unittest.mock import MagicMock, Mock
 
 from metadata.ingestion.source.database.hive.metastore_dialects.mssql.dialect import (
     HiveMssqlMetaStoreDialect,
+    HiveMssqlPymssqlMetaStoreDialect,
+    HiveMssqlPyodbcMetaStoreDialect,
 )
 
 
@@ -28,6 +30,11 @@ class TestHiveMssqlMetastoreDialectGetTableColumns:
     def setup_method(self):
         self.dialect = HiveMssqlMetaStoreDialect()
 
+    def test_driver_specific_dialects(self):
+        assert HiveMssqlMetaStoreDialect.driver == "mssql.pytds"
+        assert HiveMssqlPyodbcMetaStoreDialect.driver == "mssql.pyodbc"
+        assert HiveMssqlPymssqlMetaStoreDialect.driver == "mssql.pymssql"
+
     def test_get_table_columns_uses_cte(self):
         """MSSQL dialect uses WITH … AS (CTE) — unlike MySQL which uses UNION ALL only."""
         mock_connection = Mock()
@@ -39,9 +46,7 @@ class TestHiveMssqlMetastoreDialectGetTableColumns:
         ]
         mock_connection.execute.return_value = mock_result
 
-        result = self.dialect._get_table_columns(
-            mock_connection, "test_table", "test_schema"
-        )
+        result = self.dialect._get_table_columns(mock_connection, "test_table", "test_schema")
 
         executed_query = str(mock_connection.execute.call_args[0][0])
         assert "WITH" in executed_query.upper()

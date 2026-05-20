@@ -13,7 +13,6 @@ Hive source methods.
 """
 
 import traceback
-from typing import Optional, Tuple, Union  # noqa: UP035
 
 from pydantic import ValidationError
 from pyhive.sqlalchemy_hive import HiveDialect
@@ -72,23 +71,21 @@ class HiveSource(CommonDbSourceService):
     service_connection: HiveConnection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: HiveConnection = config.serviceConnection.root.config
         if not isinstance(connection, HiveConnection):
             raise InvalidSourceException(f"Expected HiveConnection, but got {connection}")
         return cls(config, metadata)
 
-    def _parse_version(self, version: str) -> Tuple:  # noqa: UP006
+    def _parse_version(self, version: str) -> tuple:
         if "-" in version:
             version = version.replace("-", ".")
         return tuple(map(int, (version.split(".")[:3])))
 
     def _get_validated_metastore_connection(
         self,
-    ) -> Optional[
-        Union[PostgresConnection, MysqlConnection, MssqlConnection, OracleConnection]
-    ]:  # noqa: UP007, UP045
+    ) -> PostgresConnection | MysqlConnection | MssqlConnection | OracleConnection | None:
         """
         Validate and return the metastore connection if it exists.
         Handles cases where the connection may be a raw dict that needs validation.
@@ -98,19 +95,18 @@ class HiveSource(CommonDbSourceService):
         if not metastore_conn:
             return None
 
-        # Supported metastore connection types
-        METASTORE_CONNECTION_TYPES = (
+        metastore_connection_types = (
             PostgresConnection,
             MysqlConnection,
             MssqlConnection,
             OracleConnection,
         )
 
-        if isinstance(metastore_conn, METASTORE_CONNECTION_TYPES):
+        if isinstance(metastore_conn, metastore_connection_types):
             return metastore_conn
 
         if isinstance(metastore_conn, dict) and len(metastore_conn) > 0:
-            for conn_cls in METASTORE_CONNECTION_TYPES:
+            for conn_cls in metastore_connection_types:
                 try:
                     return conn_cls.model_validate(metastore_conn)
                 except ValidationError:
@@ -147,7 +143,7 @@ class HiveSource(CommonDbSourceService):
 
     def get_schema_definition(  # pylint: disable=unused-argument
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Optional[str]:  # noqa: UP045
+    ) -> str | None:
         """
         Get the DDL statement or View Definition for a table
         """

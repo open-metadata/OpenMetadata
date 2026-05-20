@@ -14,7 +14,9 @@ Hive Metastore Oracle Dialect
 
 from sqlalchemy.dialects import registry
 
-from .dialect import HiveOracleMetaStoreDialect
+from metadata.ingestion.source.database.hive.metastore_dialects.oracle.dialect import (
+    HiveOracleMetaStoreDialect,
+)
 
 __version__ = "0.1.0"
 __all__ = ["HiveOracleMetaStoreDialect"]

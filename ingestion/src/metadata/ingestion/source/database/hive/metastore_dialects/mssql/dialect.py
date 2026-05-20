@@ -8,13 +8,16 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+# pyright: reportIncompatibleMethodOverride=false
 """
 Hive Metastore MSSQL Dialect Mixin
 """
 
 from sqlalchemy import text
-from sqlalchemy.dialects.mssql.base import MSDialect
+from sqlalchemy.dialects.mssql.pymssql import MSDialect_pymssql
+from sqlalchemy.dialects.mssql.pyodbc import MSDialect_pyodbc
 from sqlalchemy.engine import reflection
+from sqlalchemy_pytds.dialect import MSDialect_pytds
 
 from metadata.ingestion.source.database.hive.metastore_dialects.mixin import (
     HiveMetaStoreDialectMixin,
@@ -29,21 +32,18 @@ logger = ingestion_logger()
 
 
 # pylint: disable=abstract-method
-class HiveMssqlMetaStoreDialect(HiveMetaStoreDialectMixin, MSDialect):
+class HiveMssqlMetaStoreDialectMixin(HiveMetaStoreDialectMixin):
     """
-    MSSQL metastore dialect class for Hive metastore backed by SQL Server.
+    MSSQL metastore dialect mixin for Hive metastore backed by SQL Server.
     Uses unquoted identifiers and supports CTEs.
     """
 
     name = "hive"
-    driver = "mssql"
     supports_statement_cache = False
 
     def get_schema_names(self, connection, **kw):
         # Equivalent to SHOW DATABASES
-        schema_names = [
-            row[0] for row in connection.execute(text("SELECT NAME FROM DBS"))
-        ]
+        schema_names = [row[0] for row in connection.execute(text("SELECT NAME FROM DBS"))]
         logger.debug(f"Fetched schema names: {schema_names}")
         return schema_names
 
@@ -153,4 +153,28 @@ class HiveMssqlMetaStoreDialect(HiveMetaStoreDialectMixin, MSDialect):
 
     # pylint: disable=arguments-renamed
     def get_dialect_cls(self):
-        return HiveMssqlMetaStoreDialect
+        return type(self)
+
+
+class HiveMssqlMetaStoreDialect(HiveMssqlMetaStoreDialectMixin, MSDialect_pytds):
+    """
+    MSSQL metastore dialect using the default pytds driver.
+    """
+
+    driver = "mssql.pytds"
+
+
+class HiveMssqlPyodbcMetaStoreDialect(HiveMssqlMetaStoreDialectMixin, MSDialect_pyodbc):
+    """
+    MSSQL metastore dialect using the pyodbc driver.
+    """
+
+    driver = "mssql.pyodbc"
+
+
+class HiveMssqlPymssqlMetaStoreDialect(HiveMssqlMetaStoreDialectMixin, MSDialect_pymssql):
+    """
+    MSSQL metastore dialect using the pymssql driver.
+    """
+
+    driver = "mssql.pymssql"
