@@ -46,3 +46,16 @@ EXASOL_GET_TABLE_COMMENTS = textwrap.dedent(
     WHERE object_type IN ('TABLE', 'VIEW')
 """
 )
+
+EXASOL_GET_COLUMN_COMMENTS = textwrap.dedent(
+    """
+    SELECT
+      column_schema AS "schema",
+      column_table AS "table_name",
+      column_name AS "column_name",
+      column_comment AS "comment"
+    FROM EXA_ALL_COLUMNS
+    WHERE column_schema = :schema
+      AND column_table = :table_name
+"""
+)
