@@ -69,6 +69,26 @@ export const getKnowledgePageByFqn = async (
   return response.data;
 };
 
+export const deleteKnowledgePage = async (
+  id: string,
+  hardDelete = false
+): Promise<void> => {
+  await APIClient.delete(`/contextCenter/pages/${id}`, {
+    params: { hardDelete },
+  });
+};
+
+export const restoreKnowledgePage = async (
+  id: string
+): Promise<KnowledgePage> => {
+  const response = await APIClient.put<
+    { id: string },
+    AxiosResponse<KnowledgePage>
+  >('/contextCenter/pages/restore', { id });
+
+  return response.data;
+};
+
 export const postKnowledgePage = async (data: CreateKnowledgePage) => {
   const response = await APIClient.post<
     CreateKnowledgePage,

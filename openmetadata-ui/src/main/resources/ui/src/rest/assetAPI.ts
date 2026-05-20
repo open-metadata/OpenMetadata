@@ -132,6 +132,24 @@ export const deleteDriveFile = async (
   });
 };
 
+export const listArchivedContextFiles = async (): Promise<ContextFile[]> => {
+  const response = await APIClient.get<{ data: ContextFile[] }>(
+    '/contextCenter/drive/files',
+    { params: { include: 'deleted', limit: 100 } }
+  );
+
+  return response.data.data ?? [];
+};
+
+export const restoreDriveFile = async (id: string): Promise<ContextFile> => {
+  const response = await APIClient.put<
+    { id: string },
+    AxiosResponse<ContextFile>
+  >('/contextCenter/drive/files/restore', { id });
+
+  return response.data;
+};
+
 export const downloadDriveFile = async (id: string): Promise<Blob> => {
   const response = await APIClient.get<Blob>(
     `/contextCenter/drive/files/${id}/download`,

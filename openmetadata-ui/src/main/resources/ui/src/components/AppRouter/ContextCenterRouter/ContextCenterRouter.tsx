@@ -73,14 +73,14 @@ const KnowledgeCenterFilterPage = withSuspenseFallback(
 //   )
 // );
 
-// const ContextCenterArchivePage = withSuspenseFallback(
-//   React.lazy(
-//     () =>
-//       import(
-//         '../../../pages/ContextCenterPage/ContextCenterArchivePage/ContextCenterArchivePage'
-//       )
-//   )
-// );
+const ContextCenterArchivePage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../../pages/ContextCenterPage/ContextCenterArchivePage/ContextCenterArchivePage'
+      )
+  )
+);
 
 const ContextCenterRouter = () => {
   return (
@@ -131,11 +131,11 @@ const ContextCenterRouter = () => {
           ROUTES.CONTEXT_CENTER,
           ''
         )}
-      />
+      />*/}
       <Route
         element={<ContextCenterArchivePage />}
         path={ROUTES.CONTEXT_CENTER_ARCHIVE.replace(ROUTES.CONTEXT_CENTER, '')}
-      /> */}
+      /> 
     </Routes>
   );
 };
