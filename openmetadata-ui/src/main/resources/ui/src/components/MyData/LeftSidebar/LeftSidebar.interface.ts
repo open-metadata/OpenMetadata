@@ -19,6 +19,15 @@ export interface LeftSidebarItem {
   icon: SvgComponent;
   dataTestId: string;
   children?: Array<LeftSidebarItem>;
+  /**
+   * Optional side-effect fired BEFORE the `redirect_url` navigation
+   * completes. Use for cross-cutting concerns that need to run on click
+   * — for example, app-mode switches that must take effect before the
+   * target route resolves. The callback runs synchronously inside the
+   * `<NavLink>`'s onClick; it MUST NOT call `event.preventDefault()` if
+   * the redirect should still happen.
+   */
+  onClick?: () => void;
 }
 
 export interface LeftSidebarItemProps {
@@ -29,5 +38,6 @@ export interface LeftSidebarItemProps {
     redirect_url?: string;
     icon: SvgComponent;
     isBeta?: boolean;
+    onClick?: () => void;
   };
 }
