@@ -171,16 +171,25 @@ export const verifyBotSearch = async (page: Page) => {
     `bot-link-${BOT_DETAILS.updatedBotName}`
   );
 
+  // Search by updated display name
   await searchFromSearchInput(page, searchInput, BOT_DETAILS.updatedBotName, {
     waitForSearchApi: true,
   });
   await expect(createdBotLink).toBeVisible();
 
+  // Search by original bot name (which is also the bot user name)
+  await searchFromSearchInput(page, searchInput, BOT_DETAILS.botName, {
+    waitForSearchApi: true,
+  });
+  await expect(createdBotLink).toBeVisible();
+
+  // Search by bot email
   await searchFromSearchInput(page, searchInput, BOT_DETAILS.botEmail, {
     waitForSearchApi: true,
   });
   await expect(createdBotLink).toBeVisible();
 
+  // Search with no match
   await searchFromSearchInput(
     page,
     searchInput,
@@ -189,6 +198,7 @@ export const verifyBotSearch = async (page: Page) => {
   );
   await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
 
+  // Clear search restores list
   await updateSearchInputAndWait(page, searchInput, '');
   await expect(createdBotLink).toBeVisible();
 };

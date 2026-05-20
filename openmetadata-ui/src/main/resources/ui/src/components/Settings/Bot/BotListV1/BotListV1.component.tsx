@@ -35,7 +35,7 @@ import { Paging } from '../../../../generated/type/paging';
 import LimitWrapper from '../../../../hoc/LimitWrapper';
 import { useAuth } from '../../../../hooks/authHooks';
 import { usePaging } from '../../../../hooks/paging/usePaging';
-import { getBotByName, getBots } from '../../../../rest/botsAPI';
+import { getBots } from '../../../../rest/botsAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatUsersResponse } from '../../../../utils/APIUtils';
 import {
@@ -44,7 +44,6 @@ import {
 } from '../../../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { getBotsPath } from '../../../../utils/RouterUtils';
-import { getTermQuery } from '../../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
   stringToHTML,
@@ -63,10 +62,9 @@ import PageHeader from '../../../PageHeader/PageHeader.component';
 import './bot-list-v1.less';
 import { BotListV1Props } from './BotListV1.interfaces';
 
+const BOT_FETCH_PAGE_SIZE = 100;
 const BOT_SEARCH_PAGE_SIZE = 100;
-const BOT_SEARCH_CONCURRENCY = 10;
-const MAX_BOT_SEARCH_PAGES = 5;
-const MAX_BOT_USER_RESOLUTION = BOT_SEARCH_PAGE_SIZE * MAX_BOT_SEARCH_PAGES;
+
 const getBotUserFromUser = (
   botUser: User,
   existingBotUser?: Bot['botUser']
@@ -105,6 +103,7 @@ const BotListV1 = ({
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const latestSearchRequest = useRef(0);
+  const botUserIdMapRef = useRef<Promise<Map<string, Bot>> | null>(null);
 
   const getBotIncludeFilter = useCallback(
     () => (showDeleted ? Include.Deleted : Include.NonDeleted),
@@ -127,165 +126,148 @@ const BotListV1 = ({
     };
   }, []);
 
+  const fetchAllBotsByBotUserName = useCallback(async () => {
+    if (botUserIdMapRef.current) {
+      return botUserIdMapRef.current;
+    }
+
+    const include = getBotIncludeFilter();
+    const promise = (async () => {
+      const botsByBotUserName = new Map<string, Bot>();
+      let after: string | undefined;
+
+      do {
+        const { data, paging } = await getBots({
+          after,
+          limit: BOT_FETCH_PAGE_SIZE,
+          include,
+        });
+
+        data.forEach((bot) => {
+          if (bot.name) {
+            botsByBotUserName.set(bot.name.toLowerCase(), bot);
+          }
+        });
+
+        after = paging.after;
+      } while (after);
+
+      return botsByBotUserName;
+    })();
+
+    botUserIdMapRef.current = promise;
+    try {
+      return await promise;
+    } catch (error) {
+      botUserIdMapRef.current = null;
+
+      throw error;
+    }
+  }, [getBotIncludeFilter]);
+
   const enrichBotsWithBotUsers = async (bots: Bot[]) => {
     if (!bots.length) {
       return bots;
     }
 
     try {
+      const botNames = bots
+        .map((bot) => bot.name)
+        .filter((name): name is string => Boolean(name));
+
+      if (!botNames.length) {
+        return bots;
+      }
+
       const response = await searchQuery({
         query: '',
         pageNumber: 1,
-        pageSize: bots.length,
+        pageSize: botNames.length,
         includeDeleted: showDeleted,
         searchIndex: SearchIndex.USER,
         queryFilter: {
-          bool: {
-            must: [{ term: { isBot: true } }],
-            should: bots.map((bot) => ({
-              term: { 'name.keyword': bot.name },
-            })),
-            minimum_should_match: 1,
+          query: {
+            bool: {
+              must: [{ term: { isBot: true } }],
+              should: botNames.map((name) => ({
+                term: { 'name.keyword': name.toLowerCase() },
+              })),
+              minimum_should_match: 1,
+            },
           },
         },
       });
       const botUsers = formatUsersResponse(response.hits.hits);
       const botUsersByName = new Map<string, User>(
-        botUsers.map((botUser) => [botUser.name, botUser])
+        botUsers
+          .filter((botUser): botUser is User & { name: string } =>
+            Boolean(botUser.name)
+          )
+          .map((botUser) => [botUser.name.toLowerCase(), botUser])
       );
 
       return bots.map((bot) =>
-        enrichBotWithMatchedUser(bot, botUsersByName.get(bot.name))
+        enrichBotWithMatchedUser(
+          bot,
+          bot.name ? botUsersByName.get(bot.name.toLowerCase()) : undefined
+        )
       );
     } catch {
       return bots;
     }
   };
 
-  const getBotsByBotUserNames = async (botUserNames: string[]) => {
-    const include = getBotIncludeFilter();
-    const botsByBotUserName = new Map<string, Bot>();
-    const workerCount = Math.min(BOT_SEARCH_CONCURRENCY, botUserNames.length);
-    let currentIndex = 0;
-
-    await Promise.all(
-      Array.from({ length: workerCount }, async () => {
-        while (currentIndex < botUserNames.length) {
-          const botIndex = currentIndex;
-          currentIndex += 1;
-          const botName = botUserNames[botIndex];
-
-          try {
-            const bot = await getBotByName(botName, {
-              include,
-            });
-
-            botsByBotUserName.set(bot.name, bot);
-          } catch {
-            continue;
-          }
-        }
-      })
-    );
-
-    return botsByBotUserName;
-  };
-
-  const getSearchMatchedBotUsers = async (
-    text: string,
-    queryFilter: Record<string, unknown>
-  ) => {
-    const usersByName = new Map<string, User>();
-    let pageNumber = 1;
-    let totalMatches = 0;
-
-    while (pageNumber <= MAX_BOT_SEARCH_PAGES) {
-      const response = await searchQuery({
-        query: text,
-        pageNumber,
-        pageSize: BOT_SEARCH_PAGE_SIZE,
-        includeDeleted: showDeleted,
-        queryFilter,
-        searchIndex: SearchIndex.USER,
-        trackTotalHits: true,
-      });
-      const users = formatUsersResponse(response.hits.hits);
-
-      users.forEach((user) => {
-        if (user.name) {
-          usersByName.set(user.name, user);
-        }
-      });
-
-      totalMatches = response.hits.total.value ?? usersByName.size;
-      if (!users.length || pageNumber * BOT_SEARCH_PAGE_SIZE >= totalMatches) {
-        break;
-      }
-
-      pageNumber += 1;
-    }
-
-    return Array.from(usersByName.values());
-  };
-
   const searchBots = async (text: string) => {
-    const getMatchedBots = async (matchedBotUsers: User[]) => {
-      const matchedBotUserNames = Array.from(
-        new Set(
-          matchedBotUsers
-            .map((botUser) => botUser.name)
-            .filter((name): name is string => Boolean(name))
-        )
-      ).slice(0, MAX_BOT_USER_RESOLUTION);
-      const botsByBotUserName = matchedBotUserNames.length
-        ? await getBotsByBotUserNames(matchedBotUserNames)
-        : new Map<string, Bot>();
-      const matchedBotUsersByName = new Map(
-        matchedBotUsers.map((botUser) => [botUser.name, botUser])
-      );
-
-      return matchedBotUserNames.flatMap((botUserName) => {
-        const matchedBot = botsByBotUserName.get(botUserName);
-
-        if (!matchedBot) {
-          return [];
-        }
-
-        return [
-          enrichBotWithMatchedUser(
-            matchedBot,
-            matchedBotUsersByName.get(botUserName)
-          ),
-        ];
-      });
-    };
-
-    const matchedBotUsers = await getSearchMatchedBotUsers(
-      text,
-      getTermQuery({ isBot: true })
-    );
-    const matchedBots = await getMatchedBots(matchedBotUsers);
-
-    if (matchedBots.length) {
-      return matchedBots;
-    }
-
-    const escapedText = escapeESReservedCharacters(text);
-    const wildcardPattern = `*${escapedText}*`;
-    const fallbackMatchedBotUsers = await getSearchMatchedBotUsers('*', {
-      bool: {
-        must: [{ term: { isBot: true } }],
-        should: [
-          { wildcard: { 'name.keyword': wildcardPattern } },
-          { wildcard: { 'displayName.keyword': wildcardPattern } },
-          { wildcard: { 'fullyQualifiedName.keyword': wildcardPattern } },
-          { wildcard: { 'email.keyword': wildcardPattern } },
-        ],
-        minimum_should_match: 1,
+    const escaped = escapeESReservedCharacters(text.trim());
+    const wildcardPattern = `*${escaped}*`;
+    const wildcardClause = (field: string) => ({
+      wildcard: {
+        [field]: { value: wildcardPattern, case_insensitive: true },
       },
     });
 
-    return getMatchedBots(fallbackMatchedBotUsers);
+    const response = await searchQuery({
+      query: '',
+      pageNumber: 1,
+      pageSize: BOT_SEARCH_PAGE_SIZE,
+      includeDeleted: showDeleted,
+      queryFilter: {
+        query: {
+          bool: {
+            must: [{ term: { isBot: true } }],
+            should: [
+              wildcardClause('name.keyword'),
+              wildcardClause('displayName.keyword'),
+              wildcardClause('fullyQualifiedName.keyword'),
+              wildcardClause('email.keyword'),
+            ],
+            minimum_should_match: 1,
+          },
+        },
+      },
+      searchIndex: SearchIndex.USER,
+      trackTotalHits: true,
+    });
+    const matchedBotUsers = formatUsersResponse(response.hits.hits);
+
+    if (!matchedBotUsers.length) {
+      return [];
+    }
+
+    const botsByBotUserName = await fetchAllBotsByBotUserName();
+
+    return matchedBotUsers.flatMap((botUser) => {
+      const lookupName = botUser.name?.toLowerCase();
+      const matchedBot = lookupName
+        ? botsByBotUserName.get(lookupName)
+        : undefined;
+
+      if (!matchedBot) {
+        return [];
+      }
+
+      return [enrichBotWithMatchedUser(matchedBot, botUser)];
+    });
   };
 
   const runActiveSearch = async (activeSearchTerm: string) => {
@@ -444,6 +426,7 @@ const BotListV1 = ({
    * handle after delete bot action
    */
   const handleDeleteAction = useCallback(async () => {
+    botUserIdMapRef.current = null;
     await getResourceLimit('bot', true, true);
     fetchBots(showDeleted);
   }, [selectedUser]);
@@ -477,6 +460,7 @@ const BotListV1 = ({
   };
 
   const handleShowDeletedBots = (checked: boolean) => {
+    botUserIdMapRef.current = null;
     handlePageChange(INITIAL_PAGING_VALUE, {
       cursorType: null,
       cursorValue: undefined,

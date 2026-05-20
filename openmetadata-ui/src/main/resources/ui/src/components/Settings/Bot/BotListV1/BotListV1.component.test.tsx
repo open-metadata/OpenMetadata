@@ -10,9 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import LimitWrapper from '../../../../hoc/LimitWrapper';
+import { getBots } from '../../../../rest/botsAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import BotListV1 from './BotListV1.component';
 
 const mockHandleAddBotClick = jest.fn();
@@ -22,6 +30,37 @@ const mockProps = {
   showDeleted: false,
   handleAddBotClick: mockHandleAddBotClick,
   handleShowDeleted: mockHandleShowDeleted,
+};
+
+const MOCK_BOTS = [
+  {
+    id: 'bot-1-id',
+    name: 'AutoClassification-bot',
+    fullyQualifiedName: 'AutoClassification-bot',
+    displayName: 'AutoClassificationBot',
+    description: 'Auto classify',
+    deleted: false,
+  },
+  {
+    id: 'bot-2-id',
+    name: 'testbot',
+    fullyQualifiedName: 'testbot',
+    displayName: 'testbots',
+    description: 'Test bot',
+    deleted: false,
+  },
+];
+
+const MOCK_SEARCH_USER_HIT = {
+  _source: {
+    id: 'user-2-id',
+    name: 'testbot',
+    fullyQualifiedName: 'testbot',
+    displayName: 'testbots',
+    email: 'testbot@test.com',
+    isBot: true,
+    entityType: 'user',
+  },
 };
 
 jest.mock('../../../../hoc/LimitWrapper', () => {
@@ -38,6 +77,33 @@ jest.mock('../../../../utils/EntityUtils', () => ({
   highlightSearchText: jest.fn((text) => text),
   getTitleCase: jest.fn((text) => text.charAt(0).toUpperCase() + text.slice(1)),
 }));
+
+jest.mock('../../../../rest/botsAPI', () => ({
+  getBots: jest.fn(),
+}));
+
+jest.mock('../../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn(),
+}));
+
+const mockGetBots = getBots as jest.MockedFunction<typeof getBots>;
+const mockSearchQuery = searchQuery as jest.MockedFunction<typeof searchQuery>;
+
+beforeEach(() => {
+  jest.clearAllMocks();
+
+  mockGetBots.mockResolvedValue({
+    data: MOCK_BOTS,
+    paging: { total: MOCK_BOTS.length },
+  } as unknown as Awaited<ReturnType<typeof getBots>>);
+
+  mockSearchQuery.mockResolvedValue({
+    hits: {
+      total: { value: 0 },
+      hits: [],
+    },
+  } as unknown as Awaited<ReturnType<typeof searchQuery>>);
+});
 
 describe('BotListV1', () => {
   it('renders the component', () => {
@@ -58,11 +124,102 @@ describe('BotListV1', () => {
     render(<BotListV1 {...mockProps} />, { wrapper: MemoryRouter });
     const addBotButton = screen.getByText('LimitWrapper');
     fireEvent.click(addBotButton);
-    // Add your assertions here
 
     expect(LimitWrapper).toHaveBeenCalledWith(
       expect.objectContaining({ resource: 'bot' }),
       {}
     );
+  });
+
+  it('searches bot user index with wildcard across name, displayName, fqn, email', async () => {
+    mockSearchQuery.mockResolvedValueOnce({
+      hits: {
+        total: { value: 1 },
+        hits: [MOCK_SEARCH_USER_HIT],
+      },
+    } as unknown as Awaited<ReturnType<typeof searchQuery>>);
+
+    render(<BotListV1 {...mockProps} />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      expect(mockGetBots).toHaveBeenCalled();
+    });
+
+    const searchInput = await screen.findByTestId('searchbar');
+    await act(async () => {
+      fireEvent.change(searchInput, { target: { value: 'testbot' } });
+    });
+
+    await waitFor(() => {
+      const searchCall = mockSearchQuery.mock.calls.find((call) => {
+        const arg = call[0] as { query?: string; queryFilter?: unknown };
+
+        return (
+          arg.query === '' &&
+          typeof arg.queryFilter === 'object' &&
+          JSON.stringify(arg.queryFilter).includes('*testbot*') &&
+          JSON.stringify(arg.queryFilter).includes('email.keyword') &&
+          JSON.stringify(arg.queryFilter).includes('name.keyword') &&
+          JSON.stringify(arg.queryFilter).includes('displayName.keyword') &&
+          JSON.stringify(arg.queryFilter).includes('fullyQualifiedName.keyword')
+        );
+      });
+
+      expect(searchCall).toBeDefined();
+    });
+  });
+
+  it('resolves matched bot user to bot entity via lowercased name match', async () => {
+    mockSearchQuery.mockResolvedValueOnce({
+      hits: {
+        total: { value: 1 },
+        hits: [MOCK_SEARCH_USER_HIT],
+      },
+    } as unknown as Awaited<ReturnType<typeof searchQuery>>);
+
+    render(<BotListV1 {...mockProps} />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      expect(mockGetBots).toHaveBeenCalled();
+    });
+
+    const searchInput = await screen.findByTestId('searchbar');
+    await act(async () => {
+      fireEvent.change(searchInput, { target: { value: 'testbot' } });
+    });
+
+    expect(await screen.findByTestId('bot-link-testbots')).toBeInTheDocument();
+  });
+
+  it('caches bot list and does not refetch on subsequent searches', async () => {
+    mockSearchQuery.mockResolvedValue({
+      hits: {
+        total: { value: 1 },
+        hits: [MOCK_SEARCH_USER_HIT],
+      },
+    } as unknown as Awaited<ReturnType<typeof searchQuery>>);
+
+    render(<BotListV1 {...mockProps} />, { wrapper: MemoryRouter });
+
+    const searchInput = await screen.findByTestId('searchbar');
+
+    await act(async () => {
+      fireEvent.change(searchInput, { target: { value: 'testbot' } });
+    });
+    // Wait for first search to finish building the cache (getBots called for cache).
+    await waitFor(() => {
+      expect(mockGetBots.mock.calls.length).toBeGreaterThanOrEqual(2);
+    });
+    const callsAfterFirstSearch = mockGetBots.mock.calls.length;
+
+    await act(async () => {
+      fireEvent.change(searchInput, { target: { value: 'testbots' } });
+    });
+    await waitFor(() => {
+      expect(mockSearchQuery.mock.calls.length).toBeGreaterThan(1);
+    });
+
+    // Second search must reuse cached bot map => no extra getBots call.
+    expect(mockGetBots.mock.calls.length).toBe(callsAfterFirstSearch);
   });
 });

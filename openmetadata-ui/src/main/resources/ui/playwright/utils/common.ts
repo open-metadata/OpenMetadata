@@ -238,9 +238,16 @@ export const searchFromSearchInput = async (
         }
 
         try {
-          const qParam = new URL(response.url()).searchParams.get('q') ?? '';
+          const params = new URL(response.url()).searchParams;
+          const qParam = params.get('q') ?? '';
+          const queryFilterParam = params.get('query_filter') ?? '';
 
-          return qParam.toLowerCase().includes(normalizedSearchTermLowerCase);
+          return (
+            qParam.toLowerCase().includes(normalizedSearchTermLowerCase) ||
+            queryFilterParam
+              .toLowerCase()
+              .includes(normalizedSearchTermLowerCase)
+          );
         } catch {
           return response
             .url()

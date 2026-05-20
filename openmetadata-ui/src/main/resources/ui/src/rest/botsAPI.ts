@@ -28,6 +28,7 @@ interface GetBotParams {
   after?: string;
   before?: string;
   include?: Include;
+  fields?: string;
 }
 
 export const getBots = async (params: GetBotParams) => {
