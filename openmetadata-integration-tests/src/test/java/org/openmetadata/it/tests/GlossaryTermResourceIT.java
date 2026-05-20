@@ -3746,6 +3746,102 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         "Expected 'too many' in the error body, got: " + ex.getMessage());
   }
 
+  // -------------------------------------------------------------------------
+  // Bulk relatedTerms hydration — listing a glossary should populate each
+  // term's `relatedTerms` even when those relations point to terms in OTHER
+  // glossaries.
+  //
+  // This pins the path used by both the UI's Ontology Explorer (term scope —
+  // see useOntologyExplorer.fetchGraphDataFromDatabase) AND the RDF graph
+  // endpoint's DB fallback (RdfRepository.getGlossaryTermGraphFromDatabase,
+  // line 1813-1818). Both call `glossaryTermRepository.listAll(getFields
+  // ("relatedTerms,..."), parent=<glossary>)` and expect each returned term
+  // to carry its cross-glossary relations.
+  //
+  // The single-entity GET path (GlossaryTermRepository.setFields ->
+  // getRelatedTerms) is a separate code path from the bulk path
+  // (setFieldsInBulk -> fetchAndSetRelatedTerms); these tests assert both
+  // produce the same hydrated shape, locking in the bulk/single invariant.
+  // -------------------------------------------------------------------------
+
+  @Test
+  void listGlossaryTerms_hydratesCrossGlossaryRelatedTerms(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Glossary glossaryA =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("xglos_A"))
+                    .withDescription("Source glossary for cross-glossary relation test"));
+    Glossary glossaryB =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("xglos_B"))
+                    .withDescription("Target glossary for cross-glossary relation test"));
+
+    GlossaryTerm related =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("xglos_related"))
+                .withGlossary(glossaryB.getFullyQualifiedName())
+                .withDescription("Term in glossary B (the relation target)"));
+    GlossaryTerm focused =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("xglos_focused"))
+                .withGlossary(glossaryA.getFullyQualifiedName())
+                .withDescription("Term in glossary A pointing across glossaries to B")
+                .withRelatedTerms(List.of(related.getFullyQualifiedName())));
+
+    // Sanity check: the single-entity GET hydrates the cross-glossary relation.
+    GlossaryTerm focusedSingle =
+        client.glossaryTerms().get(focused.getId().toString(), "relatedTerms");
+    assertNotNull(focusedSingle.getRelatedTerms());
+    assertEquals(
+        1,
+        focusedSingle.getRelatedTerms().size(),
+        "Single-entity GET should return the cross-glossary relation");
+    assertEquals(related.getId(), focusedSingle.getRelatedTerms().get(0).getTerm().getId());
+
+    // The actual scenario under test: list terms scoped to glossary A — the
+    // bulk hydration path that the graph endpoint depends on. Each returned
+    // term must carry its `relatedTerms` (including cross-glossary ones)
+    // exactly the same way the single-entity GET does.
+    ListParams params =
+        new ListParams()
+            .setFields("relatedTerms")
+            .addFilter("glossary", glossaryA.getId().toString())
+            .withLimit(100);
+    ListResponse<GlossaryTerm> listed = listEntities(params);
+    assertNotNull(listed.getData());
+
+    GlossaryTerm focusedFromList =
+        listed.getData().stream()
+            .filter(t -> focused.getId().equals(t.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(
+        focusedFromList,
+        "Focused term should appear in glossary A's listing under the parent filter");
+    assertNotNull(
+        focusedFromList.getRelatedTerms(),
+        "Bulk listing with fields=relatedTerms must populate relatedTerms — null means the "
+            + "bulk setFieldsInBulk path silently dropped the relation, which is the symptom "
+            + "of the graph endpoint returning isolated nodes / zero edges");
+    assertEquals(
+        1,
+        focusedFromList.getRelatedTerms().size(),
+        "The cross-glossary relation must survive the bulk listing path");
+    assertEquals(
+        related.getId(),
+        focusedFromList.getRelatedTerms().get(0).getTerm().getId(),
+        "The bulk-hydrated relation must point at the correct cross-glossary term");
+  }
+
   private String byIds(OpenMetadataClient client, String idsParam, String fieldsParam) {
     RequestOptions.Builder opts = RequestOptions.builder().queryParam("ids", idsParam);
     if (fieldsParam != null) {
