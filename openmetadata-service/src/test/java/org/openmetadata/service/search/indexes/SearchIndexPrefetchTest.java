@@ -63,6 +63,9 @@ class SearchIndexPrefetchTest {
     entityStaticMock
         .when(() -> Entity.getEntityReferencesByIds(any(), any(), any()))
         .thenAnswer(invocation -> Collections.emptyList());
+    // The lineage-support probe is memoized per JVM; clear it so each test sees the mock the
+    // test itself configures rather than a value cached by an earlier test in the same JVM.
+    SearchIndex.LINEAGE_PREFETCH_SUPPORT_CACHE.clear();
   }
 
   @Test

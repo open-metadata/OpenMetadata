@@ -307,12 +307,27 @@ public interface SearchIndex {
   }
 
   /**
+   * Per-JVM cache of "does {@code entityType}'s index implement {@link LineageIndex}?" so the
+   * type-level marker probe runs at most once per type. Entity types are a small closed set
+   * (~50), so an unbounded {@link java.util.concurrent.ConcurrentHashMap} is fine here.
+   */
+  java.util.concurrent.ConcurrentHashMap<String, Boolean> LINEAGE_PREFETCH_SUPPORT_CACHE =
+      new java.util.concurrent.ConcurrentHashMap<>();
+
+  /**
    * Type-level marker check: builds the index for {@code entityType} with a {@code null} entity
    * (the same null-entity probe pattern used by {@code SearchIndexFactory#getReindexFieldsFor})
    * and returns true if the resulting index implements {@link LineageIndex}. Avoids constructing
-   * a throwaway index over a real entity instance just to read a marker interface.
+   * a throwaway index over a real entity instance just to read a marker interface. Result is
+   * memoized in {@link #LINEAGE_PREFETCH_SUPPORT_CACHE} so the probe runs at most once per JVM
+   * per entity type.
    */
   private static boolean supportsLineagePrefetch(String entityType) {
+    return LINEAGE_PREFETCH_SUPPORT_CACHE.computeIfAbsent(
+        entityType, SearchIndex::probeLineagePrefetchSupport);
+  }
+
+  private static boolean probeLineagePrefetchSupport(String entityType) {
     boolean supported = false;
     try {
       SearchIndex probe = Entity.buildSearchIndex(entityType, null);
@@ -350,8 +365,11 @@ public interface SearchIndex {
       List<? extends EntityInterface> entities, Map<UUID, List<EsLineageData>> result) {
     Map<UUID, EntityReference> toRefByEntityId = new HashMap<>(entities.size());
     List<String> toIds = new ArrayList<>(entities.size());
+    // Seed every input id with the shared immutable empty-list sentinel. Reindex batches are
+    // typically sparse in upstream lineage (most entities have none), so deferring the
+    // ArrayList allocation to the first edge keeps the no-lineage path GC-free.
     for (EntityInterface entity : entities) {
-      result.put(entity.getId(), new ArrayList<>());
+      result.put(entity.getId(), Collections.emptyList());
       toIds.add(entity.getId().toString());
       toRefByEntityId.put(entity.getId(), entity.getEntityReference());
     }
@@ -419,7 +437,7 @@ public interface SearchIndex {
         EntityReference toRef = toRefByEntityId.get(toId);
         EntityReference fromRef = upstreamRefById.get(fromId);
         if (toRef != null) {
-          appendLineageEdge(rec, fromRef, toRef, fromId, result.get(toId));
+          appendLineageEdge(rec, fromRef, toRef, fromId, toId, result);
         }
       }
     }
@@ -440,7 +458,8 @@ public interface SearchIndex {
       EntityReference fromRef,
       EntityReference toRef,
       UUID fromId,
-      List<EsLineageData> sink) {
+      UUID toId,
+      Map<UUID, List<EsLineageData>> result) {
     if (fromRef == null) {
       LOG.warn(
           "Upstream entity '{}' (ID: {}) not found during prefetch for '{}'; skipping lineage edge",
@@ -450,7 +469,14 @@ public interface SearchIndex {
     } else {
       try {
         LineageDetails details = JsonUtils.readValue(rec.getJson(), LineageDetails.class);
-        sink.add(buildEntityLineageData(fromRef, toRef, details));
+        EsLineageData edge = buildEntityLineageData(fromRef, toRef, details);
+        // Promote the empty-list sentinel to a mutable ArrayList on first edge.
+        List<EsLineageData> sink = result.get(toId);
+        if (!(sink instanceof ArrayList)) {
+          sink = new ArrayList<>();
+          result.put(toId, sink);
+        }
+        sink.add(edge);
       } catch (Exception e) {
         LOG.warn(
             "Failed to build prefetched lineage edge {} -> {}",
