@@ -100,11 +100,53 @@ public final class CacheKeys {
   }
 
   /**
+   * Prefix for cached {@code GET /api/v1/search/query} responses. Per-principal,
+   * per-(query+filters+pagination) entries hash-suffixed in {@link CachedSearchLayer}.
+   */
+  public String search() {
+    return ns + ":search";
+  }
+
+  /**
+   * Cached lineage graph keyed by the root entity. Variants ({@code upstreamDepth},
+   * {@code downstreamDepth}, {@code includeDeleted}) are stored as fields of one Redis hash
+   * per root — {@link #lineageGraphHash} returns the hash key, this returns the field name.
+   * Invalidation is a single {@code DEL hashKey} (O(1)), which matters because it runs on the
+   * hot write path. The earlier per-key + SCAN-and-delete scheme was O(N) over the cache
+   * keyspace per invalidate and spiked under load.
+   */
+  public String lineageGraphField(int upstreamDepth, int downstreamDepth, boolean includeDeleted) {
+    return "up=" + upstreamDepth + ":down=" + downstreamDepth + ":incDel=" + includeDeleted;
+  }
+
+  /**
+   * Hash key holding every cached lineage variant for {@code rootId}. The {@code rootId} is
+   * still wrapped in Redis hash-tag braces so a Redis Cluster keeps all related keys on the
+   * same slot if we ever co-locate other per-root caches.
+   */
+  public String lineageGraphHash(java.util.UUID rootId) {
+    return ns + ":lineage:graph:{" + rootId.toString() + "}";
+  }
+
+  /**
+   * Negative cache marker — present means "we looked, this entity doesn't exist." Short TTL so
+   * a freshly-created entity isn't shadowed for long. Invalidated on entity create via the
+   * {@link Invalidatable} registry.
+   */
+  public String notFoundById(String type, java.util.UUID id) {
+    return ns + ":nx:" + type + ":id:" + id.toString();
+  }
+
+  public String notFoundByName(String type, String fqn) {
+    return ns + ":nx:" + type + ":fqn:" + FullyQualifiedName.buildHash(fqn);
+  }
+
+  /**
    * Cached page of {@code /v1/&lt;entityType&gt;/name/{parentFqn}/children}. Keyed by the
    * parent's FQN hash + the per-parent version + page coordinates so a single version bump
    * orphans every cached page in one shot.
    *
-   * <p>{@code include} (a 1-2 char tag — "nd" / "a" / "d", derived from the
+   * <p>{@code includeTag} (a 1-2 char tag — "nd" / "a" / "d", derived from the
    * {@link org.openmetadata.schema.type.Include} enum value) is part of the key because the
    * page result depends on whether soft-deleted children are included. Without this,
    * toggling the UI's "Deleted" switch would return a stale page from the other side until

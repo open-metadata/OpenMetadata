@@ -44,16 +44,14 @@ import { DatabaseServiceSearchSource } from '../../../interface/search.interface
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
 import { getServiceLogo } from '../../../utils/CommonUtils';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import {
   getColumnSorter,
   getEntityName,
   highlightSearchText,
 } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
-import {
-  getAddServicePath,
-  getServiceDetailsPath,
-} from '../../../utils/RouterUtils';
+import { getServiceDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import {
   getOptionalFields,
@@ -85,7 +83,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const navigate = useNavigate();
   const handleAddServiceClick = () => {
-    navigate(getAddServicePath(serviceName));
+    navigate(connectionsRouterClassBase.getAddServicePath(serviceName));
   };
 
   const [isLoading, setIsLoading] = useState(true);

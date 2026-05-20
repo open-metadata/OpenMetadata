@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  ContainerSearchSource,
-  DashboardDataModelSearchSource,
-  StoredProcedureSearchSource,
-} from '../../../interface/search.interface';
+import { ContainerSearchSource } from '../../../interface/search.interface';
 
 export interface CommonSource {
   fullyQualifiedName: string;
@@ -132,6 +128,11 @@ export interface WorksheetSource extends CommonSource {
   worksheet_name: string;
 }
 
+export interface KnowledgePageSource extends CommonSource {
+  knowledge_page_id: string;
+  knowledge_page_name: string;
+}
+
 export interface Option {
   _index: string;
   _id: string;
@@ -142,8 +143,8 @@ export interface Option {
     | PipelineSource
     | MlModelSource
     | ContainerSearchSource
-    | StoredProcedureSearchSource
-    | DashboardDataModelSearchSource
+    | StoredProcedureSource
+    | DashboardDataModelSource
     | GlossarySource
     | TagSource
     | SearchIndexSource
@@ -155,7 +156,11 @@ export interface Option {
     | DirectorySource
     | FileSource
     | SpreadsheetSource
-    | WorksheetSource;
+    | WorksheetSource
+    | DatabaseSource
+    | DatabaseSchemaSource
+    | ColumnSource
+    | KnowledgePageSource;
 }
 
 export type SearchSuggestions =
@@ -169,8 +174,8 @@ export type SearchSuggestions =
   | DashboardSource[]
   | MlModelSource[]
   | SearchIndexSource[]
-  | StoredProcedureSearchSource[]
-  | DashboardDataModelSearchSource[]
+  | StoredProcedureSource[]
+  | DashboardDataModelSource[]
   | DataProductSource[]
   | ChartSource[]
   | APIEndpointSource[]
@@ -181,7 +186,8 @@ export type SearchSuggestions =
   | DirectorySource[]
   | FileSource[]
   | SpreadsheetSource[]
-  | WorksheetSource[];
+  | WorksheetSource[]
+  | KnowledgePageSource[];
 
 export interface SuggestionsObject {
   tableSuggestions: TableSource[];
@@ -191,8 +197,8 @@ export interface SuggestionsObject {
   pipelineSuggestions: PipelineSource[];
   mlModelSuggestions: MlModelSource[];
   containerSuggestions: ContainerSearchSource[];
-  storedProcedureSuggestions: StoredProcedureSearchSource[];
-  dataModelSuggestions: DashboardDataModelSearchSource[];
+  storedProcedureSuggestions: StoredProcedureSource[];
+  dataModelSuggestions: DashboardDataModelSource[];
   glossaryTermSuggestions: GlossarySource[];
   tagSuggestions: TagSource[];
   searchIndexSuggestions: SearchIndexSource[];
@@ -207,4 +213,5 @@ export interface SuggestionsObject {
   fileSuggestions: FileSource[];
   spreadsheetSuggestions: SpreadsheetSource[];
   worksheetSuggestions: WorksheetSource[];
+  knowledgeArticleSuggestions: KnowledgePageSource[];
 }

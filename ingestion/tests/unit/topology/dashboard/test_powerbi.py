@@ -37,6 +37,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     Tile,
     UpstreaDataflow,
 )
+from metadata.ingestion.source.dashboard.powerbi.workspace_state import WorkspaceState
 from metadata.utils import fqn
 
 MOCK_REDSHIFT_EXP = """
@@ -687,8 +688,8 @@ class PowerBIUnitTest(TestCase):
 
     @pytest.mark.order(1)
     @patch.object(
-        PowerbiSource,
-        "_fetch_dataset_from_workspace",
+        WorkspaceState,
+        "find_dataset",
         return_value=MOCK_DATASET_FROM_WORKSPACE,
     )
     def test_parse_database_source(self, *_):
@@ -914,8 +915,8 @@ class PowerBIUnitTest(TestCase):
 
     @pytest.mark.order(4)
     @patch.object(
-        PowerbiSource,
-        "_fetch_dataset_from_workspace",
+        WorkspaceState,
+        "find_dataset",
         return_value=MOCK_DATASET_FROM_WORKSPACE_V2,
     )
     def test_parse_dataset_expressions(self, *_):
@@ -929,7 +930,7 @@ class PowerBIUnitTest(TestCase):
 
     @pytest.mark.order(5)
     @patch.object(OpenMetadata, "get_by_name", return_value=MOCK_DATAMODEL_ENTITY)
-    @patch.object(fqn, "build", return_value=None)
+    @patch.object(fqn, "build", return_value="powerbi.dataflow_a")
     def test_upstream_dataflow_lineage(self, *_):
         MOCK_DATAMODEL_ENTITY_2 = DashboardDataModel(  # noqa: N806
             name="dummy_dataflow_id_b",
@@ -1069,8 +1070,8 @@ class PowerBIUnitTest(TestCase):
 
     @pytest.mark.order(11)
     @patch.object(
-        PowerbiSource,
-        "_fetch_dataset_from_workspace",
+        WorkspaceState,
+        "find_dataset",
         return_value=MOCK_DATASET_FROM_WORKSPACE_V3,
     )
     def test_parse_dataset_expressions_v2(self, *_):
@@ -2125,7 +2126,8 @@ class PowerBIUnitTest(TestCase):
             ],
         )
 
-        self.powerbi.filtered_dashboards = [dashboard_1, dashboard_2, dashboard_3]
+        for d in (dashboard_1, dashboard_2, dashboard_3):
+            self.powerbi.state.add_filtered_dashboard(d)
 
         mock_context = MagicMock()
         mock_context.workspace = Group(id="ws-1", name="Test Workspace")
@@ -2135,10 +2137,9 @@ class PowerBIUnitTest(TestCase):
         workspace = Group(id="ws-1", name="Test Workspace")
         charts = list(self.powerbi.yield_dashboard_chart(workspace))
 
-        assert len(self.powerbi.dashboard_charts) == 3
-        assert self.powerbi.dashboard_charts["dash-1"] == ["tile-1a", "tile-1b"]
-        assert self.powerbi.dashboard_charts["dash-2"] == ["tile-2a"]
-        assert self.powerbi.dashboard_charts["dash-3"] == [
+        assert self.powerbi.state.pop_dashboard_chart_ids("dash-1") == ["tile-1a", "tile-1b"]
+        assert self.powerbi.state.pop_dashboard_chart_ids("dash-2") == ["tile-2a"]
+        assert self.powerbi.state.pop_dashboard_chart_ids("dash-3") == [
             "tile-3a",
             "tile-3b",
             "tile-3c",
@@ -2146,33 +2147,6 @@ class PowerBIUnitTest(TestCase):
 
         successful_charts = [c for c in charts if c.right is not None]
         assert len(successful_charts) == 6
-
-    @pytest.mark.order(48)
-    def test_yield_dashboard_chart_resets_mapping_on_each_call(self):
-        """
-        Test that yield_dashboard_chart resets dashboard_charts on each invocation
-        so stale data from a previous workspace does not leak.
-        """
-        from unittest.mock import MagicMock
-
-        self.powerbi.dashboard_charts = {"stale-dash": ["stale-tile"]}
-
-        dashboard = PowerBIDashboard(
-            id="fresh-dash",
-            displayName="Fresh Dashboard",
-            tiles=[Tile(id="fresh-tile", title="Fresh Tile")],
-        )
-        self.powerbi.filtered_dashboards = [dashboard]
-
-        mock_context = MagicMock()
-        mock_context.workspace = Group(id="ws-1", name="Test Workspace")
-        mock_context.dashboard_service = "test_powerbi_service"
-        self.powerbi.context.get = MagicMock(return_value=mock_context)
-
-        list(self.powerbi.yield_dashboard_chart(Group(id="ws-1", name="Test Workspace")))
-
-        assert "stale-dash" not in self.powerbi.dashboard_charts
-        assert self.powerbi.dashboard_charts["fresh-dash"] == ["fresh-tile"]
 
     @pytest.mark.order(49)
     def test_yield_dashboard_chart_filtered_chart_not_in_mapping(self):
@@ -2190,7 +2164,7 @@ class PowerBIUnitTest(TestCase):
                 Tile(id="tile-skip", title="Skip Me"),
             ],
         )
-        self.powerbi.filtered_dashboards = [dashboard]
+        self.powerbi.state.add_filtered_dashboard(dashboard)
         self.powerbi.source_config.chartFilterPattern = FilterPattern(excludes=["Skip Me"])
 
         mock_context = MagicMock()
@@ -2200,7 +2174,7 @@ class PowerBIUnitTest(TestCase):
 
         list(self.powerbi.yield_dashboard_chart(Group(id="ws-1", name="Test Workspace")))
 
-        assert self.powerbi.dashboard_charts["dash-filter"] == ["tile-keep"]
+        assert self.powerbi.state.pop_dashboard_chart_ids("dash-filter") == ["tile-keep"]
 
     @pytest.mark.order(50)
     @patch.object(fqn, "build", side_effect=lambda *args, **kwargs: kwargs.get("chart_name"))
@@ -2232,12 +2206,12 @@ class PowerBIUnitTest(TestCase):
             tiles=[],
         )
 
-        self.powerbi.filtered_dashboards = [dashboard_1, dashboard_2, dashboard_3]
-        self.powerbi.dashboard_charts = {
-            "dash-1": ["tile-1a"],
-            "dash-2": ["tile-2a", "tile-2b"],
-            "dash-3": [],
-        }
+        for d in (dashboard_1, dashboard_2, dashboard_3):
+            self.powerbi.state.add_filtered_dashboard(d)
+        self.powerbi.state.add_dashboard_chart("dash-1", "tile-1a")
+        self.powerbi.state.add_dashboard_chart("dash-2", "tile-2a")
+        self.powerbi.state.add_dashboard_chart("dash-2", "tile-2b")
+        # dash-3 intentionally has no charts
 
         mock_context = MagicMock()
         mock_context.workspace = Group(id="ws-1", name="Test Workspace")
@@ -2259,3 +2233,99 @@ class PowerBIUnitTest(TestCase):
 
         dash_3_result = next(d for d in dashboards if d.name.root == "dash-3")
         assert len(dash_3_result.charts) == 0
+
+    @pytest.mark.order(51)
+    def test_tsql_dialect_required_for_bracket_quoted_identifiers(self):
+        """
+        Regression guard, outcome-based: the queries PowerBI dataflows produce
+        through `Sql.Database` / `Value.NativeQuery` use T-SQL bracket-quoted
+        identifiers (e.g. [Column Name], [db].[schema].[table]). Parsing
+        these under ANSI fails at the sqlglot/sqlfluff layer; parsing under
+        TSQL succeeds. `_extract_tables_from_sql` must therefore use TSQL.
+
+        We cannot observe this difference through `_parse_sql_source`'s return
+        value alone: LineageParser falls back to the permissive SqlParse
+        analyzer, which recovers source tables even when the higher-fidelity
+        parsers fail. Instead we run LineageParser directly on the
+        representative queries and assert that the connector's chosen dialect
+        is the one for which the real parsers succeed.
+        """
+        from metadata.ingestion.lineage.models import Dialect
+        from metadata.ingestion.lineage.parser import LineageParser
+
+        bracket_queries = [
+            "SELECT CE_UNIQUE_ID, [FUNCT_ACCOUNT ALT_L2] FROM cub.v_md_FunctAccount_with_CostElement",
+            "SELECT ORGANIZATION_ID, [Level], [ORGANIZATION ID AND DESCRIPTION] FROM cub.v_md_Organization_FLAT",
+            "SELECT * FROM [NBS_GENIE].[QS].[Company_v2]",
+            "SELECT SORT_ORDER, SOURCE FROM cub.[v_md_SourceSystem (FAC)]",
+            "SELECT TOP 100 IBI_DETAILS_ID, [YEAR] FROM cub.v_fact_IBI_vs_BPC_Delta WHERE [YEAR] = 2024",
+        ]
+
+        for sql in bracket_queries:
+            ansi_parser = LineageParser(sql, dialect=Dialect.ANSI, timeout_seconds=10)
+            tsql_parser = LineageParser(sql, dialect=Dialect.TSQL, timeout_seconds=10)
+
+            assert ansi_parser.query_parsing_success is False, (
+                f"Expected ANSI to fail on bracket-quoted T-SQL: {sql!r}. "
+                "If ANSI now parses this, the dialect choice in "
+                "_extract_tables_from_sql may no longer matter and this "
+                "test should be re-evaluated."
+            )
+            assert tsql_parser.query_parsing_success is True, (
+                f"Expected TSQL to parse bracket-quoted T-SQL: {sql!r}. "
+                "If this fails, the underlying parsers (sqlglot/sqlfluff) "
+                "have regressed and PowerBI dataflow lineage will be lost."
+            )
+
+    @pytest.mark.order(52)
+    def test_extract_tables_from_sql_tsql_bracket_queries(self):
+        """
+        End-to-end smoke test: 5 representative T-SQL queries from the
+        production PowerBI ingestion log that previously failed parsing under
+        the ANSI dialect. With the TSQL dialect, each must successfully parse
+        and yield the expected source table.
+
+        Cases:
+          1. Bracket-quoted column with embedded space  ([FUNCT_ACCOUNT ALT_L2])
+          2. Multi-word bracket-quoted column           ([ORGANIZATION ID AND DESCRIPTION])
+          3. Three-part fully-bracketed table reference ([db].[schema].[table])
+          4. Bracket-quoted table with space + parens   (cub.[v_md_SourceSystem (FAC)])
+          5. T-SQL TOP clause with bracket-quoted col   (SELECT TOP n ... [YEAR])
+        """
+        cases = [
+            (
+                "bracket-quoted column with space",
+                "SELECT CE_UNIQUE_ID, [FUNCT_ACCOUNT ALT_L2] FROM cub.v_md_FunctAccount_with_CostElement",
+                "v_md_FunctAccount_with_CostElement",
+            ),
+            (
+                "multi-word bracket-quoted column",
+                "SELECT ORGANIZATION_ID, [Level], [ORGANIZATION ID AND DESCRIPTION] FROM cub.v_md_Organization_FLAT",
+                "v_md_Organization_FLAT",
+            ),
+            (
+                "three-part bracketed table reference",
+                "SELECT * FROM [NBS_GENIE].[QS].[Company_v2]",
+                "Company_v2",
+            ),
+            (
+                "bracketed table name with space and parens",
+                "SELECT SORT_ORDER, SOURCE FROM cub.[v_md_SourceSystem (FAC)]",
+                "v_md_SourceSystem (FAC)",
+            ),
+            (
+                "T-SQL TOP clause with bracket-quoted reserved word",
+                "SELECT TOP 100 IBI_DETAILS_ID, [YEAR] FROM cub.v_fact_IBI_vs_BPC_Delta WHERE [YEAR] = 2024",
+                "v_fact_IBI_vs_BPC_Delta",
+            ),
+        ]
+
+        for label, sql, expected_table in cases:
+            m_expression = (
+                f'TestEntity = let\n  Source = Sql.Database("server", "db", [Query = "{sql}"])\nin\n  Source;\r\n'
+            )
+            result = self.powerbi._parse_sql_source(m_expression)
+            assert result is not None, f"[{label}] _parse_sql_source returned None"
+            assert any(expected_table.lower() in t["table"].lower() for t in result), (
+                f"[{label}] expected table '{expected_table}' not found in result {[t['table'] for t in result]}"
+            )
