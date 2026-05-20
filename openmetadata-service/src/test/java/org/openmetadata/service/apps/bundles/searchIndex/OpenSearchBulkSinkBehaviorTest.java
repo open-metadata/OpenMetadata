@@ -43,7 +43,6 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
-import org.openmetadata.service.search.vector.VectorDocBuilder;
 
 class OpenSearchBulkSinkBehaviorTest {
 
@@ -338,7 +337,9 @@ class OpenSearchBulkSinkBehaviorTest {
   }
 
   @Test
-  void enrichWithEmbeddingReusesCachedFieldsWhenFingerprintMatches() throws Exception {
+  void enrichWithEmbeddingReusesCachedFieldsWhenServiceReportsMatch() throws Exception {
+    // The service-layer two-step fetch already pre-filters to fingerprint matches; if an entry is
+    // present in the map, the splice path is taken without any further fingerprint check.
     EntityInterface entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
@@ -346,30 +347,23 @@ class OpenSearchBulkSinkBehaviorTest {
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
 
-    String fingerprint = "fp-unchanged";
     ObjectMapper mapper = new ObjectMapper();
     JsonNode cached =
         mapper.readTree(
-            "{\"fingerprint\":\""
-                + fingerprint
-                + "\",\"embedding\":[0.1,0.2,0.3],"
+            "{\"fingerprint\":\"fp-unchanged\",\"embedding\":[0.1,0.2,0.3],"
                 + "\"textToEmbed\":\"cached-text\",\"textToLLMContext\":\"cached-ctx\","
                 + "\"chunkIndex\":0,\"chunkCount\":1,\"parentId\":\""
                 + entityId
                 + "\"}");
-    Map<String, JsonNode> existing = Map.of(entityId.toString(), cached);
+    Map<String, JsonNode> existingEmbeddingsById = Map.of(entityId.toString(), cached);
 
     String entityJson = "{\"name\":\"my-table\",\"description\":\"desc\"}";
 
     try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
             mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
         MockedStatic<OpenSearchVectorService> vectorServiceMock =
-            mockStatic(OpenSearchVectorService.class);
-        MockedStatic<VectorDocBuilder> vectorDocMock = mockStatic(VectorDocBuilder.class)) {
+            mockStatic(OpenSearchVectorService.class)) {
       vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
-      vectorDocMock
-          .when(() -> VectorDocBuilder.computeFingerprintForEntity(entity))
-          .thenReturn(fingerprint);
 
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
 
@@ -378,18 +372,18 @@ class OpenSearchBulkSinkBehaviorTest {
               "enrichWithEmbedding",
               EntityInterface.class,
               String.class,
-              boolean.class,
               Map.class,
               StageStatsTracker.class);
       enrich.setAccessible(true);
-      String result = (String) enrich.invoke(sink, entity, entityJson, true, existing, tracker);
+      String result =
+          (String) enrich.invoke(sink, entity, entityJson, existingEmbeddingsById, tracker);
 
       verify(vectorService, never()).generateEmbeddingFields(any());
       verify(tracker).recordVector(StatsResult.SUCCESS);
 
       JsonNode resultNode = mapper.readTree(result);
       assertEquals("my-table", resultNode.get("name").asText());
-      assertEquals(fingerprint, resultNode.get("fingerprint").asText());
+      assertEquals("fp-unchanged", resultNode.get("fingerprint").asText());
       JsonNode embedding = resultNode.get("embedding");
       assertNotNull(embedding);
       assertTrue(embedding.isArray());
@@ -399,7 +393,9 @@ class OpenSearchBulkSinkBehaviorTest {
   }
 
   @Test
-  void enrichWithEmbeddingRecomputesWhenFingerprintMismatch() throws Exception {
+  void enrichWithEmbeddingRecomputesWhenNoCachedEntryAvailable() throws Exception {
+    // When the service-layer fetch returns nothing for this entity (cache miss or fingerprint
+    // mismatch filtered upstream), the call site must regenerate embeddings.
     EntityInterface entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
@@ -413,24 +409,14 @@ class OpenSearchBulkSinkBehaviorTest {
                 "embedding", List.of(0.9, 0.8, 0.7),
                 "textToEmbed", "fresh-text"));
 
-    ObjectMapper mapper = new ObjectMapper();
-    JsonNode cached =
-        mapper.readTree(
-            "{\"fingerprint\":\"fp-old\",\"embedding\":[0.1,0.2,0.3],"
-                + "\"textToEmbed\":\"stale-text\",\"chunkIndex\":0,\"chunkCount\":1}");
-    Map<String, JsonNode> existing = Map.of(entityId.toString(), cached);
-
+    Map<String, JsonNode> existingEmbeddingsById = Collections.emptyMap();
     String entityJson = "{\"name\":\"my-table\"}";
 
     try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
             mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
         MockedStatic<OpenSearchVectorService> vectorServiceMock =
-            mockStatic(OpenSearchVectorService.class);
-        MockedStatic<VectorDocBuilder> vectorDocMock = mockStatic(VectorDocBuilder.class)) {
+            mockStatic(OpenSearchVectorService.class)) {
       vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
-      vectorDocMock
-          .when(() -> VectorDocBuilder.computeFingerprintForEntity(entity))
-          .thenReturn("fp-new");
 
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
 
@@ -439,15 +425,16 @@ class OpenSearchBulkSinkBehaviorTest {
               "enrichWithEmbedding",
               EntityInterface.class,
               String.class,
-              boolean.class,
               Map.class,
               StageStatsTracker.class);
       enrich.setAccessible(true);
-      String result = (String) enrich.invoke(sink, entity, entityJson, true, existing, tracker);
+      String result =
+          (String) enrich.invoke(sink, entity, entityJson, existingEmbeddingsById, tracker);
 
       verify(vectorService).generateEmbeddingFields(entity);
       verify(tracker).recordVector(StatsResult.SUCCESS);
 
+      ObjectMapper mapper = new ObjectMapper();
       JsonNode resultNode = mapper.readTree(result);
       assertEquals("fp-new", resultNode.get("fingerprint").asText());
       assertEquals("fresh-text", resultNode.get("textToEmbed").asText());

@@ -364,15 +364,44 @@ public class OpenSearchVectorService implements VectorIndexService {
   // jakarta.json.JsonValue wrappers like org.glassfish.json.JsonStringImpl.
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER = new JacksonJsonpMapper(MAPPER);
 
+  /**
+   * Two-step batch fetch of cached embedding documents from {@code indexName}, scoped to entities
+   * whose stored fingerprint matches the caller-provided current fingerprint. Designed to keep
+   * large vector payloads off the wire for entities that will be re-embedded anyway.
+   *
+   * <p>Step 1 — {@code mget} the {@code fingerprint} field only for every requested ID. Step 2 —
+   * intersect against {@code currentFingerprintsById}, then issue a second {@code mget} that pulls
+   * the full embedding {@code _source} only for matching IDs. Entries that don't match are
+   * dropped, and the caller can rely on every returned value being safe to splice into a staged
+   * index document.
+   */
   public Map<String, JsonNode> getExistingEmbeddingsBatch(
-      String indexName, List<String> entityIds) {
-    if (entityIds == null || entityIds.isEmpty()) {
+      String indexName, Map<String, String> currentFingerprintsById) {
+    if (currentFingerprintsById == null || currentFingerprintsById.isEmpty()) {
       return Collections.emptyMap();
     }
     try {
+      List<String> entityIds = new ArrayList<>(currentFingerprintsById.keySet());
+      Map<String, String> cachedFingerprintsById =
+          getExistingFingerprintsBatch(indexName, entityIds);
+      if (cachedFingerprintsById.isEmpty()) {
+        return Collections.emptyMap();
+      }
+
+      List<String> matchingIds = new ArrayList<>(cachedFingerprintsById.size());
+      for (Map.Entry<String, String> entry : currentFingerprintsById.entrySet()) {
+        String cachedFp = cachedFingerprintsById.get(entry.getKey());
+        if (cachedFp != null && cachedFp.equals(entry.getValue())) {
+          matchingIds.add(entry.getKey());
+        }
+      }
+      if (matchingIds.isEmpty()) {
+        return Collections.emptyMap();
+      }
+
       MgetResponse<JsonData> response =
           client.mget(
-              m -> m.index(indexName).ids(entityIds).sourceIncludes(EMBEDDING_SOURCE_FIELDS),
+              m -> m.index(indexName).ids(matchingIds).sourceIncludes(EMBEDDING_SOURCE_FIELDS),
               JsonData.class);
 
       Map<String, JsonNode> result = new HashMap<>();
@@ -385,7 +414,7 @@ public class OpenSearchVectorService implements VectorIndexService {
           continue;
         }
         JsonNode cached = doc.source().to(JsonNode.class, JACKSON_JSONP_MAPPER);
-        if (cached != null && cached.hasNonNull("fingerprint")) {
+        if (cached != null && cached.has("embedding")) {
           result.put(doc.id(), cached);
         }
       }
