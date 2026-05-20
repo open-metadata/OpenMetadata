@@ -51,12 +51,17 @@ public final class PageBodyTextContributor implements VectorBodyTextContributor 
       return null;
     }
     List<String> parts = new ArrayList<>();
-    appendIfPresent(parts, "title", page.getDisplayName());
+    appendIfPresent(parts, "title", titleOf(page));
     appendIfPresent(parts, "description", page.getDescription());
     if (page.getPageType() == PageType.QUICK_LINK) {
       appendIfPresent(parts, "url", extractQuickLinkUrl(page));
     }
     return parts.isEmpty() ? "" : String.join("; ", parts);
+  }
+
+  private static String titleOf(Page page) {
+    String displayName = page.getDisplayName();
+    return displayName != null && !displayName.isBlank() ? displayName : page.getName();
   }
 
   private static String extractQuickLinkUrl(Page page) {
@@ -68,10 +73,7 @@ public final class PageBodyTextContributor implements VectorBodyTextContributor 
       QuickLink quickLink = JsonUtils.convertValue(pagePayload, QuickLink.class);
       return quickLink == null || quickLink.getUrl() == null ? null : quickLink.getUrl().toString();
     } catch (Exception e) {
-      LOG.debug(
-          "Failed to extract QuickLink URL for page [{}]: {}",
-          page.getFullyQualifiedName(),
-          e.getMessage());
+      LOG.debug("Failed to extract QuickLink URL for page [{}]", page.getFullyQualifiedName(), e);
       return null;
     }
   }

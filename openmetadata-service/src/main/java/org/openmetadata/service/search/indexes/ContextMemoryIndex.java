@@ -83,9 +83,12 @@ public class ContextMemoryIndex implements TaggableIndex {
             : null);
     List<String> sharedWithIds = new ArrayList<>();
     for (MemorySharedPrincipal principal : listOrEmpty(memory.getShareConfig().getSharedWith())) {
-      if (principal.getPrincipal() != null && principal.getPrincipal().getId() != null) {
-        sharedWithIds.add(principal.getPrincipal().getId().toString());
+      if (principal == null
+          || principal.getPrincipal() == null
+          || principal.getPrincipal().getId() == null) {
+        continue;
       }
+      sharedWithIds.add(principal.getPrincipal().getId().toString());
     }
     doc.put("sharedWithIds", sharedWithIds);
   }

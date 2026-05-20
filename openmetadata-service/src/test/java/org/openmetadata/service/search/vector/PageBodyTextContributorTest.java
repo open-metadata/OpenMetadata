@@ -115,7 +115,16 @@ class PageBodyTextContributorTest {
 
     String body = PageBodyTextContributor.extractBodyText(page);
 
-    assertEquals("", body);
+    assertEquals("title: test-page", body);
+  }
+
+  @Test
+  void extract_fallsBackToNameWhenDisplayNameIsBlank() {
+    Page page = basePage().withName("my-page").withDisplayName(null).withDescription("Body");
+
+    String body = PageBodyTextContributor.extractBodyText(page);
+
+    assertEquals("title: my-page; description: Body", body);
   }
 
   @Test

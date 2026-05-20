@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -136,6 +137,27 @@ class ContextMemoryIndexTest {
         new ContextMemoryIndex(memory).buildSearchIndexDocInternal(new HashMap<>());
 
     assertEquals(MemoryVisibility.SHARED.value(), doc.get("visibility"));
+    @SuppressWarnings("unchecked")
+    List<String> sharedWithIds = (List<String>) doc.get("sharedWithIds");
+    assertEquals(List.of(userId.toString()), sharedWithIds);
+  }
+
+  @Test
+  void buildSearchIndexDoc_nullEntriesInSharedWithAreSkippedNotThrown() {
+    UUID userId = UUID.randomUUID();
+    EntityReference principal = new EntityReference().withId(userId).withType(Entity.USER);
+    List<MemorySharedPrincipal> sharedWith = new ArrayList<>();
+    sharedWith.add(null);
+    sharedWith.add(new MemorySharedPrincipal());
+    sharedWith.add(new MemorySharedPrincipal().withPrincipal(new EntityReference()));
+    sharedWith.add(new MemorySharedPrincipal().withPrincipal(principal));
+    MemoryShareConfig shareConfig =
+        new MemoryShareConfig().withVisibility(MemoryVisibility.SHARED).withSharedWith(sharedWith);
+    ContextMemory memory = baseMemory().withShareConfig(shareConfig);
+
+    Map<String, Object> doc =
+        new ContextMemoryIndex(memory).buildSearchIndexDocInternal(new HashMap<>());
+
     @SuppressWarnings("unchecked")
     List<String> sharedWithIds = (List<String>) doc.get("sharedWithIds");
     assertEquals(List.of(userId.toString()), sharedWithIds);
