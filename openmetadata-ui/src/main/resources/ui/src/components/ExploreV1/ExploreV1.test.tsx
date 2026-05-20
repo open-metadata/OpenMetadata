@@ -34,16 +34,19 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const Button = ({
     children,
     iconLeading,
+    iconTrailing,
     onClick,
     ...rest
   }: {
     children?: import('react').ReactNode;
     iconLeading?: import('react').ReactNode;
+    iconTrailing?: import('react').ReactNode;
     onClick?: () => void;
   } & Record<string, unknown>) => (
     <button type="button" onClick={onClick} {...rest}>
       {iconLeading}
       {children}
+      {iconTrailing}
     </button>
   );
 
@@ -89,10 +92,67 @@ jest.mock('@openmetadata/ui-core-components', () => {
     title?: import('react').ReactNode;
   } & Record<string, unknown>) => <span {...rest}>{title}</span>;
 
-  return { Alert, Button, Card, Typography };
+  const Dropdown = {
+    Root: ({
+      children,
+      ...props
+    }: {
+      children?: import('react').ReactNode;
+    } & Record<string, unknown>) => (
+      <div data-testid="dropdown" {...props}>
+        {children}
+      </div>
+    ),
+    Popover: ({ children }: { children?: import('react').ReactNode }) => (
+      <div>{children}</div>
+    ),
+    Menu: ({
+      children,
+      ...props
+    }: {
+      children?: import('react').ReactNode;
+    } & Record<string, unknown>) => (
+      <div role="menu" {...props}>
+        {children}
+      </div>
+    ),
+    Item: ({
+      children,
+      onClick,
+      ...props
+    }: {
+      children?: import('react').ReactNode;
+      onClick?: () => void;
+    } & Record<string, unknown>) => (
+      <div role="menuitem" onClick={onClick} {...props}>
+        {children}
+      </div>
+    ),
+  };
+
+  const Divider = () => <hr />;
+
+  const Toggle = ({
+    isSelected,
+    onChange,
+    ...props
+  }: {
+    isSelected?: boolean;
+    onChange?: (value: boolean) => void;
+  } & Record<string, unknown>) => (
+    <input
+      type="checkbox"
+      checked={isSelected}
+      onChange={(e) => onChange?.(e.target.checked)}
+      {...props}
+    />
+  );
+
+  return { Alert, Button, Card, Divider, Dropdown, Toggle, Typography };
 });
 
 jest.mock('@untitledui/icons', () => ({
+  ChevronDown: () => <span>ChevronDown</span>,
   Download01: () => <span data-testid="download-01-icon" />,
 }));
 

@@ -530,12 +530,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
                         <Row gutter={[0, 8]}>
                           <Col>
                             <ExploreQuickFilters
+                              showSelectedCounts
                               aggregations={aggregations}
                               fields={selectedQuickFilters}
                               fieldsWithNullValues={
                                 SUPPORTED_EMPTY_FILTER_FIELDS
                               }
-                              showSelectedCounts
                               index={activeTabKey}
                               showDeleted={showDeleted}
                               onAdvanceSearch={() => toggleModal(true)}
@@ -547,17 +547,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
                             className="d-flex items-center justify-end gap-3"
                             flex={410}>
                             <Button
-                              data-testid="sort-order-button"
-                              size="sm"
-                              color="tertiary"
                               className="tw:p-0"
-                              onClick={() =>
-                                onChangeSortOder(
-                                  isAscSortOrder
-                                    ? SORT_ORDER.DESC
-                                    : SORT_ORDER.ASC
-                                )
-                              }
+                              color="tertiary"
+                              data-testid="sort-order-button"
                               iconLeading={
                                 isAscSortOrder ? (
                                   <IconAscending
@@ -569,6 +561,14 @@ const ExploreV1: React.FC<ExploreProps> = ({
                                     style={{ fontSize: '14px' }}
                                     {...sortProps}
                                   />
+                                )
+                              }
+                              size="sm"
+                              onClick={() =>
+                                onChangeSortOder(
+                                  isAscSortOrder
+                                    ? SORT_ORDER.DESC
+                                    : SORT_ORDER.ASC
                                 )
                               }
                             />
@@ -612,8 +612,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
                                   />
 
                                   <Dropdown.Item
-                                    id="show-deleted"
                                     icon={Trash01}
+                                    id="show-deleted"
                                     onClick={() =>
                                       onChangeShowDeleted(!showDeleted)
                                     }>
