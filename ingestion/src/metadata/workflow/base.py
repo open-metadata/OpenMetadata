@@ -128,6 +128,9 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                 enable_streaming=True,
             )
 
+        # Emit after the streamable handler is installed so the line is captured.
+        self.metadata.log_server_version()
+
         self._log_workflow_execution_info()
 
         # Set run context for operation metrics tracking
@@ -166,9 +169,6 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         # Stop the timer first. This runs in a separate thread and if not properly closed
         # it can hung the workflow
         self.timer.stop()
-
-        # Cleanup streamable logging if it was configured
-        cleanup_streamable_logging()
 
         # Reset progress and metrics tracking singletons
         ProgressTrackerState().reset()
@@ -280,9 +280,13 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             ingestion_status = self.build_ingestion_status()
             self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
             try:
-                self.print_status()
+                try:
+                    self.print_status()
+                finally:
+                    self.stop()
             finally:
-                self.stop()
+                # Must run after every other emitter so the tail is captured.
+                cleanup_streamable_logging()
 
     @property
     def run_id(self) -> str:
