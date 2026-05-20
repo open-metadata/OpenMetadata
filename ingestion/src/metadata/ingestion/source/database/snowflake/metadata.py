@@ -240,7 +240,7 @@ class SnowflakeSource(
         if not isinstance(connection, SnowflakeConnection):
             raise InvalidSourceException(f"Expected SnowflakeConnection, but got {connection}")
 
-        incremental_config = IncrementalConfig.create(config.sourceConfig.config.incremental, pipeline_name, metadata)
+        incremental_config = IncrementalConfig.create(config.sourceConfig.config.incremental, pipeline_name, metadata)  # pyright: ignore[reportAttributeAccessIssue]
         return cls(config, metadata, pipeline_name, incremental_config)
 
     @property
@@ -688,21 +688,25 @@ class SnowflakeSource(
             **({"include_transient_tables": True} if self.service_connection.includeTransientTables else {}),
         )
 
-        self.context.get_global().deleted_tables.extend(
-            [
-                fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=schema_name,
-                    table_name=table.name,
+        deleted_fqns = []
+        for table in snowflake_tables.get_deleted():  # pyright: ignore[reportAttributeAccessIssue]
+            try:
+                deleted_fqns.append(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                        database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                        schema_name=schema_name,
+                        table_name=table.name,
+                    )
                 )
-                for table in snowflake_tables.get_deleted()
-            ]
-        )
+            except Exception as err:
+                logger.warning(f"Skipping deleted-table FQN for {table.name!r} in schema {schema_name}: {err}")
+                logger.debug(traceback.format_exc())
+        self.context.get_global().deleted_tables.extend(deleted_fqns)
 
-        return [TableNameAndType(name=table.name, type_=table.type_) for table in snowflake_tables.get_not_deleted()]
+        return [TableNameAndType(name=table.name, type_=table.type_) for table in snowflake_tables.get_not_deleted()]  # pyright: ignore[reportAttributeAccessIssue]
 
     def _get_stream_names_and_types(self, schema_name: str) -> List[TableNameAndType]:  # noqa: UP006
         table_type = TableType.Stream
@@ -1012,7 +1016,18 @@ class SnowflakeSource(
                 pass
 
         try:
-            columns = inspector.get_columns(table_name, schema_name, table_type=table_type, db_name=db_name)
+            # Do NOT forward `table_type` here. SQLAlchemy's @reflection.cache
+            # decorator on the underlying get_columns / _get_schema_columns
+            # builds its cache key from **kw, so a varying `table_type`
+            # (Regular for base tables, View for views) produces distinct
+            # cache keys for the SAME schema. For a huge schema (e.g. ~13k
+            # wide tables), the table→view transition then cache-misses on
+            # _get_schema_columns and re-materializes the whole schema's
+            # column metadata (~1.6 GB) — which is what OOM-killed the pod
+            # in the COM_US_IMDNA_ADL.AWB_INTERM incident. The Snowflake
+            # dialect's get_columns ignores `table_type`; the Stage/Stream
+            # branches above already consumed it.
+            columns = inspector.get_columns(table_name, schema_name, db_name=db_name)
         except sa_exc.NoSuchTableError:
             logger.warning(
                 f"Table [{table_name}] (schema: '{schema_name}', db: '{db_name}') not found."

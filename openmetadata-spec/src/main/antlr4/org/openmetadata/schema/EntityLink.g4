@@ -102,6 +102,7 @@ ENTITY_TYPE
     | 'folder'
     | 'contextFile'
     | 'contextFileContent'
+    | 'contextMemory'
     | 'type'
     | 'aiApplication'
     | 'llmModel'

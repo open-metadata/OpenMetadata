@@ -5,6 +5,7 @@ import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtil
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSearchIndexFields;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -139,7 +140,7 @@ public class DataAssetsWorkflow {
                     || entityTypesToProcess.contains(entityType))
         .forEach(
             entityType -> {
-              List<String> fields = List.of("*");
+              List<String> fields = getSearchIndexFields(entityType);
               ListFilter filter = getListFilter(entityType);
               PaginatedEntitiesSource source =
                   new PaginatedEntitiesSource(entityType, batchSize, fields, filter)
