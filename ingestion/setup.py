@@ -48,7 +48,8 @@ VERSIONS = {
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
     "databricks-sdk": "databricks-sdk~=0.20.0",
-    "databricks-sql-connector": "databricks-sql-connector>=2.0",
+    "databricks-sql-connector": "databricks-sql-connector>=4.0.0",
+    "databricks-sqlalchemy": "databricks-sqlalchemy~=2.0.9",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy<3.8",
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
@@ -143,7 +144,7 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "cachetools",  # Used to cache masked queries in ingestion/src/metadata/ingestion/lineage/masker.py
     "chardet==4.0.0",  # Used in the profiler
-    "cryptography>=42.0.0",
+    "cryptography>=44.0.1",
     "google-cloud-secret-manager==2.24.0",
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
@@ -159,16 +160,21 @@ base_requirements = {
     "python-dateutil>=2.8.1",
     "python-dotenv>=0.19.0",  # For environment variable support in dbt ingestion
     "PyYAML~=6.0",
-    "requests>=2.23",
+    "requests>=2.32.4",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=2.0.0,<3",
     "collate-sqllineage>=2.1.1",
     "tabulate==0.9.0",
+    "tenacity>=8.0,<10",
     "typing-inspect",
     "packaging",  # For version parsing
     "setuptools>=78.1.1,<81",  # <81 required: pkg_resources removed in setuptools 81+
     "shapely",
     "collate-data-diff>=0.11.9",
+    # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
+    # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
+    # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
+    "dbt-extractor>=0.5.0",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
     "jaraco.context==6.0.1",
     # TODO: Remove one once we have updated datadiff version
@@ -231,14 +237,12 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict)
     },
     "databricks": {
-        # sqlalchemy-databricks is pre-installed with --no-deps (SA<2 metadata conflict)
+        VERSIONS["databricks-sqlalchemy"],
         VERSIONS["databricks-sdk"],
         VERSIONS["databricks-sql-connector"],
         "ndg-httpsclient~=0.5.1",
-        "pyOpenSSL~=24.1.0",
+        "pyOpenSSL>=24.3.0",
         "pyasn1~=0.6.0",
-        # databricks has a dependency on pyhive for metadata as well as profiler
-        VERSIONS["pyhive"],
     },
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],
@@ -279,7 +283,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "opensearch": {VERSIONS["opensearch"]},
     "exasol": {
         "sqlalchemy_exasol>=6,<7",
-        "exasol-integration-test-docker-environment>=3.1.0,<4",
+        "exasol-integration-test-docker-environment>=6.0.0,<7",
     },
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
@@ -316,7 +320,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "looker": {
         VERSIONS["looker-sdk"],
         VERSIONS["lkml"],
-        "gitpython~=3.1.34",
+        "gitpython>=3.1.50",
         VERSIONS["giturlparse"],
         "python-liquid",
     },
@@ -325,7 +329,11 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
     "mssql": {
-        "sqlalchemy-pytds~=0.3",
+        # 1.0+ moved internal `tds.skipall` calls to `tds_base.skipall`, matching
+        # the python-tds 1.x layout. 0.3.x raises AttributeError on every
+        # server-side cursor fetch (TABNAME / COLINFO tokens) when paired with
+        # python-tds 1.x.
+        "sqlalchemy-pytds~=1.0",
         DATA_DIFF["mssql"],
     },
     "mssql-odbc": {
@@ -353,6 +361,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "qliksense": {"websocket-client~=1.6.1"},
     "presto": {*COMMONS["hive"], DATA_DIFF["presto"]},
     "pymssql": {"pymssql~=2.3.9"},
+    "questdb": {"psycopg2-binary"},
     "quicksight": {VERSIONS["boto3"]},
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
@@ -362,11 +371,12 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["geoalchemy2"],
     },
     "sagemaker": {VERSIONS["boto3"]},
-    "salesforce": {"simple_salesforce~=1.11", "authlib>=1.3.1"},
+    "salesforce": {"simple_salesforce~=1.11", "authlib>=1.6.4"},
     "sample-data": {
         VERSIONS["avro"],
         VERSIONS["grpc-tools"],
         VERSIONS["sqlalchemy-bigquery"],
+        VERSIONS["spacy"],
         VERSIONS["presidio-analyzer"],
     },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
@@ -399,9 +409,14 @@ dev = {
     "datamodel-code-generator==0.25.6",
     "boto3-stubs",
     "mypy-boto3-glue",
+    "google-api-python-client-stubs",
+    "google-auth-stubs",
+    "types-requests",
+    "pandas-stubs~=2.1.4",
+    "scipy-stubs",
     "nox",
     "pre-commit",
-    "basedpyright~=1.39.0",
+    "basedpyright==1.39.3",
     # For publishing
     "twine",
     "build",
@@ -419,6 +434,8 @@ test_unit = {
     # TODO: Remove once no unit test requires testcontainers
     "testcontainers",
     VERSIONS["factory-boy"],
+    *plugins["exasol"],
+    *plugins["teradata"],
 }
 
 test = {
@@ -467,7 +484,7 @@ test = {
     *plugins["kafka"],
     "kafka-python==2.0.2",
     *plugins["pii-processor"],
-    "requests>=2.31.0,<3",
+    "requests>=2.32.4,<3",
     f"{DATA_DIFF['mysql']}",
     *plugins["deltalake"],
     *plugins["datalake-gcs"],
@@ -487,6 +504,8 @@ test = {
     VERSIONS["kafka-connect"],
     VERSIONS["factory-boy"],
     "locust~=2.32.0",
+    *plugins["exasol"],
+    *plugins["teradata"],
 }
 
 docs = {

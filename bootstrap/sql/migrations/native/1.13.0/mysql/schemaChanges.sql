@@ -130,6 +130,12 @@ FROM user_entity ue, role_entity re
 WHERE ue.name = 'mcpapplicationbot'
   AND re.name = 'ApplicationBotImpersonationRole';
 
+-- Update Databricks and Unity Catalog connection schemes from 'databricks+connector' to 'databricks'
+-- as part of migration from sqlalchemy-databricks to databricks-sqlalchemy package
+UPDATE dbservice_entity
+SET json = JSON_SET(json, '$.connection.config.scheme', 'databricks')
+WHERE serviceType IN ('Databricks', 'UnityCatalog')
+  AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.connection.config.scheme')) = 'databricks+connector';
 
 UPDATE entity_extension
 SET json = JSON_SET(
@@ -206,6 +212,42 @@ SET json = JSON_REMOVE(
     '$.sourceConfig.config.profileSample'
 )
 WHERE pipelineType = 'profiler'
+  AND (JSON_CONTAINS_PATH(json, 'one', '$.sourceConfig.config.profileSample')
+    OR JSON_CONTAINS_PATH(json, 'one', '$.sourceConfig.config.profileSampleType')
+    OR JSON_CONTAINS_PATH(json, 'one', '$.sourceConfig.config.samplingMethodType'));
+
+-- ingestion_pipeline_entity (testSuite pipelines): build profileSampleConfig (skip if already migrated)
+UPDATE ingestion_pipeline_entity
+SET json = JSON_SET(
+    json,
+    '$.sourceConfig.config.profileSampleConfig',
+    JSON_OBJECT(
+        'sampleConfigType', 'STATIC',
+        'config', JSON_OBJECT(
+            'profileSample', JSON_EXTRACT(json, '$.sourceConfig.config.profileSample'),
+            'profileSampleType', COALESCE(
+                JSON_EXTRACT(json, '$.sourceConfig.config.profileSampleType'),
+                CAST('"PERCENTAGE"' AS JSON)
+            ),
+            'samplingMethodType', JSON_EXTRACT(json, '$.sourceConfig.config.samplingMethodType')
+        )
+    )
+)
+WHERE pipelineType = 'testSuite'
+  AND JSON_EXTRACT(json, '$.sourceConfig.config.profileSample') IS NOT NULL
+  AND JSON_TYPE(JSON_EXTRACT(json, '$.sourceConfig.config.profileSample')) != 'NULL'
+  AND NOT JSON_CONTAINS_PATH(json, 'one', '$.sourceConfig.config.profileSampleConfig');
+
+-- ingestion_pipeline_entity (testSuite pipelines): remove old flat fields
+UPDATE ingestion_pipeline_entity
+SET json = JSON_REMOVE(
+    JSON_REMOVE(
+        JSON_REMOVE(json, '$.sourceConfig.config.samplingMethodType'),
+        '$.sourceConfig.config.profileSampleType'
+    ),
+    '$.sourceConfig.config.profileSample'
+)
+WHERE pipelineType = 'testSuite'
   AND (JSON_CONTAINS_PATH(json, 'one', '$.sourceConfig.config.profileSample')
     OR JSON_CONTAINS_PATH(json, 'one', '$.sourceConfig.config.profileSampleType')
     OR JSON_CONTAINS_PATH(json, 'one', '$.sourceConfig.config.samplingMethodType'));
@@ -288,3 +330,71 @@ CREATE TABLE IF NOT EXISTS rdf_index_server_stats (
     UNIQUE INDEX idx_rdf_index_server_stats_job_server_entity (jobId, serverId, entityType),
     INDEX idx_rdf_index_server_stats_job_id (jobId)
 );
+
+-- Speeds up the NOT EXISTS anti-join used by ContainerDAO root-only listings
+-- (?root=true&service=...). Covers the subquery's filter and projection so the
+-- planner can answer "does this container have a parent?" with an index-only
+-- scan instead of materializing the child-edge set.
+CREATE INDEX idx_er_fromentity_toentity_relation_toid
+    ON entity_relationship (fromEntity, toEntity, relation, toId);
+
+-- Add per-stage cumulative timing columns to search_index_server_stats so the
+-- distributed aggregator can surface where reindex latency is being spent
+-- (DB read in Reader, doc-build in Process, OpenSearch bulk in Sink, embeddings
+-- in Vector). Stored as BIGINT milliseconds; UI computes avg latency and
+-- throughput client-side from totalTimeMs / successRecords.
+ALTER TABLE search_index_server_stats
+  ADD COLUMN readerTimeMs BIGINT NOT NULL DEFAULT 0,
+  ADD COLUMN processTimeMs BIGINT NOT NULL DEFAULT 0,
+  ADD COLUMN sinkTimeMs BIGINT NOT NULL DEFAULT 0,
+  ADD COLUMN vectorTimeMs BIGINT NOT NULL DEFAULT 0;
+
+-- The Postgres counterpart to this file adds a `text_pattern_ops` index
+-- on `fqnHash` for every entity table to make `?service=` / `?database=` /
+-- `?databaseSchema=` / `?parent=` listings (which compile to
+-- `fqnHash LIKE 'prefix%'`) index-driven instead of seq-scan-driven on RDS.
+-- MySQL does not need an equivalent: every entity-table `fqnHash` column is
+-- already declared `CHARACTER SET ascii COLLATE ascii_bin`, a binary
+-- collation that lets the existing unique B-tree on `fqnHash` answer LIKE
+-- prefix predicates directly. No change required on the MySQL side.
+
+-- MCP OAuth: state parameter is opaque per RFC 6749 §4.1.1 and some clients (notably the
+-- Databricks MCP Proxy) send tokens longer than 255 characters. Widen mcp_state to TEXT to
+-- avoid INSERT failures on /mcp/authorize redirects.
+ALTER TABLE mcp_pending_auth_requests
+    MODIFY COLUMN mcp_state TEXT;
+
+-- Allow multiple typed relations between the same pair of glossary terms.
+-- The previous PRIMARY KEY (fromId, toId, relation) caused INSERT ... ON DUPLICATE
+-- KEY UPDATE to overwrite the json discriminator when a second relationType
+-- ("synonym" + "seeAlso", etc.) was added between the same two terms, silently
+-- dropping the first relationship. Adding relationType to the PK lets the same
+-- (fromId, toId, RELATED_TO) pair carry one row per relation type.
+-- `IF NOT EXISTS` on `ADD COLUMN` only landed in MySQL 8.0.29; supported 8.0.x
+-- deployments may be older, so use plain ADD COLUMN. SERVER_CHANGE_LOG gates
+-- re-execution at the framework level — same reasoning as the PK swap below.
+ALTER TABLE entity_relationship
+    ADD COLUMN `relationType` varchar(64) NOT NULL DEFAULT '' AFTER `relation`;
+
+-- Backfill relationType for every glossary-term ↔ glossary-term RELATED_TO row.
+-- Pre-1.13 data has json = NULL (no discriminator existed yet) — those rows MUST
+-- collapse onto 'relatedTo' so that a subsequent insert of the same logical
+-- relation matches the existing row instead of creating a duplicate under a
+-- different PK. relation=15 is the ordinal of Relationship.RELATED_TO (see
+-- openmetadata-spec entityRelationship.json). 'relatedTo' is the default
+-- relation type that the application code uses when none is specified.
+UPDATE entity_relationship
+SET relationType =
+    COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(json, '$.relationType')), ''), 'relatedTo')
+WHERE fromEntity = 'glossaryTerm'
+  AND toEntity = 'glossaryTerm'
+  AND relation = 15;
+
+-- Swap the PK to include relationType. The native migration framework tracks
+-- completion in SERVER_CHANGE_LOG so this runs once per upgrade; we intentionally
+-- avoid information_schema gating because least-privilege migration users may
+-- not have SELECT on it. A manual replay of this step on an already-migrated
+-- table will rebuild the PK with the same columns — wasteful but not broken.
+ALTER TABLE entity_relationship
+    DROP PRIMARY KEY,
+    ADD PRIMARY KEY (`fromId`, `toId`, `relation`, `relationType`);

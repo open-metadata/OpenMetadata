@@ -87,6 +87,17 @@ class AdvancedSearchClassBase {
     },
     text: {
       ...this.baseConfig.types.text,
+      widgets: {
+        ...this.baseConfig.types.text.widgets,
+        text: {
+          ...(this.baseConfig.types.text.widgets?.text ?? {}),
+          operators: [
+            ...(this.baseConfig.types.text.widgets?.text?.operators ?? []),
+            'match_phrase',
+            'not_match_phrase',
+          ],
+        },
+      },
       valueSources: ['value'],
     },
   };
@@ -136,6 +147,8 @@ class AdvancedSearchClassBase {
             return {
               [fieldName]: { value: newValue, case_insensitive: true },
             };
+          case 'match_phrase':
+            return { [fieldName]: newValue };
           default:
             return { [fieldName]: { value: newValue } };
         }
@@ -162,6 +175,24 @@ class AdvancedSearchClassBase {
     multiselect_not_contains: {
       ...this.baseConfig.operators.multiselect_not_contains,
       sqlOp: 'NOT IN',
+    },
+    match_phrase: {
+      label: t('label.contain-plural'),
+      labelForFormat: t('label.contain-plural'),
+      reversedOp: 'not_match_phrase',
+      elasticSearchQueryType: 'match_phrase',
+      valueSources: ['value'],
+      cardinality: 1,
+      sqlOp: 'CONTAINS',
+    },
+    not_match_phrase: {
+      label: t('label.not-contain-plural'),
+      labelForFormat: t('label.not-contain-plural'),
+      reversedOp: 'match_phrase',
+      valueSources: ['value'],
+      cardinality: 1,
+      isNotOp: true,
+      sqlOp: 'NOT CONTAINS',
     },
   } as BasicConfig['operators'];
 
@@ -972,8 +1003,20 @@ class AdvancedSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         subfields: {},
       },
-      descriptionStatus: {
+      description: {
         label: t('label.description'),
+        type: 'text',
+        operators: [
+          'match_phrase',
+          'not_match_phrase',
+          'is_null',
+          'is_not_null',
+        ],
+        mainWidgetProps: this.mainWidgetProps,
+        valueSources: ['value'],
+      },
+      descriptionStatus: {
+        label: t('label.description-status'),
         type: 'select',
         operators: LIST_VALUE_OPERATORS,
         mainWidgetProps: this.mainWidgetProps,
@@ -1401,7 +1444,7 @@ class AdvancedSearchClassBase {
       case 'hyperlink-cp': {
         return [
           {
-            subfieldsKey: `${field.name}.url.keyword`,
+            subfieldsKey: `${field.name}.url`,
             dataObject: {
               type: 'text',
               label: `${label} ${t('label.url')}`,
@@ -1409,7 +1452,7 @@ class AdvancedSearchClassBase {
             },
           },
           {
-            subfieldsKey: `${field.name}.displayText.keyword`,
+            subfieldsKey: `${field.name}.displayText`,
             dataObject: {
               type: 'text',
               label: `${label} ${t('label.display-text')}`,
@@ -1428,7 +1471,7 @@ class AdvancedSearchClassBase {
         }
 
         return columns.map((columnName) => ({
-          subfieldsKey: `${field.name}.rows.${columnName}.keyword`,
+          subfieldsKey: `${field.name}.rows.${columnName}`,
           dataObject: {
             type: 'text',
             label: `${label} - ${columnName}`,

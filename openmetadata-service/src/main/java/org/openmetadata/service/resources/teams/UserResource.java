@@ -332,10 +332,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context SecurityContext securityContext,
       @Parameter(
               description =
-                  "Time window in minutes (default: 5). Examples: 1 (last minute), 5 (last 5 minutes), 60 (last hour), 1440 (last day)",
+                  "Time window in minutes (default: 5). Use 0 for all time. Examples: 0 (all time), 1 (last minute), 5 (last 5 minutes), 60 (last hour), 1440 (last day)",
               schema = @Schema(type = "integer", example = "5"))
           @QueryParam("timeWindow")
           @DefaultValue("5")
+          @Min(value = 0, message = "must be greater than or equal to 0")
           int timeWindow,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -368,8 +369,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     // Create filter for online users - uses both lastLoginTime and lastActivityTime
     ListFilter filter = new ListFilter(Include.NON_DELETED);
-    filter.addQueryParam("lastActivityTimeGreaterThan", String.valueOf(thresholdTimestamp));
     filter.addQueryParam("isBot", "false"); // Exclude bots from online users
+    if (timeWindow > 0) {
+      filter.addQueryParam("lastActivityTimeGreaterThan", String.valueOf(thresholdTimestamp));
+    }
 
     ResultList<User> users =
         listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
@@ -396,24 +399,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET

@@ -13,10 +13,15 @@
 
 import { ROUTES } from '../constants/constants';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
+import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import {
   getDataQualityPagePath,
   getObservabilityAlertDetailsPath,
   getObservabilityAlertsEditPath,
+  getTestCaseDetailPagePath,
+  getTestCaseDimensionsDetailPagePath,
+  getTestCaseVersionPath,
+  getTestSuitePath,
 } from './RouterUtils';
 
 class ObservabilityRouterClassBase {
@@ -39,12 +44,47 @@ class ObservabilityRouterClassBase {
     return ROUTES.ADD_OBSERVABILITY_ALERTS;
   }
 
+  public getObservabilityAlertsListPath(): string {
+    return ROUTES.OBSERVABILITY_ALERTS;
+  }
+
+  public getIncidentManagerPath(): string {
+    return ROUTES.INCIDENT_MANAGER;
+  }
+
   public getObservabilityAlertsEditPath(fqn: string): string {
     return getObservabilityAlertsEditPath(fqn);
   }
 
   public getObservabilityAlertDetailsPath(fqn: string, tab?: string): string {
     return getObservabilityAlertDetailsPath(fqn, tab);
+  }
+
+  public getTestSuitePath(testSuiteFqn: string): string {
+    return getTestSuitePath(testSuiteFqn);
+  }
+
+  public getTestCaseDetailPagePath(
+    fqn: string,
+    tab: TestCasePageTabs = TestCasePageTabs.TEST_CASE_RESULTS
+  ): string {
+    return getTestCaseDetailPagePath(fqn, tab);
+  }
+
+  public getTestCaseVersionPath(
+    fqn: string,
+    version: string,
+    tab?: string
+  ): string {
+    return getTestCaseVersionPath(fqn, version, tab);
+  }
+
+  public getTestCaseDimensionsDetailPagePath(
+    fqn: string,
+    dimensionKey: string,
+    tab: TestCasePageTabs = TestCasePageTabs.TEST_CASE_RESULTS
+  ): string {
+    return getTestCaseDimensionsDetailPagePath(fqn, dimensionKey, tab);
   }
 }
 

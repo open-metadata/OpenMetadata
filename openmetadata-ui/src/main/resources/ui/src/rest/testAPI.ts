@@ -258,13 +258,10 @@ export const removeTestCaseFromTestSuite = async (
   return response.data;
 };
 
-export const getTestCaseVersionList = async (
-  id: string,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
-) => {
+export const getTestCaseVersionList = async (id: string) => {
   const url = `${testCaseUrl}/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url, { params });
+  const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };

@@ -62,8 +62,8 @@ class ModeSource(DashboardServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.workspace_name = config.serviceConnection.root.config.workspaceName
-        self.filter_query_param = config.serviceConnection.root.config.filterQueryParam
+        self.workspace_name = config.serviceConnection.root.config.workspaceName  # pyright: ignore[reportAttributeAccessIssue]
+        self.filter_query_param = config.serviceConnection.root.config.filterQueryParam  # pyright: ignore[reportAttributeAccessIssue]
         self.data_sources = self.client.get_all_data_sources(self.workspace_name)
 
     @classmethod
