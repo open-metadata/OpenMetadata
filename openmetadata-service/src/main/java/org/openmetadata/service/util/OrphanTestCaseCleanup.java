@@ -189,7 +189,7 @@ public class OrphanTestCaseCleanup {
 
   private boolean deleteOrphan(UUID id) {
     try {
-      Entity.deleteEntity("admin", Entity.TEST_CASE, id, true, true);
+      Entity.deleteEntity(Entity.ADMIN_USER_NAME, Entity.TEST_CASE, id, true, true);
       return true;
     } catch (Exception ex) {
       LOG.warn("Failed to delete orphan test case {}: {}", id, ex.getMessage());
