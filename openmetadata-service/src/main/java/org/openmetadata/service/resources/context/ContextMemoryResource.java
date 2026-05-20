@@ -146,12 +146,12 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
                 limitParam,
                 before,
                 after));
-    List<ContextMemory> visible =
-        ContextMemoryVisibility.filterByVisibility(memories.getData(), securityContext);
-    if (visible.size() == memories.getData().size()) {
-      return memories;
-    }
-    return new ResultList<>(visible);
+    // Filter in-place so we preserve paging cursors, total, errors and warnings on the
+    // original ResultList — building a new ResultList<>(visible) would null them out and
+    // break cursor pagination for non-admin callers.
+    memories.setData(
+        ContextMemoryVisibility.filterByVisibility(memories.getData(), securityContext));
+    return memories;
   }
 
   @GET

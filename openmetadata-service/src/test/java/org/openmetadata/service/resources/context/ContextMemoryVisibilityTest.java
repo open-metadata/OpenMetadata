@@ -22,7 +22,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 
 import jakarta.ws.rs.ForbiddenException;
+import jakarta.ws.rs.core.SecurityContext;
+import java.security.Principal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,16 +52,22 @@ class ContextMemoryVisibilityTest {
   private static final String BOB = "bob";
 
   private MockedStatic<Entity> entityStaticMock;
+  private final Map<String, User> userLookups = new HashMap<>();
 
   @BeforeEach
   void setUp() {
+    userLookups.clear();
     entityStaticMock = Mockito.mockStatic(Entity.class);
     entityStaticMock
         .when(
             () ->
                 Entity.getEntityByName(
                     eq(Entity.USER), any(String.class), eq("teams,domains"), any()))
-        .thenAnswer(inv -> new User().withName(inv.getArgument(1)));
+        .thenAnswer(
+            inv -> {
+              String name = inv.getArgument(1);
+              return userLookups.getOrDefault(name, new User().withName(name));
+            });
   }
 
   @AfterEach
@@ -199,6 +209,113 @@ class ContextMemoryVisibilityTest {
     assertFalse(ContextMemoryVisibility.isOwnedBy(memory, ALICE));
   }
 
+  @Test
+  void testSharedMemory_visibleViaTeamMembership() {
+    EntityReference dataTeam = principalRef("data-team", "team");
+    userLookups.put(BOB, new User().withName(BOB).withTeams(List.of(dataTeam)));
+
+    ContextMemory shared = sharedMemoryOwnedBy(ALICE, dataTeam);
+
+    assertTrue(
+        ContextMemoryVisibility.isVisibleToUser(shared, BOB, false),
+        "bob is in data-team which appears in sharedWith, so he must see the memory");
+    assertFalse(
+        ContextMemoryVisibility.isVisibleToUser(shared, "charlie", false),
+        "charlie has no team membership and must not see a team-shared memory");
+  }
+
+  @Test
+  void testSharedMemory_visibleViaDomainMembership() {
+    EntityReference financeDomain = principalRef("finance", "domain");
+    userLookups.put(BOB, new User().withName(BOB).withDomains(List.of(financeDomain)));
+
+    ContextMemory shared = sharedMemoryOwnedBy(ALICE, financeDomain);
+
+    assertTrue(
+        ContextMemoryVisibility.isVisibleToUser(shared, BOB, false),
+        "bob is in the finance domain which appears in sharedWith, so he must see the memory");
+    assertFalse(
+        ContextMemoryVisibility.isVisibleToUser(shared, "charlie", false),
+        "charlie has no domain membership and must not see a domain-shared memory");
+  }
+
+  @Test
+  void testSharedMemory_notVisibleWhenUserNotInExpandedPrincipals() {
+    EntityReference financeDomain = principalRef("finance", "domain");
+    EntityReference dataTeam = principalRef("data-team", "team");
+    userLookups.put(
+        BOB, new User().withName(BOB).withTeams(List.of(dataTeam)).withDomains(List.of()));
+
+    ContextMemory shared = sharedMemoryOwnedBy(ALICE, financeDomain);
+
+    assertFalse(
+        ContextMemoryVisibility.isVisibleToUser(shared, BOB, false),
+        "bob is in data-team but the memory is shared with finance domain only");
+  }
+
+  @Test
+  void testFilterByVisibility_resolvesPrincipalIdentifiersOncePerCall() {
+    EntityReference dataTeam = principalRef("data-team", "team");
+    userLookups.put(BOB, new User().withName(BOB).withTeams(List.of(dataTeam)));
+
+    List<ContextMemory> memories =
+        List.of(
+            sharedMemoryOwnedBy(ALICE, dataTeam),
+            sharedMemoryOwnedBy(ALICE, dataTeam),
+            sharedMemoryOwnedBy(ALICE, dataTeam));
+
+    List<ContextMemory> visible = ContextMemoryVisibility.filterByVisibility(memories, BOB, false);
+
+    assertEquals(3, visible.size(), "bob should see all 3 SHARED memories via team membership");
+    entityStaticMock.verify(
+        () -> Entity.getEntityByName(eq(Entity.USER), eq(BOB), eq("teams,domains"), any()),
+        Mockito.times(1));
+  }
+
+  @Test
+  void testEnforceVisibility_failsClosedWhenSecurityContextHasNoPrincipal() {
+    ContextMemory memory = memoryOwnedBy(ALICE, MemoryVisibility.ENTITY);
+    SecurityContext noPrincipal = securityContextWith(null);
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> ContextMemoryVisibility.enforceVisibility(memory, noPrincipal),
+        "no principal must throw rather than silently allow the visibility check to no-op");
+    assertThrows(
+        ForbiddenException.class,
+        () -> ContextMemoryVisibility.enforceVisibility(memory, (SecurityContext) null),
+        "null SecurityContext must throw rather than silently allow access");
+  }
+
+  @Test
+  void testFilterByVisibility_failsClosedWhenSecurityContextHasNoPrincipal() {
+    List<ContextMemory> memories = List.of(memoryOwnedBy(ALICE, MemoryVisibility.ENTITY));
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> ContextMemoryVisibility.filterByVisibility(memories, securityContextWith(null)),
+        "no principal must throw rather than silently leak the unfiltered list");
+    assertThrows(
+        ForbiddenException.class,
+        () -> ContextMemoryVisibility.filterByVisibility(memories, (SecurityContext) null),
+        "null SecurityContext must throw rather than silently leak the unfiltered list");
+  }
+
+  private ContextMemory sharedMemoryOwnedBy(String userName, EntityReference sharedWithPrincipal) {
+    return memoryOwnedBy(userName, MemoryVisibility.SHARED)
+        .withShareConfig(
+            new MemoryShareConfig()
+                .withVisibility(MemoryVisibility.SHARED)
+                .withSharedWith(
+                    List.of(new MemorySharedPrincipal().withPrincipal(sharedWithPrincipal))));
+  }
+
+  private SecurityContext securityContextWith(Principal principal) {
+    SecurityContext ctx = Mockito.mock(SecurityContext.class);
+    Mockito.when(ctx.getUserPrincipal()).thenReturn(principal);
+    return ctx;
+  }
+
   private ContextMemory memoryOwnedBy(String userName, MemoryVisibility visibility) {
     ContextMemory memory =
         new ContextMemory()
@@ -212,10 +329,14 @@ class ContextMemoryVisibilityTest {
   }
 
   private EntityReference principalRef(String userName) {
+    return principalRef(userName, "user");
+  }
+
+  private EntityReference principalRef(String name, String type) {
     return new EntityReference()
         .withId(UUID.randomUUID())
-        .withType("user")
-        .withName(userName)
-        .withFullyQualifiedName(userName);
+        .withType(type)
+        .withName(name)
+        .withFullyQualifiedName(name);
   }
 }

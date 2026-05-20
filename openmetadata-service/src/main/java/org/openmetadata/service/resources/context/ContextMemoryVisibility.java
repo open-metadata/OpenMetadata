@@ -58,7 +58,7 @@ public final class ContextMemoryVisibility {
       return true;
     }
     if (visibility == MemoryVisibility.SHARED) {
-      return isInSharedWithList(memory, userName);
+      return isInSharedWithList(memory, resolvePrincipalIdentifiers(userName));
     }
     return false;
   }
@@ -70,16 +70,25 @@ public final class ContextMemoryVisibility {
   }
 
   public static void enforceVisibility(ContextMemory memory, SecurityContext securityContext) {
-    if (memory == null || securityContext == null || securityContext.getUserPrincipal() == null) {
+    if (memory == null) {
       return;
     }
+    String userName = principalNameOrThrow(securityContext);
     SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
-    enforceVisibility(memory, securityContext.getUserPrincipal().getName(), subject.isAdmin());
+    enforceVisibility(memory, userName, subject.isAdmin());
   }
 
   public static List<ContextMemory> filterByVisibility(
       List<ContextMemory> memories, String userName, boolean isAdmin) {
-    return memories.stream().filter(m -> isVisibleToUser(m, userName, isAdmin)).toList();
+    if (memories == null || memories.isEmpty() || isAdmin) {
+      return memories;
+    }
+    // Resolve the caller's principal identifiers (user + teams + domains) once per call so we
+    // don't trigger a DB lookup per memory when many rows are SHARED.
+    Set<String> principalIds = resolvePrincipalIdentifiers(userName);
+    return memories.stream()
+        .filter(m -> isVisibleWithPrincipalIds(m, userName, principalIds))
+        .toList();
   }
 
   public static List<ContextMemory> filterByVisibility(
@@ -87,12 +96,9 @@ public final class ContextMemoryVisibility {
     if (memories == null || memories.isEmpty()) {
       return memories;
     }
-    if (securityContext == null || securityContext.getUserPrincipal() == null) {
-      return memories;
-    }
+    String userName = principalNameOrThrow(securityContext);
     SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
-    return filterByVisibility(
-        memories, securityContext.getUserPrincipal().getName(), subject.isAdmin());
+    return filterByVisibility(memories, userName, subject.isAdmin());
   }
 
   public static boolean isOwnedBy(ContextMemory memory, String userName) {
@@ -103,17 +109,42 @@ public final class ContextMemoryVisibility {
         .anyMatch(o -> userName.equals(o.getName()) || userName.equals(o.getFullyQualifiedName()));
   }
 
-  private static boolean isInSharedWithList(ContextMemory memory, String userName) {
+  private static boolean isVisibleWithPrincipalIds(
+      ContextMemory memory, String userName, Set<String> principalIds) {
+    if (isOwnedBy(memory, userName)) {
+      return true;
+    }
+    if (memory.getShareConfig() == null) {
+      return false;
+    }
+    MemoryVisibility visibility = memory.getShareConfig().getVisibility();
+    if (visibility == MemoryVisibility.ENTITY) {
+      return true;
+    }
+    if (visibility == MemoryVisibility.SHARED) {
+      return isInSharedWithList(memory, principalIds);
+    }
+    return false;
+  }
+
+  private static boolean isInSharedWithList(ContextMemory memory, Set<String> principalIds) {
     if (memory.getShareConfig() == null || memory.getShareConfig().getSharedWith() == null) {
       return false;
     }
-    Set<String> principalIds = resolvePrincipalIdentifiers(userName);
     return memory.getShareConfig().getSharedWith().stream()
         .anyMatch(
             sp ->
                 sp.getPrincipal() != null
                     && (principalIds.contains(sp.getPrincipal().getName())
                         || principalIds.contains(sp.getPrincipal().getFullyQualifiedName())));
+  }
+
+  private static String principalNameOrThrow(SecurityContext securityContext) {
+    if (securityContext == null || securityContext.getUserPrincipal() == null) {
+      throw new ForbiddenException(
+          "No authenticated principal; cannot evaluate context memory visibility.");
+    }
+    return securityContext.getUserPrincipal().getName();
   }
 
   private static Set<String> resolvePrincipalIdentifiers(String userName) {
