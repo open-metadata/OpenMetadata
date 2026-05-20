@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from logging import Logger  # noqa: TC003
 from typing import Any, Generator  # noqa: UP035
 
-import httpx
+import requests
 
 from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.ometa.credentials import URL
@@ -87,35 +87,52 @@ class SSEClient:
                 if self.last_event_id:
                     headers["Last-Event-ID"] = self.last_event_id
 
-                with httpx.Client(timeout=None) as client:  # noqa: SIM117
-                    with client.stream(
-                        method,
-                        url,
-                        headers=headers,
-                        json=opts.get("json"),
-                        params=opts.get("params"),
-                    ) as response:
-                        response.raise_for_status()
-                        self.logger.info("Connected to SSE stream")
+                # SSE transport uses `requests` rather than `httpx`: the SDK's REST client
+                # already uses requests, and some enterprise security middleboxes reject
+                # httpx's HTTP/1.1 wire pattern (lowercase header names, header/body in
+                # separate TCP segments) while passing requests/wget through unchanged.
+                request_kwargs = {
+                    "method": method,
+                    "url": str(url),
+                    "headers": headers,
+                    "json": opts.get("json"),
+                    "params": opts.get("params"),
+                    "stream": True,
+                    "timeout": None,
+                    "verify": (
+                        self.config.verify if self.config.verify is not None else True
+                    ),
+                    "allow_redirects": (
+                        self.config.allow_redirects
+                        if self.config.allow_redirects is not None
+                        else True
+                    ),
+                    "cookies": self.config.cookies,
+                }
+                with requests.Session() as session, session.request(
+                    **request_kwargs
+                ) as response:
+                    response.raise_for_status()
+                    self.logger.info("Connected to SSE stream")
 
-                        event_buffer = []
-                        for line in response.iter_lines():
-                            if not line:
-                                if event_buffer:
-                                    parsed_event = self._parse_sse_event(event_buffer)
-                                    yield parsed_event
-                                    event_buffer = []
+                    event_buffer = []
+                    for line in response.iter_lines(decode_unicode=True):
+                        if not line:
+                            if event_buffer:
+                                parsed_event = self._parse_sse_event(event_buffer)
+                                yield parsed_event
+                                event_buffer = []
 
-                                    if self.stream_completed:
-                                        self.logger.info(
-                                            f"Stream terminated with event: {parsed_event.get('event', 'unknown')}"
-                                        )
-                                        return
-                            else:  # noqa: PLR5501
-                                if not line.startswith(":"):
-                                    event_buffer.append(line)
+                                if self.stream_completed:
+                                    self.logger.info(
+                                        f"Stream terminated with event: {parsed_event.get('event', 'unknown')}"
+                                    )
+                                    return
+                        else:  # noqa: PLR5501
+                            if not line.startswith(":"):
+                                event_buffer.append(line)
 
-            except httpx.HTTPStatusError as e:
+            except requests.exceptions.HTTPError as e:
                 self.logger.error(f"HTTP error: {e.response.status_code}")
                 raise
             except Exception as e:
