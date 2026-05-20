@@ -2969,7 +2969,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected void entitySpecificCleanup(T entityInterface) {}
 
-  private void invalidate(T entity) {
+  void invalidate(T entity) {
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
     CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()));
 

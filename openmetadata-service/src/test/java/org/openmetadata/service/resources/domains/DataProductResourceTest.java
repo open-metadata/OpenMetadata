@@ -795,7 +795,8 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
             .withAssets(
                 List.of(inputTable1.getEntityReference(), inputTable2.getEntityReference()));
     BulkOperationResult result =
-        repository.bulkAddInputPorts(product.getFullyQualifiedName(), bulkAssets);
+        repository.bulkAddInputPorts(
+            product.getFullyQualifiedName(), bulkAssets, Entity.ADMIN_USER_NAME);
 
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
     assertEquals(2, result.getNumberOfRowsProcessed());
@@ -812,7 +813,9 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     // Bulk remove one input port
     BulkAssets removeAssets =
         new BulkAssets().withAssets(List.of(inputTable1.getEntityReference()));
-    result = repository.bulkRemoveInputPorts(product.getFullyQualifiedName(), removeAssets);
+    result =
+        repository.bulkRemoveInputPorts(
+            product.getFullyQualifiedName(), removeAssets, Entity.ADMIN_USER_NAME);
 
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
     assertEquals(1, result.getNumberOfRowsProcessed());
@@ -846,7 +849,8 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
             .withAssets(
                 List.of(outputTable1.getEntityReference(), outputTable2.getEntityReference()));
     BulkOperationResult result =
-        repository.bulkAddOutputPorts(product.getFullyQualifiedName(), bulkAssets);
+        repository.bulkAddOutputPorts(
+            product.getFullyQualifiedName(), bulkAssets, Entity.ADMIN_USER_NAME);
 
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
     assertEquals(2, result.getNumberOfRowsProcessed());
@@ -857,7 +861,9 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     assertEquals(2, outputPorts.getData().size());
 
     // Bulk remove all output ports
-    result = repository.bulkRemoveOutputPorts(product.getFullyQualifiedName(), bulkAssets);
+    result =
+        repository.bulkRemoveOutputPorts(
+            product.getFullyQualifiedName(), bulkAssets, Entity.ADMIN_USER_NAME);
 
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
 
@@ -975,7 +981,8 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
     repository.bulkAddInputPorts(
         product.getFullyQualifiedName(),
-        new BulkAssets().withAssets(List.of(inputTable.getEntityReference())));
+        new BulkAssets().withAssets(List.of(inputTable.getEntityReference())),
+        Entity.ADMIN_USER_NAME);
 
     // Get input ports and validate full entity fields
     ResultList<Map<String, Object>> inputPorts = getInputPorts(product.getId(), 10, 0);
@@ -1006,7 +1013,8 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
     repository.bulkAddOutputPorts(
         product.getFullyQualifiedName(),
-        new BulkAssets().withAssets(List.of(outputTable.getEntityReference())));
+        new BulkAssets().withAssets(List.of(outputTable.getEntityReference())),
+        Entity.ADMIN_USER_NAME);
 
     // Get output ports and validate full entity fields
     ResultList<Map<String, Object>> outputPorts = getOutputPorts(product.getId(), 10, 0);
@@ -1040,10 +1048,12 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
     repository.bulkAddInputPorts(
         product.getFullyQualifiedName(),
-        new BulkAssets().withAssets(List.of(inputTable.getEntityReference())));
+        new BulkAssets().withAssets(List.of(inputTable.getEntityReference())),
+        Entity.ADMIN_USER_NAME);
     repository.bulkAddOutputPorts(
         product.getFullyQualifiedName(),
-        new BulkAssets().withAssets(List.of(outputTable.getEntityReference())));
+        new BulkAssets().withAssets(List.of(outputTable.getEntityReference())),
+        Entity.ADMIN_USER_NAME);
 
     // Get portsView via REST API
     WebTarget target =
@@ -1087,10 +1097,12 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
     repository.bulkAddInputPorts(
         product.getFullyQualifiedName(),
-        new BulkAssets().withAssets(List.of(inputTable.getEntityReference())));
+        new BulkAssets().withAssets(List.of(inputTable.getEntityReference())),
+        Entity.ADMIN_USER_NAME);
     repository.bulkAddOutputPorts(
         product.getFullyQualifiedName(),
-        new BulkAssets().withAssets(List.of(outputTable.getEntityReference())));
+        new BulkAssets().withAssets(List.of(outputTable.getEntityReference())),
+        Entity.ADMIN_USER_NAME);
 
     // Get input ports by name
     WebTarget inputTarget =
@@ -1702,10 +1714,12 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
           (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
       repository.bulkAddInputPorts(
           dataProduct.getFullyQualifiedName(),
-          new BulkAssets().withAssets(List.of(inputPort.getEntityReference())));
+          new BulkAssets().withAssets(List.of(inputPort.getEntityReference())),
+          Entity.ADMIN_USER_NAME);
       repository.bulkAddOutputPorts(
           dataProduct.getFullyQualifiedName(),
-          new BulkAssets().withAssets(List.of(outputPort.getEntityReference())));
+          new BulkAssets().withAssets(List.of(outputPort.getEntityReference())),
+          Entity.ADMIN_USER_NAME);
 
       // Verify ports are in source domain
       Table inputBefore = tableTest.getEntity(inputPort.getId(), "domains", ADMIN_AUTH_HEADERS);
