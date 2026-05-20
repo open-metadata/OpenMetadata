@@ -21,6 +21,7 @@ import { getApiCollectionByFQN } from '../../../rest/apiCollectionsAPI';
 import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
 import { getApplicationByName } from '../../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../../rest/applicationMarketPlaceAPI';
+import { getBotByName } from '../../../rest/botsAPI';
 import { getChartByFqn } from '../../../rest/chartsAPI';
 import { getContract } from '../../../rest/contractAPI';
 import { getDataProductByName } from '../../../rest/dataProductAPI';
@@ -41,7 +42,6 @@ import { getServiceByFQN } from '../../../rest/serviceAPI';
 import { getTagByFqn } from '../../../rest/tagAPI';
 import { getTeamByName } from '../../../rest/teamsAPI';
 import { getTestCaseByFqn, getTestSuiteByName } from '../../../rest/testAPI';
-import { getBotByName } from '../../../rest/botsAPI';
 import { getUserByName } from '../../../rest/userAPI';
 import EntityPopOverCard, { PopoverContent } from './EntityPopOverCard';
 
