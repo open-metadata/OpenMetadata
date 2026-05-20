@@ -101,19 +101,13 @@ class SSEClient:
                     "params": opts.get("params"),
                     "stream": True,
                     "timeout": timeout,
-                    "verify": (
-                        self.config.verify if self.config.verify is not None else True
-                    ),
+                    "verify": (self.config.verify if self.config.verify is not None else True),
                     "allow_redirects": (
-                        self.config.allow_redirects
-                        if self.config.allow_redirects is not None
-                        else True
+                        self.config.allow_redirects if self.config.allow_redirects is not None else True
                     ),
                     "cookies": self.config.cookies,
                 }
-                with requests.Session() as session, session.request(
-                    **request_kwargs
-                ) as response:
+                with requests.Session() as session, session.request(**request_kwargs) as response:
                     response.raise_for_status()
                     self.logger.info("Connected to SSE stream")
 
