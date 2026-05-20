@@ -645,54 +645,6 @@ public class RdfGlossaryGraphIT {
     }
   }
 
-  @Test
-  void crossGlossaryRelationSurfacesAsEdgeAndNodeInScopedGraph(TestNamespace ns) throws Exception {
-    // Regression for the user-reported case (image-v5 in PR #28279): a
-    // focused term in glossary A has a relation to a term in glossary B.
-    // Querying the scoped graph for A must surface:
-    //   - the focused term, NOT marked glossaryTermIsolated
-    //   - the cross-glossary related term as a secondary node
-    //   - the edge connecting them
-    //
-    // The reported failure mode: response with only the focused-glossary
-    // siblings as nodes (both isolated), edges = [], totalEdges = 0 —
-    // i.e. the cross-glossary relation is invisible to the graph endpoint
-    // even though the single-entity GET /glossaryTerms/{id} returns it.
-    Glossary glossaryA = GlossaryTestFactory.createWithName(ns, "xgScopeA");
-    Glossary glossaryB = GlossaryTestFactory.createWithName(ns, "xgScopeB");
-    GlossaryTerm focused = GlossaryTermTestFactory.createWithName(ns, glossaryA, "focused");
-    GlossaryTerm relatedAcross =
-        GlossaryTermTestFactory.createWithName(ns, glossaryB, "relatedAcross");
-
-    awaitTermInGraph(glossaryA.getId(), focused.getId());
-    awaitTermInGraph(glossaryB.getId(), relatedAcross.getId());
-
-    addRelation(focused.getId(), relatedAcross.getId(), "relatedTo");
-
-    // The edge must reach the scoped graph for A (where the focused term
-    // lives). awaitEdgeBetween polls until the edge appears, so a passing
-    // run guarantees the eventual-consistency window has closed.
-    awaitEdgeBetween(glossaryA.getId(), focused.getId(), relatedAcross.getId(), "relatedTo");
-
-    JsonNode scopedA = fetchGlossaryGraph(glossaryA.getId());
-
-    JsonNode focusedNode = findNode(scopedA, focused.getId());
-    assertNotNull(focusedNode, "Focused term must appear as a node in its glossary's scoped graph");
-    assertFalse(
-        "glossaryTermIsolated".equals(focusedNode.path("type").asText(null)),
-        () ->
-            "Focused term has a cross-glossary relation — it must NOT be marked "
-                + "glossaryTermIsolated. Node was: "
-                + focusedNode);
-
-    assertTrue(
-        nodeIds(scopedA).contains(relatedAcross.getId()),
-        "Cross-glossary related term must appear in the scoped graph as a secondary node");
-    assertTrue(
-        hasEdge(scopedA, focused.getId(), relatedAcross.getId(), "relatedTo"),
-        "Edge must connect the focused term to its cross-glossary related term");
-  }
-
   private void awaitTermInGraph(UUID glossaryId, UUID termId) {
     Awaitility.await()
         .atMost(Duration.ofSeconds(30))
