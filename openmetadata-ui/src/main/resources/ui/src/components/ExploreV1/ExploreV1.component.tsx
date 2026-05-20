@@ -16,10 +16,10 @@ import {
   Box,
   Button,
   Card as CoreCard,
-  Typography as CoreTypography,
   Divider,
   Dropdown,
   Toggle,
+  Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
@@ -29,6 +29,7 @@ import {
 } from '@untitledui/icons';
 import { Card, Col, Menu, Modal, Radio, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -503,132 +504,119 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
   return (
     <div className="explore-page bg-grey" data-testid="explore-page">
-      <Row className="quick-filters-container" gutter={[20, 0]} wrap={false}>
-        <Col span={24}>
-          <Card className="p-xs card-padding-0 m-b-box">
-            <Row>
-              <Col className="searched-data-container w-full">
-                <Row gutter={[0, 8]}>
-                  <Col>
-                    <ExploreQuickFilters
-                      showSelectedCounts
-                      aggregations={aggregations}
-                      fields={selectedQuickFilters}
-                      fieldsWithNullValues={SUPPORTED_EMPTY_FILTER_FIELDS}
-                      index={activeTabKey}
-                      showDeleted={showDeleted}
-                      onAdvanceSearch={() => toggleModal(true)}
-                      onChangeShowDeleted={onChangeShowDeleted}
-                      onFieldValueSelect={handleQuickFiltersValueSelect}
-                    />
-                  </Col>
-                  <Col
-                    className="d-flex items-center justify-end gap-3"
-                    flex={410}>
-                    <Button
-                      className="tw:p-0"
-                      color="tertiary"
-                      data-testid="sort-order-button"
-                      iconLeading={
-                        isAscSortOrder ? (
-                          <IconAscending
-                            style={{ fontSize: '14px' }}
-                            {...sortProps}
-                          />
-                        ) : (
-                          <IconDescending
-                            style={{ fontSize: '14px' }}
-                            {...sortProps}
-                          />
-                        )
-                      }
-                      size="sm"
-                      onClick={() =>
-                        onChangeSortOder(
-                          isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
-                        )
-                      }
-                    />
+      <Card className="p-xs card-padding-0 m-b-box">
+        <Row className="tw:mr-2" gutter={[0, 8]}>
+          <Col>
+            <ExploreQuickFilters
+              showSelectedCounts
+              aggregations={aggregations}
+              fields={selectedQuickFilters}
+              fieldsWithNullValues={SUPPORTED_EMPTY_FILTER_FIELDS}
+              index={activeTabKey}
+              showDeleted={showDeleted}
+              onAdvanceSearch={() => toggleModal(true)}
+              onChangeShowDeleted={onChangeShowDeleted}
+              onFieldValueSelect={handleQuickFiltersValueSelect}
+            />
+          </Col>
+          <Col className="d-flex items-center justify-end gap-3" flex={410}>
+            <Button
+              className="tw:p-0"
+              color="tertiary"
+              data-testid="sort-order-button"
+              iconLeading={
+                isAscSortOrder ? (
+                  <IconAscending style={{ fontSize: '14px' }} {...sortProps} />
+                ) : (
+                  <IconDescending style={{ fontSize: '14px' }} {...sortProps} />
+                )
+              }
+              size="sm"
+              onClick={() =>
+                onChangeSortOder(
+                  isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
+                )
+              }
+            />
 
-                    <SortingDropDown
-                      fieldList={translatedSortingFields}
-                      handleFieldDropDown={onChangeSortValue}
-                      sortField={sortValue}
-                    />
+            <SortingDropDown
+              fieldList={translatedSortingFields}
+              handleFieldDropDown={onChangeSortValue}
+              sortField={sortValue}
+            />
 
-                    <Divider className="tw:my-2" orientation="vertical" />
+            <Divider className="tw:my-2" orientation="vertical" />
 
-                    {(quickFilters || sqlQuery) && (
-                      <Typography.Text
-                        className="text-primary self-center cursor-pointer font-medium"
-                        data-testid="clear-filters"
-                        onClick={() => clearFilters()}>
-                        {t('label.clear-entity', {
-                          entity: t('label.all'),
-                        })}
-                      </Typography.Text>
-                    )}
+            {(quickFilters || sqlQuery) && (
+              <Typography.Text
+                className="text-primary self-center cursor-pointer font-medium"
+                data-testid="clear-filters"
+                onClick={() => clearFilters()}>
+                {t('label.clear-entity', {
+                  entity: t('label.all'),
+                })}
+              </Typography.Text>
+            )}
 
-                    <Dropdown.Root>
-                      <Button
-                        className="tw:p-0"
-                        color="tertiary"
-                        iconTrailing={<ChevronDown size={14} />}
-                        size="sm">
-                        {t('label.tool-plural')}
-                      </Button>
-                      <Dropdown.Popover>
-                        <Dropdown.Menu aria-label="Actions">
-                          <Dropdown.Item
-                            icon={Download01}
-                            label={t('label.export')}
-                            onAction={handleOpenExportScopeModal}
-                          />
+            <Dropdown.Root>
+              <Button
+                className="tw:p-0"
+                color="tertiary"
+                iconTrailing={<ChevronDown size={14} />}
+                size="sm">
+                {t('label.tool-plural')}
+              </Button>
+              <Dropdown.Popover>
+                <Dropdown.Menu aria-label="Actions">
+                  <Dropdown.Item
+                    icon={Download01}
+                    label={t('label.export')}
+                    onAction={handleOpenExportScopeModal}
+                  />
 
-                          <Dropdown.Item
-                            icon={Trash01}
-                            id="show-deleted"
-                            onAction={() => onChangeShowDeleted(!showDeleted)}>
-                            <Box justify="between">
-                              {t('label.deleted')}
-                              <Toggle isSelected={showDeleted} />
-                            </Box>
-                          </Dropdown.Item>
+                  <Dropdown.Item
+                    icon={Trash01}
+                    id="show-deleted"
+                    onAction={() => onChangeShowDeleted(!showDeleted)}>
+                    <Box justify="between">
+                      {t('label.deleted')}
+                      <Toggle isSelected={showDeleted} />
+                    </Box>
+                  </Dropdown.Item>
 
-                          <Dropdown.Item
-                            icon={FilterFunnel01}
-                            label={t('label.filter')}
-                            onAction={() => toggleModal(true)}
-                          />
-                        </Dropdown.Menu>
-                      </Dropdown.Popover>
-                    </Dropdown.Root>
-                  </Col>
-                  {isElasticSearchIssue ? (
-                    <Col span={24}>
-                      <IndexNotFoundBanner />
-                    </Col>
-                  ) : (
-                    <></>
-                  )}
-                  {sqlQuery && (
-                    <Col span={24}>
-                      <AppliedFilterText
-                        filterText={sqlQuery}
-                        onEdit={() => toggleModal(true)}
-                        onClear={() => onResetAllFilters()}
-                      />
-                    </Col>
-                  )}
-                </Row>
-              </Col>
-            </Row>
-          </Card>
-        </Col>
-      </Row>
+                  <Dropdown.Item
+                    icon={FilterFunnel01}
+                    label={t('label.filter')}
+                    onAction={() => toggleModal(true)}
+                  />
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
+          </Col>
+          {isElasticSearchIssue ? (
+            <Col span={24}>
+              <IndexNotFoundBanner />
+            </Col>
+          ) : (
+            <></>
+          )}
+          {sqlQuery && (
+            <Col span={24}>
+              <AppliedFilterText
+                filterText={sqlQuery}
+                onClear={() => onResetAllFilters()}
+                onEdit={() => toggleModal(true)}
+              />
+            </Col>
+          )}
+        </Row>
+      </Card>
+
       <ResizableLeftPanels
         showLearningIcon
-        className="content-height-with-resizable-panel"
+        className={classNames('content-height-with-resizable-panel', {
+          'filter-applied': Boolean(sqlQuery),
+        })}
         firstPanel={{
           className: 'content-resizable-panel-container',
           flex: 0.2,
@@ -637,11 +625,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
           children: <div className="p-x-sm">{exploreLeftPanel}</div>,
         }}
         secondPanel={{
-          className: 'content-height-with-resizable-panel',
           flex: 0.8,
           minWidth: 800,
           children: (
-            <Box colGap={3} className="tw:h-full">
+            <Box className="tw:h-full" colGap={3}>
               <Card className="h-full tw:flex-1 explore-main-card">
                 {!loading && !isElasticSearchIssue ? (
                   <SearchedData
@@ -661,7 +648,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
               </Card>
 
               {showSummaryPanel && entityDetails && !loading && (
-                <Box className="explore-page-right-panel">
+                <div className="explore-page-right-panel">
                   <EntitySummaryPanel
                     entityDetails={{ details: entityDetails }}
                     handleClosePanel={handleClosePanel}
@@ -683,7 +670,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     }
                     panelPath="explore"
                   />
-                </Box>
+                </div>
               )}
             </Box>
           ),

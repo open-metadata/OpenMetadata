@@ -141,8 +141,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
     onChange?: (value: boolean) => void;
   } & Record<string, unknown>) => (
     <input
-      type="checkbox"
       checked={isSelected}
+      type="checkbox"
       onChange={(e) => onChange?.(e.target.checked)}
       {...props}
     />

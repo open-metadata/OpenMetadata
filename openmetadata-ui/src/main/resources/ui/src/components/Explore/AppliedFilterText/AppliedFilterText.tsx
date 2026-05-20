@@ -35,14 +35,15 @@ const AppliedFilterText: FC<AppliedFilterTextProps> = ({
   return (
     <Box
       align="center"
+      className="tw:ml-2"
       colGap={2}
       data-testid="advance-search-filter-container">
       <Typography color="tertiary">{t('label.advanced-search')}</Typography>
       <Box
         align="center"
-        justify="between"
-        className="advanced-filter-text tw:flex-1">
-        <Box colGap={2} className="w-full">
+        className="advanced-filter-text tw:flex-1"
+        justify="between">
+        <Box className="w-full" colGap={2}>
           <Icon
             alt="success-badge"
             className="align-middle m-l-xs"
@@ -55,16 +56,16 @@ const AppliedFilterText: FC<AppliedFilterTextProps> = ({
         </Box>
         <Box>
           <Button
+            color="tertiary"
             data-testid="advance-search-filter-btn"
             iconLeading={<Edit05 size={16} />}
-            color="tertiary"
             size="sm"
             onClick={onEdit}
           />
           <Button
-            data-testid="advance-search-filter-btn"
-            iconLeading={<XCircle size={16} />}
             color="tertiary"
+            data-testid="advance-search-clear-btn"
+            iconLeading={<XCircle size={16} />}
             onClick={onClear}
           />
         </Box>
