@@ -1,15 +1,21 @@
 package org.openmetadata.it.factories;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
 import org.openmetadata.it.util.SdkClients;
@@ -59,11 +65,13 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntitiesEdge;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.SearchIndexDataType;
 import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.StoredProcedureLanguage;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Tables;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,18 +89,27 @@ import org.slf4j.LoggerFactory;
  * namespace per test method.
  *
  * <p>Dispatch order respects prerequisites: services and parent containers run first,
- * then leaf entities, then quality + lineage which reference already-created assets.
- * Time-series telemetry kinds ({@code TEST_CASE_RESULT}, web analytics, cost analysis,
- * {@code ENTITY_REPORT_DATA}) are declared in {@link EntityKind} for parity with
- * {@code perf-test.sh} but are not yet implemented — their endpoints don't follow the
- * entity-resource shape this loader is built around. Track via the no-op branches in
- * {@link #load} and add as needed.
+ * then leaf entities, then quality + lineage which reference already-created assets, then
+ * time-series telemetry which references collected test cases / tables. Mirrors
+ * {@code perf-test.sh}'s phase layout (phases 1-7) so a Java UIIT can produce an
+ * equivalent shape of data without shelling out to Python.
  */
 public final class EntityLoader {
 
   private static final Logger LOG = LoggerFactory.getLogger(EntityLoader.class);
   private static final long FUTURE_TIMEOUT_SECONDS = 600;
   private static final String EMAIL_DOMAIN = "@loader.openmetadata.test";
+
+  // Lineage mix mirrors perf-test.sh:2296-2298 — 60% table→table, 25% table→dashboard,
+  // 15% pipeline→table. Ratios fall back gracefully when the dependent collected sets
+  // are empty (no dashboards seeded → those edges become table→table; etc.).
+  private static final double LINEAGE_RATIO_T2T = 0.60;
+  private static final double LINEAGE_RATIO_T2D = 0.25;
+
+  // Time-series endpoints used by perf-test.sh phase 7.
+  private static final String DATA_INSIGHTS_PATH = "/v1/analytics/dataInsights/data";
+  private static final String TEST_CASE_RESULT_PATH_PREFIX =
+      "/v1/dataQuality/testCases/testCaseResults/";
 
   private EntityLoader() {}
 
@@ -101,15 +118,16 @@ public final class EntityLoader {
         "EntityLoader starting: total={} parallelWorkers={}", spec.total(), spec.parallelWorkers());
     final Instant start = Instant.now();
     final EntityLoadSummary.Builder summary = new EntityLoadSummary.Builder();
+    final LoaderContext ctx = new LoaderContext();
     final ExecutorService executor = Executors.newFixedThreadPool(spec.parallelWorkers());
     try {
-      runAssetKinds(spec, ns, executor, summary);
+      runAssetKinds(spec, ns, executor, summary, ctx);
       runTaxonomyKinds(spec, ns, executor, summary);
       runOrgKinds(spec, ns, executor, summary);
       runGovernanceKinds(spec, ns, executor, summary);
-      runQualityKinds(spec, ns, executor, summary);
-      runGraphKinds(spec, ns, executor, summary);
-      runTimeSeriesKinds(spec, summary);
+      runQualityKinds(spec, ns, executor, summary, ctx);
+      runGraphKinds(spec, ns, executor, summary, ctx);
+      runTimeSeriesKinds(spec, executor, summary, ctx);
     } finally {
       shutdown(executor);
     }
@@ -126,11 +144,16 @@ public final class EntityLoader {
       final EntityLoadSpec spec,
       final TestNamespace ns,
       final ExecutorService executor,
-      final EntityLoadSummary.Builder summary) {
-    runIfRequested(EntityKind.TABLE, spec, summary, () -> loadTables(spec, ns, executor, summary));
+      final EntityLoadSummary.Builder summary,
+      final LoaderContext ctx) {
+    runIfRequested(
+        EntityKind.TABLE, spec, summary, () -> loadTables(spec, ns, executor, summary, ctx));
     runIfRequested(EntityKind.TOPIC, spec, summary, () -> loadTopics(spec, ns, executor, summary));
     runIfRequested(
-        EntityKind.DASHBOARD, spec, summary, () -> loadDashboards(spec, ns, executor, summary));
+        EntityKind.DASHBOARD,
+        spec,
+        summary,
+        () -> loadDashboards(spec, ns, executor, summary, ctx));
     runIfRequested(EntityKind.CHART, spec, summary, () -> loadCharts(spec, ns, executor, summary));
     runIfRequested(
         EntityKind.DASHBOARD_DATA_MODEL,
@@ -138,7 +161,7 @@ public final class EntityLoader {
         summary,
         () -> loadDashboardDataModels(spec, ns, executor, summary));
     runIfRequested(
-        EntityKind.PIPELINE, spec, summary, () -> loadPipelines(spec, ns, executor, summary));
+        EntityKind.PIPELINE, spec, summary, () -> loadPipelines(spec, ns, executor, summary, ctx));
     runIfRequested(
         EntityKind.ML_MODEL, spec, summary, () -> loadMlModels(spec, ns, executor, summary));
     runIfRequested(
@@ -213,43 +236,62 @@ public final class EntityLoader {
       final EntityLoadSpec spec,
       final TestNamespace ns,
       final ExecutorService executor,
-      final EntityLoadSummary.Builder summary) {
+      final EntityLoadSummary.Builder summary,
+      final LoaderContext ctx) {
     runIfRequested(
         EntityKind.TEST_SUITE, spec, summary, () -> loadTestSuites(spec, ns, executor, summary));
     runIfRequested(
-        EntityKind.TEST_CASE, spec, summary, () -> loadTestCases(spec, ns, executor, summary));
+        EntityKind.TEST_CASE, spec, summary, () -> loadTestCases(spec, ns, executor, summary, ctx));
   }
 
   private static void runGraphKinds(
       final EntityLoadSpec spec,
       final TestNamespace ns,
       final ExecutorService executor,
-      final EntityLoadSummary.Builder summary) {
+      final EntityLoadSummary.Builder summary,
+      final LoaderContext ctx) {
     runIfRequested(
         EntityKind.LINEAGE_EDGE,
         spec,
         summary,
-        () -> loadLineageEdges(spec, ns, executor, summary));
+        () -> loadLineageEdges(spec, ns, executor, summary, ctx));
   }
 
   private static void runTimeSeriesKinds(
-      final EntityLoadSpec spec, final EntityLoadSummary.Builder summary) {
-    warnIfRequested(EntityKind.TEST_CASE_RESULT, spec);
-    warnIfRequested(EntityKind.ENTITY_REPORT_DATA, spec);
-    warnIfRequested(EntityKind.WEB_ANALYTIC_VIEW, spec);
-    warnIfRequested(EntityKind.WEB_ANALYTIC_ACTIVITY, spec);
-    warnIfRequested(EntityKind.RAW_COST_ANALYSIS, spec);
-    warnIfRequested(EntityKind.AGG_COST_ANALYSIS, spec);
-  }
-
-  private static void warnIfRequested(final EntityKind kind, final EntityLoadSpec spec) {
-    if (spec.countOf(kind) > 0) {
-      LOG.warn(
-          "Requested {} {} but EntityLoader does not yet implement time-series loaders;"
-              + " skipping. Track parity gap with perf-test.sh.",
-          spec.countOf(kind),
-          kind);
-    }
+      final EntityLoadSpec spec,
+      final ExecutorService executor,
+      final EntityLoadSummary.Builder summary,
+      final LoaderContext ctx) {
+    runIfRequested(
+        EntityKind.TEST_CASE_RESULT,
+        spec,
+        summary,
+        () -> loadTestCaseResults(spec, executor, summary, ctx));
+    runIfRequested(
+        EntityKind.ENTITY_REPORT_DATA,
+        spec,
+        summary,
+        () -> loadEntityReportData(spec, executor, summary));
+    runIfRequested(
+        EntityKind.WEB_ANALYTIC_VIEW,
+        spec,
+        summary,
+        () -> loadWebAnalyticViews(spec, executor, summary));
+    runIfRequested(
+        EntityKind.WEB_ANALYTIC_ACTIVITY,
+        spec,
+        summary,
+        () -> loadWebAnalyticActivity(spec, executor, summary));
+    runIfRequested(
+        EntityKind.RAW_COST_ANALYSIS,
+        spec,
+        summary,
+        () -> loadRawCostAnalysis(spec, executor, summary, ctx));
+    runIfRequested(
+        EntityKind.AGG_COST_ANALYSIS,
+        spec,
+        summary,
+        () -> loadAggCostAnalysis(spec, executor, summary));
   }
 
   private static void runIfRequested(
@@ -273,7 +315,8 @@ public final class EntityLoader {
       final EntityLoadSpec spec,
       final TestNamespace ns,
       final ExecutorService executor,
-      final EntityLoadSummary.Builder summary) {
+      final EntityLoadSummary.Builder summary,
+      final LoaderContext ctx) {
     final String schemaFqn = ensureTablesSchema(ns).getFullyQualifiedName();
     final int count = spec.countOf(EntityKind.TABLE);
     final int columns = spec.columnsPerTable();
@@ -285,11 +328,13 @@ public final class EntityLoader {
       futures.add(
           executor.submit(
               () -> {
-                Tables.create()
-                    .name(namePrefix + index)
-                    .inSchema(schemaFqn)
-                    .withColumns(buildColumns(columns))
-                    .execute();
+                final Table created =
+                    Tables.create()
+                        .name(namePrefix + index)
+                        .inSchema(schemaFqn)
+                        .withColumns(buildColumns(columns))
+                        .execute();
+                ctx.recordTable(created);
                 return null;
               }));
     }
@@ -327,7 +372,8 @@ public final class EntityLoader {
       final EntityLoadSpec spec,
       final TestNamespace ns,
       final ExecutorService executor,
-      final EntityLoadSummary.Builder summary) {
+      final EntityLoadSummary.Builder summary,
+      final LoaderContext ctx) {
     final String serviceFqn = ensureDashboardService(ns).getFullyQualifiedName();
     final int count = spec.countOf(EntityKind.DASHBOARD);
     final String namePrefix = ns.prefix("dashboard") + "_";
@@ -337,10 +383,13 @@ public final class EntityLoader {
         count,
         EntityKind.DASHBOARD,
         index ->
-            SdkClients.adminClient()
-                .dashboards()
-                .create(
-                    new CreateDashboard().withName(namePrefix + index).withService(serviceFqn)));
+            ctx.recordDashboard(
+                SdkClients.adminClient()
+                    .dashboards()
+                    .create(
+                        new CreateDashboard()
+                            .withName(namePrefix + index)
+                            .withService(serviceFqn))));
     summary.recordCreated(EntityKind.DASHBOARD, count);
   }
 
@@ -397,7 +446,8 @@ public final class EntityLoader {
       final EntityLoadSpec spec,
       final TestNamespace ns,
       final ExecutorService executor,
-      final EntityLoadSummary.Builder summary) {
+      final EntityLoadSummary.Builder summary,
+      final LoaderContext ctx) {
     final PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
     final String serviceFqn = service.getFullyQualifiedName();
     final int count = spec.countOf(EntityKind.PIPELINE);
@@ -408,9 +458,13 @@ public final class EntityLoader {
         count,
         EntityKind.PIPELINE,
         index ->
-            SdkClients.adminClient()
-                .pipelines()
-                .create(new CreatePipeline().withName(namePrefix + index).withService(serviceFqn)));
+            ctx.recordPipeline(
+                SdkClients.adminClient()
+                    .pipelines()
+                    .create(
+                        new CreatePipeline()
+                            .withName(namePrefix + index)
+                            .withService(serviceFqn))));
     summary.recordCreated(EntityKind.PIPELINE, count);
   }
 
@@ -800,7 +854,8 @@ public final class EntityLoader {
       final EntityLoadSpec spec,
       final TestNamespace ns,
       final ExecutorService executor,
-      final EntityLoadSummary.Builder summary) {
+      final EntityLoadSummary.Builder summary,
+      final LoaderContext ctx) {
     final Table table = ensureQueryTable(ns);
     final String entityLink = "<#E::table::" + table.getFullyQualifiedName() + ">";
     final int count = spec.countOf(EntityKind.TEST_CASE);
@@ -811,44 +866,111 @@ public final class EntityLoader {
         count,
         EntityKind.TEST_CASE,
         index ->
-            SdkClients.adminClient()
-                .testCases()
-                .create(
-                    new CreateTestCase()
-                        .withName(namePrefix + index)
-                        .withEntityLink(entityLink)
-                        .withTestDefinition("tableRowCountToEqual")));
+            ctx.recordTestCase(
+                SdkClients.adminClient()
+                    .testCases()
+                    .create(
+                        new CreateTestCase()
+                            .withName(namePrefix + index)
+                            .withEntityLink(entityLink)
+                            .withTestDefinition("tableRowCountToEqual"))));
     summary.recordCreated(EntityKind.TEST_CASE, count);
   }
 
   // ---------------- Graph loaders ----------------
 
+  /**
+   * Mixed lineage shape from {@code perf-test.sh:2296-2322}: 60% table→table, 25%
+   * table→dashboard, 15% pipeline→table. Dependent edge types fall back to table→table
+   * when the relevant collected set is empty (e.g. no DASHBOARD seeded → those edges
+   * become table→table), matching the script's fallback behaviour. If TABLE wasn't
+   * seeded we synthesise a chain of N+1 tables so callers can request lineage
+   * standalone, the same convenience the original loader offered.
+   */
   private static void loadLineageEdges(
       final EntityLoadSpec spec,
       final TestNamespace ns,
       final ExecutorService executor,
-      final EntityLoadSummary.Builder summary) {
-    final List<Table> nodes = ensureLineageNodes(ns, spec.countOf(EntityKind.LINEAGE_EDGE) + 1);
+      final EntityLoadSummary.Builder summary,
+      final LoaderContext ctx) {
     final int count = spec.countOf(EntityKind.LINEAGE_EDGE);
+    final List<EntityReference> tables = lineageTableNodes(ns, ctx, count + 1);
+    final List<EntityReference> dashboards = ctx.dashboards();
+    final List<EntityReference> pipelines = ctx.pipelines();
+    final List<EntityReference[]> tasks = planLineageTasks(count, tables, dashboards, pipelines);
     final OpenMetadataClient client = SdkClients.adminClient();
 
     submitBatch(
         executor,
-        count,
+        tasks.size(),
         EntityKind.LINEAGE_EDGE,
         index -> {
-          final Table from = nodes.get(index);
-          final Table to = nodes.get(index + 1);
+          final EntityReference[] pair = tasks.get(index);
           client
               .lineage()
               .addLineage(
                   new AddLineage()
-                      .withEdge(
-                          new EntitiesEdge()
-                              .withFromEntity(from.getEntityReference())
-                              .withToEntity(to.getEntityReference())));
+                      .withEdge(new EntitiesEdge().withFromEntity(pair[0]).withToEntity(pair[1])));
         });
-    summary.recordCreated(EntityKind.LINEAGE_EDGE, count);
+    summary.recordCreated(EntityKind.LINEAGE_EDGE, tasks.size());
+  }
+
+  private static List<EntityReference> lineageTableNodes(
+      final TestNamespace ns, final LoaderContext ctx, final int minimumCount) {
+    if (ctx.tables().size() >= minimumCount) {
+      return ctx.tables();
+    }
+    // Caller asked for lineage without seeding tables; synthesise a chain. Mirrors the
+    // single-kind fallback the original loader used so a {LINEAGE_EDGE: N} spec is
+    // self-sufficient.
+    final List<EntityReference> synthesised = new ArrayList<>(minimumCount);
+    final String schemaFqn = ensureTablesSchema(ns).getFullyQualifiedName();
+    for (int i = 0; i < minimumCount; i++) {
+      final Table table =
+          TableTestFactory.createSimpleWithName(
+              ns.prefix("lineage_node_" + i + "_" + UUID.randomUUID()), ns, schemaFqn);
+      synthesised.add(table.getEntityReference());
+      ctx.recordTable(table);
+    }
+    return synthesised;
+  }
+
+  private static List<EntityReference[]> planLineageTasks(
+      final int count,
+      final List<EntityReference> tables,
+      final List<EntityReference> dashboards,
+      final List<EntityReference> pipelines) {
+    int t2tCount = (int) Math.round(count * LINEAGE_RATIO_T2T);
+    int t2dCount = (int) Math.round(count * LINEAGE_RATIO_T2D);
+    int p2tCount = count - t2tCount - t2dCount;
+    if (dashboards.isEmpty()) {
+      t2tCount += t2dCount;
+      t2dCount = 0;
+    }
+    if (pipelines.isEmpty()) {
+      t2tCount += p2tCount;
+      p2tCount = 0;
+    }
+    final List<EntityReference[]> tasks = new ArrayList<>(count);
+    for (int i = 0; i < t2tCount; i++) {
+      tasks.add(
+          new EntityReference[] {
+            tables.get(i % tables.size()), tables.get((i + 1) % tables.size())
+          });
+    }
+    for (int i = 0; i < t2dCount; i++) {
+      tasks.add(
+          new EntityReference[] {
+            tables.get(i % tables.size()), dashboards.get(i % dashboards.size())
+          });
+    }
+    for (int i = 0; i < p2tCount; i++) {
+      tasks.add(
+          new EntityReference[] {
+            pipelines.get(i % pipelines.size()), tables.get((i + tables.size() / 2) % tables.size())
+          });
+    }
+    return tasks;
   }
 
   // ---------------- Prerequisite helpers ----------------
@@ -976,6 +1098,275 @@ public final class EntityLoader {
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       executor.shutdownNow();
+    }
+  }
+
+  // ---------------- Time-series loaders (perf-test.sh phase 7) ----------------
+
+  private static void loadTestCaseResults(
+      final EntityLoadSpec spec,
+      final ExecutorService executor,
+      final EntityLoadSummary.Builder summary,
+      final LoaderContext ctx) {
+    final List<String> fqns = ctx.testCaseFqns();
+    if (fqns.isEmpty()) {
+      LOG.warn("Skipping testCaseResults: no test cases were created");
+      return;
+    }
+    final int count = spec.countOf(EntityKind.TEST_CASE_RESULT);
+    final long baseTs = System.currentTimeMillis();
+    final String[] statuses = {"Success", "Failed", "Aborted"};
+
+    submitBatch(
+        executor,
+        count,
+        EntityKind.TEST_CASE_RESULT,
+        index -> {
+          final String fqn = fqns.get(index % fqns.size());
+          final String path =
+              TEST_CASE_RESULT_PATH_PREFIX + URLEncoder.encode(fqn, StandardCharsets.UTF_8);
+          final Map<String, Object> body = new HashMap<>();
+          body.put("timestamp", baseTs - (index * 3_600_000L));
+          body.put("testCaseStatus", statuses[index % statuses.length]);
+          body.put("result", "Loader result " + index);
+          body.put(
+              "testResultValue",
+              List.of(Map.of("name", "value", "value", randomDoubleStr(0.0, 100.0))));
+          httpPost(path, body);
+        });
+    summary.recordCreated(EntityKind.TEST_CASE_RESULT, count);
+  }
+
+  private static void loadEntityReportData(
+      final EntityLoadSpec spec,
+      final ExecutorService executor,
+      final EntityLoadSummary.Builder summary) {
+    final int count = spec.countOf(EntityKind.ENTITY_REPORT_DATA);
+    final long baseTs = System.currentTimeMillis();
+    final String[] entityTypes = {"table", "topic", "dashboard", "pipeline", "mlmodel"};
+
+    submitBatch(
+        executor,
+        count,
+        EntityKind.ENTITY_REPORT_DATA,
+        index -> {
+          final int entityCount = ThreadLocalRandom.current().nextInt(1, 1001);
+          final int hasOwner = ThreadLocalRandom.current().nextInt(0, entityCount + 1);
+          final Map<String, Object> data = new HashMap<>();
+          data.put("entityType", entityTypes[index % entityTypes.length]);
+          data.put("entityTier", "Tier.Tier" + ((index % 5) + 1));
+          data.put("serviceName", "loader-test-service");
+          data.put("completedDescriptions", ThreadLocalRandom.current().nextInt(0, 101));
+          data.put("missingDescriptions", ThreadLocalRandom.current().nextInt(0, 51));
+          data.put("hasOwner", hasOwner);
+          data.put("missingOwner", entityCount - hasOwner);
+          data.put("entityCount", entityCount);
+          httpPost(DATA_INSIGHTS_PATH, dataInsightBody(baseTs, index, "entityReportData", data));
+        });
+    summary.recordCreated(EntityKind.ENTITY_REPORT_DATA, count);
+  }
+
+  private static void loadWebAnalyticViews(
+      final EntityLoadSpec spec,
+      final ExecutorService executor,
+      final EntityLoadSummary.Builder summary) {
+    final int count = spec.countOf(EntityKind.WEB_ANALYTIC_VIEW);
+    final long baseTs = System.currentTimeMillis();
+
+    submitBatch(
+        executor,
+        count,
+        EntityKind.WEB_ANALYTIC_VIEW,
+        index -> {
+          final Map<String, Object> data = new HashMap<>();
+          data.put("entityType", "table");
+          data.put("entityFqn", "loader-test-service.db.public.table_" + index);
+          data.put("entityHref", "https://loader.test/table/" + index);
+          data.put("owner", "user_" + (index % 50));
+          data.put("views", ThreadLocalRandom.current().nextInt(1, 501));
+          httpPost(
+              DATA_INSIGHTS_PATH,
+              dataInsightBody(
+                  baseTs - (index * 60_000L), 0, "webAnalyticEntityViewReportData", data));
+        });
+    summary.recordCreated(EntityKind.WEB_ANALYTIC_VIEW, count);
+  }
+
+  private static void loadWebAnalyticActivity(
+      final EntityLoadSpec spec,
+      final ExecutorService executor,
+      final EntityLoadSummary.Builder summary) {
+    final int count = spec.countOf(EntityKind.WEB_ANALYTIC_ACTIVITY);
+    final long baseTs = System.currentTimeMillis();
+
+    submitBatch(
+        executor,
+        count,
+        EntityKind.WEB_ANALYTIC_ACTIVITY,
+        index -> {
+          final long ts = baseTs - (index * 60_000L);
+          final Map<String, Object> data = new HashMap<>();
+          data.put("userName", "loader_user_" + index);
+          data.put("userId", UUID.randomUUID().toString());
+          data.put("team", "loader-test-team");
+          data.put("totalSessions", ThreadLocalRandom.current().nextInt(1, 21));
+          data.put("totalSessionDuration", ThreadLocalRandom.current().nextInt(10, 3601));
+          data.put("totalPageView", ThreadLocalRandom.current().nextInt(1, 101));
+          data.put("lastSession", ts);
+          httpPost(
+              DATA_INSIGHTS_PATH,
+              dataInsightBody(ts, 0, "webAnalyticUserActivityReportData", data));
+        });
+    summary.recordCreated(EntityKind.WEB_ANALYTIC_ACTIVITY, count);
+  }
+
+  private static void loadRawCostAnalysis(
+      final EntityLoadSpec spec,
+      final ExecutorService executor,
+      final EntityLoadSummary.Builder summary,
+      final LoaderContext ctx) {
+    final int count = spec.countOf(EntityKind.RAW_COST_ANALYSIS);
+    final long baseTs = System.currentTimeMillis();
+    final List<EntityReference> tables = ctx.tables();
+
+    submitBatch(
+        executor,
+        count,
+        EntityKind.RAW_COST_ANALYSIS,
+        index -> {
+          final Map<String, Object> entityRef = new HashMap<>();
+          if (tables.isEmpty()) {
+            entityRef.put("id", UUID.randomUUID().toString());
+            entityRef.put("type", "table");
+            entityRef.put("fullyQualifiedName", "loader-test-service.db.public.table_" + index);
+          } else {
+            final EntityReference ref = tables.get(index % tables.size());
+            entityRef.put("id", ref.getId().toString());
+            entityRef.put("type", "table");
+            entityRef.put("fullyQualifiedName", ref.getFullyQualifiedName());
+          }
+          final Map<String, Object> data = new HashMap<>();
+          data.put("entity", entityRef);
+          data.put("sizeInByte", ThreadLocalRandom.current().nextDouble(100.0, 100_000.0));
+          httpPost(
+              DATA_INSIGHTS_PATH,
+              dataInsightBody(
+                  baseTs - (index * 86_400_000L), 0, "rawCostAnalysisReportData", data));
+        });
+    summary.recordCreated(EntityKind.RAW_COST_ANALYSIS, count);
+  }
+
+  private static void loadAggCostAnalysis(
+      final EntityLoadSpec spec,
+      final ExecutorService executor,
+      final EntityLoadSummary.Builder summary) {
+    final int count = spec.countOf(EntityKind.AGG_COST_ANALYSIS);
+    final long baseTs = System.currentTimeMillis();
+
+    submitBatch(
+        executor,
+        count,
+        EntityKind.AGG_COST_ANALYSIS,
+        index -> {
+          final Map<String, Object> data = new HashMap<>();
+          data.put("entityType", "table");
+          data.put("serviceName", "loader-test-service");
+          data.put("serviceType", "BigQuery");
+          data.put("totalSize", ThreadLocalRandom.current().nextDouble(1000.0, 1_000_000.0));
+          data.put("totalCount", ThreadLocalRandom.current().nextInt(100, 100_001));
+          data.put("unusedDataAssets", costAssetBuckets());
+          data.put("frequentlyUsedDataAssets", costAssetBuckets());
+          httpPost(
+              DATA_INSIGHTS_PATH,
+              dataInsightBody(
+                  baseTs - (index * 86_400_000L), 0, "aggregatedCostAnalysisReportData", data));
+        });
+    summary.recordCreated(EntityKind.AGG_COST_ANALYSIS, count);
+  }
+
+  private static Map<String, Object> dataInsightBody(
+      final long timestamp,
+      final int index,
+      final String reportDataType,
+      final Map<String, Object> data) {
+    final Map<String, Object> body = new HashMap<>();
+    body.put("timestamp", timestamp - (index * 86_400_000L));
+    body.put("reportDataType", reportDataType);
+    body.put("data", data);
+    return body;
+  }
+
+  private static Map<String, Object> costAssetBuckets() {
+    final Map<String, Object> count = new HashMap<>();
+    final Map<String, Object> size = new HashMap<>();
+    for (final String window :
+        List.of("threeDays", "sevenDays", "fourteenDays", "thirtyDays", "sixtyDays")) {
+      count.put(window, ThreadLocalRandom.current().nextInt(1, 51));
+      size.put(window, ThreadLocalRandom.current().nextInt(100, 10_001));
+    }
+    return Map.of(
+        "count",
+        count,
+        "size",
+        size,
+        "totalSize",
+        ThreadLocalRandom.current().nextInt(1000, 100_001),
+        "totalCount",
+        ThreadLocalRandom.current().nextInt(1, 51));
+  }
+
+  private static String randomDoubleStr(final double min, final double max) {
+    return String.format("%.2f", ThreadLocalRandom.current().nextDouble(min, max));
+  }
+
+  private static void httpPost(final String path, final Map<String, Object> body) {
+    SdkClients.adminClient().getHttpClient().execute(HttpMethod.POST, path, body, Void.class);
+  }
+
+  // ---------------- Collected-entity context ----------------
+
+  /**
+   * Thread-safe accumulator of entities created during a load run, so downstream loaders
+   * (lineage, time-series) can reference real IDs/FQNs instead of fabricating them. One
+   * instance per {@link #load} invocation; no global state.
+   */
+  private static final class LoaderContext {
+    private final List<EntityReference> tables = Collections.synchronizedList(new ArrayList<>());
+    private final List<EntityReference> dashboards =
+        Collections.synchronizedList(new ArrayList<>());
+    private final List<EntityReference> pipelines = Collections.synchronizedList(new ArrayList<>());
+    private final List<String> testCaseFqns = Collections.synchronizedList(new ArrayList<>());
+
+    void recordTable(final Table table) {
+      tables.add(table.getEntityReference());
+    }
+
+    void recordDashboard(final org.openmetadata.schema.entity.data.Dashboard dashboard) {
+      dashboards.add(dashboard.getEntityReference());
+    }
+
+    void recordPipeline(final org.openmetadata.schema.entity.data.Pipeline pipeline) {
+      pipelines.add(pipeline.getEntityReference());
+    }
+
+    void recordTestCase(final org.openmetadata.schema.tests.TestCase testCase) {
+      testCaseFqns.add(testCase.getFullyQualifiedName());
+    }
+
+    List<EntityReference> tables() {
+      return List.copyOf(tables);
+    }
+
+    List<EntityReference> dashboards() {
+      return List.copyOf(dashboards);
+    }
+
+    List<EntityReference> pipelines() {
+      return List.copyOf(pipelines);
+    }
+
+    List<String> testCaseFqns() {
+      return List.copyOf(testCaseFqns);
     }
   }
 }
