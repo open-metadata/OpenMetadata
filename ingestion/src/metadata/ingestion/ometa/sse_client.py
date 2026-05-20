@@ -48,6 +48,13 @@ class SSEClient:
         Args:
             method (str): The HTTP method to use.
             path (str): The path to the SSE stream.
+            data (dict | None): Request body sent as JSON for non-GET methods, or as
+                query parameters for GET. Defaults to None (no body / no params).
+            timeout (float | tuple[float, float] | None): Per-call timeout passed to
+                ``requests``. ``None`` (the default) disables timeouts, which matches
+                SSE semantics where streams can have long idle periods between events.
+                Pass a single float to set both connect and read timeouts, or a
+                ``(connect, read)`` tuple to set them independently.
 
         Returns:
             Generator[Any, Any, None]: A generator of events.
@@ -106,6 +113,7 @@ class SSEClient:
                         self.config.allow_redirects if self.config.allow_redirects is not None else True
                     ),
                     "cookies": self.config.cookies,
+                    "cert": self.config.cert,
                 }
                 with requests.Session() as session, session.request(**request_kwargs) as response:
                     response.raise_for_status()
