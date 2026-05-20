@@ -57,6 +57,12 @@ class TestUnitycatalogOmetaTagCallArgs:
         assert args["classification_name"] == UNITY_CATALOG_VALUELESS_CLASSIFICATION
         assert args["tags"] == ["plain_tag"]
 
+    def test_whitespace_only_tag_value_is_treated_as_valueless(self):
+        args = UnitycatalogSource._ometa_tag_call_args("plain_tag", "   ")
+
+        assert args["classification_name"] == UNITY_CATALOG_VALUELESS_CLASSIFICATION
+        assert args["tags"] == ["plain_tag"]
+
     def test_valueless_tag_without_dot_uses_tag_name_verbatim(self):
         args = UnitycatalogSource._ometa_tag_call_args("simple_label", None)
 

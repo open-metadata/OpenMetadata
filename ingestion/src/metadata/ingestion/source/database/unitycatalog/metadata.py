@@ -564,8 +564,8 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
     def _ometa_tag_call_args(tag_name: str, tag_value: str | None) -> dict:
         """Map a Unity Catalog (tag_name, tag_value) pair onto OM's
         classification/tag pair, falling back to UNITY_CATALOG_VALUELESS_CLASSIFICATION
-        when tag_value is empty."""
-        if tag_value:
+        when tag_value is empty or whitespace-only."""
+        if tag_value and str(tag_value).strip():
             return {
                 "tags": [tag_value],
                 "classification_name": tag_name,

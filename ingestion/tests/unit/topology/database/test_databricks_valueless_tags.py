@@ -17,6 +17,8 @@ to support Databricks system-generated / user-defined tags that carry only a
 name and no value (issue #28245).
 """
 
+from unittest.mock import MagicMock, patch
+
 from metadata.ingestion.source.database.databricks.metadata import (
     DATABRICKS_TAG,
     DATABRICKS_TAG_CLASSIFICATION,
@@ -57,6 +59,12 @@ class TestDatabricksOmetaTagCallArgs:
         assert args["classification_name"] == DATABRICKS_VALUELESS_CLASSIFICATION
         assert args["tags"] == ["plain_tag"]
 
+    def test_whitespace_only_tag_value_is_treated_as_valueless(self):
+        args = DatabricksSource._ometa_tag_call_args("plain_tag", "   ")
+
+        assert args["classification_name"] == DATABRICKS_VALUELESS_CLASSIFICATION
+        assert args["tags"] == ["plain_tag"]
+
     def test_valueless_tag_without_dot_uses_tag_name_verbatim(self):
         args = DatabricksSource._ometa_tag_call_args("simple_label", None)
 
@@ -65,3 +73,27 @@ class TestDatabricksOmetaTagCallArgs:
 
     def test_valueless_classification_constant_value(self):
         assert DATABRICKS_VALUELESS_CLASSIFICATION == "DATABRICKS_TAGS"
+
+
+class TestDatabricksYieldSkipsEmptyTagName:
+    """Rows with an empty/None tag_name are skipped so an empty classification
+    name is never sent to the API (parity with the Unity Catalog connector).
+    """
+
+    @patch(
+        "metadata.ingestion.source.database.databricks.metadata.get_ometa_tag_and_classification",
+        return_value=[],
+    )
+    @patch("metadata.ingestion.source.database.databricks.metadata.fqn")
+    def test_empty_or_none_tag_name_is_skipped(self, mock_fqn, mock_get_tag):
+        source = DatabricksSource.__new__(DatabricksSource)
+        source.metadata = MagicMock()
+        source.context = MagicMock()
+        source.catalog_tags = {"db": [("", "value"), (None, None), ("real_tag", None)]}
+
+        list(source.yield_database_tag("db"))
+
+        assert mock_get_tag.call_count == 1
+        _, kwargs = mock_get_tag.call_args
+        assert kwargs["classification_name"] == DATABRICKS_VALUELESS_CLASSIFICATION
+        assert kwargs["tags"] == ["real_tag"]
