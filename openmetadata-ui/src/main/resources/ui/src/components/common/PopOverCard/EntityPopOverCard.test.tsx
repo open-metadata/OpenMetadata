@@ -41,7 +41,8 @@ import { getServiceByFQN } from '../../../rest/serviceAPI';
 import { getTagByFqn } from '../../../rest/tagAPI';
 import { getTeamByName } from '../../../rest/teamsAPI';
 import { getTestCaseByFqn, getTestSuiteByName } from '../../../rest/testAPI';
-import { getBotByName, getUserByName } from '../../../rest/userAPI';
+import { getBotByName } from '../../../rest/botsAPI';
+import { getUserByName } from '../../../rest/userAPI';
 import EntityPopOverCard, { PopoverContent } from './EntityPopOverCard';
 
 const updateCachedEntityData = jest.fn();
@@ -201,8 +202,11 @@ jest.mock('../../../rest/teamsAPI', () => ({
   getTeamByName: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('../../../rest/userAPI', () => ({
+jest.mock('../../../rest/botsAPI', () => ({
   getBotByName: jest.fn().mockImplementation(() => Promise.resolve({})),
+}));
+
+jest.mock('../../../rest/userAPI', () => ({
   getUserByName: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 

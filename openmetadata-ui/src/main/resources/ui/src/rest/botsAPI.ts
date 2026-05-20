@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import axiosClient from '.';
 import { CreateBot } from '../generated/api/createBot';
 import { Bot } from '../generated/entity/bot';
@@ -53,6 +54,15 @@ export const getBotByName = async (name: string, params?: ListParams) => {
   const response = await axiosClient.get<Bot>(
     `${BASE_URL}/name/${getEncodedFqn(name)}`,
     { params }
+  );
+
+  return response.data;
+};
+
+export const updateBotDetail = async (id: string, data: Operation[]) => {
+  const response = await axiosClient.patch<Operation[], AxiosResponse<Bot>>(
+    `${BASE_URL}/${id}`,
+    data
   );
 
   return response.data;

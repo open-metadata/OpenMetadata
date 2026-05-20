@@ -49,7 +49,8 @@ import { getClassificationByName, getTagByFqn } from '../rest/tagAPI';
 import { getTeamByName } from '../rest/teamsAPI';
 import { getTestCaseByFqn, getTestSuiteByName } from '../rest/testAPI';
 import { getTopicByFqn } from '../rest/topicsAPI';
-import { getBotByName, getUserByName } from '../rest/userAPI';
+import { getBotByName } from '../rest/botsAPI';
+import { getUserByName } from '../rest/userAPI';
 
 export const getEntityByFqnUtil = (
   entityType: string,
