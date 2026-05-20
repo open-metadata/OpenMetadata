@@ -1484,7 +1484,6 @@ export function useOntologyExplorer({
 
   const handleNodeDataUpdate = useCallback(
     (nodeId: string, updatedData: EntityData) => {
-      const flatData = updatedData as unknown as Record<string, unknown>;
       const applyToNode = (node: OntologyNode): OntologyNode => {
         if (node.id !== nodeId) {
           return node;
@@ -1497,7 +1496,17 @@ export function useOntologyExplorer({
           label: newLabel,
           originalLabel: newLabel,
           description: updatedData.description ?? node.description,
-          searchSource: { ...node.searchSource, ...flatData },
+          searchSource: {
+            ...node.searchSource,
+            displayName: updatedData.displayName,
+            name: updatedData.name,
+            description: updatedData.description,
+            owners: updatedData.owners,
+            tags: updatedData.tags,
+            domains: updatedData.domains,
+            dataProducts: updatedData.dataProducts,
+            extension: updatedData.extension,
+          },
         };
       };
 
