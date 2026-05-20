@@ -130,6 +130,9 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                 enable_streaming=True,
             )
 
+        # Emit after the streamable handler is installed so the line is captured.
+        self.metadata.log_server_version()
+
         self._log_workflow_execution_info()
         self.set_ingestion_pipeline_status(state=PipelineState.running)
 
@@ -162,9 +165,6 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         # Stop the timer first. This runs in a separate thread and if not properly closed
         # it can hung the workflow
         self.timer.stop()
-
-        # Cleanup streamable logging if it was configured
-        cleanup_streamable_logging()
 
         self.metadata.close()
 
@@ -281,8 +281,12 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         finally:
             ingestion_status = self.build_ingestion_status()
             self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
-            self.stop()
-            self.print_status()
+            try:
+                self.stop()
+                self.print_status()
+            finally:
+                # Must run after every other emitter so the tail is captured.
+                cleanup_streamable_logging()
 
     @property
     def run_id(self) -> str:
