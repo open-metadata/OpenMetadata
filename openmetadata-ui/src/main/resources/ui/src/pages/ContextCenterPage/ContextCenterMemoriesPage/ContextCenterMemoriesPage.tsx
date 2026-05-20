@@ -54,6 +54,12 @@ const FILTER_TABS = [
   // { id: 'needs-review', label: 'label.needs-review' },
 ] as const;
 
+const FILTER_BUTTON_CLS =
+  'tw:flex tw:items-center tw:gap-1.5 tw:rounded-lg tw:bg-primary tw:px-3' +
+  ' tw:py-2 tw:text-sm tw:font-medium tw:shadow-xs tw:ring-1 tw:ring-inset' +
+  ' tw:ring-primary tw:cursor-pointer tw:transition tw:duration-100' +
+  ' tw:ease-linear hover:tw:ring-brand tw:outline-hidden tw:whitespace-nowrap';
+
 const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -130,7 +136,10 @@ const ContextCenterMemoriesPage: FC = () => {
     );
 
     return [
-      { id: '', label: t('label.all-entity', { entity: t('label.asset-plural') }) },
+      {
+        id: '',
+        label: t('label.all-entity', { entity: t('label.asset-plural') }),
+      },
       ...Array.from(seen.entries())
         .sort(([, a], [, b]) => a.localeCompare(b))
         .map(([fqn, name]) => ({ id: fqn, label: name })),
@@ -434,9 +443,10 @@ const ContextCenterMemoriesPage: FC = () => {
 
           <div className="tw:flex tw:items-center tw:gap-2">
             <Dropdown.Root>
-              <AriaButton className="tw:flex tw:items-center tw:gap-1.5 tw:rounded-lg tw:bg-primary tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:shadow-xs tw:ring-1 tw:ring-inset tw:ring-primary tw:cursor-pointer tw:transition tw:duration-100 tw:ease-linear hover:tw:ring-brand tw:outline-hidden tw:whitespace-nowrap">
+              <AriaButton className={FILTER_BUTTON_CLS}>
                 <span className="tw:text-gray-700">
-                  {assetOptions.find((o) => o.id === selectedAsset)?.label ?? t('label.all-entity', { entity: t('label.asset-plural') })}
+                  {assetOptions.find((o) => o.id === selectedAsset)?.label ??
+                    t('label.all-entity', { entity: t('label.asset-plural') })}
                 </span>
                 <ChevronDown
                   className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
@@ -453,20 +463,17 @@ const ContextCenterMemoriesPage: FC = () => {
                     setCurrentPage(1);
                   }}>
                   {assetOptions.map((opt) => (
-                    <Dropdown.Item
-                      id={opt.id}
-                      key={opt.id}
-                      label={opt.label}
-                    />
+                    <Dropdown.Item id={opt.id} key={opt.id} label={opt.label} />
                   ))}
                 </Dropdown.Menu>
               </Dropdown.Popover>
             </Dropdown.Root>
 
             <Dropdown.Root>
-              <AriaButton className="tw:flex tw:items-center tw:gap-1.5 tw:rounded-lg tw:bg-primary tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:shadow-xs tw:ring-1 tw:ring-inset tw:ring-primary tw:cursor-pointer tw:transition tw:duration-100 tw:ease-linear hover:tw:ring-brand tw:outline-hidden tw:whitespace-nowrap">
+              <AriaButton className={FILTER_BUTTON_CLS}>
                 <span className="tw:text-gray-700">
-                  {authorOptions.find((o) => o.id === selectedAuthor)?.label ?? t('label.all-entity', { entity: t('label.author') })}
+                  {authorOptions.find((o) => o.id === selectedAuthor)?.label ??
+                    t('label.all-entity', { entity: t('label.author') })}
                 </span>
                 <ChevronDown
                   className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
@@ -479,15 +486,13 @@ const ContextCenterMemoriesPage: FC = () => {
                   selectedKeys={selectedAuthor ? [selectedAuthor] : []}
                   selectionMode="single"
                   onAction={(key) => {
-                    setSelectedAuthor(key === selectedAuthor ? '' : String(key));
+                    setSelectedAuthor(
+                      key === selectedAuthor ? '' : String(key)
+                    );
                     setCurrentPage(1);
                   }}>
                   {authorOptions.map((opt) => (
-                    <Dropdown.Item
-                      id={opt.id}
-                      key={opt.id}
-                      label={opt.label}
-                    />
+                    <Dropdown.Item id={opt.id} key={opt.id} label={opt.label} />
                   ))}
                 </Dropdown.Menu>
               </Dropdown.Popover>
@@ -496,10 +501,8 @@ const ContextCenterMemoriesPage: FC = () => {
 
           <div className="tw:ml-auto">
             <Dropdown.Root>
-              <AriaButton className="tw:flex tw:items-center tw:gap-1.5 tw:rounded-lg tw:bg-primary tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:shadow-xs tw:ring-1 tw:ring-inset tw:ring-primary tw:cursor-pointer tw:transition tw:duration-100 tw:ease-linear hover:tw:ring-brand tw:outline-hidden tw:whitespace-nowrap">
-                <span className="tw:text-gray-400">
-                  {t('label.sort')}:
-                </span>
+              <AriaButton className={FILTER_BUTTON_CLS}>
+                <span className="tw:text-gray-400">{t('label.sort')}:</span>
                 <span className="tw:text-gray-700">
                   {SORT_OPTIONS.find((o) => o.id === sortBy)?.label ?? ''}
                 </span>
@@ -518,17 +521,12 @@ const ContextCenterMemoriesPage: FC = () => {
                     setCurrentPage(1);
                   }}>
                   {SORT_OPTIONS.map((opt) => (
-                    <Dropdown.Item
-                      id={opt.id}
-                      key={opt.id}
-                      label={opt.label}
-                    />
+                    <Dropdown.Item id={opt.id} key={opt.id} label={opt.label} />
                   ))}
                 </Dropdown.Menu>
               </Dropdown.Popover>
             </Dropdown.Root>
           </div>
-
         </div>
 
         <div className="tw:flex-1 tw:overflow-y-auto">

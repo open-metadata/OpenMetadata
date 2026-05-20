@@ -276,6 +276,7 @@
     "change-log-plural": "변경 로그들",
     "change-parent-entity": "상위 {{entity}} 변경",
     "change-password": "비밀번호 변경",
+    "change-plural": "Changes",
     "chart": "차트",
     "chart-entity": "{{entity}} 차트",
     "chart-plural": "차트들",

@@ -276,6 +276,7 @@
     "change-log-plural": "Журналы изменений",
     "change-parent-entity": "Изменить родительский объект «{{entity}}»",
     "change-password": "Изменить пароль",
+    "change-plural": "Changes",
     "chart": "Диаграмма",
     "chart-entity": "Диаграмма объекта «{{entity}}»",
     "chart-plural": "Диаграммы",

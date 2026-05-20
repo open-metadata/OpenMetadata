@@ -276,6 +276,7 @@
     "change-log-plural": "บันทึกการเปลี่ยนแปลง",
     "change-parent-entity": "เปลี่ยนผู้ปกครอง {{entity}}",
     "change-password": "เปลี่ยนรหัสผ่าน",
+    "change-plural": "Changes",
     "chart": "กราฟ",
     "chart-entity": "กราฟ {{entity}}",
     "chart-plural": "กราฟหลายรายการ",
