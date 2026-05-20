@@ -2601,6 +2601,7 @@
     "customize-home-page-page-header-for-persona": "Personalize a experiência da página inicial para a <0>{{persona}}</0> persona",
     "customize-your-navigation-subheader": "Gerencie e organize o menu de navegação lateral para melhorar a acessibilidade.",
     "data-access-request-already-exists": "Já existe uma solicitação de acesso a dados pendente para este ativo.",
+    "data-access-request-already-granted": "Você já tem acesso ativo aos dados deste ativo.",
     "data-access-request-awaiting-grant-message": "Sua solicitação de acesso foi aprovada e está aguardando provisionamento. O acesso estará disponível em breve assim que for concedido.",
     "data-access-request-message": "Solicitação de acesso a dados para",
     "data-asset-has-been-action-type": "O Ativo de Dados foi {{actionType}}",

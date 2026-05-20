@@ -2601,6 +2601,7 @@
     "customize-home-page-page-header-for-persona": "為 <0>{{persona}}</0> 角色個人化首頁體驗",
     "customize-your-navigation-subheader": "管理和組織側邊導覽選單，以提高可及性。",
     "data-access-request-already-exists": "A pending data access request already exists for this asset.",
+    "data-access-request-already-granted": "您已擁有此資產的有效資料存取權限。",
     "data-access-request-awaiting-grant-message": "Your access request has been approved and is awaiting provisioning. Access will be available shortly once it has been granted.",
     "data-access-request-message": "資料存取請求：",
     "data-asset-has-been-action-type": "資料資產已被 {{actionType}}",
