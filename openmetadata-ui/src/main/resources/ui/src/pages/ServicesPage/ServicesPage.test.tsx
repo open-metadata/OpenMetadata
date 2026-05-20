@@ -136,7 +136,7 @@ describe('ServicesPage', () => {
 
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={['/services/services']}>
+        <MemoryRouter initialEntries={['/services/databases']}>
           <Routes>
             <Route element={<ServicesPage />} path="/services/:tab" />
           </Routes>
