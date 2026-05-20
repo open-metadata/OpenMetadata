@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -51,6 +50,7 @@ import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.models.ListParams;
@@ -3711,18 +3711,16 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   void getGlossaryTermsByIds_malformedUuid_returns400(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    try {
-      byIds(client, "not-a-uuid,also-not-a-uuid", null);
-      fail("Malformed UUID in ids must produce a 400");
-    } catch (Exception e) {
-      // Require BOTH the HTTP 400 status AND the expected message
-      // substring — OR would let a 500 with "invalid" in the body pass.
-      assertTrue(
-          e.getMessage().contains("400"), "Expected HTTP 400 status, got: " + e.getMessage());
-      assertTrue(
-          e.getMessage().toLowerCase().contains("invalid"),
-          "Expected 'invalid' in the error body, got: " + e.getMessage());
-    }
+    // The SDK throws InvalidRequestException ONLY for HTTP 400 — any
+    // other status surfaces as ApiException or a status-specific
+    // subclass, so the type assertion locks the status code while the
+    // message substring locks the error body.
+    InvalidRequestException ex =
+        assertThrows(
+            InvalidRequestException.class, () -> byIds(client, "not-a-uuid,also-not-a-uuid", null));
+    assertTrue(
+        ex.getMessage().toLowerCase().contains("invalid"),
+        "Expected 'invalid' in the error body, got: " + ex.getMessage());
   }
 
   @Test
@@ -3741,18 +3739,11 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
       ids.append(UUID.randomUUID());
     }
 
-    try {
-      byIds(client, ids.toString(), null);
-      fail("Over-cap ids list must produce a 400");
-    } catch (Exception e) {
-      // Require BOTH the HTTP 400 status AND the expected message
-      // substring — OR would let a 500 with "too many" in the body pass.
-      assertTrue(
-          e.getMessage().contains("400"), "Expected HTTP 400 status, got: " + e.getMessage());
-      assertTrue(
-          e.getMessage().toLowerCase().contains("too many"),
-          "Expected 'too many' in the error body, got: " + e.getMessage());
-    }
+    InvalidRequestException ex =
+        assertThrows(InvalidRequestException.class, () -> byIds(client, ids.toString(), null));
+    assertTrue(
+        ex.getMessage().toLowerCase().contains("too many"),
+        "Expected 'too many' in the error body, got: " + ex.getMessage());
   }
 
   private String byIds(OpenMetadataClient client, String idsParam, String fieldsParam) {
