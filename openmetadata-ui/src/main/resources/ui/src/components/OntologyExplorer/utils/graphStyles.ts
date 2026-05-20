@@ -19,6 +19,7 @@ import {
   register,
 } from '@antv/g6';
 import {
+  COLOR_META_BY_HEX,
   COMBO_FILL_DEFAULT,
   COMBO_HEADER_HEIGHT,
   COMBO_INTERIOR_PADDING_SIDES,
@@ -404,14 +405,32 @@ const EDGE_LABEL_BADGE_PADDING: [number, number, number, number] = [4, 8, 4, 8];
 const EDGE_LABEL_BADGE_RADIUS = 6;
 const EDGE_LABEL_BADGE_FONT_WEIGHT = 700;
 
+export function getEffectiveRelationColor(
+  relationType: string,
+  customRelation: { isSystemDefined?: boolean; color?: string } | undefined
+): string | undefined {
+  if (!customRelation) {
+    return RELATION_META[relationType]?.color;
+  }
+  if (customRelation.isSystemDefined) {
+    return RELATION_META[relationType]?.color ?? customRelation.color;
+  }
+
+  return customRelation.color ?? RELATION_META[relationType]?.color;
+}
+
 export function getEdgeRelationLabelStyle(
   labelText: string,
-  relationType?: string
+  relationType?: string,
+  effectiveColor?: string
 ): Record<string, unknown> {
-  const meta =
+  const builtInMeta =
     relationType != null
       ? RELATION_META[relationType] ?? RELATION_META.default
       : null;
+  const meta = effectiveColor
+    ? COLOR_META_BY_HEX[effectiveColor.toLowerCase()] ?? builtInMeta
+    : builtInMeta;
 
   const edgeLabelPadding = EDGE_LABEL_BADGE_PADDING;
 

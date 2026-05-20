@@ -25,6 +25,7 @@ import {
   EDGE_STROKE_COLOR,
   NODE_BORDER_COLOR,
   RELATION_COLORS,
+  RELATION_META,
 } from '../OntologyExplorer.constants';
 import {
   BuildGraphDataProps,
@@ -190,6 +191,20 @@ export function useGraphDataBuilder({
     () => mergeEdges(inputEdges, relationTypes),
     [inputEdges, relationTypes]
   );
+
+  const customRelationColorMap = useMemo<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    relationTypes?.forEach((rt) => {
+      const effectiveColor = rt.isSystemDefined
+        ? RELATION_META[rt.name]?.color ?? rt.color
+        : rt.color ?? RELATION_META[rt.name]?.color;
+      if (effectiveColor) {
+        map[rt.name] = effectiveColor;
+      }
+    });
+
+    return map;
+  }, [relationTypes]);
 
   const neighborSet = useMemo(() => {
     const set = new Set<string>();
@@ -691,7 +706,9 @@ export function useGraphDataBuilder({
           const rawEdgeColor =
             explorationMode === 'data' && !isTermTermInDataMode
               ? DATA_MODE_ASSET_EDGE_STROKE_COLOR
-              : RELATION_COLORS[singleEdge.relationType] ?? EDGE_STROKE_COLOR;
+              : customRelationColorMap[singleEdge.relationType] ??
+                RELATION_COLORS[singleEdge.relationType] ??
+                EDGE_STROKE_COLOR;
           const edgeColor = getCanvasColor(
             rawEdgeColor,
             explorationMode === 'data' && !isTermTermInDataMode
@@ -744,7 +761,8 @@ export function useGraphDataBuilder({
             ? {
                 ...getEdgeRelationLabelStyle(
                   labelText,
-                  singleEdge.relationType
+                  singleEdge.relationType,
+                  customRelationColorMap[singleEdge.relationType]
                 ),
                 labelPosition: 'center',
                 labelAutoRotate: false,
