@@ -51,10 +51,12 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -804,7 +806,12 @@ public class FeedRepository {
       return;
     }
     List<String> entityIdStrings = entityIds.stream().map(UUID::toString).toList();
-    List<String> threadIds = new ArrayList<>();
+    // LinkedHashSet: per-chunk findByEntityIds is already DISTINCT, but accumulating across
+    // chunks could still see the same id twice if a future caller passes an entityIds list
+    // with duplicates. Dedup once here so deleteThreadsInBatch's downstream chunking (3
+    // IN-list DELETEs per 500-id chunk) doesn't waste budget on redundant rows. Linked
+    // ordering for deterministic logs / replay.
+    Set<String> threadIds = new LinkedHashSet<>();
     for (int i = 0; i < entityIdStrings.size(); i += FEED_IN_BATCH_SIZE) {
       List<String> chunk =
           entityIdStrings.subList(i, Math.min(i + FEED_IN_BATCH_SIZE, entityIdStrings.size()));

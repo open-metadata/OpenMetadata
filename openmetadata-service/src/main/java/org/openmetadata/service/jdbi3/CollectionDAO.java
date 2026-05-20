@@ -4194,7 +4194,13 @@ public interface CollectionDAO {
     @SqlQuery("select id from thread_entity where entityId = :entityId")
     List<String> findByEntityId(@Bind("entityId") String entityId);
 
-    @SqlQuery("select id from <tableName> where entityId IN (<entityIds>)")
+    // DISTINCT is defence-in-depth: thread_entity.id is a primary key, and entityId is a
+    // single-valued column per row, so a single matching scan can't physically return the
+    // same id twice. The DISTINCT survives a future schema where a thread row picks up
+    // multiple entity references (or a join is added) — keeping the consumer code in
+    // deleteByAbout from re-issuing redundant relationship / extension / feed deletes for
+    // the same id under chunking.
+    @SqlQuery("select DISTINCT id from <tableName> where entityId IN (<entityIds>)")
     List<String> findByEntityIds(
         @Define("tableName") String tableName, @BindList("entityIds") List<String> entityIds);
 
