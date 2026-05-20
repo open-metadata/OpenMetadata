@@ -166,7 +166,7 @@ describe('KnowledgePages', () => {
 
     expect(viewAllLink).toHaveAttribute(
       'href',
-      `/knowledge-center-filter?entityId=${mockProps.entityId}&entityType=${mockProps.entityType}`
+      `/context-center/filter?entityId=${mockProps.entityId}&entityType=${mockProps.entityType}`
     );
   });
 

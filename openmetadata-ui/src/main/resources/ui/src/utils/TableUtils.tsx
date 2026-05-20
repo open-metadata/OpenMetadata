@@ -1728,27 +1728,6 @@ export const mergeTagsWithGlossary = (
 };
 
 /**
- * Merge glossary terms with non-glossary tags
- * Used when updating glossary terms to ensure classification tags are not lost
- * @param columnTags Existing tags from the column
- * @param updatedGlossaryTerms New glossary terms to merge
- * @returns Merged tags array with classification tags preserved
- */
-export const mergeGlossaryWithTags = (
-  columnTags: Column['tags'],
-  updatedGlossaryTerms: Column['tags']
-): Column['tags'] => {
-  const nonGlossaryTags =
-    columnTags?.filter((tag) => tag.source !== TagSource.Glossary) || [];
-
-  // Normalize both arrays before merging to ensure consistent format
-  const normalizedNonGlossaryTags = normalizeTags(nonGlossaryTags);
-  const normalizedGlossaryTerms = normalizeTags(updatedGlossaryTerms || []);
-
-  return [...normalizedNonGlossaryTags, ...normalizedGlossaryTerms];
-};
-
-/**
  * Find the original index of a column in the allColumns array
  * @param column Column to find
  * @param allColumns Array of all columns

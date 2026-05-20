@@ -87,7 +87,7 @@ describe('BookMarkWidget', () => {
     expect(bookmarkedPage).toHaveTextContent('test-page-name');
     expect(bookmarkedPage).toHaveAttribute(
       'href',
-      '/knowledge-center/test-page-fqn'
+      '/context-center/articles/test-page-fqn'
     );
 
     expect(screen.getByText('label.bookmark-plural')).toBeInTheDocument();
@@ -157,7 +157,7 @@ describe('BookMarkWidget', () => {
     expect(bookmarkedPage).toHaveTextContent('label.untitled');
     expect(bookmarkedPage).toHaveAttribute(
       'href',
-      '/knowledge-center/test-page-fqn'
+      '/context-center/articles/test-page-fqn'
     );
   });
 });

@@ -21,15 +21,19 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.directory import Directory
+from metadata.generated.schema.entity.data.file import File
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.searchIndex import SearchIndex
+from metadata.generated.schema.entity.data.spreadsheet import Spreadsheet
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.data.worksheet import Worksheet
 from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.services.apiService import ApiService
@@ -68,6 +72,7 @@ from metadata.generated.schema.entity.services.connections.database.sasConnectio
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.driveService import DriveService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
@@ -132,6 +137,7 @@ ENTITY_REFERENCE_CLASS_MAP = {
     "metadataService": MetadataService,
     "searchService": SearchService,
     "securityService": SecurityService,
+    "driveService": DriveService,
     # Data Asset Entities
     "apiCollection": APICollection,
     "apiEndpoint": APIEndpoint,
@@ -147,6 +153,11 @@ ENTITY_REFERENCE_CLASS_MAP = {
     "searchIndex": SearchIndex,
     "mlmodel": MlModel,
     "container": Container,
+    # Drive Entities
+    "directory": Directory,
+    "file": File,
+    "spreadsheet": Spreadsheet,
+    "worksheet": Worksheet,
     # User Entities
     "user": User,
     "team": Team,

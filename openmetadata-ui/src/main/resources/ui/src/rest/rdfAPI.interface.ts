@@ -16,7 +16,13 @@ export interface GraphNode {
   id: string;
   label: string;
   type: string;
+  // Human label of the parent glossary (set by the RDF endpoint so the UI
+  // hierarchy view can show a group name even when the parent Glossary is
+  // not in the caller's accessible glossary list).
   group?: string;
+  // UUID of the parent glossary; supplied by the RDF endpoint when the
+  // term-to-glossary membership triple is available.
+  glossaryId?: string;
   title?: string;
   fullyQualifiedName?: string;
   description?: string;

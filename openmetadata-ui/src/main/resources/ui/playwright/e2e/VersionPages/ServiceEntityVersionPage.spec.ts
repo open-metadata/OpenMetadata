@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import {
+  APIRequestContext,
+  expect,
+  Page,
+  test as base,
+} from '@playwright/test';
+import { Operation } from 'fast-json-patch';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
@@ -33,6 +39,31 @@ import {
   toastNotification,
 } from '../../utils/common';
 import { addMultiOwner, assignTier } from '../../utils/entity';
+
+/**
+ * Service entity classes here still use the legacy positional patch(apiContext, payload)
+ * signature; {@link DatabaseClass} and {@link DatabaseSchemaClass} were normalized to the
+ * object form ({apiContext, patchData}). This helper dispatches by concrete class so both
+ * shapes work without resorting to `any` casts. Once all entity classes are normalized this
+ * function can be deleted and replaced with a single object-form call.
+ */
+const applyServicePatch = async (
+  entity: object,
+  apiContext: APIRequestContext,
+  patchData: Operation[]
+): Promise<void> => {
+  if (
+    entity instanceof DatabaseClass ||
+    entity instanceof DatabaseSchemaClass
+  ) {
+    await entity.patch({ apiContext, patchData });
+    return;
+  }
+  const legacy = entity as {
+    patch: (ctx: APIRequestContext, payload: Operation[]) => Promise<unknown>;
+  };
+  await legacy.patch(apiContext, patchData);
+};
 
 const entities = {
   'Api Service': new ApiServiceClass(),
@@ -71,7 +102,7 @@ test.describe('Service Version pages', () => {
     for (const entity of Object.values(entities)) {
       await entity.create(apiContext);
       const domain = EntityDataClass.domain1.responseData;
-      await entity.patch(apiContext, [
+      const patchData: Operation[] = [
         {
           op: 'add',
           path: '/tags/0',
@@ -109,7 +140,8 @@ test.describe('Service Version pages', () => {
             },
           ],
         },
-      ]);
+      ];
+      await applyServicePatch(entity, apiContext, patchData);
     }
 
     await afterAction();

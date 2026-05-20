@@ -201,7 +201,10 @@ describe('KnowledgePageUtils', () => {
       );
 
       expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute('href', '/knowledge-center/knowledge.test');
+      expect(link).toHaveAttribute(
+        'href',
+        '/context-center/articles/knowledge.test'
+      );
       expect(link).not.toHaveAttribute('target', '_blank');
       expect(link.textContent).toContain('Test Knowledge Page');
     });
