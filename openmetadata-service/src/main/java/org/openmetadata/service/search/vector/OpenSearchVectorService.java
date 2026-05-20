@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -306,49 +307,6 @@ public class OpenSearchVectorService implements VectorIndexService {
     return null;
   }
 
-  public Map<String, String> getExistingFingerprintsBatch(
-      String indexName, List<String> entityIds) {
-    if (entityIds == null || entityIds.isEmpty()) {
-      return Collections.emptyMap();
-    }
-    try {
-      StringBuilder idsArray = new StringBuilder("[");
-      for (int i = 0; i < entityIds.size(); i++) {
-        if (i > 0) idsArray.append(',');
-        idsArray
-            .append("\"")
-            .append(VectorSearchQueryBuilder.escape(entityIds.get(i)))
-            .append("\"");
-      }
-      idsArray.append("]");
-
-      String query =
-          "{\"size\":"
-              + entityIds.size()
-              + ",\"_source\":[\"fingerprint\"]"
-              + ",\"query\":{\"ids\":{\"values\":"
-              + idsArray
-              + "}}}";
-
-      String response = executeGenericRequest("POST", "/" + indexName + "/_search", query);
-      JsonNode root = MAPPER.readTree(response);
-      JsonNode hits = root.path("hits").path("hits");
-
-      Map<String, String> result = new HashMap<>();
-      for (JsonNode hit : hits) {
-        String id = hit.path("_id").asText();
-        String fp = hit.path("_source").path("fingerprint").asText(null);
-        if (id != null && fp != null) {
-          result.put(id, fp);
-        }
-      }
-      return result;
-    } catch (Exception e) {
-      LOG.error("Failed to batch get fingerprints in index={}: {}", indexName, e.getMessage(), e);
-      return Collections.emptyMap();
-    }
-  }
-
   private static final List<String> EMBEDDING_SOURCE_FIELDS =
       List.of(
           "fingerprint",
@@ -365,34 +323,66 @@ public class OpenSearchVectorService implements VectorIndexService {
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER = new JacksonJsonpMapper(MAPPER);
 
   /**
+   * Per-entity input to {@link #getExistingEmbeddingsBatch(String, Map)}. {@code currentFingerprint}
+   * is a {@link Supplier} so the caller doesn't pay the MD5 + meta-text construction cost when the
+   * cheaper {@code updatedAt} fast-path resolves the match. {@code updatedAt} may be {@code null}
+   * for entities that don't expose it; in that case the supplier is consulted unconditionally.
+   */
+  public record EntityFingerprintInput(Long updatedAt, Supplier<String> currentFingerprint) {}
+
+  private static final List<String> FINGERPRINT_HEADER_FIELDS = List.of("fingerprint", "updatedAt");
+
+  /**
    * Two-step batch fetch of cached embedding documents from {@code indexName}, scoped to entities
-   * whose stored fingerprint matches the caller-provided current fingerprint. Designed to keep
-   * large vector payloads off the wire for entities that will be re-embedded anyway.
+   * whose cached state matches the caller-provided current state. Designed to keep large vector
+   * payloads off the wire for entities that will be re-embedded anyway.
    *
-   * <p>Step 1 — {@code mget} the {@code fingerprint} field only for every requested ID. Step 2 —
-   * intersect against {@code currentFingerprintsById}, then issue a second {@code mget} that pulls
-   * the full embedding {@code _source} only for matching IDs. Entries that don't match are
-   * dropped, and the caller can rely on every returned value being safe to splice into a staged
-   * index document.
+   * <p>Step 1 — {@code mget} {@code fingerprint} + {@code updatedAt} only for every requested ID,
+   * then decide which IDs "match":
+   *
+   * <ul>
+   *   <li>Fast path: cached {@code updatedAt} equals current {@code updatedAt} — the entity hasn't
+   *       been touched since the prior index, so the embedding is reusable without recomputing the
+   *       fingerprint.
+   *   <li>Fallback: the lazy fingerprint {@link Supplier} is invoked and compared against the
+   *       cached fingerprint.
+   * </ul>
+   *
+   * <p>Step 2 — issue a second {@code mget} that pulls the full embedding {@code _source} only for
+   * matching IDs. Entries that don't match are dropped, and the caller can rely on every returned
+   * value being safe to splice into a staged index document.
    */
   public Map<String, JsonNode> getExistingEmbeddingsBatch(
-      String indexName, Map<String, String> currentFingerprintsById) {
-    if (currentFingerprintsById == null || currentFingerprintsById.isEmpty()) {
+      String indexName, Map<String, EntityFingerprintInput> currentById) {
+    if (currentById == null || currentById.isEmpty()) {
       return Collections.emptyMap();
     }
     try {
-      List<String> entityIds = new ArrayList<>(currentFingerprintsById.keySet());
-      Map<String, String> cachedFingerprintsById =
-          getExistingFingerprintsBatch(indexName, entityIds);
-      if (cachedFingerprintsById.isEmpty()) {
-        return Collections.emptyMap();
-      }
+      List<String> entityIds = new ArrayList<>(currentById.keySet());
+      MgetResponse<JsonData> headerResponse =
+          client.mget(
+              m -> m.index(indexName).ids(entityIds).sourceIncludes(FINGERPRINT_HEADER_FIELDS),
+              JsonData.class);
 
-      List<String> matchingIds = new ArrayList<>(cachedFingerprintsById.size());
-      for (Map.Entry<String, String> entry : currentFingerprintsById.entrySet()) {
-        String cachedFp = cachedFingerprintsById.get(entry.getKey());
-        if (cachedFp != null && cachedFp.equals(entry.getValue())) {
-          matchingIds.add(entry.getKey());
+      List<String> matchingIds = new ArrayList<>();
+      for (MultiGetResponseItem<JsonData> item : headerResponse.docs()) {
+        if (!item.isResult()) {
+          continue;
+        }
+        GetResult<JsonData> doc = item.result();
+        if (!doc.found() || doc.source() == null) {
+          continue;
+        }
+        JsonNode header = doc.source().to(JsonNode.class, JACKSON_JSONP_MAPPER);
+        if (header == null || !header.isObject()) {
+          continue;
+        }
+        EntityFingerprintInput input = currentById.get(doc.id());
+        if (input == null) {
+          continue;
+        }
+        if (cachedStateMatches(header, input)) {
+          matchingIds.add(doc.id());
         }
       }
       if (matchingIds.isEmpty()) {
@@ -420,9 +410,20 @@ public class OpenSearchVectorService implements VectorIndexService {
       }
       return result;
     } catch (Exception e) {
-      LOG.error("Failed to batch get embeddings in index={}: {}", indexName, e.getMessage(), e);
+      LOG.error("Failed to batch get embeddings in index={}", indexName, e);
       return Collections.emptyMap();
     }
+  }
+
+  private static boolean cachedStateMatches(JsonNode header, EntityFingerprintInput input) {
+    JsonNode cachedUpdatedAt = header.path("updatedAt");
+    if (cachedUpdatedAt.isIntegralNumber()
+        && input.updatedAt() != null
+        && cachedUpdatedAt.asLong() == input.updatedAt()) {
+      return true;
+    }
+    String cachedFp = header.path("fingerprint").asText(null);
+    return cachedFp != null && cachedFp.equals(input.currentFingerprint().get());
   }
 
   public void partialUpdateEntity(

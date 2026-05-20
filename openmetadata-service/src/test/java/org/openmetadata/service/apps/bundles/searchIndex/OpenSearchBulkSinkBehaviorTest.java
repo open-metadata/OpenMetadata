@@ -441,6 +441,92 @@ class OpenSearchBulkSinkBehaviorTest {
     }
   }
 
+  @Test
+  void enrichWithEmbeddingRecomputesWhenCachedEntryHasNoEmbedding() throws Exception {
+    // Defensive: even if the service layer ever admits an entry without an embedding (e.g. a doc
+    // indexed before embeddings were enabled), the splice site must not blindly trust it.
+    EntityInterface entity = mock(EntityInterface.class);
+    UUID entityId = UUID.randomUUID();
+    when(entity.getId()).thenReturn(entityId);
+
+    StageStatsTracker tracker = mock(StageStatsTracker.class);
+    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    when(vectorService.generateEmbeddingFields(entity))
+        .thenReturn(Map.of("fingerprint", "fp-new", "embedding", List.of(0.1, 0.2, 0.3)));
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode cachedWithoutEmbedding = mapper.readTree("{\"fingerprint\":\"fp-old\"}");
+    Map<String, JsonNode> existingEmbeddingsById =
+        Map.of(entityId.toString(), cachedWithoutEmbedding);
+
+    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
+            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<OpenSearchVectorService> vectorServiceMock =
+            mockStatic(OpenSearchVectorService.class)) {
+      vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+
+      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
+      Method enrich =
+          OpenSearchBulkSink.class.getDeclaredMethod(
+              "enrichWithEmbedding",
+              EntityInterface.class,
+              String.class,
+              Map.class,
+              StageStatsTracker.class);
+      enrich.setAccessible(true);
+
+      String result =
+          (String) enrich.invoke(sink, entity, "{\"name\":\"x\"}", existingEmbeddingsById, tracker);
+
+      verify(vectorService).generateEmbeddingFields(entity);
+      verify(tracker).recordVector(StatsResult.SUCCESS);
+      assertEquals("fp-new", mapper.readTree(result).get("fingerprint").asText());
+    }
+  }
+
+  @Test
+  void enrichWithEmbeddingRecomputesWhenCachedNodeIsNotAnObject() throws Exception {
+    // Defensive: a malformed _source (array or scalar instead of object) must not crash the splice
+    // path; we fall through to regeneration.
+    EntityInterface entity = mock(EntityInterface.class);
+    UUID entityId = UUID.randomUUID();
+    when(entity.getId()).thenReturn(entityId);
+
+    StageStatsTracker tracker = mock(StageStatsTracker.class);
+    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    when(vectorService.generateEmbeddingFields(entity))
+        .thenReturn(Map.of("fingerprint", "fp-new", "embedding", List.of(0.4, 0.5, 0.6)));
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode arrayInsteadOfObject = mapper.readTree("[1,2,3]");
+    Map<String, JsonNode> existingEmbeddingsById =
+        Map.of(entityId.toString(), arrayInsteadOfObject);
+
+    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
+            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<OpenSearchVectorService> vectorServiceMock =
+            mockStatic(OpenSearchVectorService.class)) {
+      vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+
+      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
+      Method enrich =
+          OpenSearchBulkSink.class.getDeclaredMethod(
+              "enrichWithEmbedding",
+              EntityInterface.class,
+              String.class,
+              Map.class,
+              StageStatsTracker.class);
+      enrich.setAccessible(true);
+
+      String result =
+          (String) enrich.invoke(sink, entity, "{\"name\":\"y\"}", existingEmbeddingsById, tracker);
+
+      verify(vectorService).generateEmbeddingFields(entity);
+      verify(tracker).recordVector(StatsResult.SUCCESS);
+      assertEquals("fp-new", mapper.readTree(result).get("fingerprint").asText());
+    }
+  }
+
   private void invokePrivate(
       Object target, String methodName, Class<?>[] parameterTypes, Object... args)
       throws Exception {
