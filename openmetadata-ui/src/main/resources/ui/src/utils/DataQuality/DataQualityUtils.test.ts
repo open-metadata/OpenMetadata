@@ -26,6 +26,7 @@ import {
   buildMustEsFilterForDataProducts,
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
+  buildMustEsFilterForTier,
   buildTestCaseParams,
   createTestCaseParameters,
   filterTestCasesByTableAndColumn,
@@ -443,6 +444,68 @@ describe('DataQualityUtils', () => {
     });
   });
 
+  describe('buildMustEsFilterForTier', () => {
+    it('should return bool/should filter using tier.tagFQN when isTestCaseResult is false', () => {
+      const tiers = ['Tier.Tier1', 'Tier.Tier2'];
+      const expectedFilter = {
+        bool: {
+          should: [
+            { term: { 'tier.tagFQN': 'Tier.Tier1' } },
+            { term: { 'tier.tagFQN': 'Tier.Tier2' } },
+          ],
+          minimum_should_match: 1,
+        },
+      };
+
+      expect(buildMustEsFilterForTier(tiers)).toEqual(expectedFilter);
+    });
+
+    it('should return bool/should filter using testCase.tier.tagFQN when isTestCaseResult is true', () => {
+      const tiers = ['Tier.Tier1', 'Tier.Tier2'];
+      const expectedFilter = {
+        bool: {
+          should: [
+            { term: { 'testCase.tier.tagFQN': 'Tier.Tier1' } },
+            { term: { 'testCase.tier.tagFQN': 'Tier.Tier2' } },
+          ],
+          minimum_should_match: 1,
+        },
+      };
+
+      expect(buildMustEsFilterForTier(tiers, true)).toEqual(expectedFilter);
+    });
+
+    it('should return filter with single tier', () => {
+      const tiers = ['Tier.Tier3'];
+      const expectedFilter = {
+        bool: {
+          should: [{ term: { 'tier.tagFQN': 'Tier.Tier3' } }],
+          minimum_should_match: 1,
+        },
+      };
+
+      expect(buildMustEsFilterForTier(tiers)).toEqual(expectedFilter);
+    });
+
+    it('should not use tags.tagFQN field path for tier (regression check)', () => {
+      const tiers = ['Tier.Tier1'];
+      const result = buildMustEsFilterForTier(tiers);
+      const resultStr = JSON.stringify(result);
+
+      expect(resultStr).not.toContain('tags.tagFQN');
+      expect(resultStr).toContain('tier.tagFQN');
+    });
+
+    it('should not use tags.tagFQN field path for tier in testCaseResult context (regression check)', () => {
+      const tiers = ['Tier.Tier1'];
+      const result = buildMustEsFilterForTier(tiers, true);
+      const resultStr = JSON.stringify(result);
+
+      expect(resultStr).not.toContain('tags.tagFQN');
+      expect(resultStr).toContain('testCase.tier.tagFQN');
+    });
+  });
+
   describe('transformToTestCaseStatusObject', () => {
     it('should return correct counts for basic input', () => {
       const inputData = [
@@ -604,6 +667,89 @@ describe('DataQualityUtils', () => {
           },
         },
       ]);
+    });
+
+    it('should use buildMustEsFilterForTags for tags when not table API', () => {
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          tags: ['PII.None', 'PII.Sensitive'],
+        },
+      });
+
+      expect(result).toContainEqual({
+        nested: {
+          path: 'tags',
+          query: {
+            bool: {
+              should: [
+                { match: { 'tags.tagFQN': 'PII.None' } },
+                { match: { 'tags.tagFQN': 'PII.Sensitive' } },
+              ],
+            },
+          },
+        },
+      });
+    });
+
+    it('should use buildMustEsFilterForTier for tier when not table API', () => {
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          tier: ['Tier.Tier1', 'Tier.Tier2'],
+        },
+      });
+
+      expect(result).toContainEqual({
+        bool: {
+          should: [
+            { term: { 'tier.tagFQN': 'Tier.Tier1' } },
+            { term: { 'tier.tagFQN': 'Tier.Tier2' } },
+          ],
+          minimum_should_match: 1,
+        },
+      });
+    });
+
+    it('should use tier.tagFQN field (not tags.tagFQN) for tier filter (regression check)', () => {
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          tier: ['Tier.Tier1'],
+        },
+      });
+      const resultStr = JSON.stringify(result);
+
+      expect(resultStr).toContain('tier.tagFQN');
+      expect(resultStr).not.toContain('"tags.tagFQN":"Tier.Tier1"');
+    });
+
+    it('should include both separate tags and tier filters when both provided and not table API', () => {
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          tags: ['PII.None'],
+          tier: ['Tier.Tier1'],
+        },
+      });
+
+      const tagsFilter = result.find(
+        (f: Record<string, unknown>) => 'nested' in f
+      );
+      const tierFilter = result.find(
+        (f: Record<string, unknown>) =>
+          'bool' in f && JSON.stringify(f).includes('tier.tagFQN')
+      );
+
+      expect(tagsFilter).toBeDefined();
+      expect(tierFilter).toBeDefined();
+    });
+
+    it('should not add tier filter when tier array is empty', () => {
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          tier: [],
+        },
+      });
+      const resultStr = JSON.stringify(result);
+
+      expect(resultStr).not.toContain('tier.tagFQN');
     });
 
     it('should prefix data product field for nested test case documents', () => {
