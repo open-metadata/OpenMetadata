@@ -577,6 +577,26 @@ def test_it_turns_sql_alchemy_response_to_snowflake_query_log_entries() -> None:
             "/* this was the old approach:\n   INSERT INTO legacy_table SELECT * FROM raw\n*/\nINSERT INTO current_table SELECT * FROM raw",
             "current_table",
         ),
+        # --- COPY INTO ---
+        (
+            "COPY INTO my_schema.my_table FROM @my_stage",
+            "my_schema.my_table",
+        ),
+        (
+            "COPY INTO my_db.my_schema.my_table FROM @my_stage FILE_FORMAT = (TYPE = CSV)",
+            "my_db.my_schema.my_table",
+        ),
+        (
+            "  COPY INTO my_table FROM @stage",
+            "my_table",
+        ),
+        (
+            "-- load batch\nCOPY INTO my_schema.my_table FROM @stage",
+            "my_schema.my_table",
+        ),
+        # --- None / empty input ---
+        (None, None),
+        ("", None),
     ],
 )
 def test_parse_query(query, expected_identifier):

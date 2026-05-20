@@ -43,7 +43,7 @@ RESULT_SCAN = """
     SELECT *
     FROM TABLE(RESULT_SCAN('{query_id}'));
     """
-QUERY_PATTERN = r"(?:(INSERT\s*INTO\s*|INSERT\s*OVERWRITE\s*INTO\s*|UPDATE\s*|MERGE\s*INTO\s*|DELETE\s*FROM\s*))([\w._\"\'()]+)(?=[\s*\n])"  # pylint: disable=line-too-long
+QUERY_PATTERN = r"(?:(INSERT\s*INTO\s*|INSERT\s*OVERWRITE\s*INTO\s*|UPDATE\s*|MERGE\s*INTO\s*|DELETE\s*FROM\s*|COPY\s+INTO\s+))([\w._\"\'()]+)(?=[\s*\n])"  # pylint: disable=line-too-long
 IDENTIFIER_PATTERN = r"(IDENTIFIER\(\')([\w._\"]+)(\'\))"
 
 
@@ -77,15 +77,20 @@ def _normalize_dml_sql(query: str) -> str:
     return query.strip()
 
 
-@cache.wrap(key_func=lambda query: sha256_hash(query.strip()))
-def _parse_query(query: str) -> Optional[str]:  # noqa: UP045
+@cache.wrap(key_func=lambda query: sha256_hash((query or "").strip()))
+def _parse_query(query: Optional[str]) -> Optional[str]:  # noqa: UP045
     """Parse snowflake queries to extract the identifiers.
 
     The query is first normalized (block comments, single-line comments, and
     leading whitespace removed) so that re.match() can reliably find the DML
     keyword at position 0 without being confused by commented-out SQL in the
     query body.
+
+    Returns ``None`` if *query* is ``None`` or empty, or if the query is not a
+    recognized DML statement.
     """
+    if not query:
+        return None
     match = re.match(QUERY_PATTERN, _normalize_dml_sql(query), re.IGNORECASE)
     try:
         # This will match results like `DATABASE.SCHEMA.TABLE1` or IDENTIFIER('TABLE1')
