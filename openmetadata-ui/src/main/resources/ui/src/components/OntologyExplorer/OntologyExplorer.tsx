@@ -374,7 +374,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             totalTermCount={totalTermCount}
             viewModeDisabled={explorationMode === 'data'}
             onClearAll={() =>
-              setFilters((prev) => ({ ...DEFAULT_FILTERS, viewMode: prev.viewMode }))
+              setFilters((prev) => ({
+                ...DEFAULT_FILTERS,
+                viewMode: prev.viewMode,
+              }))
             }
             onFiltersChange={handleFiltersChange}
             onLoadMore={handleLoadMore}

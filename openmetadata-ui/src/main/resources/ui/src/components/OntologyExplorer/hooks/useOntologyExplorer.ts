@@ -20,6 +20,7 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Metric } from '../../../generated/entity/data/metric';
+import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
 import {
   getGlossariesList,
   getGlossaryTerms,
@@ -74,7 +75,6 @@ import {
   METRIC_NODE_TYPE,
   searchHitSourceToEntityRef,
 } from '../utils/graphBuilders';
-import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
 import { useOntologyGraphDerived } from './useOntologyGraphDerived';
 
 const MODEL_TERM_FIELDS = [
@@ -1489,7 +1489,8 @@ export function useOntologyExplorer({
         if (node.id !== nodeId) {
           return node;
         }
-        const newLabel = updatedData.displayName || updatedData.name || node.label;
+        const newLabel =
+          updatedData.displayName || updatedData.name || node.label;
 
         return {
           ...node,
