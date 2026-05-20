@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, Response } from '@playwright/test';
+import { APIRequestContext, expect, Page, Response } from '@playwright/test';
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage } from './common';
@@ -458,11 +458,89 @@ export async function applyDashboardTagFilter(
 }
 
 /**
+ * Polls the incident status API until an incident for `testCaseFqn` appears
+ * within the [failTs-60s, failTs+120s] window.
+ * Call this immediately after `addTestCaseResult` to guarantee the incident
+ * document is indexed before any UI assertions.
+ */
+export async function waitForIncidentToBeIndexed(
+  apiContext: APIRequestContext,
+  testCaseFqn: string,
+  failTs: number
+): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const res = await apiContext.get(
+          `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true` +
+            `&startTs=${failTs - 60_000}` +
+            `&endTs=${failTs + 120_000}`
+        );
+        const body = await res.json();
+
+        return (body.data ?? []).some(
+          (i: { testCaseReference?: { fullyQualifiedName?: string } }) =>
+            i.testCaseReference?.fullyQualifiedName === testCaseFqn
+        );
+      },
+      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+    )
+    .toBe(true);
+}
+
+/**
  * Asserts that captured dataQualityReport requests referencing `filterFqn`
  * contain `expectedField` in the ES query JSON.
  * Pass `notExpectedPattern` to guard against a field that must NOT appear
  * (e.g. a regression check for an old wrong field path).
  */
+/**
+ * Asserts that a dimension card (StatusCardWidget) on the Data Quality dashboard
+ * shows the expected total, success, failed, and aborted counts.
+ * Uses a generous timeout on total-value to accommodate ES indexing lag; the
+ * subsequent count assertions run immediately once data is loaded.
+ */
+export async function assertDimensionCard(
+  page: Page,
+  dimension: string,
+  expected: {
+    total: string;
+    success: string;
+    failed: string;
+    aborted: string;
+  }
+): Promise<void> {
+  const card = page.locator('[data-testid="status-data-widget"]').filter({
+    has: page
+      .locator('[data-testid="status-title"]')
+      .filter({ hasText: dimension }),
+  });
+  await expect(card.getByTestId('total-value')).toHaveText(expected.total);
+  await expect(card.getByTestId('success-count')).toHaveText(expected.success);
+  await expect(card.getByTestId('failed-count')).toHaveText(expected.failed);
+  await expect(card.getByTestId('aborted-count')).toHaveText(expected.aborted);
+}
+
+/**
+ * Asserts the legend counts inside a pie chart widget.
+ * `legendCounts` maps the legend item name (lowercase) to the expected count
+ * string, e.g. `{ success: '4', failed: '4', aborted: '4' }`.
+ * Uses the `data-testid="legend-count-{name}"` attribute added to
+ * CustomPieChart legend items.
+ */
+export async function assertPieChartLegendCounts(
+  page: Page,
+  widgetTestId: string,
+  legendCounts: Record<string, string>
+): Promise<void> {
+  const widget = page.locator(`[data-testid="${widgetTestId}"]`);
+  for (const [name, count] of Object.entries(legendCounts)) {
+    await expect(
+      widget.getByTestId(`legend-count-${name.toLowerCase()}`)
+    ).toHaveText(count);
+  }
+}
+
 export function assertEsFieldInReports(
   reports: CapturedReport[],
   filterFqn: string,

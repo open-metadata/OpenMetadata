@@ -12,6 +12,7 @@
  */
 
 import test, { expect, Page } from '@playwright/test';
+import { DataQualityDimensions } from '../../../../src/generated/tests/testDefinition';
 import { getCurrentMillis } from '../../../../src/utils/date-time/DateTimeUtils';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { DataProduct } from '../../../support/domain/DataProduct';
@@ -22,19 +23,23 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { UserClass } from '../../../support/user/UserClass';
-import { createNewPage } from '../../../utils/common';
+import { createNewPage, uuid } from '../../../utils/common';
 import {
   applyDashboardTagFilter,
   applyDashboardTierFilter,
+  assertDimensionCard,
   assertEsFieldInReports,
+  assertPieChartLegendCounts,
   captureReports,
   clickPieChartSegmentByIndex,
   DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID,
   ENTITY_HEALTH_PIE_CHART_TEST_ID,
   goToDataQualityDashboard,
   TEST_CASE_STATUS_PIE_CHART_TEST_ID,
+  waitForIncidentToBeIndexed,
 } from '../../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { visitDataQualityTab } from '../../../utils/testCases';
 
 enum TestCaseStatus {
   Aborted = 'Aborted',
@@ -58,6 +63,19 @@ let glossaryTerm: GlossaryTerm;
 let domain: Domain;
 let dataProduct: DataProduct;
 
+// Entities for the 4 dimension test cases (Accuracy/Completeness/Consistency/Uniqueness)
+let table4: TableClass;
+let tier2: TagClass;
+let cert1: TagClass;
+let cert2: TagClass;
+let consistencyTestCaseName: string;
+let uniquenessTestCaseName: string;
+let accuracyTestCaseFqn: string;
+let completenessTestCaseFqn: string;
+let consistencyTestCaseFqn: string;
+let uniquenessTestCaseFqn: string;
+const dimTestDefIds: string[] = [];
+
 const testCaseResult = {
   result: 'Found min=10001, max=27809 vs. the expected min=90001, max=96162.',
   testResultValue: [
@@ -80,6 +98,7 @@ test.describe(
   },
   () => {
     test.beforeAll('setup pre-test', async ({ browser }) => {
+      test.slow();
       table1 = new TableClass();
       table2 = new TableClass();
       table3 = new TableClass();
@@ -178,6 +197,179 @@ test.describe(
         });
       }
 
+      // --- 4 dimension test cases: Accuracy/Completeness/Consistency/Uniqueness ---
+      // table3 gets cert1; table4 gets tier2 + cert2.
+      // This keeps the existing tier-tagged tables intact for other tests while
+      // giving each new dimension test case a distinct metadata signature.
+      tier2 = new TagClass({ classification: 'Tier' });
+      cert1 = new TagClass({ classification: 'Certification' });
+      cert2 = new TagClass({ classification: 'Certification' });
+      table4 = new TableClass();
+
+      await tier2.create(apiContext);
+      await cert1.create(apiContext);
+      await cert2.create(apiContext);
+      await table4.create(apiContext);
+
+      // Add cert1 certification to table3 (keeps its existing tier tag).
+      await table3.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/certification',
+            value: {
+              tagLabel: {
+                tagFQN: cert1.responseData.fullyQualifiedName,
+                source: 'Classification',
+                labelType: 'Manual',
+                state: 'Confirmed',
+              },
+            },
+          },
+        ],
+      });
+
+      // Add tier2 and cert2 to table4.
+      await table4.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/tags/0',
+            value: {
+              name: tier2.data.name,
+              tagFQN: tier2.responseData.fullyQualifiedName,
+              labelType: 'Manual',
+              state: 'Confirmed',
+            },
+          },
+          {
+            op: 'add',
+            path: '/certification',
+            value: {
+              tagLabel: {
+                tagFQN: cert2.responseData.fullyQualifiedName,
+                source: 'Classification',
+                labelType: 'Manual',
+                state: 'Confirmed',
+              },
+            },
+          },
+        ],
+      });
+
+      // Create four custom test definitions, one per DQ dimension.
+      // Each definition uses OpenMetadata platform so the dimension is indexed
+      // on the test case document and visible in the dashboard dimension widgets.
+      const [accuracyDef, completenessDef, consistencyDef, uniquenessDef] =
+        await Promise.all(
+          [
+            DataQualityDimensions.Accuracy,
+            DataQualityDimensions.Completeness,
+            DataQualityDimensions.Consistency,
+            DataQualityDimensions.Uniqueness,
+          ].map((dim) =>
+            apiContext
+              .post('/api/v1/dataQuality/testDefinitions', {
+                data: {
+                  name: `pw_${dim.toLowerCase()}_def_${uuid()}`,
+                  entityType: 'TABLE',
+                  testPlatforms: ['OpenMetadata'],
+                  dataQualityDimension: dim,
+                  supportedDataTypes: ['NUMBER'],
+                },
+              })
+              .then((r) => r.json())
+          )
+        );
+
+      dimTestDefIds.push(
+        accuracyDef.id,
+        completenessDef.id,
+        consistencyDef.id,
+        uniquenessDef.id
+      );
+
+      // Accuracy → Success (table1, has existing "tier")
+      const tcAccuracy = await table1.createTestCase(apiContext, {
+        testDefinition: accuracyDef.fullyQualifiedName,
+        parameterValues: [],
+      });
+      accuracyTestCaseFqn = tcAccuracy.fullyQualifiedName;
+
+      // Completeness → Aborted (table2, has existing "tier")
+      const tcCompleteness = await table2.createTestCase(apiContext, {
+        testDefinition: completenessDef.fullyQualifiedName,
+        parameterValues: [],
+      });
+      completenessTestCaseFqn = tcCompleteness.fullyQualifiedName;
+
+      // Consistency → Failed / unresolved incident (table3, has "tier" + cert1)
+      const tcConsistency = await table3.createTestCase(apiContext, {
+        testDefinition: consistencyDef.fullyQualifiedName,
+        parameterValues: [],
+      });
+      consistencyTestCaseName = tcConsistency.name;
+      consistencyTestCaseFqn = tcConsistency.fullyQualifiedName;
+
+      // Uniqueness → Failed / resolved incident (table4, has tier2 + cert2)
+      const tcUniqueness = await table4.createTestCase(apiContext, {
+        testDefinition: uniquenessDef.fullyQualifiedName,
+        parameterValues: [],
+      });
+      uniquenessTestCaseName = tcUniqueness.name;
+      uniquenessTestCaseFqn = tcUniqueness.fullyQualifiedName;
+
+      // Add one test-case result per case with the prescribed status.
+      await table1.addTestCaseResult(apiContext, accuracyTestCaseFqn, {
+        testCaseStatus: 'Success',
+        result: 'Accuracy check passed.',
+        timestamp: getCurrentMillis(),
+      });
+
+      await table2.addTestCaseResult(apiContext, completenessTestCaseFqn, {
+        testCaseStatus: 'Aborted',
+        result: 'Completeness check aborted.',
+        timestamp: getCurrentMillis(),
+      });
+
+      const consistencyFailTs = getCurrentMillis();
+      await table3.addTestCaseResult(apiContext, consistencyTestCaseFqn, {
+        testCaseStatus: 'Failed',
+        result: 'Consistency check failed — data inconsistency detected.',
+        timestamp: consistencyFailTs,
+      });
+
+      await waitForIncidentToBeIndexed(
+        apiContext,
+        consistencyTestCaseFqn,
+        consistencyFailTs
+      );
+
+      const uniquenessFailTs = getCurrentMillis();
+      await table4.addTestCaseResult(apiContext, uniquenessTestCaseFqn, {
+        testCaseStatus: 'Failed',
+        result: 'Uniqueness check failed — duplicate values found.',
+        timestamp: uniquenessFailTs,
+      });
+
+      await waitForIncidentToBeIndexed(
+        apiContext,
+        uniquenessTestCaseFqn,
+        uniquenessFailTs
+      );
+
+      await apiContext.post(
+        '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
+        {
+          data: {
+            testCaseReference: uniquenessTestCaseFqn,
+            testCaseResolutionStatusType: 'Resolved',
+          },
+        }
+      );
+
       await afterAction();
     });
 
@@ -195,6 +387,17 @@ test.describe(
       await classification.delete(apiContext);
       await dataProduct.delete(apiContext);
       await domain.delete(apiContext);
+
+      // Clean up entities created for the dimension test cases.
+      for (const defId of dimTestDefIds) {
+        await apiContext.delete(
+          `/api/v1/dataQuality/testDefinitions/${defId}?hardDelete=true`
+        );
+      }
+      await table4.delete(apiContext);
+      await cert2.delete(apiContext);
+      await cert1.delete(apiContext);
+      await tier2.delete(apiContext);
 
       await afterAction();
     });
@@ -299,6 +502,29 @@ test.describe(
 
           expect(responseData.ok()).toBeTruthy();
         }
+
+        await waitForAllLoadersToDisappear(page);
+
+        // user1 owns table1 (Accuracy→Success), table2 (Completeness→Aborted),
+        // table3 (Consistency→Failed). Verify dimension cards show expected counts.
+        await assertDimensionCard(page, DataQualityDimensions.Accuracy, {
+          total: '1',
+          success: '1',
+          failed: '0',
+          aborted: '0',
+        });
+        await assertDimensionCard(page, DataQualityDimensions.Completeness, {
+          total: '1',
+          success: '0',
+          failed: '0',
+          aborted: '1',
+        });
+        await assertDimensionCard(page, DataQualityDimensions.Consistency, {
+          total: '1',
+          success: '0',
+          failed: '1',
+          aborted: '0',
+        });
       });
 
       await test.step('Filter by Tier and verify all API responses succeed', async () => {
@@ -318,6 +544,45 @@ test.describe(
 
           expect(responseData.ok()).toBeTruthy();
         }
+
+        await waitForAllLoadersToDisappear(page);
+
+        // Dimension cards still show the same 3 tables (Owner ∩ Tier = same set).
+        // Confirms tier filter scopes correctly and widgets reflect real data.
+        await assertDimensionCard(page, DataQualityDimensions.Accuracy, {
+          total: '1',
+          success: '1',
+          failed: '0',
+          aborted: '0',
+        });
+        await assertDimensionCard(page, DataQualityDimensions.Completeness, {
+          total: '1',
+          success: '0',
+          failed: '0',
+          aborted: '1',
+        });
+        await assertDimensionCard(page, DataQualityDimensions.Consistency, {
+          total: '1',
+          success: '0',
+          failed: '1',
+          aborted: '0',
+        });
+
+        // Test Case Status pie chart: table1(4 success) + table2(3 failed+1 aborted)
+        // + table3(3 aborted+1 failed) = 4 success, 4 failed, 4 aborted (12 total).
+        await assertPieChartLegendCounts(
+          page,
+          'test-case-status-pie-chart-widget',
+          { success: '4', failed: '4', aborted: '4' }
+        );
+
+        // Entity Health pie chart: table1 is healthy (all success), table2 and
+        // table3 are unhealthy (have failed test cases).
+        await assertPieChartLegendCounts(
+          page,
+          'entity-health-pie-chart-widget',
+          { healthy: '1', unhealthy: '2' }
+        );
       });
 
       await test.step('Filter by Tag and verify all API responses succeed', async () => {
@@ -335,6 +600,11 @@ test.describe(
 
           expect(responseData.ok()).toBeTruthy();
         }
+
+        await waitForAllLoadersToDisappear(page);
+        await expect(
+          page.locator('[data-testid="status-data-widget"]').first()
+        ).toBeVisible();
       });
 
       await test.step('Filter by Glossary Term and verify all API responses succeed', async () => {
@@ -358,6 +628,11 @@ test.describe(
 
           expect(responseData.ok()).toBeTruthy();
         }
+
+        await waitForAllLoadersToDisappear(page);
+        await expect(
+          page.locator('[data-testid="status-data-widget"]').first()
+        ).toBeVisible();
       });
 
       await test.step('Filter by Data Product and verify all API responses succeed', async () => {
@@ -387,14 +662,71 @@ test.describe(
 
           expect(responseData.ok()).toBeTruthy();
         }
+
+        await waitForAllLoadersToDisappear(page);
+        await expect(
+          page.locator('[data-testid="status-data-widget"]').first()
+        ).toBeVisible();
+      });
+
+      await test.step('Verify New incident for Consistency test case on table3 DQ tab', async () => {
+        await visitDataQualityTab(page, table3);
+        await expect(
+          page.locator(
+            `[data-testid="status-badge-${consistencyTestCaseName}"]`
+          )
+        ).toContainText('Failed');
+        await expect(
+          page.locator(`[data-testid="${consistencyTestCaseName}-status"]`)
+        ).toContainText('New');
+      });
+
+      await test.step('Verify Resolved incident for Uniqueness test case on table4 DQ tab', async () => {
+        await visitDataQualityTab(page, table4);
+        await expect(
+          page.locator(`[data-testid="status-badge-${uniquenessTestCaseName}"]`)
+        ).toContainText('Failed');
+        await expect(
+          page.locator(`[data-testid="${uniquenessTestCaseName}-status"]`)
+        ).toContainText('Resolved');
+      });
+
+      await test.step('Filter by Certification and verify Uniqueness widget shows 1 Failed test case', async () => {
+        // Navigate fresh so the accumulated filters above do not interfere.
+        // table4 (cert2) is not owned by user1 and does not carry the tier/tag/glossary
+        // labels from previous steps, so a clean page is required.
+        await goToDataQualityDashboard(page);
+        await waitForAllLoadersToDisappear(page);
+
+        await page.getByRole('button', { name: 'Certification' }).click();
+        await page.getByTestId('search-input').fill(cert2.data.name);
+        await page.getByTestId(cert2.responseData.fullyQualifiedName).click();
+        const certApiDone = page.waitForResponse(
+          (res) =>
+            res.url().includes('/dataQualityReport') &&
+            res
+              .url()
+              .includes(
+                encodeURIComponent(cert2.responseData.fullyQualifiedName)
+              )
+        );
+        await page.getByTestId('update-btn').click();
+        await certApiDone;
+        await waitForAllLoadersToDisappear(page);
+
+        // table4 has exactly one test case: Uniqueness → Failed
+        await assertDimensionCard(page, DataQualityDimensions.Uniqueness, {
+          total: '1',
+          success: '0',
+          failed: '1',
+          aborted: '0',
+        });
       });
     });
 
     test('Tier filter sends tier.tagFQN field in ES query (not tags.tagFQN)', async ({
       page,
     }) => {
-      test.slow();
-
       const reports = captureReports(page);
 
       await test.step('Navigate to Data Quality dashboard', async () => {
@@ -420,8 +752,6 @@ test.describe(
     });
 
     test('Tag filter sends tags.tagFQN field in ES query', async ({ page }) => {
-      test.slow();
-
       const reports = captureReports(page);
 
       await test.step('Navigate to Data Quality dashboard', async () => {
@@ -449,8 +779,6 @@ test.describe(
     test('Tier and Tag filters produce independent ES filter clauses', async ({
       page,
     }) => {
-      test.slow();
-
       const reports = captureReports(page);
 
       await test.step('Navigate to Data Quality dashboard', async () => {
@@ -594,8 +922,6 @@ test.describe(
     test('Test Case Result pie chart segment click redirects to Test Cases with correct status', async ({
       page,
     }) => {
-      test.slow();
-
       await test.step('Navigate to Data Quality dashboard', async () => {
         await goToDataQualityDashboard(page);
         await expect(
@@ -666,8 +992,6 @@ test.describe(
     test('Data Assets Coverage pie chart segment click redirects to Test Suites and Explore', async ({
       page,
     }) => {
-      test.slow();
-
       await test.step('Navigate to Data Quality dashboard', async () => {
         await goToDataQualityDashboard(page);
         await expect(
