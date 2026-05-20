@@ -12,29 +12,22 @@
  */
 
 import {
-  FilterOutlined,
-  SortAscendingOutlined,
-  SortDescendingOutlined,
-} from '@ant-design/icons';
-import {
   Alert,
+  Box,
   Button,
   Card as CoreCard,
   Typography as CoreTypography,
+  Divider,
+  Dropdown,
+  Toggle,
 } from '@openmetadata/ui-core-components';
-import { Download01 } from '@untitledui/icons';
 import {
-  Button as AntdButton,
-  Card,
-  Col,
-  Menu,
-  Modal,
-  Radio,
-  Row,
-  Skeleton,
-  Switch,
-  Typography,
-} from 'antd';
+  ChevronDown,
+  Download01,
+  FilterFunnel01,
+  Trash01,
+} from '@untitledui/icons';
+import { Card, Col, Menu, Modal, Radio, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
 import Qs from 'qs';
@@ -78,6 +71,8 @@ import {
 import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import SearchedData from '../SearchedData/SearchedData';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
+import { ReactComponent as IconAscending } from './../../assets/svg/ic-ascending.svg';
+import { ReactComponent as IconDescending } from './../../assets/svg/ic-descending.svg';
 import './exploreV1.less';
 import { IndexNotFoundBanner } from './IndexNotFoundBanner';
 
@@ -231,11 +226,11 @@ const ExploreV1: React.FC<ExploreProps> = ({
       queryFilter as QueryFilterInterface | undefined
     );
 
-    const exportSize = isVisibleScope
-      ? isSearchMode
-        ? visibleResultCount
-        : pageResultCount
-      : allAssetsCount ?? EXPORT_ALL_ASSETS_LIMIT;
+    let exportSize = allAssetsCount ?? EXPORT_ALL_ASSETS_LIMIT;
+
+    if (isVisibleScope) {
+      exportSize = isSearchMode ? visibleResultCount : pageResultCount;
+    }
 
     const exportFrom = (() => {
       if (!isVisibleScope || isSearchMode) {
@@ -483,12 +478,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
         data-testid="export-scope-visible-count"
         size="text-sm"
         weight="regular">
-        (
-        {isSearchMode
-          ? tabAssetsCount !== undefined
-            ? tabAssetsCount
-            : '—'
-          : pageResultCount}{' '}
+        ({isSearchMode ? tabAssetsCount ?? '—' : pageResultCount}{' '}
         {t('label.result-plural')})
       </CoreTypography>
     );
@@ -545,6 +535,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                               fieldsWithNullValues={
                                 SUPPORTED_EMPTY_FILTER_FIELDS
                               }
+                              showSelectedCounts
                               index={activeTabKey}
                               showDeleted={showDeleted}
                               onAdvanceSearch={() => toggleModal(true)}
@@ -556,79 +547,93 @@ const ExploreV1: React.FC<ExploreProps> = ({
                             className="d-flex items-center justify-end gap-3"
                             flex={410}>
                             <Button
-                              color="secondary"
-                              data-testid="export-search-results-button"
-                              iconLeading={
-                                <Download01 height={16} width={16} />
-                              }
+                              data-testid="sort-order-button"
                               size="sm"
-                              onClick={handleOpenExportScopeModal}>
-                              <CoreTypography
-                                className="tw:text-secondary"
-                                size="text-sm"
-                                weight="medium">
-                                {t('label.export')}
-                              </CoreTypography>
-                            </Button>
-                            <span className="flex-center">
-                              <Switch
-                                checked={showDeleted}
-                                data-testid="show-deleted"
-                                onChange={onChangeShowDeleted}
-                              />
-                              <Typography.Text className="filters-label p-l-xs font-medium">
-                                {t('label.deleted')}
-                              </Typography.Text>
-                            </span>
+                              color="tertiary"
+                              className="tw:p-0"
+                              onClick={() =>
+                                onChangeSortOder(
+                                  isAscSortOrder
+                                    ? SORT_ORDER.DESC
+                                    : SORT_ORDER.ASC
+                                )
+                              }
+                              iconLeading={
+                                isAscSortOrder ? (
+                                  <IconAscending
+                                    style={{ fontSize: '14px' }}
+                                    {...sortProps}
+                                  />
+                                ) : (
+                                  <IconDescending
+                                    style={{ fontSize: '14px' }}
+                                    {...sortProps}
+                                  />
+                                )
+                              }
+                            />
+
+                            <SortingDropDown
+                              fieldList={translatedSortingFields}
+                              handleFieldDropDown={onChangeSortValue}
+                              sortField={sortValue}
+                            />
+
+                            <Divider
+                              className="tw:my-2"
+                              orientation="vertical"
+                            />
+
                             {(quickFilters || sqlQuery) && (
                               <Typography.Text
                                 className="text-primary self-center cursor-pointer font-medium"
                                 data-testid="clear-filters"
                                 onClick={() => clearFilters()}>
                                 {t('label.clear-entity', {
-                                  entity: '',
+                                  entity: t('label.all'),
                                 })}
                               </Typography.Text>
                             )}
 
-                            <AntdButton
-                              className="cursor-pointer"
-                              data-testid="advance-search-button"
-                              icon={<FilterOutlined />}
-                              type="text"
-                              onClick={() => toggleModal(true)}
-                            />
-                            <span className="sorting-dropdown-container">
-                              <SortingDropDown
-                                fieldList={translatedSortingFields}
-                                handleFieldDropDown={onChangeSortValue}
-                                sortField={sortValue}
-                              />
-                              <AntdButton
-                                className="p-0"
-                                data-testid="sort-order-button"
-                                size="small"
-                                type="text"
-                                onClick={() =>
-                                  onChangeSortOder(
-                                    isAscSortOrder
-                                      ? SORT_ORDER.DESC
-                                      : SORT_ORDER.ASC
-                                  )
-                                }>
-                                {isAscSortOrder ? (
-                                  <SortAscendingOutlined
-                                    style={{ fontSize: '14px' }}
-                                    {...sortProps}
+                            <Dropdown.Root>
+                              <Button
+                                className="tw:p-0"
+                                color="tertiary"
+                                iconTrailing={<ChevronDown size={14} />}
+                                size="sm">
+                                {t('label.tool-plural')}
+                              </Button>
+                              <Dropdown.Popover>
+                                <Dropdown.Menu aria-label="Actions">
+                                  <Dropdown.Item
+                                    icon={Download01}
+                                    label={t('label.export')}
+                                    onClick={handleOpenExportScopeModal}
                                   />
-                                ) : (
-                                  <SortDescendingOutlined
-                                    style={{ fontSize: '14px' }}
-                                    {...sortProps}
+
+                                  <Dropdown.Item
+                                    id="show-deleted"
+                                    icon={Trash01}
+                                    onClick={() =>
+                                      onChangeShowDeleted(!showDeleted)
+                                    }>
+                                    <Box justify="between">
+                                      {t('label.deleted')}
+                                      <Toggle
+                                        isSelected={showDeleted}
+                                        // onChange={onChangeShowDeleted}
+                                      />
+                                    </Box>
+                                  </Dropdown.Item>
+
+                                  <Dropdown.Item
+                                    icon={FilterFunnel01}
+                                    label={t('label.filter')}
+                                    onClick={() => toggleModal(true)}
                                   />
-                                )}
-                              </AntdButton>
-                            </span>
+                                </Dropdown.Menu>
+                              </Dropdown.Popover>
+                            </Dropdown.Root>
                           </Col>
                           {isElasticSearchIssue ? (
                             <Col span={24}>
