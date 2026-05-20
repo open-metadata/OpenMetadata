@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -23,7 +24,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedConstruction;
@@ -38,7 +38,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
-import org.openmetadata.service.search.indexes.LineagePrefetchContext;
+import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
 
 class ElasticSearchBulkSinkBehaviorTest {
@@ -312,13 +312,8 @@ class ElasticSearchBulkSinkBehaviorTest {
     }
   }
 
-  @AfterEach
-  void clearPrefetchContext() {
-    LineagePrefetchContext.clear();
-  }
-
   @Test
-  void addEntityBindsAndClearsPrefetchContextOnSuccess() throws Exception {
+  void addEntityPassesPrefetchedLineageIntoDocBuildContext() throws Exception {
     EntityInterface entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
@@ -328,8 +323,9 @@ class ElasticSearchBulkSinkBehaviorTest {
     try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
             mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
+      ContextCapturingIndex.reset();
       entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(ENTITY_TYPE);
       entityMock
           .when(() -> Entity.buildSearchIndex(ENTITY_TYPE, entity))
@@ -347,59 +343,26 @@ class ElasticSearchBulkSinkBehaviorTest {
           null,
           prefetched);
 
-      assertSame(edges, ContextCapturingIndex.observedDuringBuild);
-      assertNull(LineagePrefetchContext.getUpstream());
+      assertNotNull(ContextCapturingIndex.observedContext);
+      assertSame(edges, ContextCapturingIndex.observedContext.prefetchedUpstreamLineage());
     }
   }
 
   @Test
-  void addEntityClearsPrefetchContextEvenWhenBuildSearchIndexThrows() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
-    UUID entityId = UUID.randomUUID();
-    when(entity.getId()).thenReturn(entityId);
-    Map<UUID, List<EsLineageData>> prefetched = Map.of(entityId, List.of(new EsLineageData()));
-
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
-            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
-        MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
-      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(ENTITY_TYPE);
-      entityMock
-          .when(() -> Entity.buildSearchIndex(ENTITY_TYPE, entity))
-          .thenThrow(new IllegalStateException("boom"));
-
-      invokePrivate(
-          sink,
-          "addEntity",
-          new Class<?>[] {
-            EntityInterface.class, String.class, boolean.class, StageStatsTracker.class, Map.class
-          },
-          entity,
-          "table_index",
-          false,
-          null,
-          prefetched);
-
-      assertNull(LineagePrefetchContext.getUpstream());
-    }
-  }
-
-  @Test
-  void addEntityLeavesPrefetchContextUntouchedWhenPrefetchMapIsNull() throws Exception {
+  void addEntityPassesEmptyDocBuildContextWhenPrefetchMapIsNull() throws Exception {
     EntityInterface entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(UUID.randomUUID());
-    LineagePrefetchContext.setUpstream(List.of(new EsLineageData()));
-    List<EsLineageData> originallyBound = LineagePrefetchContext.getUpstream();
 
     try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
             mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
+      ContextCapturingIndex.reset();
       entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(ENTITY_TYPE);
       entityMock
           .when(() -> Entity.buildSearchIndex(ENTITY_TYPE, entity))
-          .thenReturn(new StubSearchIndex(Map.of("field", "value")));
+          .thenReturn(new ContextCapturingIndex());
 
       invokePrivate(
           sink,
@@ -413,7 +376,7 @@ class ElasticSearchBulkSinkBehaviorTest {
           null,
           null);
 
-      assertSame(originallyBound, LineagePrefetchContext.getUpstream());
+      assertSame(DocBuildContext.empty(), ContextCapturingIndex.observedContext);
     }
   }
 
@@ -439,7 +402,7 @@ class ElasticSearchBulkSinkBehaviorTest {
     }
 
     @Override
-    public Map<String, Object> buildSearchIndexDoc() {
+    public Map<String, Object> buildSearchIndexDoc(DocBuildContext ctx) {
       return doc;
     }
 
@@ -460,11 +423,15 @@ class ElasticSearchBulkSinkBehaviorTest {
   }
 
   private static class ContextCapturingIndex implements SearchIndex {
-    private static List<EsLineageData> observedDuringBuild;
+    private static DocBuildContext observedContext;
+
+    static void reset() {
+      observedContext = null;
+    }
 
     @Override
-    public Map<String, Object> buildSearchIndexDoc() {
-      observedDuringBuild = LineagePrefetchContext.getUpstream();
+    public Map<String, Object> buildSearchIndexDoc(DocBuildContext ctx) {
+      observedContext = ctx;
       return Map.of("field", "value");
     }
 

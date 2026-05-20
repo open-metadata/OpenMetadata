@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -99,13 +98,8 @@ class LineageIndexTest {
     assertFalse(doc.containsKey("upstreamLineage"));
   }
 
-  @AfterEach
-  void clearPrefetchContext() {
-    LineagePrefetchContext.clear();
-  }
-
   @Test
-  void testApplyLineageFieldsUsesPrefetchedContextWhenBoundAndDoesNotHitDb() {
+  void testApplyLineageFieldsUsesPrefetchedContextAndDoesNotHitDb() {
     UUID metricId = UUID.randomUUID();
     Metric metric =
         new Metric()
@@ -119,19 +113,17 @@ class LineageIndexTest {
     entityStaticMock.when(Entity::getCollectionDAO).thenReturn(dao);
 
     List<EsLineageData> prefetched = List.of(new EsLineageData());
-    LineagePrefetchContext.setUpstream(prefetched);
-
     MetricIndex index = new MetricIndex(metric);
     Map<String, Object> doc = new HashMap<>();
 
-    index.applyLineageFields(doc);
+    index.applyLineageFields(doc, DocBuildContext.withUpstreamLineage(prefetched));
 
     assertSame(prefetched, doc.get("upstreamLineage"));
     verify(relDao, never()).findFrom(any(UUID.class), anyString(), anyInt());
   }
 
   @Test
-  void testApplyLineageFieldsUsesEmptyPrefetchedListWhenBound() {
+  void testApplyLineageFieldsUsesEmptyPrefetchedList() {
     UUID metricId = UUID.randomUUID();
     Metric metric =
         new Metric()
@@ -144,12 +136,10 @@ class LineageIndexTest {
     when(dao.relationshipDAO()).thenReturn(relDao);
     entityStaticMock.when(Entity::getCollectionDAO).thenReturn(dao);
 
-    LineagePrefetchContext.setUpstream(Collections.emptyList());
-
     MetricIndex index = new MetricIndex(metric);
     Map<String, Object> doc = new HashMap<>();
 
-    index.applyLineageFields(doc);
+    index.applyLineageFields(doc, DocBuildContext.withUpstreamLineage(Collections.emptyList()));
 
     assertNotNull(doc.get("upstreamLineage"));
     assertEquals(0, ((List<?>) doc.get("upstreamLineage")).size());

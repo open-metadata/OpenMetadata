@@ -49,7 +49,7 @@ import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
-import org.openmetadata.service.search.indexes.LineagePrefetchContext;
+import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.opensearch.OsUtils;
@@ -290,7 +290,7 @@ public class OpenSearchBulkSink implements BulkSink {
         // this, 50 concurrent virtual workers each ran findFrom under HikariCP's synchronized
         // borrow path and got pinned/stalled, tripping Hikari's 60s leak detector.
         Map<UUID, List<EsLineageData>> prefetchedLineage =
-            SearchIndex.prefetchLineageIfSupported(entityInterfaces);
+            SearchIndex.prefetchLineageIfSupported(entityType, entityInterfaces);
 
         // Add entities to search index in parallel
         Map<String, String> finalFingerprints = existingFingerprints;
@@ -371,15 +371,14 @@ public class OpenSearchBulkSink implements BulkSink {
       boolean embeddingsEnabled,
       Map<String, String> existingFingerprints,
       Map<UUID, List<EsLineageData>> prefetchedLineage) {
-    boolean prefetchBound = false;
     try {
-      if (prefetchedLineage != null) {
-        LineagePrefetchContext.setUpstream(
-            prefetchedLineage.getOrDefault(entity.getId(), Collections.emptyList()));
-        prefetchBound = true;
-      }
       String entityType = Entity.getEntityTypeFromObject(entity);
-      Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
+      DocBuildContext ctx =
+          prefetchedLineage != null
+              ? DocBuildContext.withUpstreamLineage(
+                  prefetchedLineage.getOrDefault(entity.getId(), Collections.emptyList()))
+              : DocBuildContext.empty();
+      Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc(ctx);
       String json = JsonUtils.pojoToJson(searchIndexDoc);
 
       if (embeddingsEnabled) {
@@ -488,10 +487,6 @@ public class OpenSearchBulkSink implements BulkSink {
             entity.getFullyQualifiedName(),
             e.getMessage(),
             IndexingFailureRecorder.FailureStage.PROCESS);
-      }
-    } finally {
-      if (prefetchBound) {
-        LineagePrefetchContext.clear();
       }
     }
   }

@@ -77,6 +77,16 @@ public interface SearchIndex {
   Logger LOG = LoggerFactory.getLogger(SearchIndex.class);
 
   default Map<String, Object> buildSearchIndexDoc() {
+    return buildSearchIndexDoc(DocBuildContext.empty());
+  }
+
+  /**
+   * Builds the search index document with optional pre-fetched data passed via {@link
+   * DocBuildContext}. Reindex bulk sinks construct a context with batch-prefetched lineage so
+   * doc-build mixins skip per-entity DB lookups; all other callers should keep using the no-arg
+   * overload, which delegates here with {@link DocBuildContext#empty()}.
+   */
+  default Map<String, Object> buildSearchIndexDoc(DocBuildContext ctx) {
     Object entity = getEntity();
     Map<String, Object> esDoc = JsonUtils.getMap(entity);
 
@@ -93,7 +103,7 @@ public interface SearchIndex {
       sbi.applyServiceFields(esDoc);
     }
     if (this instanceof LineageIndex li) {
-      li.applyLineageFields(esDoc);
+      li.applyLineageFields(esDoc, ctx);
     }
 
     // Phase 3: Entity-specific fields only
@@ -269,19 +279,25 @@ public interface SearchIndex {
   }
 
   /**
-   * Returns the batch-prefetched upstream lineage map for {@code entities} when the entity type
-   * supports lineage, or {@code null} when prefetch is not applicable (empty input, index doesn't
-   * implement {@link LineageIndex}, or prefetch produced no records). Callers should treat
-   * {@code null} as the signal to fall back to per-entity DB lookups via
-   * {@link #getLineageData(EntityReference)}.
+   * Returns the batch-prefetched upstream lineage map for {@code entities} when {@code
+   * entityType}'s index implements {@link LineageIndex}, or {@code null} when prefetch is not
+   * applicable. {@code null} is returned in any of these cases:
    *
-   * <p>Used by reindex bulk sinks to centralize the "probe + prefetch + null-on-miss" pattern so
-   * doc-build virtual threads never need a JDBI handle for lineage.
+   * <ul>
+   *   <li>{@code entities} is null/empty,
+   *   <li>the entity type's index does not implement {@link LineageIndex},
+   *   <li>the batch DB call inside {@link #prefetchUpstreamLineage(List)} failed.
+   * </ul>
+   *
+   * A non-null map (possibly with entity-id keys mapping to empty lists for entities that have no
+   * upstream edges) signals "prefetch succeeded; bind the per-entity slice into {@link
+   * DocBuildContext}". Callers that get {@code null} must leave the context empty so doc-build
+   * falls back to per-entity DB lookups via {@link #getLineageData(EntityReference)}.
    */
   static Map<UUID, List<EsLineageData>> prefetchLineageIfSupported(
-      List<? extends EntityInterface> entities) {
+      String entityType, List<? extends EntityInterface> entities) {
     Map<UUID, List<EsLineageData>> result = null;
-    if (!nullOrEmpty(entities) && supportsLineagePrefetch(entities.getFirst())) {
+    if (!nullOrEmpty(entities) && supportsLineagePrefetch(entityType)) {
       Map<UUID, List<EsLineageData>> prefetched = prefetchUpstreamLineage(entities);
       if (!prefetched.isEmpty()) {
         result = prefetched;
@@ -290,13 +306,22 @@ public interface SearchIndex {
     return result;
   }
 
-  private static boolean supportsLineagePrefetch(EntityInterface probe) {
+  /**
+   * Type-level marker check: builds the index for {@code entityType} with a {@code null} entity
+   * (the same null-entity probe pattern used by {@code SearchIndexFactory#getReindexFieldsFor})
+   * and returns true if the resulting index implements {@link LineageIndex}. Avoids constructing
+   * a throwaway index over a real entity instance just to read a marker interface.
+   */
+  private static boolean supportsLineagePrefetch(String entityType) {
     boolean supported = false;
     try {
-      Object index = Entity.buildSearchIndex(Entity.getEntityTypeFromObject(probe), probe);
-      supported = index instanceof LineageIndex;
+      SearchIndex probe = Entity.buildSearchIndex(entityType, null);
+      supported = probe instanceof LineageIndex;
     } catch (Exception e) {
-      LOG.warn("Could not determine LineageIndex support; skipping lineage prefetch", e);
+      LOG.warn(
+          "Could not determine LineageIndex support for type '{}'; skipping lineage prefetch",
+          entityType,
+          e);
     }
     return supported;
   }
@@ -305,12 +330,12 @@ public interface SearchIndex {
    * Batch-prefetch upstream lineage for every entity in {@code entities} using one
    * {@code findFromBatch} call and one {@code getEntityReferencesByIds} call per upstream entity
    * type. The returned map is keyed by every input entity's id (entities with no upstream lineage
-   * map to an empty list), so the doc-build phase can bind it via {@link LineagePrefetchContext}
-   * and skip per-entity JDBI handle acquisition entirely.
+   * map to an empty list), so the doc-build phase can wrap it in a {@link DocBuildContext} and
+   * skip per-entity JDBI handle acquisition entirely.
    *
    * <p>An empty map signals "nothing prefetched" — either the input was empty or the batch DB
-   * call failed. In the failure case callers must leave {@link LineagePrefetchContext} unset so
-   * doc-build falls back to per-entity DB lookups.
+   * call failed. In the failure case callers must build doc-build {@link DocBuildContext#empty()}
+   * so doc-build falls back to per-entity DB lookups.
    */
   static Map<UUID, List<EsLineageData>> prefetchUpstreamLineage(
       List<? extends EntityInterface> entities) {
@@ -456,6 +481,15 @@ public interface SearchIndex {
             entityRelationshipRecord.getId(),
             entity.getFullyQualifiedName(),
             ex.getMessage());
+      } catch (Exception ex) {
+        // Mirror the prefetch path: malformed lineage JSON or a transient failure on one edge
+        // should not fail the whole entity's indexing. Log and skip; other edges still apply.
+        LOG.warn(
+            "Failed to build legacy lineage edge for entity '{}' from upstream '{}' (ID: {}); skipping",
+            entity.getFullyQualifiedName(),
+            entityRelationshipRecord.getType(),
+            entityRelationshipRecord.getId(),
+            ex);
       }
     }
     return data;

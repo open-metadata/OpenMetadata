@@ -290,56 +290,52 @@ class SearchIndexPrefetchTest {
 
   @Test
   void prefetchLineageIfSupportedReturnsNullForNullEntities() {
-    assertNull(SearchIndex.prefetchLineageIfSupported(null));
+    assertNull(SearchIndex.prefetchLineageIfSupported(TABLE, null));
   }
 
   @Test
   void prefetchLineageIfSupportedReturnsNullForEmptyEntities() {
-    assertNull(SearchIndex.prefetchLineageIfSupported(Collections.emptyList()));
+    assertNull(SearchIndex.prefetchLineageIfSupported(TABLE, Collections.emptyList()));
   }
 
   @Test
   void prefetchLineageIfSupportedReturnsNullWhenIndexIsNotLineageIndex() {
     Table downstream = table("svc.db.s.d1");
-    entityStaticMock.when(() -> Entity.getEntityTypeFromObject(downstream)).thenReturn(TABLE);
     entityStaticMock
-        .when(() -> Entity.buildSearchIndex(TABLE, downstream))
+        .when(() -> Entity.buildSearchIndex(TABLE, null))
         .thenReturn(new BareSearchIndex());
 
-    assertNull(SearchIndex.prefetchLineageIfSupported(List.of(downstream)));
+    assertNull(SearchIndex.prefetchLineageIfSupported(TABLE, List.of(downstream)));
   }
 
   @Test
   void prefetchLineageIfSupportedReturnsNullWhenBuildSearchIndexThrows() {
     Table downstream = table("svc.db.s.d1");
-    entityStaticMock.when(() -> Entity.getEntityTypeFromObject(downstream)).thenReturn(TABLE);
     entityStaticMock
-        .when(() -> Entity.buildSearchIndex(TABLE, downstream))
+        .when(() -> Entity.buildSearchIndex(TABLE, null))
         .thenThrow(new IllegalStateException("boom"));
 
-    assertNull(SearchIndex.prefetchLineageIfSupported(List.of(downstream)));
+    assertNull(SearchIndex.prefetchLineageIfSupported(TABLE, List.of(downstream)));
   }
 
   @Test
   void prefetchLineageIfSupportedReturnsNullWhenPrefetchMapStaysEmpty() {
     Table downstream = table("svc.db.s.d1");
-    entityStaticMock.when(() -> Entity.getEntityTypeFromObject(downstream)).thenReturn(TABLE);
     entityStaticMock
-        .when(() -> Entity.buildSearchIndex(TABLE, downstream))
+        .when(() -> Entity.buildSearchIndex(TABLE, null))
         .thenReturn(new BareLineageIndex());
     when(relDao.findFromBatch(any(), anyInt(), any(Include.class)))
         .thenThrow(new RuntimeException("db unavailable"));
 
-    assertNull(SearchIndex.prefetchLineageIfSupported(List.of(downstream)));
+    assertNull(SearchIndex.prefetchLineageIfSupported(TABLE, List.of(downstream)));
   }
 
   @Test
   void prefetchLineageIfSupportedReturnsMapWhenPrefetchYieldsRecords() {
     Table downstream = table("svc.db.s.d1");
     EntityReference upTable = upstreamRef(TABLE, "svc.db.s.up_table");
-    entityStaticMock.when(() -> Entity.getEntityTypeFromObject(downstream)).thenReturn(TABLE);
     entityStaticMock
-        .when(() -> Entity.buildSearchIndex(TABLE, downstream))
+        .when(() -> Entity.buildSearchIndex(TABLE, null))
         .thenReturn(new BareLineageIndex());
     when(relDao.findFromBatch(any(), anyInt(), any(Include.class)))
         .thenReturn(List.of(record(upTable.getId(), TABLE, downstream.getId(), TABLE, "{}")));
@@ -348,10 +344,53 @@ class SearchIndexPrefetchTest {
         .thenReturn(List.of(upTable));
 
     Map<UUID, List<EsLineageData>> result =
-        SearchIndex.prefetchLineageIfSupported(List.of(downstream));
+        SearchIndex.prefetchLineageIfSupported(TABLE, List.of(downstream));
 
     assertNotNull(result);
     assertEquals(1, result.get(downstream.getId()).size());
+  }
+
+  @Test
+  void getLineageDataFromRefsSkipsRecordWithInvalidJsonAndLogsWarn() {
+    EntityReference downstream =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(TABLE)
+            .withFullyQualifiedName("svc.db.s.downstream");
+    EntityReference goodUp =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(TABLE)
+            .withFullyQualifiedName("svc.db.s.up_good");
+    EntityReference badUp =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(TABLE)
+            .withFullyQualifiedName("svc.db.s.up_bad");
+    entityStaticMock
+        .when(() -> Entity.getEntityReferenceById(eq(TABLE), eq(goodUp.getId()), eq(Include.ALL)))
+        .thenReturn(goodUp);
+    entityStaticMock
+        .when(() -> Entity.getEntityReferenceById(eq(TABLE), eq(badUp.getId()), eq(Include.ALL)))
+        .thenReturn(badUp);
+
+    CollectionDAO.EntityRelationshipRecord good =
+        CollectionDAO.EntityRelationshipRecord.builder()
+            .id(goodUp.getId())
+            .type(TABLE)
+            .json("{}")
+            .build();
+    CollectionDAO.EntityRelationshipRecord bad =
+        CollectionDAO.EntityRelationshipRecord.builder()
+            .id(badUp.getId())
+            .type(TABLE)
+            .json("{not-json")
+            .build();
+
+    List<EsLineageData> result = SearchIndex.getLineageDataFromRefs(downstream, List.of(good, bad));
+
+    assertEquals(1, result.size());
+    assertEquals(goodUp.getId(), result.get(0).getFromEntity().getId());
   }
 
   private static Table table(String fqn) {

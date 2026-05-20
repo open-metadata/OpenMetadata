@@ -56,7 +56,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
-import org.openmetadata.service.search.indexes.LineagePrefetchContext;
+import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
 
 /**
@@ -256,7 +256,7 @@ public class ElasticSearchBulkSink implements BulkSink {
         // this, 50 concurrent virtual workers each ran findFrom under HikariCP's synchronized
         // borrow path and got pinned/stalled, tripping Hikari's 60s leak detector.
         Map<UUID, List<EsLineageData>> prefetchedLineage =
-            SearchIndex.prefetchLineageIfSupported(entityInterfaces);
+            SearchIndex.prefetchLineageIfSupported(entityType, entityInterfaces);
 
         // Add entities to search index in parallel
         List<CompletableFuture<Void>> futures =
@@ -326,15 +326,14 @@ public class ElasticSearchBulkSink implements BulkSink {
       boolean recreateIndex,
       StageStatsTracker tracker,
       Map<UUID, List<EsLineageData>> prefetchedLineage) {
-    boolean prefetchBound = false;
     try {
-      if (prefetchedLineage != null) {
-        LineagePrefetchContext.setUpstream(
-            prefetchedLineage.getOrDefault(entity.getId(), Collections.emptyList()));
-        prefetchBound = true;
-      }
       String entityType = Entity.getEntityTypeFromObject(entity);
-      Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
+      DocBuildContext ctx =
+          prefetchedLineage != null
+              ? DocBuildContext.withUpstreamLineage(
+                  prefetchedLineage.getOrDefault(entity.getId(), Collections.emptyList()))
+              : DocBuildContext.empty();
+      Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc(ctx);
       String json = JsonUtils.pojoToJson(searchIndexDoc);
       String docId = entity.getId().toString();
       long rawDocSize = (long) json.getBytes(StandardCharsets.UTF_8).length;
@@ -439,10 +438,6 @@ public class ElasticSearchBulkSink implements BulkSink {
             entity.getFullyQualifiedName(),
             e.getMessage(),
             IndexingFailureRecorder.FailureStage.PROCESS);
-      }
-    } finally {
-      if (prefetchBound) {
-        LineagePrefetchContext.clear();
       }
     }
   }
