@@ -18,7 +18,12 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
+import os.org.opensearch.client.json.JsonData;
+import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch.core.MgetResponse;
+import os.org.opensearch.client.opensearch.core.get.GetResult;
+import os.org.opensearch.client.opensearch.core.mget.MultiGetResponseItem;
 import os.org.opensearch.client.opensearch.generic.Body;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
 import os.org.opensearch.client.opensearch.generic.Requests;
@@ -340,6 +345,53 @@ public class OpenSearchVectorService implements VectorIndexService {
       return result;
     } catch (Exception e) {
       LOG.error("Failed to batch get fingerprints in index={}: {}", indexName, e.getMessage(), e);
+      return Collections.emptyMap();
+    }
+  }
+
+  private static final List<String> EMBEDDING_SOURCE_FIELDS =
+      List.of(
+          "fingerprint",
+          "embedding",
+          "textToLLMContext",
+          "textToEmbed",
+          "chunkIndex",
+          "chunkCount",
+          "parentId");
+
+  // Jackson-backed mapper so JsonData.to(JsonNode.class, ...) deserializes via Jackson
+  // and produces a tree of Jackson types (TextNode, ArrayNode, etc.) rather than
+  // jakarta.json.JsonValue wrappers like org.glassfish.json.JsonStringImpl.
+  private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER = new JacksonJsonpMapper(MAPPER);
+
+  public Map<String, JsonNode> getExistingEmbeddingsBatch(
+      String indexName, List<String> entityIds) {
+    if (entityIds == null || entityIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    try {
+      MgetResponse<JsonData> response =
+          client.mget(
+              m -> m.index(indexName).ids(entityIds).sourceIncludes(EMBEDDING_SOURCE_FIELDS),
+              JsonData.class);
+
+      Map<String, JsonNode> result = new HashMap<>();
+      for (MultiGetResponseItem<JsonData> item : response.docs()) {
+        if (!item.isResult()) {
+          continue;
+        }
+        GetResult<JsonData> doc = item.result();
+        if (!doc.found() || doc.source() == null) {
+          continue;
+        }
+        JsonNode cached = doc.source().to(JsonNode.class, JACKSON_JSONP_MAPPER);
+        if (cached != null && cached.hasNonNull("fingerprint")) {
+          result.put(doc.id(), cached);
+        }
+      }
+      return result;
+    } catch (Exception e) {
+      LOG.error("Failed to batch get embeddings in index={}: {}", indexName, e.getMessage(), e);
       return Collections.emptyMap();
     }
   }

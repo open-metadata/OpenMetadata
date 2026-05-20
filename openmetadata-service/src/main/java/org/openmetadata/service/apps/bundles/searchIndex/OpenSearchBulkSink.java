@@ -4,7 +4,9 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTI
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECREATE_CONTEXT;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.stream.JsonGenerator;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -274,15 +276,17 @@ public class OpenSearchBulkSink implements BulkSink {
                 ? (ReindexContext) contextData.get(RECREATE_CONTEXT)
                 : null;
 
-        // Pre-fetch fingerprints for batch optimization (skip during recreate — fresh index)
-        Map<String, String> existingFingerprints = Collections.emptyMap();
-        if (embeddingsEnabled && !recreateIndex) {
+        // Pre-fetch existing embeddings (fingerprint + vector) for batch reuse, including during
+        // recreate — when fingerprint matches, we splice the cached embedding into the staged doc
+        // instead of regenerating it (avoids expensive Bedrock/embedding-provider calls).
+        Map<String, JsonNode> existingFingerprints = Collections.emptyMap();
+        if (embeddingsEnabled) {
           existingFingerprints =
               fetchExistingFingerprints(entityInterfaces, indexName, reindexContext);
         }
 
         // Add entities to search index in parallel
-        Map<String, String> finalFingerprints = existingFingerprints;
+        Map<String, JsonNode> finalFingerprints = existingFingerprints;
         List<CompletableFuture<Void>> futures =
             entityInterfaces.stream()
                 .map(
@@ -357,7 +361,7 @@ public class OpenSearchBulkSink implements BulkSink {
       ReindexContext reindexContext,
       StageStatsTracker tracker,
       boolean embeddingsEnabled,
-      Map<String, String> existingFingerprints) {
+      Map<String, JsonNode> existingFingerprints) {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
@@ -798,12 +802,11 @@ public class OpenSearchBulkSink implements BulkSink {
         && searchRepository.getIndexMapping(entityType) != null;
   }
 
-  @SuppressWarnings("unchecked")
   private String enrichWithEmbedding(
       EntityInterface entity,
       String json,
       boolean recreateIndex,
-      Map<String, String> existingFingerprints,
+      Map<String, JsonNode> existingFingerprints,
       StageStatsTracker tracker) {
     try {
       OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
@@ -811,28 +814,21 @@ public class OpenSearchBulkSink implements BulkSink {
         return json;
       }
 
-      if (!recreateIndex) {
-        String currentFp = VectorDocBuilder.computeFingerprintForEntity(entity);
-        String existingFp = existingFingerprints.get(entity.getId().toString());
-        if (existingFp != null && existingFp.equals(currentFp)) {
-          vectorSuccess.incrementAndGet();
-          if (tracker != null) {
-            tracker.recordVector(StatsResult.SUCCESS);
-          }
-          return json;
-        }
-      }
+      ObjectNode doc = (ObjectNode) OBJECT_MAPPER.readTree(json);
+      JsonNode cached = existingFingerprints.get(entity.getId().toString());
 
-      Map<String, Object> embeddingFields = vectorService.generateEmbeddingFields(entity);
-      Map<String, Object> docMap = OBJECT_MAPPER.readValue(json, Map.class);
-      docMap.putAll(embeddingFields);
-      String enrichedJson = OBJECT_MAPPER.writeValueAsString(docMap);
+      if (canReuseCachedEmbedding(entity, cached)) {
+        doc.setAll((ObjectNode) cached);
+      } else {
+        Map<String, Object> embeddingFields = vectorService.generateEmbeddingFields(entity);
+        doc.setAll((ObjectNode) OBJECT_MAPPER.valueToTree(embeddingFields));
+      }
 
       vectorSuccess.incrementAndGet();
       if (tracker != null) {
         tracker.recordVector(StatsResult.SUCCESS);
       }
-      return enrichedJson;
+      return OBJECT_MAPPER.writeValueAsString(doc);
     } catch (Exception e) {
       LOG.warn(
           "Failed to generate embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
@@ -844,12 +840,34 @@ public class OpenSearchBulkSink implements BulkSink {
     }
   }
 
+  /**
+   * True when the cached source from the original index has a matching fingerprint and a non-empty
+   * embedding vector. Tree-model access ({@code .path(...).asText(null)}, {@code .isArray()}) is
+   * type-tolerant — a missing or unexpectedly-typed field returns a safe default rather than
+   * throwing.
+   */
+  private static boolean canReuseCachedEmbedding(EntityInterface entity, JsonNode cached) {
+    if (cached == null || !cached.isObject()) {
+      return false;
+    }
+    String existingFp = cached.path("fingerprint").asText(null);
+    if (existingFp == null) {
+      return false;
+    }
+    String currentFp = VectorDocBuilder.computeFingerprintForEntity(entity);
+    if (!existingFp.equals(currentFp)) {
+      return false;
+    }
+    JsonNode embedding = cached.path("embedding");
+    return embedding.isArray() && !embedding.isEmpty();
+  }
+
   @Override
   public int getActiveBulkRequestCount() {
     return bulkProcessor.activeBulkRequests.get();
   }
 
-  private Map<String, String> fetchExistingFingerprints(
+  private Map<String, JsonNode> fetchExistingFingerprints(
       List<EntityInterface> entities, String indexName, ReindexContext reindexContext) {
     try {
       OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
@@ -860,7 +878,7 @@ public class OpenSearchBulkSink implements BulkSink {
       String entityType = entities.getFirst().getEntityReference().getType();
       String targetIndex = indexName;
       if (reindexContext != null) {
-        String stagedIndex = reindexContext.getStagedIndex(entityType).orElse(null);
+        String stagedIndex = reindexContext.getOriginalIndex(entityType).orElse(null);
         if (stagedIndex != null) {
           targetIndex = stagedIndex;
         }
@@ -870,9 +888,9 @@ public class OpenSearchBulkSink implements BulkSink {
       for (EntityInterface entity : entities) {
         entityIds.add(entity.getId().toString());
       }
-      return vectorService.getExistingFingerprintsBatch(targetIndex, entityIds);
+      return vectorService.getExistingEmbeddingsBatch(targetIndex, entityIds);
     } catch (Exception e) {
-      LOG.warn("Failed to fetch existing fingerprints: {}", e.getMessage());
+      LOG.warn("Failed to fetch existing embeddings: {}", e.getMessage());
       return Collections.emptyMap();
     }
   }
