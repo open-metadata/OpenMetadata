@@ -362,7 +362,7 @@ public class AlertsRuleEvaluator {
     String entityUpdatedBy = changeEvent.getUserName();
     try {
       User user = Entity.getEntityByName(Entity.USER, entityUpdatedBy, "id", Include.NON_DELETED);
-      return user.getIsBot();
+      return Boolean.TRUE.equals(user.getIsBot());
     } catch (EntityNotFoundException e) {
       return false;
     }
