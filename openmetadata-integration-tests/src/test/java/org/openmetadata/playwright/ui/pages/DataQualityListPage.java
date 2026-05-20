@@ -14,6 +14,9 @@ import org.openmetadata.playwright.ui.UiSession;
 public final class DataQualityListPage extends PageObject {
 
   private static final String API_LIST = "/api/v1/dataQuality/testCases/search/list";
+  private static final String API_LIST_SUITES = "/api/v1/dataQuality/testSuites/search/list";
+  private static final String TESTID_TEST_SUITES_TAB = "test-suites";
+  private static final String TESTID_TEST_SUITE_CONTAINER = "test-suite-container";
 
   private DataQualityListPage(final Page page, final UiSession session) {
     super(page, session);
@@ -96,6 +99,49 @@ public final class DataQualityListPage extends PageObject {
   /** Asserts a row with {@code data-testid="<testCaseName>"} is rendered. */
   public DataQualityListPage assertTestCaseVisible(final String testCaseName) {
     PlaywrightAssertions.assertThat(byTestId(testCaseName))
+        .isVisible(new LocatorAssertions.IsVisibleOptions().setTimeout(20_000));
+    return this;
+  }
+
+  /**
+   * Click the Test Suites tab. The component defaults its sub-toggle to {@code TABLE_SUITES}
+   * (where basic suites auto-created by {@code TestCaseBuilder.forTable} live), so we don't
+   * have to click the radio explicitly — that would be a no-op and would block the
+   * {@code waitForResponse} below.
+   */
+  public DataQualityListPage openTestSuitesTab() {
+    page.waitForResponse(
+        r -> r.url().contains(API_LIST_SUITES), () -> byTestId(TESTID_TEST_SUITES_TAB).click());
+    byTestId(TESTID_TEST_SUITE_CONTAINER)
+        .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+    return this;
+  }
+
+  /**
+   * Filter the test-suites list via its searchbar; awaits the filtered list response.
+   * For basic suites prefer the parent table's leaf name (e.g. {@code t_<shortId>}) over
+   * the suite's own dotted {@code name} — the search API tokenizes on dots and the dotted
+   * form filters poorly.
+   */
+  public DataQualityListPage searchTestSuiteByName(final String searchTerm) {
+    page.waitForResponse(
+        r -> r.url().contains(API_LIST_SUITES) && r.url().contains(searchTerm),
+        () ->
+            page.locator(
+                    "[data-testid='" + TESTID_TEST_SUITE_CONTAINER + "'] [data-testid='searchbar']")
+                .fill(searchTerm));
+    return this;
+  }
+
+  /**
+   * Asserts a test-suite row whose link text contains {@code visibleText} is rendered.
+   * For basic suites the link text is {@code record.basicEntityReference.fullyQualifiedName}
+   * (the parent table's FQN) — that's what the user sees and is what we match on, rather
+   * than the dotted {@code data-testid={record.name}} which is brittle.
+   */
+  public DataQualityListPage assertTestSuiteVisible(final String visibleText) {
+    PlaywrightAssertions.assertThat(
+            byTestId(TESTID_TEST_SUITE_CONTAINER).getByText(visibleText).first())
         .isVisible(new LocatorAssertions.IsVisibleOptions().setTimeout(20_000));
     return this;
   }

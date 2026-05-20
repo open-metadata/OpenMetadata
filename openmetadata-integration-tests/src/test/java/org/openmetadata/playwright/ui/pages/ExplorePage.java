@@ -119,6 +119,8 @@ public final class ExplorePage extends PageObject {
       case DASHBOARD_DATA_MODELS -> "dashboard data models-tab";
       case GLOSSARY_TERMS -> "glossary terms-tab";
       case TAGS -> "tags-tab";
+      case WORKSHEETS -> "worksheets-tab";
+      case FILES -> "files-tab";
     };
   }
 
@@ -139,7 +141,9 @@ public final class ExplorePage extends PageObject {
     SEARCH_INDEXES("searchIndexes"),
     DASHBOARD_DATA_MODELS("dashboardDataModel"),
     GLOSSARY_TERMS("glossaries"),
-    TAGS("tags");
+    TAGS("tags"),
+    WORKSHEETS("worksheets"),
+    FILES("files");
 
     final String path;
 

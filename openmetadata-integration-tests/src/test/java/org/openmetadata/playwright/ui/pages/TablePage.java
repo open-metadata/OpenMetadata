@@ -21,6 +21,12 @@ public final class TablePage extends PageObject {
   // enum key). Visible label varies — Tables show "Columns", Topics show "Schema" — so a
   // role+text match would only work for some types; testid is stable across all of them.
   private static final String TESTID_SCHEMA_TAB = "schema";
+  // EntityTabs.TABLE_QUERIES → 'table_queries'. Visible label is 'Queries'.
+  private static final String TESTID_TABLE_QUERIES_TAB = "table_queries";
+  // Each query rendered on the Queries tab is wrapped in a Col with this testid.
+  // Empty state (no linked queries) renders an 'add-query-btn' instead — so the
+  // presence of at least one query-card is the clean affirmative signal.
+  private static final String TESTID_QUERY_CARD = "query-card";
 
   private TablePage(final Page page, final UiSession session) {
     super(page, session);
@@ -40,6 +46,21 @@ public final class TablePage extends PageObject {
 
   public Locator schemaTab() {
     return byTestId(TESTID_SCHEMA_TAB);
+  }
+
+  /** Click the Queries tab and return this page object for chaining. */
+  public TablePage openQueriesTab() {
+    byTestId(TESTID_TABLE_QUERIES_TAB).click();
+    return this;
+  }
+
+  /**
+   * All query cards currently rendered on the Queries tab. Use
+   * {@code .first().isVisible()} to assert that at least one linked query renders —
+   * the regression signal we care about is presence, not exact count.
+   */
+  public Locator queryCards() {
+    return byTestId(TESTID_QUERY_CARD);
   }
 
   @Override
