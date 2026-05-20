@@ -22,10 +22,8 @@ import {
   updateBotDetails,
   verifyGenerateTokenAPIContract,
 } from '../../utils/bot';
-import {
-  searchFromSearchInput,
-  updateSearchInputAndWait,
-} from '../../utils/common';
+import { searchFromSearchInput } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -93,7 +91,10 @@ test.describe(
       });
 
       await test.step('Clear search restores full list', async () => {
-        await updateSearchInputAndWait(page, searchInput, '');
+        await searchInput.clear();
+        await searchInput.fill('');
+        await expect(searchInput).toHaveValue('');
+        await waitForAllLoadersToDisappear(page);
 
         await expect(createdBotLink).toBeVisible();
       });

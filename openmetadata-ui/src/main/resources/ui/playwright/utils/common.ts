@@ -198,32 +198,22 @@ export const clickOutside = async (page: Page) => {
   });
 };
 
-export const updateSearchInputAndWait = async (
-  page: Page,
-  searchInput: Locator,
-  value: string
-) => {
-  await searchInput.clear();
-  await searchInput.fill(value);
-  await expect(searchInput).toHaveValue(value);
-  await waitForAllLoadersToDisappear(page);
-};
-
 export const searchFromSearchInput = async (
   page: Page,
   searchInput: Locator,
   searchTerm: string
 ) => {
-  await searchInput.clear();
-  await searchInput.fill(searchTerm);
-  await expect(searchInput).toHaveValue(searchTerm);
-
-  const searchPromise = await page.waitForResponse(
+  const searchResponsePromise = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       response.request().method() === 'GET'
   );
-  const searchResponse = await searchPromise;
+
+  await searchInput.clear();
+  await searchInput.fill(searchTerm);
+  await expect(searchInput).toHaveValue(searchTerm);
+
+  const searchResponse = await searchResponsePromise;
   expect(searchResponse.status()).toBe(200);
 };
 
