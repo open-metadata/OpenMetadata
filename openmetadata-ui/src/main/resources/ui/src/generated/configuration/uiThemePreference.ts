@@ -68,7 +68,7 @@ export interface ThemeConfiguration {
     infoColor: string;
     /**
      * Default background color for the landing page welcome panel, in hex code format or empty.
-     * Users and personas can still override this on a per-persona basis.
+     * Individual users and per-persona settings can still override this value.
      */
     panelBackgroundColor?: string;
     /**

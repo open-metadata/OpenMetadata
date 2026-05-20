@@ -76,7 +76,7 @@ const CustomiseLandingPageHeader = ({
   const adminPanelBackgroundColor =
     applicationConfig?.customTheme?.panelBackgroundColor;
   const bgColor =
-    backgroundColor ?? (adminPanelBackgroundColor || DEFAULT_HEADER_BG_COLOR);
+    backgroundColor || adminPanelBackgroundColor || DEFAULT_HEADER_BG_COLOR;
 
   const landingPageStyle = useMemo(() => {
     const backgroundImage = isLinearGradient(bgColor)
