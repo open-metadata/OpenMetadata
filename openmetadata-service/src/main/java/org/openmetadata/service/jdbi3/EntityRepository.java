@@ -5939,6 +5939,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     bulkInvalidate(entities);
     for (T entity : entities) {
       postDelete(entity, true);
+      // Fire deleteFromSearch per-entity so cascade-deleted descendants are removed from
+      // Elasticsearch. The legacy per-entity Entity.deleteEntity path invoked this via
+      // delete()'s top-level dispatch — this bulk replacement is the only path that walks
+      // cascaded children now, so a missing call leaves stale ES docs that surface as
+      // duplicate results (e.g. Playwright Domains.spec.ts:533 found two "PW_DataProduct_
+      // Sales" rows after a recursive Domain hard-delete because the DB row was gone but
+      // the search-index doc lingered).
+      deleteFromSearch(entity, true);
     }
   }
 
