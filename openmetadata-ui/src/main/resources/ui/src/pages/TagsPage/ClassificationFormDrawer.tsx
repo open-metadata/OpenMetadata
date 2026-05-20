@@ -43,8 +43,10 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
 
   return (
     <SlideoutMenu
+      className="tw:z-999"
       data-testid="classification-form-drawer"
       isOpen={open}
+      width={480}
       onOpenChange={handleOpenChange}>
       {({ close }) => (
         <>

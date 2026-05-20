@@ -53,8 +53,7 @@ test.describe('Task Assignee Management', () => {
       await nextAssignee.create(apiContext);
       await table.create(apiContext);
 
-      task.data.about = table.entityResponseData.fullyQualifiedName;
-      task.data.aboutType = 'table';
+      task.data.about = `<#E::table::${table.entityResponseData.fullyQualifiedName}>`;
       task.data.assignees = [initialAssignee.responseData.name];
 
       await task.create(apiContext);

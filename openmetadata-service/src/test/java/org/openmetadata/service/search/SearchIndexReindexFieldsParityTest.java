@@ -163,6 +163,7 @@ class SearchIndexReindexFieldsParityTest {
     org.junit.jupiter.api.Assertions.assertEquals(
         Set.of(
             "owners",
+            "tags",
             "domains",
             "reviewers",
             "followers",

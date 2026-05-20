@@ -16,15 +16,18 @@ for the profiler
 from typing import Callable, List, Optional, cast  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import (
+    ColumnProfilerConfig,
     PartitionProfilerConfig,
     TableData,
 )
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
 from metadata.utils.logger import profiler_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
+from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = profiler_logger()
 
@@ -38,7 +41,12 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
     def __init__(self, *args, **kwargs):
         """Init the pandas sampler"""
         super().__init__(*args, **kwargs)
-        self.partition_details = cast(PartitionProfilerConfig, self.partition_details)  # noqa: TC006
+        db_config = kwargs.get("config") or DatabaseSamplerConfig()
+        self.connection = get_ssl_connection(self.service_connection_config)
+        self.partition_details = cast(PartitionProfilerConfig, db_config.partition_details)  # noqa: TC006
+        self.sample_query: str | None = db_config.sample_query
+        self.include_columns: list[ColumnProfilerConfig] = db_config.include_columns or []
+        self.exclude_columns: list[str] = db_config.exclude_columns or []
         self._table = None
         self.client = self.get_client()
 
@@ -48,13 +56,43 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         if not self._table:
             self._table = self.get_dataframes(
                 service_connection_config=self.service_connection_config,
-                client=self.client.client,
+                client=self.client,
                 table=self.entity,
             )
         return self._table.dataframes
 
+    def _get_asset_row_count(self) -> int:
+        """
+        Get the row count of the asset being profiled. This is used for dynamic sampling.
+        Default implementation returns 0 and should be overridden by implementations that support fetching row count.
+        """
+        try:
+            self._row_count = sum(len(chunk.index) for chunk in self.raw_dataset())
+        except Exception:
+            logger.exception("Failed to fetch row count for asset %s. Defaulting to 0.", self.entity.name)
+            self._row_count = 0
+
+        return self._row_count
+
     def get_client(self):
         return self.connection
+
+    @property
+    def columns(self) -> List[SQALikeColumn]:  # noqa: UP006
+        """Return columns filtered by include/exclude lists."""
+        if self._columns:
+            return self._columns
+
+        included = {col.columnName for col in self.include_columns if col.columnName}
+        excluded = set(self.exclude_columns)
+        all_columns: List[SQALikeColumn] = [col for col in self.get_columns() if col is not None]  # noqa: UP006
+
+        if included:
+            self._columns = [col for col in all_columns if col.name in included]
+        else:
+            self._columns = [col for col in all_columns if col.name not in excluded]
+
+        return self._columns
 
     def _partitioned_table(self):
         """Get partitioned table"""
@@ -106,7 +144,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         if self.partition_details:
             raw_dataset = self._partitioned_table()
 
-        static = self.sample_config.get_static_config()
+        static = self._resolve_sample_config
         if (
             not static
             or not static.profileSample
@@ -117,7 +155,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
             )
         ):
             return raw_dataset
-        return self.get_sampled_dataframe(raw_dataset, self.sample_config)
+        return self.get_sampled_dataframe(raw_dataset, static)
 
     def _fetch_rows(self, data_frame):
         return [[self._truncate_cell(cell) for cell in row] for row in data_frame.dropna().values.tolist()]

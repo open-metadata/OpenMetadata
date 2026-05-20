@@ -34,7 +34,7 @@ import {
   FAILED_CHART_COLOR_SCHEME,
   SUCCESS_CHART_COLOR_SCHEME,
 } from '../../../constants/Chart.constants';
-import { PAGE_SIZE_BASE, ROUTES } from '../../../constants/constants';
+import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import {
   DATA_QUALITY_DASHBOARD_HEADER,
   DQ_FILTER_KEYS,
@@ -79,7 +79,12 @@ const DataQualityDashboard = ({
   initialFilters?: DqDashboardChartFilters;
   hideFilterBar?: boolean;
   hiddenFilters?: Array<
-    'owner' | 'tier' | 'tags' | 'glossaryTerms' | 'dataProducts'
+    | 'owner'
+    | 'tier'
+    | 'certification'
+    | 'tags'
+    | 'glossaryTerms'
+    | 'dataProducts'
   >;
   isGovernanceView?: boolean;
   className?: string;
@@ -158,6 +163,17 @@ const DataQualityDashboard = ({
   const [selectedTierFilter, setSelectedTierFilter] = useState<
     SearchDropdownOption[]
   >([]);
+  const [selectedCertificationFilter, setSelectedCertificationFilter] =
+    useState<SearchDropdownOption[]>([]);
+  const [certification, setCertification] = useState<{
+    tags: Tag[];
+    isLoading: boolean;
+    options: SearchDropdownOption[];
+  }>({
+    tags: [],
+    isLoading: true,
+    options: [],
+  });
   const [selectedOwnerFilter, setSelectedOwnerFilter] =
     useState<EntityReference[]>();
 
@@ -195,6 +211,7 @@ const DataQualityDashboard = ({
       ownerFqn: defaultFilters.ownerFqn,
       tags: defaultFilters.tags,
       tier: defaultFilters.tier,
+      certification: defaultFilters.certification,
       dataProductFqns: defaultFilters.dataProductFqns,
       startTs: defaultFilters.startTs,
       endTs: defaultFilters.endTs,
@@ -203,6 +220,7 @@ const DataQualityDashboard = ({
   }, [
     defaultFilters.ownerFqn,
     defaultFilters.tier,
+    defaultFilters.certification,
     defaultFilters.tags,
     defaultFilters.dataProductFqns,
     defaultFilters.startTs,
@@ -226,11 +244,28 @@ const DataQualityDashboard = ({
     }));
   }, [tier]);
 
+  const defaultCertificationOptions = useMemo(() => {
+    return certification.tags.map((op) => ({
+      key: op.fullyQualifiedName ?? op.name,
+      label: getEntityName(op),
+    }));
+  }, [certification]);
+
   const handleTierChange = (tiers: SearchDropdownOption[] = []) => {
     setSelectedTierFilter(tiers);
     setChartFilter((prev) => ({
       ...prev,
       tier: tiers.map((tag) => tag.key),
+    }));
+  };
+
+  const handleCertificationChange = (
+    certifications: SearchDropdownOption[] = []
+  ) => {
+    setSelectedCertificationFilter(certifications);
+    setChartFilter((prev) => ({
+      ...prev,
+      certification: certifications.map((tag) => tag.key),
     }));
   };
 
@@ -271,7 +306,8 @@ const DataQualityDashboard = ({
     const response = await searchQuery({
       searchIndex: SearchIndex.TAG,
       query: query === WILD_CARD_CHAR ? query : `*${query}*`,
-      filters: 'disabled:false AND !classification.name:Tier',
+      filters:
+        'disabled:false AND !classification.name:Tier AND !classification.name:Certification',
       pageSize: PAGE_SIZE_BASE,
     });
     const hits = response.hits.hits;
@@ -395,6 +431,26 @@ const DataQualityDashboard = ({
       setTier((prev) => ({
         ...prev,
         options: defaultTierOptions,
+      }));
+    }
+  };
+
+  const handleCertificationSearch = async (query: string) => {
+    if (query) {
+      setCertification((prev) => ({
+        ...prev,
+        options: defaultCertificationOptions.filter(
+          (value) =>
+            value.label
+              .toLocaleLowerCase()
+              .includes(query.toLocaleLowerCase()) ||
+            value.key.toLocaleLowerCase().includes(query.toLocaleLowerCase())
+        ),
+      }));
+    } else {
+      setCertification((prev) => ({
+        ...prev,
+        options: defaultCertificationOptions,
       }));
     }
   };
@@ -525,6 +581,35 @@ const DataQualityDashboard = ({
     }));
   };
 
+  const getCertificationTag = async () => {
+    setCertification((prev) => ({ ...prev, isLoading: true }));
+    try {
+      const { data } = await getTags({
+        parent: 'Certification',
+      });
+
+      setCertification((prev) => ({
+        ...prev,
+        tags: data,
+        options: data.map((op) => ({
+          key: op.fullyQualifiedName ?? op.name,
+          label: getEntityName(op),
+        })),
+      }));
+    } catch {
+      // error
+    } finally {
+      setCertification((prev) => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  const fetchDefaultCertificationOptions = () => {
+    setCertification((prev) => ({
+      ...prev,
+      options: defaultCertificationOptions,
+    }));
+  };
+
   const handleOwnerChange = (owners: EntityReference[] = []) => {
     setSelectedOwnerFilter(owners);
     setChartFilter((prev) => ({
@@ -541,6 +626,9 @@ const DataQualityDashboard = ({
 
   const showOwnerFilter = !hiddenFilters.includes(DQ_FILTER_KEYS.OWNER);
   const showTierFilter = !hiddenFilters.includes(DQ_FILTER_KEYS.TIER);
+  const showCertificationFilter = !hiddenFilters.includes(
+    DQ_FILTER_KEYS.CERTIFICATION
+  );
   const showTagsFilter = !hiddenFilters.includes(DQ_FILTER_KEYS.TAGS);
   const showGlossaryTermsFilter = !hiddenFilters.includes(
     DQ_FILTER_KEYS.GLOSSARY_TERMS
@@ -555,6 +643,9 @@ const DataQualityDashboard = ({
     }
     if (showTierFilter) {
       getTierTag();
+    }
+    if (showCertificationFilter) {
+      getCertificationTag();
     }
     if (showTagsFilter) {
       fetchDefaultTagOptions();
@@ -608,6 +699,18 @@ const DataQualityDashboard = ({
     [selectedTierFilter, tier]
   );
 
+  const certificationFilter = useMemo(
+    () => ({
+      options: certification.options,
+      selectedKeys: selectedCertificationFilter,
+      onChange: handleCertificationChange,
+      onGetInitialOptions: fetchDefaultCertificationOptions,
+      onSearch: handleCertificationSearch,
+      isSuggestionsLoading: certification.isLoading,
+    }),
+    [selectedCertificationFilter, certification]
+  );
+
   const dataProducts = useMemo(
     () => ({
       options: uniqBy(dataProductOptions.options, 'key'),
@@ -624,6 +727,7 @@ const DataQualityDashboard = ({
   const hasVisibleFilters =
     showOwnerFilter ||
     showTierFilter ||
+    showCertificationFilter ||
     showTagsFilter ||
     showGlossaryTermsFilter ||
     showDataProductsFilter;
@@ -693,6 +797,16 @@ const DataQualityDashboard = ({
               searchKey="tier"
               triggerButtonSize="middle"
               {...tierFilter}
+            />
+          )}
+
+          {showCertificationFilter && (
+            <SearchDropdown
+              hideCounts
+              label={t('label.certification')}
+              searchKey="certification"
+              triggerButtonSize="middle"
+              {...certificationFilter}
             />
           )}
 
@@ -861,7 +975,8 @@ const DataQualityDashboard = ({
                   incidentStatusType={TestCaseResolutionStatusTypes.New}
                   name="open-incident"
                   redirectPath={{
-                    pathname: ROUTES.INCIDENT_MANAGER,
+                    pathname:
+                      observabilityRouterClassBase.getIncidentManagerPath(),
                     search: QueryString.stringify({
                       testCaseResolutionStatusType:
                         TestCaseResolutionStatusTypes.New,
@@ -878,7 +993,8 @@ const DataQualityDashboard = ({
                   incidentStatusType={TestCaseResolutionStatusTypes.Resolved}
                   name="resolved-incident"
                   redirectPath={{
-                    pathname: ROUTES.INCIDENT_MANAGER,
+                    pathname:
+                      observabilityRouterClassBase.getIncidentManagerPath(),
                     search: QueryString.stringify({
                       testCaseResolutionStatusType:
                         TestCaseResolutionStatusTypes.Resolved,

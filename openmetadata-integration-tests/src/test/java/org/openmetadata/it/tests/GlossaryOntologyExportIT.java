@@ -40,13 +40,24 @@ import org.testcontainers.utility.DockerImageName;
  * <p>Tests verify that glossaries can be exported as RDF ontologies in various formats (Turtle,
  * RDF/XML, N-Triples, JSON-LD) with proper SKOS vocabulary mapping.
  *
- * <p>Test isolation: Uses TestNamespace for unique entity naming.
+ * <p>{@link RdfUpdater} is a JVM-wide singleton; {@code @BeforeAll} flips it on and makes every
+ * entity create in the same JVM do a synchronous Fuseki write. Running concurrently with other
+ * IT classes saturates the Dropwizard thread pool and produces 60s request timeouts (issue
+ * #27649).
  *
- * <p>Parallelization: Annotated {@code @Isolated} because {@link RdfUpdater} is a JVM-wide
- * singleton. {@code @BeforeAll} flips it on, so any test class running concurrently starts doing
- * synchronous Fuseki writes on every entity create — saturating the Dropwizard thread pool and
- * causing 60s request timeouts (see issue #27649). {@code @Execution(SAME_THREAD)} alone only
- * serializes within this class and does not prevent that cross-class leakage.
+ * <p>Two layers of isolation, both required:
+ *
+ * <ul>
+ *   <li>The class is in the failsafe {@code sequential-tests} execution group so CI runs it
+ *       with {@code parallel.enabled=false}. The group includes a handful of other IT classes
+ *       that also need serial execution; those still run in the same JVM, but never
+ *       concurrently with each other or with this class — which is what matters for the
+ *       RdfUpdater singleton.
+ *   <li>{@code @Isolated} + {@code @Execution(SAME_THREAD)} keep the test safe under
+ *       {@code junit-platform.properties} defaults (parallel + concurrent classes), which is
+ *       what you get when running from an IDE or any future profile that doesn't route through
+ *       {@code sequential-tests}.
+ * </ul>
  */
 @Isolated
 @Execution(ExecutionMode.SAME_THREAD)
@@ -62,7 +73,9 @@ public class GlossaryOntologyExportIT {
   private static final String N_TRIPLES_CONTENT_TYPE = "application/n-triples";
   private static final String JSON_LD_CONTENT_TYPE = "application/ld+json";
 
-  private static final String FUSEKI_IMAGE = "stain/jena-fuseki:latest";
+  // See TestSuiteBootstrap for why we use secoresearch/fuseki:5.5.0 instead
+  // of the unmaintained stain/jena-fuseki image.
+  private static final String FUSEKI_IMAGE = "secoresearch/fuseki:5.5.0";
   private static final int FUSEKI_PORT = 3030;
   private static final String FUSEKI_DATASET = "openmetadata";
   private static final String FUSEKI_ADMIN_PASSWORD = "test-admin";
@@ -75,12 +88,14 @@ public class GlossaryOntologyExportIT {
     if (TestSuiteBootstrap.isFusekiEnabled()) {
       fusekiEndpoint = TestSuiteBootstrap.getFusekiEndpoint();
     } else {
+      // No FUSEKI_DATASET_1 here: that was stain-specific. The dataset is
+      // created via /$/datasets by JenaFusekiStorage.ensureDatasetExists().
+      // tmpfs keeps TDB2 writes off the container's writable layer.
       localFusekiContainer =
           new GenericContainer<>(DockerImageName.parse(FUSEKI_IMAGE))
               .withExposedPorts(FUSEKI_PORT)
               .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-              .withEnv("FUSEKI_DATASET_1", FUSEKI_DATASET)
-              .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m,uid=100,gid=101"))
+              .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m"))
               .waitingFor(
                   Wait.forHttp("/$/ping")
                       .forPort(FUSEKI_PORT)
@@ -432,7 +447,9 @@ public class GlossaryOntologyExportIT {
             .uri(URI.create(url))
             .header("Authorization", "Bearer " + token)
             .header("Accept", acceptHeader)
-            .timeout(Duration.ofSeconds(60))
+            // Jena's legacy model.write() for RDF/XML fetches the w3.org DTD on first use;
+            // in network-isolated CI this can stall ~100s before falling back.
+            .timeout(Duration.ofSeconds(150))
             .GET()
             .build();
 

@@ -13,204 +13,52 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import { EntityReference } from '../generated/entity/data/table';
+import {
+  CreateTask,
+  TaskCategory,
+  TaskPriority,
+  TaskType,
+} from '../generated/api/tasks/createTask';
+import { ResolveTask } from '../generated/api/tasks/resolveTask';
+import { TaskCount } from '../generated/api/tasks/taskCount';
+import { Task, TaskStatus } from '../generated/entity/tasks/task';
 import { Include } from '../generated/type/include';
-import { TagLabel } from '../generated/type/tagLabel';
 import APIClient from './index';
 
-// Task status enum - matches backend TaskEntityStatus
-export enum TaskEntityStatus {
-  Open = 'Open',
-  InProgress = 'InProgress',
-  Pending = 'Pending',
-  Approved = 'Approved',
-  Rejected = 'Rejected',
-  Completed = 'Completed',
-  Cancelled = 'Cancelled',
-  Failed = 'Failed',
+export {
+  TaskCategory,
+  TaskPriority,
+  TaskType as TaskEntityType,
+} from '../generated/api/tasks/createTask';
+export { ResolutionType as TaskResolutionType } from '../generated/api/tasks/resolveTask';
+export { TaskStatus as TaskEntityStatus } from '../generated/entity/tasks/task';
+export type { TaskComment } from '../generated/entity/tasks/task';
+export type { GenericTaskPayload as TaskPayload } from '../generated/type/genericTaskPayload';
+
+// Data access type enum - matches backend DataAccessType
+export enum DataAccessType {
+  FullAccess = 'FullAccess',
+  ColumnLevel = 'ColumnLevel',
+  Masked = 'Masked',
 }
 
-// Task category enum - matches backend TaskCategory
-export enum TaskCategory {
-  Approval = 'Approval',
-  DataAccess = 'DataAccess',
-  MetadataUpdate = 'MetadataUpdate',
-  Incident = 'Incident',
-  Review = 'Review',
-  Custom = 'Custom',
-}
-
-// Task type enum - matches backend TaskEntityType
-export enum TaskEntityType {
-  GlossaryApproval = 'GlossaryApproval',
-  RequestApproval = 'RequestApproval',
-  DataAccessRequest = 'DataAccessRequest',
-  DescriptionUpdate = 'DescriptionUpdate',
-  TagUpdate = 'TagUpdate',
-  OwnershipUpdate = 'OwnershipUpdate',
-  TierUpdate = 'TierUpdate',
-  DomainUpdate = 'DomainUpdate',
-  Suggestion = 'Suggestion',
-  TestCaseResolution = 'TestCaseResolution',
-  IncidentResolution = 'IncidentResolution',
-  PipelineReview = 'PipelineReview',
-  DataQualityReview = 'DataQualityReview',
-  CustomTask = 'CustomTask',
-}
-
-// Task priority enum - matches backend TaskPriority
-export enum TaskPriority {
-  Critical = 'Critical',
-  High = 'High',
-  Medium = 'Medium',
-  Low = 'Low',
-}
-
-// Task resolution type enum
-export enum TaskResolutionType {
-  Approved = 'Approved',
-  Rejected = 'Rejected',
-  Completed = 'Completed',
-  Cancelled = 'Cancelled',
-  TimedOut = 'TimedOut',
-  AutoApproved = 'AutoApproved',
-  AutoRejected = 'AutoRejected',
-}
-
-// Task comment interface
-export interface TaskComment {
-  id: string;
-  message: string;
-  author: EntityReference;
-  createdAt: number;
-  reactions?: unknown[];
-}
-
-// Task resolution interface
-export interface TaskResolution {
-  type: TaskResolutionType;
-  resolvedBy?: EntityReference;
-  resolvedAt?: number;
-  comment?: string;
-  newValue?: string;
-}
-
-export interface TaskAvailableTransition {
-  id: string;
-  label: string;
-  targetStageId: string;
-  targetTaskStatus: TaskEntityStatus;
-  resolutionType?: TaskResolutionType;
-  formRef?: string;
-  requiresComment?: boolean;
-}
-
-// Task payload interface - union of all payload types
-export interface TaskPayload {
-  [key: string]: unknown;
-  // SuggestionPayload fields
-  suggestionType?: string;
-  suggestedValue?: string;
-  currentValue?: string;
-  confidence?: number;
-  source?: string;
-  reasoning?: string;
-  // DescriptionUpdatePayload fields
-  newDescription?: string;
-  currentDescription?: string;
-  // Common
-  fieldPath?: string;
-  field?: string;
-  // TagUpdatePayload fields
-  currentTags?: TagLabel[];
-  tagsToAdd?: TagLabel[];
-  tagsToRemove?: TagLabel[];
-  operation?: string;
-}
-
-// Task entity interface - matches backend Task entity
-export interface Task {
-  id: string;
-  taskId: string;
-  name: string;
-  displayName?: string;
-  fullyQualifiedName?: string;
-  description?: string;
-  category: TaskCategory;
-  type: TaskEntityType;
-  status: TaskEntityStatus;
-  priority: TaskPriority;
-  about?: EntityReference;
-  domain?: EntityReference;
-  domains?: EntityReference[];
-  createdBy?: EntityReference;
-  assignees?: EntityReference[];
-  reviewers?: EntityReference[];
-  watchers?: EntityReference[];
-  payload?: TaskPayload;
-  resolution?: TaskResolution;
-  dueDate?: number;
-  externalReference?: {
-    system: string;
-    externalId: string;
-    externalUrl?: string;
-    syncStatus?: string;
-    lastSyncedAt?: number;
-  };
-  workflowInstanceId?: string;
-  workflowDefinitionId?: string;
-  workflowStageId?: string;
-  workflowStageDisplayName?: string;
-  availableTransitions?: TaskAvailableTransition[];
-  taskFormSchemaId?: string;
-  taskFormSchemaVersion?: number;
-  comments?: TaskComment[];
-  commentCount?: number;
-  tags?: TagLabel[];
-  createdAt?: number;
-  version?: number;
-  updatedAt?: number;
-  updatedBy?: string;
-  href?: string;
-  changeDescription?: unknown;
-  deleted?: boolean;
-}
-
-// CreateTask request interface
-export interface CreateTask {
-  name: string;
-  displayName?: string;
-  description?: string;
-  category: TaskCategory;
-  type: TaskEntityType;
-  priority?: TaskPriority;
-  about?: string; // FQN of the entity this task is about
-  aboutType?: string; // Type of the entity (e.g., "table", "dashboard")
-  domain?: string;
-  assignees?: string[]; // FQNs of users or teams
-  reviewers?: string[]; // FQNs of users or teams
-  payload?: TaskPayload;
-  dueDate?: number;
-  externalReference?: {
-    system: string;
-    externalId: string;
-    externalUrl?: string;
-  };
-  tags?: TagLabel[];
-}
-
-// ResolveTask request interface
-export interface ResolveTask {
-  transitionId?: string;
-  resolutionType?: TaskResolutionType;
-  comment?: string;
-  newValue?: string;
-  payload?: TaskPayload;
+export enum DarWorkflowStage {
+  Review = 'review',
+  Approved = 'approved',
+  Granted = 'granted',
 }
 
 const BASE_URL = '/tasks';
 
-export type TaskStatusGroup = 'open' | 'closed';
+// 'Active' is a superset of 'Open' (Open/InProgress/Pending) that also includes
+// Approved and Granted; used by the DAR hook so awaiting-grant and active-access
+// requests are surfaced. 'Closed' keeps the legacy semantics that include
+// Approved for non-DAR workflows where it is terminal.
+export enum TaskStatusGroup {
+  Open = 'open',
+  Active = 'active',
+  Closed = 'closed',
+}
 export type TaskCountView =
   | 'all'
   | 'visible'
@@ -222,7 +70,7 @@ export type TaskCountView =
 
 interface TaskScopedListParams {
   fields?: string;
-  status?: TaskEntityStatus;
+  status?: TaskStatus;
   statusGroup?: TaskStatusGroup;
   domain?: string;
   limit?: number;
@@ -233,19 +81,41 @@ interface TaskScopedListParams {
 
 export interface ListTasksParams {
   fields?: string;
-  status?: TaskEntityStatus;
+  status?: TaskStatus;
   statusGroup?: TaskStatusGroup;
   category?: TaskCategory;
-  type?: TaskEntityType;
+  type?: TaskType;
   domain?: string;
   priority?: TaskPriority;
   assignee?: string;
   createdBy?: string;
+  createdById?: string;
   aboutEntity?: string;
+  aboutService?: string;
+  approver?: string;
+  approverId?: string;
   mentionedUser?: string;
   limit?: number;
   before?: string;
   after?: string;
+  include?: Include;
+}
+
+export interface ListDataAccessRequestsParams {
+  fields?: string;
+  status?: TaskStatus;
+  statusGroup?: TaskStatusGroup;
+  dataset?: string;
+  service?: string;
+  requestedBy?: string;
+  requestedById?: string;
+  approver?: string;
+  approverId?: string;
+  accessType?: DataAccessType;
+  domain?: string;
+  sortOrder?: 'asc' | 'desc';
+  limit?: number;
+  offset?: number;
   include?: Include;
 }
 
@@ -261,18 +131,23 @@ export const listTasks = async (params?: ListTasksParams) => {
 };
 
 /**
+ * List Data Access Requests with DAR-specific filters and offset-based pagination.
+ */
+export const listDataAccessRequests = async (
+  params?: ListDataAccessRequestsParams
+) => {
+  const response = await APIClient.get<PagingResponse<Task[]>>(
+    `${BASE_URL}/dataAccessRequests`,
+    { params }
+  );
+
+  return response.data;
+};
+
+/**
  * Get tasks assigned to the current user or their teams.
  */
-export const listMyAssignedTasks = async (params?: {
-  fields?: string;
-  status?: TaskEntityStatus;
-  statusGroup?: TaskStatusGroup;
-  domain?: string;
-  limit?: number;
-  before?: string;
-  after?: string;
-  include?: Include;
-}) => {
+export const listMyAssignedTasks = async (params?: TaskScopedListParams) => {
   const response = await APIClient.get<PagingResponse<Task[]>>(
     `${BASE_URL}/assigned`,
     { params }
@@ -494,13 +369,10 @@ export const getTaskCounts = async (params?: {
   mentionedUser?: string;
   view?: TaskCountView;
   domain?: string;
-}) => {
-  const response = await APIClient.get<{
-    open: number;
-    inProgress: number;
-    completed: number;
-    total: number;
-  }>(`${BASE_URL}/count`, { params });
+}): Promise<TaskCount> => {
+  const response = await APIClient.get<TaskCount>(`${BASE_URL}/count`, {
+    params,
+  });
 
   return response.data;
 };

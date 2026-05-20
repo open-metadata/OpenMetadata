@@ -172,11 +172,11 @@ class CreateTaskTest {
 
   @Test
   void testIsTerminalTaskStatusReturnsTrueForResolvedStates() {
-    assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Approved));
     assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Rejected));
     assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Completed));
     assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Cancelled));
     assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Failed));
+    assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Revoked));
   }
 
   @Test
@@ -184,6 +184,12 @@ class CreateTaskTest {
     assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Open));
     assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.InProgress));
     assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Pending));
+    // Approved and Granted are non-terminal so the next-stage CreateTask listener
+    // (e.g. Data Access Request's ApprovedAccess → GrantedAccess advancement) can
+    // update status/workflowStageId/availableTransitions instead of preserving
+    // stale state. See the DataAccessRequestTaskWorkflow.json edges.
+    assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Approved));
+    assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Granted));
     assertFalse(CreateTask.isTerminalTaskStatus(null));
   }
 }

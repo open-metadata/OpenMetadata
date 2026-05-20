@@ -259,6 +259,7 @@ ban-relative-imports = "all"
 
 [tool.basedpyright]
 include = ["src"]
+stubPath = "stubs"
 exclude = [
   "**/__pycache__",
   "src/metadata/generated/*",
