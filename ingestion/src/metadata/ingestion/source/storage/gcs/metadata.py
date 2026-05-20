@@ -241,7 +241,7 @@ class GcsSource(StorageServiceSource):
         except ValueError:
             file_formats = []
         data_model = ContainerDataModel(isPartitioned=False, columns=columns) if columns else None
-        yield GCSContainerDetails(
+        yield GCSContainerDetails(  # pyright: ignore[reportCallIssue]
             name=inner_name,
             prefix=inner_prefix,
             size=entry.size,
@@ -273,7 +273,7 @@ class GcsSource(StorageServiceSource):
         archive_size = self.get_size(bucket_name, bucket_response.project_id, archive_path)
         prefix = f"{KEY_SEPARATOR}{archive_path}"
 
-        yield GCSContainerDetails(
+        yield GCSContainerDetails(  # pyright: ignore[reportCallIssue]
             name=archive_path,
             prefix=prefix,
             creation_date=(bucket_response.creation_date.isoformat() if bucket_response.creation_date else None),
@@ -290,7 +290,7 @@ class GcsSource(StorageServiceSource):
         )
 
         archive_fqn = fqn._build(  # pylint: disable=protected-access
-            self.context.get().objectstore_service,
+            getattr(self.context.get(), "objectstore_service"),  # noqa: B009
             bucket_name,
             archive_path,
         )

@@ -280,7 +280,7 @@ class S3Source(StorageServiceSource):
         except ValueError:
             file_formats = []
         data_model = ContainerDataModel(isPartitioned=False, columns=columns) if columns else None
-        yield S3ContainerDetails(
+        yield S3ContainerDetails(  # pyright: ignore[reportCallIssue]
             name=inner_name,
             prefix=inner_prefix,
             size=entry.size,
@@ -311,7 +311,7 @@ class S3Source(StorageServiceSource):
         archive_size = self.get_size(bucket_name, archive_path)
         prefix = f"{KEY_SEPARATOR}{archive_path}"
 
-        yield S3ContainerDetails(
+        yield S3ContainerDetails(  # pyright: ignore[reportCallIssue]
             name=archive_path,
             prefix=prefix,
             creation_date=(bucket_response.creation_date.isoformat() if bucket_response.creation_date else None),
@@ -327,7 +327,7 @@ class S3Source(StorageServiceSource):
         )
 
         archive_fqn = fqn._build(  # pylint: disable=protected-access
-            self.context.get().objectstore_service,
+            getattr(self.context.get(), "objectstore_service"),  # noqa: B009
             bucket_name,
             archive_path,
         )
