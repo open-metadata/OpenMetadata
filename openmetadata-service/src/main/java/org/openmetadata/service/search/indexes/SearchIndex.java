@@ -19,9 +19,11 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.EsLineageData;
@@ -264,6 +266,128 @@ public interface SearchIndex {
             Entity.getCollectionDAO()
                 .relationshipDAO()
                 .findFrom(entity.getId(), entity.getType(), Relationship.UPSTREAM.ordinal())));
+  }
+
+  /**
+   * Batch-prefetch upstream lineage for every entity in {@code entities} using one
+   * {@code findFromBatch} call and one {@code getEntityReferencesByIds} call per upstream entity
+   * type. The returned map is keyed by every input entity's id (entities with no upstream lineage
+   * map to an empty list), so the doc-build phase can bind it via {@link LineagePrefetchContext}
+   * and skip per-entity JDBI handle acquisition entirely.
+   *
+   * <p>An empty map signals "nothing prefetched" — either the input was empty or the batch DB
+   * call failed. In the failure case callers must leave {@link LineagePrefetchContext} unset so
+   * doc-build falls back to per-entity DB lookups.
+   */
+  static Map<UUID, List<EsLineageData>> prefetchUpstreamLineage(
+      List<? extends EntityInterface> entities) {
+    Map<UUID, List<EsLineageData>> result = new HashMap<>();
+    if (!nullOrEmpty(entities)) {
+      populatePrefetchedUpstreamLineage(entities, result);
+    }
+    return result;
+  }
+
+  private static void populatePrefetchedUpstreamLineage(
+      List<? extends EntityInterface> entities, Map<UUID, List<EsLineageData>> result) {
+    Map<UUID, EntityReference> toRefByEntityId = new HashMap<>(entities.size());
+    List<String> toIds = new ArrayList<>(entities.size());
+    for (EntityInterface entity : entities) {
+      result.put(entity.getId(), new ArrayList<>());
+      toIds.add(entity.getId().toString());
+      toRefByEntityId.put(entity.getId(), entity.getEntityReference());
+    }
+    List<CollectionDAO.EntityRelationshipObject> records = fetchUpstreamRelationships(toIds);
+    if (records == null) {
+      result.clear();
+    } else if (!records.isEmpty()) {
+      Map<UUID, EntityReference> upstreamRefById = resolveUpstreamReferences(records);
+      mergeRecordsIntoResult(records, upstreamRefById, toRefByEntityId, result);
+    }
+  }
+
+  private static List<CollectionDAO.EntityRelationshipObject> fetchUpstreamRelationships(
+      List<String> toIds) {
+    List<CollectionDAO.EntityRelationshipObject> records;
+    try {
+      records =
+          Entity.getCollectionDAO()
+              .relationshipDAO()
+              .findFromBatch(toIds, Relationship.UPSTREAM.ordinal(), Include.ALL);
+    } catch (Exception e) {
+      LOG.warn("Batch lineage prefetch failed; doc-build will fall back to per-entity lookups", e);
+      records = null;
+    }
+    return records;
+  }
+
+  private static Map<UUID, EntityReference> resolveUpstreamReferences(
+      List<CollectionDAO.EntityRelationshipObject> records) {
+    Map<String, Set<UUID>> upstreamIdsByType = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      upstreamIdsByType
+          .computeIfAbsent(rec.getFromEntity(), k -> new HashSet<>())
+          .add(UUID.fromString(rec.getFromId()));
+    }
+    Map<UUID, EntityReference> upstreamRefById = new HashMap<>();
+    for (Map.Entry<String, Set<UUID>> entry : upstreamIdsByType.entrySet()) {
+      try {
+        List<EntityReference> refs =
+            Entity.getEntityReferencesByIds(
+                entry.getKey(), new ArrayList<>(entry.getValue()), Include.ALL);
+        for (EntityReference ref : refs) {
+          upstreamRefById.put(ref.getId(), ref);
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to batch-fetch upstream references for type '{}' during lineage prefetch",
+            entry.getKey(),
+            e);
+      }
+    }
+    return upstreamRefById;
+  }
+
+  private static void mergeRecordsIntoResult(
+      List<CollectionDAO.EntityRelationshipObject> records,
+      Map<UUID, EntityReference> upstreamRefById,
+      Map<UUID, EntityReference> toRefByEntityId,
+      Map<UUID, List<EsLineageData>> result) {
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID toId = UUID.fromString(rec.getToId());
+      UUID fromId = UUID.fromString(rec.getFromId());
+      EntityReference toRef = toRefByEntityId.get(toId);
+      EntityReference fromRef = upstreamRefById.get(fromId);
+      if (toRef != null) {
+        appendLineageEdge(rec, fromRef, toRef, fromId, result.get(toId));
+      }
+    }
+  }
+
+  private static void appendLineageEdge(
+      CollectionDAO.EntityRelationshipObject rec,
+      EntityReference fromRef,
+      EntityReference toRef,
+      UUID fromId,
+      List<EsLineageData> sink) {
+    if (fromRef == null) {
+      LOG.warn(
+          "Upstream entity '{}' (ID: {}) not found during prefetch for '{}'; skipping lineage edge",
+          rec.getFromEntity(),
+          fromId,
+          toRef.getFullyQualifiedName());
+    } else {
+      try {
+        LineageDetails details = JsonUtils.readValue(rec.getJson(), LineageDetails.class);
+        sink.add(buildEntityLineageData(fromRef, toRef, details));
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to build prefetched lineage edge {} -> {}",
+            fromRef.getFullyQualifiedName(),
+            toRef.getFullyQualifiedName(),
+            e);
+      }
+    }
   }
 
   static List<EsLineageData> getLineageDataFromRefs(

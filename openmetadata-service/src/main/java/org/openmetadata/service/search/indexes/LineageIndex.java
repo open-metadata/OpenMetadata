@@ -1,7 +1,9 @@
 package org.openmetadata.service.search.indexes;
 
+import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.lineage.EsLineageData;
 
 /**
  * Mixin interface for search indexes of entities that have upstream lineage. Centralizes the
@@ -13,7 +15,12 @@ public interface LineageIndex extends SearchIndex {
   default void applyLineageFields(Map<String, Object> doc) {
     Object entity = getEntity();
     if (entity instanceof EntityInterface ei) {
-      doc.put("upstreamLineage", SearchIndex.getLineageData(ei.getEntityReference()));
+      List<EsLineageData> prefetched = LineagePrefetchContext.getUpstream();
+      if (prefetched != null) {
+        doc.put("upstreamLineage", prefetched);
+      } else {
+        doc.put("upstreamLineage", SearchIndex.getLineageData(ei.getEntityReference()));
+      }
     }
   }
 }

@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -24,12 +25,14 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
@@ -37,6 +40,8 @@ import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.indexes.LineageIndex;
+import org.openmetadata.service.search.indexes.LineagePrefetchContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 
@@ -128,6 +133,7 @@ class OpenSearchBulkSinkBehaviorTest {
             ReindexContext.class,
             StageStatsTracker.class,
             boolean.class,
+            Map.class,
             Map.class
           },
           entity,
@@ -136,7 +142,8 @@ class OpenSearchBulkSinkBehaviorTest {
           null,
           tracker,
           false,
-          Collections.emptyMap());
+          Collections.emptyMap(),
+          null);
 
       verify(processor)
           .add(any(), eq(entityId.toString()), eq(ENTITY_TYPE), eq(tracker), anyLong());
@@ -177,6 +184,7 @@ class OpenSearchBulkSinkBehaviorTest {
             ReindexContext.class,
             StageStatsTracker.class,
             boolean.class,
+            Map.class,
             Map.class
           },
           entity,
@@ -185,7 +193,8 @@ class OpenSearchBulkSinkBehaviorTest {
           null,
           tracker,
           false,
-          Collections.emptyMap());
+          Collections.emptyMap(),
+          null);
 
       verify(processorConstruction.constructed().getFirst()).setFailureCallback(failureCallback);
       verify(tracker).recordProcess(StatsResult.FAILED);
@@ -332,12 +341,264 @@ class OpenSearchBulkSinkBehaviorTest {
     }
   }
 
-  private void invokePrivate(
+  @AfterEach
+  void clearPrefetchContext() {
+    LineagePrefetchContext.clear();
+  }
+
+  @Test
+  void prefetchLineageIfSupportedReturnsNullForNullEntities() throws Exception {
+    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> ignored =
+        mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class)) {
+      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
+      assertNull(
+          invokePrivate(
+              sink,
+              "prefetchLineageIfSupported",
+              new Class<?>[] {List.class},
+              new Object[] {null}));
+    }
+  }
+
+  @Test
+  void prefetchLineageIfSupportedReturnsNullForEmptyEntities() throws Exception {
+    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> ignored =
+        mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class)) {
+      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
+      assertNull(
+          invokePrivate(
+              sink,
+              "prefetchLineageIfSupported",
+              new Class<?>[] {List.class},
+              Collections.emptyList()));
+    }
+  }
+
+  @Test
+  void prefetchLineageIfSupportedReturnsNullWhenIndexIsNotLineageIndex() throws Exception {
+    EntityInterface entity = mock(EntityInterface.class);
+    when(entity.getId()).thenReturn(UUID.randomUUID());
+
+    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> ignored =
+            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
+      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(ENTITY_TYPE);
+      entityMock
+          .when(() -> Entity.buildSearchIndex(ENTITY_TYPE, entity))
+          .thenReturn(new StubSearchIndex(Map.of()));
+
+      assertNull(
+          invokePrivate(
+              sink, "prefetchLineageIfSupported", new Class<?>[] {List.class}, List.of(entity)));
+    }
+  }
+
+  @Test
+  void prefetchLineageIfSupportedReturnsNullWhenBuildSearchIndexThrows() throws Exception {
+    EntityInterface entity = mock(EntityInterface.class);
+
+    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> ignored =
+            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
+      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(ENTITY_TYPE);
+      entityMock
+          .when(() -> Entity.buildSearchIndex(ENTITY_TYPE, entity))
+          .thenThrow(new IllegalStateException("boom"));
+
+      assertNull(
+          invokePrivate(
+              sink, "prefetchLineageIfSupported", new Class<?>[] {List.class}, List.of(entity)));
+    }
+  }
+
+  @Test
+  void prefetchLineageIfSupportedReturnsNullWhenPrefetchProducesEmptyMap() throws Exception {
+    EntityInterface entity = mock(EntityInterface.class);
+    when(entity.getId()).thenReturn(UUID.randomUUID());
+
+    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> ignored =
+            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<SearchIndex> indexMock = mockStatic(SearchIndex.class)) {
+      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
+      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(ENTITY_TYPE);
+      entityMock
+          .when(() -> Entity.buildSearchIndex(ENTITY_TYPE, entity))
+          .thenReturn(new StubLineageIndex());
+      indexMock
+          .when(() -> SearchIndex.prefetchUpstreamLineage(any()))
+          .thenReturn(Collections.emptyMap());
+
+      assertNull(
+          invokePrivate(
+              sink, "prefetchLineageIfSupported", new Class<?>[] {List.class}, List.of(entity)));
+    }
+  }
+
+  @Test
+  void prefetchLineageIfSupportedReturnsMapWhenPrefetchYieldsRecords() throws Exception {
+    EntityInterface entity = mock(EntityInterface.class);
+    UUID entityId = UUID.randomUUID();
+    when(entity.getId()).thenReturn(entityId);
+    Map<UUID, List<EsLineageData>> prefetched = Map.of(entityId, List.of(new EsLineageData()));
+
+    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> ignored =
+            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<SearchIndex> indexMock = mockStatic(SearchIndex.class)) {
+      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
+      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(ENTITY_TYPE);
+      entityMock
+          .when(() -> Entity.buildSearchIndex(ENTITY_TYPE, entity))
+          .thenReturn(new StubLineageIndex());
+      indexMock.when(() -> SearchIndex.prefetchUpstreamLineage(any())).thenReturn(prefetched);
+
+      Object result =
+          invokePrivate(
+              sink, "prefetchLineageIfSupported", new Class<?>[] {List.class}, List.of(entity));
+      assertNotNull(result);
+      assertSame(prefetched, result);
+    }
+  }
+
+  @Test
+  void addEntityBindsAndClearsPrefetchContextOnSuccess() throws Exception {
+    EntityInterface entity = mock(EntityInterface.class);
+    UUID entityId = UUID.randomUUID();
+    when(entity.getId()).thenReturn(entityId);
+    List<EsLineageData> edges = List.of(new EsLineageData());
+    Map<UUID, List<EsLineageData>> prefetched = Map.of(entityId, edges);
+
+    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> ignored =
+            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(ENTITY_TYPE);
+      entityMock
+          .when(() -> Entity.buildSearchIndex(ENTITY_TYPE, entity))
+          .thenReturn(new ContextCapturingIndex());
+
+      invokePrivate(
+          sink,
+          "addEntity",
+          new Class<?>[] {
+            EntityInterface.class,
+            String.class,
+            boolean.class,
+            ReindexContext.class,
+            StageStatsTracker.class,
+            boolean.class,
+            Map.class,
+            Map.class
+          },
+          entity,
+          "table_index",
+          false,
+          null,
+          null,
+          false,
+          Collections.emptyMap(),
+          prefetched);
+
+      assertSame(edges, ContextCapturingIndex.observedDuringBuild);
+      assertNull(LineagePrefetchContext.getUpstream());
+    }
+  }
+
+  @Test
+  void addEntityClearsPrefetchContextEvenWhenBuildSearchIndexThrows() throws Exception {
+    EntityInterface entity = mock(EntityInterface.class);
+    UUID entityId = UUID.randomUUID();
+    when(entity.getId()).thenReturn(entityId);
+    Map<UUID, List<EsLineageData>> prefetched = Map.of(entityId, List.of(new EsLineageData()));
+
+    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> ignored =
+            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
+      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(ENTITY_TYPE);
+      entityMock
+          .when(() -> Entity.buildSearchIndex(ENTITY_TYPE, entity))
+          .thenThrow(new IllegalStateException("boom"));
+
+      invokePrivate(
+          sink,
+          "addEntity",
+          new Class<?>[] {
+            EntityInterface.class,
+            String.class,
+            boolean.class,
+            ReindexContext.class,
+            StageStatsTracker.class,
+            boolean.class,
+            Map.class,
+            Map.class
+          },
+          entity,
+          "table_index",
+          false,
+          null,
+          null,
+          false,
+          Collections.emptyMap(),
+          prefetched);
+
+      assertNull(LineagePrefetchContext.getUpstream());
+    }
+  }
+
+  @Test
+  void addEntityLeavesPrefetchContextUntouchedWhenPrefetchMapIsNull() throws Exception {
+    EntityInterface entity = mock(EntityInterface.class);
+    when(entity.getId()).thenReturn(UUID.randomUUID());
+    LineagePrefetchContext.setUpstream(List.of(new EsLineageData()));
+    List<EsLineageData> originallyBound = LineagePrefetchContext.getUpstream();
+
+    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> ignored =
+            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(ENTITY_TYPE);
+      entityMock
+          .when(() -> Entity.buildSearchIndex(ENTITY_TYPE, entity))
+          .thenReturn(new StubSearchIndex(Map.of("field", "value")));
+
+      invokePrivate(
+          sink,
+          "addEntity",
+          new Class<?>[] {
+            EntityInterface.class,
+            String.class,
+            boolean.class,
+            ReindexContext.class,
+            StageStatsTracker.class,
+            boolean.class,
+            Map.class,
+            Map.class
+          },
+          entity,
+          "table_index",
+          false,
+          null,
+          null,
+          false,
+          Collections.emptyMap(),
+          null);
+
+      assertSame(originallyBound, LineagePrefetchContext.getUpstream());
+    }
+  }
+
+  private Object invokePrivate(
       Object target, String methodName, Class<?>[] parameterTypes, Object... args)
       throws Exception {
     Method method = target.getClass().getDeclaredMethod(methodName, parameterTypes);
     method.setAccessible(true);
-    method.invoke(target, args);
+    return method.invoke(target, args);
   }
 
   private void setAtomicField(Object target, String fieldName, long value) throws Exception {
@@ -378,6 +639,53 @@ class OpenSearchBulkSinkBehaviorTest {
     @Override
     public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
       return doc;
+    }
+  }
+
+  private static class StubLineageIndex implements LineageIndex {
+    @Override
+    public Map<String, Object> buildSearchIndexDoc() {
+      return Map.of("field", "value");
+    }
+
+    @Override
+    public Object getEntity() {
+      return Map.of();
+    }
+
+    @Override
+    public String getEntityTypeName() {
+      return "stub-lineage";
+    }
+
+    @Override
+    public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
+      return esDoc;
+    }
+  }
+
+  private static class ContextCapturingIndex implements SearchIndex {
+    private static List<EsLineageData> observedDuringBuild;
+
+    @Override
+    public Map<String, Object> buildSearchIndexDoc() {
+      observedDuringBuild = LineagePrefetchContext.getUpstream();
+      return Map.of("field", "value");
+    }
+
+    @Override
+    public Object getEntity() {
+      return Map.of();
+    }
+
+    @Override
+    public String getEntityTypeName() {
+      return "stub-ctx";
+    }
+
+    @Override
+    public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
+      return esDoc;
     }
   }
 }

@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -32,6 +33,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
@@ -47,6 +49,9 @@ import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
+import org.openmetadata.service.search.indexes.LineageIndex;
+import org.openmetadata.service.search.indexes.LineagePrefetchContext;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
@@ -281,6 +286,13 @@ public class OpenSearchBulkSink implements BulkSink {
               fetchExistingFingerprints(entityInterfaces, indexName, reindexContext);
         }
 
+        // Pre-fetch upstream lineage for the whole batch on this caller thread so the
+        // doc-build virtual threads do not need to acquire JDBI handles per entity. Without
+        // this, 50 concurrent virtual workers each ran findFrom under HikariCP's synchronized
+        // borrow path and got pinned/stalled, tripping Hikari's 60s leak detector.
+        Map<UUID, List<EsLineageData>> prefetchedLineage =
+            prefetchLineageIfSupported(entityInterfaces);
+
         // Add entities to search index in parallel
         Map<String, String> finalFingerprints = existingFingerprints;
         List<CompletableFuture<Void>> futures =
@@ -296,7 +308,8 @@ public class OpenSearchBulkSink implements BulkSink {
                                     reindexContext,
                                     tracker,
                                     embeddingsEnabled,
-                                    finalFingerprints),
+                                    finalFingerprints,
+                                    prefetchedLineage),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
@@ -350,6 +363,29 @@ public class OpenSearchBulkSink implements BulkSink {
 
   private static final int BULK_OPERATION_METADATA_OVERHEAD = 150;
 
+  private Map<UUID, List<EsLineageData>> prefetchLineageIfSupported(
+      List<EntityInterface> entities) {
+    Map<UUID, List<EsLineageData>> result = null;
+    if (entities != null && !entities.isEmpty() && supportsLineagePrefetch(entities.get(0))) {
+      Map<UUID, List<EsLineageData>> prefetched = SearchIndex.prefetchUpstreamLineage(entities);
+      if (!prefetched.isEmpty()) {
+        result = prefetched;
+      }
+    }
+    return result;
+  }
+
+  private boolean supportsLineagePrefetch(EntityInterface probe) {
+    boolean supported = false;
+    try {
+      Object index = Entity.buildSearchIndex(Entity.getEntityTypeFromObject(probe), probe);
+      supported = index instanceof LineageIndex;
+    } catch (Exception e) {
+      LOG.warn("Could not determine LineageIndex support; skipping lineage prefetch", e);
+    }
+    return supported;
+  }
+
   private void addEntity(
       EntityInterface entity,
       String indexName,
@@ -357,7 +393,14 @@ public class OpenSearchBulkSink implements BulkSink {
       ReindexContext reindexContext,
       StageStatsTracker tracker,
       boolean embeddingsEnabled,
-      Map<String, String> existingFingerprints) {
+      Map<String, String> existingFingerprints,
+      Map<UUID, List<EsLineageData>> prefetchedLineage) {
+    boolean prefetchBound = false;
+    if (prefetchedLineage != null) {
+      LineagePrefetchContext.setUpstream(
+          prefetchedLineage.getOrDefault(entity.getId(), Collections.emptyList()));
+      prefetchBound = true;
+    }
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
@@ -469,6 +512,10 @@ public class OpenSearchBulkSink implements BulkSink {
             entity.getFullyQualifiedName(),
             e.getMessage(),
             IndexingFailureRecorder.FailureStage.PROCESS);
+      }
+    } finally {
+      if (prefetchBound) {
+        LineagePrefetchContext.clear();
       }
     }
   }

@@ -15,11 +15,13 @@ import jakarta.json.stream.JsonGenerator;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -36,6 +38,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
@@ -53,6 +56,9 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
+import org.openmetadata.service.search.indexes.LineageIndex;
+import org.openmetadata.service.search.indexes.LineagePrefetchContext;
+import org.openmetadata.service.search.indexes.SearchIndex;
 
 /**
  * Elasticsearch implementation using new Java API client with custom bulk handler
@@ -246,13 +252,22 @@ public class ElasticSearchBulkSink implements BulkSink {
       } else {
         List<EntityInterface> entityInterfaces = (List<EntityInterface>) entities;
 
+        // Pre-fetch upstream lineage for the whole batch on this caller thread so the
+        // doc-build virtual threads do not need to acquire JDBI handles per entity. Without
+        // this, 50 concurrent virtual workers each ran findFrom under HikariCP's synchronized
+        // borrow path and got pinned/stalled, tripping Hikari's 60s leak detector.
+        Map<UUID, List<EsLineageData>> prefetchedLineage =
+            prefetchLineageIfSupported(entityInterfaces);
+
         // Add entities to search index in parallel
         List<CompletableFuture<Void>> futures =
             entityInterfaces.stream()
                 .map(
                     entity ->
                         CompletableFuture.runAsync(
-                            () -> addEntity(entity, indexName, recreateIndex, tracker),
+                            () ->
+                                addEntity(
+                                    entity, indexName, recreateIndex, tracker, prefetchedLineage),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
@@ -306,8 +321,41 @@ public class ElasticSearchBulkSink implements BulkSink {
 
   private static final int BULK_OPERATION_METADATA_OVERHEAD = 150;
 
+  private Map<UUID, List<EsLineageData>> prefetchLineageIfSupported(
+      List<EntityInterface> entities) {
+    Map<UUID, List<EsLineageData>> result = null;
+    if (entities != null && !entities.isEmpty() && supportsLineagePrefetch(entities.get(0))) {
+      Map<UUID, List<EsLineageData>> prefetched = SearchIndex.prefetchUpstreamLineage(entities);
+      if (!prefetched.isEmpty()) {
+        result = prefetched;
+      }
+    }
+    return result;
+  }
+
+  private boolean supportsLineagePrefetch(EntityInterface probe) {
+    boolean supported = false;
+    try {
+      Object index = Entity.buildSearchIndex(Entity.getEntityTypeFromObject(probe), probe);
+      supported = index instanceof LineageIndex;
+    } catch (Exception e) {
+      LOG.warn("Could not determine LineageIndex support; skipping lineage prefetch", e);
+    }
+    return supported;
+  }
+
   private void addEntity(
-      EntityInterface entity, String indexName, boolean recreateIndex, StageStatsTracker tracker) {
+      EntityInterface entity,
+      String indexName,
+      boolean recreateIndex,
+      StageStatsTracker tracker,
+      Map<UUID, List<EsLineageData>> prefetchedLineage) {
+    boolean prefetchBound = false;
+    if (prefetchedLineage != null) {
+      LineagePrefetchContext.setUpstream(
+          prefetchedLineage.getOrDefault(entity.getId(), Collections.emptyList()));
+      prefetchBound = true;
+    }
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
@@ -415,6 +463,10 @@ public class ElasticSearchBulkSink implements BulkSink {
             entity.getFullyQualifiedName(),
             e.getMessage(),
             IndexingFailureRecorder.FailureStage.PROCESS);
+      }
+    } finally {
+      if (prefetchBound) {
+        LineagePrefetchContext.clear();
       }
     }
   }
