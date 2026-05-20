@@ -17,6 +17,7 @@ import { TestCaseStatus } from '../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
 import {
   buildDataQualityDashboardFilters,
+  buildMustEsFilterForCertification,
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
 } from '../utils/DataQuality/DataQualityUtils';
@@ -27,6 +28,7 @@ import {
   fetchTestCaseStatusMetricsByDays,
   fetchTestCaseSummary,
   fetchTestCaseSummaryByDimension,
+  fetchTestCaseSummaryByNoDimension,
   fetchTotalEntityCount,
 } from './dataQualityDashboardAPI';
 import { getDataQualityReport } from './testAPI';
@@ -36,6 +38,7 @@ jest.mock('./testAPI', () => ({
 }));
 
 jest.mock('../utils/DataQuality/DataQualityUtils', () => ({
+  buildMustEsFilterForCertification: jest.fn(),
   buildMustEsFilterForOwner: jest.fn(),
   buildMustEsFilterForTags: jest.fn(),
   buildDataQualityDashboardFilters: jest.fn().mockReturnValue([]),
@@ -498,6 +501,56 @@ describe('dataQualityDashboardAPI', () => {
     });
   });
 
+  describe('fetchTestCaseSummaryByNoDimension', () => {
+    it('should include certification filters in the query', async () => {
+      const filters = { certification: ['Certification.Gold'] };
+      (buildMustEsFilterForCertification as jest.Mock).mockReturnValueOnce({
+        bool: {
+          should: [
+            {
+              term: {
+                'certification.tagLabel.tagFQN': 'Certification.Gold',
+              },
+            },
+          ],
+          minimum_should_match: 1,
+        },
+      });
+
+      await fetchTestCaseSummaryByNoDimension(filters);
+
+      expect(buildMustEsFilterForCertification).toHaveBeenCalledWith(
+        filters.certification
+      );
+      expect(getDataQualityReport).toHaveBeenCalledWith({
+        q: JSON.stringify({
+          query: {
+            bool: {
+              must: [
+                {
+                  bool: {
+                    should: [
+                      {
+                        term: {
+                          'certification.tagLabel.tagFQN': 'Certification.Gold',
+                        },
+                      },
+                    ],
+                    minimum_should_match: 1,
+                  },
+                },
+              ],
+              must_not: [{ exists: { field: 'dataQualityDimension' } }],
+            },
+          },
+        }),
+        index: 'testCase',
+        aggregationQuery:
+          'bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
+      });
+    });
+  });
+
   describe('fetchCountOfIncidentStatusTypeByDays', () => {
     it('should call getDataQualityReport with correct query when no filters are provided', async () => {
       const status = TestCaseResolutionStatusTypes.ACK;
@@ -557,6 +610,63 @@ describe('dataQualityDashboardAPI', () => {
                 {
                   term: {
                     'owners.fullyQualifiedName': 'owner1',
+                  },
+                },
+              ],
+            },
+          },
+        }),
+        index: 'testCaseResolutionStatus',
+        aggregationQuery:
+          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=stateId',
+      });
+    });
+
+    it('should call getDataQualityReport with correct query when certification is provided', async () => {
+      const status = TestCaseResolutionStatusTypes.New;
+      const filters = { certification: ['Certification.Gold'] };
+      (buildMustEsFilterForCertification as jest.Mock).mockReturnValueOnce({
+        bool: {
+          should: [
+            {
+              term: {
+                'certification.tagLabel.tagFQN': 'Certification.Gold',
+              },
+            },
+          ],
+          minimum_should_match: 1,
+        },
+      });
+
+      await fetchCountOfIncidentStatusTypeByDays(status, filters);
+
+      expect(buildMustEsFilterForCertification).toHaveBeenCalledWith(
+        filters.certification
+      );
+      expect(getDataQualityReport).toHaveBeenCalledWith({
+        q: JSON.stringify({
+          query: {
+            bool: {
+              must: [
+                { term: { testCaseResolutionStatusType: status } },
+                {
+                  range: {
+                    timestamp: {
+                      lte: undefined,
+                      gte: undefined,
+                    },
+                  },
+                },
+                {
+                  bool: {
+                    should: [
+                      {
+                        term: {
+                          'certification.tagLabel.tagFQN': 'Certification.Gold',
+                        },
+                      },
+                    ],
+                    minimum_should_match: 1,
                   },
                 },
               ],
@@ -813,6 +923,76 @@ describe('dataQualityDashboardAPI', () => {
                 {
                   term: {
                     'owners.fullyQualifiedName': 'owner1',
+                  },
+                },
+              ],
+            },
+          },
+        }),
+        index: 'testCaseResolutionStatus',
+        aggregationQuery:
+          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=metrics:aggType=nested:path=metrics,bucketName=byName:aggType=terms:field=metrics.name.keyword,bucketName=avgValue:aggType=avg:field=metrics.value',
+      });
+    });
+
+    it('should call getDataQualityReport with correct query when certification is provided', async () => {
+      const type = IncidentTimeMetricsType.TIME_TO_RESOLUTION;
+      const filters = {
+        certification: ['Certification.Gold'],
+        startTs: 1729073964962,
+        endTs: 1729678764965,
+      };
+      (buildMustEsFilterForCertification as jest.Mock).mockReturnValueOnce({
+        bool: {
+          should: [
+            {
+              term: {
+                'certification.tagLabel.tagFQN': 'Certification.Gold',
+              },
+            },
+          ],
+          minimum_should_match: 1,
+        },
+      });
+
+      await fetchIncidentTimeMetrics(type, filters);
+
+      expect(buildMustEsFilterForCertification).toHaveBeenCalledWith(
+        filters.certification
+      );
+      expect(getDataQualityReport).toHaveBeenCalledWith({
+        q: JSON.stringify({
+          query: {
+            bool: {
+              must: [
+                {
+                  range: {
+                    timestamp: {
+                      lte: filters.endTs,
+                      gte: filters.startTs,
+                    },
+                  },
+                },
+                {
+                  nested: {
+                    path: 'metrics',
+                    query: {
+                      bool: {
+                        must: [{ match: { 'metrics.name.keyword': type } }],
+                      },
+                    },
+                  },
+                },
+                {
+                  bool: {
+                    should: [
+                      {
+                        term: {
+                          'certification.tagLabel.tagFQN': 'Certification.Gold',
+                        },
+                      },
+                    ],
+                    minimum_should_match: 1,
                   },
                 },
               ],
@@ -1083,6 +1263,63 @@ describe('dataQualityDashboardAPI', () => {
                 {
                   term: {
                     'owners.fullyQualifiedName': 'owner1',
+                  },
+                },
+              ],
+            },
+          },
+        }),
+        index: 'testCaseResult',
+        aggregationQuery:
+          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=testCase.fullyQualifiedName',
+      });
+    });
+
+    it('should call getDataQualityReport with correct query when certification is provided', async () => {
+      const status = TestCaseStatus.Success;
+      const filters = { certification: ['Certification.Gold'] };
+      (buildMustEsFilterForCertification as jest.Mock).mockReturnValueOnce({
+        bool: {
+          should: [
+            {
+              term: {
+                'certification.tagLabel.tagFQN': 'Certification.Gold',
+              },
+            },
+          ],
+          minimum_should_match: 1,
+        },
+      });
+
+      await fetchTestCaseStatusMetricsByDays(status, filters);
+
+      expect(buildMustEsFilterForCertification).toHaveBeenCalledWith(
+        filters.certification
+      );
+      expect(getDataQualityReport).toHaveBeenCalledWith({
+        q: JSON.stringify({
+          query: {
+            bool: {
+              must: [
+                { term: { testCaseStatus: status } },
+                {
+                  range: {
+                    timestamp: {
+                      lte: undefined,
+                      gte: undefined,
+                    },
+                  },
+                },
+                {
+                  bool: {
+                    should: [
+                      {
+                        term: {
+                          'certification.tagLabel.tagFQN': 'Certification.Gold',
+                        },
+                      },
+                    ],
+                    minimum_should_match: 1,
                   },
                 },
               ],

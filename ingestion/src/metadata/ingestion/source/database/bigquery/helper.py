@@ -74,12 +74,15 @@ def get_inspector_details(database_name: str, service_connection: BigQueryConnec
 
     if isinstance(new_service_connection.credentials.gcpConfig, GcpCredentialsValues):
         new_service_connection.credentials.gcpConfig.projectId = SingleProjectId(database_name)
-        if new_service_connection.credentials.gcpImpersonateServiceAccount:
-            kwargs["impersonate_service_account"] = (
-                new_service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
-            )
 
-            kwargs["lifetime"] = new_service_connection.credentials.gcpImpersonateServiceAccount.lifetime
+    if (
+        new_service_connection.credentials.gcpImpersonateServiceAccount
+        and new_service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
+    ):
+        kwargs["impersonate_service_account"] = (
+            new_service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
+        )
+        kwargs["lifetime"] = new_service_connection.credentials.gcpImpersonateServiceAccount.lifetime
 
     client = get_bigquery_client(project_id=new_service_connection.billingProjectId or database_name, **kwargs)
     engine = get_connection(new_service_connection)

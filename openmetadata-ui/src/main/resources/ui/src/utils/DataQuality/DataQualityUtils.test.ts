@@ -23,6 +23,7 @@ import {
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import {
   buildDataQualityDashboardFilters,
+  buildMustEsFilterForCertification,
   buildMustEsFilterForDataProducts,
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
@@ -443,6 +444,43 @@ describe('DataQualityUtils', () => {
     });
   });
 
+  describe('buildMustEsFilterForCertification', () => {
+    it('should return top-level certification filter', () => {
+      expect(buildMustEsFilterForCertification(['Certification.Gold'])).toEqual(
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  'certification.tagLabel.tagFQN': 'Certification.Gold',
+                },
+              },
+            ],
+            minimum_should_match: 1,
+          },
+        }
+      );
+    });
+
+    it('should prefix certification field for nested test case documents', () => {
+      expect(
+        buildMustEsFilterForCertification(['Certification.Gold'], 'testCase.')
+      ).toEqual({
+        bool: {
+          should: [
+            {
+              term: {
+                'testCase.certification.tagLabel.tagFQN':
+                  'Certification.Gold',
+              },
+            },
+          ],
+          minimum_should_match: 1,
+        },
+      });
+    });
+  });
+
   describe('transformToTestCaseStatusObject', () => {
     it('should return correct counts for basic input', () => {
       const inputData = [
@@ -598,6 +636,24 @@ describe('DataQualityUtils', () => {
 
       expect(result).toEqual([
         buildMustEsFilterForDataProducts(fqns),
+        {
+          term: {
+            deleted: false,
+          },
+        },
+      ]);
+    });
+
+    it('should include certification filters when certifications are provided', () => {
+      const certifications = ['Certification.Gold', 'Certification.Silver'];
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          certification: certifications,
+        },
+      });
+
+      expect(result).toEqual([
+        buildMustEsFilterForCertification(certifications),
         {
           term: {
             deleted: false,

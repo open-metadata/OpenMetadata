@@ -238,6 +238,22 @@ export const buildMustEsFilterForDataProducts = (
   };
 };
 
+export const buildMustEsFilterForCertification = (
+  certifications: string[],
+  fieldPrefix = ''
+) => {
+  const field = `${fieldPrefix}certification.tagLabel.tagFQN`;
+
+  return {
+    bool: {
+      should: certifications.map((fqn) => ({
+        term: { [field]: fqn },
+      })),
+      minimum_should_match: 1,
+    },
+  };
+};
+
 export const buildDataQualityDashboardFilters = (data: {
   filters?: DataQualityDashboardChartFilters;
   unhealthy?: boolean;
@@ -283,13 +299,7 @@ export const buildDataQualityDashboardFilters = (data: {
   }
 
   if (filters?.certification) {
-    mustFilter.push({
-      bool: {
-        should: filters.certification.map((fqn) => ({
-          term: { 'certification.tagLabel.tagFQN': fqn },
-        })),
-      },
-    });
+    mustFilter.push(buildMustEsFilterForCertification(filters.certification));
   }
 
   if ((filters?.tags || filters?.tier) && !isTableApi) {

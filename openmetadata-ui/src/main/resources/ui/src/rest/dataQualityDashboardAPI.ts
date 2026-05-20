@@ -17,6 +17,7 @@ import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolu
 import { DataQualityDashboardChartFilters } from '../pages/DataQuality/DataQualityPage.interface';
 import {
   buildDataQualityDashboardFilters,
+  buildMustEsFilterForCertification,
   buildMustEsFilterForDataProducts,
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
@@ -119,6 +120,11 @@ export const fetchTestCaseSummaryByNoDimension = (
   if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
     mustFilter.push(buildMustEsFilterForDataProducts(filters.dataProductFqns));
   }
+  if (filters?.certification && filters.certification.length > 0) {
+    mustFilter.push(
+      buildMustEsFilterForCertification(filters.certification)
+    );
+  }
 
   return getDataQualityReport({
     q: JSON.stringify({
@@ -152,6 +158,11 @@ export const fetchCountOfIncidentStatusTypeByDays = (
   if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
     mustFilter.push(
       buildMustEsFilterForDataProducts(filters.dataProductFqns, 'testCase.')
+    );
+  }
+  if (filters?.certification && filters.certification.length > 0) {
+    mustFilter.push(
+      buildMustEsFilterForCertification(filters.certification)
     );
   }
 
@@ -197,6 +208,11 @@ export const fetchIncidentTimeMetrics = (
   if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
     mustFilter.push(
       buildMustEsFilterForDataProducts(filters.dataProductFqns, 'testCase.')
+    );
+  }
+  if (filters?.certification && filters.certification.length > 0) {
+    mustFilter.push(
+      buildMustEsFilterForCertification(filters.certification)
     );
   }
 
@@ -251,6 +267,11 @@ export const fetchTestCaseStatusMetricsByDays = (
   if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
     mustFilter.push(
       buildMustEsFilterForDataProducts(filters.dataProductFqns, 'testCase.')
+    );
+  }
+  if (filters?.certification && filters.certification.length > 0) {
+    mustFilter.push(
+      buildMustEsFilterForCertification(filters.certification)
     );
   }
   if (filters?.entityFQN) {
