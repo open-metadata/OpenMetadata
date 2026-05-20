@@ -283,7 +283,7 @@ class LineageSource(QueryParserSource, ABC):
         Method to handle the usage from query logs
         """
         try:
-            query_log_path = self.source_config.queryLogFilePath
+            query_log_path = self.source_config.queryLogFilePath  # pyright: ignore[reportAttributeAccessIssue]
             if os.path.isfile(query_log_path):  # noqa: PTH113
                 file_paths = [query_log_path]
             elif os.path.isdir(query_log_path):  # noqa: PTH112
@@ -342,7 +342,7 @@ class LineageSource(QueryParserSource, ABC):
         otherwise execute the sql query to fetch TableQuery data.
         This is a simplified version of the UsageSource query parsing.
         """
-        if self.config.sourceConfig.config.queryLogFilePath:
+        if self.config.sourceConfig.config.queryLogFilePath:  # pyright: ignore[reportAttributeAccessIssue]
             yield from self.yield_table_queries_from_logs()
         else:
             logger.info(f"Scanning query logs for {self.start.date()} - {self.end.date()}")
@@ -370,9 +370,9 @@ class LineageSource(QueryParserSource, ABC):
             self.metadata,
             self.dialect,
             self.graph,
-            self.source_config.processCrossDatabaseLineage,
-            self.source_config.crossDatabaseServiceNames,
-            self.source_config.parsingTimeoutLimit,
+            self.source_config.processCrossDatabaseLineage,  # pyright: ignore[reportAttributeAccessIssue]
+            self.source_config.crossDatabaseServiceNames,  # pyright: ignore[reportAttributeAccessIssue]
+            self.source_config.parsingTimeoutLimit,  # pyright: ignore[reportAttributeAccessIssue]
             self.config.serviceName,
             self.get_query_parser_type(),
         )
@@ -380,7 +380,7 @@ class LineageSource(QueryParserSource, ABC):
             producer_fn,
             processor_fn,
             args,
-            max_threads=self.source_config.threads,
+            max_threads=self.source_config.threads,  # pyright: ignore[reportAttributeAccessIssue]
         )
 
     def view_lineage_producer(self) -> Iterable[TableView]:
@@ -389,19 +389,19 @@ class LineageSource(QueryParserSource, ABC):
         """
         for view in self.metadata.yield_es_view_def(
             service_name=self.config.serviceName,
-            incremental=self.source_config.incrementalLineageProcessing,
+            incremental=self.source_config.incrementalLineageProcessing,  # pyright: ignore[reportAttributeAccessIssue]
         ):
             if (
                 filter_by_database(
-                    self.source_config.databaseFilterPattern,
+                    self.source_config.databaseFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
                     view.db_name,
                 )
                 or filter_by_schema(
-                    self.source_config.schemaFilterPattern,
+                    self.source_config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
                     view.schema_name,
                 )
                 or filter_by_table(
-                    self.source_config.tableFilterPattern,
+                    self.source_config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
                     view.table_name,
                 )
             ):
@@ -420,17 +420,17 @@ class LineageSource(QueryParserSource, ABC):
             self.metadata,
             self.config.serviceName,
             self.service_connection.type.value,
-            self.source_config.processCrossDatabaseLineage,
-            self.source_config.crossDatabaseServiceNames,
-            self.source_config.parsingTimeoutLimit,
-            self.source_config.overrideViewLineage,
+            self.source_config.processCrossDatabaseLineage,  # pyright: ignore[reportAttributeAccessIssue]
+            self.source_config.crossDatabaseServiceNames,  # pyright: ignore[reportAttributeAccessIssue]
+            self.source_config.parsingTimeoutLimit,  # pyright: ignore[reportAttributeAccessIssue]
+            self.source_config.overrideViewLineage,  # pyright: ignore[reportAttributeAccessIssue]
             self.get_query_parser_type(),
         )
         yield from self.generate_lineage_with_processes(
             producer_fn,
             processor_fn,
             args,
-            max_threads=self.source_config.threads,
+            max_threads=self.source_config.threads,  # pyright: ignore[reportAttributeAccessIssue]
         )
 
     def yield_procedure_lineage(
@@ -495,22 +495,22 @@ class LineageSource(QueryParserSource, ABC):
         Based on the query logs, prepare the lineage
         and send it to the sink
         """
-        if self.graph is None and self.source_config.enableTempTableLineage:
+        if self.graph is None and self.source_config.enableTempTableLineage:  # pyright: ignore[reportAttributeAccessIssue]
             # Create a directed graph
             self.graph = nx.DiGraph()
-        if self.procedure_graph_map is None and self.source_config.enableTempTableLineage:
+        if self.procedure_graph_map is None and self.source_config.enableTempTableLineage:  # pyright: ignore[reportAttributeAccessIssue]
             # Create a dictionary to store the directed graph for each procedure
             self.procedure_graph_map = {}
 
-        if self.source_config.processViewLineage:
+        if self.source_config.processViewLineage:  # pyright: ignore[reportAttributeAccessIssue]
             yield from self.yield_view_lineage() or []
-        if self.source_config.processStoredProcedureLineage:
+        if self.source_config.processStoredProcedureLineage:  # pyright: ignore[reportAttributeAccessIssue]
             yield from self.yield_procedure_lineage() or []
             yield from get_lineage_by_procedure_graph(
                 procedure_graph_map=self.procedure_graph_map,
                 metadata=self.metadata,
             )
-        if self.source_config.processQueryLineage:
+        if self.source_config.processQueryLineage:  # pyright: ignore[reportAttributeAccessIssue]
             if hasattr(self.service_connection, "supportsLineageExtraction"):
                 yield from self.yield_query_lineage() or []
                 yield from get_lineage_by_graph(graph=self.graph, metadata=self.metadata)
@@ -518,5 +518,5 @@ class LineageSource(QueryParserSource, ABC):
                 logger.warning(
                     f"Lineage extraction is not supported for {str(self.service_connection.type.value)} connection"  # noqa: RUF010
                 )
-        if self.source_config.processCrossDatabaseLineage and self.source_config.crossDatabaseServiceNames:
+        if self.source_config.processCrossDatabaseLineage and self.source_config.crossDatabaseServiceNames:  # pyright: ignore[reportAttributeAccessIssue]
             yield from self.yield_cross_database_lineage() or []

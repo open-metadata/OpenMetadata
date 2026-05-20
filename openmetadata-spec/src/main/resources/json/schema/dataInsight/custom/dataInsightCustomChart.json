@@ -8,40 +8,6 @@
     "javaInterfaces": [
         "org.openmetadata.schema.EntityInterface"
     ],
-    "definitions": {
-        "function": {
-            "javaType": "org.openmetadata.schema.dataInsight.custom.Function",
-            "description": "aggregation function for chart",
-            "type": "string",
-            "enum": [
-                "count",
-                "sum",
-                "avg",
-                "min",
-                "max",
-                "unique"
-            ]
-        },
-        "kpiDetails": {
-            "type": "object",
-            "javaType": "org.openmetadata.schema.dataInsight.custom.KPIDetails",
-            "description": "KPI details for the data insight chart.",
-            "properties": {
-                "startDate": {
-                    "description": "Start Date of KPI",
-                    "type": "string"
-                },
-                "endDate": {
-                    "description": "End Date of KPI",
-                    "type": "string"
-                },
-                "target": {
-                    "description": "Target value of KPI",
-                    "type": "number"
-                }
-            }
-        }
-    },
     "properties": {
         "id": {
             "description": "Unique identifier of this table instance.",

@@ -16,9 +16,11 @@ from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.profiler.adaptors.factory import factory
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.sqa_like_column import SQALikeColumn
+from metadata.utils.ssl_manager import get_ssl_connection
 
 
 class NoSQLSampler(SamplerInterface):
@@ -28,6 +30,9 @@ class NoSQLSampler(SamplerInterface):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        db_config = kwargs.get("config") or DatabaseSamplerConfig()
+        self.connection = get_ssl_connection(self.service_connection_config)
+        self.sample_query: str | None = db_config.sample_query
         self.client = self.get_client()
 
     @property

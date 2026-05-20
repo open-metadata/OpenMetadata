@@ -17,6 +17,7 @@ import {
   DESCRIPTION_WIDGET,
   GLOSSARY_TERMS_WIDGET,
   GridSizes,
+  KNOWLEDGE_ARTICLE_WIDGET,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { DASHBOARD_DUMMY_DATA } from '../constants/Dashboard.constnats';
@@ -54,7 +55,8 @@ type DashboardDetailsWidgetKeys =
   | DetailPageWidgetKeys.DATA_PRODUCTS
   | DetailPageWidgetKeys.TAGS
   | DetailPageWidgetKeys.GLOSSARY_TERMS
-  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES
+  | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE;
 
 class DashboardDetailsClassBase {
   defaultWidgetHeight: Record<DashboardDetailsWidgetKeys, number>;
@@ -67,6 +69,7 @@ class DashboardDetailsClassBase {
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
+      [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
     };
   }
 
@@ -180,6 +183,7 @@ class DashboardDetailsClassBase {
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,
       CUSTOM_PROPERTIES_WIDGET,
+      KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }
 

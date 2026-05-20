@@ -29,6 +29,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
+import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO.SearchIndexJobRecord;
@@ -245,7 +246,7 @@ public class DistributedSearchIndexCoordinator {
     Map<String, List<SearchIndexPartition>> byEntity =
         partitions.stream()
             .filter(p -> p.getEntityType() != null)
-            .filter(p -> !PartitionWorker.TIME_SERIES_ENTITIES.contains(p.getEntityType()))
+            .filter(p -> !SearchIndexEntityTypes.isTimeSeriesEntity(p.getEntityType()))
             .collect(Collectors.groupingBy(SearchIndexPartition::getEntityType));
 
     Map<String, Map<Long, String>> jobCache = new HashMap<>();
@@ -879,14 +880,16 @@ public class DistributedSearchIndexCoordinator {
     for (EntityStatsRecord es : entityStatsList) {
       CollectionDAO.SearchIndexServerStatsDAO.EntityStats timing =
           entityTimingByType.get(es.entityType());
+      long entityWarnings = timing != null ? timing.readerWarnings() : 0;
       entityStatsMap.put(
           es.entityType(),
           SearchIndexJob.EntityTypeStats.builder()
               .entityType(es.entityType())
               .totalRecords(es.totalRecords())
-              .processedRecords(es.processedRecords())
+              .processedRecords(es.processedRecords() + entityWarnings)
               .successRecords(es.successRecords())
               .failedRecords(es.failedRecords())
+              .warningRecords(entityWarnings)
               .totalPartitions(es.totalPartitions())
               .completedPartitions(es.completedPartitions())
               .failedPartitions(es.failedPartitions())
@@ -895,7 +898,7 @@ public class DistributedSearchIndexCoordinator {
               .sinkTimeMs(timing != null ? timing.sinkTimeMs() : 0)
               .vectorTimeMs(timing != null ? timing.vectorTimeMs() : 0)
               .build());
-      totalProcessed += es.processedRecords();
+      totalProcessed += es.processedRecords() + entityWarnings;
       totalSuccess += es.successRecords();
       totalFailed += es.failedRecords();
     }

@@ -1286,21 +1286,40 @@ export const getTaskEntityFQN = (entityType: EntityType, fqn: string) => {
 };
 
 export const isDarApprovalActive = (
-  createdAt?: number,
+  approvedAt?: number,
   duration?: string,
   expirationDate?: number
 ): boolean => {
   const now = Date.now();
 
-  if (expirationDate) {
+  if (expirationDate != null) {
     return now <= expirationDate;
   }
 
-  if (!duration || !createdAt) {
+  if (!duration || !approvedAt) {
     return true;
   }
 
   const parsed = Duration.fromISO(duration);
 
-  return parsed.isValid && now <= createdAt + parsed.toMillis();
+  return parsed.isValid && now <= approvedAt + parsed.toMillis();
+};
+
+export const getDarButtonTooltip = (
+  isDarDisabled: boolean,
+  isDarGranted: boolean,
+  isDarAwaitingGrant: boolean,
+  t: (key: string) => string
+): string | undefined => {
+  if (!isDarDisabled) {
+    return undefined;
+  }
+  if (isDarGranted) {
+    return t('message.data-access-request-already-granted');
+  }
+  if (isDarAwaitingGrant) {
+    return t('message.data-access-request-awaiting-grant-message');
+  }
+
+  return t('message.data-access-request-already-exists');
 };
