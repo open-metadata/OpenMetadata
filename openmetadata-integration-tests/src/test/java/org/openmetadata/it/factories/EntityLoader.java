@@ -59,6 +59,7 @@ import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.SearchService;
 import org.openmetadata.schema.entity.services.StorageService;
+import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.type.APIRequestMethod;
 import org.openmetadata.schema.type.ChartType;
 import org.openmetadata.schema.type.Column;
@@ -98,7 +99,9 @@ public final class EntityLoader {
 
   private static final Logger LOG = LoggerFactory.getLogger(EntityLoader.class);
   private static final long FUTURE_TIMEOUT_SECONDS = 600;
-  private static final String EMAIL_DOMAIN = "@loader.openmetadata.test";
+  // RFC 5321 caps email local-part at 64 chars; Hibernate Validator's @Email enforces it.
+  // Don't pack the namespace prefix into the local part — UUID hex is enough and short.
+  private static final String EMAIL_DOMAIN = "@test.openmetadata.org";
 
   // Lineage mix mirrors perf-test.sh:2296-2298 — 60% table→table, 25% table→dashboard,
   // 15% pipeline→table. Ratios fall back gracefully when the dependent collected sets
@@ -622,12 +625,12 @@ public final class EntityLoader {
       final TestNamespace ns,
       final ExecutorService executor,
       final EntityLoadSummary.Builder summary) {
-    // CreateQuery requires the parent database service FQN (matches perf-test.sh:2145-2151
-    // and QueryResourceIT.java:72-78). Pulling it from the schema's service ref avoids
-    // creating a second service just for queries.
-    final DatabaseSchema schema = ensureTablesSchema(ns);
-    final Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
-    final String serviceFqn = schema.getService().getFullyQualifiedName();
+    // Match perf-test.sh:2145-2151 — minimum-viable Query payload is name + query +
+    // service. Earlier attempts also sent queryUsedIn with the table's EntityReference,
+    // but EntityReference.type is @NotNull and the SDK-returned Table builds a reference
+    // whose type field doesn't survive canonical-name lookup, producing 400s. We don't
+    // need the queryUsedIn link for load coverage; the script doesn't set it either.
+    final String serviceFqn = ensureTablesSchema(ns).getService().getFullyQualifiedName();
     final int count = spec.countOf(EntityKind.QUERY);
     final String namePrefix = ns.prefix("query") + "_";
 
@@ -642,8 +645,7 @@ public final class EntityLoader {
                     new CreateQuery()
                         .withName(namePrefix + index)
                         .withQuery("SELECT " + index + " AS n_" + System.nanoTime())
-                        .withService(serviceFqn)
-                        .withQueryUsedIn(List.of(table.getEntityReference()))));
+                        .withService(serviceFqn)));
     summary.recordCreated(EntityKind.QUERY, count);
   }
 
@@ -664,7 +666,10 @@ public final class EntityLoader {
         index ->
             SdkClients.adminClient()
                 .glossaries()
-                .create(new CreateGlossary().withName(namePrefix + index)));
+                .create(
+                    new CreateGlossary()
+                        .withName(namePrefix + index)
+                        .withDescription("Loader glossary " + index)));
     summary.recordCreated(EntityKind.GLOSSARY, count);
   }
 
@@ -754,9 +759,8 @@ public final class EntityLoader {
         EntityKind.USER,
         index -> {
           final String name = namePrefix + index;
-          SdkClients.adminClient()
-              .users()
-              .create(new CreateUser().withName(name).withEmail(name + EMAIL_DOMAIN));
+          final String email = "u" + UUID.randomUUID().toString().replace("-", "") + EMAIL_DOMAIN;
+          SdkClients.adminClient().users().create(new CreateUser().withName(name).withEmail(email));
         });
     summary.recordCreated(EntityKind.USER, count);
   }
@@ -862,24 +866,35 @@ public final class EntityLoader {
       final ExecutorService executor,
       final EntityLoadSummary.Builder summary,
       final LoaderContext ctx) {
-    final Table table = ensureQueryTable(ns);
+    // OM auto-creates a test_suite whose name is <table.fqn>.testSuite. With the default
+    // long ns.prefix-based table FQN that comes out > 256 chars and trips a MySQL
+    // truncation on test_suite.name. ShortStackFactory builds a service→db→schema→table
+    // chain with short names just for this purpose.
+    final Table table = ShortStackFactory.table(ns);
     final String entityLink = "<#E::table::" + table.getFullyQualifiedName() + ">";
     final int count = spec.countOf(EntityKind.TEST_CASE);
     final String namePrefix = ns.prefix("test_case") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.TEST_CASE,
-        index ->
-            ctx.recordTestCase(
-                SdkClients.adminClient()
-                    .testCases()
-                    .create(
-                        new CreateTestCase()
-                            .withName(namePrefix + index)
-                            .withEntityLink(entityLink)
-                            .withTestDefinition("tableRowCountToEqual"))));
+    // Test cases are serialized rather than parallelised: OM's TestCaseRepository takes
+    // an internal lock around the per-table test-suite auto-create + attachment path and
+    // returns 409 ("Entity already exists") when concurrent test_case creates against
+    // the same table race that lock. Sequential is fast enough for smoke scale and the
+    // scale paths don't rely on this loader for test_case bulk anyway.
+    for (int i = 0; i < count; i++) {
+      ctx.recordTestCase(
+          SdkClients.adminClient()
+              .testCases()
+              .create(
+                  new CreateTestCase()
+                      .withName(namePrefix + i)
+                      .withEntityLink(entityLink)
+                      .withTestDefinition("tableRowCountToEqual")
+                      .withParameterValues(
+                          List.of(
+                              new TestCaseParameterValue()
+                                  .withName("value")
+                                  .withValue(Integer.toString(i))))));
+    }
     summary.recordCreated(EntityKind.TEST_CASE, count);
   }
 
@@ -929,16 +944,17 @@ public final class EntityLoader {
     // Caller asked for lineage without seeding tables; synthesise a chain. Mirrors the
     // single-kind fallback the original loader used so a {LINEAGE_EDGE: N} spec is
     // self-sufficient.
-    final List<EntityReference> synthesised = new ArrayList<>(minimumCount);
     final String schemaFqn = ensureTablesSchema(ns).getFullyQualifiedName();
     for (int i = 0; i < minimumCount; i++) {
       final Table table =
           TableTestFactory.createSimpleWithName(
               ns.prefix("lineage_node_" + i + "_" + UUID.randomUUID()), ns, schemaFqn);
-      synthesised.add(table.getEntityReference());
       ctx.recordTable(table);
     }
-    return synthesised;
+    // recordTable populates ctx.tables() with type-bearing references, so just return
+    // the now-populated context view rather than maintaining a parallel list whose refs
+    // had null type.
+    return ctx.tables();
   }
 
   private static List<EntityReference[]> planLineageTasks(
@@ -1004,7 +1020,10 @@ public final class EntityLoader {
   private static Glossary ensureParentGlossary(final TestNamespace ns) {
     return SdkClients.adminClient()
         .glossaries()
-        .create(new CreateGlossary().withName(ns.prefix("glossary_parent")));
+        .create(
+            new CreateGlossary()
+                .withName(ns.prefix("glossary_parent"))
+                .withDescription("Loader parent glossary"));
   }
 
   private static Classification ensureParentClassification(final TestNamespace ns) {
@@ -1344,15 +1363,35 @@ public final class EntityLoader {
     private final List<String> testCaseFqns = Collections.synchronizedList(new ArrayList<>());
 
     void recordTable(final Table table) {
-      tables.add(table.getEntityReference());
+      tables.add(makeRef(table.getId(), table.getName(), table.getFullyQualifiedName(), "table"));
     }
 
     void recordDashboard(final org.openmetadata.schema.entity.data.Dashboard dashboard) {
-      dashboards.add(dashboard.getEntityReference());
+      dashboards.add(
+          makeRef(
+              dashboard.getId(),
+              dashboard.getName(),
+              dashboard.getFullyQualifiedName(),
+              "dashboard"));
     }
 
     void recordPipeline(final org.openmetadata.schema.entity.data.Pipeline pipeline) {
-      pipelines.add(pipeline.getEntityReference());
+      pipelines.add(
+          makeRef(
+              pipeline.getId(), pipeline.getName(), pipeline.getFullyQualifiedName(), "pipeline"));
+    }
+
+    private static EntityReference makeRef(
+        final UUID id, final String name, final String fqn, final String type) {
+      // EntityReference.type is @NotNull; the default getEntityReference() pulls it from
+      // CANONICAL_ENTITY_NAME_MAP keyed on the runtime class name, which doesn't always
+      // round-trip from SDK-returned entities. Set it explicitly so AddLineage and any
+      // other downstream consumer doesn't 400 on a null type.
+      return new EntityReference()
+          .withId(id)
+          .withName(name)
+          .withFullyQualifiedName(fqn)
+          .withType(type);
     }
 
     void recordTestCase(final org.openmetadata.schema.tests.TestCase testCase) {
