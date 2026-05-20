@@ -126,6 +126,7 @@ export interface ExploreQuickFilterField {
   hideSearchBar?: boolean;
   searchIndex?: SearchIndex;
   searchKey?: string;
+  sourceFields?: string;
   dropdownClassName?: string;
   singleSelect?: boolean;
 }

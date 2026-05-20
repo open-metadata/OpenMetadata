@@ -12,6 +12,7 @@
  */
 
 import { FieldOrGroup } from '@react-awesome-query-builder/antd';
+import { Bucket } from 'Models';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
@@ -261,6 +262,82 @@ describe('AdvancedSearchUtils tests', () => {
       { count: 1, key: 'pipeline', label: 'pipeline' },
       { count: 3, key: 'chart', label: 'chart' },
     ]);
+  });
+
+  it('Function getOptionsFromAggregationBucket should preserve original case using sourceFields', () => {
+    const buckets: Bucket[] = [
+      {
+        key: 'customer-domain',
+        doc_count: 2,
+        'top_hits#top': {
+          hits: {
+            hits: [
+              {
+                _source: {
+                  domains: {
+                    displayName: 'Customer Domain',
+                  },
+                },
+              },
+            ],
+          },
+        },
+      } as unknown as Bucket,
+    ];
+
+    expect(
+      getOptionsFromAggregationBucket(buckets, 'domains.displayName')
+    ).toEqual([{ count: 2, key: 'customer-domain', label: 'Customer Domain' }]);
+  });
+
+  it('Function getOptionsFromAggregationBucket should select matching value from source arrays', () => {
+    const buckets: Bucket[] = [
+      {
+        key: 'data-team',
+        doc_count: 3,
+        'top_hits#top': {
+          hits: {
+            hits: [
+              {
+                _source: {
+                  ownerDisplayName: ['Data Team', 'Platform Team'],
+                },
+              },
+            ],
+          },
+        },
+      } as unknown as Bucket,
+    ];
+
+    expect(
+      getOptionsFromAggregationBucket(buckets, 'ownerDisplayName')
+    ).toEqual([{ count: 3, key: 'data-team', label: 'Data Team' }]);
+  });
+
+  it('Function getOptionsFromAggregationBucket should fallback to bucket key when sourceFields path is missing', () => {
+    const buckets: Bucket[] = [
+      {
+        key: 'airflow',
+        doc_count: 1,
+        'top_hits#top': {
+          hits: {
+            hits: [
+              {
+                _source: {
+                  service: {
+                    name: 'Airflow',
+                  },
+                },
+              },
+            ],
+          },
+        },
+      } as unknown as Bucket,
+    ];
+
+    expect(
+      getOptionsFromAggregationBucket(buckets, 'service.displayName')
+    ).toEqual([{ count: 1, key: 'airflow', label: 'airflow' }]);
   });
 
   describe('getEmptyJsonTree', () => {

@@ -316,7 +316,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          'pets'
+          'pets',
+          undefined
         );
       });
     });
@@ -341,7 +342,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -371,7 +373,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -407,7 +410,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           50,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -437,7 +441,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -475,9 +480,111 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
+    });
+
+    it('should pass mapped sourceFields for owners quick filter', async () => {
+      mockGetAggregationOptions.mockResolvedValue({
+        data: {
+          aggregations: {
+            'sterms#ownerDisplayName': {
+              buckets: [
+                {
+                  key: 'data-team',
+                  doc_count: 2,
+                  'top_hits#top': {
+                    hits: {
+                      hits: [
+                        {
+                          _source: {
+                            ownerDisplayName: ['Data Team'],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      });
+
+      const ownerFields: ExploreQuickFilterField[] = [
+        { label: 'Owner', key: EntityFields.OWNERS, value: undefined },
+      ];
+
+      render(<ExploreQuickFilters {...mockProps} fields={ownerFields} />);
+
+      await act(async () => {
+        userEvent.click(screen.getByTestId(`onSearch-${EntityFields.OWNERS}`));
+      });
+
+      await waitFor(() => {
+        expect(getAggregationOptions).toHaveBeenCalledWith(
+          SearchIndex.TABLE,
+          EntityFields.OWNERS,
+          'test',
+          expect.any(String),
+          false,
+          false,
+          undefined,
+          false,
+          '',
+          'ownerDisplayName'
+        );
+      });
+    });
+
+    it('should format entity type option labels with proper casing', async () => {
+      const entityTypeFields: ExploreQuickFilterField[] = [
+        {
+          label: 'Entity Type',
+          key: EntityFields.ENTITY_TYPE_KEYWORD,
+          value: undefined,
+        },
+      ];
+      const entityTypeAggregations = {
+        [EntityFields.ENTITY_TYPE_KEYWORD]: {
+          buckets: [
+            {
+              key: 'dashboarddatamodel',
+              doc_count: 2,
+            },
+            {
+              key: 'apiendpoint',
+              doc_count: 1,
+            },
+          ],
+        },
+      };
+
+      render(
+        <ExploreQuickFilters
+          {...mockProps}
+          aggregations={entityTypeAggregations}
+          fields={entityTypeFields}
+        />
+      );
+
+      await act(async () => {
+        userEvent.click(
+          screen.getByTestId(
+            `onGetInitialOptions-${EntityFields.ENTITY_TYPE_KEYWORD}`
+          )
+        );
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Dashboard Data Model - 2')
+        ).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Api Endpoint - 1')).toBeInTheDocument();
     });
 
     it('should call getInitialOptions when search value is empty', async () => {
@@ -523,7 +630,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -552,7 +660,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           true,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -679,7 +788,8 @@ describe('ExploreQuickFilters component', () => {
           expect.anything(),
           undefined,
           expect.anything(),
-          expect.any(String)
+          expect.any(String),
+          undefined
         );
       });
     });
@@ -714,7 +824,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });

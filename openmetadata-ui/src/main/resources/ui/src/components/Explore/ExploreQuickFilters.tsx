@@ -13,10 +13,11 @@
 
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
-import { isEqual, uniqWith } from 'lodash';
+import { isEqual, startCase, uniqWith } from 'lodash';
 import Qs from 'qs';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
@@ -34,6 +35,66 @@ import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface
 import { useAdvanceSearch } from './AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { ExploreSearchIndex } from './ExplorePage.interface';
 import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
+
+const QUICK_FILTER_SOURCE_FIELDS: Record<string, string> = {
+  [EntityFields.API_COLLECTION]: 'apiCollection.displayName',
+  [EntityFields.CHART]: 'charts.displayName',
+  [EntityFields.DATA_MODEL]: 'dataModels.displayName',
+  [EntityFields.DATA_PRODUCT]: 'dataProducts.displayName',
+  [EntityFields.DATABASE]: 'database.displayName',
+  [EntityFields.DATABASE_SCHEMA]: 'databaseSchema.displayName',
+  [EntityFields.DIRECTORY]: 'directory.displayName',
+  [EntityFields.DOMAINS]: 'domains.displayName',
+  [EntityFields.OWNERS]: 'ownerDisplayName',
+  [EntityFields.PARENT]: 'parent.displayName',
+  [EntityFields.SERVICE]: 'service.displayName',
+  [EntityFields.SPREADSHEET]: 'spreadsheet.displayName',
+  [EntityFields.TABLE_DISPLAY_NAME]: 'table.displayName',
+  [EntityFields.TASK]: 'tasks.displayName',
+};
+
+const ENTITY_TYPE_QUICK_FILTER_FIELDS = new Set<string>([
+  EntityFields.ENTITY_TYPE,
+  EntityFields.ENTITY_TYPE_KEYWORD,
+]);
+
+const ENTITY_TYPE_VALUE_BY_LOWERCASE = Object.values(EntityType).reduce(
+  (acc, value) => {
+    acc[value.toLowerCase()] = value;
+
+    return acc;
+  },
+  {} as Record<string, string>
+);
+
+const getResolvedSourceFields = (
+  searchKey: string,
+  sourceFields?: string
+): string | undefined => sourceFields ?? QUICK_FILTER_SOURCE_FIELDS[searchKey];
+
+const getFormattedEntityTypeLabel = (rawValue: string): string => {
+  const canonicalEntityType =
+    ENTITY_TYPE_VALUE_BY_LOWERCASE[rawValue.toLowerCase()] ?? rawValue;
+
+  return startCase(canonicalEntityType);
+};
+
+const getBucketOptions = (
+  buckets: Parameters<typeof getOptionsFromAggregationBucket>[0],
+  searchKey: string,
+  sourceFields?: string
+): SearchDropdownOption[] => {
+  const options = getOptionsFromAggregationBucket(buckets, sourceFields);
+
+  if (!ENTITY_TYPE_QUICK_FILTER_FIELDS.has(searchKey)) {
+    return options;
+  }
+
+  return options.map((option) => ({
+    ...option,
+    label: getFormattedEntityTypeLabel(option.key),
+  }));
+};
 
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   fields,
@@ -92,7 +153,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     index: SearchIndex | SearchIndex[],
     key: string,
     fieldSearchIndex?: SearchIndex,
-    fieldSearchKey?: string
+    fieldSearchKey?: string,
+    fieldSourceFields?: string
   ) => {
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
@@ -105,6 +167,10 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     const searchIndexToUse = fieldSearchIndex ?? index;
     // Use field-specific searchKey if provided, otherwise use the key
     const searchKeyToUse = fieldSearchKey ?? key;
+    const sourceFieldsToUse = getResolvedSourceFields(
+      searchKeyToUse,
+      fieldSourceFields
+    );
 
     let buckets = aggregations?.[key]?.buckets;
     if (!buckets) {
@@ -117,19 +183,26 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         showDeleted,
         optionPageSize,
         isNLPEnabled,
-        searchText
+        searchText,
+        sourceFieldsToUse
       );
 
       buckets = res.data.aggregations[`sterms#${searchKeyToUse}`].buckets;
     }
 
-    setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
+    setOptions(
+      uniqWith(
+        getBucketOptions(buckets, searchKeyToUse, sourceFieldsToUse),
+        isEqual
+      )
+    );
   };
 
   const getInitialOptions = async (
     key: string,
     fieldSearchIndex?: SearchIndex,
-    fieldSearchKey?: string
+    fieldSearchKey?: string,
+    fieldSourceFields?: string
   ) => {
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
@@ -141,7 +214,13 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     setIsOptionsLoading(true);
     setOptions([]);
     try {
-      await fetchDefaultOptions(index, key, fieldSearchIndex, fieldSearchKey);
+      await fetchDefaultOptions(
+        index,
+        key,
+        fieldSearchIndex,
+        fieldSearchKey,
+        fieldSourceFields
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -153,7 +232,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     value: string,
     key: string,
     fieldSearchIndex?: SearchIndex,
-    fieldSearchKey?: string
+    fieldSearchKey?: string,
+    fieldSourceFields?: string
   ) => {
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
@@ -171,13 +251,22 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     setOptions([]);
     try {
       if (!value) {
-        getInitialOptions(key, fieldSearchIndex, fieldSearchKey);
+        getInitialOptions(
+          key,
+          fieldSearchIndex,
+          fieldSearchKey,
+          fieldSourceFields
+        );
 
         return;
       }
 
       const searchIndexToUse = fieldSearchIndex ?? index;
       const searchKeyToUse = fieldSearchKey ?? key;
+      const sourceFieldsToUse = getResolvedSourceFields(
+        searchKeyToUse,
+        fieldSourceFields
+      );
 
       const res = await getAggregationOptions(
         searchIndexToUse,
@@ -188,11 +277,17 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         showDeleted,
         undefined,
         isNLPEnabled,
-        searchText
+        searchText,
+        sourceFieldsToUse
       );
 
       const buckets = res.data.aggregations[`sterms#${searchKeyToUse}`].buckets;
-      setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
+      setOptions(
+        uniqWith(
+          getBucketOptions(buckets, searchKeyToUse, sourceFieldsToUse),
+          isEqual
+        )
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -230,10 +325,21 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
               onFieldValueSelect({ ...field, value: updatedValues });
             }}
             onGetInitialOptions={(key) =>
-              getInitialOptions(key, field.searchIndex, field.searchKey)
+              getInitialOptions(
+                key,
+                field.searchIndex,
+                field.searchKey,
+                field.sourceFields
+              )
             }
             onSearch={(value, key) =>
-              getFilterOptions(value, key, field.searchIndex, field.searchKey)
+              getFilterOptions(
+                value,
+                key,
+                field.searchIndex,
+                field.searchKey,
+                field.sourceFields
+              )
             }
           />
         );

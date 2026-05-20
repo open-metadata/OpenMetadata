@@ -365,7 +365,8 @@ export const getAggregationOptions = async (
   deleted = false,
   size = 10,
   isNLPEnabled = false,
-  queryText?: string
+  queryText?: string,
+  sourceFields?: string
 ) => {
   return isIndependent
     ? postAggregateFieldOptions({
@@ -374,13 +375,14 @@ export const getAggregationOptions = async (
         fieldValue: value,
         query: filter,
         size,
+        ...(sourceFields ? { sourceFields: [sourceFields] } : {}),
       })
     : getAggregateFieldOptions(
         index,
         key,
         value,
         filter,
-        undefined,
+        sourceFields,
         deleted,
         isNLPEnabled,
         queryText

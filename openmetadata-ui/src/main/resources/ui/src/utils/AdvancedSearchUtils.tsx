@@ -368,7 +368,69 @@ export const getServiceOptions = (
     : option.text;
 };
 
-export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
+const flattenStringValues = (value: unknown): string[] => {
+  if (typeof value === 'string') {
+    return [value];
+  }
+
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((item) => flattenStringValues(item));
+};
+
+const getValueFromSourcePath = (
+  value: unknown,
+  pathSegments: string[]
+): unknown => {
+  if (pathSegments.length === 0) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => getValueFromSourcePath(entry, pathSegments))
+      .filter((entry) => entry !== undefined);
+  }
+
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+
+  const [currentSegment, ...remainingSegments] = pathSegments;
+
+  if (!(currentSegment in value)) {
+    return undefined;
+  }
+
+  return getValueFromSourcePath(
+    (value as Record<string, unknown>)[currentSegment],
+    remainingSegments
+  );
+};
+
+const getDisplayLabel = (sourceValue: unknown, bucketKey: string): string => {
+  if (typeof sourceValue === 'string') {
+    return sourceValue;
+  }
+
+  const candidates = flattenStringValues(sourceValue);
+  if (candidates.length === 0) {
+    return bucketKey;
+  }
+
+  const matchingCandidate = candidates.find(
+    (candidate) => candidate.toLowerCase() === bucketKey.toLowerCase()
+  );
+
+  return matchingCandidate ?? candidates[0];
+};
+
+export const getOptionsFromAggregationBucket = (
+  buckets: Bucket[],
+  sourceFields?: string
+): SearchDropdownOption[] => {
   if (!buckets) {
     return [];
   }
@@ -378,11 +440,34 @@ export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
       (item) =>
         !NOT_INCLUDE_AGGREGATION_QUICK_FILTER.includes(item.key as EntityType)
     )
-    .map((option) => ({
-      key: option.key,
-      label: option.key,
-      count: option.doc_count ?? 0,
-    }));
+    .map((option) => {
+      const topHitsData = (option as Record<string, unknown>)[
+        'top_hits#top'
+      ] as
+        | {
+            hits?: {
+              hits?: Array<{
+                _source?: Record<string, unknown>;
+              }>;
+            };
+          }
+        | undefined;
+      const bucketKey = option.key as string;
+      const sourcePath = sourceFields?.split('.') ?? [];
+      const topHitSource = topHitsData?.hits?.hits?.[0]?._source;
+      const sourceValue =
+        topHitSource && sourcePath.length > 0
+          ? getValueFromSourcePath(topHitSource, sourcePath)
+          : undefined;
+
+      const displayLabel = getDisplayLabel(sourceValue, bucketKey);
+
+      return {
+        key: option.key,
+        label: displayLabel,
+        count: option.doc_count ?? 0,
+      };
+    });
 };
 
 export const getTierOptions = async (): Promise<ListValues> => {
