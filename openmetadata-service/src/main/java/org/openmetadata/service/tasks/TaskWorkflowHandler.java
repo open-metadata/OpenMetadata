@@ -43,6 +43,7 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
@@ -881,7 +882,8 @@ public class TaskWorkflowHandler {
           user,
           action.entityField(),
           value == null ? null : String.valueOf(value),
-          true);
+          true,
+          WorkflowEventConsumer.GOVERNANCE_BOT);
     } catch (Exception e) {
       LOG.error(
           "[TaskWorkflowHandler] Failed to apply patchEntityField action for task '{}': {}",
