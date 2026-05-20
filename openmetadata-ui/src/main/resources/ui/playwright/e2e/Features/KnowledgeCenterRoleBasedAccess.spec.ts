@@ -159,7 +159,7 @@ testWithRolesPages(
 
     await articleResponse;
 
-    await dataConsumerPage.waitForURL(/\/knowledge-center\/.*/);
+    await dataConsumerPage.waitForURL(/\/context-center\/.*/);
 
     await dataConsumerPage.waitForSelector('.ant-skeleton-active', {
       state: 'detached',
@@ -229,7 +229,7 @@ testWithRolesPages(
 
     await articleResponse;
 
-    await dataStewardPage.waitForURL(/\/knowledge-center\/.*/);
+    await dataStewardPage.waitForURL(/\/context-center\/.*/);
 
     await dataStewardPage.waitForSelector('.ant-skeleton-active', {
       state: 'detached',

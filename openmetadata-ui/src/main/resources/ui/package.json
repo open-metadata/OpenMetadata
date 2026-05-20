@@ -202,6 +202,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/katex": "^0.16.7",
     "@types/lodash": "^4.14.167",
+    "@types/lodash-es": "^4.17.12",
     "@types/luxon": "^3.0.1",
     "@types/node": "^15.6.1",
     "@types/pako": "^2.0.0",

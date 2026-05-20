@@ -24,6 +24,7 @@
  *  limitations under the License.
  */
 
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import {
   Checkbox,
   Form,
@@ -31,10 +32,18 @@ import {
   InputNumber,
   Select,
   Tag,
-  Typography,
+  Typography as AntTypography,
 } from 'antd';
 import { uniqBy } from 'lodash';
-import { useMemo } from 'react';
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import { TaskPayload } from '../../../rest/tasksAPI';
@@ -49,15 +58,98 @@ type JsonSchemaProperty = {
   enum?: string[];
 };
 
+interface HeaderRow {
+  label: string;
+  iconSrc?: string;
+  value: ReactNode;
+}
+
 interface TaskPayloadSchemaFieldsProps {
   payload: TaskPayload;
   schema?: JsonSchemaObject;
   uiSchema?: JsonSchemaObject;
   mode?: 'edit' | 'read';
   onChange?: (payload: TaskPayload) => void;
+  icons?: Record<string, string>;
+  formatters?: Record<string, (value: unknown) => string>;
+  headerRows?: HeaderRow[];
 }
 
 const HIDDEN_WIDGET = 'hidden';
+
+const ClampedText = ({ text }: { text: string }) => {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const [isClamped, setIsClamped] = useState(false);
+  const ref = useRef<HTMLParagraphElement>(null);
+
+  const checkIfClamped = useCallback(() => {
+    const el = ref.current;
+    if (!el || el.getClientRects().length === 0) {
+      return;
+    }
+    setIsClamped(el.scrollHeight > el.clientHeight + 1);
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(checkIfClamped, 100);
+    const ro = new ResizeObserver(checkIfClamped);
+    if (ref.current) {
+      ro.observe(ref.current);
+    }
+
+    return () => {
+      clearTimeout(timer);
+      ro.disconnect();
+    };
+  }, [checkIfClamped, text]);
+
+  return (
+    <div className="tw:relative">
+      <p
+        className={`tw:m-0 tw:text-sm tw:text-gray-900 tw:wrap-break-word${
+          expanded ? '' : ' tw:overflow-hidden tw:max-h-10 tw:break-all'
+        }`}
+        ref={ref}>
+        {text}
+      </p>
+      {!expanded && isClamped && (
+        <span className="tw:absolute tw:bottom-0 tw:right-0 tw:flex tw:items-end">
+          <span className="tw:inline-block tw:w-8 tw:h-5 tw:bg-linear-to-r tw:from-white/0 tw:to-white" />
+          <span className="tw:bg-white tw:text-sm tw:text-gray-900 tw:select-none tw:pr-0.5">
+            …
+          </span>
+          <Button
+            className="tw:bg-white! tw:p-0! tw:h-auto! tw:min-h-0! tw:text-sm tw:font-medium"
+            color="link-color"
+            onPress={() => setExpanded(true)}>
+            {t('label.show-more')}
+          </Button>
+        </span>
+      )}
+      {expanded && (
+        <Button
+          className="tw:p-0! tw:h-auto! tw:min-h-0! tw:text-sm tw:font-medium"
+          color="link-color"
+          onPress={() => setExpanded(false)}>
+          {t('label.show-less')}
+        </Button>
+      )}
+    </div>
+  );
+};
+
+const StringArrayDisplay = ({ items }: { items: string[] }) => {
+  if (items.length === 0) {
+    return (
+      <Typography className="tw:text-gray-400" size="text-sm">
+        --
+      </Typography>
+    );
+  }
+
+  return <ClampedText text={items.join(', ')} />;
+};
 
 const TaskPayloadSchemaFields = ({
   payload,
@@ -65,6 +157,9 @@ const TaskPayloadSchemaFields = ({
   uiSchema,
   mode = 'edit',
   onChange,
+  icons,
+  formatters,
+  headerRows,
 }: TaskPayloadSchemaFieldsProps) => {
   const properties = useMemo(
     () => (schema?.properties as Record<string, JsonSchemaProperty>) ?? {},
@@ -146,6 +241,13 @@ const TaskPayloadSchemaFields = ({
     );
   };
 
+  const getFormattedFieldValue = (fieldName: string, fallback?: unknown) => {
+    const raw = getFieldValue(fieldName, fallback);
+    const formatter = formatters?.[fieldName];
+
+    return formatter ? formatter(raw) : raw;
+  };
+
   const updateField = (fieldName: string, value: unknown) =>
     onChange?.({
       ...payload,
@@ -154,7 +256,7 @@ const TaskPayloadSchemaFields = ({
 
   const stringifyValue = (value: unknown) => {
     if (value === null || value === undefined || value === '') {
-      return '-';
+      return '--';
     }
 
     if (typeof value === 'string') {
@@ -164,46 +266,113 @@ const TaskPayloadSchemaFields = ({
     return JSON.stringify(value, null, 2);
   };
 
+  const renderReadOnlyRow = (
+    key: string,
+    label: string,
+    children: React.ReactNode,
+    iconSrc?: string
+  ) => (
+    <Box
+      className="tw:grid tw:grid-cols-[160px_auto_1fr] tw:items-start tw:gap-x-2"
+      key={key}>
+      <Box align="center" className="tw:gap-1.5">
+        {iconSrc && (
+          <img
+            alt=""
+            className="tw:h-4 tw:w-4 tw:shrink-0 tw:object-contain"
+            src={iconSrc}
+          />
+        )}
+        <Typography className="tw:text-gray-500" size="text-sm">
+          {label}
+        </Typography>
+      </Box>
+      <Typography className="tw:text-gray-500" size="text-sm">
+        :
+      </Typography>
+      <div className="tw:min-w-0 tw:overflow-hidden tw:wrap-break-word">
+        {children}
+      </div>
+    </Box>
+  );
+
+  const renderReadOnlyValue = (value: unknown) => {
+    if (value === null || value === undefined || value === '') {
+      return (
+        <Typography className="tw:text-gray-400" size="text-sm">
+          --
+        </Typography>
+      );
+    }
+    if (typeof value === 'string') {
+      return <ClampedText text={value} />;
+    }
+
+    return (
+      <Typography className="tw:text-gray-900" size="text-sm">
+        {stringifyValue(value)}
+      </Typography>
+    );
+  };
+
   const renderReadOnlyText = (
     label: string,
     value: unknown,
-    description?: string
-  ) => (
-    <Form.Item key={label} label={`${label}:`}>
-      <Typography.Paragraph className="m-b-0 whitespace-pre-wrap">
-        {stringifyValue(value)}
-      </Typography.Paragraph>
-      {description ? (
-        <Typography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
-          {description}
-        </Typography.Paragraph>
-      ) : null}
-    </Form.Item>
-  );
+    description?: string,
+    iconSrc?: string
+  ) =>
+    renderReadOnlyRow(
+      label,
+      label,
+      <>
+        {renderReadOnlyValue(value)}
+        {description ? (
+          <Typography
+            as="span"
+            className="tw:block tw:text-gray-400 tw:mt-0.5"
+            size="text-sm">
+            {description}
+          </Typography>
+        ) : null}
+      </>,
+      iconSrc
+    );
 
   const renderReadOnlyTags = (
     label: string,
     value: TagLabel[],
-    description?: string
-  ) => (
-    <Form.Item key={label} label={`${label}:`}>
-      <div className="d-flex flex-wrap gap-2">
+    description?: string,
+    iconSrc?: string
+  ) =>
+    renderReadOnlyRow(
+      label,
+      label,
+      <Box gap={1} wrap="wrap">
         {value.length ? (
           value.map((tag) => <Tag key={tag.tagFQN}>{tag.tagFQN}</Tag>)
         ) : (
-          <Typography.Text className="text-grey-muted">-</Typography.Text>
+          <Typography className="tw:text-gray-400" size="text-sm">
+            --
+          </Typography>
         )}
-      </div>
-      {description ? (
-        <Typography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
-          {description}
-        </Typography.Paragraph>
-      ) : null}
-    </Form.Item>
-  );
+        {description ? (
+          <Typography
+            as="span"
+            className="tw:block tw:w-full tw:text-gray-400 tw:mt-0.5"
+            size="text-sm">
+            {description}
+          </Typography>
+        ) : null}
+      </Box>,
+      iconSrc
+    );
 
   return (
-    <>
+    <Box direction="col" gap={4}>
+      {mode === 'read' &&
+        headerRows?.map(({ iconSrc, label, value }) =>
+          renderReadOnlyRow(label, label, value, iconSrc)
+        )}
       {orderedFields.map((fieldName) => {
         const fieldSchema = properties[fieldName];
         const widget = getWidget(fieldName);
@@ -217,7 +386,7 @@ const TaskPayloadSchemaFields = ({
         if (widget === 'descriptionTabs') {
           if (mode === 'read') {
             return (
-              <div key={fieldName}>
+              <Box direction="col" gap={4} key={fieldName}>
                 {renderReadOnlyText(
                   `${label} (${'Current'})`,
                   payload.currentDescription,
@@ -227,7 +396,7 @@ const TaskPayloadSchemaFields = ({
                   `${label} (${'Suggested'})`,
                   payload.newDescription ?? payload.suggestedValue
                 )}
-              </div>
+              </Box>
             );
           }
 
@@ -239,9 +408,9 @@ const TaskPayloadSchemaFields = ({
                 onChange={(value) => updateField(fieldName, value)}
               />
               {description ? (
-                <Typography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
+                <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
                   {description}
-                </Typography.Paragraph>
+                </AntTypography.Paragraph>
               ) : null}
             </Form.Item>
           );
@@ -254,14 +423,14 @@ const TaskPayloadSchemaFields = ({
 
           if (mode === 'read') {
             return (
-              <div key={fieldName}>
+              <Box direction="col" gap={4} key={fieldName}>
                 {renderReadOnlyTags(
                   `${label} (${'Current'})`,
                   currentTags,
                   description
                 )}
                 {renderReadOnlyTags(`${label} (${'Suggested'})`, suggestedTags)}
-              </div>
+              </Box>
             );
           }
 
@@ -288,9 +457,9 @@ const TaskPayloadSchemaFields = ({
                 }}
               />
               {description ? (
-                <Typography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
+                <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
                   {description}
-                </Typography.Paragraph>
+                </AntTypography.Paragraph>
               ) : null}
             </Form.Item>
           );
@@ -303,7 +472,8 @@ const TaskPayloadSchemaFields = ({
               ((payload[fieldName] as TagLabel[] | undefined) ?? []).filter(
                 Boolean
               ),
-              description
+              description,
+              icons?.[fieldName]
             );
           }
 
@@ -314,9 +484,9 @@ const TaskPayloadSchemaFields = ({
                 onChange={(newTags) => updateField(fieldName, newTags)}
               />
               {description ? (
-                <Typography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
+                <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
                   {description}
-                </Typography.Paragraph>
+                </AntTypography.Paragraph>
               ) : null}
             </Form.Item>
           );
@@ -326,8 +496,9 @@ const TaskPayloadSchemaFields = ({
           if (mode === 'read') {
             return renderReadOnlyText(
               label,
-              getFieldValue(fieldName),
-              description
+              getFormattedFieldValue(fieldName),
+              description,
+              icons?.[fieldName]
             );
           }
 
@@ -357,8 +528,9 @@ const TaskPayloadSchemaFields = ({
           if (mode === 'read') {
             return renderReadOnlyText(
               label,
-              getFieldValue(fieldName),
-              description
+              getFormattedFieldValue(fieldName),
+              description,
+              icons?.[fieldName]
             );
           }
 
@@ -378,7 +550,8 @@ const TaskPayloadSchemaFields = ({
             return renderReadOnlyText(
               label,
               Boolean(getFieldValue(fieldName, false)),
-              description
+              description,
+              icons?.[fieldName]
             );
           }
 
@@ -402,8 +575,9 @@ const TaskPayloadSchemaFields = ({
           if (mode === 'read') {
             return renderReadOnlyText(
               label,
-              getFieldValue(fieldName, ''),
-              description
+              getFormattedFieldValue(fieldName, ''),
+              description,
+              icons?.[fieldName]
             );
           }
 
@@ -428,10 +602,25 @@ const TaskPayloadSchemaFields = ({
 
         if (fieldSchema?.type === 'object' || fieldSchema?.type === 'array') {
           if (mode === 'read') {
+            const rawValue = getFieldValue(fieldName);
+            if (
+              fieldSchema.type === 'array' &&
+              Array.isArray(rawValue) &&
+              rawValue.every((item) => typeof item === 'string')
+            ) {
+              return renderReadOnlyRow(
+                fieldName,
+                label,
+                <StringArrayDisplay items={rawValue as string[]} />,
+                icons?.[fieldName]
+              );
+            }
+
             return renderReadOnlyText(
               label,
-              getFieldValue(fieldName),
-              description
+              rawValue,
+              description,
+              icons?.[fieldName]
             );
           }
 
@@ -454,9 +643,9 @@ const TaskPayloadSchemaFields = ({
                 }}
               />
               {description ? (
-                <Typography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
+                <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
                   {description}
-                </Typography.Paragraph>
+                </AntTypography.Paragraph>
               ) : null}
             </Form.Item>
           );
@@ -465,8 +654,9 @@ const TaskPayloadSchemaFields = ({
         if (mode === 'read') {
           return renderReadOnlyText(
             label,
-            getFieldValue(fieldName, ''),
-            description
+            getFormattedFieldValue(fieldName, ''),
+            description,
+            icons?.[fieldName]
           );
         }
 
@@ -477,14 +667,14 @@ const TaskPayloadSchemaFields = ({
               onChange={(event) => updateField(fieldName, event.target.value)}
             />
             {description ? (
-              <Typography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
+              <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
                 {description}
-              </Typography.Paragraph>
+              </AntTypography.Paragraph>
             ) : null}
           </Form.Item>
         );
       })}
-    </>
+    </Box>
   );
 };
 

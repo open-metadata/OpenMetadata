@@ -55,10 +55,7 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { getPopupContainer } from '../../../../utils/formUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
-import {
-  getEntityDetailsPath,
-  getTestSuitePath,
-} from '../../../../utils/RouterUtils';
+import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -245,7 +242,9 @@ export const TestSuites = () => {
       <Link
         className="break-word"
         data-testid={record.name}
-        to={getTestSuitePath(record.fullyQualifiedName ?? record.name)}>
+        to={observabilityRouterClassBase.getTestSuitePath(
+          record.fullyQualifiedName ?? record.name
+        )}>
         {getEntityName(record)}
       </Link>
     );
