@@ -15,7 +15,7 @@ OpenMetadata base class for tests
 import uuid
 from datetime import datetime
 from textwrap import dedent
-from typing import TYPE_CHECKING, Any, List, Optional, Type
+from typing import TYPE_CHECKING, Any, List, Optional, Type  # noqa: UP035
 
 if TYPE_CHECKING:
     from airflow import DAG
@@ -224,7 +224,7 @@ def generate_name() -> EntityName:
 create_service_registry = class_register()
 
 
-def get_create_service(entity: Type[T], name: Optional[EntityName] = None) -> C:
+def get_create_service(entity: Type[T], name: Optional[EntityName] = None) -> C:  # noqa: UP006, UP045
     """Create a vanilla service based on the input type"""
     func = create_service_registry.registry.get(entity.__name__)
     if not func:
@@ -317,9 +317,9 @@ create_entity_registry = class_register()
 
 
 def get_create_entity(
-    entity: Type[T],
+    entity: Type[T],  # noqa: UP006
     reference: Any,
-    name: Optional[EntityName] = None,
+    name: Optional[EntityName] = None,  # noqa: UP045
 ) -> C:
     """Create a vanilla entity based on the input type"""
     func = create_entity_registry.registry.get(entity.__name__)
@@ -391,7 +391,7 @@ def _(reference: FullyQualifiedEntityName, name: EntityName) -> C:
     )
 
 
-def get_create_user_entity(name: Optional[EntityName] = None, email: Optional[str] = None):
+def get_create_user_entity(name: Optional[EntityName] = None, email: Optional[str] = None):  # noqa: UP045
     if not name:
         name = generate_name().root
     if not email:
@@ -399,17 +399,17 @@ def get_create_user_entity(name: Optional[EntityName] = None, email: Optional[st
     return CreateUserRequest(name=name, email=Email(root=email))
 
 
-def get_create_team_entity(name: Optional[EntityName] = None, users=List[str]):
+def get_create_team_entity(name: Optional[EntityName] = None, users=List[str]):  # noqa: UP006, UP045
     if not name:
         name = generate_name().root
     return CreateTeamRequest(name=name, teamType=TeamType.Group, users=users)
 
 
 def get_create_test_definition(
-    parameter_definition: List[TestCaseParameterDefinition],
+    parameter_definition: List[TestCaseParameterDefinition],  # noqa: UP006
     entity_type: [T],
-    name: Optional[EntityName] = None,
-    description: Optional[str] = None,
+    name: Optional[EntityName] = None,  # noqa: UP045
+    description: Optional[str] = None,  # noqa: UP045
 ):
     if not name:
         name = generate_name().root
@@ -426,8 +426,8 @@ def get_create_test_definition(
 
 def get_create_test_suite(
     executable_entity_reference: str,
-    name: Optional[EntityName] = None,
-    description: Optional[str] = None,
+    name: Optional[EntityName] = None,  # noqa: UP045
+    description: Optional[str] = None,  # noqa: UP045
 ):
     if not name:
         name = generate_name().root
@@ -443,8 +443,8 @@ def get_create_test_suite(
 def get_create_test_case(
     entity_link: str,
     test_definition: FullyQualifiedEntityName,
-    parameter_values: List[TestCaseParameterValue],
-    name: Optional[EntityName] = None,
+    parameter_values: List[TestCaseParameterValue],  # noqa: UP006
+    name: Optional[EntityName] = None,  # noqa: UP045
 ):
     if not name:
         name = generate_name().root

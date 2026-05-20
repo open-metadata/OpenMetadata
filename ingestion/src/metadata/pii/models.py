@@ -49,7 +49,7 @@ class ScoredTag:
     tag: Tag
     score: float
     reason: str
-    recognizer_metadata: Optional[TagLabelRecognizerMetadata] = None
+    recognizer_metadata: Optional[TagLabelRecognizerMetadata] = None  # noqa: UP045
 
     def __hash__(self) -> int:
         return hash(self.tag.fullyQualifiedName)

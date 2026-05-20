@@ -15,7 +15,7 @@ Extracts metadata from Microsoft Fabric Data Factory pipelines.
 """
 
 import traceback
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional  # noqa: UP035
 
 from metadata.clients.microsoftfabric.models import FabricActivity, FabricPipeline
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -75,7 +75,7 @@ ACTIVITY_STATUS_MAP = {
 }
 
 
-def get_tasks_from_activities(activities: List[FabricActivity]) -> List[Task]:
+def get_tasks_from_activities(activities: List[FabricActivity]) -> List[Task]:  # noqa: UP006
     """
     Convert Fabric pipeline activities to OpenMetadata tasks.
 
@@ -89,7 +89,7 @@ def get_tasks_from_activities(activities: List[FabricActivity]) -> List[Task]:
         return []
 
     # Build a map of activity name -> downstream activities
-    downstream_map: Dict[str, List[str]] = {activity.name: [] for activity in activities}
+    downstream_map: Dict[str, List[str]] = {activity.name: [] for activity in activities}  # noqa: UP006
 
     for activity in activities:
         if activity.depends_on:
@@ -120,7 +120,7 @@ class MicrosoftFabricPipelineSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: MicrosoftFabricPipelineConnection = config.serviceConnection.root.config
         if not isinstance(connection, MicrosoftFabricPipelineConnection):
@@ -141,7 +141,7 @@ class MicrosoftFabricPipelineSource(PipelineServiceSource):
         """Get Pipeline Name"""
         return pipeline_details.display_name
 
-    def _get_task_list(self, pipeline_id: str) -> Optional[List[Task]]:
+    def _get_task_list(self, pipeline_id: str) -> Optional[List[Task]]:  # noqa: UP006, UP045
         """
         Get list of tasks (activities) for a pipeline.
 
@@ -152,7 +152,7 @@ class MicrosoftFabricPipelineSource(PipelineServiceSource):
             if activities:
                 return get_tasks_from_activities(activities)
             # Return empty list instead of None to avoid null pointer exceptions
-            return []
+            return []  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to get tasks list due to: {exc}")

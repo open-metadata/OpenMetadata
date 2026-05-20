@@ -14,7 +14,7 @@
 
 import traceback
 import types
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from sqlalchemy import text
 from sqlalchemy.dialects.oracle.base import INTERVAL, OracleDialect, ischema_names
@@ -130,7 +130,7 @@ class OracleSource(CommonDbSourceService):
             dialect.get_indexes = types.MethodType(get_indexes_preserve_case, dialect)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config = WorkflowSource.model_validate(config_dict)
         connection: OracleConnection = config.serviceConnection.root.config
         if not isinstance(connection, OracleConnection):

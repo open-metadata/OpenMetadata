@@ -16,7 +16,7 @@ Google Drive source implementation
 # pylint: disable=too-many-lines
 import traceback
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDirectory import CreateDirectoryRequest
 from metadata.generated.schema.api.data.createFile import CreateFileRequest
@@ -36,7 +36,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.driveServiceMetadataPipeline import (
-    DriveServiceMetadataPipeline,
+    DriveServiceMetadataPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -66,7 +66,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-def convert_timestamp_to_unix_millis(timestamp_str: Optional[str]) -> Optional[int]:
+def convert_timestamp_to_unix_millis(timestamp_str: Optional[str]) -> Optional[int]:  # noqa: UP045
     """
     Convert ISO format timestamp string to Unix epoch time in milliseconds.
     """
@@ -95,14 +95,14 @@ class GoogleDriveSource(DriveServiceSource):
         self.connection_obj = self.client
 
         # Cache for storing directory hierarchy
-        self._directories_cache: Dict[str, GoogleDriveDirectoryInfo] = {}
-        self._current_directory_context: Optional[str] = None
+        self._directories_cache: Dict[str, GoogleDriveDirectoryInfo] = {}  # noqa: UP006
+        self._current_directory_context: Optional[str] = None  # noqa: UP045
 
         # Cache for storing files organized by parent directory
-        self._files_by_parent_cache: Dict[str, List[GoogleDriveFile]] = {}
+        self._files_by_parent_cache: Dict[str, List[GoogleDriveFile]] = {}  # noqa: UP006
 
         # Cache for storing directory FQNs by directory ID
-        self._directory_fqn_cache: Dict[str, str] = {}
+        self._directory_fqn_cache: Dict[str, str] = {}  # noqa: UP006
 
         # Flag to track if root files have been processed
         self._root_files_processed: bool = False
@@ -114,7 +114,7 @@ class GoogleDriveSource(DriveServiceSource):
         cls,
         config_dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: GoogleDriveConnection = config.serviceConnection.root.config
@@ -123,8 +123,10 @@ class GoogleDriveSource(DriveServiceSource):
         return cls(config, metadata)
 
     def _build_directory_path(
-        self, directory_id: str, directories_map: Dict[str, GoogleDriveDirectoryInfo]
-    ) -> List[str]:
+        self,
+        directory_id: str,
+        directories_map: Dict[str, GoogleDriveDirectoryInfo],  # noqa: UP006
+    ) -> List[str]:  # noqa: UP006
         """Build full directory path by traversing parents."""
         directory = directories_map.get(directory_id)
         if not directory:
@@ -260,10 +262,10 @@ class GoogleDriveSource(DriveServiceSource):
             logger.debug(traceback.format_exc())
             self._files_by_parent_cache = {}
 
-    def _sort_directories_by_hierarchy(self) -> List[str]:
+    def _sort_directories_by_hierarchy(self) -> List[str]:  # noqa: UP006
         """Sort directories hierarchically (parents before children)."""
         # Build adjacency list of parent -> children relationships
-        children_map: Dict[str, List[str]] = {}
+        children_map: Dict[str, List[str]] = {}  # noqa: UP006
         root_directories = []
 
         for dir_id, directory_info in self._directories_cache.items():
@@ -306,7 +308,7 @@ class GoogleDriveSource(DriveServiceSource):
             dfs(root_id)
 
         # Add any remaining directories that weren't processed (shouldn't happen with valid hierarchy)
-        for dir_id, _ in self._directories_cache.items():
+        for dir_id, _ in self._directories_cache.items():  # noqa: PERF102
             if dir_id not in visited:
                 ordered_directories.append(dir_id)
 
@@ -314,8 +316,8 @@ class GoogleDriveSource(DriveServiceSource):
 
     def _fetch_drive_items(
         self,
-        directory_id: Optional[str] = None,
-        mime_type_filter: Optional[str] = None,
+        directory_id: Optional[str] = None,  # noqa: UP045
+        mime_type_filter: Optional[str] = None,  # noqa: UP045
         exclude_spreadsheets: bool = False,
     ) -> Iterable[GoogleDriveFile]:
         """Fetch items from Google Drive with optional filtering."""
@@ -364,7 +366,7 @@ class GoogleDriveSource(DriveServiceSource):
             logger.error(f"Error fetching drive items: {e}")
             logger.debug(traceback.format_exc())
 
-    def _fetch_files(self, directory_id: Optional[str] = None) -> Iterable[GoogleDriveFile]:
+    def _fetch_files(self, directory_id: Optional[str] = None) -> Iterable[GoogleDriveFile]:  # noqa: UP045
         """Fetch files excluding Google Workspace native apps and folders."""
         yield from self._fetch_drive_items(directory_id=directory_id, exclude_spreadsheets=True)
 
@@ -595,7 +597,7 @@ class GoogleDriveSource(DriveServiceSource):
             yield Either(
                 left=StackTraceError(
                     name=directory_id,
-                    error=f"Error creating directory {directory_id}: {str(exc)}",
+                    error=f"Error creating directory {directory_id}: {str(exc)}",  # noqa: RUF010
                     stackTrace=traceback.format_exc(),
                 )
             )
@@ -716,7 +718,7 @@ class GoogleDriveSource(DriveServiceSource):
                             yield Either(
                                 left=StackTraceError(
                                     name=file_info.name,
-                                    error=f"Error creating root file {file_info.name}: {str(file_exc)}",
+                                    error=f"Error creating root file {file_info.name}: {str(file_exc)}",  # noqa: RUF010
                                     stackTrace=traceback.format_exc(),
                                 )
                             )
@@ -761,7 +763,7 @@ class GoogleDriveSource(DriveServiceSource):
                     yield Either(
                         left=StackTraceError(
                             name=file_info.name,
-                            error=f"Error creating file {file_info.name}: {str(file_exc)}",
+                            error=f"Error creating file {file_info.name}: {str(file_exc)}",  # noqa: RUF010
                             stackTrace=traceback.format_exc(),
                         )
                     )
@@ -772,7 +774,7 @@ class GoogleDriveSource(DriveServiceSource):
             yield Either(
                 left=StackTraceError(
                     name=directory_id,
-                    error=f"Error processing directory files: {str(exc)}",
+                    error=f"Error processing directory files: {str(exc)}",  # noqa: RUF010
                     stackTrace=traceback.format_exc(),
                 )
             )
@@ -804,7 +806,7 @@ class GoogleDriveSource(DriveServiceSource):
             yield Either(
                 left=StackTraceError(
                     name=title,
-                    error=f"Error creating spreadsheet {title}: {str(exc)}",
+                    error=f"Error creating spreadsheet {title}: {str(exc)}",  # noqa: RUF010
                     stackTrace=traceback.format_exc(),
                 )
             )
@@ -836,7 +838,7 @@ class GoogleDriveSource(DriveServiceSource):
                     continue
 
                 # Build columns by fetching header row and inferring types from a small sample
-                columns: List[Column] = []
+                columns: List[Column] = []  # noqa: UP006
                 if worksheet_title:
                     try:
                         columns = self._get_sheet_columns(
@@ -893,7 +895,7 @@ class GoogleDriveSource(DriveServiceSource):
                 yield Either(
                     left=StackTraceError(
                         name=worksheet.name or "Unknown",
-                        error=f"Error creating worksheet {worksheet.name or 'Unknown'}: {str(exc)}",
+                        error=f"Error creating worksheet {worksheet.name or 'Unknown'}: {str(exc)}",  # noqa: RUF010
                         stackTrace=traceback.format_exc(),
                     )
                 )
@@ -922,7 +924,7 @@ class GoogleDriveSource(DriveServiceSource):
             logger.error(f"Error closing Google Drive source: {e}")
             logger.debug(traceback.format_exc())
 
-    def _normalize_rows_to_headers(self, data_rows: List[List], headers: List[str]) -> List[List]:
+    def _normalize_rows_to_headers(self, data_rows: List[List], headers: List[str]) -> List[List]:  # noqa: UP006
         """
         Normalize row lengths to match the number of headers.
         """
@@ -938,7 +940,7 @@ class GoogleDriveSource(DriveServiceSource):
 
     def _get_sheet_columns(  # pylint: disable=too-many-locals
         self, spreadsheet_id: str, sheet_title: str
-    ) -> List[Column]:
+    ) -> List[Column]:  # noqa: UP006
         """Fetch header row and a sample of data rows to infer column data types using the
         same DataFrame + DataFrameColumnParser approach used for datalake files.
 
@@ -947,9 +949,9 @@ class GoogleDriveSource(DriveServiceSource):
         """
         try:
             # Try pandas-based inference across a capped set of rows to reuse datalake logic.
-            import pandas as pd  # pylint: disable=import-outside-toplevel
+            import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
-            from metadata.utils.datalake.datalake_utils import (  # pylint: disable=import-outside-toplevel
+            from metadata.utils.datalake.datalake_utils import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
                 DataFrameColumnParser,
             )
 
@@ -982,9 +984,9 @@ class GoogleDriveSource(DriveServiceSource):
             df = pd.DataFrame(normalized_rows, columns=headers) if normalized_rows else pd.DataFrame(columns=headers)
 
             parser = DataFrameColumnParser.create(df)
-            inferred_columns: List[Column] = parser.get_columns()
+            inferred_columns: List[Column] = parser.get_columns()  # noqa: UP006
 
-            return inferred_columns
+            return inferred_columns  # noqa: TRY300
 
         except Exception as exc:
             logger.error(f"Error fetching columns for sheet '{sheet_title}': {exc}")

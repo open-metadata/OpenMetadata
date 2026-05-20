@@ -46,7 +46,7 @@ class OMetaDataContractMixin:
 
     def put_data_contract_result(
         self, data_contract_id: Uuid, result: DataContractResult
-    ) -> Optional[DataContractResult]:
+    ) -> Optional[DataContractResult]:  # noqa: UP045
         """
         Create or update a data contract execution result
 
@@ -73,9 +73,9 @@ class OMetaDataContractMixin:
         self,
         data_contract_id: Uuid,
         limit: int = 10,
-        start_ts: Optional[int] = None,
-        end_ts: Optional[int] = None,
-    ) -> Optional[list]:
+        start_ts: Optional[int] = None,  # noqa: UP045
+        end_ts: Optional[int] = None,  # noqa: UP045
+    ) -> Optional[list]:  # noqa: UP045
         """
         Get data contract execution results
 
@@ -107,7 +107,7 @@ class OMetaDataContractMixin:
             logger.warning(f"Error getting data contract results for {model_str(data_contract_id)}: {err}")
         return None
 
-    def get_latest_data_contract_result(self, data_contract_id: Uuid) -> Optional[DataContractResult]:
+    def get_latest_data_contract_result(self, data_contract_id: Uuid) -> Optional[DataContractResult]:  # noqa: UP045
         """
         Get the latest data contract execution result
 
@@ -126,7 +126,7 @@ class OMetaDataContractMixin:
             logger.warning(f"Error getting latest data contract result for {model_str(data_contract_id)}: {err}")
         return None
 
-    def get_data_contract_result_by_id(self, data_contract_id: Uuid, result_id: Uuid) -> Optional[DataContractResult]:
+    def get_data_contract_result_by_id(self, data_contract_id: Uuid, result_id: Uuid) -> Optional[DataContractResult]:  # noqa: UP045
         """
         Get a specific data contract execution result by ID
 
@@ -152,7 +152,7 @@ class OMetaDataContractMixin:
 
     def get_data_contract_by_entity_id(
         self, entity_id: Uuid, entity_type: str, nullable: bool = True
-    ) -> Optional[DataContract]:
+    ) -> Optional[DataContract]:  # noqa: UP045
         """
         Get the effective data contract for an entity
 
@@ -180,7 +180,7 @@ class OMetaDataContractMixin:
                 err.status_code,
                 err,
             )
-            raise err
+            raise err  # noqa: TRY201
         return None
 
     def delete_data_contract_result(self, data_contract_id: Uuid, timestamp: int) -> bool:
@@ -196,7 +196,7 @@ class OMetaDataContractMixin:
         """
         try:
             self.client.delete(f"{self.get_suffix(DataContract)}/{model_str(data_contract_id)}/results/{timestamp}")
-            return True
+            return True  # noqa: TRY300
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -204,7 +204,7 @@ class OMetaDataContractMixin:
             )
         return False
 
-    def validate_data_contract(self, data_contract_id: Uuid) -> Optional[DataContractResult]:
+    def validate_data_contract(self, data_contract_id: Uuid) -> Optional[DataContractResult]:  # noqa: UP045
         """
         Trigger on-demand validation of a data contract
 
@@ -223,7 +223,7 @@ class OMetaDataContractMixin:
             logger.warning(f"Error validating data contract {model_str(data_contract_id)}: {err}")
         return None
 
-    def export_to_odcs(self, data_contract_id: Uuid) -> Optional[ODCSDataContract]:
+    def export_to_odcs(self, data_contract_id: Uuid) -> Optional[ODCSDataContract]:  # noqa: UP045
         """
         Export a data contract to ODCS (Open Data Contract Standard) format
 
@@ -242,7 +242,7 @@ class OMetaDataContractMixin:
             logger.warning(f"Error exporting data contract {model_str(data_contract_id)} to ODCS: {err}")
         return None
 
-    def export_to_odcs_by_fqn(self, fqn: str) -> Optional[ODCSDataContract]:
+    def export_to_odcs_by_fqn(self, fqn: str) -> Optional[ODCSDataContract]:  # noqa: UP045
         """
         Export a data contract to ODCS format by fully qualified name
 
@@ -261,7 +261,7 @@ class OMetaDataContractMixin:
             logger.warning(f"Error exporting data contract {fqn} to ODCS: {err}")
         return None
 
-    def export_to_odcs_yaml(self, data_contract_id: Uuid) -> Optional[str]:
+    def export_to_odcs_yaml(self, data_contract_id: Uuid) -> Optional[str]:  # noqa: UP045
         """
         Export a data contract to ODCS YAML format
 
@@ -283,7 +283,7 @@ class OMetaDataContractMixin:
             logger.warning(f"Error exporting data contract {model_str(data_contract_id)} to ODCS YAML: {err}")
         return None
 
-    def export_to_odcs_yaml_by_fqn(self, fqn: str) -> Optional[str]:
+    def export_to_odcs_yaml_by_fqn(self, fqn: str) -> Optional[str]:  # noqa: UP045
         """
         Export a data contract to ODCS YAML format by fully qualified name
 
@@ -310,7 +310,7 @@ class OMetaDataContractMixin:
         odcs: ODCSDataContract,
         entity_id: Uuid,
         entity_type: str,
-    ) -> Optional[DataContract]:
+    ) -> Optional[DataContract]:  # noqa: UP045
         """
         Import a data contract from ODCS format
 
@@ -339,7 +339,7 @@ class OMetaDataContractMixin:
         yaml_content: str,
         entity_id: Uuid,
         entity_type: str,
-    ) -> Optional[DataContract]:
+    ) -> Optional[DataContract]:  # noqa: UP045
         """
         Import a data contract from ODCS YAML format
 
@@ -369,7 +369,7 @@ class OMetaDataContractMixin:
         odcs: ODCSDataContract,
         entity_id: Uuid,
         entity_type: str,
-    ) -> Optional[DataContract]:
+    ) -> Optional[DataContract]:  # noqa: UP045
         """
         Create or update a data contract from ODCS format (smart merge)
 
@@ -402,7 +402,7 @@ class OMetaDataContractMixin:
         yaml_content: str,
         entity_id: Uuid,
         entity_type: str,
-    ) -> Optional[DataContract]:
+    ) -> Optional[DataContract]:  # noqa: UP045
         """
         Create or update a data contract from ODCS YAML format (smart merge)
 
@@ -431,7 +431,7 @@ class OMetaDataContractMixin:
             logger.warning(f"Error creating/updating ODCS YAML contract for entity {model_str(entity_id)}: {err}")
         return None
 
-    def validate_data_contract_by_entity_id(self, entity_id: Uuid, entity_type: str) -> Optional[DataContractResult]:
+    def validate_data_contract_by_entity_id(self, entity_id: Uuid, entity_type: str) -> Optional[DataContractResult]:  # noqa: UP045
         """
         Validate a data contract for an entity
         """
@@ -442,7 +442,7 @@ class OMetaDataContractMixin:
             return DataContractResult(**resp)
         return None
 
-    def validate_data_contract_request(self, create_request: CreateDataContractRequest) -> Optional[DataContractResult]:
+    def validate_data_contract_request(self, create_request: CreateDataContractRequest) -> Optional[DataContractResult]:  # noqa: UP045
         """
         Validate a CreateDataContract request without creating
         """
@@ -454,7 +454,7 @@ class OMetaDataContractMixin:
             return DataContractResult(**resp)
         return None
 
-    def validate_data_contract_request_yaml(self, yaml_content: str) -> Optional[Any]:
+    def validate_data_contract_request_yaml(self, yaml_content: str) -> Optional[Any]:  # noqa: UP045
         """
         Validate a CreateDataContract request from YAML without creating
         """
@@ -476,8 +476,8 @@ class OMetaDataContractMixin:
         entity_id: Uuid,
         entity_type: str,
         yaml_content: str,
-        object_name: Optional[str] = None,
-    ) -> Optional[Any]:
+        object_name: Optional[str] = None,  # noqa: UP045
+    ) -> Optional[Any]:  # noqa: UP045
         """
         Validate ODCS YAML without importing
         """
@@ -496,7 +496,7 @@ class OMetaDataContractMixin:
             logger.warning(f"Error validating ODCS yaml for {model_str(entity_id)}: {err}")
         return None
 
-    def parse_odcs_yaml(self, yaml_content: str) -> Optional[Any]:
+    def parse_odcs_yaml(self, yaml_content: str) -> Optional[Any]:  # noqa: UP045
         """
         Parse ODCS YAML and return metadata
         """
@@ -521,7 +521,7 @@ class OMetaDataContractMixin:
             self.client.delete(
                 f"{self.get_suffix(DataContract)}/{model_str(data_contract_id)}/results/before/{timestamp}"
             )
-            return True
+            return True  # noqa: TRY300
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(

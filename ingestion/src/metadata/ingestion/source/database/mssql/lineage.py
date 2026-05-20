@@ -73,4 +73,4 @@ class MssqlLineageSource(MssqlQueryParserSource, StoredProcedureLineageMixin, Li
             start_date=start,
         )
 
-        return query
+        return query  # noqa: RET504

@@ -222,6 +222,22 @@ export const buildMustEsFilterForOwner = (
   };
 };
 
+export const buildMustEsFilterForTier = (
+  tiers: string[],
+  isTestCaseResult = false
+) => {
+  const field = isTestCaseResult ? 'testCase.tier.tagFQN' : 'tier.tagFQN';
+
+  return {
+    bool: {
+      should: tiers.map((tier) => ({
+        term: { [field]: tier },
+      })),
+      minimum_should_match: 1,
+    },
+  };
+};
+
 export const buildMustEsFilterForDataProducts = (
   dataProductFqns: string[],
   testCaseFieldPrefix = ''
@@ -282,13 +298,22 @@ export const buildDataQualityDashboardFilters = (data: {
     });
   }
 
-  if ((filters?.tags || filters?.tier) && !isTableApi) {
-    mustFilter.push(
-      buildMustEsFilterForTags([
-        ...(filters?.tags ?? []),
-        ...(filters?.tier ?? []),
-      ])
-    );
+  if (filters?.certification) {
+    mustFilter.push({
+      bool: {
+        should: filters.certification.map((fqn) => ({
+          term: { 'certification.tagLabel.tagFQN': fqn },
+        })),
+      },
+    });
+  }
+
+  if (filters?.tags && filters.tags.length > 0 && !isTableApi) {
+    mustFilter.push(buildMustEsFilterForTags(filters.tags));
+  }
+
+  if (filters?.tier && filters.tier.length > 0 && !isTableApi) {
+    mustFilter.push(buildMustEsFilterForTier(filters.tier));
   }
 
   if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {

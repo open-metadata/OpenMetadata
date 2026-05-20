@@ -13,7 +13,7 @@
 OpenMetadata high-level API Custom Properties Test
 """
 
-from typing import Dict
+from typing import Dict  # noqa: UP035
 
 import pytest
 
@@ -44,8 +44,8 @@ from metadata.ingestion.models.custom_properties import (
 )
 from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 
-from ..conftest import _safe_delete
-from ..integration_base import generate_name, get_create_service
+from ..conftest import _safe_delete  # noqa: TID252
+from ..integration_base import generate_name, get_create_service  # noqa: TID252
 
 EXPECTED_CUSTOM_PROPERTIES = [
     {
@@ -205,7 +205,7 @@ def _create_date_time_custom_properties(metadata):
     )
 
 
-def _create_table(metadata, schema_fqn, name: str, extensions: Dict) -> Table:
+def _create_table(metadata, schema_fqn, name: str, extensions: Dict) -> Table:  # noqa: UP006
     """Helper to create a table with custom property extensions."""
     create = CreateTableRequest(
         name=name,

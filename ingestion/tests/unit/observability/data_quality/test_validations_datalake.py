@@ -145,7 +145,7 @@ DL_DATA = (
 )
 
 
-DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
+DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(  # noqa: E731
     DL_DATA * times_increase_sample_data,
     columns=[
         "id",

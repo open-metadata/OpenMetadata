@@ -12,7 +12,7 @@
 Looker pydantic models
 """
 
-from typing import Dict, List, NewType, Optional
+from typing import Dict, List, NewType, Optional  # noqa: UP035
 
 from pydantic import BaseModel, Field
 
@@ -21,16 +21,16 @@ ViewName = NewType("ViewName", str)
 
 
 class LookMlField(BaseModel):
-    description: Optional[str] = Field(None, description="Field description")
-    label: Optional[str] = Field(None, description="Field display name")
-    type: Optional[str] = Field(None, description="Field type to be mapped to OM")
+    description: Optional[str] = Field(None, description="Field description")  # noqa: UP045
+    label: Optional[str] = Field(None, description="Field display name")  # noqa: UP045
+    type: Optional[str] = Field(None, description="Field type to be mapped to OM")  # noqa: UP045
     name: str = Field(..., description="Field name")
-    sql: Optional[str] = Field(None, description="Field SQL")
+    sql: Optional[str] = Field(None, description="Field SQL")  # noqa: UP045
 
 
 class LookMlDerivedTableField(BaseModel):
-    sql: Optional[str] = Field(None, description="Declares the SQL query for a derived table.")
-    sql_create: Optional[str] = Field(
+    sql: Optional[str] = Field(None, description="Declares the SQL query for a derived table.")  # noqa: UP045
+    sql_create: Optional[str] = Field(  # noqa: UP045
         None,
         description="Defines a SQL CREATE statement",
     )
@@ -38,14 +38,14 @@ class LookMlDerivedTableField(BaseModel):
 
 class LookMlView(BaseModel):
     name: ViewName = Field(..., description="View name")
-    description: Optional[str] = Field(None, description="View description")
-    sql_table_name: Optional[str] = Field(None, description="To track lineage with the source")
-    measures: List[LookMlField] = Field([], description="Measures to ingest as cols")
-    dimensions: List[LookMlField] = Field([], description="Dimensions to ingest as cols")
-    source_file: Optional[Includes] = Field(None, description="lkml file path")
-    derived_table: Optional[LookMlDerivedTableField] = Field(None, description="To track lineage with the source")
-    tags: Optional[List[str]] = Field(None, description="Tags for the view")
-    extends__all: Optional[List[List[str]]] = Field(
+    description: Optional[str] = Field(None, description="View description")  # noqa: UP045
+    sql_table_name: Optional[str] = Field(None, description="To track lineage with the source")  # noqa: UP045
+    measures: List[LookMlField] = Field([], description="Measures to ingest as cols")  # noqa: UP006
+    dimensions: List[LookMlField] = Field([], description="Dimensions to ingest as cols")  # noqa: UP006
+    source_file: Optional[Includes] = Field(None, description="lkml file path")  # noqa: UP045
+    derived_table: Optional[LookMlDerivedTableField] = Field(None, description="To track lineage with the source")  # noqa: UP045
+    tags: Optional[List[str]] = Field(None, description="Tags for the view")  # noqa: UP006, UP045
+    extends__all: Optional[List[List[str]]] = Field(  # noqa: UP006, UP045
         None, alias="extends__all", description="List of views this view extends"
     )
 
@@ -56,8 +56,8 @@ class LkmlFile(BaseModel):
     We'll pick explores from the API
     """
 
-    includes: List[Includes] = Field([], description="Full include list")
-    views: List[LookMlView] = Field([], description="Views we want to parse")
+    includes: List[Includes] = Field([], description="Full include list")  # noqa: UP006
+    views: List[LookMlView] = Field([], description="Views we want to parse")  # noqa: UP006
 
 
 class LookMLRepo(BaseModel):
@@ -68,4 +68,4 @@ class LookMLRepo(BaseModel):
 class LookMLManifest(BaseModel):
     project_name: str = Field(None, description="LookML project name")
     remote_dependency: dict = Field(None, description="Remote dependency information")
-    constants: Optional[List[Dict[str, str]]] = Field(None, description="LookML constants defined in the manifest")
+    constants: Optional[List[Dict[str, str]]] = Field(None, description="LookML constants defined in the manifest")  # noqa: UP006, UP045

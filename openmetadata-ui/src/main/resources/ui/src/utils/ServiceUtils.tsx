@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
-import React from 'react';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import {
+  ADMONITION_BLOCK_REGEX,
   MARKDOWN_MATCH_ID,
   SECTION_BLOCK_REGEX,
 } from '../constants/regex.constants';
@@ -29,12 +28,10 @@ import {
   SERVICE_TYPE_MAP,
 } from '../constants/Services.constant';
 import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
-import { PROMISE_STATE } from '../enums/common.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { StorageServiceType } from '../generated/entity/data/container';
-import { Database } from '../generated/entity/data/database';
 import { MlModelServiceType } from '../generated/entity/data/mlmodel';
 import {
   DashboardService,
@@ -54,31 +51,14 @@ import {
 } from '../generated/entity/services/pipelineService';
 import { DatabaseServiceSearchSource } from '../interface/search.interface';
 import { ServicesType } from '../interface/service.interface';
-import { getEntityCount } from '../rest/miscAPI';
 import { searchService } from '../rest/serviceAPI';
-import {
-  getEntityDeleteMessage,
-  pluralize,
-  replaceAllSpacialCharWith_,
-} from './CommonUtils';
+import { replaceAllSpacialCharWith_ } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import { MarkdownToHTMLConverter } from './FeedUtils';
 import { t } from './i18next/LocalUtil';
 import { getBrokers } from './MessagingServiceUtils';
 import { getSettingPath } from './RouterUtils';
-import { showErrorToast } from './ToastUtils';
-
-export const getFormattedGuideText = (
-  text: string,
-  toReplace: string,
-  replacement: string,
-  isGlobal = false
-) => {
-  const regExp = isGlobal ? new RegExp(toReplace, 'g') : new RegExp(toReplace);
-
-  return text.replace(regExp, replacement);
-};
 
 export const getIngestionName = (
   serviceName: string,
@@ -124,48 +104,6 @@ export const getServiceTypesFromServiceCategory = (
   serviceCat: ServiceCategory
 ) => {
   return SERVICE_TYPES_ENUM[serviceCat];
-};
-
-export const setServiceSchemaCount = (
-  data: Database[],
-  callback: (value: React.SetStateAction<number>) => void
-) => {
-  const promises = data.map((database) =>
-    getEntityCount('databaseSchemas', database.fullyQualifiedName)
-  );
-
-  Promise.allSettled(promises)
-    .then((results) => {
-      let count = 0;
-      for (const result of results) {
-        if (result.status === PROMISE_STATE.FULFILLED) {
-          count += result.value?.paging?.total || 0;
-        }
-      }
-      callback(count);
-    })
-    .catch((err: AxiosError) => showErrorToast(err));
-};
-
-export const setServiceTableCount = (
-  data: Database[],
-  callback: (value: React.SetStateAction<number>) => void
-) => {
-  const promises = data.map((database) =>
-    getEntityCount('tables', database.fullyQualifiedName)
-  );
-
-  Promise.allSettled(promises)
-    .then((results) => {
-      let count = 0;
-      for (const result of results) {
-        if (result.status === PROMISE_STATE.FULFILLED) {
-          count += result.value?.paging?.total || 0;
-        }
-      }
-      callback(count);
-    })
-    .catch((err: AxiosError) => showErrorToast(err));
 };
 
 export const getOptionalFields = (
@@ -243,74 +181,6 @@ export const getOptionalFields = (
     default: {
       return <></>;
     }
-  }
-};
-
-export const getDeleteEntityMessage = (
-  serviceName: string,
-  instanceCount: number,
-  schemaCount: number,
-  tableCount: number
-) => {
-  const service = serviceName?.slice(0, -1);
-
-  switch (serviceName) {
-    case ServiceCategory.DATABASE_SERVICES:
-      return getEntityDeleteMessage(
-        service || t('label.service'),
-        `${pluralize(instanceCount, t('label.database'))}, ${pluralize(
-          schemaCount,
-          t('label.schema')
-        )} ${t('label.and-lowercase')} ${pluralize(
-          tableCount,
-          t('label.table')
-        )}`
-      );
-
-    case ServiceCategory.MESSAGING_SERVICES:
-      return getEntityDeleteMessage(
-        service || t('label.service'),
-        pluralize(instanceCount, t('label.topic'))
-      );
-
-    case ServiceCategory.DASHBOARD_SERVICES:
-      return getEntityDeleteMessage(
-        service || t('label.service'),
-        pluralize(instanceCount, t('label.dashboard'))
-      );
-
-    case ServiceCategory.PIPELINE_SERVICES:
-      return getEntityDeleteMessage(
-        service || t('label.service'),
-        pluralize(instanceCount, t('label.pipeline'))
-      );
-
-    case ServiceCategory.METADATA_SERVICES:
-      return getEntityDeleteMessage(
-        service || t('label.service'),
-        pluralize(instanceCount, t('label.metadata'))
-      );
-
-    case ServiceCategory.STORAGE_SERVICES:
-      return getEntityDeleteMessage(
-        service || t('label.service'),
-        pluralize(instanceCount, t('label.container'))
-      );
-
-    case ServiceCategory.API_SERVICES:
-      return getEntityDeleteMessage(
-        service || t('label.service'),
-        pluralize(instanceCount, t('label.collection'))
-      );
-
-    case ServiceCategory.DRIVE_SERVICES:
-      return getEntityDeleteMessage(
-        service || t('label.service'),
-        pluralize(instanceCount, t('label.directory'))
-      );
-
-    default:
-      return;
   }
 };
 
@@ -678,21 +548,37 @@ export const validateServiceName = async (
   return null;
 };
 
+const convertAdmonitionsToHtml = (markdown: string): string => {
+  ADMONITION_BLOCK_REGEX.lastIndex = 0;
+
+  return markdown.replace(
+    ADMONITION_BLOCK_REGEX,
+    (_match, type: string, content: string) =>
+      `<div data-admonition="${type}">${MarkdownToHTMLConverter.makeHtml(
+        content.trim()
+      )}</div>`
+  );
+};
+
 /**
- * Converts markdown that uses $$section blocks into sanitizable HTML with
- * <section data-id="..."> wrappers. Used by both ServiceDocPanel and SSODocPanel.
+ * Converts markdown with $$section and $$note/warning/etc. admonition blocks into
+ * sanitizable HTML. Used by both ServiceDocPanel and SSODocPanel.
  */
 export const processDocMarkdown = (markdown: string): string => {
+  const withAdmonitions = convertAdmonitionsToHtml(markdown);
+
   const parts: string[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
   SECTION_BLOCK_REGEX.lastIndex = 0;
 
-  while ((match = SECTION_BLOCK_REGEX.exec(markdown)) !== null) {
+  while ((match = SECTION_BLOCK_REGEX.exec(withAdmonitions)) !== null) {
     if (match.index > lastIndex) {
       parts.push(
-        MarkdownToHTMLConverter.makeHtml(markdown.slice(lastIndex, match.index))
+        MarkdownToHTMLConverter.makeHtml(
+          withAdmonitions.slice(lastIndex, match.index)
+        )
       );
     }
 
@@ -710,8 +596,10 @@ export const processDocMarkdown = (markdown: string): string => {
     lastIndex = match.index + match[0].length;
   }
 
-  if (lastIndex < markdown.length) {
-    parts.push(MarkdownToHTMLConverter.makeHtml(markdown.slice(lastIndex)));
+  if (lastIndex < withAdmonitions.length) {
+    parts.push(
+      MarkdownToHTMLConverter.makeHtml(withAdmonitions.slice(lastIndex))
+    );
   }
 
   return parts.join('\n');

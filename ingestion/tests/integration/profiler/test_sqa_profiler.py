@@ -18,7 +18,7 @@ No sample data is required beforehand
 
 import json
 import time
-from typing import List
+from typing import List  # noqa: UP035
 from unittest import TestCase, TestLoader
 
 from _openmetadata_testutils.ometa import int_admin_ometa
@@ -34,8 +34,8 @@ from metadata.generated.schema.type.entityProfile import EntityProfile, ProfileT
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 
-from ...utils.docker_service_builders.test_container_builder import ContainerBuilder
-from ..integration_base import (
+from ...utils.docker_service_builders.test_container_builder import ContainerBuilder  # noqa: TID252
+from ..integration_base import (  # noqa: TID252
     METADATA_INGESTION_CONFIG_TEMPLATE,
     PROFILER_INGESTION_CONFIG_TEMPLATE,
 )
@@ -69,14 +69,14 @@ class TestSQAProfiler(TestCase):
                 ingestion_workflow.stop()
         except Exception as e:
             cls.container_builder.stop_all_containers()
-            raise e
+            raise e  # noqa: TRY201
 
     @classmethod
     def tearDownClass(cls):
         cls.container_builder.stop_all_containers()
         db_entities = []
         for container in cls.container_builder.containers:
-            db_entities.append(cls.metadata.get_by_name(DatabaseService, type(container).__name__))
+            db_entities.append(cls.metadata.get_by_name(DatabaseService, type(container).__name__))  # noqa: PERF401
         for db_entity in db_entities:
             cls.metadata.delete(DatabaseService, db_entity.id, True, True)
         cls._clean_up_settings()
@@ -111,7 +111,7 @@ class TestSQAProfiler(TestCase):
             except Exception as e:
                 self.fail(f"Profiler workflow failed for {type(container).__name__} with error {e}")
 
-        tables: List[Table] = []
+        tables: List[Table] = []  # noqa: UP006
         for container in self.container_builder.containers:
             service_name = type(container).__name__
             cfg = json.loads(container.get_config())
@@ -120,7 +120,7 @@ class TestSQAProfiler(TestCase):
         for table in tables:
             if table.name.root != "users":
                 continue
-            table = self.metadata.get_latest_table_profile(table.fullyQualifiedName)
+            table = self.metadata.get_latest_table_profile(table.fullyQualifiedName)  # noqa: PLW2901
             columns = table.columns
             self.assertIsNotNone(table.profile)
             for column in columns:
@@ -167,7 +167,7 @@ class TestSQAProfiler(TestCase):
             except Exception as e:
                 self.fail(f"Profiler workflow failed for {service_name} with error {e}")
 
-        tables: List[Table] = []
+        tables: List[Table] = []  # noqa: UP006
         for container in self.container_builder.containers:
             sn = type(container).__name__
             cfg = json.loads(container.get_config())
@@ -176,7 +176,7 @@ class TestSQAProfiler(TestCase):
         for table in tables:
             if table.name.root != "users":
                 continue
-            table = self.metadata.get_latest_table_profile(table.fullyQualifiedName)
+            table = self.metadata.get_latest_table_profile(table.fullyQualifiedName)  # noqa: PLW2901
             columns = table.columns
             self.assertIsNotNone(table.profile)
             for column in columns:
@@ -195,7 +195,7 @@ class TestSQAProfiler(TestCase):
         end_ts = int(time.time() * 1000)
         start_ts = end_ts - 24 * 60 * 60 * 1000
 
-        get_profiles = getattr(self.metadata, "get_profile_data_by_type")
+        get_profiles = getattr(self.metadata, "get_profile_data_by_type")  # noqa: B009
         profiles_all = get_profiles(Table, start_ts, end_ts)
 
         self.assertTrue(hasattr(profiles_all, "total"))

@@ -61,7 +61,7 @@ class DistinctCount(StaticMetric):
         if dfs is None:
             return None
         # pylint: disable=import-outside-toplevel
-        from collections import Counter
+        from collections import Counter  # noqa: PLC0415
 
         try:
             counter = Counter()
@@ -74,7 +74,7 @@ class DistinctCount(StaticMetric):
                         for value in df_col_value:
                             counter.update([json.dumps(value)])
                     else:
-                        raise err
+                        raise err  # noqa: TRY201
             return len(counter.keys())
         except Exception as err:
             logger.debug(

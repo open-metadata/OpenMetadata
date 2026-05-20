@@ -14,10 +14,10 @@ Postgres Query parser module
 
 import traceback
 from abc import ABC
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from sqlalchemy import text
-from sqlalchemy.engine.base import Engine
+from sqlalchemy.engine.base import Engine  # noqa: TC002
 
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
@@ -51,11 +51,11 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         super().__init__(config, metadata)
         # Postgres does not allow retrieval of data older than 7 days
         # Update start and end based on this
-        duration = min(self.source_config.queryLogDuration, 6)
+        duration = min(self.source_config.queryLogDuration, 6)  # pyright: ignore[reportAttributeAccessIssue]
         self.start, self.end = get_start_and_end(duration)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: PostgresConnection = config.serviceConnection.root.config
         if not isinstance(connection, PostgresConnection):
@@ -68,7 +68,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         We don't use any start or end times as they are not available
         """
         return self.sql_stmt.format(
-            result_limit=self.config.sourceConfig.config.resultLimit,
+            result_limit=self.config.sourceConfig.config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
             filters=self.get_filters(),
             time_column_name=get_postgres_time_column_name(engine=self.engine),
             query_statement_source=self.service_connection.queryStatementSource or "pg_stat_statements",
@@ -77,10 +77,10 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
     # pylint: disable=no-member
     def get_table_query(self) -> Iterable[TableQuery]:
         try:
-            if self.config.sourceConfig.config.queryLogFilePath:
+            if self.config.sourceConfig.config.queryLogFilePath:  # pyright: ignore[reportAttributeAccessIssue]
                 yield from super().yield_table_queries_from_logs()
             else:
-                database = self.config.serviceConnection.root.config.database
+                database = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
                 if database:
                     self.engine: Engine = get_connection(self.service_connection)
                     yield from self.process_table_query()
@@ -90,7 +90,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
                     for res in results:
                         row = list(res)
                         logger.info(f"Ingesting from database: {row[0]}")
-                        self.config.serviceConnection.root.config.database = row[0]
+                        self.config.serviceConnection.root.config.database = row[0]  # pyright: ignore[reportAttributeAccessIssue]
                         self.engine = get_connection(self.service_connection)
                         yield from self.process_table_query()
 

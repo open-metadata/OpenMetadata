@@ -13,7 +13,7 @@
 PGSpider lineage module
 """
 
-from typing import Iterable, Iterator
+from typing import Iterable, Iterator  # noqa: UP035
 
 from sqlalchemy.sql import text
 
@@ -42,7 +42,7 @@ def _get_multi_tenant_tables(connection) -> Iterable[any]:
 
     with get_connection(connection).connect() as conn:
         rows = conn.execute(text(sql))
-        return rows
+        return rows  # noqa: RET504
 
 
 def _get_child_tables(connection, multi_tenant_table: str) -> Iterable[any]:
@@ -53,7 +53,7 @@ def _get_child_tables(connection, multi_tenant_table: str) -> Iterable[any]:
 
     with get_connection(connection).connect() as conn:
         rows = conn.execute(text(sql))
-        return rows
+        return rows  # noqa: RET504
 
 
 # For column level lineage, find all pairs of columns which have

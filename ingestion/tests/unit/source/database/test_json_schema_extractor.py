@@ -302,7 +302,7 @@ class TestInferJsonSchemaFromSample:
                 "active": True,
             }
         ]
-        schema_str, children = infer_json_schema_from_sample(json_values)
+        schema_str, children = infer_json_schema_from_sample(json_values)  # noqa: RUF059
 
         assert schema_str is not None
         schema = json.loads(schema_str)
@@ -314,7 +314,7 @@ class TestInferJsonSchemaFromSample:
         json_values = [
             {"tags": ["python", "data"], "scores": [85, 90, 95]},
         ]
-        schema_str, children = infer_json_schema_from_sample(json_values)
+        schema_str, children = infer_json_schema_from_sample(json_values)  # noqa: RUF059
 
         assert schema_str is not None
         schema = json.loads(schema_str)
@@ -348,7 +348,7 @@ class TestInferJsonSchemaFromSample:
             None,
             {"name": "Jane", "age": 25},
         ]
-        schema_str, children = infer_json_schema_from_sample(json_values)
+        schema_str, children = infer_json_schema_from_sample(json_values)  # noqa: RUF059
 
         assert schema_str is not None
         schema = json.loads(schema_str)
@@ -369,7 +369,7 @@ class TestInferJsonSchemaFromSample:
                 "amount_cents": 5000,
             },
         ]
-        schema_str, children = infer_json_schema_from_sample(json_values)
+        schema_str, children = infer_json_schema_from_sample(json_values)  # noqa: RUF059
 
         assert schema_str is not None
         schema = json.loads(schema_str)
@@ -381,7 +381,7 @@ class TestInferJsonSchemaFromSample:
     def test_infer_schema_deeply_nested(self):
         """Test with deeply nested structure."""
         json_values = [{"level1": {"level2": {"level3": {"value": "deep"}}}}]
-        schema_str, children = infer_json_schema_from_sample(json_values)
+        schema_str, children = infer_json_schema_from_sample(json_values)  # noqa: RUF059
 
         assert schema_str is not None
         schema = json.loads(schema_str)
@@ -399,7 +399,7 @@ class TestJsonSchemaExtractionEdgeCases:
     def test_empty_object(self):
         """Test handling empty JSON objects."""
         json_values = [{}]
-        schema_str, children = infer_json_schema_from_sample(json_values)
+        schema_str, children = infer_json_schema_from_sample(json_values)  # noqa: RUF059
         assert schema_str is not None
         schema = json.loads(schema_str)
         assert schema["type"] == "object"
@@ -424,7 +424,7 @@ class TestJsonSchemaExtractionEdgeCases:
     def test_large_numbers(self):
         """Test handling large numbers."""
         json_values = [{"big_int": 9999999999999999, "big_float": 1.7976931348623157e308}]
-        schema_str, children = infer_json_schema_from_sample(json_values)
+        schema_str, children = infer_json_schema_from_sample(json_values)  # noqa: RUF059
 
         assert schema_str is not None
 
@@ -523,7 +523,7 @@ class TestStringColumnTypeAsJson:
             '{"product": "laptop", "price": 999.99, "in_stock": true}',
             '{"product": "mouse", "price": 29.99, "in_stock": false}',
         ]
-        schema_str, children = infer_json_schema_from_sample(json_values)
+        schema_str, children = infer_json_schema_from_sample(json_values)  # noqa: RUF059
 
         assert schema_str is not None
         schema = json.loads(schema_str)
@@ -598,7 +598,7 @@ class TestStringColumnTypeAsJson:
             None,
             "",
         ]
-        schema_str, children = infer_json_schema_from_sample(json_values)
+        schema_str, children = infer_json_schema_from_sample(json_values)  # noqa: RUF059
 
         assert schema_str is not None
         schema = json.loads(schema_str)
@@ -691,7 +691,7 @@ class TestAllJsonColumnTypes:
             {"empty_obj": {}, "empty_arr": [], "normal": "value"},
             {"empty_obj": {"key": "value"}, "empty_arr": [1, 2], "normal": "other"},
         ]
-        schema_str, children = infer_json_schema_from_sample(json_values)
+        schema_str, children = infer_json_schema_from_sample(json_values)  # noqa: RUF059
 
         assert schema_str is not None
         schema = json.loads(schema_str)
@@ -718,7 +718,7 @@ class TestAllJsonColumnTypes:
                 }
             },
         ]
-        schema_str, children = infer_json_schema_from_sample(json_values)
+        schema_str, children = infer_json_schema_from_sample(json_values)  # noqa: RUF059
 
         assert schema_str is not None
         schema = json.loads(schema_str)
@@ -746,7 +746,7 @@ class TestAllJsonColumnTypes:
                 }
             },
         ]
-        schema_str, children = infer_json_schema_from_sample(json_values)
+        schema_str, children = infer_json_schema_from_sample(json_values)  # noqa: RUF059
 
         assert schema_str is not None
         schema = json.loads(schema_str)
@@ -782,7 +782,7 @@ class TestAllJsonColumnTypes:
                 }
             },
         ]
-        schema_str, children = infer_json_schema_from_sample(json_values)
+        schema_str, children = infer_json_schema_from_sample(json_values)  # noqa: RUF059
 
         assert schema_str is not None
         schema = json.loads(schema_str)
@@ -802,7 +802,7 @@ class TestAllStringColumnTypes:
             {"field1": "value1", "field2": 100},
             {"field1": "value2", "field2": 200, "field3": True},
         ]
-        schema_str, children = infer_json_schema_from_sample(json_values)
+        schema_str, children = infer_json_schema_from_sample(json_values)  # noqa: RUF059
 
         assert schema_str is not None
         schema = json.loads(schema_str)
@@ -815,7 +815,7 @@ class TestAllStringColumnTypes:
         json_values = [
             '{"api_response": {"status": 200, "data": {"items": [1, 2, 3]}}}',
         ]
-        schema_str, children = infer_json_schema_from_sample(json_values)
+        schema_str, children = infer_json_schema_from_sample(json_values)  # noqa: RUF059
 
         assert schema_str is not None
         schema = json.loads(schema_str)
@@ -837,7 +837,7 @@ class TestAllStringColumnTypes:
                 }
             }
         ]
-        schema_str, children = infer_json_schema_from_sample(long_json)
+        schema_str, children = infer_json_schema_from_sample(long_json)  # noqa: RUF059
         assert schema_str is not None
         schema = json.loads(schema_str)
         assert "very_long_key_name_that_might_be_stored_in_varchar" in schema["properties"]
@@ -856,7 +856,7 @@ class TestAllStringColumnTypes:
                 }
             }
         ]
-        schema_str, children = infer_json_schema_from_sample(large_json)
+        schema_str, children = infer_json_schema_from_sample(large_json)  # noqa: RUF059
 
         assert schema_str is not None
         schema = json.loads(schema_str)
@@ -880,7 +880,7 @@ class TestAllStringColumnTypes:
         json_values = [
             '{"path": "C:\\\\Users\\\\test", "quote": "\\"quoted\\"", "newline": "line1\\nline2"}',
         ]
-        schema_str, children = infer_json_schema_from_sample(json_values)
+        schema_str, children = infer_json_schema_from_sample(json_values)  # noqa: RUF059
 
         assert schema_str is not None
         schema = json.loads(schema_str)
@@ -893,7 +893,7 @@ class TestAllStringColumnTypes:
         json_values = [
             {"123": "numeric key", "456abc": "mixed key", "normal_key": "value"},
         ]
-        schema_str, children = infer_json_schema_from_sample(json_values)
+        schema_str, children = infer_json_schema_from_sample(json_values)  # noqa: RUF059
 
         assert schema_str is not None
         schema = json.loads(schema_str)

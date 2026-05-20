@@ -22,7 +22,7 @@ import json
 import os
 import socket
 import time
-from typing import Optional
+from typing import Optional, Union
 from uuid import UUID
 
 from metadata.ingestion.ometa.client import REST
@@ -50,6 +50,7 @@ class OMetaLogsMixin:
         run_id: UUID,
         log_content: str,
         compress: bool = False,
+        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
     ) -> bool:
         """
         Send logs to S3 storage via OpenMetadata server endpoint.
@@ -59,6 +60,7 @@ class OMetaLogsMixin:
             run_id: Unique identifier for the pipeline run
             log_content: The log content to send
             compress: Whether to compress logs before sending
+            timeout: Per-call HTTP timeout (seconds). Overrides client default.
 
         Returns:
             bool: True if logs were sent successfully, False otherwise
@@ -87,12 +89,13 @@ class OMetaLogsMixin:
             self.client.post(
                 url,
                 data=json.dumps(log_batch),
+                timeout=timeout,
             )
 
             # The REST client returns None for successful requests with empty response body (HTTP 200/201/204)
             # If we reach this point without an exception, the request was successful
             logger.debug(f"Successfully sent {log_batch['lineCount']} log lines for pipeline {pipeline_fqn}")
-            return True
+            return True  # noqa: TRY300
 
         except Exception as e:
             line_count = log_content.count("\n") + 1
@@ -111,6 +114,7 @@ class OMetaLogsMixin:
         log_content: str,
         enable_compression: bool = False,
         max_retries: int = 3,
+        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
     ) -> dict:
         """
         Send logs batch to S3 storage via OpenMetadata server endpoint with retry logic.
@@ -121,6 +125,9 @@ class OMetaLogsMixin:
             log_content: The log content to send
             enable_compression: Whether to compress logs before sending
             max_retries: Maximum number of retry attempts
+            timeout: Per-call HTTP timeout (seconds). Overrides client default.
+                     Streamable log handler passes a short value here so a
+                     slow server can't tie up the shipper.
 
         Returns:
             dict: Metrics including lines sent and bytes sent
@@ -134,6 +141,7 @@ class OMetaLogsMixin:
                     run_id=run_id,
                     log_content=log_content,
                     compress=enable_compression and len(log_content) > 10240,
+                    timeout=timeout,
                 )
 
                 if success:
@@ -147,7 +155,7 @@ class OMetaLogsMixin:
                     else:
                         logger.debug(f"Successfully shipped {line_count} log lines to server")
                     return metrics
-                else:
+                else:  # noqa: PLR5501, RET505
                     if attempt < max_retries:
                         wait_time = 2**attempt  # Exponential backoff: 1s, 2s, 4s
                         logger.warning(
@@ -174,6 +182,56 @@ class OMetaLogsMixin:
                     )
 
         return metrics
+
+    def send_logs_batch_best_effort(
+        self,
+        pipeline_fqn: str,
+        run_id: UUID,
+        log_content: str,
+        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        client: Optional[REST] = None,  # noqa: UP045
+    ) -> bool:
+        """Best-effort log POST: no retries, no logging. Returns True on 2xx."""
+        try:
+            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}"
+            log_batch = {
+                "logs": log_content,
+                "timestamp": int(time.time() * 1000),
+                "connectorId": f"{socket.gethostname()}-{os.getpid()}",
+                "compressed": False,
+                "lineCount": log_content.count("\n") + 1,
+            }
+            target = client if client is not None else self.client
+            return target.post_best_effort(
+                url,
+                data=json.dumps(log_batch),
+                timeout=timeout,
+            )
+        except Exception:
+            return False
+
+    def send_close_best_effort(
+        self,
+        pipeline_fqn: str,
+        run_id: UUID,
+        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        client: Optional[REST] = None,  # noqa: UP045
+    ) -> bool:
+        """Best-effort /close notify. Same guarantees as send_logs_batch_best_effort."""
+        try:
+            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}/close"
+            close_data = {
+                "connectorId": f"{socket.gethostname()}-{os.getpid()}",
+                "timestamp": int(time.time() * 1000),
+            }
+            target = client if client is not None else self.client
+            return target.post_best_effort(
+                url,
+                data=json.dumps(close_data),
+                timeout=timeout,
+            )
+        except Exception:
+            return False
 
     def create_log_stream(
         self,
@@ -239,7 +297,7 @@ class OMetaLogsMixin:
 
             logger.debug(f"Successfully closed log stream for pipeline {pipeline_fqn}")
 
-            return True
+            return True  # noqa: TRY300
 
         except Exception as e:
             logger.warning(f"Failed to close log stream for pipeline {pipeline_fqn}: {e}")
@@ -251,7 +309,7 @@ class OMetaLogsMixin:
         run_id: UUID,
         offset: int = 0,
         limit: int = 1000,
-    ) -> Optional[str]:
+    ) -> Optional[str]:  # noqa: UP045
         """
         Retrieve logs from S3 storage for a pipeline run.
 
@@ -288,7 +346,7 @@ class OMetaLogsMixin:
 
                 return log_data
 
-            return None
+            return None  # noqa: TRY300
 
         except Exception as e:
             logger.error(f"Failed to retrieve logs from S3 for pipeline {pipeline_fqn}: {e}")

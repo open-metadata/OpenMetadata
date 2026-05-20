@@ -16,7 +16,7 @@ DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 import json
 import traceback
 from hashlib import md5
-from typing import Any, Iterable, Optional, Tuple
+from typing import Any, Iterable, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -39,7 +39,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
+    DatabaseServiceMetadataPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
     StorageContainerConfig,
@@ -97,7 +97,7 @@ class DatalakeSource(DatabaseServiceSource):
         self.reader = get_reader(config_source=self.config_source, client=self.client.client)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DatalakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatalakeConnection):
@@ -163,8 +163,8 @@ class DatalakeSource(DatabaseServiceSource):
                 )
 
                 if filter_by_schema(
-                    self.config.sourceConfig.config.schemaFilterPattern,
-                    (schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema_name),
+                    self.config.sourceConfig.config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                    (schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema_name),  # pyright: ignore[reportAttributeAccessIssue]
                 ):
                     self.status.filter(schema_fqn, "Bucket Filtered Out")
                     continue
@@ -201,7 +201,7 @@ class DatalakeSource(DatabaseServiceSource):
 
     def get_tables_name_and_type(  # pylint: disable=too-many-branches
         self,
-    ) -> Iterable[Tuple[str, TableType, SupportedTypes, Optional[int]]]:
+    ) -> Iterable[Tuple[str, TableType, SupportedTypes, Optional[int]]]:  # noqa: UP006, UP045
         """
         Handle table and views.
 
@@ -241,7 +241,8 @@ class DatalakeSource(DatabaseServiceSource):
                 yield table_name, TableType.Regular, file_extension, file_size
 
     def yield_table(
-        self, table_name_and_type: Tuple[str, TableType, SupportedTypes, Optional[int]]
+        self,
+        table_name_and_type: Tuple[str, TableType, SupportedTypes, Optional[int]],  # noqa: UP006, UP045
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
@@ -340,8 +341,8 @@ class DatalakeSource(DatabaseServiceSource):
         )
 
         if filter_by_table(
-            self.config.sourceConfig.config.tableFilterPattern,
-            (table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name),
+            self.config.sourceConfig.config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+            (table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name),  # pyright: ignore[reportAttributeAccessIssue]
         ):
             self.status.filter(
                 table_fqn,

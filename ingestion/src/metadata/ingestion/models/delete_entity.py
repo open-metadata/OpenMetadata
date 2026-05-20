@@ -25,4 +25,4 @@ class DeleteEntity(BaseModel):
     """
 
     entity: Entity
-    mark_deleted_entities: Optional[bool] = False
+    mark_deleted_entities: Optional[bool] = False  # noqa: UP045

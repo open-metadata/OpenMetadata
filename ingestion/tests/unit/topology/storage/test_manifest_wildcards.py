@@ -18,7 +18,7 @@ Covers the ``expand_entry`` / ``expand_entries`` helpers on
 pass through unchanged for backwards compatibility.
 """
 
-from typing import List, Tuple
+from typing import List, Tuple  # noqa: UP035
 
 import pytest
 
@@ -39,10 +39,10 @@ class _Stub:
     without needing to instantiate the full Source, which requires a
     live workflow config and connection."""
 
-    def __init__(self, keys: List[Tuple[str, int]]):
+    def __init__(self, keys: List[Tuple[str, int]]):  # noqa: UP006
         self._keys = keys
 
-    def list_keys(self, bucket, prefix):  # noqa: ARG002 — test stub
+    def list_keys(self, bucket, prefix):  # noqa: ARG002, RUF100
         for key, size in self._keys:
             if key.startswith(prefix):
                 yield key, size
@@ -51,7 +51,7 @@ class _Stub:
     expand_entries = StorageServiceSource.expand_entries
 
 
-def _names(entries: List[MetadataEntry]) -> List[str]:
+def _names(entries: List[MetadataEntry]) -> List[str]:  # noqa: UP006
     return [e.dataPath for e in entries]
 
 
@@ -458,7 +458,7 @@ class TestContainerFilterAppliesToManifestEntries:
         resolver.status = SimpleNamespace(filter=lambda *a, **kw: None)
         return resolver
 
-    def test_exclude_matches_dataPath(self):
+    def test_exclude_matches_dataPath(self):  # noqa: N802
         """Entries whose dataPath matches the exclude pattern must be
         dropped before any sample-file fetch happens. containerFilter
         patterns are left-anchored regex (``re.match``), so ``.*_SUCCESS``

@@ -27,6 +27,6 @@ from metadata.profiler.metrics.registry import Metrics
 class TableRowCountToEqualValidator(BaseTableRowCountToEqualValidator, SQAValidatorMixin):
     """Validator for table row inserted count to be between test case"""
 
-    def _run_results(self, metric: Metrics) -> Optional[int]:
+    def _run_results(self, metric: Metrics) -> Optional[int]:  # noqa: UP045
         """compute result of the test case"""
         return self.run_query_results(self.runner, metric)

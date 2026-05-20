@@ -245,7 +245,7 @@ class TestViewLineageProcessor(unittest.TestCase):
         mock_table.viewDefinition.root = "CREATE VIEW view1 AS SELECT * FROM table1"
         self.mock_metadata.get_by_name.return_value = mock_table
 
-        with patch(
+        with patch(  # noqa: SIM117
             "metadata.ingestion.source.database.lineage_processors.get_view_lineage",
             return_value=[mock_lineage],
         ):
@@ -293,7 +293,7 @@ class TestViewLineageProcessor(unittest.TestCase):
         mock_table.viewDefinition.root = "CREATE VIEW view1 AS SELECT * FROM table1"
         self.mock_metadata.get_by_name.return_value = mock_table
 
-        with patch(
+        with patch(  # noqa: SIM117
             "metadata.ingestion.source.database.lineage_processors.get_view_lineage",
             return_value=[mock_lineage],
         ):
@@ -371,7 +371,7 @@ class TestProcedureLineageProcessor(unittest.TestCase):
             )
         )
 
-        with patch(
+        with patch(  # noqa: SIM117
             "metadata.ingestion.source.database.lineage_processors._yield_procedure_lineage",
             return_value=[mock_lineage],
         ):
@@ -424,7 +424,7 @@ class TestProcedureLineageProcessor(unittest.TestCase):
 
         procedure_and_query = ProcedureAndQuery(procedure=procedure, query_by_procedure=query_by_proc)
 
-        with patch(
+        with patch(  # noqa: SIM117
             "metadata.ingestion.source.database.lineage_processors.get_lineage_by_query",
             return_value=[],
         ):
@@ -483,7 +483,7 @@ class TestChunkProcessing(unittest.TestCase):
         mock_queue = TopologyQueue()
 
         def failing_processor(items, queue, *args):
-            raise Exception("Processing failed")
+            raise Exception("Processing failed")  # noqa: TRY002
 
         # Process chunk with failing processor
         result = process_chunk_in_subprocess(chunk, failing_processor, mock_queue)

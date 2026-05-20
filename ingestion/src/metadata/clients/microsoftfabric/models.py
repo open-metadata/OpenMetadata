@@ -16,7 +16,7 @@ Pydantic models for Microsoft Fabric REST API responses.
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -48,9 +48,9 @@ class FabricWorkspace(BaseModel):
 
     id: str
     display_name: str = Field(alias="displayName")
-    description: Optional[str] = None
-    type: Optional[str] = None
-    capacity_id: Optional[str] = Field(default=None, alias="capacityId")
+    description: Optional[str] = None  # noqa: UP045
+    type: Optional[str] = None  # noqa: UP045
+    capacity_id: Optional[str] = Field(default=None, alias="capacityId")  # noqa: UP045
 
 
 class FabricItem(BaseModel):
@@ -60,9 +60,9 @@ class FabricItem(BaseModel):
 
     id: str
     display_name: str = Field(alias="displayName")
-    description: Optional[str] = None
+    description: Optional[str] = None  # noqa: UP045
     type: str
-    workspace_id: Optional[str] = Field(default=None, alias="workspaceId")
+    workspace_id: Optional[str] = Field(default=None, alias="workspaceId")  # noqa: UP045
 
 
 class FabricWarehouse(BaseModel):
@@ -72,11 +72,11 @@ class FabricWarehouse(BaseModel):
 
     id: str
     display_name: str = Field(alias="displayName")
-    description: Optional[str] = None
-    workspace_id: Optional[str] = Field(default=None, alias="workspaceId")
-    connection_string: Optional[str] = Field(default=None, alias="connectionString")
+    description: Optional[str] = None  # noqa: UP045
+    workspace_id: Optional[str] = Field(default=None, alias="workspaceId")  # noqa: UP045
+    connection_string: Optional[str] = Field(default=None, alias="connectionString")  # noqa: UP045
     # SQL endpoint for connecting via T-SQL
-    sql_endpoint_properties: Optional[Dict[str, Any]] = Field(default=None, alias="properties")
+    sql_endpoint_properties: Optional[Dict[str, Any]] = Field(default=None, alias="properties")  # noqa: UP006, UP045
 
 
 class FabricLakehouse(BaseModel):
@@ -86,13 +86,13 @@ class FabricLakehouse(BaseModel):
 
     id: str
     display_name: str = Field(alias="displayName")
-    description: Optional[str] = None
-    workspace_id: Optional[str] = Field(default=None, alias="workspaceId")
+    description: Optional[str] = None  # noqa: UP045
+    workspace_id: Optional[str] = Field(default=None, alias="workspaceId")  # noqa: UP045
     # OneLake path for the lakehouse
-    onelake_tables_path: Optional[str] = Field(default=None, alias="oneLakeTablesPath")
-    onelake_files_path: Optional[str] = Field(default=None, alias="oneLakeFilesPath")
+    onelake_tables_path: Optional[str] = Field(default=None, alias="oneLakeTablesPath")  # noqa: UP045
+    onelake_files_path: Optional[str] = Field(default=None, alias="oneLakeFilesPath")  # noqa: UP045
     # SQL endpoint for connecting via T-SQL
-    sql_endpoint_properties: Optional[Dict[str, Any]] = Field(default=None, alias="properties")
+    sql_endpoint_properties: Optional[Dict[str, Any]] = Field(default=None, alias="properties")  # noqa: UP006, UP045
 
 
 class FabricPipeline(BaseModel):
@@ -102,8 +102,8 @@ class FabricPipeline(BaseModel):
 
     id: str
     display_name: str = Field(alias="displayName")
-    description: Optional[str] = None
-    workspace_id: Optional[str] = Field(default=None, alias="workspaceId")
+    description: Optional[str] = None  # noqa: UP045
+    workspace_id: Optional[str] = Field(default=None, alias="workspaceId")  # noqa: UP045
 
 
 class FabricPipelineRunStatus(str, Enum):
@@ -123,13 +123,13 @@ class FabricPipelineRun(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     id: str
-    pipeline_id: Optional[str] = Field(default=None, alias="itemId")
-    status: Optional[str] = None
-    start_time: Optional[datetime] = Field(default=None, alias="startTimeUtc")
-    end_time: Optional[datetime] = Field(default=None, alias="endTimeUtc")
-    invoker_type: Optional[str] = Field(default=None, alias="invokeType")
-    job_type: Optional[str] = Field(default=None, alias="jobType")
-    failure_reason: Optional[Dict[str, Any]] = Field(default=None, alias="failureReason")
+    pipeline_id: Optional[str] = Field(default=None, alias="itemId")  # noqa: UP045
+    status: Optional[str] = None  # noqa: UP045
+    start_time: Optional[datetime] = Field(default=None, alias="startTimeUtc")  # noqa: UP045
+    end_time: Optional[datetime] = Field(default=None, alias="endTimeUtc")  # noqa: UP045
+    invoker_type: Optional[str] = Field(default=None, alias="invokeType")  # noqa: UP045
+    job_type: Optional[str] = Field(default=None, alias="jobType")  # noqa: UP045
+    failure_reason: Optional[Dict[str, Any]] = Field(default=None, alias="failureReason")  # noqa: UP006, UP045
 
 
 class FabricActivity(BaseModel):
@@ -139,10 +139,10 @@ class FabricActivity(BaseModel):
 
     name: str
     type: str
-    description: Optional[str] = None
-    depends_on: Optional[List[Dict[str, Any]]] = Field(default=None, alias="dependsOn")
+    description: Optional[str] = None  # noqa: UP045
+    depends_on: Optional[List[Dict[str, Any]]] = Field(default=None, alias="dependsOn")  # noqa: UP006, UP045
     # Activity-specific properties (Copy, Notebook, etc.)
-    type_properties: Optional[Dict[str, Any]] = Field(default=None, alias="typeProperties")
+    type_properties: Optional[Dict[str, Any]] = Field(default=None, alias="typeProperties")  # noqa: UP006, UP045
 
 
 class FabricActivityRun(BaseModel):
@@ -157,13 +157,13 @@ class FabricActivityRun(BaseModel):
     activity_run_id: str = Field(alias="activityRunId")
     status: str
     activity_run_start: datetime = Field(alias="activityRunStart")
-    activity_run_end: Optional[datetime] = Field(default=None, alias="activityRunEnd")
-    duration_in_ms: Optional[int] = Field(default=None, alias="durationInMs")
-    input: Optional[Dict[str, Any]] = None
-    output: Optional[Dict[str, Any]] = None
-    error: Optional[Dict[str, Any]] = None
-    retry_attempt: Optional[int] = Field(default=None, alias="retryAttempt")
-    recovery_status: Optional[str] = Field(default=None, alias="recoveryStatus")
+    activity_run_end: Optional[datetime] = Field(default=None, alias="activityRunEnd")  # noqa: UP045
+    duration_in_ms: Optional[int] = Field(default=None, alias="durationInMs")  # noqa: UP045
+    input: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
+    output: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
+    error: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
+    retry_attempt: Optional[int] = Field(default=None, alias="retryAttempt")  # noqa: UP045
+    recovery_status: Optional[str] = Field(default=None, alias="recoveryStatus")  # noqa: UP045
 
 
 class FabricSqlEndpoint(BaseModel):
@@ -171,9 +171,9 @@ class FabricSqlEndpoint(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    connection_string: Optional[str] = Field(default=None, alias="connectionString")
-    id: Optional[str] = None
-    provisioning_status: Optional[str] = Field(default=None, alias="provisioningStatus")
+    connection_string: Optional[str] = Field(default=None, alias="connectionString")  # noqa: UP045
+    id: Optional[str] = None  # noqa: UP045
+    provisioning_status: Optional[str] = Field(default=None, alias="provisioningStatus")  # noqa: UP045
 
 
 class FabricStoredProcedure(BaseModel):

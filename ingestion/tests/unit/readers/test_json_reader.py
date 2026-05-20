@@ -63,7 +63,7 @@ class TestJSONReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_json_array_local(self):
         json_array = [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]
@@ -87,7 +87,7 @@ class TestJSONReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_json_object_local(self):
         json_obj = {"id": 1, "name": "Alice"}
@@ -111,7 +111,7 @@ class TestJSONReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_json_gzip_compression(self):
         json_data = [{"id": 1, "name": "Test"}]
@@ -135,7 +135,7 @@ class TestJSONReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_json_zip_compression(self):
         json_data = [{"id": 1, "name": "Test"}]
@@ -160,7 +160,7 @@ class TestJSONReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_is_json_lines_detection(self):
         import io

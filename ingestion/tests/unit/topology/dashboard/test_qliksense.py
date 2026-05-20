@@ -223,7 +223,7 @@ class QlikSenseUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.dashboard.qliksense.metadata.QliksenseSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_qliksense_config)
@@ -238,7 +238,7 @@ class QlikSenseUnitTest(TestCase):
         dashboard_list = []
         results = self.qliksense.yield_dashboard(MOCK_DASHBOARD_DETAILS)
         for result in results:
-            print(self.qliksense.context.get().__dict__)
+            print(self.qliksense.context.get().__dict__)  # noqa: T201
             if isinstance(result, Either) and result.right:
                 dashboard_list.append(result.right)
         self.assertEqual(EXPECTED_DASHBOARD, dashboard_list[0])
@@ -255,8 +255,8 @@ class QlikSenseUnitTest(TestCase):
             chart_list = []
             for result in results:
                 if isinstance(result, Either) and result.right:
-                    chart_list.append(result.right)
-            for _, (expected, original) in enumerate(zip(EXPECTED_DASHBOARDS, chart_list)):
+                    chart_list.append(result.right)  # noqa: PERF401
+            for _, (expected, original) in enumerate(zip(EXPECTED_DASHBOARDS, chart_list)):  # noqa: B905
                 self.assertEqual(expected, original)
 
     @pytest.mark.order(4)
@@ -355,7 +355,7 @@ class QlikSenseUnitTest(TestCase):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                raise Exception("GetTablesAndKeys not supported")
+                raise Exception("GetTablesAndKeys not supported")  # noqa: TRY002
             if call_count == 2:
                 return None
             if call_count == 3 and response:

@@ -16,7 +16,7 @@ bigquery unit tests
 # pylint: disable=line-too-long
 import types
 from copy import deepcopy
-from typing import Dict
+from typing import Dict  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
 
@@ -268,9 +268,9 @@ MOCK_COLUMN_DATA = [
     ],
 ]
 
-MOCK_PK_CONSTRAINT: Dict[str, Dict] = {
-    "customers": dict({"constrained_columns": ("customer_id",)}),
-    "orders": dict({"constrained_columns": ()}),
+MOCK_PK_CONSTRAINT: Dict[str, Dict] = {  # noqa: UP006
+    "customers": dict({"constrained_columns": ("customer_id",)}),  # noqa: C418
+    "orders": dict({"constrained_columns": ()}),  # noqa: C418
 }
 
 MOCK_FK_CONSTRAINT = {
@@ -400,7 +400,7 @@ class BigqueryUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection")
     @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id")
     @patch("metadata.ingestion.source.database.bigquery.connection.get_connection")
-    def __init__(self, methodName, get_connection, set_project_id, test_connection) -> None:
+    def __init__(self, methodName, get_connection, set_project_id, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         get_connection.return_value = Mock()
         test_connection.return_value = False
@@ -433,12 +433,12 @@ class BigqueryUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_database_tag_labels")
     def test_yield_database(self, get_database_tag_labels):
         get_database_tag_labels.return_value = []
-        assert EXPECTED_DATABASE == [either.right for either in self.bq_source.yield_database(MOCK_DB_NAME)]
+        assert EXPECTED_DATABASE == [either.right for either in self.bq_source.yield_database(MOCK_DB_NAME)]  # noqa: SIM300
 
     @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.get_schema_description")
     def test_yield_database_schema(self, get_schema_description):
         get_schema_description.return_value = "Some description with it's own\nnew line"
-        assert EXPTECTED_DATABASE_SCHEMA == [
+        assert EXPTECTED_DATABASE_SCHEMA == [  # noqa: SIM300
             either.right for either in self.bq_source.yield_database_schema(schema_name=MOCK_DATABASE_SCHEMA.name.root)
         ]
 
@@ -458,21 +458,21 @@ class BigqueryUnitTest(TestCase):
         for i, table in enumerate(MOCK_TABLE_NAMES):
             _get_foreign_constraints.return_value = MOCK_TABLE_CONSTRAINT[i]
             self.bq_source.inspector.get_pk_constraint = (
-                lambda table_name, schema: MOCK_PK_CONSTRAINT[table[0]]  # pylint: disable=cell-var-from-loop
+                lambda table_name, schema: MOCK_PK_CONSTRAINT[table[0]]  # pylint: disable=cell-var-from-loop  # noqa: B023
             )
             self.bq_source.inspector.get_foreign_keys = (
-                lambda table_name, schema: MOCK_FK_CONSTRAINT[table[0]]  # pylint: disable=cell-var-from-loop
+                lambda table_name, schema: MOCK_FK_CONSTRAINT[table[0]]  # pylint: disable=cell-var-from-loop  # noqa: B023
             )
             self.bq_source._get_columns_internal = lambda schema_name, table_name, db_name, inspector, table_type,: (
-                MOCK_COLUMN_DATA[i]
+                MOCK_COLUMN_DATA[i]  # noqa: B023
             )  # pylint: disable=cell-var-from-loop
 
-            self.bq_source.inspector.get_table_comment = lambda table_name, schema: {"text": table[2]}  # pylint: disable=cell-var-from-loop
+            self.bq_source.inspector.get_table_comment = lambda table_name, schema: {"text": table[2]}  # pylint: disable=cell-var-from-loop  # noqa: B023
 
             # Mock the BigQuery client get_table method for clustering fields
             mock_table = Mock()
             mock_table.clustering_fields = []  # Empty list to avoid constraint creation
-            self.bq_source.client.get_table = lambda fqn: mock_table
+            self.bq_source.client.get_table = lambda fqn: mock_table  # noqa: B023
             assert EXPECTED_TABLE[i] == [either.right for either in self.bq_source.yield_table((table[0], table[1]))]
 
     def test_topology_runner_error_handling(self):
@@ -699,7 +699,7 @@ class BigqueryLineageSourceTest(TestCase):
     @patch("metadata.ingestion.source.database.bigquery.query_parser.BigqueryQueryParserSource.set_project_id")
     def __init__(
         self,
-        methodName,
+        methodName,  # noqa: N803
         set_project_id_lineage,  # pylint: disable=unused-argument
         test_connection,  # pylint: disable=unused-argument
         get_connection,  # pylint: disable=unused-argument

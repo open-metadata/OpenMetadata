@@ -57,7 +57,7 @@ def test_all_definition_exists(metadata):
 
     test_definitions_names: List[str] = []
     for test_definition_file in test_difinitions_glob:
-        with open(test_definition_file, encoding="utf-8") as fle:
+        with open(test_definition_file, encoding="utf-8") as fle:  # noqa: PTH123
             test_definitions_names.append(json.load(fle)["name"])
     assert len(test_definitions_names) > 0
 

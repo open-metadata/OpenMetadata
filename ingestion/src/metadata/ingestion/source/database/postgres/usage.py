@@ -14,7 +14,7 @@ Postgres usage module
 
 import traceback
 from datetime import datetime
-from typing import Iterable
+from typing import Iterable  # noqa: UP035
 
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
@@ -57,7 +57,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                 row_count = 0
                 for row in rows:
                     row_count += 1
-                    row = row._asdict()
+                    row = row._asdict()  # noqa: PLW2901
                     try:
                         queries.append(
                             TableQuery(
@@ -95,7 +95,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
             logger.debug(traceback.format_exc())
 
     def get_filters(self) -> str:
-        if filter_condition := self.source_config.filterCondition:
+        if filter_condition := self.source_config.filterCondition:  # pyright: ignore[reportAttributeAccessIssue]
             filter_condition = filter_condition.replace("%", "%%")
             return f"{self.filters} AND (s.{filter_condition})"
         return self.filters

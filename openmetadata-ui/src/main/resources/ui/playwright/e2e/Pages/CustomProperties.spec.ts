@@ -25,8 +25,17 @@
  * so cleanup always runs in afterAll even when a test fails mid-way.
  */
 
-import { expect, test } from '@playwright/test';
-import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
+import { APIRequestContext, expect, test } from '@playwright/test';
+import {
+  CP_NAME_MAX_LENGTH_VALIDATION_ERROR,
+  INVALID_NAMES,
+} from '../../constant/common';
+import {
+  CUSTOM_PROPERTIES_ENTITIES,
+  CUSTOM_PROPERTY_INVALID_NAMES,
+  CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
+  NAME_SUFFIX,
+} from '../../constant/customProperty';
 import {
   CP_BASE_VALUES,
   CP_PARTIAL_SEARCH_VALUES,
@@ -72,6 +81,7 @@ import {
 import {
   addCustomPropertiesForEntity,
   createCustomPropertyForEntity,
+  CustomProperty,
   CustomPropertyTypeByName,
   deleteCreatedProperty,
   editCreatedProperty,
@@ -131,6 +141,21 @@ type OtherTypes = GlossaryTerm | Domain | DataProduct;
 type CRUDEntity = {
   key: keyof typeof CUSTOM_PROPERTIES_ENTITIES;
   makeInstance: (() => AssetTypes | OtherTypes) | null;
+};
+
+type ColumnsTestData = {
+  customPropertyValue: Record<
+    string,
+    {
+      value: string;
+      newValue: string;
+      property: CustomProperty;
+    }
+  >;
+  cleanupUser: (apiContext: APIRequestContext) => Promise<void>;
+  users: Record<string, string>;
+  columnFqn: string;
+  tableFqn: string;
 };
 
 const BASIC_PROPERTIES = [
@@ -251,11 +276,15 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       createdCPData: [],
     };
     const propertyNames: Record<string, string> = {};
-    const dashboardSearchPropertyName = `cp-${uuid()}-${entity.name}`;
+    const dashboardSearchPropertyName = `cp-${uuid()}-${
+      entity.name
+    }${NAME_SUFFIX}`;
     const dashboardPropertyValue = `EXECUTIVE_DASHBOARD_${uuid()}`;
 
     // Pipeline-specific state
-    const pipelineSearchPropertyName = `cp-${uuid()}-${entity.name}`;
+    const pipelineSearchPropertyName = `cp-${uuid()}-${
+      entity.name
+    }${NAME_SUFFIX}`;
     const pipelinePropertyValue = `ETL_PRODUCTION_${uuid()}`;
 
     test.beforeAll(async ({ browser }) => {
@@ -303,7 +332,6 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
       if (makeInstance !== null) {
-        await mainEntity.cleanupCustomProperty(apiContext);
         await mainEntity.delete(apiContext);
         if (key === 'entity_dataProduct') {
           for (const domain of (mainEntity as DataProduct).getDomains()) {
@@ -336,7 +364,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
     BASIC_PROPERTIES.forEach((property) => {
       test(property, async ({ page }) => {
-        const propertyName = `cp-${uuid()}-${entity.name}`;
+        test.slow();
+        const propertyName = `cp-${uuid()}-${entity.name}${NAME_SUFFIX}`;
 
         await settingClick(
           page,
@@ -371,7 +400,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
     CONFIG_PROPERTIES.forEach((propertyConfig) => {
       test(propertyConfig.name, async ({ page }) => {
         test.slow();
-        const propertyName = `cp-${uuid()}-${entity.name}`;
+        const propertyName = `cp-${uuid()}-${entity.name}${NAME_SUFFIX}`;
 
         await settingClick(
           page,
@@ -427,7 +456,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
     if (makeInstance !== null) {
       test(`Set & Update all CP types on ${entity.name}`, async ({ page }) => {
-        test.slow(true);
+        // 5 minutes timeout since the test handles set->update operation on all
+        // custom property types sequentially
+        test.setTimeout(300000);
         const properties = Object.values(CustomPropertyTypeByName);
 
         await test.step('Set all CP types', async () => {
@@ -495,9 +526,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await editButton.click();
 
           await page.locator("pre[role='presentation']").last().click();
-          await page.keyboard.type(
-            "SELECT id, name, email\nFROM users\nWHERE active = true\nAND department = 'engineering'\nORDER BY created_at DESC\nLIMIT 100"
-          );
+          const value =
+            "SELECT id, name, email\nFROM users\nWHERE active = true\nAND department = 'engineering'\nORDER BY created_at DESC\nLIMIT 100";
+          await page.keyboard.type(value + '\n' + value);
 
           const patchResponse = page.waitForResponse(
             `/api/v1/${entity.entityApiType}/*`
@@ -608,6 +639,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       test('User visible in right panel when added as entityReferenceList custom property', async ({
         page,
       }) => {
+        test.slow();
         const { apiContext, afterAction } = await getApiContext(page);
         const propertyName =
           mainEntity.customPropertyValue[
@@ -924,137 +956,286 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           ).toBeVisible();
         });
       });
-      test('no duplicate card after update', async ({ page }) => {
-        test.slow();
 
-        const propertyName = `\\ pw.edge.update.${uuid()} \\`;
+      // #27482 – Regression: between operator was dropping the upper bound
+      if (key === 'entity_table') {
+        test('Number CP between operator sends gte/lte bounds (Issue #27482)', async ({
+          page,
+        }) => {
+          test.slow();
+          const numberPropertyName = `pwNumberBetweenTest${uuid()}`;
+          const assignedValue = '55.7';
 
-        await test.step('Create property', async () => {
-          await settingClick(
-            page,
-            entity.entityApiType as SettingOptionsType,
-            true
-          );
-          await addCustomPropertiesForEntity({
-            page,
-            propertyName,
-            customPropertyData: entity,
-            customType: 'String',
+          await test.step('Create number custom property and assign value', async () => {
+            await settingClick(
+              page,
+              entity.entityApiType as SettingOptionsType,
+              true
+            );
+
+            await addCustomPropertiesForEntity({
+              page,
+              propertyName: numberPropertyName,
+              customPropertyData: entity,
+              customType: 'Number',
+            });
+
+            await mainEntity.visitEntityPage(page);
+
+            const customPropertyResponse = page.waitForResponse(
+              '/api/v1/metadata/types/name/table?fields=customProperties'
+            );
+            await page.getByTestId('custom_properties').click();
+            await customPropertyResponse;
+
+            await page.locator('.ant-skeleton-active').waitFor({
+              state: 'detached',
+            });
+
+            await setValueForProperty({
+              page,
+              propertyName: numberPropertyName,
+              value: assignedValue,
+              propertyType: 'number',
+              endpoint: EntityTypeEndpoint.Table,
+            });
+          });
+
+          await test.step('between [50, 60]: query_filter must contain gte:50 and lte:60', async () => {
+            await sidebarClick(page, SidebarItem.EXPLORE);
+            await showAdvancedSearchDialog(page);
+
+            await applyCustomPropertyFilter(
+              page,
+              numberPropertyName,
+              'between',
+              CP_RANGE_VALUES.number,
+              'Table'
+            );
+
+            const searchResponse = page.waitForResponse(
+              '/api/v1/search/query?*index=dataAsset*'
+            );
+            await page.getByTestId('apply-btn').click();
+            const res = await searchResponse;
+
+            const url = res.request().url();
+            const params = new URLSearchParams(url.split('?')[1]);
+            const queryFilter = JSON.parse(params.get('query_filter') ?? '{}');
+            const queryFilterStr = JSON.stringify(queryFilter);
+
+            expect(queryFilterStr).toContain('"gte":50');
+            expect(queryFilterStr).toContain('"lte":60');
+
+            await expect(
+              page.getByTestId(
+                `table-data-card_${responseData.fullyQualifiedName ?? ''}`
+              )
+            ).toBeVisible();
+
+            await clearAdvancedSearchFilters(page);
+          });
+
+          await test.step('not_between [1, 5]: query_filter must contain must_not with gte:1 and lte:5', async () => {
+            await sidebarClick(page, SidebarItem.EXPLORE);
+            await showAdvancedSearchDialog(page);
+
+            await applyCustomPropertyFilter(
+              page,
+              numberPropertyName,
+              'not_between',
+              { start: 1, end: 5 },
+              'Table'
+            );
+
+            const searchResponse = page.waitForResponse(
+              '/api/v1/search/query?*index=dataAsset*'
+            );
+            await page.getByTestId('apply-btn').click();
+            const res = await searchResponse;
+
+            const url = res.request().url();
+            const params = new URLSearchParams(url.split('?')[1]);
+            const queryFilter = JSON.parse(params.get('query_filter') ?? '{}');
+            const queryFilterStr = JSON.stringify(queryFilter);
+
+            expect(queryFilterStr).toContain('"must_not"');
+            expect(queryFilterStr).toContain('"gte":1');
+            expect(queryFilterStr).toContain('"lte":5');
+
+            await clearAdvancedSearchFilters(page);
+          });
+
+          await test.step('between [100, 200]: entity with value 55.7 should NOT be visible', async () => {
+            await sidebarClick(page, SidebarItem.EXPLORE);
+            await showAdvancedSearchDialog(page);
+
+            await applyCustomPropertyFilter(
+              page,
+              numberPropertyName,
+              'between',
+              { start: 100, end: 200 },
+              'Table'
+            );
+
+            const searchResponse = page.waitForResponse(
+              '/api/v1/search/query?*index=dataAsset*'
+            );
+            await page.getByTestId('apply-btn').click();
+            await searchResponse;
+
+            await expect(
+              page.getByTestId(
+                `table-data-card_${responseData.fullyQualifiedName ?? ''}`
+              )
+            ).not.toBeVisible();
+
+            await clearAdvancedSearchFilters(page);
+          });
+
+          await test.step('Cleanup', async () => {
+            await settingClick(
+              page,
+              entity.entityApiType as SettingOptionsType,
+              true
+            );
+            await deleteCreatedProperty(page, numberPropertyName);
           });
         });
 
-        await test.step('Set initial value', async () => {
-          await mainEntity.visitEntityPage(page);
-          await waitForAllLoadersToDisappear(page);
+        test('no duplicate card after update', async ({ page }) => {
+          test.slow();
 
-          await setValueForProperty({
-            page,
-            propertyName,
-            value: 'initial value',
-            propertyType: 'string',
-            endpoint: EntityTypeEndpoint.Table,
+          const propertyName = `pw.edge.update.${uuid()}`;
+
+          await test.step('Create property', async () => {
+            await settingClick(
+              page,
+              entity.entityApiType as SettingOptionsType,
+              true
+            );
+            await addCustomPropertiesForEntity({
+              page,
+              propertyName,
+              customPropertyData: entity,
+              customType: 'String',
+            });
           });
 
-          await validateValueForProperty({
-            page,
-            propertyName,
-            value: 'initial value',
-            propertyType: 'string',
+          await test.step('Set initial value', async () => {
+            await mainEntity.visitEntityPage(page);
+            await waitForAllLoadersToDisappear(page);
+
+            await setValueForProperty({
+              page,
+              propertyName,
+              value: 'initial value',
+              propertyType: 'string',
+              endpoint: EntityTypeEndpoint.Table,
+            });
+
+            await validateValueForProperty({
+              page,
+              propertyName,
+              value: 'initial value',
+              propertyType: 'string',
+            });
+          });
+
+          await test.step('Update value and verify only one card exists', async () => {
+            await setValueForProperty({
+              page,
+              propertyName,
+              value: 'updated value',
+              propertyType: 'string',
+              endpoint: EntityTypeEndpoint.Table,
+            });
+
+            await validateValueForProperty({
+              page,
+              propertyName,
+              value: 'updated value',
+              propertyType: 'string',
+            });
+
+            await expect(
+              page.getByTestId(`custom-property-${propertyName}-card`)
+            ).toHaveCount(1);
+            await expect(
+              page.getByTestId(`custom-property-"${propertyName}"-card`)
+            ).toHaveCount(0);
+          });
+
+          await test.step('Value persists after reload', async () => {
+            await page.reload();
+            await waitForAllLoadersToDisappear(page);
+
+            await validateValueForProperty({
+              page,
+              propertyName,
+              value: 'updated value',
+              propertyType: 'string',
+            });
+
+            await expect(
+              page.getByTestId(`custom-property-${propertyName}-card`)
+            ).toHaveCount(1);
+            await expect(
+              page.getByTestId(`custom-property-"${propertyName}"-card`)
+            ).toHaveCount(0);
+          });
+
+          await test.step('Updated value is searchable via Advanced Search', async () => {
+            await sidebarClick(page, SidebarItem.EXPLORE);
+
+            await showAdvancedSearchDialog(page);
+
+            const ruleLocator = page.locator('.rule').nth(0);
+
+            await selectOption(
+              page,
+              ruleLocator.locator('.rule--field .ant-select'),
+              'Custom Properties',
+              true
+            );
+
+            await selectOption(
+              page,
+              ruleLocator.locator('.rule--field .ant-select'),
+              'Table',
+              true
+            );
+
+            await selectOption(
+              page,
+              ruleLocator.locator('.rule--field .ant-select'),
+              propertyName,
+              true
+            );
+
+            await selectOption(
+              page,
+              ruleLocator.locator('.rule--operator .ant-select'),
+              CONDITIONS_MUST.equalTo.name
+            );
+
+            await ruleLocator
+              .locator('.rule--widget--TEXT input[type="text"]')
+              .fill('updated value');
+
+            await advanceSearchSaveFilter(page, 'updated value');
+
+            await expect(
+              page.getByTestId(
+                `table-data-card_${
+                  (mainEntity as TableClass).entityResponseData
+                    .fullyQualifiedName
+                }`
+              )
+            ).toBeVisible();
           });
         });
-
-        await test.step('Update value and verify only one card exists', async () => {
-          await setValueForProperty({
-            page,
-            propertyName,
-            value: 'updated value',
-            propertyType: 'string',
-            endpoint: EntityTypeEndpoint.Table,
-          });
-
-          await validateValueForProperty({
-            page,
-            propertyName,
-            value: 'updated value',
-            propertyType: 'string',
-          });
-
-          await expect(
-            page.getByTestId(`custom-property-${propertyName}-card`)
-          ).toHaveCount(1);
-          await expect(
-            page.getByTestId(`custom-property-"${propertyName}"-card`)
-          ).toHaveCount(0);
-        });
-
-        await test.step('Value persists after reload', async () => {
-          await page.reload();
-          await waitForAllLoadersToDisappear(page);
-
-          await validateValueForProperty({
-            page,
-            propertyName,
-            value: 'updated value',
-            propertyType: 'string',
-          });
-
-          await expect(
-            page.getByTestId(`custom-property-${propertyName}-card`)
-          ).toHaveCount(1);
-          await expect(
-            page.getByTestId(`custom-property-"${propertyName}"-card`)
-          ).toHaveCount(0);
-        });
-
-        await test.step('Updated value is searchable via Advanced Search', async () => {
-          await sidebarClick(page, SidebarItem.EXPLORE);
-
-          await showAdvancedSearchDialog(page);
-
-          const ruleLocator = page.locator('.rule').nth(0);
-
-          await selectOption(
-            page,
-            ruleLocator.locator('.rule--field .ant-select'),
-            'Custom Properties',
-            true
-          );
-
-          await selectOption(
-            page,
-            ruleLocator.locator('.rule--field .ant-select'),
-            'Table',
-            true
-          );
-
-          await selectOption(
-            page,
-            ruleLocator.locator('.rule--field .ant-select'),
-            propertyName,
-            true
-          );
-
-          await selectOption(
-            page,
-            ruleLocator.locator('.rule--operator .ant-select'),
-            CONDITIONS_MUST.equalTo.name
-          );
-
-          await ruleLocator
-            .locator('.rule--widget--TEXT input[type="text"]')
-            .fill('updated value');
-
-          await advanceSearchSaveFilter(page, 'updated value');
-
-          await expect(
-            page.getByTestId(
-              `table-data-card_${
-                (mainEntity as TableClass).entityResponseData.fullyQualifiedName
-              }`
-            )
-          ).toBeVisible();
-        });
-      });
+      }
     }
 
     // ── Container-specific extra tests ─────────────────────────────────────
@@ -1063,6 +1244,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       test('should show No Data placeholder when hyperlink has no value', async ({
         page,
       }) => {
+        test.slow();
         const propertyName =
           mainEntity.customPropertyValue[CustomPropertyTypeByName.HYPERLINK_CP]
             .property.name;
@@ -1083,6 +1265,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       test('should reject javascript: protocol URLs for XSS protection', async ({
         page,
       }) => {
+        test.slow();
         const propertyName =
           mainEntity.customPropertyValue[CustomPropertyTypeByName.HYPERLINK_CP]
             .property.name;
@@ -1108,6 +1291,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       });
 
       test('should accept valid http and https URLs', async ({ page }) => {
+        test.slow();
         const propertyName =
           mainEntity.customPropertyValue[CustomPropertyTypeByName.HYPERLINK_CP]
             .property.name;
@@ -1147,6 +1331,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       test('should display URL when no display text is provided', async ({
         page,
       }) => {
+        test.slow();
         const propertyName =
           mainEntity.customPropertyValue[CustomPropertyTypeByName.HYPERLINK_CP]
             .property.name;
@@ -2772,6 +2957,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         test('Table CP - Name column with all operators', async ({ page }) => {
+          test.slow();
           const value = CP_BASE_VALUES.tableCp.rows[0]['Name'];
           const partialValue = value.substring(1, 4);
           const basePropertyName = propertyNames['table-cp'];
@@ -2866,6 +3052,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         test('Table CP - Role column with all operators', async ({ page }) => {
+          test.slow();
           const value = CP_BASE_VALUES.tableCp.rows[0]['Role'];
           const partialValue = value.substring(1, 4);
           const basePropertyName = propertyNames['table-cp'];
@@ -2960,6 +3147,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         test('Table CP - Sr No column with all operators', async ({ page }) => {
+          test.slow();
           const value = CP_BASE_VALUES.tableCp.rows[1]['Sr No'];
           const basePropertyName = propertyNames['table-cp'];
           const columnPropertyName = `${basePropertyName} - Sr No`;
@@ -3330,43 +3518,50 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
     // ── TableColumn-specific extra test ────────────────────────────────────
 
     if (key === 'entity_tableColumn') {
-      test('Set & update column-level custom property', async ({ page }) => {
-        // 5 minutes timeout for this test since it handles all cp types
-        test.setTimeout(300000);
+      test.describe('Set & update column-level custom property', async () => {
+        const testData: ColumnsTestData = {} as ColumnsTestData;
 
-        const { apiContext, afterAction } = await getApiContext(page);
+        test.beforeAll(async ({ browser }) => {
+          const { apiContext, afterAction } = await createNewPage(browser);
 
-        const data = await createCustomPropertyForEntity(
-          apiContext,
-          EntityTypeEndpoint.TableColumn
-        );
-        const customPropertyValue = data.customProperties;
-        const cleanupUser = data.cleanupUser;
-        const users = data.userNames;
+          const data = await createCustomPropertyForEntity(
+            apiContext,
+            EntityTypeEndpoint.TableColumn
+          );
+          testData.customPropertyValue = data.customProperties;
+          testData.cleanupUser = data.cleanupUser;
+          testData.users = data.userNames;
 
-        const columnFqn =
-          tableForColumnTest?.entityResponseData.columns[0]
-            .fullyQualifiedName ?? '';
-        const tableFqn =
-          tableForColumnTest?.entityResponseData.fullyQualifiedName ?? '';
+          testData.columnFqn =
+            tableForColumnTest?.entityResponseData.columns[0]
+              .fullyQualifiedName ?? '';
+          testData.tableFqn =
+            tableForColumnTest?.entityResponseData.fullyQualifiedName ?? '';
 
-        const properties = Object.values(CustomPropertyTypeByName);
+          await afterAction();
+        });
 
-        for (const type of properties) {
-          await test.step(`Set ${type} custom property on column and verify in UI`, async () => {
+        test.afterAll(async ({ browser }) => {
+          const { apiContext, afterAction } = await createNewPage(browser);
+
+          await testData.cleanupUser?.(apiContext);
+          await afterAction();
+        });
+
+        for (const type of Object.values(CustomPropertyTypeByName)) {
+          test(`Set ${type} custom property on column and verify in UI`, async ({
+            page,
+          }) => {
             await verifyTableColumnCustomPropertyPersistence({
               page,
-              columnFqn,
-              tableFqn,
-              propertyName: customPropertyValue[type].property.name,
+              columnFqn: testData.columnFqn,
+              tableFqn: testData.tableFqn,
+              propertyName: testData.customPropertyValue[type].property.name,
               propertyType: type,
-              users,
+              users: testData.users,
             });
           });
         }
-
-        await cleanupUser(apiContext);
-        await afterAction();
       });
     }
 
@@ -3493,5 +3688,178 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         }
       });
     }
+  });
+});
+
+test.describe('Custom property name validation', () => {
+  test.use({ storageState: 'playwright/.auth/admin.json' });
+
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+    await settingClick(page, GlobalSettingOptions.TABLES, true);
+    await page.click('[data-testid="add-field-button"]');
+  });
+
+  const nameInput = '[data-testid="name"] input';
+  const nameError = '#name_help';
+
+  test('should show error when name starts with a non-alphanumeric character', async ({
+    page,
+  }) => {
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.STARTS_WITH_SPECIAL_CHAR
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains a colon', async ({ page }) => {
+    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_COLON);
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains a dollar sign', async ({
+    page,
+  }) => {
+    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_DOLLAR);
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains a caret', async ({ page }) => {
+    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_CARET);
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains a double quote', async ({
+    page,
+  }) => {
+    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_QUOTE);
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains a backslash', async ({ page }) => {
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_BACKSLASH
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains a less-than sign', async ({
+    page,
+  }) => {
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_LESS_THAN
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains a greater-than sign', async ({
+    page,
+  }) => {
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_GREATER_THAN
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains an ampersand', async ({
+    page,
+  }) => {
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_AMPERSAND
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains an asterisk', async ({ page }) => {
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_ASTERISK
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains a forward slash', async ({
+    page,
+  }) => {
+    await page.fill(
+      nameInput,
+      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_FORWARD_SLASH
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should show error when name contains a tilde', async ({ page }) => {
+    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_TILDE);
+
+    await expect(page.locator(nameError)).toContainText(
+      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+    );
+  });
+
+  test('should accept a valid name starting with a letter', async ({
+    page,
+  }) => {
+    await page.fill(nameInput, 'validName_123');
+
+    await expect(page.locator(nameError)).not.toBeVisible();
+  });
+
+  test('should accept a valid name with allowed special characters', async ({
+    page,
+  }) => {
+    await page.fill(nameInput, "valid Name.!@#%`()_-=+{}[]|;',.?");
+
+    await expect(page.locator(nameError)).not.toBeVisible();
+  });
+
+  test('should show error when name exceeds 256 characters', async ({
+    page,
+  }) => {
+    await page.fill(
+      nameInput,
+      `${INVALID_NAMES.MAX_LENGTH}${INVALID_NAMES.MAX_LENGTH}`
+    );
+
+    await expect(page.locator(nameError)).toContainText(
+      CP_NAME_MAX_LENGTH_VALIDATION_ERROR
+    );
   });
 });

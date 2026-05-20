@@ -175,8 +175,8 @@ class TestHttpTransport:
 
         with patch("metadata.ingestion.source.mcp.client.logger") as mock_logger:
             transport.send_notification("notifications/initialized", {})
-            mock_logger.warning.assert_called_once()
-            assert "server down" in str(mock_logger.warning.call_args)
+            mock_logger.error.assert_called_once()
+            assert "server down" in str(mock_logger.error.call_args)
 
 
 class TestMcpClient:

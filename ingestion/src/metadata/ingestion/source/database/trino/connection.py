@@ -59,7 +59,7 @@ from metadata.utils.credentials import get_azure_access_token
 # pylint: disable=unused-argument
 def _is_disconnect(self, e, connection, cursor):
     """is_disconnect method for the Databricks dialect"""
-    if "JWT expired" in str(e):
+    if "JWT expired" in str(e):  # noqa: SIM103
         return True
     return False
 
@@ -75,7 +75,7 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         # here we are creating a copy of connection, because we need to dynamically
         # add auth params to connectionArguments, which we do no intend to store
         # in original connection object and in OpenMetadata database
-        from trino.sqlalchemy.dialect import TrinoDialect
+        from trino.sqlalchemy.dialect import TrinoDialect  # noqa: PLC0415
 
         TrinoDialect.is_disconnect = _is_disconnect  # type: ignore
 
@@ -83,7 +83,7 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         connection_copy = deepcopy(connection)
 
         if hasattr(connection.authType, "azureConfig"):
-            auth_type = cast(azureConfig.AzureConfigurationSource, connection.authType)
+            auth_type = cast(azureConfig.AzureConfigurationSource, connection.authType)  # noqa: TC006
             access_token = get_azure_access_token(auth_type)
             if not connection.connectionOptions:
                 connection.connectionOptions = init_empty_connection_options()
@@ -101,8 +101,8 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part
@@ -226,7 +226,7 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         """
         Get the basic auth dictionary for the trino connection
         """
-        auth_type = cast(basicAuth.BasicAuth, connection.authType)
+        auth_type = cast(basicAuth.BasicAuth, connection.authType)  # noqa: TC006
         return {
             "authType": "basic",
             "username": connection.username,
@@ -239,7 +239,7 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         Get the basic auth dictionary for the trino connection
         """
         assert connection_args.root is not None
-        auth_type = cast(basicAuth.BasicAuth, connection.authType)
+        auth_type = cast(basicAuth.BasicAuth, connection.authType)  # noqa: TC006
 
         connection_args.root["auth"] = BasicAuthentication(
             connection.username,
@@ -254,7 +254,7 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         """
         Get the jwt auth dictionary for the trino connection
         """
-        auth_type = cast(jwtAuth.JwtAuth, connection.authType)
+        auth_type = cast(jwtAuth.JwtAuth, connection.authType)  # noqa: TC006
 
         return {
             "authType": "jwt",
@@ -267,7 +267,7 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         Set the jwt auth for the trino connection
         """
         assert connection_args.root is not None
-        auth_type = cast(jwtAuth.JwtAuth, connection.authType)
+        auth_type = cast(jwtAuth.JwtAuth, connection.authType)  # noqa: TC006
 
         connection_args.root["auth"] = JWTAuthentication(auth_type.jwt.get_secret_value())
 
@@ -320,5 +320,5 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         """
         Get the azure token for the trino connection
         """
-        auth_type = cast(azureConfig.AzureConfigurationSource, connection.authType)
+        auth_type = cast(azureConfig.AzureConfigurationSource, connection.authType)  # noqa: TC006
         return get_azure_access_token(auth_type)

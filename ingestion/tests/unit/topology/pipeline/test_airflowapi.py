@@ -192,7 +192,7 @@ class TestClientApiVersionDetection:
 
         def side_effect(path):
             if "/v2/" in path:
-                raise Exception("Not found")
+                raise Exception("Not found")  # noqa: TRY002
             return {"version": "2.9.0"}
 
         mock_rest.get.side_effect = side_effect
@@ -776,7 +776,7 @@ class TestGetOwners:
         def side_effect(name, is_owner):
             if name == "admin":
                 return EntityReferenceList(root=[admin_ref])
-            raise Exception(f"User {name} not found")
+            raise Exception(f"User {name} not found")  # noqa: TRY002
 
         source.metadata.get_reference_by_name.side_effect = side_effect
 

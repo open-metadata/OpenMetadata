@@ -91,7 +91,7 @@ class User(Base):
 def create_sqlite_table(worker_id):
     """create and delete sqlite table"""
     worker_suffix = f"_{worker_id}" if worker_id != "master" else ""
-    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}{worker_suffix}.db")
+    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}{worker_suffix}.db")  # noqa: PTH118, PTH120, PTH122
     sqlite_conn = SQLiteConnection(
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
@@ -224,8 +224,8 @@ def create_sqlite_table(worker_id):
     yield runner
 
     User.__table__.drop(bind=engine)
-    if os.path.exists(db_path):
-        os.remove(db_path)
+    if os.path.exists(db_path):  # noqa: PTH110
+        os.remove(db_path)  # noqa: PTH107
 
 
 @pytest.fixture

@@ -19,7 +19,7 @@ from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuiteConfigType,
 )
 
-from ..e2e_types import E2EType
+from ..e2e_types import E2EType  # noqa: TID252
 
 
 class BaseBuilder:
@@ -58,7 +58,12 @@ class ProfilerConfigBuilder(BaseBuilder):
         self.config["source"]["sourceConfig"] = {
             "config": {
                 "type": "Profiler",
-                "profileSample": self.profilerSample,
+                "profileSampleConfig": {
+                    "sampleConfigType": "STATIC",
+                    "config": {
+                        "profileSample": self.profilerSample,
+                    },
+                },
             }
         }
 

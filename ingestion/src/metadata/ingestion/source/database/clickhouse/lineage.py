@@ -34,7 +34,7 @@ class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):
             query_kind='Create' 
             or (query_kind='Insert' and query ilike '%%insert%%into%%select%%')
         )
-    """
+    """  # noqa: W291
 
     database_field = ""
 

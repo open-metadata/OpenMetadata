@@ -387,7 +387,7 @@ def sqlite_engine():
     """Real, in-memory SQLite engine with an explicit QueuePool."""
     engine = create_engine("sqlite:///:memory:", poolclass=QueuePool)
     yield engine
-    try:
+    try:  # noqa: SIM105
         engine.dispose()
     except Exception:
         pass
@@ -528,7 +528,7 @@ class _FakeSource(MultiDBSource):
         return self._conn
 
     def close(self):
-        try:
+        try:  # noqa: SIM105
             self._conn.close()
         except Exception:
             pass
@@ -554,7 +554,7 @@ class TestExecuteDatabaseQueryEagerFetch:
             conn.execute(text("INSERT INTO dbs(id, name) VALUES (1, 'alpha'), (2, 'beta'), (3, 'gamma')"))
             conn.commit()
         yield engine
-        try:
+        try:  # noqa: SIM105
             engine.dispose()
         except Exception:
             pass

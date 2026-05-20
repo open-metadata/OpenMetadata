@@ -14,8 +14,10 @@ Module to define overridden dialect methods
 """
 
 import operator  # noqa: I001
+import os
+from collections import OrderedDict
 from functools import reduce
-from typing import Dict, Optional
+from typing import Dict, Optional  # noqa: UP035
 
 import sqlalchemy.types as sqltypes
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect
@@ -62,7 +64,38 @@ logger = ingestion_logger()
 
 dialect = SnowflakeDialect()
 Query = str
-QueryMap = Dict[str, Query]
+QueryMap = Dict[str, Query]  # noqa: UP006
+
+
+# How many schemas' column dicts we keep in the get_schema_columns cache
+# per Inspector. Inspectors are per-thread in OpenMetadata's setup
+# (common_db_source.py:721), so this is effectively a per-thread bound:
+# the schema each thread is currently processing, plus 1 buffer slot for
+# the just-finished schema. That bound is N+1 in the "1 thread" case and
+# in general gives each thread its own current+previous slots, so no
+# thread's actively-used schema can be evicted by another thread cycling
+# through small schemas.
+#
+# Without this bound info_cache only clears between databases
+# (_release_engine in common_db_source.py:171), so multi-schema runs
+# accumulate every schema's column metadata in RAM -- ~1.6 GB per
+# pathologically wide schema, OOM-killing 4 GB pods on databases like
+# COM_US_IMDNA_ADL.
+_DEFAULT_SCHEMA_COLUMNS_CACHE_SIZE = 2
+try:
+    SCHEMA_COLUMNS_CACHE_SIZE = max(
+        1,
+        int(
+            os.environ.get(
+                "OM_SNOWFLAKE_SCHEMA_COLUMNS_CACHE_SIZE",
+                _DEFAULT_SCHEMA_COLUMNS_CACHE_SIZE,
+            )
+        ),
+    )
+except ValueError:
+    SCHEMA_COLUMNS_CACHE_SIZE = _DEFAULT_SCHEMA_COLUMNS_CACHE_SIZE
+
+_SCHEMA_COLUMNS_LRU_KEY = "_om_snowflake_schema_columns_lru"
 
 
 TABLE_QUERY_MAPS = {
@@ -108,7 +141,7 @@ def _denormalize_quote_join(*idents):
     return ".".join(normalized_identifiers)
 
 
-def _quoted_name(entity_name: Optional[str]) -> Optional[str]:
+def _quoted_name(entity_name: Optional[str]) -> Optional[str]:  # noqa: UP045
     if entity_name:
         return fqn.quote_name(entity_name)
 
@@ -178,7 +211,7 @@ def get_stage_names_reflection(self, schema=None, **kw):
         return self.dialect.get_stage_names(conn, schema, info_cache=self.info_cache, **kw)
 
 
-def _get_query_map(incremental: Optional[IncrementalConfig], query_maps: Dict[str, QueryMap]):
+def _get_query_map(incremental: Optional[IncrementalConfig], query_maps: Dict[str, QueryMap]):  # noqa: UP006, UP045
     """Returns the proper queries depending if the extraction is Incremental or Full."""
     if incremental and incremental.enabled:
         return query_maps["incremental"]
@@ -189,10 +222,10 @@ def _get_query_parameters(
     self,
     connection,
     schema: str,
-    incremental: Optional[IncrementalConfig],
-    account_usage: Optional[str] = None,
-    include_transient_tables: Optional[bool] = False,
-    include_views: Optional[bool] = False,
+    incremental: Optional[IncrementalConfig],  # noqa: UP045
+    account_usage: Optional[str] = None,  # noqa: UP045
+    include_transient_tables: Optional[bool] = False,  # noqa: UP045
+    include_views: Optional[bool] = False,  # noqa: UP045
 ):
     """Returns the proper query parameters depending if the extraction is Incremental or Full"""
     parameters = {
@@ -242,7 +275,7 @@ def get_table_names(self, connection, schema: str, **kw):
             for row in cursor
         ]
     )
-    return result
+    return result  # noqa: RET504
 
 
 def _get_table_type(table_type: str) -> TableType:
@@ -274,7 +307,7 @@ def get_view_names(self, connection, schema, **kw):
     result = SnowflakeTableList(
         tables=[SnowflakeTable(name=self.normalize_name(row[0]), deleted=row[1]) for row in cursor]
     )
-    return result
+    return result  # noqa: RET504
 
 
 def get_stream_names(self, connection, schema, **kw):
@@ -289,7 +322,7 @@ def get_stream_names(self, connection, schema, **kw):
     result = SnowflakeTableList(
         tables=[SnowflakeTable(name=self.normalize_name(row[1]), deleted=None) for row in cursor]
     )
-    return result
+    return result  # noqa: RET504
 
 
 def get_stage_names(self, connection, schema, **kw):
@@ -306,7 +339,7 @@ def get_stage_names(self, connection, schema, **kw):
             for row in cursor
         ]
     )
-    return result
+    return result  # noqa: RET504
 
 
 @reflection.cache
@@ -371,11 +404,76 @@ def normalize_names(self, name):  # pylint: disable=unused-argument
     return name
 
 
+def _store_schema_columns_in_lru(info_cache, schema, value) -> None:
+    """Add ``value`` (the schema columns dict, or ``None`` for the 90030
+    fallback) to the bounded LRU and evict the oldest entry if the cache
+    exceeds SCHEMA_COLUMNS_CACHE_SIZE. When an entry is evicted, drop the
+    per-table ``get_columns`` cache entries for that schema too so the
+    column data is actually freed."""
+    if info_cache is None:
+        return
+    lru: OrderedDict = info_cache.setdefault(_SCHEMA_COLUMNS_LRU_KEY, OrderedDict())
+    lru[schema] = value
+    lru.move_to_end(schema)
+    while len(lru) > SCHEMA_COLUMNS_CACHE_SIZE:
+        evicted_schema, _ = lru.popitem(last=False)
+        _evict_per_table_column_entries(info_cache, evicted_schema)
+
+
+def _evict_per_table_column_entries(info_cache: dict, schema: str) -> None:
+    """Remove per-table get_columns @reflection.cache entries for ``schema``.
+
+    Each per-table cache entry holds the list returned by
+    ``schema_columns[table_name]`` -- the SAME list object that lives inside
+    the schema-wide dict. So dropping the schema-wide dict from our LRU is
+    not enough on its own: the column data is still pinned via per-table
+    entries until they are removed too.
+
+    @reflection.cache key layout is
+    ``(fn_name, server_version_info, default_schema_name, args, kw_items, exclude)``
+    where ``args`` is the positional-arg tuple after ``(self, connection)``.
+    For ``get_columns(table_name, schema)`` that is ``(table_name, schema)``.
+    The check is defensive so a SQLAlchemy version that changes the layout
+    just leaves entries in place rather than crashing.
+    """
+    to_drop = []
+    for key in info_cache:
+        if not isinstance(key, tuple) or len(key) < 4 or key[0] != "get_columns":
+            continue
+        args = key[3]
+        if isinstance(args, tuple) and len(args) >= 2 and args[1] == schema:
+            to_drop.append(key)
+    for key in to_drop:
+        info_cache.pop(key, None)
+
+
 # pylint: disable=too-many-locals,protected-access
-@reflection.cache
 def get_schema_columns(self, connection, schema, **kw):
-    """Get all columns in the schema, if we hit 'Information schema query returned too much data' problem return
-    None, as it is cacheable and is an unexpected return type for this function"""
+    """Get all columns in the schema.
+
+    Returns ``None`` if Snowflake refuses the bulk information_schema query
+    with errno 90030 ("Information schema query returned too much data") --
+    callers (``get_columns`` below) treat that as a signal to fall back to
+    per-table reflection.
+
+    Caching: this function is NOT decorated with ``@reflection.cache``. The
+    stock decorator would keep every schema's column dict in info_cache for
+    the entire database run (info_cache is only cleared between databases
+    in common_db_source.py:171), and a single pathologically wide schema
+    can be ~1.6 GB. Instead we keep a bounded LRU of size
+    SCHEMA_COLUMNS_CACHE_SIZE under a private key on info_cache, which is
+    already per-thread via _inspector_map. When we evict a schema from the
+    LRU we also drop the per-table ``get_columns`` entries for it so the
+    column data is actually freed (otherwise it stays pinned via per-table
+    cache references).
+    """
+    info_cache = kw.get("info_cache")
+    if info_cache is not None:
+        lru: OrderedDict = info_cache.setdefault(_SCHEMA_COLUMNS_LRU_KEY, OrderedDict())
+        if schema in lru:
+            lru.move_to_end(schema)
+            return lru[schema]
+
     ans = {}
     current_database, _ = self._current_database_schema(connection, **kw)
     full_schema_name = _denormalize_quote_join(current_database, fqn.quote_name(schema))
@@ -388,8 +486,12 @@ def get_schema_columns(self, connection, schema, **kw):
 
     except sa_exc.ProgrammingError as p_err:
         if p_err.orig.errno == 90030:
-            # This means that there are too many tables in the schema, we need to go more granular
-            return None  # None triggers _get_table_columns while staying cacheable
+            # Too many tables in the schema for the bulk query; signal the
+            # per-table fallback in get_columns by returning None. Cache the
+            # None so subsequent tables in the same schema don't re-run the
+            # bulk query just to hit 90030 again.
+            _store_schema_columns_in_lru(info_cache, schema, None)
+            return None
         raise
     for (
         table_name,
@@ -406,8 +508,16 @@ def get_schema_columns(self, connection, schema, **kw):
         identity_increment,
         ordinal_position,
     ) in result:
-        table_name = self.normalize_name(fqn.quote_name(table_name))
-        column_name = self.normalize_name(column_name)
+        try:
+            table_name = self.normalize_name(fqn.quote_name(table_name))  # noqa: PLW2901
+        except ValueError:
+            logger.warning(
+                "Skipping column row in schema %s with unsupported table name %r",
+                schema,
+                table_name,
+            )
+            continue
+        column_name = self.normalize_name(column_name)  # noqa: PLW2901
         if table_name not in ans:
             ans[table_name] = []
         if column_name.startswith("sys_clustering_column"):
@@ -458,6 +568,8 @@ def get_schema_columns(self, connection, schema, **kw):
                 "start": identity_start,
                 "increment": identity_increment,
             }
+
+    _store_schema_columns_in_lru(info_cache, schema, ans)
     return ans
 
 
@@ -499,7 +611,7 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):
 
 @reflection.cache
 def get_schema_foreign_keys(self, connection, schema, **kw):
-    current_database, current_schema = self._current_database_schema(connection, **kw)
+    current_database, current_schema = self._current_database_schema(connection, **kw)  # noqa: RUF059
     result = connection.execute(
         text(f"SHOW /* sqlalchemy:_get_schema_foreign_keys */ IMPORTED KEYS IN SCHEMA {schema}")
     )
@@ -533,7 +645,7 @@ def get_schema_foreign_keys(self, connection, schema, **kw):
 
     ans = {}
 
-    for _, v in foreign_key_map.items():
+    for _, v in foreign_key_map.items():  # noqa: PERF102
         if v["table_name"] not in ans:
             ans[v["table_name"]] = []
         ans[v["table_name"]].append({k2: v2 for k2, v2 in v.items() if k2 != "table_name"})

@@ -16,7 +16,7 @@ import base64
 import json
 import os
 import tempfile
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union  # noqa: UP035
 
 from cryptography.hazmat.primitives import serialization
 from google import auth
@@ -49,13 +49,13 @@ GOOGLE_CLOUD_SCOPES = [
 ]
 
 
-class InvalidGcpConfigException(Exception):
+class InvalidGcpConfigException(Exception):  # noqa: N818
     """
     Raised when we have errors trying to set GCP credentials
     """
 
 
-class InvalidPrivateKeyException(Exception):
+class InvalidPrivateKeyException(Exception):  # noqa: N818
     """
     If the key cannot be serialised
     """
@@ -104,7 +104,7 @@ def normalize_pem_string(value: str) -> str:
     )
 
     # Only normalize if it looks like PEM and is all on one line (escaped newlines)
-    if any(h in value for h in pem_headers):
+    if any(h in value for h in pem_headers):  # noqa: SIM102
         if "\\n" in value and "\n" not in value:
             return value.replace("\\n", "\n")
 
@@ -132,9 +132,9 @@ def create_credential_tmp_file(credentials: dict) -> str:
 
 
 def build_google_credentials_dict(
-    gcp_values: Union[GcpCredentialsValues, GcpExternalAccount],
+    gcp_values: Union[GcpCredentialsValues, GcpExternalAccount],  # noqa: UP007
     single_project: bool = False,
-) -> Dict[str, str]:
+) -> Dict[str, str]:  # noqa: UP006
     """
     Given GcPCredentialsValues, build a dictionary as the JSON file
     downloaded from GCP with the service_account
@@ -225,13 +225,13 @@ def generate_http_basic_token(username, password):
     Generates a HTTP basic token from username and password
     Returns a token string (not a byte)
     """
-    token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("utf-8")
-    return token
+    token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("utf-8")  # noqa: UP012
+    return token  # noqa: RET504
 
 
 def get_gcp_default_credentials(
-    quota_project_id: Optional[str] = None,
-    scopes: Optional[List[str]] = None,
+    quota_project_id: Optional[str] = None,  # noqa: UP045
+    scopes: Optional[List[str]] = None,  # noqa: UP006, UP045
 ) -> auth.credentials.Credentials:
     """Get the default credentials
 
@@ -246,9 +246,9 @@ def get_gcp_default_credentials(
 
 def get_gcp_impersonate_credentials(
     impersonate_service_account: str,
-    quoted_project_id: Optional[str] = None,
-    scopes: Optional[List[str]] = None,
-    lifetime: Optional[int] = 3600,
+    quoted_project_id: Optional[str] = None,  # noqa: UP045
+    scopes: Optional[List[str]] = None,  # noqa: UP006, UP045
+    lifetime: Optional[int] = 3600,  # noqa: UP045
 ) -> impersonated_credentials.Credentials:
     """Get the credentials to impersonate"""
     scopes = scopes or GOOGLE_CLOUD_SCOPES

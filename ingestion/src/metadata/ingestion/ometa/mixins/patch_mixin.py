@@ -17,7 +17,7 @@ To be used by OpenMetadata class
 import json
 import traceback
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Type, TypeVar, Union
+from typing import Any, Dict, List, Optional, Type, TypeVar, Union  # noqa: UP035
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -29,7 +29,6 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.automations.workflow import WorkflowStatus
-from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Column, Table, TableConstraint
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -55,6 +54,7 @@ from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
 )
 from metadata.ingestion.ometa.utils import model_str
 from metadata.pii.types import ClassifiableEntityType
+from metadata.sampler.entity_adapters import EntityAdapter, adapter_for
 from metadata.utils.deprecation import deprecated
 from metadata.utils.logger import get_log_name, ometa_logger
 
@@ -62,7 +62,25 @@ logger = ometa_logger()
 
 T = TypeVar("T", bound=BaseModel)
 
-OWNER_TYPES: List[str] = ["user", "team"]
+OWNER_TYPES: List[str] = ["user", "team"]  # noqa: UP006
+
+
+def _summarize_patch(patch: Any) -> str:
+    """Return op count and `op:path` list for a JSON Patch, without values.
+
+    Values are intentionally excluded — they may contain descriptions, sample
+    data, or tag content that should not be logged.
+    """
+    if patch is None:
+        return "<patch not built>"
+    try:
+        ops = json.loads(str(patch))
+    except (ValueError, TypeError):
+        return "<unparsable patch>"
+    if not isinstance(ops, list):
+        return "<patch is not a list>"
+    op_paths = [f"{op.get('op', '?')}:{op.get('path', '?')}" for op in ops if isinstance(op, dict)]
+    return f"{len(ops)} op(s) [{', '.join(op_paths)}]"
 
 
 def convert_uuids_to_strings(obj: Any) -> Any:
@@ -71,7 +89,7 @@ def convert_uuids_to_strings(obj: Any) -> Any:
     """
     if isinstance(obj, UUID):
         return str(obj)
-    elif isinstance(obj, dict):
+    elif isinstance(obj, dict):  # noqa: RET505
         return {key: convert_uuids_to_strings(value) for key, value in obj.items()}
     elif isinstance(obj, list):
         return [convert_uuids_to_strings(item) for item in obj]
@@ -80,7 +98,7 @@ def convert_uuids_to_strings(obj: Any) -> Any:
 
 
 def update_column_tags(
-    columns: List[Column],
+    columns: List[Column],  # noqa: UP006
     column_tag: ColumnTag,
     operation: PatchOperation,
 ) -> None:
@@ -102,8 +120,8 @@ def update_column_tags(
 
 
 def update_column_description(
-    columns: List[Column],
-    column_descriptions: List[ColumnDescription],
+    columns: List[Column],  # noqa: UP006
+    column_descriptions: List[ColumnDescription],  # noqa: UP006
     force: bool = False,
 ) -> None:
     """
@@ -137,15 +155,15 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
     def patch(  # pylint: disable=too-many-arguments
         self,
-        entity: Type[T],
+        entity: Type[T],  # noqa: UP006
         source: T,
         destination: T,
-        allowed_fields: Optional[Dict] = None,
-        restrict_update_fields: Optional[List] = None,
-        array_entity_fields: Optional[List] = None,
-        override_metadata: Optional[bool] = False,
-        skip_on_failure: Optional[bool] = True,
-    ) -> Optional[T]:
+        allowed_fields: Optional[Dict] = None,  # noqa: UP006, UP045
+        restrict_update_fields: Optional[List] = None,  # noqa: UP006, UP045
+        array_entity_fields: Optional[List] = None,  # noqa: UP006, UP045
+        override_metadata: Optional[bool] = False,  # noqa: UP045
+        skip_on_failure: Optional[bool] = True,  # noqa: UP045
+    ) -> Optional[T]:  # noqa: UP045
         """
         Given an Entity type and Source entity and Destination entity,
         generate a JSON Patch and apply it.
@@ -169,6 +187,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
+        patch = None
         try:
             patch = build_patch(
                 source=source,
@@ -191,25 +210,28 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
+            patch_summary = _summarize_patch(patch)
+            entity_name = get_log_name(source)
             if skip_on_failure:
-                entity_name = get_log_name(source)
-                logger.warning(f"Failed to update {entity_name}. The patch operation was skipped. Reason: {exc}")
+                logger.warning(
+                    f"Failed to update {entity_name}. The patch operation was skipped. "
+                    f"Reason: {exc} | Patch ops: {patch_summary}"
+                )
                 return None
-            else:
-                entity_name = get_log_name(source)
-                raise RuntimeError(
-                    f"Failed to update {entity_name}. The patch operation failed. "
-                    f"Set 'skip_on_failure=True' to skip failed patches. Error: {exc}"
-                ) from exc
+            raise RuntimeError(
+                f"Failed to update {entity_name}. The patch operation failed. "
+                f"Set 'skip_on_failure=True' to skip failed patches. "
+                f"Error: {exc} | Patch ops: {patch_summary}"
+            ) from exc
 
     def patch_description(
         self,
-        entity: Type[T],
+        entity: Type[T],  # noqa: UP006
         source: T,
         description: str,
         force: bool = False,
         skip_on_failure: bool = True,
-    ) -> Optional[T]:
+    ) -> Optional[T]:  # noqa: UP045
         """
         Given an Entity type and ID, JSON PATCH the description.
 
@@ -229,13 +251,13 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         """
         try:
             if isinstance(source, TestCase):
-                instance: Optional[T] = self._fetch_entity_if_exists(
+                instance: Optional[T] = self._fetch_entity_if_exists(  # noqa: UP045
                     entity=entity,
                     entity_id=source.id,
                     fields=["testDefinition", "testSuite"],
                 )
             else:
-                instance: Optional[T] = self._fetch_entity_if_exists(entity=entity, entity_id=source.id)
+                instance: Optional[T] = self._fetch_entity_if_exists(entity=entity, entity_id=source.id)  # noqa: UP045
 
             if not instance:
                 return None
@@ -263,14 +285,14 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                     f"Failed to patch description for {entity_name}. The patch operation was skipped. Reason: {exc}"
                 )
                 return None
-            else:
+            else:  # noqa: RET505
                 raise
 
     def patch_table_constraints(
         self,
         table: Table,
-        constraints: List[TableConstraint],
-    ) -> Optional[T]:
+        constraints: List[TableConstraint],  # noqa: UP006
+    ) -> Optional[T]:  # noqa: UP045
         """Given an Entity ID, JSON PATCH the table constraints of table
 
         Args
@@ -297,9 +319,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         self,
         test_case: TestCase,
         entity_link: str,
-        test_case_parameter_values: Optional[List[TestCaseParameterValue]] = None,
-        compute_passed_failed_row_count: Optional[bool] = False,
-    ) -> Optional[TestCase]:
+        test_case_parameter_values: Optional[List[TestCaseParameterValue]] = None,  # noqa: UP006, UP045
+        compute_passed_failed_row_count: Optional[bool] = False,  # noqa: UP045
+    ) -> Optional[TestCase]:  # noqa: UP045
         """Given a test case and a test case definition JSON PATCH the test case
 
         Args
@@ -327,12 +349,12 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
     def patch_tags(
         self,
-        entity: Type[T],
+        entity: Type[T],  # noqa: UP006
         source: T,
-        tag_labels: List[TagLabel],
-        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,
+        tag_labels: List[TagLabel],  # noqa: UP006
+        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,  # noqa: UP007
         skip_on_failure: bool = True,
-    ) -> Optional[T]:
+    ) -> Optional[T]:  # noqa: UP045
         """
         Given an Entity type and ID, JSON PATCH the tag.
 
@@ -346,7 +368,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             Updated Entity
         """
         try:
-            instance: Optional[T] = self._fetch_entity_if_exists(entity=entity, entity_id=source.id, fields=["tags"])
+            instance: Optional[T] = self._fetch_entity_if_exists(entity=entity, entity_id=source.id, fields=["tags"])  # noqa: UP045
             if not instance:
                 return None
 
@@ -377,17 +399,17 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                     f"Failed to patch tags for {entity_name}. The patch operation was skipped. Reason: {exc}"
                 )
                 return None
-            else:
+            else:  # noqa: RET505
                 raise
 
     def patch_tag(
         self,
-        entity: Type[T],
+        entity: Type[T],  # noqa: UP006
         source: T,
         tag_label: TagLabel,
-        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,
+        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,  # noqa: UP007
         skip_on_failure: bool = True,
-    ) -> Optional[T]:
+    ) -> Optional[T]:  # noqa: UP045
         """Will be deprecated in 1.3"""
         logger.warning("patch_tag will be deprecated in 1.3. Use `patch_tags` instead.")
         return self.patch_tags(
@@ -400,11 +422,11 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
     def patch_owner(
         self,
-        entity: Type[T],
+        entity: Type[T],  # noqa: UP006
         source: T,
         owners: EntityReferenceList = None,
         force: bool = False,
-    ) -> Optional[T]:
+    ) -> Optional[T]:  # noqa: UP045
         """
         Given an Entity type and ID, JSON PATCH the owner. If not owner Entity type and
         not owner ID are provided, the owner is removed.
@@ -418,7 +440,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        instance: Optional[T] = self._fetch_entity_if_exists(entity=entity, entity_id=source.id, fields=["owners"])
+        instance: Optional[T] = self._fetch_entity_if_exists(entity=entity, entity_id=source.id, fields=["owners"])  # noqa: UP045
 
         if not instance:
             return None
@@ -434,95 +456,69 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         return self.patch(entity=entity, source=instance, destination=destination)
 
-    def _get_fields_for_entity(self, entity: ClassifiableEntityType) -> List[str]:
-        """Get fields to fetch based on entity type"""
-        if isinstance(entity, Table):
-            return ["tags", "columns"]
-        if isinstance(entity, Container):
-            return ["tags", "dataModel"]
-        return ["tags"]
-
-    def _prepare_table_destination(
-        self,
-        table: Table,
-        instance: Table,
-        column_tags: List[ColumnTag],
-        operation: PatchOperation,
-    ) -> Table:
-        """Prepare Table destination with updated column tags"""
-        table.columns = instance.columns
-        destination = table.model_copy(deep=True)
-        for column_tag in column_tags or []:
-            update_column_tags(destination.columns, column_tag, operation)
-        return destination
-
-    def _prepare_container_destination(
-        self,
-        container: Container,
-        instance: Container,
-        column_tags: List[ColumnTag],
-        operation: PatchOperation,
-    ) -> Optional[Container]:
-        """Prepare Container destination with updated column tags"""
-        if container.dataModel is None or instance.dataModel is None:
-            logger.warning(f"Container {container.fullyQualifiedName.root} has no dataModel, skipping column tag patch")
-            return None
-
-        container.dataModel.columns = instance.dataModel.columns
-        destination = container.model_copy(deep=True)
-        for column_tag in column_tags or []:
-            update_column_tags(destination.dataModel.columns, column_tag, operation)
-        return destination
-
     def _prepare_destination_for_column_tags(
         self,
-        table: ClassifiableEntityType,
+        entity: ClassifiableEntityType,
         instance: ClassifiableEntityType,
-        column_tags: List[ColumnTag],
+        column_tags: List[ColumnTag],  # noqa: UP006
         operation: PatchOperation,
-    ) -> Optional[ClassifiableEntityType]:
-        """Prepare destination entity with updated column tags"""
-        if isinstance(table, Table):
-            return self._prepare_table_destination(table, instance, column_tags, operation)
-        if isinstance(table, Container):
-            return self._prepare_container_destination(table, instance, column_tags, operation)
-
-        logger.warning(f"Unsupported entity type for column tag patching: {type(table).__name__}")
-        return None
+        adapter: "EntityAdapter",
+    ) -> ClassifiableEntityType | None:
+        columns = adapter.get_columns(instance)
+        if columns is None:
+            logger.warning(
+                "Entity %s has no columns, skipping column tag patch",
+                entity.fullyQualifiedName.root if entity.fullyQualifiedName else type(entity).__name__,
+            )
+            return None
+        adapter.set_columns(entity, columns)
+        destination = entity.model_copy(deep=True)
+        dest_columns = adapter.get_columns(destination)
+        if dest_columns is not None:
+            for column_tag in column_tags or []:
+                update_column_tags(dest_columns, column_tag, operation)
+        return destination
 
     def patch_column_tags(
         self,
-        table: ClassifiableEntityType,
-        column_tags: List[ColumnTag],
-        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,
-    ) -> Optional[T]:
+        entity: ClassifiableEntityType,
+        column_tags: List[ColumnTag],  # noqa: UP006
+        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,  # noqa: UP007
+    ) -> Optional[T]:  # noqa: UP045
         """Given an Entity ID, JSON PATCH the tag of the column
 
         Args
-            table: Classifiable entity (Table or Container) to update
+            entity: Classifiable entity (Table, Container, …) to update
             column_tags: List of ColumnTag to add or remove
             operation: Patch Operation to add or remove
         Returns
             Updated Entity
         """
-        entity_type = type(table)
-        fields = self._get_fields_for_entity(table)
 
-        instance = self._fetch_entity_if_exists(entity=entity_type, entity_id=table.id, fields=fields)
+        adapter = adapter_for(entity)
+        if adapter is None:
+            logger.warning(
+                "Unsupported entity type for column tag patching: %s",
+                type(entity).__name__,
+            )
+            return None
+
+        entity_type = type(entity)
+        instance = self._fetch_entity_if_exists(entity=entity_type, entity_id=entity.id, fields=adapter.patch_fields)
 
         if not instance:
             return None
 
-        destination = self._prepare_destination_for_column_tags(table, instance, column_tags, operation)
+        destination = self._prepare_destination_for_column_tags(entity, instance, column_tags, operation, adapter)
 
         if destination is None:
             return None
 
-        patched_entity = self.patch(entity=entity_type, source=table, destination=destination)
+        patched_entity = self.patch(entity=entity_type, source=entity, destination=destination)
         if patched_entity is None:
             logger.debug(
-                f"Empty PATCH result. Either everything is up to date or the "
-                f"column names are  not in [{table.fullyQualifiedName.root}]"
+                "Empty PATCH result. Either everything is up to date or the column names are not in [%s]",
+                entity.fullyQualifiedName.root if entity.fullyQualifiedName else type(entity).__name__,
             )
 
         return patched_entity
@@ -533,11 +529,11 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         table: Table,
         column_fqn: str,
         tag_label: TagLabel,
-        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,
-    ) -> Optional[T]:
+        operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,  # noqa: UP007
+    ) -> Optional[T]:  # noqa: UP045
         """Will be deprecated in 1.3"""
         return self.patch_column_tags(
-            table=table,
+            entity=table,
             column_tags=[ColumnTag(column_fqn=column_fqn, tag_label=tag_label)],
             operation=operation,
         )
@@ -549,7 +545,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         column_fqn: str,
         description: str,
         force: bool = False,
-    ) -> Optional[T]:
+    ) -> Optional[T]:  # noqa: UP045
         """Given an Table , Column FQN, JSON PATCH the description of the column
 
         Args
@@ -570,9 +566,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
     def patch_column_descriptions(
         self,
         table: Table,
-        column_descriptions: List[ColumnDescription],
+        column_descriptions: List[ColumnDescription],  # noqa: UP006
         force: bool = False,
-    ) -> Optional[T]:
+    ) -> Optional[T]:  # noqa: UP045
         """Given an Table , Column Descriptions, JSON PATCH the description of the column
 
         Args
@@ -583,7 +579,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        instance: Optional[Table] = self._fetch_entity_if_exists(entity=Table, entity_id=table.id)
+        instance: Optional[Table] = self._fetch_entity_if_exists(entity=Table, entity_id=table.id)  # noqa: UP045
 
         if not instance or not column_descriptions:
             return None
@@ -606,13 +602,13 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
     def patch_automation_workflow_response(
         self,
         automation_workflow: AutomationWorkflow,
-        result: Union[TestConnectionResult, ReverseIngestionResponse, QueryRunnerResponse],
+        result: Union[TestConnectionResult, ReverseIngestionResponse, QueryRunnerResponse],  # noqa: UP007
         workflow_status: WorkflowStatus,
     ) -> None:
         """
         Given an AutomationWorkflow, JSON PATCH the status and response.
         """
-        result_data: Dict = {
+        result_data: Dict = {  # noqa: UP006
             PatchField.PATH: PatchPath.RESPONSE,
             PatchField.VALUE: result.model_dump(),
             PatchField.OPERATION: PatchOperation.ADD,
@@ -627,7 +623,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 operation_result["id"] = str(operation_result["id"])
         else:
             result_data[PatchField.VALUE]["status"] = result_data[PatchField.VALUE]["status"].value
-        status_data: Dict = {
+        status_data: Dict = {  # noqa: UP006
             PatchField.PATH: PatchPath.STATUS,
             PatchField.OPERATION: PatchOperation.ADD,
             PatchField.VALUE: workflow_status.value,
@@ -649,7 +645,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 f"Error trying to PATCH status for automation workflow [{model_str(automation_workflow)}]: {exc}"
             )
 
-    def patch_life_cycle(self, entity: Entity, life_cycle: LifeCycle) -> Optional[Entity]:
+    def patch_life_cycle(self, entity: Entity, life_cycle: LifeCycle) -> Optional[Entity]:  # noqa: UP045
         """
         Patch life cycle data for a entity
 
@@ -667,10 +663,10 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
     def patch_domain(
         self,
-        entity: Type[T],
+        entity: Type[T],  # noqa: UP006
         source: T,
         domains: EntityReferenceList = None,
-    ) -> Optional[T]:
+    ) -> Optional[T]:  # noqa: UP045
         """
         Given an Entity type and ID, JSON PATCH the domain.
 
@@ -681,7 +677,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        instance: Optional[T] = self._fetch_entity_if_exists(entity=entity, entity_id=source.id, fields=["domains"])
+        instance: Optional[T] = self._fetch_entity_if_exists(entity=entity, entity_id=source.id, fields=["domains"])  # noqa: UP045
 
         if not instance:
             return None
@@ -700,11 +696,11 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
     def patch_custom_properties(
         self,
-        entity: Type[T],
-        entity_id: Union[str, basic.Uuid],
-        custom_properties: Dict[str, Any],
+        entity: Type[T],  # noqa: UP006
+        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+        custom_properties: Dict[str, Any],  # noqa: UP006
         force: bool = False,
-    ) -> Optional[T]:
+    ) -> Optional[T]:  # noqa: UP045
         """
         Given an Entity type and ID, JSON PATCH the custom properties.
 
@@ -725,7 +721,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         # Get existing custom properties from extension
         existing_custom_properties = {}
-        if hasattr(instance, "extension") and instance.extension:
+        if hasattr(instance, "extension") and instance.extension:  # noqa: SIM102
             if hasattr(instance.extension, "root") and isinstance(instance.extension.root, dict):
                 existing_custom_properties = instance.extension.root.copy()
 

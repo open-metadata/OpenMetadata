@@ -31,7 +31,7 @@ secrets_manager_client_loader = enum_register()
 # pylint: disable=import-outside-toplevel
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.noop.value)
 def _() -> Optional["GCPCredentials"]:  # noqa: F821
-    from metadata.generated.schema.security.credentials.gcpCredentials import (
+    from metadata.generated.schema.security.credentials.gcpCredentials import (  # noqa: PLC0415
         GCPCredentials,
         gcpValues,
     )
@@ -40,16 +40,16 @@ def _() -> Optional["GCPCredentials"]:  # noqa: F821
     if project_id:
         config = gcpValues.GcpCredentialsValues(projectId=project_id)
         credentials = GCPCredentials(gcpConfig=config)
-        return credentials
+        return credentials  # noqa: RET504
 
     return None
 
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.airflow.value)
 def _() -> Optional["GCPCredentials"]:  # noqa: F821
-    from airflow.configuration import conf
+    from airflow.configuration import conf  # noqa: PLC0415
 
-    from metadata.generated.schema.security.credentials.gcpCredentials import (
+    from metadata.generated.schema.security.credentials.gcpCredentials import (  # noqa: PLC0415
         GCPCredentials,
         gcpValues,
     )
@@ -58,14 +58,14 @@ def _() -> Optional["GCPCredentials"]:  # noqa: F821
     if project_id:
         config = gcpValues.GcpCredentialsValues(projectId=project_id)
         credentials = GCPCredentials(gcpConfig=config)
-        return credentials
+        return credentials  # noqa: RET504
 
     return None
 
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.env.value)
 def _() -> Optional["GCPCredentials"]:  # noqa: F821
-    from metadata.generated.schema.security.credentials.gcpCredentials import (
+    from metadata.generated.schema.security.credentials.gcpCredentials import (  # noqa: PLC0415
         GCPCredentials,
         gcpValues,
     )
@@ -75,7 +75,7 @@ def _() -> Optional["GCPCredentials"]:  # noqa: F821
     if project_id:
         config = gcpValues.GcpCredentialsValues(projectId=project_id)
         credentials = GCPCredentials(gcpConfig=config)
-        return credentials
+        return credentials  # noqa: RET504
 
     return None
 
@@ -123,4 +123,4 @@ class GCPSecretsManager(ExternalSecretsManager, ABC):
             loader_fn = secrets_manager_client_loader.registry.get(self.loader.value)
             return loader_fn()
         except Exception as err:
-            raise SecretsManagerConfigException(f"Error loading credentials - [{err}]")
+            raise SecretsManagerConfigException(f"Error loading credentials - [{err}]")  # noqa: B904

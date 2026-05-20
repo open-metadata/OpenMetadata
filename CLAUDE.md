@@ -120,8 +120,8 @@ cd ingestion
 make install_dev_env           # Install in development mode
 make generate                  # Generate Pydantic models from JSON schemas
 make unit_ingestion_dev_env    # Run unit tests
-make lint                      # Run pylint
-make py_format                 # Format with black, isort, pycln
+make py_format                 # Apply ruff lint-fix + format
+make py_format_check           # Verify lint + format (matches CI; catches non-auto-fixable issues)
 make static-checks             # Run type checking with basedpyright
 ```
 
@@ -283,7 +283,14 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 
 ### Java Code Requirements
 
-**Always run `mvn spotless:apply` when generating/modifying .java files.**
+**Always run `mvn spotless:apply` before you finish any task that touched
+`.java` files.** CI runs `mvn spotless:check` and will fail the PR otherwise —
+the bot's exact suggestion is "Please run `mvn spotless:apply` in the root of
+your repository and commit the changes to this PR." Scope the run with
+`-pl <module>` for speed if only one module changed. When asked to "fix
+checkstyle" / "fix Java formatting" / "apply spotless", invoke the
+`java-checkstyle` skill (see `.claude/skills/java-checkstyle/`) rather than
+hand-editing formatting.
 
 #### Method Size and Complexity (Kafka-Grade Standards)
 - **Methods must be 15 lines or fewer** (excluding blank lines and braces). If a method is longer, break it into smaller focused methods with descriptive names.
@@ -421,6 +428,19 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - One statement per line — no `if (x) return y;` on one line
 
 ### TypeScript/Frontend Code Requirements
+
+**Always run the UI checkstyle sequence before you finish any task that
+touched `.ts`/`.tsx`/`.js`/`.jsx`/`.json` under
+`openmetadata-ui/src/main/resources/ui/src/`, `.../playwright/`, or
+`openmetadata-ui-core-components/src/main/resources/ui/src/`.** CI's
+`UI Checkstyle / lint-src|lint-playwright|lint-core-components` jobs fail the
+PR otherwise. The order matters — run `organize-imports-cli`, then
+`eslint --fix`, then `prettier --write`; reversing organize-imports and
+prettier leaves a dirty diff (organize-imports uses 4-space indentation,
+prettier uses 2 + trailing commas). When asked to "fix UI checkstyle" / "run
+prettier" / "fix UI lint", invoke the `ui-checkstyle` skill (see
+`.claude/skills/ui-checkstyle/`) rather than hand-editing formatting.
+
 - **NEVER use `any` type** in TypeScript code - always use proper types
 - Use `unknown` when the type is truly unknown and add type guards
 - Import types from existing type definitions (e.g., `RJSFSchema` from `@rjsf/utils`)
@@ -470,6 +490,14 @@ These checks run automatically in CI. Code that violates them **will not merge**
 - Example: Redshift IAM auth should be in `ingestion/src/metadata/ingestion/source/database/redshift/connection.py`, not in `ingestion/src/metadata/ingestion/connections/builders.py`
 - This keeps the codebase modular and prevents generic utilities from becoming cluttered with connector-specific edge cases
 - **Use `model_str()` for Pydantic RootModel to string conversion** — OpenMetadata schema types like `ColumnName`, `EntityName`, `FullyQualifiedEntityName`, and `UUID` are Pydantic `RootModel[str]` subclasses where `str()` returns `"root='value'"` instead of the raw value. Always use `model_str()` from `metadata.ingestion.ometa.utils` instead of manual `hasattr(x, "root")` / `str(x.root)` checks.
+
+### Caching
+- **All caches MUST be bounded.** Never use a bare `dict` / `HashMap` / `Map` as a cache without an explicit size cap — they grow with the input and cause OOMs on large catalogs/ingestions. The only exception is when the user explicitly asks for an unbounded cache for a specific case.
+- Pick a sane default (typically 100–1000 entries depending on entity size); if you're unsure, ask the user.
+- **Python**: use `collections.OrderedDict` with `popitem(last=False)` eviction after insert, `@functools.lru_cache(maxsize=N)`, or `cachetools.LRUCache`. Cache both hits and misses (negative caching) — repeated unresolvable lookups are a common hot path.
+- **Java**: use Caffeine (`Caffeine.newBuilder().maximumSize(N).build()`) or Guava `CacheBuilder.newBuilder().maximumSize(N).build()`. Never a bare `HashMap`.
+- **TypeScript**: use `lru-cache` — never a bare `Map` or plain object.
+- **Before adding a cache, check whether the underlying call is already cached at a lower layer.** Example: `OpenMetadata._search_es_entity` is `@lru_cache(maxsize=512)`, so wrapping `get_entity_from_es` / `es_search_container_by_path` calls in a local dict cache is redundant — drop the local cache and rely on the existing LRU.
 
 ### Testing Philosophy
 - **Test real behavior, not mock wiring** - if a test requires mocking 3+ classes just to verify a method call, it's testing the wrong thing

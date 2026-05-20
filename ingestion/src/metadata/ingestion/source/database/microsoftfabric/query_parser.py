@@ -38,7 +38,7 @@ class MicrosoftFabricQueryParserSource(QueryParserSource, ABC):
         cls,
         config_dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # pylint: disable=unused-argument
+        pipeline_name: Optional[str] = None,  # pylint: disable=unused-argument  # noqa: UP045
     ):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)

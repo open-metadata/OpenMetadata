@@ -542,7 +542,7 @@ class TestKafkaConnectCDCColumnExtraction(TestCase):
 
         # Create a mock source that bypasses __init__
         source = object.__new__(KafkaconnectSource)
-        return source
+        return source  # noqa: RET504
 
     def setUp(self):
         """Set up test fixtures"""
@@ -833,7 +833,7 @@ class TestKafkaConnectLineageRefactoring(TestCase):
         mock_topic_entity.service = MagicMock(spec=EntityReference)
         mock_topic_entity.service.name = "KafkaProd"
 
-        with patch.object(self.source.metadata, "get_by_name", return_value=None):
+        with patch.object(self.source.metadata, "get_by_name", return_value=None):  # noqa: SIM117
             with patch.object(
                 self.source.metadata,
                 "search_in_any_service",
@@ -880,7 +880,7 @@ class TestKafkaConnectLineageRefactoring(TestCase):
 
         mock_topic_entity = MagicMock(spec=Topic)
 
-        with patch("metadata.utils.fqn.build", return_value='KafkaProd."orders-topic"'):
+        with patch("metadata.utils.fqn.build", return_value='KafkaProd."orders-topic"'):  # noqa: SIM117
             with patch.object(self.source.metadata, "get_by_name", return_value=mock_topic_entity) as mock_get:
                 result = self.source._parse_and_resolve_topics(
                     pipeline_details=pipeline_details,
@@ -932,7 +932,7 @@ class TestKafkaConnectLineageRefactoring(TestCase):
             topics=cdc_topics,
         )
 
-        with patch.object(self.source.metadata, "get_by_name", return_value=None):
+        with patch.object(self.source.metadata, "get_by_name", return_value=None):  # noqa: SIM117
             with patch.object(self.source.metadata, "search_in_any_service", return_value=None):
                 result = self.source._parse_and_resolve_topics(
                     pipeline_details=pipeline_details,
@@ -956,7 +956,7 @@ class TestKafkaConnectLineageRefactoring(TestCase):
             name="cdc-connector", conn_type="source", config={}, topics=prefix_topics
         )
 
-        with patch.object(self.source.metadata, "get_by_name", return_value=None):
+        with patch.object(self.source.metadata, "get_by_name", return_value=None):  # noqa: SIM117
             with patch.object(
                 self.source.metadata,
                 "search_in_any_service",
@@ -986,7 +986,7 @@ class TestKafkaConnectLineageRefactoring(TestCase):
             KafkaConnectTopics(name="analytics-metrics"),
         ]
 
-        with patch.object(self.source, "_search_topics_by_regex", return_value=regex_topics) as mock_search:
+        with patch.object(self.source, "_search_topics_by_regex", return_value=regex_topics) as mock_search:  # noqa: SIM117
             with patch.object(self.source.metadata, "get_by_name", return_value=None):
                 with patch.object(self.source.metadata, "search_in_any_service", return_value=None):
                     result = self.source._parse_and_resolve_topics(
@@ -1038,7 +1038,7 @@ class TestGetDatasetEntityContainerSearch:
         mock_container = MagicMock()
         source.metadata.get_by_name = MagicMock(return_value=mock_container)
 
-        with patch(_FQN_BUILD, return_value=_STATIC_FQN):
+        with patch(_FQN_BUILD, return_value=_STATIC_FQN):  # noqa: SIM117
             with patch(_SEARCH_CONTAINER) as mock_search:
                 with patch.object(source, "get_storage_service_names", return_value=["DearlakeS3"]):
                     result = source.get_dataset_entity(pipeline, dataset)
@@ -1056,7 +1056,7 @@ class TestGetDatasetEntityContainerSearch:
         mock_container.fullyQualifiedName.root = "DearlakeS3.dear-lake-stg.raw_kafka/topic-01.v1"
         source.metadata.get_by_name = MagicMock(return_value=None)
 
-        with patch(_FQN_BUILD, return_value=_STATIC_FQN):
+        with patch(_FQN_BUILD, return_value=_STATIC_FQN):  # noqa: SIM117
             with patch(_SEARCH_CONTAINER, return_value=mock_container) as mock_search:
                 with patch.object(source, "get_storage_service_names", return_value=[None]):
                     result = source.get_dataset_entity(pipeline, dataset)
@@ -1079,7 +1079,7 @@ class TestGetDatasetEntityContainerSearch:
         container_with_suffix.fullyQualifiedName.root = "DearlakeS3.dear-lake-stg.raw_kafka/topic-01.v1"
         source.metadata.get_by_name = MagicMock(return_value=None)
 
-        with patch(_FQN_BUILD, return_value=_STATIC_FQN):
+        with patch(_FQN_BUILD, return_value=_STATIC_FQN):  # noqa: SIM117
             with patch(_SEARCH_CONTAINER, return_value=container_with_suffix) as mock_search:
                 with patch.object(source, "get_storage_service_names", return_value=["DearlakeS3"]):
                     result = source.get_dataset_entity(pipeline, dataset)
@@ -1100,7 +1100,7 @@ class TestGetDatasetEntityContainerSearch:
 
         source.metadata.get_by_name = MagicMock(return_value=None)
 
-        with patch(_FQN_BUILD, return_value=_STATIC_FQN):
+        with patch(_FQN_BUILD, return_value=_STATIC_FQN):  # noqa: SIM117
             with patch(_SEARCH_CONTAINER, return_value=None) as mock_search:
                 with patch.object(source, "get_storage_service_names", return_value=[None]):
                     source.get_dataset_entity(pipeline, dataset)
@@ -1117,7 +1117,7 @@ class TestGetDatasetEntityContainerSearch:
 
         source.metadata.get_by_name = MagicMock(return_value=None)
 
-        with patch(_FQN_BUILD, return_value="DearlakeS3.raw_kafka"):
+        with patch(_FQN_BUILD, return_value="DearlakeS3.raw_kafka"):  # noqa: SIM117
             with patch(_SEARCH_CONTAINER, return_value=None) as mock_search:
                 with patch.object(source, "get_storage_service_names", return_value=[None]):
                     source.get_dataset_entity(pipeline, dataset)
@@ -1134,7 +1134,7 @@ class TestGetDatasetEntityContainerSearch:
 
         source.metadata.get_by_name = MagicMock(return_value=None)
 
-        with patch(_FQN_BUILD, return_value=_STATIC_FQN):
+        with patch(_FQN_BUILD, return_value=_STATIC_FQN):  # noqa: SIM117
             with patch(_SEARCH_CONTAINER, return_value=None) as mock_search:
                 with patch.object(source, "get_storage_service_names", return_value=["DearlakeS3"]):
                     source.get_dataset_entity(pipeline, dataset)
@@ -1150,7 +1150,7 @@ class TestGetDatasetEntityContainerSearch:
 
         source.metadata.get_by_name = MagicMock(return_value=None)
 
-        with patch(_FQN_BUILD, return_value=_STATIC_FQN):
+        with patch(_FQN_BUILD, return_value=_STATIC_FQN):  # noqa: SIM117
             with patch(_SEARCH_CONTAINER, return_value=None):
                 with patch.object(source, "get_storage_service_names", return_value=[None]):
                     result = source.get_dataset_entity(pipeline, dataset)
@@ -1165,7 +1165,7 @@ class TestGetDatasetEntityContainerSearch:
 
         source.metadata.get_by_name = MagicMock(return_value=None)
 
-        with patch(_FQN_BUILD, return_value=None):
+        with patch(_FQN_BUILD, return_value=None):  # noqa: SIM117
             with patch(_SEARCH_CONTAINER) as mock_search:
                 with patch.object(source, "get_storage_service_names", return_value=[None]):
                     source.get_dataset_entity(pipeline, dataset)

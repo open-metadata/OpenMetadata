@@ -59,12 +59,12 @@ class StdDevFn(FunctionElement):
 
 @compiles(StdDevFn)
 def _(element, compiler, **kw):
-    return "STDDEV_POP(%s)" % compiler.process(element.clauses, **kw)
+    return "STDDEV_POP(%s)" % compiler.process(element.clauses, **kw)  # noqa: UP031
 
 
 @compiles(StdDevFn, Dialects.MSSQL)
 def _(element, compiler, **kw):
-    return "STDEVP(%s)" % compiler.process(element.clauses, **kw)
+    return "STDEVP(%s)" % compiler.process(element.clauses, **kw)  # noqa: UP031
 
 
 @compiles(StdDevFn, Dialects.SQLite)  # Needed for unit tests
@@ -167,7 +167,7 @@ class StdDev(StaticMetric):
         Returns:
             PandasComputation: Computation protocol with create/update/aggregate methods
         """
-        return PandasComputation[SumSumSquaresCount, Optional[float]](
+        return PandasComputation[SumSumSquaresCount, Optional[float]](  # noqa: UP045
             create_accumulator=lambda: SumSumSquaresCount(0.0, 0.0, 0),
             update_accumulator=lambda acc, df: StdDev.update_accumulator(acc, df, self.col),
             aggregate_accumulator=StdDev.aggregate_accumulator,
@@ -193,7 +193,7 @@ class StdDev(StaticMetric):
         Returns:
             Updated accumulator with new chunk's statistics added
         """
-        import pandas as pd
+        import pandas as pd  # noqa: PLC0415
 
         clean_df = df[column.name].dropna()
 
@@ -226,7 +226,7 @@ class StdDev(StaticMetric):
     @staticmethod
     def aggregate_accumulator(
         sum_sum_squares_count: SumSumSquaresCount,
-    ) -> Optional[float]:
+    ) -> Optional[float]:  # noqa: UP045
         """Compute final stddev from running sum, sum of squares, and count
 
         Uses the computational formula for variance:

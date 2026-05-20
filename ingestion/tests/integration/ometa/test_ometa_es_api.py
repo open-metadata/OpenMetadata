@@ -49,7 +49,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.type.basic import EntityName, SqlQuery
 from metadata.utils import fqn
 
-from ..integration_base import TIER1_TAG, generate_name, get_create_entity
+from ..integration_base import TIER1_TAG, generate_name, get_create_entity  # noqa: TID252
 
 FIELDS = "owners,domains"
 
@@ -360,7 +360,7 @@ class TestOMetaESAPI:
                 assert len(assets) == 10
         finally:
             for table in created_tables:
-                try:
+                try:  # noqa: SIM105
                     metadata.delete(entity=Table, entity_id=table.id, hard_delete=True)
                 except Exception:
                     pass
@@ -393,7 +393,7 @@ class TestOMetaESAPI:
             assert len(assets) == 5
         finally:
             for table in created_tables:
-                try:
+                try:  # noqa: SIM105
                     metadata.delete(entity=Table, entity_id=table.id, hard_delete=True)
                 except Exception:
                     pass
@@ -467,7 +467,7 @@ class TestOMetaESAPI:
             assert len(returned_table_names) == 5
         finally:
             for table in created_tables:
-                try:
+                try:  # noqa: SIM105
                     metadata.delete(entity=Table, entity_id=table.id, hard_delete=True)
                 except Exception:
                     pass

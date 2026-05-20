@@ -49,7 +49,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ....integration_base import generate_name
+from ....integration_base import generate_name  # noqa: TID252
 
 MODEL_HYPERPARAMS = {
     "alpha": {"name": "alpha", "value": "0.5", "description": None},

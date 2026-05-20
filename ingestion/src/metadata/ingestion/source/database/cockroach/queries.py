@@ -25,7 +25,7 @@ COCKROACH_GET_TABLE_NAMES = """
         AND c.relkind IN ('r', 'p', 'f')
     ORDER BY 
         c.relname
-"""
+"""  # noqa: W291
 
 COCKROACH_GET_VIEW_NAMES = """
     SELECT 
@@ -40,7 +40,7 @@ COCKROACH_GET_VIEW_NAMES = """
         AND c.relkind IN ('v')
     ORDER BY 
         c.relname
-"""
+"""  # noqa: W291
 
 
 COCKROACH_SCHEMA_COMMENTS = """
@@ -56,7 +56,7 @@ ON
     n.oid = d.objoid
 WHERE 
     d.objsubid = 0;
-"""
+"""  # noqa: W291
 
 
 COCKROACH_GET_DATABASE = """
@@ -83,4 +83,4 @@ JOIN
     crdb_internal.tables ON partitions.table_id = tables.table_id
 WHERE
     tables.name = :table_name;
-"""
+"""  # noqa: W291

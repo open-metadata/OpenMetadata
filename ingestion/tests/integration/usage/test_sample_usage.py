@@ -82,7 +82,7 @@ class QueryParserTest(TestCase):
         }
         config_dict = json.loads(config)
         config_dict["source"]["serviceConnection"]["config"]["connectionOptions"]["sampleDataFolder"] = (
-            os.path.dirname(__file__)
+            os.path.dirname(__file__)  # noqa: PTH120
             + "/../../../../"
             + config_dict["source"]["serviceConnection"]["config"]["connectionOptions"]["sampleDataFolder"]
         )

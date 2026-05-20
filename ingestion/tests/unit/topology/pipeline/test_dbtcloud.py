@@ -502,7 +502,7 @@ class DBTCloudUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
 
@@ -535,7 +535,7 @@ class DBTCloudUnitTest(TestCase):
         """
         Test pipeline creation
         """
-        pipeline = list(self.dbtcloud.yield_pipeline(EXPECTED_JOB_DETAILS))[0].right
+        pipeline = list(self.dbtcloud.yield_pipeline(EXPECTED_JOB_DETAILS))[0].right  # noqa: RUF015
 
         # Compare individual fields instead of entire objects
         self.assertEqual(pipeline.name, EXPECTED_CREATED_PIPELINES.name)
@@ -816,14 +816,14 @@ class DBTCloudUnitTest(TestCase):
                     if isinstance(fqn, str):
                         if fqn == "dbtcloud_pipeline_test.New job":
                             return mock_pipeline
-                    elif isinstance(fqn, FullyQualifiedEntityName):
+                    elif isinstance(fqn, FullyQualifiedEntityName):  # noqa: SIM102
                         if fqn.root == "dbtcloud_pipeline_test.New job":
                             return mock_pipeline
                 elif entity == Table:
                     fqn_str = str(fqn) if not isinstance(fqn, str) else fqn
                     if "model_15" in fqn_str:
                         return mock_source_table
-                    elif "model_32" in fqn_str:
+                    elif "model_32" in fqn_str:  # noqa: RET505
                         return mock_target_table
                 return None
 
@@ -1160,7 +1160,7 @@ class DBTCloudUnitTest(TestCase):
             def get_by_name_side_effect(entity, fqn):
                 if entity == Pipeline:
                     return mock_pipeline
-                elif entity == Table:
+                elif entity == Table:  # noqa: RET505
                     return mock_table
                 return None
 
@@ -1535,7 +1535,7 @@ class DBTCloudUnitTest(TestCase):
             def get_by_name_side_effect(entity, fqn):
                 if entity == Pipeline:
                     return mock_pipeline
-                elif entity == Table:
+                elif entity == Table:  # noqa: RET505
                     return mock_table
                 return None
 
@@ -1815,7 +1815,7 @@ class DBTCloudUnitTest(TestCase):
             def get_by_name_side_effect(entity, fqn):
                 if entity == Pipeline:
                     return mock_pipeline
-                elif entity == Table:
+                elif entity == Table:  # noqa: RET505
                     return mock_table
                 return None
 
@@ -1935,7 +1935,7 @@ class DBTCloudUnitTest(TestCase):
             def get_by_name_side_effect(entity, fqn):
                 if entity == Pipeline:
                     return mock_pipeline
-                elif entity == Table:
+                elif entity == Table:  # noqa: RET505
                     fqn_str = str(fqn) if not isinstance(fqn, str) else fqn
                     for table_name, table in mock_tables.items():
                         if table_name in fqn_str:
@@ -2067,11 +2067,11 @@ class DBTCloudUnitTest(TestCase):
             def get_by_name_side_effect(entity, fqn):
                 if entity == Pipeline:
                     return mock_pipeline
-                elif entity == Table:
+                elif entity == Table:  # noqa: RET505
                     fqn_str = str(fqn) if not isinstance(fqn, str) else fqn
                     if "model_from_source" in fqn_str:
                         return mock_model_table
-                    elif "raw_data" in fqn_str:
+                    elif "raw_data" in fqn_str:  # noqa: RET505
                         return mock_source_table
                 return None
 

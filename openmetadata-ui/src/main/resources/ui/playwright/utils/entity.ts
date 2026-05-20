@@ -158,7 +158,7 @@ export const addOwner = async ({
           const searchRetry = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/search/query') &&
-              response.url().includes('user_search_index')
+              response.url().includes(encodeURIComponent(owner))
           );
           await ownerSearchInput.fill('');
           await ownerSearchInput.fill(owner);
@@ -918,6 +918,12 @@ export const removeTag = async (page: Page, tags: string[]) => {
     await page.getByTestId('saveAssociatedTag').click();
     await patchRequest;
 
+    await page
+      .getByTestId('saveAssociatedTag')
+      .locator('[data-icon="loading"]')
+      .waitFor({ state: 'detached' });
+    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+
     await expect(
       page
         .getByTestId('KnowledgePanel.Tags')
@@ -968,6 +974,12 @@ export const removeTagsFromChildren = async ({
     await page.getByTestId('saveAssociatedTag').click();
 
     await patchRequest;
+
+    await page
+      .getByTestId('saveAssociatedTag')
+      .locator('[data-icon="loading"]')
+      .waitFor({ state: 'detached' });
+    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
     await expect(
       page
@@ -1022,9 +1034,11 @@ export const assignGlossaryTerm = async (
     .click();
 
   await patchRequest;
-  await expect(
-    page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
-  ).not.toBeVisible();
+  await page
+    .getByTestId('saveAssociatedTag')
+    .locator('[data-icon="loading"]')
+    .waitFor({ state: 'detached' });
+  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
   await expect(
     page
@@ -1168,10 +1182,6 @@ export const assignGlossaryTermToChildren = async ({
   );
   await expect(glossaryTermTag).toBeVisible();
 
-  // CRITICAL: Set up waitForResponse BEFORE the click that triggers it
-  const putRequest = page.waitForResponse(
-    (response) => response.request().method() === 'PUT'
-  );
   await glossaryTermTag.click();
 
   await page
@@ -1192,9 +1202,6 @@ export const assignGlossaryTermToChildren = async ({
 
   await expect(saveButton).not.toBeVisible();
 
-  await putRequest;
-
-  // CRITICAL: Wait for UI to update after API responses
   await waitForAllLoadersToDisappear(page);
 
   await expect(
@@ -1243,6 +1250,12 @@ export const removeGlossaryTerm = async (
       .getByTestId('saveAssociatedTag')
       .click();
     await patchRequest;
+
+    await page
+      .getByTestId('saveAssociatedTag')
+      .locator('[data-icon="loading"]')
+      .waitFor({ state: 'detached' });
+    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
     await expect(
       page
@@ -1296,6 +1309,12 @@ export const removeGlossaryTermFromChildren = async ({
     await page.getByTestId('saveAssociatedTag').click();
 
     await patchRequest;
+
+    await page
+      .getByTestId('saveAssociatedTag')
+      .locator('[data-icon="loading"]')
+      .waitFor({ state: 'detached' });
+    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
     await expect(
       page

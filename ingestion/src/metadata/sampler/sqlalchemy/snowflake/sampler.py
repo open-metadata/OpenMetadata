@@ -13,23 +13,12 @@ Helper module to handle data sampling
 for the profiler
 """
 
-from typing import Dict, Optional, Union
-
 from sqlalchemy import Table, func, text
 from sqlalchemy.sql.selectable import CTE
 
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    DataStorageConfig,
-)
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    DatalakeConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.type.basic import ProfileSampleType, SamplingMethodType
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.sampler.models import SampleConfig
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
-from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 
 
 class SnowflakeSampler(SQASampler):
@@ -38,50 +27,31 @@ class SnowflakeSampler(SQASampler):
     run the query in the whole table.
     """
 
-    # pylint: disable=too-many-arguments
-    def __init__(
-        self,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
-        ometa_client: OpenMetadata,
-        entity: Table,
-        sample_config: Optional[SampleConfig] = None,
-        partition_details: Optional[Dict] = None,
-        sample_query: Optional[str] = None,
-        storage_config: DataStorageConfig = None,
-        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
-        **kwargs,
-    ):
-        super().__init__(
-            service_connection_config=service_connection_config,
-            ometa_client=ometa_client,
-            entity=entity,
-            sample_config=sample_config,
-            partition_details=partition_details,
-            sample_query=sample_query,
-            storage_config=storage_config,
-            sample_data_count=sample_data_count,
-            **kwargs,
-        )
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.sampling_method_type = func.bernoulli
-        if sample_config:
-            static = sample_config.get_static_config()
-            if static and static.samplingMethodType == SamplingMethodType.SYSTEM:
-                self.sampling_method_type = func.system
+        static = self._resolve_sample_config
+        if static and static.samplingMethodType == SamplingMethodType.SYSTEM:
+            self.sampling_method_type = func.system
 
-    def set_tablesample(self, selectable: Table):
+    def set_tablesample(self, static: StaticSamplingConfig | None, selectable: Table):
         """Set the TABLESAMPLE clause for Snowflake
         Args:
-            selectable (Table): _description_
+            static (StaticSamplingConfig | None): sampling configuration
+            selectable (Table): table to sample
         """
-        static = self.sample_config.get_static_config()
+        if static is None:
+            return selectable
+
         if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
             return selectable.tablesample(self.sampling_method_type(static.profileSample or 100))
 
         return selectable.tablesample(func.ROW(text(f"{static.profileSample or 100 if static else 100} ROWS")))
 
-    def get_sample_query(self, *, column=None) -> CTE:
+    def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> CTE:
         """Override the base method as ROWS or PERCENT sampling handled through the tablesample clause"""
-        rnd = self._base_sample_query(column).cte(f"{self.get_sampler_table_name()}_rnd")
+        selectable = self.set_tablesample(static, self.raw_dataset.__table__)  # type: ignore
+        rnd = self._base_sample_query(selectable, column).cte(f"{self.get_sampler_table_name()}_rnd")
         with self.session_factory() as client:
             query = client.query(rnd)
         return query.cte(f"{self.get_sampler_table_name()}_sample")

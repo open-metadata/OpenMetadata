@@ -241,7 +241,7 @@ class TestHexIngestionFlow(TestCase):
         # Make get_project_url fail for "Error Dashboard"
         def mock_url(project):
             if project.title == "Error Dashboard":
-                raise Exception("API Error")
+                raise Exception("API Error")  # noqa: TRY002
             return f"https://app.hex.tech/app/projects/{project.id}"
 
         mock_client.get_project_url = MagicMock(side_effect=mock_url)
@@ -350,7 +350,7 @@ class TestHexIngestionFlow(TestCase):
         for dashboard in source.get_dashboards_list():
             for result in source.yield_dashboard(dashboard):
                 if result.right:
-                    dashboards.append(result.right)
+                    dashboards.append(result.right)  # noqa: PERF401
 
         elapsed_time = time.time() - start_time
 
@@ -388,7 +388,7 @@ class TestHexIngestionFlow(TestCase):
 
         total_processed = 0
 
-        for batch_num in range(total_batches):
+        for batch_num in range(total_batches):  # noqa: B007
             # Create batch of projects
             batch = create_sample_projects(batch_size)
             mock_client.get_projects = MagicMock(return_value=batch)
@@ -399,7 +399,7 @@ class TestHexIngestionFlow(TestCase):
             for dashboard in source.get_dashboards_list():
                 for result in source.yield_dashboard(dashboard):
                     if result.right:
-                        batch_dashboards.append(result.right)
+                        batch_dashboards.append(result.right)  # noqa: PERF401
 
             self.assertEqual(len(batch_dashboards), batch_size)
             total_processed += len(batch_dashboards)
@@ -572,7 +572,7 @@ class TestHexIngestionFlow(TestCase):
         # Make some URL generations fail
         def mock_url(project):
             if int(project.id.split("_")[1]) % 3 == 0:
-                raise Exception(f"Failed for {project.id}")
+                raise Exception(f"Failed for {project.id}")  # noqa: TRY002
             return f"https://app.hex.tech/app/projects/{project.id}"
 
         mock_client.get_project_url = MagicMock(side_effect=mock_url)
@@ -678,7 +678,7 @@ class TestHexIngestionWithLineage(TestCase):
         lineage_results = []
         for result in source.yield_dashboard_lineage_details(projects[0]):
             if result.right:
-                lineage_results.append(result.right)
+                lineage_results.append(result.right)  # noqa: PERF401
 
         # Verify lineage was created
         self.assertEqual(len(lineage_results), 2)

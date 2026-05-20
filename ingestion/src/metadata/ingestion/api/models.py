@@ -15,7 +15,7 @@ Generic models
 from typing import Generic, Optional, TypeVar
 
 from pydantic import BaseModel, Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -30,7 +30,7 @@ class Either(BaseModel, Generic[T]):
     """Any execution should return us Either an Entity of an error for us to handle"""
 
     left: Annotated[
-        Optional[StackTraceError],
+        Optional[StackTraceError],  # noqa: UP045
         Field(description="Error encountered during execution", default=None),
     ]
-    right: Annotated[Optional[T], Field(description="Correct instance of an Entity", default=None)]
+    right: Annotated[Optional[T], Field(description="Correct instance of an Entity", default=None)]  # noqa: UP045

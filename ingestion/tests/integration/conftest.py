@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import List, Tuple, Type
+from typing import List, Tuple, Type  # noqa: UP035
 
 import pytest
 
@@ -151,7 +151,7 @@ def classifier_config(db_service, workflow_config, sink_config):
 
 @pytest.fixture(scope="module")
 def run_workflow():
-    def _run(workflow_type: Type[IngestionWorkflow], config, raise_from_status=True):
+    def _run(workflow_type: Type[IngestionWorkflow], config, raise_from_status=True):  # noqa: UP006
         workflow: IngestionWorkflow = workflow_type.create(config)
         workflow.execute()
         if raise_from_status:
@@ -170,7 +170,7 @@ def _safe_delete(metadata, entity, entity_id, retries=3, **kwargs):
     for attempt in range(retries):
         try:
             metadata.delete(entity=entity, entity_id=entity_id, **kwargs)
-            return
+            return  # noqa: TRY300
         except Exception:
             if attempt < retries - 1:
                 logger.warning(
@@ -273,7 +273,7 @@ def patch_passwords_for_db_services(db_service, unmask_password, monkeymodule):
     def override_password(getter):
         def inner(*args, **kwargs):
             result = getter(*args, **kwargs)
-            if isinstance(result, DatabaseService):
+            if isinstance(result, DatabaseService):  # noqa: SIM102
                 if result.fullyQualifiedName.root == db_service.fullyQualifiedName.root:
                     return unmask_password(result)
             return result
@@ -293,9 +293,9 @@ def patch_passwords_for_db_services(db_service, unmask_password, monkeymodule):
 
 @pytest.fixture
 def cleanup_fqns(metadata):
-    fqns: List[Tuple[Type[Entity], str]] = []
+    fqns: List[Tuple[Type[Entity], str]] = []  # noqa: UP006
 
-    def inner(entity_type: Type[Entity], fqn: str):
+    def inner(entity_type: Type[Entity], fqn: str):  # noqa: UP006
         fqns.append((entity_type, fqn))
 
     yield inner

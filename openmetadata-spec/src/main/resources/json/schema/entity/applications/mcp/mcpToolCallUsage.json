@@ -1,0 +1,40 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/mcp/mcpToolCallUsage.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "McpToolCallUsage",
+  "description": "Single MCP tool-call usage record. One row written per tool invocation to the apps_extension_time_series table with extension='limits' (reusing the existing per-app usage extension; rows are isolated by appName='McpApplication'). Used to surface MCP traffic as a product growth metric. Not billed, no enforcement.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.app.mcp.McpToolCallUsage",
+  "properties": {
+    "appId": {
+      "description": "Unique identifier of the McpApplication.",
+      "$ref": "../../../type/basic.json#/definitions/uuid"
+    },
+    "appName": {
+      "description": "Name of the application (McpApplication).",
+      "$ref": "../../../type/basic.json#/definitions/entityName"
+    },
+    "timestamp": {
+      "description": "Time the tool call completed (epoch millis, UTC).",
+      "$ref": "../../../type/basic.json#/definitions/timestamp"
+    },
+    "extension": {
+      "$ref": "../../applications/appExtension.json#/definitions/extensionType",
+      "default": "limits"
+    },
+    "toolName": {
+      "description": "Name of the MCP tool that was invoked (e.g. search_metadata, create_glossary, nlq_search).",
+      "type": "string"
+    },
+    "userName": {
+      "description": "Principal name from the MCP request's security context.",
+      "type": "string"
+    },
+    "success": {
+      "description": "True if the tool call returned without an error result.",
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["extension"]
+}

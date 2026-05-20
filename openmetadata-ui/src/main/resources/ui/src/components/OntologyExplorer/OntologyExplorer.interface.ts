@@ -116,6 +116,7 @@ export interface OntologyGraphProps {
   hierarchyCombos?: HierarchyComboInfo[];
   focusNodeId?: string | null;
   graphSearchHighlight?: GraphSearchHighlightInput | null;
+  relationTypes?: GlossaryTermRelationType[];
   onNodeClick: (
     node: OntologyNode,
     position?: { x: number; y: number },
@@ -136,7 +137,13 @@ export interface FilterToolbarProps {
   onFiltersChange: (filters: GraphFilters) => void;
   onViewModeChange?: (viewMode: GraphViewMode) => void;
   onClearAll?: () => void;
+  onLoadMore?: () => void;
   viewModeDisabled?: boolean;
+  isLoading?: boolean;
+  isLoadingMore?: boolean;
+  hasMoreTerms?: boolean;
+  loadedTermCount?: number;
+  totalTermCount?: number;
 }
 
 export interface GraphSettingsPanelProps {
@@ -214,4 +221,5 @@ export interface BuildGraphDataProps {
   layoutType: LayoutEngineType;
   hierarchyCombos?: HierarchyComboInfo[];
   graphSearchHighlight?: GraphSearchHighlightInput | null;
+  relationTypes?: GlossaryTermRelationType[];
 }

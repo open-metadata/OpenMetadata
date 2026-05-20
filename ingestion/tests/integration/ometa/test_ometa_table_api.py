@@ -15,7 +15,7 @@ OpenMetadata high-level API Table test
 
 from copy import deepcopy
 from datetime import datetime, timezone
-from typing import List
+from typing import List  # noqa: UP035
 from unittest.mock import patch
 
 import pytest
@@ -29,7 +29,7 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
-from metadata.generated.schema.entity.data.query import Query
+from metadata.generated.schema.entity.data.query import Query  # noqa: TC001
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnJoins,
@@ -59,7 +59,7 @@ from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingCo
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 
-from ..integration_base import get_create_entity
+from ..integration_base import get_create_entity  # noqa: TID252
 
 BAD_RESPONSE = {
     "data": [
@@ -271,7 +271,7 @@ class TestOMetaTableAPI:
         Validate generator utility to fetch all tables
         """
         fake_create = deepcopy(table_request)
-        for i in range(0, 10):
+        for i in range(0, 10):  # noqa: PIE808
             fake_create.name = EntityName(table_request.name.root + str(i))
             create_table(fake_create)
 
@@ -422,7 +422,7 @@ class TestOMetaTableAPI:
         assert table.profile.columnCount == table_profile.columnCount
         assert table.profile.rowCount == table_profile.rowCount
 
-        res_column_profile = next((col.profile for col in table.columns if col.name.root == "id"))
+        res_column_profile = next((col.profile for col in table.columns if col.name.root == "id"))  # noqa: UP034
         assert res_column_profile == column_profile[0]
 
     def test_publish_table_usage(self, metadata, table_request, expected_fqn, create_table):
@@ -509,7 +509,7 @@ class TestOMetaTableAPI:
         )
 
         metadata.ingest_entity_queries_data(entity=res, queries=[query_no_user])
-        table_with_query: List[Query] = metadata.get_entity_queries(res.id, fields=["*"])
+        table_with_query: List[Query] = metadata.get_entity_queries(res.id, fields=["*"])  # noqa: UP006
 
         assert len(table_with_query) == 1
         assert table_with_query[0].query == query_no_user.query
@@ -524,7 +524,7 @@ class TestOMetaTableAPI:
         )
 
         metadata.ingest_entity_queries_data(entity=res, queries=[query_with_user])
-        table_with_query: List[Query] = metadata.get_entity_queries(res.id, fields=["*"])
+        table_with_query: List[Query] = metadata.get_entity_queries(res.id, fields=["*"])  # noqa: UP006
 
         assert len(table_with_query) == 2
         query_with_owner = next(
@@ -587,7 +587,7 @@ class TestOMetaTableAPI:
         We can list all our Tables even when some of them are broken
         """
         # First validate that exception is raised when skip_on_failure is False
-        with patch.object(REST, "get", return_value=BAD_RESPONSE):
+        with patch.object(REST, "get", return_value=BAD_RESPONSE):  # noqa: SIM117
             with pytest.raises(ValidationError):
                 metadata.list_entities(entity=Table)
 
@@ -602,7 +602,7 @@ class TestOMetaTableAPI:
         Validate generator utility to fetch all tables even when some of them are broken
         """
         # First validate that exception is raised when skip_on_failure is False
-        with patch.object(REST, "get", return_value=BAD_RESPONSE):
+        with patch.object(REST, "get", return_value=BAD_RESPONSE):  # noqa: SIM117
             with pytest.raises(ValidationError):
                 res = metadata.list_all_entities(entity=Table, limit=1)
                 list(res)

@@ -13,7 +13,7 @@ DomoDashboard source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional  # noqa: UP035
 
 from pydantic import ValidationError
 
@@ -67,14 +67,14 @@ class DomodashboardSource(DashboardServiceSource):
     metadata_config: OpenMetadataConnection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config = WorkflowSource.model_validate(config_dict)
         connection: DomoDashboardConnection = config.serviceConnection.root.config
         if not isinstance(connection, DomoDashboardConnection):
             raise InvalidSourceException(f"Expected DomoDashboardConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_dashboards_list(self) -> Optional[List[DomoDashboardDetails]]:
+    def get_dashboards_list(self) -> Optional[List[DomoDashboardDetails]]:  # noqa: UP006, UP045
         if not self.source_config.includeOwners:
             logger.debug("Skipping owner information as includeOwners is False")
         dashboards = self.client.domo.page_list()
@@ -99,7 +99,7 @@ class DomodashboardSource(DashboardServiceSource):
     def get_dashboard_details(self, dashboard: DomoDashboardDetails) -> dict:
         return dashboard
 
-    def get_owner_ref(self, dashboard_details: DomoDashboardDetails) -> Optional[EntityReferenceList]:
+    def get_owner_ref(self, dashboard_details: DomoDashboardDetails) -> Optional[EntityReferenceList]:  # noqa: UP045
         try:
             if not self.source_config.includeOwners:
                 return None
@@ -165,14 +165,14 @@ class DomodashboardSource(DashboardServiceSource):
                 )
             )
 
-    def get_owners(self, owners: List[dict]) -> List[DomoOwner]:
+    def get_owners(self, owners: List[dict]) -> List[DomoOwner]:  # noqa: UP006
         domo_owner = []
         for owner in owners:
-            domo_owner.append(DomoOwner(id=str(owner["id"]), displayName=owner["displayName"]))
+            domo_owner.append(DomoOwner(id=str(owner["id"]), displayName=owner["displayName"]))  # noqa: PERF401
 
         return domo_owner
 
-    def get_page_details(self, page_id) -> Optional[DomoDashboardDetails]:
+    def get_page_details(self, page_id) -> Optional[DomoDashboardDetails]:  # noqa: UP045
         try:
             pages = self.client.domo.page_get(page_id)
             return DomoDashboardDetails(
@@ -188,12 +188,12 @@ class DomodashboardSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
             return None
 
-    def get_chart_ids(self, collection_ids: List[Any]):
+    def get_chart_ids(self, collection_ids: List[Any]):  # noqa: UP006
         chart_ids = []
         for collection_id in collection_ids or []:
             chart_id = self.get_page_details(page_id=collection_id)
             for chart in chart_id.cardIds:
-                chart_ids.append(chart)
+                chart_ids.append(chart)  # noqa: PERF402
         return chart_ids
 
     def yield_dashboard_chart(self, dashboard_details: DomoDashboardDetails) -> Iterable[Either[CreateChartRequest]]:
@@ -201,7 +201,7 @@ class DomodashboardSource(DashboardServiceSource):
         chart_id_from_collection = self.get_chart_ids(dashboard_details.collectionIds)
         chart_ids.extend(chart_id_from_collection)
         for chart_id in chart_ids:
-            chart: Optional[DomoChartDetails] = None
+            chart: Optional[DomoChartDetails] = None  # noqa: UP045
             try:
                 chart = self.client.custom.get_chart_details(page_id=chart_id)
                 chart_url = (
@@ -235,6 +235,6 @@ class DomodashboardSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: dict,
-        db_service_prefix: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         """No lineage implemented"""

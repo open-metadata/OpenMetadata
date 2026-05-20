@@ -213,6 +213,7 @@ interface GraphComboMeta {
   color?: string;
   glossaryName?: string;
   isDimmed?: boolean;
+  extraVerticalPadding?: number;
 }
 
 interface UseOntologyGraphProps {
@@ -1065,7 +1066,7 @@ export function useOntologyGraph({
         },
       },
       edge: {
-        type: 'cubic-vertical',
+        type: 'line',
         animation: {
           enter: false,
         },
@@ -1111,9 +1112,13 @@ export function useOntologyGraph({
           const d = (datum.data ?? {}) as GraphComboMeta;
           const color = d?.color ?? COMBO_COLOR_FALLBACK;
           const glossaryName = d?.glossaryName ?? '';
+          const extraVerticalPadding =
+            typeof d?.extraVerticalPadding === 'number'
+              ? d.extraVerticalPadding
+              : 0;
 
           return {
-            ...buildComboStyle(glossaryName, color),
+            ...buildComboStyle(glossaryName, color, extraVerticalPadding),
             zIndex: 0,
             opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
           };
@@ -1199,7 +1204,7 @@ export function useOntologyGraph({
     };
     graph.on('edge:click', handleEdgeClick);
 
-    const EDGE_TRIGGER_PX = 400;
+    const TOOLBAR_AREA_PX = 80;
 
     const checkEdgeProximity = () => {
       const g = graphRef.current;
@@ -1216,15 +1221,18 @@ export function useOntologyGraph({
 
       const W = c.offsetWidth;
       const H = c.offsetHeight;
-      const canvasBottom = g.getCanvasByViewport([W / 2, H]);
-      const cvpBottom = Array.isArray(canvasBottom)
-        ? canvasBottom[1]
-        : (canvasBottom as unknown as ArrayLike<number>)[1];
+      // Canvas Y that corresponds to the toolbar zone in viewport space.
+      const canvasAtToolbar = g.getCanvasByViewport([
+        W / 2,
+        H - TOOLBAR_AREA_PX,
+      ]);
+      const cvpAtToolbar = Array.isArray(canvasAtToolbar)
+        ? canvasAtToolbar[1]
+        : (canvasAtToolbar as unknown as ArrayLike<number>)[1];
 
       const { maxY } = graphBoundsRef.current;
-      const nearBottom = cvpBottom >= maxY - EDGE_TRIGGER_PX;
-
-      if (nearBottom) {
+      // Fire when the bottom-most nodes have scrolled up to the toolbar level.
+      if (cvpAtToolbar >= maxY) {
         onScrollNearEdgeRef.current();
       }
     };

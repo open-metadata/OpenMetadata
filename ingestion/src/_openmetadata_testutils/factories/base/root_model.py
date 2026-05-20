@@ -1,4 +1,4 @@
-from typing import Any, Dict, Set
+from typing import Any, Dict, Set  # noqa: UP035
 
 import factory
 from factory.base import FactoryOptions, OptionDefault
@@ -6,12 +6,12 @@ from factory.base import FactoryOptions, OptionDefault
 DEFAULT_ROOT_ATTRIBUTE_NAME = "root"
 
 
-def add_root_prefix(parameters: Dict[str, Any], root_attribute_name: str, ignore_keys: Set[str]) -> Dict[str, Any]:
+def add_root_prefix(parameters: Dict[str, Any], root_attribute_name: str, ignore_keys: Set[str]) -> Dict[str, Any]:  # noqa: UP006
     params = {}
 
     for key, value in parameters.items():
         if not key.startswith(root_attribute_name) and key not in ignore_keys:
-            key = f"{root_attribute_name}__{key}"
+            key = f"{root_attribute_name}__{key}"  # noqa: PLW2901
 
         params[key] = value
 

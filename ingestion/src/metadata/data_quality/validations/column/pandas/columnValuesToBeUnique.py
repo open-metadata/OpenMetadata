@@ -15,7 +15,7 @@ Validator for column values to be unique test case
 
 import logging
 from collections import Counter, defaultdict
-from typing import List, Optional, cast
+from typing import List, Optional, cast  # noqa: UP035
 
 import pandas as pd
 
@@ -56,7 +56,7 @@ class ColumnValuesToBeUniqueValidator(
 ):
     """Validator for column values to be unique test case"""
 
-    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:  # noqa: UP045
         """compute result of the test case
 
         Args:
@@ -65,7 +65,7 @@ class ColumnValuesToBeUniqueValidator(
         """
         return self.run_dataframe_results(self.runner, metric, column)
 
-    def _get_unique_count(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
+    def _get_unique_count(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:  # noqa: UP045
         """Get unique count of values"""
         return self._run_results(metric, column)
 
@@ -74,9 +74,9 @@ class ColumnValuesToBeUniqueValidator(
         column: SQALikeColumn,
         dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
-        test_params: Optional[dict],
+        test_params: Optional[dict],  # noqa: UP045
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
         Follows the iterate pattern from the Mean metric's df_fn method to handle
@@ -113,11 +113,11 @@ class ColumnValuesToBeUniqueValidator(
             )
 
             for df in dfs:
-                df_typed = cast(pd.DataFrame, df)
+                df_typed = cast(pd.DataFrame, df)  # noqa: TC006
                 grouped = df_typed.groupby(dimension_col.name, dropna=False)
 
                 for dimension_value, group_df in grouped:
-                    dimension_value = self.format_dimension_value(dimension_value)
+                    dimension_value = self.format_dimension_value(dimension_value)  # noqa: PLW2901
 
                     unique_count_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.uniqueCount.name],

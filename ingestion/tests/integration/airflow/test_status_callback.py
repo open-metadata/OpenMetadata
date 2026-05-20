@@ -26,7 +26,7 @@ from metadata.generated.schema.entity.data.pipeline import (
 )
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 
-from ..integration_base import (
+from ..integration_base import (  # noqa: TID252
     generate_name,
     get_create_entity,
     get_create_service,

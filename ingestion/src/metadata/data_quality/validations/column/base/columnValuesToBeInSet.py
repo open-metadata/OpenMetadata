@@ -16,7 +16,7 @@ Validator for column value to be in set test case
 import traceback
 from abc import abstractmethod
 from ast import literal_eval
-from typing import List, Optional, Union
+from typing import List, Optional, Union  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -59,7 +59,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self.get_column()
+            column: Union[SQALikeColumn, Column] = self.get_column()  # noqa: UP007
             count_in_set = self._run_results(Metrics.countInSet, column, values=test_params[self.ALLOWED_VALUES])
 
             metric_values = {
@@ -73,7 +73,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
-            logger.warning(msg)
+            logger.error(msg)
             return self.get_test_case_result_object(
                 self.execution_date,
                 TestCaseStatus.Aborted,
@@ -135,7 +135,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
 
         return metrics
 
-    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:  # noqa: UP045
         """Evaluate the in-set test condition
 
         For in-set test, behavior depends on match_enum flag:
@@ -180,8 +180,8 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
     def _format_result_message(
         self,
         metric_values: dict,
-        dimension_info: Optional[DimensionInfo] = None,
-        test_params: Optional[dict] = None,
+        dimension_info: Optional[DimensionInfo] = None,  # noqa: UP045
+        test_params: Optional[dict] = None,  # noqa: UP045
     ) -> str:
         """Format the result message for in-set test
 
@@ -200,10 +200,10 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
                 f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
                 f"Found countInSet={count_in_set}"
             )
-        else:
+        else:  # noqa: RET505
             return f"Found countInSet={count_in_set}."
 
-    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:
+    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:  # noqa: UP006
         """Get test result values for in-set test
 
         Args:
@@ -225,7 +225,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         dimension_col_name: str,
         metric_values: dict,
         evaluation: TestEvaluation,
-        test_params: Optional[dict] = None,
+        test_params: Optional[dict] = None,  # noqa: UP045
     ) -> DimensionResult:
         """Override to handle match_enum-specific impact score logic
 
@@ -258,12 +258,12 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
     @abstractmethod
     def _execute_dimensional_validation(
         self,
-        column: Union[SQALikeColumn, Column],
-        dimension_col: Union[SQALikeColumn, Column],
+        column: Union[SQALikeColumn, Column],  # noqa: UP007
+        dimension_col: Union[SQALikeColumn, Column],  # noqa: UP007
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional query for column values to be in set
 
         Args:
@@ -280,11 +280,11 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         raise NotImplementedError
 
     @abstractmethod
-    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs):
+    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs):  # noqa: UP007
         raise NotImplementedError
 
     @abstractmethod
-    def compute_row_count(self, column: Union[SQALikeColumn, Column]):
+    def compute_row_count(self, column: Union[SQALikeColumn, Column]):  # noqa: UP007
         """Compute row count for the given column
 
         Args:

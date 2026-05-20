@@ -47,7 +47,7 @@ class Base(DeclarativeBase):
 
 class SensorReadings(Base):
     __tablename__ = "sensor_readings"
-    __table_args__ = {"schema": "public"}
+    __table_args__ = {"schema": "public"}  # noqa: RUF012
     id = Column(Integer, primary_key=True)
     time = Column(DateTime(timezone=True))
     device_id = Column(String(256))

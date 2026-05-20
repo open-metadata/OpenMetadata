@@ -46,7 +46,7 @@ from metadata.ingestion.source.pipeline.spline.utils import parse_jdbc_url
 from metadata.utils.constants import DEFAULT_DATABASE, UTF_8
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/spline_dataset.json"
-with open(mock_file_path, encoding=UTF_8) as file:
+with open(mock_file_path, encoding=UTF_8) as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 MOCK_SPLINE_UI_URL = "http://localhost:9090"
@@ -225,7 +225,7 @@ JDBC_PARSING_EXAMPLES = [
 
 class SplineUnitTest(TestCase):
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         config = OpenMetadataWorkflowConfig.model_validate(mock_spline_config)
@@ -253,7 +253,7 @@ class SplineUnitTest(TestCase):
         )
 
     def test_pipelines(self):
-        pipline = list(self.spline.yield_pipeline(EXPECTED_SPLINE_PIPELINES.items[0]))[0].right
+        pipline = list(self.spline.yield_pipeline(EXPECTED_SPLINE_PIPELINES.items[0]))[0].right  # noqa: RUF015
         assert pipline == EXPECTED_CREATED_PIPELINES
 
     def test_jdbc_parsing(self):

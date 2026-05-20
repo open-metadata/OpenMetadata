@@ -26,6 +26,7 @@ import {
 import { transitionIncident } from '../../../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
 import { createTask } from '../../../../rest/tasksAPI';
+import { getEntityFeedLink } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
 jest.mock('@untitledui/icons', () => ({
@@ -898,7 +899,10 @@ describe('InlineTestCaseIncidentStatus', () => {
         // transitionIncident with 'resolve'.
         expect(createTask).toHaveBeenCalledWith(
           expect.objectContaining({
-            about: mockData.testCaseReference?.fullyQualifiedName,
+            about: getEntityFeedLink(
+              'testCase',
+              mockData.testCaseReference?.fullyQualifiedName
+            ),
           })
         );
 

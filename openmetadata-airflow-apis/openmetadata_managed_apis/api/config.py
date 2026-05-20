@@ -17,6 +17,7 @@ import socket
 
 import airflow
 from airflow.configuration import conf
+
 from openmetadata_managed_apis import __version__
 from openmetadata_managed_apis.utils.airflow_version import (
     get_base_url_config,

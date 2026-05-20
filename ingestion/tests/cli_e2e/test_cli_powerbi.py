@@ -14,12 +14,12 @@ Test PowerBI connector with CLI
 """
 
 from pathlib import Path
-from typing import List
+from typing import List  # noqa: UP035
 
 import pytest
 
-from .base.test_cli import PATH_TO_RESOURCES
-from .common.test_cli_dashboard import CliCommonDashboard
+from .base.test_cli import PATH_TO_RESOURCES  # noqa: TID252
+from .common.test_cli_dashboard import CliCommonDashboard  # noqa: TID252
 
 
 class PowerBICliTest(CliCommonDashboard.TestSuite):
@@ -32,22 +32,22 @@ class PowerBICliTest(CliCommonDashboard.TestSuite):
     def get_connector_name() -> str:
         return "powerbi"
 
-    def get_includes_dashboards(self) -> List[str]:
+    def get_includes_dashboards(self) -> List[str]:  # noqa: UP006
         return [".*Supplier.*", ".*Lineage.*"]
 
-    def get_excludes_dashboards(self) -> List[str]:
+    def get_excludes_dashboards(self) -> List[str]:  # noqa: UP006
         return ["Customer Profitability Sample"]
 
-    def get_includes_charts(self) -> List[str]:
+    def get_includes_charts(self) -> List[str]:  # noqa: UP006
         return ["Total Defect Quantity", "lineagetest", "lineagetest2work"]
 
-    def get_excludes_charts(self) -> List[str]:
+    def get_excludes_charts(self) -> List[str]:  # noqa: UP006
         return ["Total Rejected Defect Quantity"]
 
-    def get_includes_datamodels(self) -> List[str]:
+    def get_includes_datamodels(self) -> List[str]:  # noqa: UP006
         return []
 
-    def get_excludes_datamodels(self) -> List[str]:
+    def get_excludes_datamodels(self) -> List[str]:  # noqa: UP006
         return []
 
     def expected_datamodels(self) -> int:

@@ -14,7 +14,7 @@ Databricks Unity Catalog Lineage Source Module
 
 import traceback
 from collections import defaultdict
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -92,7 +92,7 @@ class UnitycatalogLineageSource(Source):
         """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: UnityCatalogConnection = config.serviceConnection.root.config
@@ -104,7 +104,7 @@ class UnitycatalogLineageSource(Source):
         """
         Bulk-fetch all table and column lineage from system tables into memory.
         """
-        query_log_duration = self.source_config.queryLogDuration or 1
+        query_log_duration = self.source_config.queryLogDuration or 1  # pyright: ignore[reportAttributeAccessIssue]
         logger.info(f"Caching lineage from system tables (lookback: {query_log_duration} days)")
 
         try:
@@ -153,7 +153,7 @@ class UnitycatalogLineageSource(Source):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to cache external table locations: {exc}")
 
-    def _get_data_model_column_fqn(self, data_model_entity: ContainerDataModel, column: str) -> Optional[str]:
+    def _get_data_model_column_fqn(self, data_model_entity: ContainerDataModel, column: str) -> Optional[str]:  # noqa: UP045
         if not data_model_entity:
             logger.debug(f"No data model entity provided for column: {column}")
             return None
@@ -165,7 +165,7 @@ class UnitycatalogLineageSource(Source):
 
     def _get_container_column_lineage(
         self, data_model_entity: ContainerDataModel, table_entity: Table
-    ) -> Optional[LineageDetails]:
+    ) -> Optional[LineageDetails]:  # noqa: UP045
         try:
             column_lineage = []
             for column in table_entity.columns:
@@ -180,7 +180,7 @@ class UnitycatalogLineageSource(Source):
                     columnsLineage=column_lineage,
                     source=LineageSource.ExternalTableLineage,
                 )
-            return None
+            return None  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Error computing container column lineage for {table_entity.fullyQualifiedName.root}: {exc}")
             logger.debug(traceback.format_exc())
@@ -192,7 +192,7 @@ class UnitycatalogLineageSource(Source):
         to_table: Table,
         source_table_fqn: str,
         target_table_fqn: str,
-    ) -> Optional[LineageDetails]:
+    ) -> Optional[LineageDetails]:  # noqa: UP045
         try:
             table_key = (source_table_fqn, target_table_fqn)
             column_pairs = self.column_lineage_map.get(table_key, [])
@@ -208,7 +208,7 @@ class UnitycatalogLineageSource(Source):
 
             if col_lineage:
                 return LineageDetails(columnsLineage=col_lineage, source=LineageSource.QueryLineage)
-            return None
+            return None  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Error computing column lineage: {exc}")
             logger.debug(traceback.format_exc())
@@ -307,7 +307,7 @@ class UnitycatalogLineageSource(Source):
         self._cache_external_locations()
 
         for database in self.metadata.list_all_entities(entity=Database, params={"service": self.config.serviceName}):
-            if filter_by_database(self.source_config.databaseFilterPattern, database.name.root):
+            if filter_by_database(self.source_config.databaseFilterPattern, database.name.root):  # pyright: ignore[reportAttributeAccessIssue]
                 self.status.filter(
                     database.fullyQualifiedName.root,
                     "Catalog Filtered Out",
@@ -317,7 +317,7 @@ class UnitycatalogLineageSource(Source):
                 entity=DatabaseSchema,
                 params={"database": database.fullyQualifiedName.root},
             ):
-                if filter_by_schema(self.source_config.schemaFilterPattern, schema.name.root):
+                if filter_by_schema(self.source_config.schemaFilterPattern, schema.name.root):  # pyright: ignore[reportAttributeAccessIssue]
                     self.status.filter(
                         schema.fullyQualifiedName.root,
                         "Schema Filtered Out",
@@ -327,7 +327,7 @@ class UnitycatalogLineageSource(Source):
                     entity=Table,
                     params={"databaseSchema": schema.fullyQualifiedName.root},
                 ):
-                    if filter_by_table(self.source_config.tableFilterPattern, table.name.root):
+                    if filter_by_table(self.source_config.tableFilterPattern, table.name.root):  # pyright: ignore[reportAttributeAccessIssue]
                         self.status.filter(
                             table.fullyQualifiedName.root,
                             "Table Filtered Out",

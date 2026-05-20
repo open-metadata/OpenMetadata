@@ -18,7 +18,7 @@ from uuid import uuid4
 
 import pytest
 
-if sys.version_info < (3, 9):
+if sys.version_info < (3, 9):  # noqa: UP036
     pytest.skip(
         "requires python 3.9+ due to incompatibility with object patch",
         allow_module_level=True,
@@ -33,8 +33,8 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
-from metadata.sampler.models import SampleConfig
 from metadata.sampler.pandas.sampler import DatalakeSampler
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 
 
@@ -98,7 +98,7 @@ def _fetch_truncated_sample():
             service_connection_config=DatalakeConnection(configSource={}),
             ometa_client=None,
             entity=TABLE_ENTITY,
-            sample_config=SampleConfig(),
+            config=DatabaseSamplerConfig(),
         )
         return sampler.fetch_sample_data()
 
@@ -107,7 +107,7 @@ class TestDatalakeSamplerTruncation:
     """Verify that DatalakeSampler truncates values exceeding SAMPLE_DATA_MAX_CELL_LENGTH."""
 
     @patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=FakeConnection(),
     )
     def test_fetch_sample_data_truncates_oversized_cells(self, _):
@@ -119,7 +119,7 @@ class TestDatalakeSamplerTruncation:
                     assert len(cell) <= SAMPLE_DATA_MAX_CELL_LENGTH
 
     @patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=FakeConnection(),
     )
     def test_oversized_body_is_truncated_to_limit(self, _):
@@ -130,7 +130,7 @@ class TestDatalakeSamplerTruncation:
         assert len(oversized_row[body_idx]) == SAMPLE_DATA_MAX_CELL_LENGTH
 
     @patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=FakeConnection(),
     )
     def test_value_at_limit_is_not_truncated(self, _):
@@ -141,7 +141,7 @@ class TestDatalakeSamplerTruncation:
         assert len(at_limit_row[body_idx]) == SAMPLE_DATA_MAX_CELL_LENGTH
 
     @patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=FakeConnection(),
     )
     def test_small_value_is_unchanged(self, _):

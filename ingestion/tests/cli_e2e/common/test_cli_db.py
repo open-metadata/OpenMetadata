@@ -26,10 +26,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.status import Status
-from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.metadata import MetadataWorkflow  # noqa: TC001
 
-from ..base.test_cli import PATH_TO_RESOURCES
-from ..base.test_cli_db import CliDBBase
+from ..base.test_cli import PATH_TO_RESOURCES  # noqa: TID252
+from ..base.test_cli_db import CliDBBase  # noqa: TID252
 
 
 class CliCommonDB:
@@ -191,7 +191,7 @@ class CliCommonDB:
             raise NotImplementedError()
 
         @staticmethod
-        def _fqn_deleted_table() -> Optional[str]:
+        def _fqn_deleted_table() -> Optional[str]:  # noqa: UP045
             return None
 
         @staticmethod

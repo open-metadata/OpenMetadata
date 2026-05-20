@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import List
+from typing import List  # noqa: UP035
 
 import pytest
 
@@ -51,7 +51,7 @@ def run_profiler(
 class ProfilerTestParameters:
     table_fqn: str
     expected_table_profile: TableProfile
-    expected_column_profiles: List[ColumnProfile] = None
+    expected_column_profiles: List[ColumnProfile] = None  # noqa: UP006
     config_predicate: Callable[[DatabaseServiceProfilerPipeline], bool] = lambda x: True
 
 
@@ -117,7 +117,7 @@ class ProfilerTestParameters:
                     nullCount=0,
                 )
             ],
-            lambda x: x.useStatistics == False,
+            lambda x: x.useStatistics == False,  # noqa: E712
         ),
         ProfilerTestParameters(
             "{database_service}.minio.my_schema.empty",
@@ -130,7 +130,7 @@ class ProfilerTestParameters:
                     nullCount=0,
                 )
             ],
-            lambda x: x.useStatistics == True,
+            lambda x: x.useStatistics == True,  # noqa: E712
         ),
         ProfilerTestParameters(
             "{database_service}.minio.my_schema.complex_and_simple",  # complex types ignored
@@ -189,7 +189,7 @@ def test_profiler(run_profiler, metadata, db_service, parameters: ProfilerTestPa
             "{database_service}.minio.my_schema.empty",
             TableProfile(timestamp=Timestamp(0), rowCount=None),
             [],
-            lambda x: x.useStatistics == True,
+            lambda x: x.useStatistics == True,  # noqa: E712
         ),
     ],
     ids=lambda x: x.table_fqn.split(".")[-1],

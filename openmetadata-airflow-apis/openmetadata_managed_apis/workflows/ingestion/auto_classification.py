@@ -15,12 +15,6 @@ Auto Classification DAG function builder
 import json
 
 from airflow import DAG
-from openmetadata_managed_apis.utils.logger import set_operator_logger
-from openmetadata_managed_apis.workflows.ingestion.common import (
-    build_dag,
-    build_source,
-    execute_workflow,
-)
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -33,6 +27,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     WorkflowConfig,
 )
 from metadata.workflow.classification import AutoClassificationWorkflow
+from openmetadata_managed_apis.utils.logger import set_operator_logger
+from openmetadata_managed_apis.workflows.ingestion.common import (
+    build_dag,
+    build_source,
+    execute_workflow,
+)
 
 
 def auto_classification_workflow(
@@ -78,7 +78,7 @@ def build_auto_classification_workflow_config(
         enableStreamableLogs=ingestion_pipeline.enableStreamableLogs,
     )
 
-    return workflow_config
+    return workflow_config  # noqa: RET504
 
 
 def build_auto_classification_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
@@ -93,4 +93,4 @@ def build_auto_classification_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
         workflow_fn=auto_classification_workflow,
     )
 
-    return dag
+    return dag  # noqa: RET504

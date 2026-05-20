@@ -13,7 +13,7 @@
 Source connection handler
 """
 
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union  # noqa: UP035
 
 import requests
 from requests.models import Response
@@ -61,7 +61,7 @@ class InvalidOpenAPISchemaError(Exception):
     """
 
 
-def get_connection(connection: RestConnection) -> Union[Response, Dict]:
+def get_connection(connection: RestConnection) -> Union[Response, Dict]:  # noqa: UP006, UP007
     """
     Create connection.
     If openAPISchemaURL is provided, fetches the schema via HTTP.
@@ -92,10 +92,10 @@ def get_connection(connection: RestConnection) -> Union[Response, Dict]:
 
 def test_connection(
     metadata: OpenMetadata,
-    client: Union[Response, Dict],
+    client: Union[Response, Dict],  # noqa: UP006, UP007
     service_connection: RestConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -120,13 +120,13 @@ def test_connection(
             if validate_openapi_schema(schema):
                 return []
 
-            raise InvalidOpenAPISchemaError("Provided schema is not valid OpenAPI specification")
+            raise InvalidOpenAPISchemaError("Provided schema is not valid OpenAPI specification")  # noqa: TRY301
         except OpenAPIParseError as e:
-            raise InvalidOpenAPISchemaError(f"Failed to parse OpenAPI schema: {e}")
+            raise InvalidOpenAPISchemaError(f"Failed to parse OpenAPI schema: {e}")  # noqa: B904
         except InvalidOpenAPISchemaError:
             raise
         except Exception as e:
-            raise InvalidOpenAPISchemaError(f"Error validating OpenAPI schema: {e}")
+            raise InvalidOpenAPISchemaError(f"Error validating OpenAPI schema: {e}")  # noqa: B904
 
     test_fn = {"CheckURL": custom_url_exec, "CheckSchema": custom_schema_exec}
 

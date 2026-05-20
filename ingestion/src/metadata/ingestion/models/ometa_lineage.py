@@ -12,7 +12,7 @@
 Custom wrapper for Lineage Request
 """
 
-from typing import Optional, Type, TypeVar
+from typing import Optional, Type, TypeVar  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -22,7 +22,7 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class OMetaLineageRequest(BaseModel):
-    override_lineage: Optional[bool] = False
+    override_lineage: Optional[bool] = False  # noqa: UP045
     lineage_request: AddLineageRequest
-    entity_fqn: Optional[str] = None
-    entity: Optional[Type[T]] = None
+    entity_fqn: Optional[str] = None  # noqa: UP045
+    entity: Optional[Type[T]] = None  # noqa: UP006, UP045

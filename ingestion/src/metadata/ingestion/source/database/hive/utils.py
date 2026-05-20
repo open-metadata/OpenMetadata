@@ -53,7 +53,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
 
         col_raw_type = col_type
         attype = re.sub(r"\(.*\)", "", col_type)
-        col_type = re.search(r"^\w+", col_type).group(0)
+        col_type = re.search(r"^\w+", col_type).group(0)  # noqa: PLW2901
         try:
             coltype = _type_map[col_type]
 

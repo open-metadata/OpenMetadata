@@ -68,7 +68,7 @@ class TestFabricUsageFilters:
             )
 
             source = MicrosoftFabricUsageSource.create(MOCK_USAGE_CONFIG["source"], MagicMock())
-            return source
+            return source  # noqa: RET504
 
     def test_usage_excludes_create_procedure(self, usage_source):
         assert "create%%procedure" in usage_source.filters.lower()

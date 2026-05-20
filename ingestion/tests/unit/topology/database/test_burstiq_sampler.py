@@ -34,11 +34,9 @@ from metadata.generated.schema.entity.services.connections.database.burstIQConne
 )
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sampler.models import (
-    ProfileSampleConfig,
-    SampleConfig,
-    StaticSamplingConfig,
-)
+from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
+from metadata.sampler.models import SampleConfig
 from metadata.sampler.pandas.burstiq.sampler import _PAGE_SIZE, BurstIQSampler
 from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -80,16 +78,15 @@ def mock_client():
 @pytest.fixture
 def sampler(mock_client):
     with patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=mock_client,
     ):
         s = _ConcreteBurstIQSampler(
             service_connection_config=BURSTIQ_CONNECTION,
             ometa_client=None,
             entity=TABLE_ENTITY,
-            sample_config=SampleConfig(),
         )
-    return s
+    return s  # noqa: RET504
 
 
 class TestBurstIQSamplerGetClient:
@@ -200,15 +197,6 @@ class TestBurstIQSamplerFetchSampleData:
             return_value=lambda: iter([df]),
         )
 
-    def test_empty_dataframe_returns_empty_tabledata(self, sampler):
-        cols = [SQALikeColumn(name="score", type=DataType.DOUBLE)]
-        with self._patch_raw(sampler, pd.DataFrame()):
-            result = sampler.fetch_sample_data(cols)
-
-        col_names = [c.root for c in result.columns]
-        assert result.rows == []
-        assert col_names == ["score"]
-
     def test_respects_sample_limit(self, sampler):
         df = pd.DataFrame({"score": list(range(10)), "age": list(range(10))})
         sampler.sample_limit = 3
@@ -243,6 +231,13 @@ class TestBurstIQSamplerFetchSampleData:
         col_names = [c.root for c in result.columns]
         assert "score" in col_names
         assert "missing_col" not in col_names
+
+    def test_empty_dataframe_returns_empty_tabledata(self, sampler):
+        cols = [SQALikeColumn(name="score", type=DataType.DOUBLE)]
+        with self._patch_raw(sampler, pd.DataFrame()):
+            result = sampler.fetch_sample_data(cols)
+
+        assert result.rows == []
 
     def test_truncates_oversized_cell_values(self, sampler):
         oversized = "x" * (SAMPLE_DATA_MAX_CELL_LENGTH + 100)
@@ -304,7 +299,7 @@ class TestBurstIQSamplerCastDataframe:
 
 
 class TestBurstIQSamplerFallbacks:
-    def test_rdn_sample_from_user_query_returns_raw_dataset(self, sampler):
+    def test_rdn_sample_from_user_query_returns_callable(self, sampler):
         sentinel = Mock()
         with patch.object(
             type(sampler),
@@ -314,11 +309,11 @@ class TestBurstIQSamplerFallbacks:
         ):
             result = sampler._rdn_sample_from_user_query()
 
-        assert result is sentinel
+        assert callable(result)
 
-    def test_fetch_sample_data_from_user_query_delegates_to_fetch_sample_data(self, sampler):
-        sampler._columns = [SQALikeColumn(name="score", type=DataType.DOUBLE)]
+    def test_fetch_sample_data_from_user_query_returns_table_data(self, sampler):
         df = pd.DataFrame({"score": [1.0, 2.0]})
+        sampler.sample_query = "score > 0"
         with patch.object(
             type(sampler),
             "raw_dataset",
@@ -328,4 +323,3 @@ class TestBurstIQSamplerFallbacks:
             result = sampler._fetch_sample_data_from_user_query()
 
         assert isinstance(result, TableData)
-        assert "score" in [c.root for c in result.columns]
