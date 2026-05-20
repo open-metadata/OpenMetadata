@@ -34,7 +34,7 @@ import {
   FAILED_CHART_COLOR_SCHEME,
   SUCCESS_CHART_COLOR_SCHEME,
 } from '../../../constants/Chart.constants';
-import { PAGE_SIZE_BASE, ROUTES } from '../../../constants/constants';
+import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import {
   DATA_QUALITY_DASHBOARD_HEADER,
   DQ_FILTER_KEYS,
@@ -57,7 +57,7 @@ import {
   getStartOfDayInMillis,
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getDataQualityPagePath } from '../../../utils/RouterUtils';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import DataAssetsCoveragePieChartWidget from '../ChartWidgets/DataAssetsCoveragePieChartWidget/DataAssetsCoveragePieChartWidget.component';
 import EntityHealthStatusPieChartWidget from '../ChartWidgets/EntityHealthStatusPieChartWidget/EntityHealthStatusPieChartWidget.component';
 import IncidentTimeChartWidget from '../ChartWidgets/IncidentTimeChartWidget/IncidentTimeChartWidget.component';
@@ -78,7 +78,14 @@ const DataQualityDashboard = ({
 }: {
   initialFilters?: DqDashboardChartFilters;
   hideFilterBar?: boolean;
-  hiddenFilters?: Array<'owner' | 'tier' | 'tags' | 'glossaryTerms'>;
+  hiddenFilters?: Array<
+    | 'owner'
+    | 'tier'
+    | 'certification'
+    | 'tags'
+    | 'glossaryTerms'
+    | 'dataProducts'
+  >;
   isGovernanceView?: boolean;
   className?: string;
 }) => {
@@ -136,7 +143,18 @@ const DataQualityDashboard = ({
     options: [],
   });
   const [isTagLoading, setIsTagLoading] = useState(false);
+  const [dataProductOptions, setDataProductOptions] = useState<{
+    defaultOptions: SearchDropdownOption[];
+    options: SearchDropdownOption[];
+  }>({
+    defaultOptions: [],
+    options: [],
+  });
+  const [isDataProductLoading, setIsDataProductLoading] = useState(false);
   const [selectedTagFilter, setSelectedTagFilter] = useState<
+    SearchDropdownOption[]
+  >([]);
+  const [selectedDataProductFilter, setSelectedDataProductFilter] = useState<
     SearchDropdownOption[]
   >([]);
   const [selectedGlossaryTermFilter, setSelectedGlossaryTermFilter] = useState<
@@ -145,6 +163,17 @@ const DataQualityDashboard = ({
   const [selectedTierFilter, setSelectedTierFilter] = useState<
     SearchDropdownOption[]
   >([]);
+  const [selectedCertificationFilter, setSelectedCertificationFilter] =
+    useState<SearchDropdownOption[]>([]);
+  const [certification, setCertification] = useState<{
+    tags: Tag[];
+    isLoading: boolean;
+    options: SearchDropdownOption[];
+  }>({
+    tags: [],
+    isLoading: true,
+    options: [],
+  });
   const [selectedOwnerFilter, setSelectedOwnerFilter] =
     useState<EntityReference[]>();
 
@@ -182,6 +211,8 @@ const DataQualityDashboard = ({
       ownerFqn: defaultFilters.ownerFqn,
       tags: defaultFilters.tags,
       tier: defaultFilters.tier,
+      certification: defaultFilters.certification,
+      dataProductFqns: defaultFilters.dataProductFqns,
       startTs: defaultFilters.startTs,
       endTs: defaultFilters.endTs,
       domainFqn: defaultFilters.domainFqn,
@@ -189,7 +220,9 @@ const DataQualityDashboard = ({
   }, [
     defaultFilters.ownerFqn,
     defaultFilters.tier,
+    defaultFilters.certification,
     defaultFilters.tags,
+    defaultFilters.dataProductFqns,
     defaultFilters.startTs,
     defaultFilters.endTs,
     defaultFilters.domainFqn,
@@ -211,11 +244,28 @@ const DataQualityDashboard = ({
     }));
   }, [tier]);
 
+  const defaultCertificationOptions = useMemo(() => {
+    return certification.tags.map((op) => ({
+      key: op.fullyQualifiedName ?? op.name,
+      label: getEntityName(op),
+    }));
+  }, [certification]);
+
   const handleTierChange = (tiers: SearchDropdownOption[] = []) => {
     setSelectedTierFilter(tiers);
     setChartFilter((prev) => ({
       ...prev,
       tier: tiers.map((tag) => tag.key),
+    }));
+  };
+
+  const handleCertificationChange = (
+    certifications: SearchDropdownOption[] = []
+  ) => {
+    setSelectedCertificationFilter(certifications);
+    setChartFilter((prev) => ({
+      ...prev,
+      certification: certifications.map((tag) => tag.key),
     }));
   };
 
@@ -242,11 +292,22 @@ const DataQualityDashboard = ({
     }));
   };
 
+  const handleDataProductChange = (
+    dataProducts: SearchDropdownOption[] = []
+  ) => {
+    setSelectedDataProductFilter(dataProducts);
+    setChartFilter((prev) => ({
+      ...prev,
+      dataProductFqns: dataProducts.map((dp) => dp.key),
+    }));
+  };
+
   const fetchTagOptions = async (query = WILD_CARD_CHAR) => {
     const response = await searchQuery({
       searchIndex: SearchIndex.TAG,
       query: query === WILD_CARD_CHAR ? query : `*${query}*`,
-      filters: 'disabled:false AND !classification.name:Tier',
+      filters:
+        'disabled:false AND !classification.name:Tier AND !classification.name:Certification',
       pageSize: PAGE_SIZE_BASE,
     });
     const hits = response.hits.hits;
@@ -260,6 +321,25 @@ const DataQualityDashboard = ({
     });
 
     return tagFilterOptions;
+  };
+
+  const fetchDataProductOptions = async (query = WILD_CARD_CHAR) => {
+    const response = await searchQuery({
+      searchIndex: SearchIndex.DATA_PRODUCT,
+      query: query === WILD_CARD_CHAR ? query : `*${query}*`,
+      pageSize: PAGE_SIZE_BASE,
+    });
+    const hits = response.hits.hits;
+    const dataProductFilterOptions = hits.map((hit) => {
+      const source = hit._source;
+
+      return {
+        key: source.fullyQualifiedName ?? source.name,
+        label: source.displayName ?? source.fullyQualifiedName ?? source.name,
+      };
+    });
+
+    return dataProductFilterOptions;
   };
 
   const handleTagSearch = async (query: string) => {
@@ -355,6 +435,26 @@ const DataQualityDashboard = ({
     }
   };
 
+  const handleCertificationSearch = async (query: string) => {
+    if (query) {
+      setCertification((prev) => ({
+        ...prev,
+        options: defaultCertificationOptions.filter(
+          (value) =>
+            value.label
+              .toLocaleLowerCase()
+              .includes(query.toLocaleLowerCase()) ||
+            value.key.toLocaleLowerCase().includes(query.toLocaleLowerCase())
+        ),
+      }));
+    } else {
+      setCertification((prev) => ({
+        ...prev,
+        options: defaultCertificationOptions,
+      }));
+    }
+  };
+
   const fetchDefaultTagOptions = async () => {
     if (tagOptions.defaultOptions.length) {
       setTagOptions((prev) => ({
@@ -380,6 +480,28 @@ const DataQualityDashboard = ({
     }
   };
 
+  const handleDataProductSearch = async (query: string) => {
+    if (isEmpty(query)) {
+      setDataProductOptions((prev) => ({
+        ...prev,
+        options: prev.defaultOptions,
+      }));
+    } else {
+      setIsDataProductLoading(true);
+      try {
+        const response = await fetchDataProductOptions(query);
+        setDataProductOptions((prev) => ({
+          ...prev,
+          options: response,
+        }));
+      } catch {
+        // we will not show the toast error message for suggestion API
+      } finally {
+        setIsDataProductLoading(false);
+      }
+    }
+  };
+
   const fetchDefaultGlossaryTermOptions = async () => {
     if (glossaryTermOptions.defaultOptions.length) {
       setGlossaryTermOptions((prev) => ({
@@ -402,6 +524,31 @@ const DataQualityDashboard = ({
       // we will not show the toast error message for search API
     } finally {
       setIsGlossaryTermLoading(false);
+    }
+  };
+
+  const fetchDefaultDataProductOptions = async () => {
+    if (dataProductOptions.defaultOptions.length) {
+      setDataProductOptions((prev) => ({
+        ...prev,
+        options: [...selectedDataProductFilter, ...prev.defaultOptions],
+      }));
+
+      return;
+    }
+
+    try {
+      setIsDataProductLoading(true);
+      const response = await fetchDataProductOptions();
+      setDataProductOptions((prev) => ({
+        ...prev,
+        defaultOptions: response,
+        options: response,
+      }));
+    } catch {
+      // we will not show the toast error message for search API
+    } finally {
+      setIsDataProductLoading(false);
     }
   };
 
@@ -434,6 +581,35 @@ const DataQualityDashboard = ({
     }));
   };
 
+  const getCertificationTag = async () => {
+    setCertification((prev) => ({ ...prev, isLoading: true }));
+    try {
+      const { data } = await getTags({
+        parent: 'Certification',
+      });
+
+      setCertification((prev) => ({
+        ...prev,
+        tags: data,
+        options: data.map((op) => ({
+          key: op.fullyQualifiedName ?? op.name,
+          label: getEntityName(op),
+        })),
+      }));
+    } catch {
+      // error
+    } finally {
+      setCertification((prev) => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  const fetchDefaultCertificationOptions = () => {
+    setCertification((prev) => ({
+      ...prev,
+      options: defaultCertificationOptions,
+    }));
+  };
+
   const handleOwnerChange = (owners: EntityReference[] = []) => {
     setSelectedOwnerFilter(owners);
     setChartFilter((prev) => ({
@@ -450,9 +626,15 @@ const DataQualityDashboard = ({
 
   const showOwnerFilter = !hiddenFilters.includes(DQ_FILTER_KEYS.OWNER);
   const showTierFilter = !hiddenFilters.includes(DQ_FILTER_KEYS.TIER);
+  const showCertificationFilter = !hiddenFilters.includes(
+    DQ_FILTER_KEYS.CERTIFICATION
+  );
   const showTagsFilter = !hiddenFilters.includes(DQ_FILTER_KEYS.TAGS);
   const showGlossaryTermsFilter = !hiddenFilters.includes(
     DQ_FILTER_KEYS.GLOSSARY_TERMS
+  );
+  const showDataProductsFilter = !hiddenFilters.includes(
+    DQ_FILTER_KEYS.DATA_PRODUCTS
   );
 
   useEffect(() => {
@@ -462,11 +644,17 @@ const DataQualityDashboard = ({
     if (showTierFilter) {
       getTierTag();
     }
+    if (showCertificationFilter) {
+      getCertificationTag();
+    }
     if (showTagsFilter) {
       fetchDefaultTagOptions();
     }
     if (showGlossaryTermsFilter) {
       fetchDefaultGlossaryTermOptions();
+    }
+    if (showDataProductsFilter) {
+      fetchDefaultDataProductOptions();
     }
   }, [hideFilterBar, hiddenFiltersKey]);
 
@@ -511,19 +699,45 @@ const DataQualityDashboard = ({
     [selectedTierFilter, tier]
   );
 
+  const certificationFilter = useMemo(
+    () => ({
+      options: certification.options,
+      selectedKeys: selectedCertificationFilter,
+      onChange: handleCertificationChange,
+      onGetInitialOptions: fetchDefaultCertificationOptions,
+      onSearch: handleCertificationSearch,
+      isSuggestionsLoading: certification.isLoading,
+    }),
+    [selectedCertificationFilter, certification]
+  );
+
+  const dataProducts = useMemo(
+    () => ({
+      options: uniqBy(dataProductOptions.options, 'key'),
+      selectedKeys: selectedDataProductFilter,
+      onChange: handleDataProductChange,
+      onGetInitialOptions: fetchDefaultDataProductOptions,
+      onSearch: handleDataProductSearch,
+      isSuggestionsLoading: isDataProductLoading,
+    }),
+    [isDataProductLoading, dataProductOptions, selectedDataProductFilter]
+  );
+
   const showFilterBar = !hideFilterBar;
   const hasVisibleFilters =
     showOwnerFilter ||
     showTierFilter ||
+    showCertificationFilter ||
     showTagsFilter ||
-    showGlossaryTermsFilter;
+    showGlossaryTermsFilter ||
+    showDataProductsFilter;
 
   const cardClassName = classNames('data-quality-dashboard-card-section', {
     'tw:ring-0': isGovernanceView,
     'tw:shadow-none': isGovernanceView,
   });
 
-  const cardBodyClass = isGovernanceView ? 'tw:py-6' : 'tw:p-6';
+  const cardBodyClass = 'tw:p-6';
 
   const filterBarContent = (
     <div
@@ -586,6 +800,16 @@ const DataQualityDashboard = ({
             />
           )}
 
+          {showCertificationFilter && (
+            <SearchDropdown
+              hideCounts
+              label={t('label.certification')}
+              searchKey="certification"
+              triggerButtonSize="middle"
+              {...certificationFilter}
+            />
+          )}
+
           {showTagsFilter && (
             <SearchDropdown
               hideCounts
@@ -603,6 +827,16 @@ const DataQualityDashboard = ({
               searchKey="glossaryTerms"
               triggerButtonSize="middle"
               {...glossaryTerms}
+            />
+          )}
+
+          {showDataProductsFilter && (
+            <SearchDropdown
+              hideCounts
+              label={t('label.data-product')}
+              searchKey="dataProduct"
+              triggerButtonSize="middle"
+              {...dataProducts}
             />
           )}
         </div>
@@ -677,9 +911,10 @@ const DataQualityDashboard = ({
                   chartFilter={defaultFilters}
                   name="success"
                   redirectPath={{
-                    pathname: getDataQualityPagePath(
-                      DataQualityPageTabs.TEST_CASES
-                    ),
+                    pathname:
+                      observabilityRouterClassBase.getDataQualityPagePath(
+                        DataQualityPageTabs.TEST_CASES
+                      ),
                     search: QueryString.stringify({
                       testCaseStatus: TestCaseStatus.Success,
                     }),
@@ -694,9 +929,10 @@ const DataQualityDashboard = ({
                   chartFilter={defaultFilters}
                   name="aborted"
                   redirectPath={{
-                    pathname: getDataQualityPagePath(
-                      DataQualityPageTabs.TEST_CASES
-                    ),
+                    pathname:
+                      observabilityRouterClassBase.getDataQualityPagePath(
+                        DataQualityPageTabs.TEST_CASES
+                      ),
                     search: QueryString.stringify({
                       testCaseStatus: TestCaseStatus.Aborted,
                     }),
@@ -711,9 +947,10 @@ const DataQualityDashboard = ({
                   chartFilter={defaultFilters}
                   name="failed"
                   redirectPath={{
-                    pathname: getDataQualityPagePath(
-                      DataQualityPageTabs.TEST_CASES
-                    ),
+                    pathname:
+                      observabilityRouterClassBase.getDataQualityPagePath(
+                        DataQualityPageTabs.TEST_CASES
+                      ),
                     search: QueryString.stringify({
                       testCaseStatus: TestCaseStatus.Failed,
                     }),
@@ -738,7 +975,8 @@ const DataQualityDashboard = ({
                   incidentStatusType={TestCaseResolutionStatusTypes.New}
                   name="open-incident"
                   redirectPath={{
-                    pathname: ROUTES.INCIDENT_MANAGER,
+                    pathname:
+                      observabilityRouterClassBase.getIncidentManagerPath(),
                     search: QueryString.stringify({
                       testCaseResolutionStatusType:
                         TestCaseResolutionStatusTypes.New,
@@ -755,7 +993,8 @@ const DataQualityDashboard = ({
                   incidentStatusType={TestCaseResolutionStatusTypes.Resolved}
                   name="resolved-incident"
                   redirectPath={{
-                    pathname: ROUTES.INCIDENT_MANAGER,
+                    pathname:
+                      observabilityRouterClassBase.getIncidentManagerPath(),
                     search: QueryString.stringify({
                       testCaseResolutionStatusType:
                         TestCaseResolutionStatusTypes.Resolved,

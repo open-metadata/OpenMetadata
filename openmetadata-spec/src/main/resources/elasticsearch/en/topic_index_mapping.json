@@ -82,7 +82,13 @@
         "enabled": false
       },
       "id": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -307,55 +313,7 @@
                 }
               },
               "children": {
-                "properties": {
-                  "id": {
-                    "type": "keyword",
-                    "fields": {
-                      "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 36
-                      }
-                    }
-                  },
-                  "dataType": {
-                    "type": "text"
-                  },
-                  "name": {
-                    "type": "keyword",
-                    "fields": {
-                      "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                      }
-                    }
-                  },
-                  "fullyQualifiedName": {
-                    "type": "text"
-                  },
-                  "description": {
-                    "type": "text"
-                  },
-                  "tags": {
-                    "properties": {
-                      "tagFQN": {
-                        "type": "keyword",
-                        "normalizer": "lowercase_normalizer"
-                      },
-                      "labelType": {
-                        "type": "keyword"
-                      },
-                      "description": {
-                        "type": "text"
-                      },
-                      "source": {
-                        "type": "keyword"
-                      },
-                      "state": {
-                        "type": "keyword"
-                      }
-                    }
-                  }
-                }
+                "type": "flattened"
               }
             }
           }
@@ -643,6 +601,9 @@
                 "ignore_above": 512
               }
             }
+          },
+          "sqlQueryKey": {
+            "type": "keyword"
           }
         }
       },
@@ -793,6 +754,9 @@
       "fingerprint": {
         "type": "keyword"
       },
+      "textToLLMContext": {
+        "type": "text"
+      },
       "textToEmbed": {
         "type": "text"
       },
@@ -812,6 +776,10 @@
       "ownerName": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
+      },
+      "lineageSqlQueries": {
+        "type": "object",
+        "enabled": false
       }
     }
   }

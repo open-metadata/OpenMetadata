@@ -79,6 +79,8 @@ export const DATA_QUALITY_DASHBOARD_HEADER = {
 export const DQ_FILTER_KEYS = {
   OWNER: 'owner',
   TIER: 'tier',
+  CERTIFICATION: 'certification',
   TAGS: 'tags',
   GLOSSARY_TERMS: 'glossaryTerms',
+  DATA_PRODUCTS: 'dataProducts',
 } as const;

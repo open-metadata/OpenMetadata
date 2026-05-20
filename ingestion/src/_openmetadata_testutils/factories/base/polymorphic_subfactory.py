@@ -1,4 +1,4 @@
-from typing import Any, Mapping
+from typing import Any, Mapping  # noqa: UP035
 
 from factory import SubFactory
 from factory.declarations import BaseDeclaration

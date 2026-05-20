@@ -52,7 +52,14 @@ export class CustomPropertiesPageObject extends RightPanelBase {
    * @returns CustomPropertiesPageObject for method chaining
    */
   async navigateToCustomPropertiesTab(): Promise<CustomPropertiesPageObject> {
+    const typeResponse = this.page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/metadata/types/name/') &&
+        resp.url().includes('fields=customProperties') &&
+        resp.request().method() === 'GET'
+    );
     await this.rightPanel.navigateToTab(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES);
+    await typeResponse;
     await this.waitForLoadersToDisappear();
     return this;
   }

@@ -11,9 +11,11 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -42,6 +44,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.ReindexContext;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
@@ -107,6 +110,7 @@ public class OpenSearchBulkSink implements BulkSink {
 
   private final OpenSearchClient searchClient;
   protected final SearchRepository searchRepository;
+  private final long maxPayloadSizeBytes;
   private final CustomBulkProcessor bulkProcessor;
   private final StepStats stats = new StepStats();
 
@@ -152,6 +156,7 @@ public class OpenSearchBulkSink implements BulkSink {
     this.searchClient = (OpenSearchClient) searchRepository.getSearchClient();
     this.batchSize = batchSize;
     this.maxConcurrentRequests = maxConcurrentRequests;
+    this.maxPayloadSizeBytes = maxPayloadSizeBytes;
 
     // Initialize stats
     stats.withTotalRecords(0).withSuccessRecords(0).withFailedRecords(0);
@@ -244,6 +249,12 @@ public class OpenSearchBulkSink implements BulkSink {
                 TARGET_INDEX_KEY, indexMapping.getIndexName(searchRepository.getClusterAlias()));
 
     try {
+      // Process timing wraps the batch's parallel doc-build join. Each entity's runAsync builds
+      // a search doc (Jackson serialize + tag enrichment) and submits to the bulk processor;
+      // the actual OS bulk write is timed separately at the bulk-request site. So this is
+      // pure CPU/serialization time per batch, isolated from upstream DB read and downstream
+      // OS write.
+      long processStartNanos = System.nanoTime();
       // Check if these are time series entities
       if (!entities.isEmpty() && entities.get(0) instanceof EntityTimeSeriesInterface) {
         List<EntityTimeSeriesInterface> tsEntities = (List<EntityTimeSeriesInterface>) entities;
@@ -307,6 +318,10 @@ public class OpenSearchBulkSink implements BulkSink {
           pendingColumnFutures.removeIf(CompletableFuture::isDone);
         }
       }
+      if (tracker != null) {
+        tracker.addStageTime(
+            StageStatsTracker.Stage.PROCESS, System.nanoTime() - processStartNanos);
+      }
     } catch (Exception e) {
       LOG.error("Failed to write {} entities of type {}", entities.size(), entityType, e);
 
@@ -333,7 +348,7 @@ public class OpenSearchBulkSink implements BulkSink {
     return null;
   }
 
-  private static final int BULK_OPERATION_METADATA_OVERHEAD = 50;
+  private static final int BULK_OPERATION_METADATA_OVERHEAD = 150;
 
   private void addEntity(
       EntityInterface entity,
@@ -354,10 +369,43 @@ public class OpenSearchBulkSink implements BulkSink {
 
       String finalJson = json;
       String docId = entity.getId().toString();
-      long estimatedSize =
-          (long) finalJson.getBytes(StandardCharsets.UTF_8).length
-              + BULK_OPERATION_METADATA_OVERHEAD;
+      long rawDocSize = (long) finalJson.getBytes(StandardCharsets.UTF_8).length;
+      long estimatedSize = rawDocSize + BULK_OPERATION_METADATA_OVERHEAD;
 
+      if (rawDocSize > 1024 * 1024) {
+        LOG.warn(
+            "Large indexed doc: entityType={}, docId={}, size={}MB",
+            entityType,
+            docId,
+            rawDocSize / (1024 * 1024));
+      }
+
+      if (estimatedSize > maxPayloadSizeBytes) {
+        long sizeLimit = maxPayloadSizeBytes - BULK_OPERATION_METADATA_OVERHEAD;
+        finalJson = SearchIndexUtils.stripLineageForSize(finalJson, sizeLimit, docId, entityType);
+        rawDocSize = finalJson.getBytes(StandardCharsets.UTF_8).length;
+        estimatedSize = rawDocSize + BULK_OPERATION_METADATA_OVERHEAD;
+      }
+
+      if (estimatedSize > maxPayloadSizeBytes) {
+        LOG.warn(
+            "Document {} of type {} is too large for bulk ({} bytes), sending directly",
+            docId,
+            entityType,
+            rawDocSize);
+        totalSubmitted.incrementAndGet();
+        if (tracker != null) {
+          tracker.incrementPendingSink();
+        }
+        indexDocumentDirectly(indexName, docId, finalJson, entityType, tracker);
+        processSuccess.incrementAndGet();
+        if (tracker != null) {
+          tracker.recordProcess(StatsResult.SUCCESS);
+        }
+        return;
+      }
+
+      final String indexableJson = finalJson;
       BulkOperation operation;
       if (recreateIndex) {
         operation =
@@ -367,7 +415,7 @@ public class OpenSearchBulkSink implements BulkSink {
                         idx ->
                             idx.index(indexName)
                                 .id(docId)
-                                .document(OsUtils.toJsonData(finalJson))));
+                                .document(OsUtils.toJsonData(indexableJson))));
       } else {
         operation =
             BulkOperation.of(
@@ -376,7 +424,7 @@ public class OpenSearchBulkSink implements BulkSink {
                         upd ->
                             upd.index(indexName)
                                 .id(docId)
-                                .document(OsUtils.toJsonData(finalJson))
+                                .document(OsUtils.toJsonData(indexableJson))
                                 .docAsUpsert(true)));
       }
       if (tracker != null) {
@@ -421,6 +469,42 @@ public class OpenSearchBulkSink implements BulkSink {
             entity.getFullyQualifiedName(),
             e.getMessage(),
             IndexingFailureRecorder.FailureStage.PROCESS);
+      }
+    }
+  }
+
+  private void indexDocumentDirectly(
+      String indexName, String docId, String json, String entityType, StageStatsTracker tracker) {
+    try {
+      searchClient
+          .getNewClient()
+          .index(idx -> idx.index(indexName).id(docId).document(OsUtils.toJsonData(json)));
+      totalSuccess.incrementAndGet();
+      updateStats();
+      if (tracker != null) {
+        tracker.recordSink(StatsResult.SUCCESS);
+      }
+    } catch (Exception e) {
+      LOG.error(
+          "Direct index failed for document {} of type {}: {}",
+          docId,
+          entityType,
+          e.getMessage(),
+          e);
+      totalFailed.incrementAndGet();
+      updateStats();
+      if (tracker != null) {
+        tracker.recordSink(StatsResult.FAILED);
+      }
+      if (failureCallback != null) {
+        failureCallback.onFailure(
+            entityType,
+            docId,
+            null,
+            String.format(
+                "Document too large for bulk (%d bytes); direct index failed: %s",
+                json.getBytes(StandardCharsets.UTF_8).length, e.getMessage()),
+            IndexingFailureRecorder.FailureStage.SINK);
       }
     }
   }
@@ -812,6 +896,22 @@ public class OpenSearchBulkSink implements BulkSink {
   }
 
   public static class CustomBulkProcessor {
+    /**
+     * Cap on how long a flush will wait for a permit before declaring the bulk failed. With an
+     * unbounded {@code acquire()} a single leaked async future (no completion, no release) parks
+     * every subsequent caller permanently and the entire pipeline freezes at whatever record
+     * count was in flight at the time. 60s is conservative — well above any realistic OS bulk
+     * latency, well below "user gives up and bounces the pod". Stored per-instance (instead of
+     * a static constant) so tests can shorten it without sleeping for a minute.
+     */
+    private static final long DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS = 60L;
+
+    // Volatile for cross-thread visibility. Read by flushInternal on the scheduler thread and
+    // from any caller that triggers a flush via add(); written by the package-private test
+    // setter from a different thread. Without volatile a stale value could be observed.
+    private volatile long semaphoreAcquireTimeoutSeconds =
+        DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS;
+
     private final OpenSearchAsyncClient asyncClient;
     private final List<BulkOperation> buffer = new ArrayList<>();
 
@@ -899,6 +999,8 @@ public class OpenSearchBulkSink implements BulkSink {
           throw new IllegalStateException("Bulk processor is closed");
         }
 
+        totalSubmitted.incrementAndGet();
+
         if (docId != null) {
           if (entityType != null) {
             docIdToEntityType.put(docId, entityType);
@@ -910,6 +1012,10 @@ public class OpenSearchBulkSink implements BulkSink {
 
         long operationSize =
             estimatedSizeBytes > 0 ? estimatedSizeBytes : estimateOperationSize(operation);
+
+        if (!buffer.isEmpty() && currentBufferSize + operationSize >= maxPayloadSizeBytes) {
+          flushInternal();
+        }
         buffer.add(operation);
         currentBufferSize += operationSize;
 
@@ -943,6 +1049,15 @@ public class OpenSearchBulkSink implements BulkSink {
       } finally {
         lock.unlock();
       }
+    }
+
+    /**
+     * Test-only override for the semaphore acquire timeout. Production code uses 60s; tests
+     * exercising the timeout path shorten this so they don't sleep for a minute. Not exposed
+     * via any non-test caller, hence package-private.
+     */
+    void setSemaphoreAcquireTimeoutSecondsForTesting(long seconds) {
+      this.semaphoreAcquireTimeoutSeconds = seconds;
     }
 
     /**
@@ -1001,16 +1116,34 @@ public class OpenSearchBulkSink implements BulkSink {
 
       long executionId = executionIdCounter.incrementAndGet();
       int numberOfActions = toFlush.size();
-      totalSubmitted.addAndGet(numberOfActions);
-
       LOG.debug("Executing bulk request {} with {} actions", executionId, numberOfActions);
 
+      // Bounded acquire: a leaked bulk future (callback never fires — e.g., the OpenSearch HC5
+      // I/O reactor died, PR #27698 territory) used to drain this semaphore and park every
+      // subsequent caller forever. With a timeout we surface the leak as a permanent failure
+      // so workers can keep moving and operators see an actual error instead of the pipeline
+      // silently freezing at a fixed record count.
+      boolean acquired;
       try {
-        concurrentRequestSemaphore.acquire();
+        acquired =
+            concurrentRequestSemaphore.tryAcquire(semaphoreAcquireTimeoutSeconds, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         LOG.error("Interrupted while waiting for semaphore", e);
         Thread.currentThread().interrupt();
         recordPermanentFailure(toFlush, numberOfActions, "Interrupted while waiting for semaphore");
+        if (metrics != null) {
+          metrics.decrementPendingBulkRequests();
+        }
+        return;
+      }
+      if (!acquired) {
+        LOG.error(
+            "Bulk semaphore exhausted for {}s — recording {} ops as failed (active bulk requests={}). Likely a leaked async future.",
+            semaphoreAcquireTimeoutSeconds,
+            numberOfActions,
+            activeBulkRequests.get());
+        recordPermanentFailure(
+            toFlush, numberOfActions, "Bulk semaphore timeout — likely future leak");
         if (metrics != null) {
           metrics.decrementPendingBulkRequests();
         }
@@ -1042,6 +1175,13 @@ public class OpenSearchBulkSink implements BulkSink {
       io.micrometer.core.instrument.Timer.Sample bulkTimerSample =
           metrics != null ? metrics.startBulkRequestTimer() : null;
 
+      // Sink timing wraps the bulk HTTP round-trip — pure OpenSearch latency, isolated from
+      // upstream Reader (DB) and Process (doc build). Resolve the set of trackers
+      // participating in this bulk before submit (without removing), so the completion handler
+      // can attribute the wall-clock to each participating entity tracker.
+      long bulkStartNanos = System.nanoTime();
+      Set<StageStatsTracker> participatingTrackers = collectTrackers(operations);
+
       CompletableFuture<BulkResponse> future;
       try {
         future = asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.False));
@@ -1064,6 +1204,10 @@ public class OpenSearchBulkSink implements BulkSink {
 
       future.whenComplete(
           (response, error) -> {
+            long bulkElapsedNanos = System.nanoTime() - bulkStartNanos;
+            for (StageStatsTracker tracker : participatingTrackers) {
+              tracker.addStageTime(StageStatsTracker.Stage.SINK, bulkElapsedNanos);
+            }
             boolean retryScheduled = false;
             try {
               if (error != null) {
@@ -1103,6 +1247,28 @@ public class OpenSearchBulkSink implements BulkSink {
               }
             }
           });
+    }
+
+    /**
+     * Resolve the distinct set of trackers represented in this bulk by walking each operation's
+     * docId. Used to charge Sink wall-clock time to every participating entity. Each tracker
+     * gets the full bulk-request elapsed time, which slightly overcounts when a single bulk
+     * mixes entity types but is fine for diagnostic comparison ("which entity's docs are
+     * spending the most time in OS bulk requests"). In practice batches are usually
+     * homogeneous because the producer fills bulks per-entity.
+     */
+    private Set<StageStatsTracker> collectTrackers(List<BulkOperation> operations) {
+      Set<StageStatsTracker> trackers = new HashSet<>();
+      for (BulkOperation op : operations) {
+        String docId = getDocId(op);
+        if (docId != null) {
+          StageStatsTracker tracker = docIdToTracker.get(docId);
+          if (tracker != null) {
+            trackers.add(tracker);
+          }
+        }
+      }
+      return trackers;
     }
 
     private boolean handleBulkFailure(

@@ -21,7 +21,10 @@ import {
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from '../../../utils/dataQuality';
-import { visitDataQualityTab } from '../../../utils/testCases';
+import {
+  submitTestCaseForm,
+  visitDataQualityTab,
+} from '../../../utils/testCases';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -124,26 +127,7 @@ test(
         `[data-testid="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.type}"]`
       );
 
-      const createTestCaseResponse = page.waitForResponse(
-        (response: Response) =>
-          response.url().includes('/api/v1/dataQuality/testCases') &&
-          response.request().method() === 'POST'
-      );
-
-      const ingestionPipelines = page.waitForResponse(
-        '/api/v1/services/ingestionPipelines'
-      );
-      const deploy = page.waitForResponse(
-        '/api/v1/services/ingestionPipelines/deploy/*'
-      );
-
-      await page.click('[data-testid="create-btn"]');
-
-      const response = await createTestCaseResponse;
-      await ingestionPipelines;
-      await deploy;
-
-      expect(response.status()).toBe(201);
+      await submitTestCaseForm(page);
       await expect(
         page.locator(
           `[data-testid="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}"]`

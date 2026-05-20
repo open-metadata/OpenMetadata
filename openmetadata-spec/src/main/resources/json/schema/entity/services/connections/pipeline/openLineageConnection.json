@@ -178,6 +178,14 @@
         }
       ]
     },
+    "namespaceToServiceMapping": {
+      "title": "Namespace to Service Mapping",
+      "description": "Map OpenLineage dataset namespaces (or prefixes) to OpenMetadata database service names. Used when multiple services of the same type exist. Example: 'mysql://cluster-a:3306' -> 'mysql-cluster-a'.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
     "pipelineFilterPattern": {
       "description": "Regex exclude pipelines.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",

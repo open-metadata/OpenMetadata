@@ -11,6 +11,7 @@
 """
 test data quality
 """
+
 import pytest
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
@@ -55,15 +56,13 @@ class TestDataQuality:
         )
         assert ingestion_pipeline
         assert ingestion_pipeline.pipelineStatuses
-        assert (
-            ingestion_pipeline.pipelineStatuses.pipelineState == PipelineState.success
-        )
+        assert ingestion_pipeline.pipelineStatuses.pipelineState == PipelineState.success
 
     @pytest.mark.parametrize(
         "test_case_name,failed_rows",
         [
             ("first_name_includes_john", None),
-            ("first_name_is_john", 1),
+            ("first_name_is_john", 2),
         ],
     )
     def test_data_quality_with_sample(
@@ -82,9 +81,7 @@ class TestDataQuality:
             nullable=False,
         )
         if failed_rows:
-            assert test_case.testCaseResult.failedRows == pytest.approx(
-                failed_rows, abs=1
-            )
+            assert test_case.testCaseResult.failedRows == failed_rows
 
     @pytest.mark.parametrize(
         "test_case_name,expected_status,failed_rows",

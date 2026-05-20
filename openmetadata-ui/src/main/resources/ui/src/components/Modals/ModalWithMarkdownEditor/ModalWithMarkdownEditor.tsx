@@ -80,6 +80,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<
         </KeyDownStopPropagationWrapper>
       }
       maskClosable={false}
+      modalRender={(node) => <div data-react-aria-top-layer>{node}</div>}
       open={visible}
       title={<Typography.Text data-testid="header">{header}</Typography.Text>}
       width="90%"

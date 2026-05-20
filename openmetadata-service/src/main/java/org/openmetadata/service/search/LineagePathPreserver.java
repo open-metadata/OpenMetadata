@@ -1,12 +1,15 @@
 package org.openmetadata.service.search;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.lineage.NodeInformation;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Utility class to preserve paths in lineage results when filters are applied.
@@ -40,12 +43,14 @@ public class LineagePathPreserver {
     // Add root
     requiredNodes.add(rootFqn);
 
-    // For each matching node, trace path back to root using unfiltered edges
-    // The tracing will add both the matching nodes and all intermediate nodes
+    // Build adjacency map once: toEntityFqn -> list of fromEntityFqns
+    Map<String, List<String>> parentsByChild = buildParentAdjacencyMap(unfilteredResult);
+
+    // For each matching node, trace path back to root using adjacency map
+    Set<String> visitedNodes = new HashSet<>();
     for (String nodeFqn : matchingNodeFqns) {
       if (!nodeFqn.equals(rootFqn)) {
-        tracePathToRoot(
-            nodeFqn, rootFqn, unfilteredResult, unfilteredResult.getNodes(), requiredNodes);
+        tracePathToRootViaMap(nodeFqn, rootFqn, parentsByChild, requiredNodes, visitedNodes);
       }
     }
 
@@ -94,10 +99,14 @@ public class LineagePathPreserver {
     // Add all currently filtered nodes
     requiredNodes.addAll(result.getNodes().keySet());
 
+    // Build adjacency map once
+    Map<String, List<String>> parentsByChild = buildParentAdjacencyMap(result);
+
     // For each filtered node, trace path back to root
+    Set<String> visitedNodes = new HashSet<>();
     for (String nodeFqn : new HashSet<>(result.getNodes().keySet())) {
       if (!nodeFqn.equals(rootFqn)) {
-        tracePathToRoot(nodeFqn, rootFqn, result, allNodesBeforeFilter, requiredNodes);
+        tracePathToRootViaMap(nodeFqn, rootFqn, parentsByChild, requiredNodes, visitedNodes);
       }
     }
 
@@ -179,6 +188,67 @@ public class LineagePathPreserver {
   }
 
   /**
+   * Builds an adjacency map from toEntity FQN to list of fromEntity FQNs.
+   * Scans all edges once (O(E)) so that path tracing can use O(1) lookups.
+   */
+  static Map<String, List<String>> buildParentAdjacencyMap(SearchLineageResult result) {
+    Map<String, List<String>> parentsByChild = new HashMap<>();
+
+    if (result.getUpstreamEdges() != null) {
+      for (org.openmetadata.schema.api.lineage.EsLineageData edge :
+          result.getUpstreamEdges().values()) {
+        if (edge.getToEntity() != null && edge.getFromEntity() != null) {
+          parentsByChild
+              .computeIfAbsent(edge.getToEntity().getFullyQualifiedName(), k -> new ArrayList<>())
+              .add(edge.getFromEntity().getFullyQualifiedName());
+        }
+      }
+    }
+
+    if (result.getDownstreamEdges() != null) {
+      for (org.openmetadata.schema.api.lineage.EsLineageData edge :
+          result.getDownstreamEdges().values()) {
+        if (edge.getToEntity() != null && edge.getFromEntity() != null) {
+          parentsByChild
+              .computeIfAbsent(edge.getToEntity().getFullyQualifiedName(), k -> new ArrayList<>())
+              .add(edge.getFromEntity().getFullyQualifiedName());
+        }
+      }
+    }
+
+    return parentsByChild;
+  }
+
+  /**
+   * Traces path from a node to root using pre-built adjacency map.
+   * O(path_length) per call instead of O(E) per call.
+   */
+  private static void tracePathToRootViaMap(
+      String nodeFqn,
+      String rootFqn,
+      Map<String, List<String>> parentsByChild,
+      Set<String> requiredNodes,
+      Set<String> visitedNodes) {
+
+    if (!visitedNodes.add(nodeFqn)) {
+      return;
+    }
+
+    requiredNodes.add(nodeFqn);
+
+    if (nodeFqn.equals(rootFqn)) {
+      return;
+    }
+
+    List<String> parents = parentsByChild.get(nodeFqn);
+    if (parents != null) {
+      for (String parentFqn : parents) {
+        tracePathToRootViaMap(parentFqn, rootFqn, parentsByChild, requiredNodes, visitedNodes);
+      }
+    }
+  }
+
+  /**
    * Filters nodes and edges based on column criteria while preserving paths.
    *
    * @param result The lineage result to filter
@@ -193,122 +263,16 @@ public class LineagePathPreserver {
       return result;
     }
 
-    Set<String> matchingNodes = new HashSet<>();
-    matchingNodes.add(rootFqn); // Always include root
+    SearchLineageResult filteredResult = JsonUtils.deepCopy(result, SearchLineageResult.class);
+    Set<String> matchingNodes =
+        collectNodesFromMatchingEdges(filteredResult, columnFilter, rootFqn, null);
+    preservePathsAndFilterEdges(filteredResult, matchingNodes, rootFqn);
+    narrowColumnsOnEdges(filteredResult, columnFilter, null);
+    retainOnlyNodes(filteredResult, matchingNodes);
 
-    // Find all edges with matching columns
-    if (result.getUpstreamEdges() != null) {
-      result.getUpstreamEdges().values().stream()
-          .filter(edge -> ColumnFilterMatcher.matchesColumnFilter(edge, columnFilter))
-          .forEach(
-              edge -> {
-                if (edge.getFromEntity() != null) {
-                  matchingNodes.add(edge.getFromEntity().getFullyQualifiedName());
-                }
-                if (edge.getToEntity() != null) {
-                  matchingNodes.add(edge.getToEntity().getFullyQualifiedName());
-                }
-              });
-    }
-
-    if (result.getDownstreamEdges() != null) {
-      result.getDownstreamEdges().values().stream()
-          .filter(edge -> ColumnFilterMatcher.matchesColumnFilter(edge, columnFilter))
-          .forEach(
-              edge -> {
-                if (edge.getFromEntity() != null) {
-                  matchingNodes.add(edge.getFromEntity().getFullyQualifiedName());
-                }
-                if (edge.getToEntity() != null) {
-                  matchingNodes.add(edge.getToEntity().getFullyQualifiedName());
-                }
-              });
-    }
-
-    // Preserve intermediate nodes between the root and directly matching nodes.
-    for (String nodeFqn : new HashSet<>(matchingNodes)) {
-      if (!nodeFqn.equals(rootFqn)) {
-        tracePathToRoot(nodeFqn, rootFqn, result, result.getNodes(), matchingNodes);
-      }
-    }
-
-    // Create filtered result preserving only matching nodes and their paths
-    Map<String, NodeInformation> filteredNodes = new HashMap<>();
-    for (String fqn : matchingNodes) {
-      if (result.getNodes().containsKey(fqn)) {
-        filteredNodes.put(fqn, result.getNodes().get(fqn));
-      }
-    }
-
-    result.setNodes(filteredNodes);
-
-    // Filter edges to only include those connected to matching nodes
-    filterEdgesByNodes(result, matchingNodes);
-
-    return result;
+    return filteredResult;
   }
 
-  private static void filterEdgesByNodes(SearchLineageResult result, Set<String> includedNodes) {
-    // Filter upstream edges
-    if (result.getUpstreamEdges() != null) {
-      Map<String, org.openmetadata.schema.api.lineage.EsLineageData> filteredUpstream =
-          new HashMap<>();
-      result
-          .getUpstreamEdges()
-          .forEach(
-              (docId, edge) -> {
-                String fromFqn =
-                    edge.getFromEntity() != null
-                        ? edge.getFromEntity().getFullyQualifiedName()
-                        : null;
-                String toFqn =
-                    edge.getToEntity() != null ? edge.getToEntity().getFullyQualifiedName() : null;
-
-                if (fromFqn != null
-                    && toFqn != null
-                    && includedNodes.contains(fromFqn)
-                    && includedNodes.contains(toFqn)) {
-                  filteredUpstream.put(docId, edge);
-                }
-              });
-      result.setUpstreamEdges(filteredUpstream);
-    }
-
-    // Filter downstream edges
-    if (result.getDownstreamEdges() != null) {
-      Map<String, org.openmetadata.schema.api.lineage.EsLineageData> filteredDownstream =
-          new HashMap<>();
-      result
-          .getDownstreamEdges()
-          .forEach(
-              (docId, edge) -> {
-                String fromFqn =
-                    edge.getFromEntity() != null
-                        ? edge.getFromEntity().getFullyQualifiedName()
-                        : null;
-                String toFqn =
-                    edge.getToEntity() != null ? edge.getToEntity().getFullyQualifiedName() : null;
-
-                if (fromFqn != null
-                    && toFqn != null
-                    && includedNodes.contains(fromFqn)
-                    && includedNodes.contains(toFqn)) {
-                  filteredDownstream.put(docId, edge);
-                }
-              });
-      result.setDownstreamEdges(filteredDownstream);
-    }
-  }
-
-  /**
-   * Filters nodes and edges based on column criteria (including tag/glossary) while preserving paths.
-   *
-   * @param result The lineage result to filter
-   * @param columnFilter Column filter expression
-   * @param rootFqn Root entity FQN
-   * @param metadataCache Cache containing column metadata (tags, glossary terms)
-   * @return Filtered result with paths preserved
-   */
   public static SearchLineageResult filterByColumnsWithMetadata(
       SearchLineageResult result,
       String columnFilter,
@@ -319,60 +283,130 @@ public class LineagePathPreserver {
       return result;
     }
 
+    SearchLineageResult filteredResult = JsonUtils.deepCopy(result, SearchLineageResult.class);
+    Set<String> matchingNodes =
+        collectNodesFromMatchingEdges(filteredResult, columnFilter, rootFqn, metadataCache);
+    preservePathsAndFilterEdges(filteredResult, matchingNodes, rootFqn);
+    narrowColumnsOnEdges(filteredResult, columnFilter, metadataCache);
+    retainOnlyNodes(filteredResult, matchingNodes);
+
+    return filteredResult;
+  }
+
+  private static Set<String> collectNodesFromMatchingEdges(
+      SearchLineageResult result,
+      String columnFilter,
+      String rootFqn,
+      ColumnMetadataCache metadataCache) {
     Set<String> matchingNodes = new HashSet<>();
-    matchingNodes.add(rootFqn); // Always include root
+    matchingNodes.add(rootFqn);
+    collectFromEdgeMap(result.getUpstreamEdges(), columnFilter, metadataCache, matchingNodes);
+    collectFromEdgeMap(result.getDownstreamEdges(), columnFilter, metadataCache, matchingNodes);
+    return matchingNodes;
+  }
 
-    // Find all edges with matching columns (with metadata support)
-    if (result.getUpstreamEdges() != null) {
-      result.getUpstreamEdges().values().stream()
-          .filter(
-              edge -> ColumnFilterMatcher.matchesColumnFilter(edge, columnFilter, metadataCache))
-          .forEach(
-              edge -> {
-                if (edge.getFromEntity() != null) {
-                  matchingNodes.add(edge.getFromEntity().getFullyQualifiedName());
-                }
-                if (edge.getToEntity() != null) {
-                  matchingNodes.add(edge.getToEntity().getFullyQualifiedName());
-                }
-              });
+  private static void collectFromEdgeMap(
+      Map<String, org.openmetadata.schema.api.lineage.EsLineageData> edges,
+      String columnFilter,
+      ColumnMetadataCache metadataCache,
+      Set<String> matchingNodes) {
+    if (edges == null) {
+      return;
     }
-
-    if (result.getDownstreamEdges() != null) {
-      result.getDownstreamEdges().values().stream()
-          .filter(
-              edge -> ColumnFilterMatcher.matchesColumnFilter(edge, columnFilter, metadataCache))
-          .forEach(
-              edge -> {
-                if (edge.getFromEntity() != null) {
-                  matchingNodes.add(edge.getFromEntity().getFullyQualifiedName());
-                }
-                if (edge.getToEntity() != null) {
-                  matchingNodes.add(edge.getToEntity().getFullyQualifiedName());
-                }
-              });
-    }
-
-    // Preserve intermediate nodes between the root and directly matching nodes.
-    for (String nodeFqn : new HashSet<>(matchingNodes)) {
-      if (!nodeFqn.equals(rootFqn)) {
-        tracePathToRoot(nodeFqn, rootFqn, result, result.getNodes(), matchingNodes);
+    for (org.openmetadata.schema.api.lineage.EsLineageData edge : edges.values()) {
+      boolean matches =
+          metadataCache != null
+              ? ColumnFilterMatcher.matchesColumnFilter(edge, columnFilter, metadataCache)
+              : ColumnFilterMatcher.matchesColumnFilter(edge, columnFilter);
+      if (matches) {
+        addEdgeEndpoints(edge, matchingNodes);
       }
     }
+  }
 
-    // Create filtered result preserving only matching nodes and their paths
+  private static void addEdgeEndpoints(
+      org.openmetadata.schema.api.lineage.EsLineageData edge, Set<String> nodes) {
+    if (edge.getFromEntity() != null) {
+      nodes.add(edge.getFromEntity().getFullyQualifiedName());
+    }
+    if (edge.getToEntity() != null) {
+      nodes.add(edge.getToEntity().getFullyQualifiedName());
+    }
+  }
+
+  private static void preservePathsAndFilterEdges(
+      SearchLineageResult result, Set<String> matchingNodes, String rootFqn) {
+    Map<String, List<String>> parentsByChild = buildParentAdjacencyMap(result);
+    Set<String> visitedNodes = new HashSet<>();
+    for (String nodeFqn : new HashSet<>(matchingNodes)) {
+      if (!nodeFqn.equals(rootFqn)) {
+        tracePathToRootViaMap(nodeFqn, rootFqn, parentsByChild, matchingNodes, visitedNodes);
+      }
+    }
+    filterEdgesByNodes(result, matchingNodes);
+  }
+
+  private static void narrowColumnsOnEdges(
+      SearchLineageResult result, String columnFilter, ColumnMetadataCache metadataCache) {
+    narrowColumnsOnEdgeMap(result.getUpstreamEdges(), columnFilter, metadataCache);
+    narrowColumnsOnEdgeMap(result.getDownstreamEdges(), columnFilter, metadataCache);
+  }
+
+  private static void narrowColumnsOnEdgeMap(
+      Map<String, org.openmetadata.schema.api.lineage.EsLineageData> edges,
+      String columnFilter,
+      ColumnMetadataCache metadataCache) {
+    if (edges == null) {
+      return;
+    }
+    for (org.openmetadata.schema.api.lineage.EsLineageData edge : edges.values()) {
+      if (edge.getColumns() != null && !edge.getColumns().isEmpty()) {
+        edge.setColumns(
+            metadataCache != null
+                ? ColumnFilterMatcher.filterMatchingColumnsWithMetadata(
+                    edge, columnFilter, metadataCache)
+                : ColumnFilterMatcher.filterMatchingColumns(edge, columnFilter));
+      }
+    }
+  }
+
+  private static void retainOnlyNodes(SearchLineageResult result, Set<String> matchingNodes) {
     Map<String, NodeInformation> filteredNodes = new HashMap<>();
     for (String fqn : matchingNodes) {
       if (result.getNodes().containsKey(fqn)) {
         filteredNodes.put(fqn, result.getNodes().get(fqn));
       }
     }
-
     result.setNodes(filteredNodes);
+  }
 
-    // Filter edges to only include those connected to matching nodes
-    filterEdgesByNodes(result, matchingNodes);
+  private static void filterEdgesByNodes(SearchLineageResult result, Set<String> includedNodes) {
+    if (result.getUpstreamEdges() != null) {
+      result.setUpstreamEdges(retainEdgesConnecting(result.getUpstreamEdges(), includedNodes));
+    }
+    if (result.getDownstreamEdges() != null) {
+      result.setDownstreamEdges(retainEdgesConnecting(result.getDownstreamEdges(), includedNodes));
+    }
+  }
 
-    return result;
+  private static Map<String, org.openmetadata.schema.api.lineage.EsLineageData>
+      retainEdgesConnecting(
+          Map<String, org.openmetadata.schema.api.lineage.EsLineageData> edges,
+          Set<String> includedNodes) {
+    Map<String, org.openmetadata.schema.api.lineage.EsLineageData> filtered = new HashMap<>();
+    for (Map.Entry<String, org.openmetadata.schema.api.lineage.EsLineageData> entry :
+        edges.entrySet()) {
+      org.openmetadata.schema.api.lineage.EsLineageData edge = entry.getValue();
+      String fromFqn =
+          edge.getFromEntity() != null ? edge.getFromEntity().getFullyQualifiedName() : null;
+      String toFqn = edge.getToEntity() != null ? edge.getToEntity().getFullyQualifiedName() : null;
+      if (fromFqn != null
+          && toFqn != null
+          && includedNodes.contains(fromFqn)
+          && includedNodes.contains(toFqn)) {
+        filtered.put(entry.getKey(), edge);
+      }
+    }
+    return filtered;
   }
 }

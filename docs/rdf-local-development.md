@@ -1,6 +1,6 @@
 # RDF/Apache Jena Local Development Guide
 
-This guide documents how to set up RDF/Knowledge Graph support for local development with OpenMetadata running in IntelliJ IDEA and Apache Jena Fuseki running in Docker.
+This guide documents how to set up RDF/Knowledge Graph support for local development with OpenMetadata and Apache Jena Fuseki.
 
 ## Overview
 
@@ -28,16 +28,34 @@ OpenMetadata supports RDF (Resource Description Framework) for knowledge graph c
 
 ## Quick Start
 
-### Step 1: Start Apache Jena Fuseki
+### Step 1: Choose the Right Startup Mode
 
-Start the Fuseki triple store using Docker Compose:
+The standard local Docker flow does not enable RDF or start Fuseki:
 
 ```bash
 cd /path/to/OpenMetadata
-docker compose -f docker/development/docker-compose-fuseki.yml up -d
+./docker/run_local_docker.sh -d mysql
 ```
 
-This starts Fuseki with:
+For PostgreSQL-based development:
+
+```bash
+./docker/run_local_docker.sh -d postgresql
+```
+
+Use the RDF-specific startup script when you want the full Docker stack with Fuseki enabled:
+
+```bash
+./docker/run_local_docker_rdf.sh -d mysql
+```
+
+For PostgreSQL-based RDF development:
+
+```bash
+./docker/run_local_docker_rdf.sh -d postgresql
+```
+
+This RDF startup path starts OpenMetadata, the backing database, search, ingestion services, and Fuseki with:
 - **Port**: 3030
 - **Admin Password**: admin
 - **Dataset**: openmetadata
@@ -59,7 +77,17 @@ The Fuseki web UI is available at `http://localhost:3030` with credentials:
 
 ### Step 3: Configure IntelliJ Run Configuration
 
-Create or modify your IntelliJ run configuration for `OpenMetadataApplication` with these environment variables:
+If you are running the full RDF Docker stack with `run_local_docker_rdf.sh`, the Docker services already receive the RDF environment variables automatically.
+
+If you want to run the OpenMetadata server directly from IntelliJ while keeping Fuseki in Docker, start Fuseki separately:
+
+```bash
+docker compose -f docker/development/docker-compose.yml -f docker/development/docker-compose-fuseki.yml up -d fuseki
+```
+
+If your local backend uses PostgreSQL, swap `docker-compose.yml` for `docker-compose-postgres.yml`.
+
+Create or modify your IntelliJ run configuration for `OpenMetadataApplication` with these environment variables only when you want to run the OpenMetadata server directly from IntelliJ while keeping Fuseki in Docker:
 
 ```
 RDF_ENABLED=true
@@ -211,7 +239,7 @@ Trigger the RDF indexing application to populate the triple store with existing 
 curl -X POST \
   -H "Authorization: Bearer <admin-token>" \
   -H "Content-Type: application/json" \
-  -d '{"entities": ["all"], "recreateIndex": true, "batchSize": 100}' \
+  -d '{"entities": [], "recreateIndex": true, "batchSize": 100}' \
   http://localhost:8585/api/v1/apps/trigger/RdfIndexApp
 ```
 

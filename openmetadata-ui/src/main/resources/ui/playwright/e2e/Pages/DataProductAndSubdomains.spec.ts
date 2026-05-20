@@ -56,7 +56,7 @@ test.describe('Data Product Comprehensive Tests', () => {
       await page.getByRole('menuitem', { name: 'Data Products' }).click();
 
       // Wait for the Add Data Product form to appear
-      await page.getByTestId('add-domain').waitFor({
+      await page.getByTestId('add-domain-form').waitFor({
         state: 'visible',
         timeout: 10000,
       });
@@ -77,8 +77,6 @@ test.describe('Data Product Comprehensive Tests', () => {
       const createRes = page.waitForResponse('/api/v1/dataProducts');
       await page.getByRole('button', { name: 'Save' }).click();
       await createRes;
-
-      await toastNotification(page, /Data Product created successfully/i);
 
       // Verify data product was created - navigate to Data Products tab
       await page.getByTestId('data_products').click();

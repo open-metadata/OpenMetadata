@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Database test
 """
+
 import pytest
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -94,9 +95,7 @@ class TestOMetaDatabaseAPI:
         res = metadata.create_or_update(data=updated_entity)
 
         # Verify update
-        assert (
-            res.service.fullyQualifiedName == database_service.fullyQualifiedName.root
-        )
+        assert res.service.fullyQualifiedName == database_service.fullyQualifiedName.root
         assert res_create.id == res.id
         assert res.owners.root[0].id == user.id
 
@@ -128,9 +127,7 @@ class TestOMetaDatabaseAPI:
         """
         created = create_database(database_request)
 
-        res = metadata.list_entities(
-            entity=Database, params={"service": database_service.name.root}
-        )
+        res = metadata.list_entities(entity=Database, params={"service": database_service.name.root})
 
         # Fetch our test Database. We have already inserted it, so we should find it
         data = next(iter(ent for ent in res.entities if ent.name == created.name), None)
@@ -155,9 +152,7 @@ class TestOMetaDatabaseAPI:
         """
         created = create_database(database_request)
 
-        res = metadata.get_list_entity_versions(
-            entity=Database, entity_id=created.id.root
-        )
+        res = metadata.get_list_entity_versions(entity=Database, entity_id=created.id.root)
         assert res is not None
         assert len(res.versions) >= 1
 
@@ -167,9 +162,7 @@ class TestOMetaDatabaseAPI:
         """
         created = create_database(database_request)
 
-        res = metadata.get_entity_version(
-            entity=Database, entity_id=created.id.root, version=0.1
-        )
+        res = metadata.get_entity_version(entity=Database, entity_id=created.id.root, version=0.1)
 
         # Check we get the correct version requested and the correct entity ID
         assert res.version.root == 0.1
@@ -180,8 +173,6 @@ class TestOMetaDatabaseAPI:
         Test retrieving EntityReference for a database
         """
         created = create_database(database_request)
-        entity_ref = metadata.get_entity_reference(
-            entity=Database, fqn=created.fullyQualifiedName
-        )
+        entity_ref = metadata.get_entity_reference(entity=Database, fqn=created.fullyQualifiedName)
 
         assert created.id == entity_ref.id

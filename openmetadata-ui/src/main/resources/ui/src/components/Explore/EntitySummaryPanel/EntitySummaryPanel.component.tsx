@@ -150,7 +150,8 @@ export default function EntitySummaryPanel({
   const { tab } = useRequiredParams<{ tab: string }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { getEntityPermission } = usePermissionProvider();
+  const { getEntityPermission, getEntityPermissionByFqn } =
+    usePermissionProvider();
   const [isPermissionLoading, setIsPermissionLoading] = useState<boolean>(true);
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -231,7 +232,16 @@ export default function EntitySummaryPanel({
         }
       }
 
-      const permissions = await getEntityPermission(type, idForPermission);
+      // In ontology data-mode, nodes are built with id=FQN (not a UUID).
+      // Passing that FQN to the by-ID endpoint returns empty permissions even
+      // for admins.
+      const isOntologyPanel =
+        panelPath === 'ontology-explorer' ||
+        panelPath === 'glossary-term-assets-tab';
+      const permissions =
+        isOntologyPanel && fqn
+          ? await getEntityPermissionByFqn(type, fqn)
+          : await getEntityPermission(type, idForPermission);
       setEntityPermissions(permissions);
     } catch {
       // Error - set default permission to allow viewing

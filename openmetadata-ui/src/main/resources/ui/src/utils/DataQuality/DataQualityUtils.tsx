@@ -222,6 +222,22 @@ export const buildMustEsFilterForOwner = (
   };
 };
 
+export const buildMustEsFilterForDataProducts = (
+  dataProductFqns: string[],
+  testCaseFieldPrefix = ''
+) => {
+  const field = `${testCaseFieldPrefix}dataProducts.fullyQualifiedName`;
+
+  return {
+    bool: {
+      should: dataProductFqns.map((fqn) => ({
+        term: { [field]: fqn },
+      })),
+      minimum_should_match: 1,
+    },
+  };
+};
+
 export const buildDataQualityDashboardFilters = (data: {
   filters?: DataQualityDashboardChartFilters;
   unhealthy?: boolean;
@@ -266,6 +282,16 @@ export const buildDataQualityDashboardFilters = (data: {
     });
   }
 
+  if (filters?.certification) {
+    mustFilter.push({
+      bool: {
+        should: filters.certification.map((fqn) => ({
+          term: { 'certification.tagLabel.tagFQN': fqn },
+        })),
+      },
+    });
+  }
+
   if ((filters?.tags || filters?.tier) && !isTableApi) {
     mustFilter.push(
       buildMustEsFilterForTags([
@@ -273,6 +299,10 @@ export const buildDataQualityDashboardFilters = (data: {
         ...(filters?.tier ?? []),
       ])
     );
+  }
+
+  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+    mustFilter.push(buildMustEsFilterForDataProducts(filters.dataProductFqns));
   }
 
   if (filters?.entityFQN) {

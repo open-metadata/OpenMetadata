@@ -12,56 +12,40 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { NOTIFICATION_READ_TIMER } from '../../constants/constants';
-import { FeedFilter } from '../../enums/mydata.enum';
-import { ThreadType } from '../../generated/api/feed/createThread';
-import { getFeedsWithFilter } from '../../rest/feedsAPI';
+import { NotificationTabsKey } from '../../enums/notification.enum';
+import { listMyAssignedTasks } from '../../rest/tasksAPI';
 import NotificationBox from './NotificationBox.component';
 
-const mockThread = [
+const mockTask = [
   {
-    userId: '011bdb24-90a7-4a97-ba66-24002adb2b12',
-    filterType: FeedFilter.ASSIGNED_TO,
     id: '33873393-bd68-46e9-bccc-7701c1c41ad6',
-    type: ThreadType.Task,
-    threadTs: 1703570590556,
-    about: 'test',
-    entityId: '6206a003-281c-4984-9728-4e949a4e4023',
-    posts: [
-      {
-        id: '12345',
-        message: 'Resolved the Task.',
-        postTs: 1703570590652,
-        from: 'admin',
-        reactions: [],
-      },
-    ],
-    task: {
-      id: 6,
-      type: 'RequestTestCaseFailureResolution',
-      assignees: [
-        {
-          id: '011bdb24-90a7-4a97-ba66-24002adb2b12',
-          type: 'user',
-          name: 'aaron_johnson0',
-          fullyQualifiedName: 'aaron_johnson0',
-          displayName: 'Aaron Johnson',
-          deleted: false,
-        },
-      ],
-      status: 'Closed',
-      closedBy: 'admin',
-      closedAt: 1703570590648,
-      newValue: 'Resolution comment',
-      testCaseResolutionStatusId: 'f93d08e9-2d38-4d01-a294-f8b44fbb0f4a',
+    taskId: 'TASK-00001',
+    type: 'GlossaryApproval',
+    category: 'Approval',
+    status: 'Open',
+    description: 'Approval required for testTerm',
+    about: {
+      id: '6206a003-281c-4984-9728-4e949a4e4023',
+      type: 'glossaryTerm',
+      name: 'testTerm',
+      fullyQualifiedName: 'testGlossary.testTerm',
     },
+    createdBy: {
+      id: '011bdb24-90a7-4a97-ba66-24002adb2b12',
+      type: 'user',
+      name: 'admin',
+    },
+    createdAt: 1703570590556,
+    assignees: [],
   },
 ];
+
 const tabList = ['Tasks', 'Mentions'];
 const mockShowErrorToast = jest.fn();
 const mockOnMarkTaskNotificationRead = jest.fn();
 
 const mockProps = {
-  activeTab: ThreadType.Task,
+  activeTab: NotificationTabsKey.TASK,
   hasMentionNotification: true,
   hasTaskNotification: true,
   onMarkMentionsNotificationRead: jest.fn(),
@@ -69,14 +53,23 @@ const mockProps = {
   onTabChange: jest.fn(),
 };
 
+jest.mock('../../rest/tasksAPI', () => ({
+  ...jest.requireActual('../../rest/tasksAPI'),
+  listMyAssignedTasks: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: mockTask })),
+}));
+
 jest.mock('../../rest/feedsAPI', () => ({
   getFeedsWithFilter: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockThread })),
-  getFilters: jest.fn().mockImplementation(() => ({
-    threadType: ThreadType.Task,
-    feedFilter: FeedFilter.ASSIGNED_TO,
-  })),
+    .mockImplementation(() => Promise.resolve({ data: [] })),
+}));
+
+jest.mock('../../hooks/useDomainStore', () => ({
+  useDomainStore: jest.fn((selector) =>
+    selector({ activeDomain: 'All Domains' })
+  ),
 }));
 
 jest.mock('../../utils/FeedUtils', () => ({
@@ -114,7 +107,7 @@ describe('Test NotificationBox Component', () => {
   });
 
   it('should render error toast if any error occurs', async () => {
-    (getFeedsWithFilter as jest.Mock).mockRejectedValue(new Error());
+    (listMyAssignedTasks as jest.Mock).mockRejectedValue(new Error());
     await act(async () => {
       render(<NotificationBox {...mockProps} />);
     });
@@ -138,7 +131,7 @@ describe('Test NotificationBox Component', () => {
   });
 
   it('should render no data in case of no notification', async () => {
-    (getFeedsWithFilter as jest.Mock).mockImplementation(() =>
+    (listMyAssignedTasks as jest.Mock).mockImplementation(() =>
       Promise.resolve({ data: [] })
     );
     await act(async () => {

@@ -21,7 +21,7 @@ export enum SidebarItem {
   GOVERNANCE = 'governance',
   GLOSSARY = 'glossary',
   ONTOLOGY_EXPLORER = 'ontology-explorer',
-  DOMAINS = 'domains-section',
+  DATA_MARKETPLACE_SECTION = 'data-marketplace-section',
   DATA_PRODUCT = 'data-product',
   TAGS = 'tags',
   INSIGHTS = 'data-insight',
@@ -30,6 +30,9 @@ export enum SidebarItem {
   METRICS = 'metrics',
   LINEAGE = 'lineage',
   COLUMN_BULK_OPERATIONS = 'column-bulk-operations',
+  DATA_MARKETPLACE = 'data-marketplace',
+  CONTEXT_CENTER = 'context-center',
+  ARTICLE = 'articles',
 }
 
 export const SIDEBAR_LIST_ITEMS = {
@@ -52,12 +55,23 @@ export const SIDEBAR_LIST_ITEMS = {
   ],
   [SidebarItem.TAGS]: [SidebarItem.GOVERNANCE, SidebarItem.TAGS],
   [SidebarItem.METRICS]: [SidebarItem.GOVERNANCE, SidebarItem.METRICS],
-  [SidebarItem.DOMAIN]: [SidebarItem.DOMAINS, SidebarItem.DOMAIN],
-  [SidebarItem.DATA_PRODUCT]: [SidebarItem.DOMAINS, SidebarItem.DATA_PRODUCT],
+  [SidebarItem.DATA_MARKETPLACE]: [
+    SidebarItem.DATA_MARKETPLACE_SECTION,
+    SidebarItem.DATA_MARKETPLACE,
+  ],
+  [SidebarItem.DOMAIN]: [
+    SidebarItem.DATA_MARKETPLACE_SECTION,
+    SidebarItem.DOMAIN,
+  ],
+  [SidebarItem.DATA_PRODUCT]: [
+    SidebarItem.DATA_MARKETPLACE_SECTION,
+    SidebarItem.DATA_PRODUCT,
+  ],
   [SidebarItem.COLUMN_BULK_OPERATIONS]: [
     SidebarItem.GOVERNANCE,
     SidebarItem.COLUMN_BULK_OPERATIONS,
   ],
+  [SidebarItem.ARTICLE]: [SidebarItem.CONTEXT_CENTER, SidebarItem.ARTICLE],
 
   // Profile Dropdown
   'user-name': ['dropdown-profile', 'user-name'],

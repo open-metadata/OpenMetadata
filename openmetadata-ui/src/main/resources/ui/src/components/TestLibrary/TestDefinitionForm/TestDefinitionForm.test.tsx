@@ -351,9 +351,9 @@ describe('TestDefinitionForm Component', () => {
       });
     };
 
-    // testPlatforms defaults to [OpenMetadata] so it never fires an error on empty submit.
-    // name + entityType are the two required fields without defaults.
-    it('should show exactly 2 validation errors when create form is submitted empty', async () => {
+    // name, entityType, and supportedDataTypes are required on empty submit.
+    // supportedDataTypes is required because testPlatforms defaults to [OpenMetadata].
+    it('should show exactly 3 validation errors when create form is submitted empty', async () => {
       render(
         <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
       );
@@ -363,7 +363,7 @@ describe('TestDefinitionForm Component', () => {
       await waitFor(() => {
         const errors = screen.getAllByText('message.field-text-is-required');
 
-        expect(errors).toHaveLength(2);
+        expect(errors).toHaveLength(3);
       });
     });
 
@@ -379,14 +379,18 @@ describe('TestDefinitionForm Component', () => {
         await submitEmptyForm();
 
         await waitFor(() => {
-          const nameFormItem = screen
-            .getByLabelText('label.name')
-            .closest('.ant-form-item');
-
-          expect(nameFormItem).toHaveTextContent(
-            'message.field-text-is-required'
-          );
+          expect(
+            screen.getAllByText('message.field-text-is-required').length
+          ).toBeGreaterThan(0);
         });
+
+        const nameFormItem = screen
+          .getByLabelText('label.name')
+          .closest('.ant-form-item');
+
+        expect(nameFormItem).toHaveTextContent(
+          'message.field-text-is-required'
+        );
       });
 
       it('entityType field is required', async () => {
@@ -400,14 +404,18 @@ describe('TestDefinitionForm Component', () => {
         await submitEmptyForm();
 
         await waitFor(() => {
-          const entityTypeFormItem = screen
-            .getByLabelText('label.entity-type')
-            .closest('.ant-form-item');
-
-          expect(entityTypeFormItem).toHaveTextContent(
-            'message.field-text-is-required'
-          );
+          expect(
+            screen.getAllByText('message.field-text-is-required').length
+          ).toBeGreaterThan(0);
         });
+
+        const entityTypeFormItem = screen
+          .getByLabelText('label.entity-type')
+          .closest('.ant-form-item');
+
+        expect(entityTypeFormItem).toHaveTextContent(
+          'message.field-text-is-required'
+        );
       });
 
       it('testPlatforms field is required', () => {

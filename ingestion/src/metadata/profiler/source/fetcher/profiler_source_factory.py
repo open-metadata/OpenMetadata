@@ -13,7 +13,7 @@
 Factory class for creating profiler source objects
 """
 
-from typing import Callable, Dict, Type
+from typing import Callable, Dict, Type  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigqueryType,
@@ -34,17 +34,13 @@ class ProfilerSourceFactory:
     """Creational factory for profiler source objects"""
 
     def __init__(self):
-        self._source_type: Dict[str, Callable[[], Type[ProfilerSourceInterface]]] = {
-            "base": self.base
-        }
+        self._source_type: Dict[str, Callable[[], Type[ProfilerSourceInterface]]] = {"base": self.base}  # noqa: UP006
 
     def register_source(self, type_: str, source_fn):
         """Register a new source type"""
         self._source_type[type_] = source_fn
 
-    def register_many_sources(
-        self, source_dict: Dict[str, Callable[[], Type[ProfilerSourceInterface]]]
-    ):
+    def register_many_sources(self, source_dict: Dict[str, Callable[[], Type[ProfilerSourceInterface]]]):  # noqa: UP006
         """Register multiple source types at once"""
         for type_, source_fn in source_dict.items():
             self.register_source(type_, source_fn)
@@ -59,45 +55,45 @@ class ProfilerSourceFactory:
         return source_class(*args, **kwargs)
 
     @staticmethod
-    def base() -> Type[ProfilerSourceInterface]:
+    def base() -> Type[ProfilerSourceInterface]:  # noqa: UP006
         """Lazy loading of the base source"""
-        from metadata.profiler.source.database.base.profiler_source import (
+        from metadata.profiler.source.database.base.profiler_source import (  # noqa: PLC0415
             ProfilerSource,
         )
 
         return ProfilerSource
 
     @staticmethod
-    def bigquery() -> Type[ProfilerSourceInterface]:
+    def bigquery() -> Type[ProfilerSourceInterface]:  # noqa: UP006
         """Lazy loading of the BigQuery source"""
-        from metadata.profiler.source.database.bigquery.profiler_source import (
+        from metadata.profiler.source.database.bigquery.profiler_source import (  # noqa: PLC0415
             BigQueryProfilerSource,
         )
 
         return BigQueryProfilerSource
 
     @staticmethod
-    def databricks() -> Type[ProfilerSourceInterface]:
+    def databricks() -> Type[ProfilerSourceInterface]:  # noqa: UP006
         """Lazy loading of the Databricks source"""
-        from metadata.profiler.source.database.databricks.profiler_source import (
+        from metadata.profiler.source.database.databricks.profiler_source import (  # noqa: PLC0415
             DataBricksProfilerSource,
         )
 
         return DataBricksProfilerSource
 
     @staticmethod
-    def pinotdb() -> Type[ProfilerSourceInterface]:
+    def pinotdb() -> Type[ProfilerSourceInterface]:  # noqa: UP006
         """Lazy loading of the PinotDB source"""
-        from metadata.profiler.source.database.pinotdb.profiler_source import (
+        from metadata.profiler.source.database.pinotdb.profiler_source import (  # noqa: PLC0415
             PinotProfilerSource,
         )
 
         return PinotProfilerSource
 
     @staticmethod
-    def mssql() -> Type[ProfilerSourceInterface]:
+    def mssql() -> Type[ProfilerSourceInterface]:  # noqa: UP006
         """Lazy loading of the MSSQL source"""
-        from metadata.profiler.source.database.mssql.profiler_source import (
+        from metadata.profiler.source.database.mssql.profiler_source import (  # noqa: PLC0415
             MssqlProfilerSource,
         )
 

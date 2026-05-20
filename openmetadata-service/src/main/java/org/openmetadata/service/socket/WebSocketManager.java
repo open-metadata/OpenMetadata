@@ -39,6 +39,7 @@ public class WebSocketManager {
   public static final String MOVE_GLOSSARY_TERM_CHANNEL = "moveGlossaryTermChannel";
   public static final String RDF_INDEX_JOB_BROADCAST_CHANNEL = "rdfIndexJobStatus";
   public static final String CHART_DATA_STREAM_CHANNEL = "chartDataStream";
+  public static final String QUERY_RUNNER_CHANNEL = "queryRunnerChannel";
 
   @Getter
   private final Map<UUID, Map<String, SocketIoSocket>> activityFeedEndpoints =
@@ -81,10 +82,12 @@ public class WebSocketManager {
                       userId,
                       remoteAddress);
                   UUID id = UUID.fromString(userId);
-                  Map<String, SocketIoSocket> allUserConnection = activityFeedEndpoints.get(id);
-                  if (allUserConnection != null) {
-                    allUserConnection.remove(socket.getId());
-                  }
+                  activityFeedEndpoints.computeIfPresent(
+                      id,
+                      (key, connections) -> {
+                        connections.remove(socket.getId());
+                        return connections.isEmpty() ? null : connections;
+                      });
                 });
 
             // On Socket Connection Error

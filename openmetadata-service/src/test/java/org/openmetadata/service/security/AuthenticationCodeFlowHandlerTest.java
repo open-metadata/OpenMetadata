@@ -57,6 +57,7 @@ import java.security.KeyPairGenerator;
 import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1231,6 +1232,120 @@ class AuthenticationCodeFlowHandlerTest {
       assertEquals(existingUser, user);
       assertEquals(Boolean.TRUE, existingUser.getIsAdmin());
       userUtil.verify(() -> UserUtil.addOrUpdateUser(existingUser));
+    }
+  }
+
+  @Test
+  void getOrCreateOidcUserAllowsSignupWhenAllowedDomainsEmpty() throws Exception {
+    AuthenticationCodeFlowHandler handler = newHandler();
+    AuthenticationConfiguration authConfig = new AuthenticationConfiguration();
+    authConfig.setEnableSelfSignup(true);
+    setField(handler, "authenticationConfiguration", authConfig);
+    AuthorizerConfiguration authorizer = authorizerConfiguration(Set.of());
+    authorizer.setAllowedEmailRegistrationDomains(new LinkedHashSet<>());
+    setField(handler, "authorizerConfiguration", authorizer);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<UserUtil> userUtil = mockStatic(UserUtil.class)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.USER, "gmail-user", "id,roles,teams", Include.NON_DELETED))
+          .thenThrow(EntityNotFoundException.byName("gmail-user"));
+      User draftUser = new User();
+      userUtil
+          .when(() -> UserUtil.user("gmail-user", "gmail.com", "gmail-user"))
+          .thenReturn(draftUser);
+      userUtil.when(() -> UserUtil.assignTeamsFromClaim(draftUser, List.of())).thenReturn(false);
+      User persistedUser = new User();
+      persistedUser.setName("gmail-user");
+      userUtil.when(() -> UserUtil.addOrUpdateUser(draftUser)).thenReturn(persistedUser);
+
+      User user =
+          invokePrivate(
+              handler,
+              "getOrCreateOidcUser",
+              new Class<?>[] {String.class, String.class, Map.class},
+              "gmail-user",
+              "gmail-user@gmail.com",
+              Map.of());
+
+      assertEquals(persistedUser, user);
+    }
+  }
+
+  @Test
+  void getOrCreateOidcUserBlocksDisallowedDomain() throws Exception {
+    AuthenticationCodeFlowHandler handler = newHandler();
+    AuthenticationConfiguration authConfig = new AuthenticationConfiguration();
+    authConfig.setEnableSelfSignup(true);
+    setField(handler, "authenticationConfiguration", authConfig);
+    AuthorizerConfiguration authorizer = authorizerConfiguration(Set.of());
+    authorizer.setAllowedEmailRegistrationDomains(Set.of("corp.com"));
+    setField(handler, "authorizerConfiguration", authorizer);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.USER, "outside-user", "id,roles,teams", Include.NON_DELETED))
+          .thenThrow(EntityNotFoundException.byName("outside-user"));
+
+      AuthenticationException exception =
+          assertThrows(
+              AuthenticationException.class,
+              () ->
+                  invokePrivate(
+                      handler,
+                      "getOrCreateOidcUser",
+                      new Class<?>[] {String.class, String.class, Map.class},
+                      "outside-user",
+                      "outside-user@gmail.com",
+                      Map.of()));
+
+      assertTrue(exception.getMessage().contains("Email domain not allowed"));
+    }
+  }
+
+  @Test
+  void getOrCreateOidcUserAllowsMatchingDomain() throws Exception {
+    AuthenticationCodeFlowHandler handler = newHandler();
+    AuthenticationConfiguration authConfig = new AuthenticationConfiguration();
+    authConfig.setEnableSelfSignup(true);
+    setField(handler, "authenticationConfiguration", authConfig);
+    AuthorizerConfiguration authorizer = authorizerConfiguration(Set.of());
+    authorizer.setAllowedEmailRegistrationDomains(Set.of("gmail.com"));
+    setField(handler, "authorizerConfiguration", authorizer);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<UserUtil> userUtil = mockStatic(UserUtil.class)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.USER, "gmail-user", "id,roles,teams", Include.NON_DELETED))
+          .thenThrow(EntityNotFoundException.byName("gmail-user"));
+      User draftUser = new User();
+      userUtil
+          .when(() -> UserUtil.user("gmail-user", "gmail.com", "gmail-user"))
+          .thenReturn(draftUser);
+      userUtil.when(() -> UserUtil.assignTeamsFromClaim(draftUser, List.of())).thenReturn(false);
+      User persistedUser = new User();
+      persistedUser.setName("gmail-user");
+      userUtil.when(() -> UserUtil.addOrUpdateUser(draftUser)).thenReturn(persistedUser);
+
+      User user =
+          invokePrivate(
+              handler,
+              "getOrCreateOidcUser",
+              new Class<?>[] {String.class, String.class, Map.class},
+              "gmail-user",
+              "gmail-user@gmail.com",
+              Map.of());
+
+      assertEquals(persistedUser, user);
     }
   }
 

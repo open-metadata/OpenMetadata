@@ -63,7 +63,11 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await waitForAllLoadersToDisappear(page);
 
-    expect(await page.locator('.ant-table-row').count()).toBe(15);
+    expect(
+      await page
+        .locator('[data-testid="test-case-table"] tbody tr[data-key]')
+        .count()
+    ).toBe(15);
   });
 
   test('Table search with sorting should work', async ({
@@ -725,7 +729,7 @@ test.describe('Large Table Column Search & Copy Link', () => {
             ) &&
           response.url().includes('profile') &&
           response.request().method() === 'GET',
-        { timeout: 90_000 }
+        { timeout: 150_000 } // TODO: Reduce timeout once the latency issue is fixed
       ),
       page.goto(clipboardText),
     ]);

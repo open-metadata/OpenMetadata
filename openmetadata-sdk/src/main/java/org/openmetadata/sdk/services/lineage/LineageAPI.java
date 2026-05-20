@@ -108,6 +108,100 @@ public class LineageAPI {
         HttpMethod.GET, "/v1/lineage/getLineage", null, optionsBuilder.build());
   }
 
+  public String getLineageByEntityCount(
+      String fqn,
+      String direction,
+      int from,
+      int size,
+      int maxDepth,
+      boolean includeDeleted,
+      String queryFilter,
+      String columnFilter)
+      throws OpenMetadataException {
+    return getLineageByEntityCount(
+        fqn,
+        direction,
+        from,
+        size,
+        null,
+        maxDepth,
+        includeDeleted,
+        queryFilter,
+        columnFilter,
+        null);
+  }
+
+  public String getLineageByEntityCount(
+      String fqn,
+      String direction,
+      int from,
+      int size,
+      Integer nodeDepth,
+      int maxDepth,
+      boolean includeDeleted,
+      String queryFilter,
+      String columnFilter)
+      throws OpenMetadataException {
+    return getLineageByEntityCount(
+        fqn,
+        direction,
+        from,
+        size,
+        nodeDepth,
+        maxDepth,
+        includeDeleted,
+        queryFilter,
+        columnFilter,
+        null);
+  }
+
+  public String getLineageByEntityCount(
+      String fqn,
+      String direction,
+      int from,
+      int size,
+      Integer nodeDepth,
+      int maxDepth,
+      boolean includeDeleted,
+      String queryFilter,
+      String columnFilter,
+      String entityType)
+      throws OpenMetadataException {
+    RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+    optionsBuilder.queryParam("fqn", fqn);
+    optionsBuilder.queryParam("direction", direction);
+    optionsBuilder.queryParam("from", String.valueOf(from));
+    optionsBuilder.queryParam("size", String.valueOf(size));
+    if (nodeDepth != null) optionsBuilder.queryParam("nodeDepth", String.valueOf(nodeDepth));
+    optionsBuilder.queryParam("maxDepth", String.valueOf(maxDepth));
+    optionsBuilder.queryParam("includeDeleted", String.valueOf(includeDeleted));
+    if (queryFilter != null) optionsBuilder.queryParam("query_filter", queryFilter);
+    if (columnFilter != null) optionsBuilder.queryParam("column_filter", columnFilter);
+    if (entityType != null) optionsBuilder.queryParam("entityType", entityType);
+    return httpClient.executeForString(
+        HttpMethod.GET, "/v1/lineage/getLineageByEntityCount", null, optionsBuilder.build());
+  }
+
+  public String searchLineageWithDirection(
+      String fqn,
+      String direction,
+      int upstreamDepth,
+      int downstreamDepth,
+      boolean includeDeleted,
+      String queryFilter,
+      String columnFilter)
+      throws OpenMetadataException {
+    RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+    optionsBuilder.queryParam("fqn", fqn);
+    optionsBuilder.queryParam("upstreamDepth", String.valueOf(upstreamDepth));
+    optionsBuilder.queryParam("downstreamDepth", String.valueOf(downstreamDepth));
+    optionsBuilder.queryParam("includeDeleted", String.valueOf(includeDeleted));
+    if (queryFilter != null) optionsBuilder.queryParam("query_filter", queryFilter);
+    if (columnFilter != null) optionsBuilder.queryParam("column_filter", columnFilter);
+    return httpClient.executeForString(
+        HttpMethod.GET, "/v1/lineage/getLineage/" + direction, null, optionsBuilder.build());
+  }
+
   private String encodePathSegment(String segment) {
     try {
       return java.net.URLEncoder.encode(segment, "UTF-8").replace("+", "%20");

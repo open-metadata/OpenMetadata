@@ -104,6 +104,7 @@ const DomainSelectableListNew = ({
         destroyTooltipOnHide
         content={
           <div
+            data-react-aria-top-layer
             className="user-profile-edit-popover-card"
             style={{
               height: `${popoverHeight}px`,

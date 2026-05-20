@@ -34,9 +34,10 @@ import { Include } from '../../../../generated/type/include';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getApplicationByName } from '../../../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../../../rest/applicationMarketPlaceAPI';
+import { isCacheWarmupApplication } from '../../../../utils/ApplicationUtils';
 import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
-import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { getAppInstallPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
@@ -56,6 +57,12 @@ const MarketPlaceAppDetails = () => {
   const [appScreenshots, setAppScreenshots] = useState<JSX.Element[]>([]);
 
   const isAppDisabled = useMemo(() => appData?.enabled === false, [appData]);
+  const isCacheWarmupDisabled = useMemo(
+    () =>
+      isAppDisabled &&
+      isCacheWarmupApplication(appData?.name ?? appData?.fullyQualifiedName),
+    [appData, isAppDisabled]
+  );
 
   const loadScreenshot = async (screenshotName: string) => {
     try {
@@ -126,6 +133,10 @@ const MarketPlaceAppDetails = () => {
       return t('message.app-already-installed');
     }
     if (isAppDisabled) {
+      if (isCacheWarmupDisabled) {
+        return t('message.cache-service-not-configured-message');
+      }
+
       return (
         <Transi18next
           i18nKey="message.paid-addon-description"
@@ -140,7 +151,13 @@ const MarketPlaceAppDetails = () => {
     }
 
     return '';
-  }, [isInstalled, isAppDisabled, appData?.displayName]);
+  }, [
+    isInstalled,
+    isAppDisabled,
+    isCacheWarmupDisabled,
+    appData?.displayName,
+    t,
+  ]);
 
   const leftPanel = useMemo(() => {
     return (
@@ -174,23 +191,32 @@ const MarketPlaceAppDetails = () => {
           <Alert
             className="m-t-md text-xs d-flex items-start p-xs"
             message={
-              <>
+              isCacheWarmupDisabled ? (
                 <Typography.Text>
-                  <Transi18next
-                    i18nKey="message.paid-addon-description"
-                    renderElement={
-                      <span data-testid="appName" style={{ fontWeight: 600 }} />
-                    }
-                    values={{
-                      app: appData?.displayName,
-                    }}
-                  />
+                  {t('message.cache-service-not-configured-message')}
                 </Typography.Text>
+              ) : (
+                <>
+                  <Typography.Text>
+                    <Transi18next
+                      i18nKey="message.paid-addon-description"
+                      renderElement={
+                        <span
+                          data-testid="appName"
+                          style={{ fontWeight: 600 }}
+                        />
+                      }
+                      values={{
+                        app: appData?.displayName,
+                      }}
+                    />
+                  </Typography.Text>
 
-                <Typography.Text className="d-block">
-                  {t('message.please-contact-us')}
-                </Typography.Text>
-              </>
+                  <Typography.Text className="d-block">
+                    {t('message.please-contact-us')}
+                  </Typography.Text>
+                </>
+              )
             }
             type="info"
           />
@@ -227,7 +253,7 @@ const MarketPlaceAppDetails = () => {
         </Space>
       </div>
     );
-  }, [appData, isInstalled, tooltipTitle]);
+  }, [appData, isInstalled, isCacheWarmupDisabled, tooltipTitle]);
 
   useEffect(() => {
     fetchAppDetails();

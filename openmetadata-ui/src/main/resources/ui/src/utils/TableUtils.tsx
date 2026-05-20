@@ -91,6 +91,7 @@ import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as DriveServiceIcon } from '../assets/svg/ic-drive-service.svg';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
 import { ReactComponent as FileIcon } from '../assets/svg/ic-file.svg';
+import { ReactComponent as KnowledgePageIcon } from '../assets/svg/ic-knowledge-page.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PersonaIcon } from '../assets/svg/ic-personas.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
@@ -126,6 +127,7 @@ import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../components/common/Loader/Loader';
@@ -135,13 +137,8 @@ import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import DataObservabilityTab from '../components/Database/Profiler/DataObservability/DataObservabilityTab';
-import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
-import TableQueries from '../components/Database/TableQueries/TableQueries';
-import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -183,7 +180,6 @@ import {
 } from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import { PartitionedKeys } from '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
-import TableConstraints from '../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
 import { exportTableDetailsInCSV } from '../rest/tableAPI';
 import { extractApiEndpointFields } from './APIEndpoints/APIEndpointUtils';
 import {
@@ -205,10 +201,51 @@ import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 import { extractTopicFields } from './TopicDetailsUtils';
 
-const EntityLineageTab = lazy(() =>
-  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
-    (module) => ({ default: module.EntityLineageTab })
+const SampleDataTableComponent = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/Database/SampleDataTable/SampleDataTable.component')
   )
+);
+
+const TableQueries = withSuspenseFallback(
+  lazy(() => import('../components/Database/TableQueries/TableQueries'))
+);
+
+const ContractTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataContract/ContractTab/ContractTab').then(
+      (module) => ({ default: module.ContractTab })
+    )
+  )
+);
+
+const DataObservabilityTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Database/Profiler/DataObservability/DataObservabilityTab'
+      )
+  )
+);
+
+const EntityLineageTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+      (module) => ({ default: module.EntityLineageTab })
+    )
+  )
+);
+
+const TableConstraints = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../pages/TableDetailsPageV1/TableConstraints/TableConstraints')
+  )
+);
+
+const KnowledgeGraph = withSuspenseFallback(
+  lazy(() => import('../components/KnowledgeGraph/KnowledgeGraph'))
 );
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
@@ -464,6 +501,9 @@ const entityIconMapping: Record<string, SvgComponent> = {
   [EntityType.SPREADSHEET]: SpreadsheetIcon,
   [EntityType.WORKSHEET]: WorksheetIcon,
   [EntityType.DRIVE_SERVICE]: DriveServiceIcon,
+  [EntityType.KNOWLEDGE_PAGE]: KnowledgePageIcon,
+  [EntityType.KNOWLEDGE_CENTER]: KnowledgePageIcon,
+  [EntityType.knowledgePanels]: KnowledgePageIcon,
 };
 
 export const getEntityIcon = (
@@ -481,7 +521,7 @@ export const getEntityIcon = (
     case EntityType.SEARCH_SERVICE:
     case SearchIndex.SEARCH_SERVICE:
       Icon = SearchOutlined;
-      className = 'text-sm text-inherit';
+      className = classNames('text-sm text-inherit', iconClass);
 
       break;
 
@@ -980,18 +1020,20 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.KNOWLEDGE_GRAPH,
       children: (
-        <KnowledgeGraph
-          depth={1}
-          entity={
-            tableDetails
-              ? {
-                  ...tableDetails,
-                  type: EntityType.TABLE,
-                }
-              : undefined
-          }
-          entityType={EntityType.TABLE}
-        />
+        <Suspense fallback={<Loader />}>
+          <KnowledgeGraph
+            depth={1}
+            entity={
+              tableDetails
+                ? {
+                    ...tableDetails,
+                    type: EntityType.TABLE,
+                  }
+                : undefined
+            }
+            entityType={EntityType.TABLE}
+          />
+        </Suspense>
       ),
       isHidden: !useApplicationStore.getState().rdfEnabled,
     },
@@ -1683,27 +1725,6 @@ export const mergeTagsWithGlossary = (
   const normalizedUpdatedTags = normalizeTags(updatedTagsWithoutGlossary);
 
   return [...normalizedUpdatedTags, ...normalizedExistingGlossaryTags];
-};
-
-/**
- * Merge glossary terms with non-glossary tags
- * Used when updating glossary terms to ensure classification tags are not lost
- * @param columnTags Existing tags from the column
- * @param updatedGlossaryTerms New glossary terms to merge
- * @returns Merged tags array with classification tags preserved
- */
-export const mergeGlossaryWithTags = (
-  columnTags: Column['tags'],
-  updatedGlossaryTerms: Column['tags']
-): Column['tags'] => {
-  const nonGlossaryTags =
-    columnTags?.filter((tag) => tag.source !== TagSource.Glossary) || [];
-
-  // Normalize both arrays before merging to ensure consistent format
-  const normalizedNonGlossaryTags = normalizeTags(nonGlossaryTags);
-  const normalizedGlossaryTerms = normalizeTags(updatedGlossaryTerms || []);
-
-  return [...normalizedNonGlossaryTags, ...normalizedGlossaryTerms];
 };
 
 /**

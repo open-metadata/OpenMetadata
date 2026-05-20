@@ -1,0 +1,44 @@
+{
+  "$id": "https://open-metadata.org/schema/type/suggestionPayload.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SuggestionPayload",
+  "description": "Payload for Suggestion tasks.",
+  "javaType": "org.openmetadata.schema.type.SuggestionPayload",
+  "type": "object",
+  "properties": {
+    "suggestionType": {
+      "description": "Type of suggestion.",
+      "type": "string",
+      "enum": ["Description", "Tag", "Owner", "Tier", "Domain", "CustomProperty"]
+    },
+    "fieldPath": {
+      "description": "Path to the field being updated (e.g., 'columns.customer_id.description').",
+      "type": "string"
+    },
+    "currentValue": {
+      "description": "Current value of the field.",
+      "type": "string"
+    },
+    "suggestedValue": {
+      "description": "Suggested new value for the field.",
+      "type": "string"
+    },
+    "confidence": {
+      "description": "Confidence score for AI-generated suggestions (0-100).",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "source": {
+      "description": "Source of the suggestion.",
+      "type": "string",
+      "enum": ["User", "Agent", "AutoPilot", "Ingestion"]
+    },
+    "reasoning": {
+      "description": "Explanation of why this suggestion was made.",
+      "type": "string"
+    }
+  },
+  "required": ["suggestionType", "fieldPath", "suggestedValue"],
+  "additionalProperties": false
+}

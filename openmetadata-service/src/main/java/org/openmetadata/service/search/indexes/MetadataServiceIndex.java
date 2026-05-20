@@ -4,18 +4,20 @@ import java.util.Map;
 import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.service.Entity;
 
-public record MetadataServiceIndex(MetadataService metadataService) implements SearchIndex {
+public record MetadataServiceIndex(MetadataService metadataService)
+    implements TaggableIndex, LineageIndex {
 
   @Override
   public Object getEntity() {
     return metadataService;
   }
 
+  @Override
+  public String getEntityTypeName() {
+    return Entity.METADATA_SERVICE;
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Map<String, Object> commonAttributes =
-        getCommonAttributesMap(metadataService, Entity.METADATA_SERVICE);
-    doc.putAll(commonAttributes);
-    doc.put("upstreamLineage", SearchIndex.getLineageData(metadataService.getEntityReference()));
     return doc;
   }
 }

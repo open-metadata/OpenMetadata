@@ -25,7 +25,7 @@ const localStorageMock = {
   clear: jest.fn(),
 };
 
-Object.defineProperty(window, 'localStorage', {
+Object.defineProperty(globalThis, 'localStorage', {
   value: localStorageMock,
 });
 
@@ -100,6 +100,7 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
     isApplicationLoading: false,
     setApplicationLoading: jest.fn(),
     initializeAuthState: jest.fn(),
+    isAuthenticating: false,
     authConfig: {
       provider: AuthProviderProps.Basic,
       providerName: 'Basic',
@@ -131,7 +132,7 @@ describe('Test auth provider', () => {
       </AuthProvider>
     );
 
-    const logoutButton = screen.getByTestId('logout-button');
+    const logoutButton = await screen.findByTestId('logout-button');
 
     expect(logoutButton).toBeInTheDocument();
   });
@@ -151,7 +152,7 @@ describe('Test auth provider', () => {
       </AuthProvider>
     );
 
-    const logoutButton = screen.getByTestId('logout-button');
+    const logoutButton = await screen.findByTestId('logout-button');
 
     expect(logoutButton).toBeInTheDocument();
 

@@ -3,15 +3,18 @@ package org.openmetadata.service.search;
 import static org.openmetadata.service.search.SearchUtils.getAggregationBuckets;
 import static org.openmetadata.service.search.SearchUtils.getAggregationObject;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonNumber;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -21,6 +24,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.Datum;
 import org.openmetadata.schema.tests.type.DataQualityReportMetadata;
@@ -43,6 +47,117 @@ public final class SearchIndexUtils {
       List.of("collateaiapplicationbot", "collateaiqualityagentapplicationbot");
 
   private SearchIndexUtils() {}
+
+  /**
+   * Deduplicates identical SQL queries across lineage edges in-place.
+   *
+   * <p>Each unique SQL text is assigned a sequential integer key ("1", "2", …). Every edge that
+   * carries that SQL has its {@code sqlQuery} cleared and {@code sqlQueryKey} set to the shared
+   * key. The returned map contains {@code key → sqlText} for all unique SQLs found.
+   *
+   * <p>Edges with no SQL are left untouched.
+   */
+  public static Map<String, String> deduplicateSqlAcrossEdges(List<EsLineageData> edges) {
+    Map<String, String> sqlTextToKey = new LinkedHashMap<>();
+    Map<String, String> sqlQueries = new LinkedHashMap<>();
+    int[] counter = {0};
+
+    for (EsLineageData edge : edges) {
+      String sql = edge.getSqlQuery();
+      if (sql != null && !sql.isEmpty()) {
+        String key =
+            sqlTextToKey.computeIfAbsent(
+                sql,
+                k -> {
+                  String newKey = String.valueOf(++counter[0]);
+                  sqlQueries.put(newKey, sql);
+                  return newKey;
+                });
+        edge.setSqlQueryKey(key);
+        edge.setSqlQuery(null);
+      }
+    }
+
+    return sqlQueries;
+  }
+
+  /**
+   * Progressively strips lineage fields from a search document JSON to bring it under maxBytes.
+   *
+   * <p>Stripping order: lineageSqlQueries first (retains topology), then upstreamLineage.
+   * Returns the (possibly stripped) JSON — caller must re-check size and handle the still-oversized
+   * case.
+   */
+  public static String stripLineageForSize(
+      String json, long maxBytes, String docId, String entityType) {
+    if (json.getBytes(StandardCharsets.UTF_8).length <= maxBytes) {
+      return json;
+    }
+    TypeReference<Map<String, Object>> mapType = new TypeReference<>() {};
+    Map<String, Object> doc = JsonUtils.readValue(json, mapType);
+    if (doc.remove("lineageSqlQueries") != null) {
+      stripSqlQueryKeysFromEdges(doc);
+      json = JsonUtils.pojoToJson(doc);
+      int sizeAfterStrip = json.getBytes(StandardCharsets.UTF_8).length;
+      LOG.warn(
+          "Document {} ({}) too large, stripped lineageSqlQueries (size now {} bytes)",
+          docId,
+          entityType,
+          sizeAfterStrip);
+      if (sizeAfterStrip <= maxBytes) {
+        return json;
+      }
+    }
+    doc.remove("upstreamLineage");
+    json = JsonUtils.pojoToJson(doc);
+    LOG.warn(
+        "Document {} ({}) still too large, stripped upstreamLineage (size now {} bytes)",
+        docId,
+        entityType,
+        json.getBytes(StandardCharsets.UTF_8).length);
+    return json;
+  }
+
+  public static Map<String, Object> stripDocMapIfOversized(
+      Map<String, Object> doc, long maxBytes, String docId, String entityType) {
+    String json = JsonUtils.pojoToJson(doc);
+    if (json.getBytes(StandardCharsets.UTF_8).length <= maxBytes) {
+      return doc;
+    }
+    if (doc.remove("lineageSqlQueries") != null) {
+      stripSqlQueryKeysFromEdges(doc);
+      json = JsonUtils.pojoToJson(doc);
+      int strippedSize = json.getBytes(StandardCharsets.UTF_8).length;
+      LOG.warn(
+          "Live index doc {} ({}) too large, stripped lineageSqlQueries ({} bytes)",
+          docId,
+          entityType,
+          strippedSize);
+      if (strippedSize <= maxBytes) {
+        return doc;
+      }
+    }
+    if (doc.remove("upstreamLineage") != null) {
+      LOG.warn(
+          "Live index doc {} ({}) still too large, stripped upstreamLineage ({} bytes)",
+          docId,
+          entityType,
+          JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length);
+    }
+    return doc;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void stripSqlQueryKeysFromEdges(Map<String, Object> doc) {
+    Object lineage = doc.get("upstreamLineage");
+    if (lineage instanceof List<?> edges) {
+      for (Object edge : edges) {
+        if (edge instanceof Map<?, ?> edgeMap) {
+          ((Map<String, Object>) edgeMap).remove("sqlQueryKey");
+        }
+      }
+    }
+  }
 
   public static List<String> parseFollowers(List<EntityReference> followersRef) {
     if (followersRef == null) {

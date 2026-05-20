@@ -15,7 +15,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import {
   closeCertificationDropdown,
   openCertificationDropdown,
-  setAllSystemCertificationTagsDisabled,
+  restoreCertificationState,
   setCertificationClassificationDisabled,
   setTagDisabledByFqn,
   SYSTEM_CERTIFICATION_TAGS,
@@ -38,15 +38,13 @@ test.describe.serial('System Level Certification Tags', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await table.create(apiContext);
-    await setCertificationClassificationDisabled(apiContext, false);
-    await setAllSystemCertificationTagsDisabled(apiContext, false);
+    await restoreCertificationState(apiContext);
     await afterAction();
   });
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
-    await setCertificationClassificationDisabled(apiContext, false);
-    await setAllSystemCertificationTagsDisabled(apiContext, false);
+    await restoreCertificationState(apiContext);
     await table.delete(apiContext);
     await afterAction();
   });
@@ -103,7 +101,7 @@ test.describe.serial('System Level Certification Tags', () => {
 
       await closeCertificationDropdown(page);
     } finally {
-      await setCertificationClassificationDisabled(apiContext, false);
+      await restoreCertificationState(apiContext);
       await afterAction();
     }
   });
@@ -125,8 +123,7 @@ test.describe.serial('System Level Certification Tags', () => {
       }
 
       await closeCertificationDropdown(page);
-
-      await setCertificationClassificationDisabled(apiContext, false);
+      await restoreCertificationState(apiContext);
 
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
@@ -138,7 +135,7 @@ test.describe.serial('System Level Certification Tags', () => {
 
       await closeCertificationDropdown(page);
     } finally {
-      await setCertificationClassificationDisabled(apiContext, false);
+      await restoreCertificationState(apiContext);
       await afterAction();
     }
   });

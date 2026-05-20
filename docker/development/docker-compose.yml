@@ -46,7 +46,7 @@ services:
     container_name: openmetadata_elasticsearch
     environment:
       - discovery.type=single-node
-      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
+      - ES_JAVA_OPTS=${ES_JAVA_OPTS:--Xms1024m -Xmx1024m}
       - xpack.security.enabled=false
     networks:
       - local_app_net
@@ -574,6 +574,29 @@ services:
       - ingestion-volume-tmp:/tmp
       - /var/run/docker.sock:/var/run/docker.sock:z  # Need 600 permissions to run DockerOperator
 
+
+  mock-oidc-provider:
+    build:
+      context: ./mock-oidc-provider
+      dockerfile: Dockerfile
+    container_name: mock_oidc_provider
+    environment:
+      PORT: "9090"
+      ISSUER: ${MOCK_OIDC_ISSUER:-http://localhost:9090}
+      INTERNAL_BASE_URL: ${MOCK_OIDC_INTERNAL_BASE_URL:-http://mock-oidc-provider:9090}
+    expose:
+      - 9090
+    ports:
+      - "9090:9090"
+    networks:
+      - local_app_net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - sso-test
 
 networks:
   local_app_net:

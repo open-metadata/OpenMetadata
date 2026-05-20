@@ -1,26 +1,19 @@
 name: Trivy Scan For OpenMetadata Server Docker Image
 
 on:
-  schedule:
-    - cron: '15 4 * * *'
   workflow_dispatch:
 
 concurrency: 
-  group: trivy-server-scan-${{ github.event.pull_request.number || github.run_id }}
+  group: trivy-server-scan-${{ github.run_id }}
   cancel-in-progress: true
 
 jobs:
   build-and-scan:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
-    permissions:
-      pull-requests: write
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Prepare for Docker Build
         id: prepare

@@ -12,7 +12,6 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
-import { SidebarItem } from '../constant/sidebar';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { Domain } from '../support/domain/Domain';
 import { DashboardClass } from '../support/entity/DashboardClass';
@@ -32,7 +31,6 @@ import {
   uuid,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
-import { sidebarClick } from './sidebar';
 
 export const TAG_INVALID_NAMES = {
   MIN_LENGTH: 'c',
@@ -56,28 +54,16 @@ export const visitClassificationPage = async (
   classificationDisplayName: string
 ) => {
   await redirectToHomePage(page);
-  const classificationResponse = page.waitForResponse(
-    '/api/v1/classifications?**'
-  );
   const fetchTags = page.waitForResponse(
     `/api/v1/tags?*parent=${classificationName}**`
   );
-  await sidebarClick(page, SidebarItem.TAGS);
-  await classificationResponse;
+  await page.goto(`/tags/${encodeURIComponent(classificationName)}`);
 
   await page
     .getByTestId('tags-container')
     .locator('.table-container')
     .getByTestId('loader')
     .waitFor({ state: 'detached' });
-
-  const classificationEntry = page
-    .getByTestId('side-panel-classification')
-    .filter({ hasText: classificationDisplayName })
-    .first();
-
-  await expect(classificationEntry).toBeVisible();
-  await classificationEntry.click();
 
   await expect(page.locator('.activeCategory')).toContainText(
     classificationDisplayName
@@ -630,6 +616,7 @@ export const selectTagInTagSuggestion = async (
   }
 ) => {
   const tagInput = page.getByRole('combobox', { name: 'Tags' });
+  const tagOption = page.getByTestId(`tag-option-${tagFqn}`);
 
   const tagSearchResponse = page.waitForResponse((response) => {
     const url = response.url();
@@ -640,13 +627,11 @@ export const selectTagInTagSuggestion = async (
     );
   });
 
+  await tagInput.click();
   await tagInput.fill(searchTerm);
   await tagSearchResponse;
 
-  await page.locator('[role="listbox"]').first().waitFor({ state: 'visible' });
-  const tagOption = page.getByTestId(`tag-option-${tagFqn}`);
-  await tagOption.waitFor({ state: 'visible' });
   await tagOption.click();
   await page.keyboard.press('Escape');
-  await page.locator('[role="listbox"]').first().waitFor({ state: 'hidden' });
+  await tagOption.waitFor({ state: 'hidden' });
 };

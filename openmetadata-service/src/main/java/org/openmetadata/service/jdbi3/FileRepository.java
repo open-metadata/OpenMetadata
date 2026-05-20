@@ -31,6 +31,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -68,6 +69,7 @@ public class FileRepository extends EntityRepository<File> {
   public static final String FILE_SAMPLE_DATA_EXTENSION = "file.sampleData";
   static final String PATCH_FIELDS = "columns";
   static final String UPDATE_FIELDS = "columns";
+  private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("columns.description");
 
   public FileRepository() {
     super(
@@ -76,7 +78,8 @@ public class FileRepository extends EntityRepository<File> {
         File.class,
         Entity.getCollectionDAO().fileDAO(),
         PATCH_FIELDS,
-        UPDATE_FIELDS);
+        UPDATE_FIELDS,
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
   }
 

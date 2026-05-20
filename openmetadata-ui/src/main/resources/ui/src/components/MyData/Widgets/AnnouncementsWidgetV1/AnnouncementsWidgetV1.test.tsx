@@ -12,7 +12,7 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { Thread } from '../../../../generated/entity/feed/thread';
+import { AnnouncementEntity } from '../../../../rest/announcementsAPI';
 import AnnouncementsWidgetV1 from './AnnouncementsWidgetV1.component';
 
 // Mock React Router hooks
@@ -31,8 +31,10 @@ jest.mock('react-i18next', () => ({
 
 // Mock utility functions
 jest.mock('../../../../utils/FeedUtils', () => ({
-  getEntityFQN: jest.fn((about) => about.split('::').pop() || ''),
-  getEntityType: jest.fn((about) => about.split('::')[1] || ''),
+  getEntityFQN: jest.fn(
+    () => 'sample_data.ecommerce_db.shopify.raw_product_catalog'
+  ),
+  getEntityType: jest.fn(() => 'table'),
   prepareFeedLink: jest.fn(() => '/test-feed-link'),
 }));
 
@@ -50,61 +52,39 @@ jest.mock('./AnnouncementCardV1/AnnouncementCardV1.component', () => {
       data-testid={`announcement-card-v1-${announcement.id}`}
       onClick={onClick}>
       <div>{announcement.createdBy}</div>
-      <div>{announcement.message}</div>
+      <div>{announcement.displayName ?? announcement.name}</div>
     </div>
   ));
 });
 
 const mockOnClose = jest.fn();
 
-const mockAnnouncements: Thread[] = [
+const mockAnnouncements: AnnouncementEntity[] = [
   {
     id: '1',
-    type: 'Announcement',
-    href: 'http://localhost:8585/api/v1/feed/1',
-    threadTs: 1659609358138,
-    about: '<#E::table::sample_data.ecommerce_db.shopify.raw_product_catalog>',
-    entityId: 'b9aba5ce-6899-4a09-b378-1e7fcbe596cc',
+    name: 'announcement-one',
+    displayName: 'Alberto updated `dim_address_table`',
+    description: 'We will be deprecating a column, please change accordingly.',
+    entityLink:
+      '<#E::table::sample_data.ecommerce_db.shopify.raw_product_catalog>',
     createdBy: 'alberto',
     updatedAt: 1659610946842,
-    updatedBy: 'anonymous',
-    resolved: false,
-    message: 'Alberto updated `dim_address_table`',
-    postsCount: 0,
-    posts: [],
-    reactions: [],
-    announcement: {
-      description:
-        'We will be deprecating a column, please change accordingly.',
-      startTime: 1659609300000,
-      endTime: 1659868500000,
-    },
-    feedInfo: {
-      fieldName: 'PARTNER_NAME',
-    },
-  } as Thread,
+    startTime: 1659609300000,
+    endTime: 1659868500000,
+  },
   {
     id: '2',
-    type: 'Announcement',
-    href: 'http://localhost:8585/api/v1/feed/2',
-    threadTs: 1659512958138,
-    about: '<#E::table::sample_data.ecommerce_db.shopify.raw_product_catalog>',
-    entityId: 'b9aba5ce-6899-4a09-b378-1e7fcbe596cc',
+    name: 'announcement-two',
+    displayName: 'Total Data Assets',
+    description:
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vitae congue nullam consectetur Lorem ipsum',
+    entityLink:
+      '<#E::table::sample_data.ecommerce_db.shopify.raw_product_catalog>',
     createdBy: 'system',
     updatedAt: 1659512958138,
-    updatedBy: 'system',
-    resolved: false,
-    message: 'Total Data Assets',
-    postsCount: 0,
-    posts: [],
-    reactions: [],
-    announcement: {
-      description:
-        'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vitae congue nullam consectetur Lorem ipsum',
-      startTime: 1659512958138,
-      endTime: 1659868500000,
-    },
-  } as Thread,
+    startTime: 1659512958138,
+    endTime: 1659868500000,
+  },
 ];
 
 const widgetProps = {

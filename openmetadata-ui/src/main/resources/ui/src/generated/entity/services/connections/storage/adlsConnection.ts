@@ -25,6 +25,7 @@ export interface AdlsConnection {
      */
     credentials:                 AzureCredentials;
     supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
     /**
      * Service Type
      */

@@ -37,13 +37,15 @@ import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getAllPersonas } from '../../rest/PersonaAPI';
-import { Transi18next } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
   getCustomizePagePath,
   getSettingPageEntityBreadCrumb,
 } from '../../utils/GlobalSettingsUtils';
-import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
+import {
+  Transi18next,
+  translateWithNestedKeys,
+} from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './custom-page-settings.less';

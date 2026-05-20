@@ -14,7 +14,7 @@ Common NoSQL source methods.
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -38,7 +38,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
+    DatabaseServiceMetadataPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -84,16 +84,12 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
-        self.source_config: DatabaseServiceMetadataPipeline = (
-            self.config.sourceConfig.config
-        )
+        self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.ssl_manager = check_ssl_and_init(self.service_connection)
         if self.ssl_manager:
-            self.service_connection = self.ssl_manager.setup_ssl(
-                self.service_connection
-            )
+            self.service_connection = self.ssl_manager.setup_ssl(self.service_connection)
         self.connection_obj = get_connection(self.service_connection)
 
         self.test_connection()
@@ -114,9 +110,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         """
         yield self.service_connection.__dict__.get("databaseName") or DEFAULT_DATABASE
 
-    def yield_database(
-        self, database_name: str
-    ) -> Iterable[Either[CreateDatabaseRequest]]:
+    def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
         Prepare a database request and pass it to the sink
@@ -134,7 +128,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         self.register_record_database_request(database_request=database_request)
 
     @abstractmethod
-    def get_schema_name_list(self) -> List[str]:
+    def get_schema_name_list(self) -> List[str]:  # noqa: UP006
         """
         Method to get list of schema names available within NoSQL db
         need to be overridden by sources
@@ -159,9 +153,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
 
             yield schema
 
-    def yield_database_schema(
-        self, schema_name: str
-    ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
+    def yield_database_schema(self, schema_name: str) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
         From topology.
         Prepare a database schema request and pass it to the sink
@@ -187,23 +179,19 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         self.register_record_schema_request(schema_request=schema_request)
 
     @abstractmethod
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Method to get list of table names and types available within schema db
         need to be overridden by sources
         """
 
-    def query_view_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Method to get list of materialized view names and types available within schema db
         need to be overridden by sources if views are supported by the database.
         """
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, TableType]]]:
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, TableType]]]:  # noqa: UP006, UP045
         """
         Handle table and views.
 
@@ -235,11 +223,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
                     )
                     if filter_by_table(
                         self.source_config.tableFilterPattern,
-                        (
-                            table_fqn
-                            if self.source_config.useFqnForFiltering
-                            else table_name
-                        ),
+                        (table_fqn if self.source_config.useFqnForFiltering else table_name),
                     ):
                         self.status.filter(
                             table_fqn,
@@ -248,14 +232,10 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
                         continue
                     yield table_name, table_type
         except Exception as err:
-            logger.warning(
-                f"Fetching tables names failed for schema {schema_name} due to - {err}"
-            )
+            logger.warning(f"Fetching tables names failed for schema {schema_name} due to - {err}")
             logger.debug(traceback.format_exc())
 
-    def get_table_columns_dict(
-        self, schema_name: str, table_name: str
-    ) -> Union[List[Dict], Dict]:
+    def get_table_columns_dict(self, schema_name: str, table_name: str) -> Union[List[Dict], Dict]:  # noqa: UP006, UP007
         """
         Method to get actual data available within table
         need to be overridden by sources
@@ -266,25 +246,21 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         db_name: str,
         schema_name: str,
         table_name: str,
-    ) -> Optional[List[TableConstraint]]:
+    ) -> Optional[List[TableConstraint]]:  # noqa: UP006, UP045
         # pylint: disable=unused-argument
         return None
 
-    def get_table_columns(self, schema_name: str, table_name: str) -> List[Column]:
+    def get_table_columns(self, schema_name: str, table_name: str) -> List[Column]:  # noqa: UP006
         """
         Method to return all columns of a table
         """
-        import pandas as pd  # pylint: disable=import-outside-toplevel
+        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
-        df = pd.DataFrame.from_records(
-            list(self.get_table_columns_dict(schema_name, table_name))
-        )
+        df = pd.DataFrame.from_records(list(self.get_table_columns_dict(schema_name, table_name)))
         column_parser = DataFrameColumnParser.create(df)
         return column_parser.get_columns()
 
-    def yield_table(
-        self, table_name_and_type: Tuple[str, TableType]
-    ) -> Iterable[Either[CreateTableRequest]]:
+    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -330,9 +306,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
                 )
             )
 
-    def yield_tag(
-        self, schema_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         tags are not supported with NoSQL
         """
@@ -340,9 +314,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
     def get_stored_procedures(self) -> Iterable[Any]:
         """Not implemented"""
 
-    def yield_stored_procedure(
-        self, stored_procedure: Any
-    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+    def yield_stored_procedure(self, stored_procedure: Any) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Not implemented"""
 
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
@@ -350,11 +322,11 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
 
     def get_source_url(
         self,
-        database_name: Optional[str] = None,
-        schema_name: Optional[str] = None,
-        table_name: Optional[str] = None,
-        table_type: Optional[TableType] = None,
-    ) -> Optional[str]:
+        database_name: Optional[str] = None,  # noqa: UP045
+        schema_name: Optional[str] = None,  # noqa: UP045
+        table_name: Optional[str] = None,  # noqa: UP045
+        table_type: Optional[TableType] = None,  # noqa: UP045
+    ) -> Optional[str]:  # noqa: UP045
         """
         By default the source url is not supported for
         """

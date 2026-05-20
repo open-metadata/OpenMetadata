@@ -23,7 +23,9 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
-
+.claude/*
+.claude
+.maestro
 catalog-services/catalog-services.iml
 
 # local docker volume
@@ -161,7 +163,7 @@ ingestion/.nox/
 _bmad/
 
 # Claude Flow generated files
-.claude/settings.local.json
+.claude/*
 .mcp.json
 claude-flow.config.json
 .swarm/
@@ -187,9 +189,22 @@ hive-mind-prompt-*.txt
 .claude-flow/
 memory
 .claude/agents
+.claude/hooks/
 ingestion/.claude/agents
+.claustre_session_id
 
 # AI scaffold working documents — stay local, never committed
 **/CONNECTOR_CONTEXT.md
 
+# Connector audit working files — per-session, never committed
+.claude/audit-results/
+.claude/connector-audit.json
+.claude/scheduled_tasks.lock
+.claude/plans/
+
+# Serena MCP language-server cache — local tooling, not committed
+.serena/
+
 test-results/
+
+docs/superpowers/*

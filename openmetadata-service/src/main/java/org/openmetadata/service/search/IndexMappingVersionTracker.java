@@ -10,10 +10,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
+import org.openmetadata.search.IndexMapping;
+import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.exception.IndexMappingHashException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IndexMappingVersionDAO;
@@ -35,11 +35,11 @@ public class IndexMappingVersionTracker {
   public List<String> getChangedMappings() throws IOException {
     List<String> changedMappings = new ArrayList<>();
     Map<String, String> storedHashes = getStoredMappingHashes();
-    Map<String, String> currentHashes = computeCurrentMappingHashes();
+    Map<String, MappingEntry> currentMappings = computeCurrentMappings();
 
-    for (Map.Entry<String, String> entry : currentHashes.entrySet()) {
+    for (Map.Entry<String, MappingEntry> entry : currentMappings.entrySet()) {
       String entityType = entry.getKey();
-      String currentHash = entry.getValue();
+      String currentHash = entry.getValue().hash();
       String storedHash = storedHashes.get(entityType);
 
       if (storedHash == null || !storedHash.equals(currentHash)) {
@@ -58,23 +58,22 @@ public class IndexMappingVersionTracker {
   }
 
   public void updateMappingVersions() throws IOException {
-    Map<String, String> currentHashes = computeCurrentMappingHashes();
+    Map<String, MappingEntry> currentMappings = computeCurrentMappings();
     long updatedAt = System.currentTimeMillis();
 
-    for (Map.Entry<String, String> entry : currentHashes.entrySet()) {
+    for (Map.Entry<String, MappingEntry> entry : currentMappings.entrySet()) {
       String entityType = entry.getKey();
-      String mappingHash = entry.getValue();
-      JsonNode mappingJson = loadMappingForEntity(entityType);
+      MappingEntry mappingEntry = entry.getValue();
 
       indexMappingVersionDAO.upsertIndexMappingVersion(
           entityType,
-          mappingHash,
-          JsonUtils.pojoToJson(mappingJson),
+          mappingEntry.hash(),
+          JsonUtils.pojoToJson(mappingEntry.json()),
           version,
           updatedAt,
           updatedBy);
     }
-    LOG.info("Updated index mapping versions for {} entities", currentHashes.size());
+    LOG.info("Updated index mapping versions for {} entities", currentMappings.size());
   }
 
   private Map<String, String> getStoredMappingHashes() {
@@ -87,18 +86,23 @@ public class IndexMappingVersionTracker {
     return hashes;
   }
 
-  private Map<String, String> computeCurrentMappingHashes() throws IOException {
-    Map<String, String> hashes = new HashMap<>();
+  private record MappingEntry(String hash, JsonNode json) {}
 
-    // Get all entity types
-    Set<String> entityTypes = Entity.getEntityList();
+  private Map<String, MappingEntry> computeCurrentMappings() throws IOException {
+    Map<String, MappingEntry> mappings = new HashMap<>();
 
-    for (String entityType : entityTypes) {
-      JsonNode mapping = loadMappingForEntity(entityType);
+    // Use IndexMappingLoader as the source of truth for entity types and their mapping file paths.
+    // This avoids constructing file paths manually and ensures all entity types are covered,
+    // including camelCase ones like glossaryTerm, databaseSchema, etc.
+    Map<String, IndexMapping> indexMappings = IndexMappingLoader.getInstance().getIndexMapping();
+
+    for (Map.Entry<String, IndexMapping> entry : indexMappings.entrySet()) {
+      String entityType = entry.getKey();
+      JsonNode mapping = loadMappingForEntity(entityType, entry.getValue());
       if (mapping != null) {
         try {
           String hash = computeHash(mapping);
-          hashes.put(entityType, hash);
+          mappings.put(entityType, new MappingEntry(hash, mapping));
         } catch (IndexMappingHashException e) {
           LOG.error("Failed to compute hash for entity type: {}", entityType, e);
           throw new IOException("Failed to compute mapping hash for " + entityType, e);
@@ -106,33 +110,23 @@ public class IndexMappingVersionTracker {
       }
     }
 
-    return hashes;
+    return mappings;
   }
 
-  private JsonNode loadMappingForEntity(String entityType) {
+  private JsonNode loadMappingForEntity(String entityType, IndexMapping indexMapping) {
     try {
       ObjectMapper mapper = new ObjectMapper();
       Map<String, JsonNode> allLanguageMappings = new HashMap<>();
       String[] languages = {"en", "jp", "ru", "zh"};
 
       for (String lang : languages) {
-        String mappingPath =
-            String.format(
-                "/elasticsearch/%s/%s_index_mapping.json", lang, entityType.toLowerCase());
+        // Use the indexMappingFile from indexMapping.json which has the correct path template
+        String mappingPath = "/" + indexMapping.getIndexMappingFile(lang);
         try (var stream = getClass().getResourceAsStream(mappingPath)) {
           if (stream != null) {
             String mappingContent = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
             allLanguageMappings.put(lang, mapper.readTree(mappingContent));
           }
-        }
-      }
-
-      String mappingPath =
-          String.format("/elasticsearch/%s_index_mapping.json", entityType.toLowerCase());
-      try (var stream = getClass().getResourceAsStream(mappingPath)) {
-        if (stream != null) {
-          String mappingContent = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-          allLanguageMappings.put("default", mapper.readTree(mappingContent));
         }
       }
 

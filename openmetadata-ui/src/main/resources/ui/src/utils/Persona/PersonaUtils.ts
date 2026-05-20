@@ -79,6 +79,7 @@ const ENTITY_ICONS: Record<CustomizeIconKeys, SvgComponent> = {
   [PageType.Classification]: ClassificationIcon,
   [PageType.Tag]: TagIcon,
   [PageType.DataProduct]: DataProductIcon,
+  [PageType.DataMarketplace]: DataProductIcon,
 };
 
 export const getCustomizePageCategories = (): SettingMenuItem[] => {
@@ -86,7 +87,7 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
     {
       key: 'navigation',
       label: i18n.t('label.navigation'),
-      isBeta: true,
+      isBeta: false,
       description: 'Customize left sidebar ',
       icon: ENTITY_ICONS['navigation'],
     },
@@ -97,16 +98,24 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
       icon: ENTITY_ICONS[PageType.LandingPage],
     },
     {
+      key: PageType.DataMarketplace,
+      label: i18n.t('label.data-marketplace'),
+      description: i18n.t('message.entity-customize-description', {
+        entity: i18n.t('label.data-marketplace'),
+      }),
+      icon: ENTITY_ICONS[PageType.DataMarketplace],
+    },
+    {
       key: 'governance',
       label: i18n.t('label.governance'),
-      isBeta: true,
+      isBeta: false,
       description: 'Customize the Govern pages with widget of your preference',
       icon: ENTITY_ICONS['govern'],
     },
     {
       key: 'data-assets',
       label: i18n.t('label.data-asset-plural'),
-      isBeta: true,
+      isBeta: false,
       description:
         'Customize the entity detail page with widget of your preference',
       icon: ENTITY_ICONS['dataAssets'],
@@ -155,6 +164,7 @@ export const getCustomizePageOptions = (
             PageType.LandingPage,
             PageType.Tag,
             PageType.Classification,
+            PageType.DataMarketplace,
           ].includes(item)
         ) {
           acc.push(generateSettingItems(item));

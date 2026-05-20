@@ -1,15 +1,11 @@
 package org.openmetadata.service.search.indexes;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.entity.services.DriveService;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.ParseTags;
 
-public class DriveServiceIndex implements SearchIndex {
+public class DriveServiceIndex implements TaggableIndex, ServiceBackedIndex, LineageIndex {
   final Set<String> excludeDriveServiceFields =
       Set.of("connection", "changeDescription", "incrementalChangeDescription");
   final DriveService driveService;
@@ -24,25 +20,21 @@ public class DriveServiceIndex implements SearchIndex {
   }
 
   @Override
+  public String getEntityTypeName() {
+    return Entity.DRIVE_SERVICE;
+  }
+
+  @Override
   public Set<String> getExcludedFields() {
     return excludeDriveServiceFields;
   }
 
+  @Override
+  public Object getIndexServiceType() {
+    return driveService.getServiceType();
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.DRIVE_SERVICE, driveService));
-    List<TagLabel> tags = new ArrayList<>(parseTags.getTags());
-
-    Map<String, Object> commonAttributes =
-        getCommonAttributesMap(driveService, Entity.DRIVE_SERVICE);
-    doc.putAll(commonAttributes);
-    doc.put("tags", tags);
-    doc.put("tier", parseTags.getTierTag());
-    doc.put("classificationTags", parseTags.getClassificationTags());
-    doc.put("glossaryTags", parseTags.getGlossaryTags());
-    doc.put("serviceType", driveService.getServiceType());
-    doc.put("entityType", Entity.DRIVE_SERVICE);
-    doc.put("upstreamLineage", SearchIndex.getLineageData(driveService.getEntityReference()));
-
     return doc;
   }
 

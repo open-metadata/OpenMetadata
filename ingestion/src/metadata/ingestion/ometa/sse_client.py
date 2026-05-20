@@ -14,13 +14,14 @@ Python SSE Client wrapper and helpers
 
 import time
 from datetime import datetime, timezone
-from logging import Logger
-from typing import Any, Generator
+from logging import Logger  # noqa: TC003
+from typing import Any, Generator  # noqa: UP035
 
 import httpx
 
 from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.ometa.credentials import URL
+from metadata.ingestion.ometa.utils import sanitize_user_agent
 from metadata.utils.logger import ometa_logger
 
 
@@ -35,9 +36,7 @@ class SSEClient:
         self.stream_completed: bool = False
         self.logger: Logger = ometa_logger()
 
-    def stream(
-        self, method: str, path: str, data: None | dict[str, Any] = None
-    ) -> Generator[Any, Any, None]:
+    def stream(self, method: str, path: str, data: None | dict[str, Any] = None) -> Generator[Any, Any, None]:
         """Connect to the SSE stream and yield events.
 
         Args:
@@ -50,9 +49,7 @@ class SSEClient:
         self.stream_completed = False
         retries = 0
 
-        url: URL = URL(
-            self.config.base_url + "/" + (self.config.api_version or "v1") + path
-        )
+        url: URL = URL(self.config.base_url + "/" + (self.config.api_version or "v1") + path)
         method = method.upper()
         headers = {
             "Accept": "text/event-stream",
@@ -66,6 +63,13 @@ class SSEClient:
                 f"{self.config.auth_token_mode} {self.config.access_token}"
                 if self.config.auth_token_mode
                 else self.config.access_token
+            )
+        user_agent = sanitize_user_agent(self.config.user_agent)
+        if user_agent:
+            headers["User-Agent"] = user_agent
+        elif self.config.user_agent:
+            self.logger.debug(
+                f"Ignoring User-Agent {self.config.user_agent!r}: no header-safe characters remained after sanitization"
             )
         opts = {
             "headers": headers,
@@ -83,7 +87,7 @@ class SSEClient:
                 if self.last_event_id:
                     headers["Last-Event-ID"] = self.last_event_id
 
-                with httpx.Client(timeout=None) as client:
+                with httpx.Client(timeout=None) as client:  # noqa: SIM117
                     with client.stream(
                         method,
                         url,
@@ -107,7 +111,7 @@ class SSEClient:
                                             f"Stream terminated with event: {parsed_event.get('event', 'unknown')}"
                                         )
                                         return
-                            else:
+                            else:  # noqa: PLR5501
                                 if not line.startswith(":"):
                                     event_buffer.append(line)
 
@@ -116,9 +120,7 @@ class SSEClient:
                 raise
             except Exception as e:
                 retries += 1
-                self.logger.error(
-                    f"Connection error (retry {retries}/{self.max_retries}): {e}"
-                )
+                self.logger.error(f"Connection error (retry {retries}/{self.max_retries}): {e}")
 
                 if retries >= self.max_retries:
                     raise
@@ -154,15 +156,13 @@ class SSEClient:
             None
         """
         if (
-            self.config.expires_in
+            self.config.expires_in  # noqa: RUF021
             and datetime.now(timezone.utc).timestamp() >= self.config.expires_in
             or not self.config.access_token
         ):
             self.config.access_token, expiry = self.config.auth_token()
-            if not self.config.access_token == "no_token":
+            if not self.config.access_token == "no_token":  # noqa: SIM201
                 if isinstance(expiry, datetime):
                     self.config.expires_in = expiry.timestamp() - 120
                 else:
-                    self.config.expires_in = (
-                        datetime.now(timezone.utc).timestamp() + expiry - 120
-                    )
+                    self.config.expires_in = datetime.now(timezone.utc).timestamp() + expiry - 120

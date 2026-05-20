@@ -1,5 +1,5 @@
 # pyright: reportUnknownMemberType=false, reportUnknownVariableType=false
-from typing import Any, List, Optional
+from typing import Any, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -14,7 +14,7 @@ from metadata.pii.tag_processor import TagProcessor
 def create_pii_processor(
     metadata: OpenMetadata[Any, Any],
     openmetadata_config: OpenMetadataWorkflowConfig,
-    classification_filter: Optional[List[str]] = None,
+    classification_filter: Optional[List[str]] = None,  # noqa: UP006, UP045
 ) -> AutoClassificationProcessor:
     processor_type = getattr(openmetadata_config.processor, "type", "tag-pii-processor")
     if processor_type == "tag-pii-processor":

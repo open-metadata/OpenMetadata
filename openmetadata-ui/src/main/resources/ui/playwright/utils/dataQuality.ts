@@ -16,6 +16,7 @@ import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
+import { submitTestCaseForm } from './testCases';
 
 /** Recharts PieChart id for the Test Case Result pie on the Data Quality dashboard. */
 export const TEST_CASE_STATUS_PIE_CHART_TEST_ID = 'test-case-result-pie-chart';
@@ -101,15 +102,7 @@ export const clickCreateTestCaseButton = async (
   page: Page,
   testCaseName: string
 ) => {
-  const createTestCaseResponse = page.waitForResponse(
-    (response: Response) =>
-      response.url().includes('/api/v1/dataQuality/testCases') &&
-      response.request().method() === 'POST'
-  );
-  await page.getByTestId('create-btn').click();
-  const response = await createTestCaseResponse;
-
-  expect(response.status()).toBe(201);
+  await submitTestCaseForm(page);
 
   const testCaseResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list?*fields=*'
@@ -197,7 +190,7 @@ export const removeFirstNTestCasesFromLogicalTestSuite = async (
   count: number
 ) => {
   const rowActionDropdown = page
-    .locator('.ant-table-tbody')
+    .locator('[data-testid="test-case-table"] tbody')
     .locator(`[data-testid^="${ACTION_DROPDOWN_PREFIX}"]`);
 
   for (let i = 0; i < count; i++) {
@@ -278,12 +271,14 @@ export const selectTestCasesByCheckbox = async (
   page: Page,
   count: number = 1
 ) => {
-  const rows = page.locator('tr[data-row-key]');
+  const rows = page.locator(
+    '[data-testid="test-case-table"] tbody tr[data-key]'
+  );
   await expect(rows.first()).toBeVisible();
 
   for (let i = 0; i < count; i++) {
-    const checkbox = rows.nth(i).locator('input[type="checkbox"]');
-    await checkbox.check();
+    const checkboxLabel = rows.nth(i).locator('label[slot="selection"]');
+    await checkboxLabel.click();
   }
 };
 
@@ -379,7 +374,7 @@ export const verifyBundleSuitePageLoaded = async (
         await listTestCasesResponse;
 
         const rows = await page
-          .locator('[data-testid="test-case-table"] tbody tr[data-row-key]')
+          .locator('[data-testid="test-case-table"] tbody tr[data-key]')
           .count();
 
         return rows;
@@ -391,3 +386,28 @@ export const verifyBundleSuitePageLoaded = async (
     )
     .toBe(expectedTestCaseCount);
 };
+
+/** A `dataQualityReport` call captured for assertion in tests. */
+export type CapturedReport = { url: string; q: string; index: string };
+
+/**
+ * Subscribes to every `/dataQualityReport` request fired by the page and
+ * returns a live array of (url, q, index). Useful for asserting which
+ * indices were queried and what filter the dashboard sent.
+ */
+export function captureReports(page: Page): CapturedReport[] {
+  const captured: CapturedReport[] = [];
+  page.on('request', (req) => {
+    const url = req.url();
+    if (!url.includes('/dataQualityReport')) {
+      return;
+    }
+    const u = new URL(url);
+    captured.push({
+      url,
+      q: u.searchParams.get('q') ?? '',
+      index: u.searchParams.get('index') ?? '',
+    });
+  });
+  return captured;
+}

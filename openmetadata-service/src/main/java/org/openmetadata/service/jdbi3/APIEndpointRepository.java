@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
@@ -64,6 +65,8 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
+  private static final Set<String> CHANGE_SUMMARY_FIELDS =
+      Set.of("requestSchema.schemaFields.description", "responseSchema.schemaFields.description");
   private static final ReadPrefetchKey PREFETCH_DEFAULT_FIELDS =
       ReadPrefetchKey.API_ENDPOINT_DEFAULT_FIELDS;
 
@@ -74,7 +77,8 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
         APIEndpoint.class,
         Entity.getCollectionDAO().apiEndpointDAO(),
         "",
-        "");
+        "",
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations

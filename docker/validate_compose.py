@@ -1,3 +1,4 @@
+import os
 import time
 from pprint import pprint
 from typing import Optional, Tuple
@@ -13,6 +14,21 @@ USERNAME = "admin"
 PASSWORD = "admin"
 
 _access_token: Optional[str] = None
+_last_dag_logs_supported: Optional[bool] = None
+
+
+def get_env_int(name: str, default: int) -> int:
+    value = os.getenv(name)
+    if value is None:
+        return default
+
+    try:
+        return int(value)
+    except ValueError:
+        log_ansi_encoded_string(
+            message=f"Invalid integer for {name}: {value}. Falling back to {default}."
+        )
+        return default
 
 
 def get_access_token() -> str:
@@ -50,7 +66,8 @@ def get_last_run_info() -> Tuple[str, str]:
     """
     Make sure we can pick up the latest run info
     """
-    max_retries = 30
+    max_retries = get_env_int("VALIDATE_COMPOSE_DAG_RUN_RETRIES", 30)
+    poll_interval_seconds = get_env_int("VALIDATE_COMPOSE_DAG_RUN_POLL_SECONDS", 5)
     retries = 0
 
     while retries < max_retries:
@@ -89,7 +106,7 @@ def get_last_run_info() -> Tuple[str, str]:
                 _access_token = None
             log_ansi_encoded_string(message=f"Error getting DAG runs: {e}")
 
-        time.sleep(5)
+        time.sleep(poll_interval_seconds)
         retries += 1
 
     return None, None
@@ -99,19 +116,33 @@ def print_last_run_logs() -> None:
     """
     Show the logs
     """
+    global _last_dag_logs_supported
+
     try:
-        logs = requests.get(
+        response = requests.get(
             f"{AIRFLOW_URL}/api/v2/openmetadata/last_dag_logs?dag_id=sample_data&task_id=ingest_using_recipe",
             headers=get_auth_headers(),
             timeout=REQUESTS_TIMEOUT
-        ).text
-        pprint(logs)
+        )
+
+        if response.status_code == 404:
+            if _last_dag_logs_supported is not False:
+                log_ansi_encoded_string(
+                    message="Airflow last_dag_logs route is unavailable. Skipping task log fetch."
+                )
+                _last_dag_logs_supported = False
+            return
+
+        response.raise_for_status()
+        _last_dag_logs_supported = True
+        pprint(response.text)
     except Exception as e:
         log_ansi_encoded_string(message=f"Could not fetch logs: {e}")
 
 
 def main():
-    max_retries = 15
+    max_retries = get_env_int("VALIDATE_COMPOSE_MAX_RETRIES", 15)
+    retry_interval_seconds = get_env_int("VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS", 10)
     retries = 0
 
     while retries < max_retries:
@@ -121,7 +152,7 @@ def main():
             log_ansi_encoded_string(
                 message="Waiting for DAG run to start...",
             )
-            time.sleep(10)
+            time.sleep(retry_interval_seconds)
             retries += 1
             continue
 
@@ -135,7 +166,7 @@ def main():
                 message=f"DAG run [{dag_run_id}] is {state}. Waiting for completion...",
             )
             print_last_run_logs()
-            time.sleep(10)
+            time.sleep(retry_interval_seconds)
             retries += 1
         elif state == "failed":
             log_ansi_encoded_string(message=f"DAG run [{dag_run_id}] FAILED!")
@@ -146,7 +177,7 @@ def main():
                 message=f"Waiting for sample data ingestion. Current state: {state}",
             )
             print_last_run_logs()
-            time.sleep(10)
+            time.sleep(retry_interval_seconds)
             retries += 1
 
     if retries == max_retries:

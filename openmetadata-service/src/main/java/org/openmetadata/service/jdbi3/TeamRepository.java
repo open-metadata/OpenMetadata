@@ -100,6 +100,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.QueryFilterBuilder;
+import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -424,30 +425,21 @@ public class TeamRepository extends EntityRepository<Team> {
 
   public BulkOperationResult bulkAddAssets(String teamName, BulkAssets request, String userName) {
     Team team = getByName(null, teamName, getFields("id"));
-
-    // Validate all to be users
     validateAllRefUsers(request.getAssets());
-
-    for (EntityReference asset : request.getAssets()) {
-      if (!Objects.equals(asset.getType(), Entity.USER)) {
-        throw new IllegalArgumentException("Only users can be added to a Team");
-      }
-    }
-
     return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, true, userName);
   }
 
   public BulkOperationResult bulkRemoveAssets(
-      String domainName, BulkAssets request, String userName) {
-    Team team = getByName(null, domainName, getFields("id"));
-
-    // Validate all to be users
+      String teamName, BulkAssets request, String userName) {
+    Team team = getByName(null, teamName, getFields("id"));
     validateAllRefUsers(request.getAssets());
-
     return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, false, userName);
   }
 
   private void validateAllRefUsers(List<EntityReference> refs) {
+    if (nullOrEmpty(refs)) {
+      return;
+    }
     for (EntityReference asset : refs) {
       if (!Objects.equals(asset.getType(), Entity.USER)) {
         throw new IllegalArgumentException("Only users can be added to a Team");
@@ -607,6 +599,15 @@ public class TeamRepository extends EntityRepository<Team> {
     if (entity.getId().equals(organization.getId())) {
       throw new IllegalArgumentException(DELETE_ORGANIZATION);
     }
+  }
+
+  @Override
+  protected void postDelete(Team entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
+    PolicyConditionUpdater.updateAllPolicyConditions(
+        condition ->
+            PolicyConditionUpdater.removeFromCondition(
+                condition, entity.getName(), PolicyConditionUpdater.TEAM_FUNCTIONS));
   }
 
   @Override

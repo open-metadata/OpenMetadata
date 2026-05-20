@@ -20,6 +20,7 @@ import {
 } from '../../../constants/DataProduct.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import {
@@ -34,6 +35,7 @@ import {
 } from '../../common/atoms/shared/types';
 
 export const useDataProductListingData = (): ListingData<DataProduct> => {
+  const { dataProductBasePath } = useMarketplaceStore();
   const filterKeys = useMemo(() => DATAPRODUCT_DEFAULT_QUICK_FILTERS, []);
   const filterConfigs = useMemo(() => DATAPRODUCT_FILTERS, []);
 
@@ -113,7 +115,7 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
     filterConfigs,
     columns,
     renderers,
-    basePath: '/dataProduct',
+    basePath: dataProductBasePath,
   });
 
   return listingData;

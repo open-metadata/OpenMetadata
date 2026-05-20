@@ -12,10 +12,11 @@
 """
 DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 """
+
 import json
 import traceback
 from hashlib import md5
-from typing import Any, Iterable, Optional, Tuple
+from typing import Any, Iterable, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -38,7 +39,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
+    DatabaseServiceMetadataPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
     StorageContainerConfig,
@@ -84,9 +85,7 @@ class DatalakeSource(DatabaseServiceSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
-        self.source_config: DatabaseServiceMetadataPipeline = (
-            self.config.sourceConfig.config
-        )
+        self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.client = get_connection(self.service_connection)
@@ -95,20 +94,14 @@ class DatalakeSource(DatabaseServiceSource):
         self.config_source = self.service_connection.configSource
         self.connection_obj = self.client
         self.test_connection()
-        self.reader = get_reader(
-            config_source=self.config_source, client=self.client.client
-        )
+        self.reader = get_reader(config_source=self.config_source, client=self.client.client)
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DatalakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatalakeConnection):
-            raise InvalidSourceException(
-                f"Expected DatalakeConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected DatalakeConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_database_names(self) -> Iterable[str]:
@@ -129,28 +122,18 @@ class DatalakeSource(DatabaseServiceSource):
             )
             if filter_by_database(
                 self.source_config.databaseFilterPattern,
-                (
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else database_name
-                ),
+                (database_fqn if self.source_config.useFqnForFiltering else database_name),
             ):
                 self.status.filter(database_fqn, "Database Filtered out")
             else:
                 try:
-                    self.client.update_client_database(
-                        self.config_source, database_name
-                    )
+                    self.client.update_client_database(self.config_source, database_name)
                     yield database_name
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(
-                        f"Error trying to connect to database {database_name}: {exc}"
-                    )
+                    logger.error(f"Error trying to connect to database {database_name}: {exc}")
 
-    def yield_database(
-        self, database_name: str
-    ) -> Iterable[Either[CreateDatabaseRequest]]:
+    def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
         Prepare a database request and pass it to the sink
@@ -170,9 +153,7 @@ class DatalakeSource(DatabaseServiceSource):
         return schema names
         """
         try:
-            for schema_name in self.client.get_database_schema_names(
-                self.service_connection.bucketName
-            ):
+            for schema_name in self.client.get_database_schema_names(self.service_connection.bucketName):
                 schema_fqn = fqn.build(
                     self.metadata,
                     entity_type=DatabaseSchema,
@@ -182,12 +163,8 @@ class DatalakeSource(DatabaseServiceSource):
                 )
 
                 if filter_by_schema(
-                    self.config.sourceConfig.config.schemaFilterPattern,
-                    (
-                        schema_fqn
-                        if self.config.sourceConfig.config.useFqnForFiltering
-                        else schema_name
-                    ),
+                    self.config.sourceConfig.config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                    (schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema_name),  # pyright: ignore[reportAttributeAccessIssue]
                 ):
                     self.status.filter(schema_fqn, "Bucket Filtered Out")
                     continue
@@ -202,9 +179,7 @@ class DatalakeSource(DatabaseServiceSource):
                 )
             )
 
-    def yield_database_schema(
-        self, schema_name: str
-    ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
+    def yield_database_schema(self, schema_name: str) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
         From topology.
         Prepare a database schema request and pass it to the sink
@@ -226,7 +201,7 @@ class DatalakeSource(DatabaseServiceSource):
 
     def get_tables_name_and_type(  # pylint: disable=too-many-branches
         self,
-    ) -> Iterable[Tuple[str, TableType, SupportedTypes]]:
+    ) -> Iterable[Tuple[str, TableType, SupportedTypes, Optional[int]]]:  # noqa: UP006, UP045
         """
         Handle table and views.
 
@@ -248,10 +223,8 @@ class DatalakeSource(DatabaseServiceSource):
         except ReadException:
             metadata_entry = None
         if self.source_config.includeTables:
-            skip_cold_storage = (
-                getattr(self.service_connection, "skipColdStorage", False) or False
-            )
-            for key_name in self.client.get_table_names(
+            skip_cold_storage = getattr(self.service_connection, "skipColdStorage", False) or False
+            for key_name, file_size in self.client.get_table_names(
                 bucket_name, prefix, skip_cold_storage=skip_cold_storage
             ):
                 table_name = self.standardize_table_name(bucket_name, key_name)
@@ -259,45 +232,42 @@ class DatalakeSource(DatabaseServiceSource):
                 if self.filter_dl_table(table_name):
                     continue
                 logger.info(f"Processing table: {table_name}")
-                file_extension = get_file_format_type(
-                    key_name=key_name, metadata_entry=metadata_entry
-                )
+                file_extension = get_file_format_type(key_name=key_name, metadata_entry=metadata_entry)
 
                 if table_name.endswith("/") or not file_extension:
-                    logger.debug(
-                        f"Object filtered due to unsupported file type: {key_name}"
-                    )
+                    logger.debug(f"Object filtered due to unsupported file type: {key_name}")
                     continue
 
-                yield table_name, TableType.Regular, file_extension
+                yield table_name, TableType.Regular, file_extension, file_size
 
     def yield_table(
-        self, table_name_and_type: Tuple[str, TableType, SupportedTypes]
+        self,
+        table_name_and_type: Tuple[str, TableType, SupportedTypes, Optional[int]],  # noqa: UP006, UP045
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink.
         Uses first chunk only for schema inference to avoid loading entire file.
         """
-        table_name, table_type, table_extension = table_name_and_type
+        table_name, table_type, table_extension, file_size = table_name_and_type
         schema_name = self.context.get().database_schema
         try:
             table_constraints = None
             data_frame, raw_data = fetch_dataframe_first_chunk(
                 config_source=self.config_source,
-                client=self.client._client,
+                client=self.client.client,
                 file_fqn=DatalakeTableSchemaWrapper(
                     key=table_name,
                     bucket_name=schema_name,
                     file_extension=table_extension,
+                    file_size=file_size,
                 ),
                 fetch_raw_data=True,
+                session=getattr(self.client, "session", None),
             )
             if data_frame:
                 data_frame = next(data_frame)
-                column_parser = DataFrameColumnParser.create(
-                    data_frame, table_extension, raw_data=raw_data
-                )
+                column_parser = DataFrameColumnParser.create(data_frame, table_extension, raw_data=raw_data)
                 columns = column_parser.get_columns()
             else:
                 # If no data_frame (due to unsupported type), ignore
@@ -339,24 +309,22 @@ class DatalakeSource(DatabaseServiceSource):
                 )
             )
 
-    def yield_tag(
-        self, schema_name: str
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """We don't bring tag information"""
 
     def get_stored_procedures(self) -> Iterable[Any]:
         """Not implemented"""
 
-    def yield_stored_procedure(
-        self, stored_procedure: Any
-    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+    def yield_stored_procedure(self, stored_procedure: Any) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Not implemented"""
 
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
 
     def standardize_table_name(
-        self, schema: str, table: str  # pylint: disable=unused-argument
+        self,
+        schema: str,
+        table: str,  # pylint: disable=unused-argument
     ) -> str:
         return table
 
@@ -373,12 +341,8 @@ class DatalakeSource(DatabaseServiceSource):
         )
 
         if filter_by_table(
-            self.config.sourceConfig.config.tableFilterPattern,
-            (
-                table_fqn
-                if self.config.sourceConfig.config.useFqnForFiltering
-                else table_name
-            ),
+            self.config.sourceConfig.config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+            (table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name),  # pyright: ignore[reportAttributeAccessIssue]
         ):
             self.status.filter(
                 table_fqn,

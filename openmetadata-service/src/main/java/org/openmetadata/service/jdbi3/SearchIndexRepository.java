@@ -33,6 +33,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
@@ -64,6 +65,7 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class SearchIndexRepository extends EntityRepository<SearchIndex> {
+  private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("fields.description");
 
   public SearchIndexRepository() {
     super(
@@ -72,7 +74,8 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         SearchIndex.class,
         Entity.getCollectionDAO().searchIndexDAO(),
         "",
-        "");
+        "",
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations
@@ -260,8 +263,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     // Then, if fields are requested, also fetch field-level tags
     if (fields.contains("fields")) {
       // Use bulk tag fetching to avoid N+1 queries
-      bulkPopulateEntityFieldTags(
-          searchIndexes, entityType, SearchIndex::getFields, SearchIndex::getFullyQualifiedName);
+      bulkPopulateEntityFieldTags(searchIndexes, SearchIndex::getFields);
     }
   }
 

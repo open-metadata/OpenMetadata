@@ -930,6 +930,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       // Validate email domain against allowed registration domains
       Set<String> allowedDomains = authorizerConfiguration.getAllowedEmailRegistrationDomains();
       if (allowedDomains != null
+          && !allowedDomains.isEmpty()
           && !allowedDomains.contains("all")
           && !allowedDomains.contains(domain)) {
         LOG.warn(

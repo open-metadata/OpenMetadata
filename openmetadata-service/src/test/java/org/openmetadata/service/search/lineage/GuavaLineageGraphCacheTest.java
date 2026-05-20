@@ -20,6 +20,8 @@ import java.util.HashMap;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 
@@ -215,5 +217,92 @@ public class GuavaLineageGraphCacheTest {
     }
 
     return result;
+  }
+
+  @Test
+  public void testInvalidateIfGraphContainsEvictsEntryKeyedByFqn() {
+    LineageCacheKey targetKey =
+        LineageCacheKey.fromRequest(new SearchLineageRequest().withFqn("svc.db.target"));
+    LineageCacheKey otherKey =
+        LineageCacheKey.fromRequest(new SearchLineageRequest().withFqn("svc.db.other"));
+
+    cache.put(targetKey, createMockResult(5));
+    cache.put(otherKey, createMockResult(5));
+
+    cache.invalidateIfGraphContains("svc.db.target");
+
+    assertFalse(cache.get(targetKey).isPresent(), "Root-FQN-matching entry must be evicted");
+    assertTrue(cache.get(otherKey).isPresent(), "Unrelated entry must survive");
+  }
+
+  @Test
+  public void testInvalidateIfGraphContainsEvictsWhenFqnAppearsAsNode() {
+    LineageCacheKey rootKey =
+        LineageCacheKey.fromRequest(new SearchLineageRequest().withFqn("svc.db.root"));
+    LineageCacheKey otherKey =
+        LineageCacheKey.fromRequest(new SearchLineageRequest().withFqn("svc.db.elsewhere"));
+
+    SearchLineageResult resultWithTarget = createMockResult(0);
+    resultWithTarget.getNodes().put("svc.db.target", null);
+
+    cache.put(rootKey, resultWithTarget);
+    cache.put(otherKey, createMockResult(5));
+
+    cache.invalidateIfGraphContains("svc.db.target");
+
+    assertFalse(
+        cache.get(rootKey).isPresent(), "Entry whose nodes contain the FQN must be evicted");
+    assertTrue(cache.get(otherKey).isPresent(), "Unrelated entry must survive");
+  }
+
+  @Test
+  public void testInvalidateIfGraphContainsEvictsWhenFqnAppearsAsEdgeEndpoint() {
+    LineageCacheKey rootKey =
+        LineageCacheKey.fromRequest(new SearchLineageRequest().withFqn("svc.db.root"));
+
+    SearchLineageResult resultWithEdge = createMockResult(0);
+    EsLineageData edge =
+        new EsLineageData()
+            .withDocId("svc.db.root->svc.db.downstream")
+            .withFromEntity(new RelationshipRef().withFullyQualifiedName("svc.db.root"))
+            .withToEntity(new RelationshipRef().withFullyQualifiedName("svc.db.downstream"));
+    resultWithEdge.getDownstreamEdges().put("edge1", edge);
+
+    cache.put(rootKey, resultWithEdge);
+
+    cache.invalidateIfGraphContains("svc.db.downstream");
+
+    assertFalse(
+        cache.get(rootKey).isPresent(),
+        "Entry whose edge endpoint matches the FQN must be evicted");
+  }
+
+  @Test
+  public void testInvalidateIfGraphContainsIsNoOpForNullOrBlankFqn() {
+    LineageCacheKey key =
+        LineageCacheKey.fromRequest(new SearchLineageRequest().withFqn("svc.db.kept"));
+    cache.put(key, createMockResult(5));
+
+    cache.invalidateIfGraphContains(null);
+    cache.invalidateIfGraphContains("");
+
+    assertTrue(cache.get(key).isPresent(), "Null/blank FQN must not evict anything");
+  }
+
+  @Test
+  public void testInvalidateIfGraphContainsLeavesUnrelatedEntries() {
+    LineageCacheKey keyA =
+        LineageCacheKey.fromRequest(new SearchLineageRequest().withFqn("svc.db.a"));
+    LineageCacheKey keyB =
+        LineageCacheKey.fromRequest(new SearchLineageRequest().withFqn("svc.db.b"));
+
+    cache.put(keyA, createMockResult(5));
+    cache.put(keyB, createMockResult(5));
+
+    cache.invalidateIfGraphContains("svc.db.unrelated");
+
+    assertTrue(cache.get(keyA).isPresent());
+    assertTrue(cache.get(keyB).isPresent());
+    assertEquals(2, cache.size());
   }
 }

@@ -12,16 +12,14 @@
  */
 
 import {
-  Box,
-  Button as MuiButton,
-  Paper,
-  Stack,
+  Badge,
+  Button,
+  ButtonUtility,
+  Card,
   Typography,
-  useTheme,
-} from '@mui/material';
-import { defaultColors } from '@openmetadata/ui-core-components';
+} from '@openmetadata/ui-core-components';
 import { XClose } from '@untitledui/icons';
-import { Button, Modal, Progress, Space } from 'antd';
+import { Modal, Progress } from 'antd';
 import { AxiosError } from 'axios';
 import dayjs from 'dayjs';
 import { DateTime } from 'luxon';
@@ -37,6 +35,7 @@ import DatePicker from '../../components/common/DatePicker/DatePicker';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { CSVExportWebsocketResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
+import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   PAGE_SIZE_BASE,
@@ -76,7 +75,6 @@ interface ExportJob {
 
 const AuditLogsPage = () => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const { socket } = useWebSocketConnector();
 
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
@@ -219,7 +217,7 @@ const AuditLogsPage = () => {
     element.click();
 
     URL.revokeObjectURL(element.href);
-    document.body.removeChild(element);
+    element.remove();
   }, []);
 
   const handleExportWebSocketMessage = useCallback(
@@ -332,168 +330,110 @@ const AuditLogsPage = () => {
       fullHeight
       mainContainerClassName="audit-logs-page-layout"
       pageTitle={t('label.audit-log-plural')}>
-      <Box
-        data-testid="audit-logs-page"
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-          minHeight: 0,
-          overflow: 'hidden',
-        }}>
-        <Box sx={{ flexShrink: 0, marginBottom: theme.spacing(2) }}>
-          {breadcrumbs}
-        </Box>
+      <div
+        className="tw:flex tw:flex-col tw:h-full tw:min-h-0 tw:overflow-hidden"
+        data-testid="audit-logs-page">
+        <div className="tw:shrink-0 tw:mb-2">{breadcrumbs}</div>
         {/* Header */}
-        <Box
-          data-testid="audit-logs-page-header"
-          sx={{
-            flexShrink: 0,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginTop: theme.spacing(1),
-            padding: theme.spacing(6),
-            mb: 2,
-            bgcolor: 'background.paper',
-            boxShadow: 1,
-
-            borderRadius: 1,
-            border: `1px solid ${defaultColors.blueGray[100]}`,
-          }}>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: theme.spacing(2 / 3),
-            }}>
-            <Typography
-              sx={{
-                color: theme.palette.grey[900],
-                fontSize: theme.typography.body1.fontSize,
-                fontWeight: 600,
-                lineHeight: theme.typography.body1.lineHeight,
-              }}>
-              {t(PAGE_HEADERS.AUDIT_LOGS.header)}
-            </Typography>
-            <Typography
-              sx={{
-                color: theme.palette.grey[600],
-                fontSize: theme.typography.body2.fontSize,
-                fontWeight: 400,
-                lineHeight: theme.typography.body2.lineHeight,
-              }}>
-              {t(PAGE_HEADERS.AUDIT_LOGS.subHeader)}
-            </Typography>
-          </Box>
-          <Button
-            data-testid="export-audit-logs-button"
-            icon={<ExportIcon height={16} width={16} />}
-            style={{
-              alignItems: 'center',
-              display: 'flex',
-              gap: theme.spacing(2),
+        <Card
+          className="tw:flex tw:justify-between tw:items-center tw:mt-1 tw:mb-2 tw:px-6 tw:py-4"
+          data-testid="audit-logs-page-header">
+          <PageHeader
+            data={{
+              header: t(PAGE_HEADERS.AUDIT_LOGS.header),
+              subHeader: t(PAGE_HEADERS.AUDIT_LOGS.subHeader),
             }}
-            type="primary"
-            onClick={() => setIsExportModalOpen(true)}>
+            title={t(PAGE_HEADERS.AUDIT_LOGS.header)}
+          />
+          <Button
+            color="primary"
+            data-testid="export-audit-logs-button"
+            iconLeading={<ExportIcon height={16} width={16} />}
+            onPress={() => setIsExportModalOpen(true)}>
             {t('label.export')}
           </Button>
-        </Box>
+        </Card>
 
         {/* Content Paper */}
-        <Paper
-          elevation={0}
-          sx={{
-            flex: 1,
-            minHeight: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            borderRadius: '12px',
-            border: `1px solid ${defaultColors.blueGray[100]}`,
-          }}>
+        <Card className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:overflow-hidden">
           {/* Filters */}
-          <Box sx={{ flexShrink: 0, p: 3 }}>
-            <Stack alignItems="center" direction="row" spacing={2}>
-              <Box
-                data-testid="audit-log-search-container"
-                sx={{ flexShrink: 0 }}>
+          <div className="tw:shrink-0 tw:p-3">
+            <div className="tw:flex tw:items-center tw:gap-4">
+              <div
+                className="tw:shrink-0"
+                data-testid="audit-log-search-container">
                 {searchComponent}
-              </Box>
+              </div>
               <AuditLogFilters
                 activeFilters={activeFilters}
                 onFiltersChange={handleFiltersChange}
               />
-              <Box flexGrow={1} />
-            </Stack>
+              <div className="tw:grow" />
+            </div>
             {hasActiveFilters && (
-              <Box
-                className="filter-selection-container"
-                data-testid="filter-selection-container"
-                sx={{
-                  mt: 2,
-                }}>
-                <Box className="filter-selection-chips-wrapper">
+              <div
+                className="tw:flex tw:items-center tw:w-full tw:mt-2 tw:pr-3.5"
+                data-testid="filter-selection-container">
+                <div className="tw:flex tw:gap-2 tw:flex-wrap tw:flex-1">
                   {activeFilters.map((filter) => (
-                    <Box
-                      className="filter-selection-chip"
-                      data-testid={`filter-chip-${filter.category}`}
-                      key={filter.category}>
-                      <Box
-                        className="filter-selection-chip-content"
-                        component="span">
-                        <span className="filter-selection-label">
+                    <Badge
+                      className="tw:ring-0 tw:gap-1"
+                      color="brand"
+                      key={filter.category}
+                      size="lg"
+                      type="color">
+                      <div
+                        className="tw:flex tw:items-center tw:gap-1"
+                        data-testid={`filter-chip-${filter.category}`}>
+                        <Typography
+                          className="tw:text-gray-600"
+                          weight="medium">
                           {filter.categoryLabel}:{' '}
-                        </span>
-                        <span
-                          className="filter-selection-value"
-                          title={filter.value.label}>
-                          {filter.category === 'time' &&
-                          filter.value.key === 'customRange'
-                            ? t('label.custom-range')
-                            : filter.value.label}
-                        </span>
-                      </Box>
-                      <Box
+                        </Typography>
+                        <div className="tw:max-w-80">
+                          <Typography
+                            ellipsis
+                            as="p"
+                            className="tw:text-brand-600"
+                            title={filter.value.label}
+                            weight="medium">
+                            {filter.category === 'time' &&
+                            filter.value.key === 'customRange'
+                              ? t('label.custom-range')
+                              : filter.value.label}
+                          </Typography>
+                        </div>
+                      </div>
+                      <ButtonUtility
                         aria-label="Remove filter"
-                        className="filter-selection-remove-btn"
-                        component="button"
+                        color="tertiary"
                         data-testid={`remove-filter-${filter.category}`}
-                        onClick={() => handleRemoveFilter(filter.category)}>
-                        <XClose size={14} />
-                      </Box>
-                    </Box>
+                        icon={<XClose size={14} />}
+                        onClick={() => handleRemoveFilter(filter.category)}
+                      />
+                    </Badge>
                   ))}
-                </Box>
-                <MuiButton
-                  className="filter-selection-clear-all"
+                </div>
+                <Button
+                  color="link-color"
                   data-testid="clear-filters"
-                  variant="text"
-                  onClick={handleClearFilters}>
+                  onPress={handleClearFilters}>
                   {t('label.clear-entity', {
                     entity: t('label.all-lowercase'),
                   })}
-                </MuiButton>
-              </Box>
+                </Button>
+              </div>
             )}
-          </Box>
+          </div>
 
           {/* List */}
-          <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+          <div className="tw:flex-1 tw:min-h-0 tw:overflow-auto">
             <AuditLogList isLoading={isLoading} logs={logs} />
-          </Box>
+          </div>
 
           {/* Pagination */}
           {logs.length > 0 && (
-            <Box
-              sx={{
-                flexShrink: 0,
-                p: 2,
-                display: 'flex',
-                justifyContent: 'center',
-                boxShadow:
-                  '0 -13px 16px -4px rgba(10, 13, 18, 0.04), 0 -4px 6px -2px rgba(10, 13, 18, 0.03)',
-              }}>
+            <div className="tw:shrink-0 tw:p-2 tw:flex tw:justify-center tw:shadow-[inset_0px_1px_0px_0px] tw:shadow-border-secondary">
               <NextPrevious
                 currentPage={currentPage}
                 isLoading={isLoading}
@@ -507,10 +447,10 @@ const AuditLogsPage = () => {
                 pagingHandler={handlePaging}
                 onShowSizeChange={handlePageSizeChange}
               />
-            </Box>
+            </div>
           )}
-        </Paper>
-      </Box>
+        </Card>
+      </div>
 
       <Modal
         centered
@@ -530,16 +470,16 @@ const AuditLogsPage = () => {
         })}
         onCancel={handleExportModalClose}
         onOk={handleExport}>
-        <Space className="w-full" direction="vertical" size={16}>
-          <Typography color="text.secondary">
+        <div className="tw:w-full tw:flex tw:flex-col tw:gap-4">
+          <Typography as="p" size="text-md">
             {t('message.export-audit-logs-description')}
           </Typography>
           <div>
-            <Typography component="span" sx={{ display: 'block', mb: 1 }}>
-              {t('label.date-range')}{' '}
-              <Box component="span" sx={{ color: 'error.main' }}>
-                *
-              </Box>
+            <Typography
+              as="p"
+              className="tw:mb-2! tw:text-gray-400"
+              size="text-md">
+              {t('label.date-range')} <span className="tw:text-red-600">*</span>
             </Typography>
             <DatePicker.RangePicker
               allowClear
@@ -549,7 +489,7 @@ const AuditLogsPage = () => {
               disabledDate={(current) => current > DateTime.now().endOf('day')}
               value={exportDateRange}
               onChange={(dates) => {
-                if (dates && dates[0] && dates[1]) {
+                if (dates?.[0] && dates?.[1]) {
                   setExportDateRange([dates[0], dates[1]]);
                 } else {
                   setExportDateRange(null);
@@ -557,7 +497,7 @@ const AuditLogsPage = () => {
               }}
             />
           </div>
-          {exportJob && exportJob.status === 'IN_PROGRESS' && (
+          {exportJob?.status === 'IN_PROGRESS' && (
             <div className="export-progress-container">
               <Progress
                 percent={
@@ -570,9 +510,7 @@ const AuditLogsPage = () => {
                 size="small"
                 status="active"
               />
-              <Typography
-                color="text.secondary"
-                sx={{ display: 'block', mt: 1 }}>
+              <Typography as="p" className="tw:mt-2!" size="text-md">
                 {exportJob.message ?? t('message.exporting')}
               </Typography>
             </div>
@@ -585,7 +523,7 @@ const AuditLogsPage = () => {
               type={exportJob.error ? 'error' : 'success'}
             />
           )}
-        </Space>
+        </div>
       </Modal>
     </PageLayoutV1>
   );

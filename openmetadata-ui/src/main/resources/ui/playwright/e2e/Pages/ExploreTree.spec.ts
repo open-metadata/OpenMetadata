@@ -47,11 +47,14 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe('Explore Tree scenarios', () => {
-  const table1 = new TableClass();
-  const table2 = new TableClass();
+  let table1: TableClass;
+  let table2: TableClass;
 
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+
+    table1 = new TableClass();
+    table2 = new TableClass();
 
     await table1.create(apiContext);
     await table2.create(apiContext);

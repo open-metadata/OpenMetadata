@@ -14,6 +14,7 @@ import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 
 /**
@@ -27,12 +28,14 @@ public class RuleEvaluator {
   private final ResourceContextInterface resourceContext;
 
   private final boolean expressionValidation;
+  private final boolean isUpdate;
 
-  public RuleEvaluator() {
+  public RuleEvaluator(boolean isUpdate) {
     this.policyContext = null;
     this.subjectContext = null;
     this.resourceContext = null;
     this.expressionValidation = true;
+    this.isUpdate = isUpdate;
   }
 
   public RuleEvaluator(
@@ -43,6 +46,7 @@ public class RuleEvaluator {
     this.subjectContext = subjectContext;
     this.resourceContext = resourceContext;
     this.expressionValidation = false;
+    this.isUpdate = false;
   }
 
   @Function(
@@ -190,7 +194,7 @@ public class RuleEvaluator {
   public boolean matchAllTags(String... tagFQNs) {
     if (expressionValidation) {
       for (String tagFqn : tagFQNs) {
-        Entity.getEntityReferenceByName(Entity.TAG, tagFqn, NON_DELETED);
+        validateEntityReference(Entity.TAG, tagFqn);
       }
       return false;
     }
@@ -228,7 +232,7 @@ public class RuleEvaluator {
   public boolean matchAnyTag(String... tagFQNs) {
     if (expressionValidation) {
       for (String tagFqn : tagFQNs) {
-        Entity.getEntityReferenceByName(Entity.TAG, tagFqn, NON_DELETED);
+        validateEntityReference(Entity.TAG, tagFqn);
       }
       return false;
     }
@@ -262,7 +266,7 @@ public class RuleEvaluator {
   public boolean matchAnyCertification(String... tagFQNs) {
     if (expressionValidation) {
       for (String tagFqn : tagFQNs) {
-        Entity.getEntityReferenceByName(Entity.TAG, tagFqn, NON_DELETED);
+        validateEntityReference(Entity.TAG, tagFqn);
       }
       return false;
     }
@@ -325,7 +329,7 @@ public class RuleEvaluator {
   public boolean inAnyTeam(String... teams) {
     if (expressionValidation) {
       for (String team : teams) {
-        Entity.getEntityByName(Entity.TEAM, team, "", NON_DELETED);
+        validateEntityByName(Entity.TEAM, team);
       }
       return false;
     }
@@ -355,7 +359,7 @@ public class RuleEvaluator {
   public boolean hasAnyRole(String... roles) {
     if (expressionValidation) {
       for (String role : roles) {
-        Entity.getEntityReferenceByName(Entity.ROLE, role, NON_DELETED);
+        validateEntityReference(Entity.ROLE, role);
       }
       return false;
     }
@@ -369,5 +373,45 @@ public class RuleEvaluator {
       }
     }
     return false;
+  }
+
+  private void validateEntityReference(String entityType, String fqn) {
+    try {
+      Entity.getEntityReferenceByName(entityType, fqn, NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      // Tags and glossary terms both appear as tag labels on entities,
+      // so matchAnyTag/matchAllTags conditions may reference either type.
+      if (Entity.TAG.equals(entityType)) {
+        try {
+          Entity.getEntityReferenceByName(Entity.GLOSSARY_TERM, fqn, NON_DELETED);
+          return;
+        } catch (EntityNotFoundException ignored) {
+          // Fall through to stale-reference handling
+        }
+      }
+      if (!isUpdate) {
+        throw e;
+      }
+      LOG.warn(
+          "Stale reference in policy condition: {} '{}' not found. "
+              + "Consider updating the policy rule condition.",
+          entityType,
+          fqn);
+    }
+  }
+
+  private void validateEntityByName(String entityType, String name) {
+    try {
+      Entity.getEntityByName(entityType, name, "", NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      if (!isUpdate) {
+        throw e;
+      }
+      LOG.warn(
+          "Stale reference in policy condition: {} '{}' not found. "
+              + "Consider updating the policy rule condition.",
+          entityType,
+          name);
+    }
   }
 }

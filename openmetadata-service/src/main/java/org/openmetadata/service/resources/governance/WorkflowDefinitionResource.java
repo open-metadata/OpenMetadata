@@ -45,7 +45,6 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
-import org.openmetadata.service.governance.workflows.WorkflowTransactionManager;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.limits.Limits;
@@ -55,8 +54,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.RestUtil.PatchResponse;
-import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Path("/v1/governance/workflowDefinitions")
 @Tag(
@@ -342,15 +339,7 @@ public class WorkflowDefinitionResource
       @Valid CreateWorkflowDefinition create) {
     WorkflowDefinition workflowDefinition =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-
-    // Use WorkflowTransactionManager for atomic operation across both databases
-    // It handles both authorization and transaction coordination
-    WorkflowDefinition created =
-        WorkflowTransactionManager.createWorkflowDefinition(
-            uriInfo, securityContext, workflowDefinition, authorizer, limits);
-    return Response.status(Response.Status.CREATED)
-        .entity(repository.withHref(uriInfo, created))
-        .build();
+    return super.create(uriInfo, securityContext, workflowDefinition);
   }
 
   @PATCH
@@ -379,13 +368,7 @@ public class WorkflowDefinitionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    // Use WorkflowTransactionManager for atomic operation across both databases
-    // It handles authorization, patching, and Flowable synchronization
-    PatchResponse<WorkflowDefinition> response =
-        WorkflowTransactionManager.patchWorkflowDefinition(
-            uriInfo, securityContext, id, patch, authorizer);
-    addHref(uriInfo, response.entity());
-    return response.toResponse();
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PATCH
@@ -414,13 +397,7 @@ public class WorkflowDefinitionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    // Use WorkflowTransactionManager for atomic operation across both databases
-    // It handles authorization, patching, and Flowable synchronization
-    PatchResponse<WorkflowDefinition> response =
-        WorkflowTransactionManager.patchWorkflowDefinitionByName(
-            uriInfo, securityContext, fqn, patch, authorizer);
-    addHref(uriInfo, response.entity());
-    return response.toResponse();
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -444,17 +421,7 @@ public class WorkflowDefinitionResource
       @Valid CreateWorkflowDefinition create) {
     WorkflowDefinition workflowDefinition =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-
-    // Let the TransactionManager handle authorization and transaction coordination
-    // This ensures atomic operations across both databases
-    String updatedBy = securityContext.getUserPrincipal().getName();
-    PutResponse<WorkflowDefinition> response =
-        WorkflowTransactionManager.createOrUpdateWorkflowDefinition(
-            uriInfo, securityContext, workflowDefinition, updatedBy, authorizer, limits);
-
-    return Response.status(response.getStatus())
-        .entity(repository.withHref(uriInfo, response.getEntity()))
-        .build();
+    return super.createOrUpdate(uriInfo, securityContext, workflowDefinition);
   }
 
   @DELETE
@@ -484,15 +451,7 @@ public class WorkflowDefinitionResource
       @Parameter(description = "Id of the Workflow Definition", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    // Get the workflow to delete
-    WorkflowDefinition workflow =
-        repository.get(uriInfo, id, new EntityUtil.Fields(repository.getAllowedFields()));
-
-    // Use WorkflowTransactionManager for atomic deletion with authorization
-    WorkflowTransactionManager.deleteWorkflowDefinition(
-        securityContext, workflow, hardDelete, authorizer);
-
-    return Response.ok().build();
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -554,15 +513,7 @@ public class WorkflowDefinitionResource
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    // Get the workflow to delete
-    WorkflowDefinition workflow =
-        repository.getByName(uriInfo, fqn, new EntityUtil.Fields(repository.getAllowedFields()));
-
-    // Use WorkflowTransactionManager for atomic deletion with authorization
-    WorkflowTransactionManager.deleteWorkflowDefinition(
-        securityContext, workflow, hardDelete, authorizer);
-
-    return Response.ok().build();
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT

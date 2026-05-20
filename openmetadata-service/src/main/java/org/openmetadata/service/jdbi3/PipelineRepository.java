@@ -98,6 +98,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final String TASKS_FIELD = "tasks";
   private static final String PIPELINE_UPDATE_FIELDS = "tasks";
   private static final String PIPELINE_PATCH_FIELDS = "tasks";
+  private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("tasks.description");
   public static final String PIPELINE_STATUS_EXTENSION = "pipeline.pipelineStatus";
 
   public PipelineRepository() {
@@ -107,7 +108,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         Pipeline.class,
         Entity.getCollectionDAO().pipelineDAO(),
         PIPELINE_PATCH_FIELDS,
-        PIPELINE_UPDATE_FIELDS);
+        PIPELINE_UPDATE_FIELDS,
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations

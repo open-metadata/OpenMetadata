@@ -109,7 +109,16 @@ public class PersonaRepository extends EntityRepository<Persona> {
 
   @Transaction
   private void unsetExistingDefaultPersona(String newDefaultPersonaId) {
+    // Capture both id and FQN *before* the bulk update. The bulk update rewrites JSON directly —
+    // bypassing invalidateCachesAfterStore — so every affected persona would keep stale
+    // "default=true" in both CACHE_WITH_ID and CACHE_WITH_NAME variants. Passing fqn lets
+    // invalidateCacheForEntity drop the by-name cache alongside the by-id one.
+    List<EntityDAO.EntityIdFqnPair> affected =
+        daoCollection.personaDAO().findOtherDefaultPersonaIdsWithFqn(newDefaultPersonaId);
     daoCollection.personaDAO().unsetOtherDefaultPersonas(newDefaultPersonaId);
+    for (EntityDAO.EntityIdFqnPair persona : affected) {
+      invalidateCacheForEntity(Entity.PERSONA, persona.id, persona.fqn);
+    }
   }
 
   public Persona getSystemDefaultPersona() {
@@ -140,6 +149,18 @@ public class PersonaRepository extends EntityRepository<Persona> {
     List<EntityReference> teams = findFrom(persona.getId(), PERSONA, Relationship.HAS, Entity.TEAM);
     for (EntityReference team : listOrEmpty(teams)) {
       deleteRelationship(team.getId(), Entity.TEAM, persona.getId(), PERSONA, Relationship.HAS);
+    }
+
+    // Users/teams that had this persona cached embed the persona reference in their serialized
+    // JSON. Drop their cached entries so the next read rebuilds without the now-deleted persona.
+    for (EntityReference user : listOrEmpty(users)) {
+      invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
+    }
+    for (EntityReference user : listOrEmpty(defaultUsers)) {
+      invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
+    }
+    for (EntityReference team : listOrEmpty(teams)) {
+      invalidateCacheForEntity(Entity.TEAM, team.getId(), team.getFullyQualifiedName());
     }
   }
 

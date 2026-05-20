@@ -17,11 +17,7 @@ def language_config(mssql_container, request):
         connect_args={"autocommit": True},
     )
     with engine.connect() as conn:
-        conn.execute(
-            text(
-                f"ALTER LOGIN {mssql_container.username} WITH DEFAULT_LANGUAGE={language};"
-            )
-        )
+        conn.execute(text(f"ALTER LOGIN {mssql_container.username} WITH DEFAULT_LANGUAGE={language};"))
         conn.commit()
 
 

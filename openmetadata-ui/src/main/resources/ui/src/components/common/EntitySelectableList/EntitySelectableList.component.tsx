@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Popover } from 'antd';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ADD_USER_CONTAINER_HEIGHT } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/data/table';
 import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
@@ -30,6 +30,11 @@ export const EntitySelectableList = <T,>({
 }: EntitySelectableListProps<T>) => {
   const [popupVisible, setPopupVisible] = useState(false);
 
+  const selectedItemsAsEntityReferences = useMemo(
+    () => config.toEntityReference(selectedItems),
+    [selectedItems, config.toEntityReference]
+  );
+
   const handleUpdate = async (updateItems: EntityReference[]) => {
     const convertedItems = config.fromEntityReference(updateItems);
     await onUpdate(convertedItems);
@@ -40,19 +45,21 @@ export const EntitySelectableList = <T,>({
     <Popover
       destroyTooltipOnHide
       content={
-        <FocusTrapWithContainer active={popoverProps?.open || popupVisible}>
-          <SelectableList
-            customTagRenderer={config.customTagRenderer}
-            fetchOptions={config.fetchOptions}
-            height={listHeight}
-            multiSelect={multiSelect}
-            searchBarDataTestId={config.searchBarDataTestId}
-            searchPlaceholder={config.searchPlaceholder}
-            selectedItems={config.toEntityReference(selectedItems)}
-            onCancel={onCancel}
-            onUpdate={handleUpdate}
-          />
-        </FocusTrapWithContainer>
+        <div data-react-aria-top-layer>
+          <FocusTrapWithContainer active={popoverProps?.open || popupVisible}>
+            <SelectableList
+              customTagRenderer={config.customTagRenderer}
+              fetchOptions={config.fetchOptions}
+              height={listHeight}
+              multiSelect={multiSelect}
+              searchBarDataTestId={config.searchBarDataTestId}
+              searchPlaceholder={config.searchPlaceholder}
+              selectedItems={selectedItemsAsEntityReferences}
+              onCancel={onCancel}
+              onUpdate={handleUpdate}
+            />
+          </FocusTrapWithContainer>
+        </div>
       }
       open={popupVisible}
       overlayClassName={`${config.overlayClassName} ${

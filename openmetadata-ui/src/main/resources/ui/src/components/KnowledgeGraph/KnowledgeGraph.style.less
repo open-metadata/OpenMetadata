@@ -13,25 +13,22 @@
 
 @import (reference) '../../styles/variables.less';
 
+@knowledge-graph-card-header-height: 68px;
+
 .knowledge-graph-empty {
-  height: @asset-details-tab-pane-height;
+  height: calc(
+    @asset-details-tab-pane-height - @knowledge-graph-card-header-height
+  );
 }
 
 .knowledge-graph-container {
   height: @asset-details-tab-pane-height;
   position: relative;
 
-  .knowledge-graph-controls {
-    position: absolute;
-    top: 16px;
-    left: 1%;
-    z-index: 1000;
-    width: 98%;
-  }
-
   .knowledge-graph-canvas {
-    height: @asset-details-tab-pane-height;
-    border-radius: 0.75rem;
+    height: calc(
+      @asset-details-tab-pane-height - @knowledge-graph-card-header-height
+    );
     background: #ffffff;
     background-image: radial-gradient(circle, #e8e8e8 1px, transparent 1px);
     background-size: 15px 15px;
@@ -121,5 +118,32 @@
   .knowledge-graph-canvas {
     width: 100%;
     height: 100%;
+  }
+}
+
+.kg-edge-tooltip {
+  z-index: 1200;
+  pointer-events: none;
+  background: @white;
+  border: @global-border;
+  border-radius: 6px;
+  padding: 6px 10px;
+  box-shadow: @box-shadow-base;
+  max-width: 280px;
+  font-size: 12px;
+  line-height: 1.5;
+
+  &__direction {
+    color: @text-color-tertiary;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__label {
+    color: @text-color;
+    font-weight: 500;
+    word-break: break-word;
   }
 }
