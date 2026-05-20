@@ -216,6 +216,42 @@ WHERE pipelineType = 'profiler'
     OR JSON_CONTAINS_PATH(json, 'one', '$.sourceConfig.config.profileSampleType')
     OR JSON_CONTAINS_PATH(json, 'one', '$.sourceConfig.config.samplingMethodType'));
 
+-- ingestion_pipeline_entity (testSuite pipelines): build profileSampleConfig (skip if already migrated)
+UPDATE ingestion_pipeline_entity
+SET json = JSON_SET(
+    json,
+    '$.sourceConfig.config.profileSampleConfig',
+    JSON_OBJECT(
+        'sampleConfigType', 'STATIC',
+        'config', JSON_OBJECT(
+            'profileSample', JSON_EXTRACT(json, '$.sourceConfig.config.profileSample'),
+            'profileSampleType', COALESCE(
+                JSON_EXTRACT(json, '$.sourceConfig.config.profileSampleType'),
+                CAST('"PERCENTAGE"' AS JSON)
+            ),
+            'samplingMethodType', JSON_EXTRACT(json, '$.sourceConfig.config.samplingMethodType')
+        )
+    )
+)
+WHERE pipelineType = 'testSuite'
+  AND JSON_EXTRACT(json, '$.sourceConfig.config.profileSample') IS NOT NULL
+  AND JSON_TYPE(JSON_EXTRACT(json, '$.sourceConfig.config.profileSample')) != 'NULL'
+  AND NOT JSON_CONTAINS_PATH(json, 'one', '$.sourceConfig.config.profileSampleConfig');
+
+-- ingestion_pipeline_entity (testSuite pipelines): remove old flat fields
+UPDATE ingestion_pipeline_entity
+SET json = JSON_REMOVE(
+    JSON_REMOVE(
+        JSON_REMOVE(json, '$.sourceConfig.config.samplingMethodType'),
+        '$.sourceConfig.config.profileSampleType'
+    ),
+    '$.sourceConfig.config.profileSample'
+)
+WHERE pipelineType = 'testSuite'
+  AND (JSON_CONTAINS_PATH(json, 'one', '$.sourceConfig.config.profileSample')
+    OR JSON_CONTAINS_PATH(json, 'one', '$.sourceConfig.config.profileSampleType')
+    OR JSON_CONTAINS_PATH(json, 'one', '$.sourceConfig.config.samplingMethodType'));
+
 -- RDF distributed indexing state tables
 CREATE TABLE IF NOT EXISTS rdf_index_job (
     id VARCHAR(36) NOT NULL,
@@ -327,3 +363,38 @@ ALTER TABLE search_index_server_stats
 -- avoid INSERT failures on /mcp/authorize redirects.
 ALTER TABLE mcp_pending_auth_requests
     MODIFY COLUMN mcp_state TEXT;
+
+-- Allow multiple typed relations between the same pair of glossary terms.
+-- The previous PRIMARY KEY (fromId, toId, relation) caused INSERT ... ON DUPLICATE
+-- KEY UPDATE to overwrite the json discriminator when a second relationType
+-- ("synonym" + "seeAlso", etc.) was added between the same two terms, silently
+-- dropping the first relationship. Adding relationType to the PK lets the same
+-- (fromId, toId, RELATED_TO) pair carry one row per relation type.
+-- `IF NOT EXISTS` on `ADD COLUMN` only landed in MySQL 8.0.29; supported 8.0.x
+-- deployments may be older, so use plain ADD COLUMN. SERVER_CHANGE_LOG gates
+-- re-execution at the framework level — same reasoning as the PK swap below.
+ALTER TABLE entity_relationship
+    ADD COLUMN `relationType` varchar(64) NOT NULL DEFAULT '' AFTER `relation`;
+
+-- Backfill relationType for every glossary-term ↔ glossary-term RELATED_TO row.
+-- Pre-1.13 data has json = NULL (no discriminator existed yet) — those rows MUST
+-- collapse onto 'relatedTo' so that a subsequent insert of the same logical
+-- relation matches the existing row instead of creating a duplicate under a
+-- different PK. relation=15 is the ordinal of Relationship.RELATED_TO (see
+-- openmetadata-spec entityRelationship.json). 'relatedTo' is the default
+-- relation type that the application code uses when none is specified.
+UPDATE entity_relationship
+SET relationType =
+    COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(json, '$.relationType')), ''), 'relatedTo')
+WHERE fromEntity = 'glossaryTerm'
+  AND toEntity = 'glossaryTerm'
+  AND relation = 15;
+
+-- Swap the PK to include relationType. The native migration framework tracks
+-- completion in SERVER_CHANGE_LOG so this runs once per upgrade; we intentionally
+-- avoid information_schema gating because least-privilege migration users may
+-- not have SELECT on it. A manual replay of this step on an already-migrated
+-- table will rebuild the PK with the same columns — wasteful but not broken.
+ALTER TABLE entity_relationship
+    DROP PRIMARY KEY,
+    ADD PRIMARY KEY (`fromId`, `toId`, `relation`, `relationType`);

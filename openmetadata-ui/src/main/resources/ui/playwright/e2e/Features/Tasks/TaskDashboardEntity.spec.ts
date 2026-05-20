@@ -89,8 +89,7 @@ test.describe('Task Creation and Resolution - Dashboard Entity', () => {
       // Create DescriptionUpdate task for entity level
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: dashboard.entityResponseData?.fullyQualifiedName,
-          aboutType: 'dashboard',
+          about: `<#E::dashboard::${dashboard.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -137,8 +136,7 @@ test.describe('Task Creation and Resolution - Dashboard Entity', () => {
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
           name: `TagUpdate Task - ${Date.now()}`,
-          about: dashboard.entityResponseData?.fullyQualifiedName,
-          aboutType: 'dashboard',
+          about: `<#E::dashboard::${dashboard.entityResponseData?.fullyQualifiedName}>`,
           type: 'TagUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -193,8 +191,7 @@ test.describe('Task Creation and Resolution - Dashboard Entity', () => {
       // Create OwnershipUpdate task
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: dashboard.entityResponseData?.fullyQualifiedName,
-          aboutType: 'dashboard',
+          about: `<#E::dashboard::${dashboard.entityResponseData?.fullyQualifiedName}>`,
           type: 'OwnershipUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -242,8 +239,7 @@ test.describe('Task Creation and Resolution - Dashboard Entity', () => {
       // Create TierUpdate task
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: dashboard.entityResponseData?.fullyQualifiedName,
-          aboutType: 'dashboard',
+          about: `<#E::dashboard::${dashboard.entityResponseData?.fullyQualifiedName}>`,
           type: 'TierUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -294,8 +290,7 @@ test.describe('Task Creation and Resolution - Dashboard Entity', () => {
       // Create DomainUpdate task
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: dashboard.entityResponseData?.fullyQualifiedName,
-          aboutType: 'dashboard',
+          about: `<#E::dashboard::${dashboard.entityResponseData?.fullyQualifiedName}>`,
           type: 'DomainUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -360,8 +355,7 @@ test.describe('Task Creation and Resolution - Dashboard Entity', () => {
       // Create DescriptionUpdate task
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: dashboard.entityResponseData?.fullyQualifiedName,
-          aboutType: 'dashboard',
+          about: `<#E::dashboard::${dashboard.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -451,8 +445,7 @@ test.describe('Dashboard Task UI Flow', () => {
       // Create task via API
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: dashboard.entityResponseData?.fullyQualifiedName,
-          aboutType: 'dashboard',
+          about: `<#E::dashboard::${dashboard.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],

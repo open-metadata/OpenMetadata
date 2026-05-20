@@ -61,7 +61,7 @@ class MysqlQueryParserSource(QueryParserSource, ABC):
             start_time=start_time,
             end_time=end_time,
             filters=self.get_filters(),
-            result_limit=self.source_config.resultLimit,
+            result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
         )
 
     def get_filters(self) -> str:
@@ -69,6 +69,6 @@ class MysqlQueryParserSource(QueryParserSource, ABC):
             sql_column = "sql_text"
         else:
             sql_column = "argument"
-        if self.source_config.filterCondition:
-            return f"{self.filters.format(sql_column=sql_column)} AND ({self.source_config.filterCondition})"
+        if self.source_config.filterCondition:  # pyright: ignore[reportAttributeAccessIssue]
+            return f"{self.filters.format(sql_column=sql_column)} AND ({self.source_config.filterCondition})"  # pyright: ignore[reportAttributeAccessIssue]
         return self.filters.format(sql_column=sql_column)

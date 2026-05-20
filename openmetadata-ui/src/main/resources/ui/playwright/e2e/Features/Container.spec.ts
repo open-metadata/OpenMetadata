@@ -11,10 +11,14 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { DataType } from '../../../src/generated/entity/data/table';
 import { CONTAINER_CHILDREN } from '../../constant/contianer';
 import { ContainerClass } from '../../support/entity/ContainerClass';
-import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import {
+  getDefaultAdminAPIContext,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import {
   assignTagToChildren,
   copyAndGetClipboardText,
@@ -24,7 +28,6 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
-
 // Grant clipboard permissions for copy link tests
 test.use({
   contextOptions: {
@@ -56,7 +59,9 @@ test.describe('Container entity specific tests ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
 
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
     await container.create(apiContext, CONTAINER_CHILDREN);
 
     await afterAction();
@@ -65,7 +70,9 @@ test.describe('Container entity specific tests ', () => {
   test.afterAll('Clean up', async ({ browser }) => {
     test.slow(true);
 
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     await container.delete(apiContext);
 
@@ -104,7 +111,9 @@ test.describe('Container entity specific tests ', () => {
 
     // Check the second page pagination
     const childrenResponse = page.waitForResponse(
-      '/api/v1/containers/name/*/children?limit=15&offset=15'
+      (req) =>
+        req.url().includes('/api/v1/containers/name') &&
+        req.url().includes('children?limit=15&offset=15')
     );
     await page.getByTestId('next').click();
     await childrenResponse;
@@ -116,7 +125,9 @@ test.describe('Container entity specific tests ', () => {
 
     // Check around the page sizing change
     const childrenResponseSizeChange = page.waitForResponse(
-      '/api/v1/containers/name/*/children?limit=25&offset=0'
+      (req) =>
+        req.url().includes('/api/v1/containers/name') &&
+        req.url().includes('children?limit=25&offset=0')
     );
     await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByText('25 / Page').click();
@@ -134,7 +145,9 @@ test.describe('Container entity specific tests ', () => {
 
     // Back to the original page size
     const childrenResponseSizeChange2 = page.waitForResponse(
-      '/api/v1/containers/name/*/children?limit=15&offset=0'
+      (req) =>
+        req.url().includes('/api/v1/containers/name') &&
+        req.url().includes('children?limit=15&offset=0')
     );
     await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByText('15 / Page').click();
@@ -154,9 +167,8 @@ test.describe('Container entity specific tests ', () => {
     page,
     browser,
   }) => {
-    const { apiContext, afterAction: afterSetup } = await performAdminLogin(
-      browser
-    );
+    const { apiContext, afterAction: afterSetup } =
+      await getDefaultAdminAPIContext(browser);
     const nestedContainer = new ContainerClass();
     const structColName = `struct_col_${uuid()}`;
     const nestedFieldName = `nested_field_${uuid()}`;
@@ -164,7 +176,7 @@ test.describe('Container entity specific tests ', () => {
     nestedContainer.entity.dataModel.columns = [
       {
         name: structColName,
-        dataType: 'STRUCT',
+        dataType: DataType.Struct,
         dataTypeDisplay: 'struct',
         description: 'A struct column with nested fields.',
         tags: [],
@@ -172,7 +184,7 @@ test.describe('Container entity specific tests ', () => {
         children: [
           {
             name: nestedFieldName,
-            dataType: 'VARCHAR',
+            dataType: DataType.Varchar,
             dataLength: 100,
             dataTypeDisplay: 'varchar',
             description: 'A nested field inside the struct.',
@@ -304,7 +316,9 @@ test.describe('Deeply nested container navigation', () => {
 
   test.beforeAll('Setup deeply nested containers', async ({ browser }) => {
     test.slow(true);
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     const serviceRes = await apiContext.post(
       '/api/v1/services/storageServices',
@@ -360,7 +374,9 @@ test.describe('Deeply nested container navigation', () => {
 
   test.afterAll('Clean up deeply nested containers', async ({ browser }) => {
     test.slow(true);
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     await apiContext.delete(
       `/api/v1/services/storageServices/name/${encodeURIComponent(
@@ -489,7 +505,9 @@ test.describe('Children tab search + Deleted toggle', () => {
   let parentFqn = '';
 
   test.beforeAll('Setup search/deleted fixtures', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     await apiContext.post('/api/v1/services/storageServices', {
       data: {
@@ -554,7 +572,9 @@ test.describe('Children tab search + Deleted toggle', () => {
   });
 
   test.afterAll('Tear down search/deleted fixtures', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     await apiContext.delete(
       `/api/v1/services/storageServices/name/${encodeURIComponent(
@@ -769,7 +789,9 @@ test.describe('Children tab Deleted toggle is scoped per-level', () => {
   test.beforeAll(
     'Setup three-level chain with deleted leaf',
     async ({ browser }) => {
-      const { afterAction, apiContext } = await performAdminLogin(browser);
+      const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+        browser
+      );
 
       await apiContext.post('/api/v1/services/storageServices', {
         data: {
@@ -814,7 +836,9 @@ test.describe('Children tab Deleted toggle is scoped per-level', () => {
   );
 
   test.afterAll('Tear down three-level chain', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { afterAction, apiContext } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     await apiContext.delete(
       `/api/v1/services/storageServices/name/${encodeURIComponent(

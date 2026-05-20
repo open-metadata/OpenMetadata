@@ -2,6 +2,7 @@
   "compilerOptions": {
     "outDir": "./build",
     "rootDir": "./src",
+    "baseUrl": "./src",
     "typeRoots": ["./src/@types", "./node_modules/@types"],
     "types": [
       "node",
@@ -9,6 +10,7 @@
       "react",
       "react-dom",
       "lodash",
+      "lodash-es",
       "luxon",
       "js-yaml",
       "codemirror",

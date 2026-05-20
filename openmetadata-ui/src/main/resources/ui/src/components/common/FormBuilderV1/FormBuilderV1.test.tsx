@@ -100,6 +100,10 @@ describe('FormBuilderV1', () => {
     jest.clearAllMocks();
   });
 
+  it('sets a displayName for React DevTools and linting', () => {
+    expect(FormBuilderV1.displayName).toBe('FormBuilderV1');
+  });
+
   it('renders with formatted form data and default actions', () => {
     render(<FormBuilderV1 formData={{ name: 'value' }} schema={schema} />);
 

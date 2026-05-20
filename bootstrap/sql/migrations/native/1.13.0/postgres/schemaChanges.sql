@@ -235,6 +235,37 @@ WHERE json #>> '{pipelineType}' = 'profiler'
     OR json::jsonb #>> '{sourceConfig,config,profileSampleType}' IS NOT NULL
     OR json::jsonb #>> '{sourceConfig,config,samplingMethodType}' IS NOT NULL);
 
+-- ingestion_pipeline_entity (testSuite pipelines): build profileSampleConfig (skip if already migrated)
+UPDATE ingestion_pipeline_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{sourceConfig,config,profileSampleConfig}',
+    jsonb_build_object(
+        'sampleConfigType', 'STATIC',
+        'config', jsonb_build_object(
+            'profileSample', json::jsonb #> '{sourceConfig,config,profileSample}',
+            'profileSampleType', COALESCE(
+                json::jsonb #> '{sourceConfig,config,profileSampleType}',
+                '"PERCENTAGE"'::jsonb
+            ),
+            'samplingMethodType', json::jsonb #> '{sourceConfig,config,samplingMethodType}'
+        )
+    )
+)::json
+WHERE json #>> '{pipelineType}' = 'testSuite'
+  AND json::jsonb #>> '{sourceConfig,config,profileSample}' IS NOT NULL
+  AND json::jsonb #> '{sourceConfig,config,profileSampleConfig}' IS NULL;
+
+-- ingestion_pipeline_entity (testSuite pipelines): remove old flat fields
+UPDATE ingestion_pipeline_entity
+SET json = (json::jsonb #- '{sourceConfig,config,profileSample}'
+                        #- '{sourceConfig,config,profileSampleType}'
+                        #- '{sourceConfig,config,samplingMethodType}')::json
+WHERE json #>> '{pipelineType}' = 'testSuite'
+  AND (json::jsonb #>> '{sourceConfig,config,profileSample}' IS NOT NULL
+    OR json::jsonb #>> '{sourceConfig,config,profileSampleType}' IS NOT NULL
+    OR json::jsonb #>> '{sourceConfig,config,samplingMethodType}' IS NOT NULL);
+
 -- RDF distributed indexing state tables
 CREATE TABLE IF NOT EXISTS rdf_index_job (
     id VARCHAR(36) NOT NULL,
@@ -480,3 +511,34 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_worksheet_entity_fqnhash_pattern
 -- avoid INSERT failures on /mcp/authorize redirects.
 ALTER TABLE mcp_pending_auth_requests
     ALTER COLUMN mcp_state TYPE TEXT;
+
+-- Allow multiple typed relations between the same pair of glossary terms.
+-- The previous PRIMARY KEY (fromId, toId, relation) caused INSERT ... ON CONFLICT
+-- DO UPDATE to overwrite the json discriminator when a second relationType
+-- ("synonym" + "seeAlso", etc.) was added between the same two terms, silently
+-- dropping the first relationship. Adding relationType to the PK lets the same
+-- (fromId, toId, RELATED_TO) pair carry one row per relation type.
+ALTER TABLE entity_relationship
+    ADD COLUMN IF NOT EXISTS relationType character varying(64) DEFAULT ''::character varying NOT NULL;
+
+-- Backfill relationType for every glossary-term ↔ glossary-term RELATED_TO row.
+-- Pre-1.13 data has json = NULL (no discriminator existed yet) — those rows MUST
+-- collapse onto 'relatedTo' so that a subsequent insert of the same logical
+-- relation matches the existing row instead of creating a duplicate under a
+-- different PK. relation=15 is the ordinal of Relationship.RELATED_TO (see
+-- openmetadata-spec entityRelationship.json). 'relatedTo' is the default
+-- relation type that the application code uses when none is specified.
+UPDATE entity_relationship
+SET relationType = COALESCE(NULLIF(json->>'relationType', ''), 'relatedTo')
+WHERE fromEntity = 'glossaryTerm'
+  AND toEntity = 'glossaryTerm'
+  AND relation = 15;
+
+-- Swap the PK to include relationType. The native migration framework tracks
+-- completion in SERVER_CHANGE_LOG so this runs once per upgrade; we intentionally
+-- avoid information_schema gating because least-privilege migration users may
+-- not have SELECT on it. DROP CONSTRAINT IF EXISTS keeps the statement safe to
+-- replay against a table that's already been migrated.
+ALTER TABLE entity_relationship DROP CONSTRAINT IF EXISTS entity_relationship_pkey;
+ALTER TABLE entity_relationship
+    ADD CONSTRAINT entity_relationship_pkey PRIMARY KEY (fromId, toId, relation, relationType);

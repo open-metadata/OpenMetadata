@@ -687,6 +687,27 @@ class VectorSearchQueryBuilderTest {
   }
 
   @Test
+  void testBuildsQueryWithPrimaryEntityIdFilter() throws Exception {
+    float[] vector = {0.1f, 0.2f};
+    int size = 10;
+    int k = 100;
+    String entityId = "a3f1c2d4-7b8e-4f2a-9c1d-0e5b6a7f8c9d";
+    Map<String, List<String>> filters = Map.of("primaryEntityId", List.of(entityId));
+
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters =
+        root.get("query").get("knn").get("embedding").get("filter").get("bool").get("must");
+
+    assertEquals(2, mustFilters.size());
+
+    JsonNode primaryEntityFilter = mustFilters.get(1);
+    assertTrue(primaryEntityFilter.has("term"));
+    assertEquals(entityId, primaryEntityFilter.get("term").get("primaryEntity.id").asText());
+  }
+
+  @Test
   void testIgnoresOnlyUnrecognizedFilterKeys() throws Exception {
     float[] vector = {0.1f, 0.2f};
     int size = 10;

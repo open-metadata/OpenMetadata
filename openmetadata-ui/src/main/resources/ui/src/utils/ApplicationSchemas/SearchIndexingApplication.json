@@ -122,20 +122,19 @@
           "directory",
           "file",
           "spreadsheet",
-          "worksheet"
+          "worksheet",
+          "securityService",
+          "page",
+          "folder",
+          "contextFile"
         ]
       },
       "default": ["all"],
       "uiFieldType": "treeSelect",
       "uniqueItems": true
     },
-    "recreateIndex": {
-      "title": "Recreate Indexes",
-      "type": "boolean",
-      "default": true
-    },
     "searchIndexMappingLanguage": {
-      "description": "Recreate Indexes with updated Language",
+      "description": "Search index mapping language.",
       "title": "Search Index Language",
       "javaType": "org.openmetadata.schema.type.IndexMappingLanguage",
       "type": "string",
@@ -147,12 +146,6 @@
       "description": "Enable automatic performance tuning based on cluster capabilities and database entity count",
       "type": "boolean",
       "default": false
-    },
-    "useDistributedIndexing": {
-      "title": "Use Distributed Indexing",
-      "description": "Enable distributed indexing to scale reindexing across multiple servers with fault tolerance and parallel processing",
-      "type": "boolean",
-      "default": true
     },
     "partitionSize": {
       "title": "Partition Size",

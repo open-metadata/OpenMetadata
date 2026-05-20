@@ -21,6 +21,7 @@ This skill is loaded automatically at session start. It ensures you follow the r
 | New connector | `/connector-standards` then `/connector-building` then `/test-enforcement` |
 | UI component | `/tdd` then `/test-enforcement` (must include Jest + Playwright if user-facing) |
 | Code review / PR review | `/code-review` then `/test-enforcement` |
+| Opening / finalizing a PR | `/test-enforcement` then `/verification` then `/pr-checklist` |
 | Connector review | `/connector-review` |
 | E2E test creation | `/playwright` |
 | Finishing implementation | `/test-enforcement` then `/verification` |
@@ -42,6 +43,8 @@ This skill is loaded automatically at session start. It ensures you follow the r
 4. **Verify with evidence.** Use `/verification` before claiming completion. Show actual test output, not claims.
 
 5. **Review before merging.** Use `/code-review` for two-stage review (spec compliance + code quality).
+
+6. **Fill the PR template completely.** Use `/pr-checklist` before `gh pr create` to gather every required section: linked issue, high-level design (large PRs), tests + coverage, UI screen recording, and manual test steps.
 
 ### OpenMetadata Cross-Layer Checklist
 

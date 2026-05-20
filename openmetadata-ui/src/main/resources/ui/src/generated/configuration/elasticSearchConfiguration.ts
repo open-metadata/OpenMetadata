@@ -127,13 +127,25 @@ export interface NaturalLanguageSearch {
      */
     djl?: Djl;
     /**
-     * The provider to use for generating vector embeddings (e.g., bedrock, openai).
+     * The provider to use for generating vector embeddings (e.g., bedrock, openai, google, djl).
      */
     embeddingProvider?: string;
     /**
      * Enable or disable natural language search
      */
     enabled?: boolean;
+    /**
+     * NLQ filter extractor cache and prompt tuning.
+     */
+    filterExtractor?: FilterExtractor;
+    /**
+     * Google Gemini configuration for embedding generation via the Generative Language API.
+     */
+    google?: Google;
+    /**
+     * Hybrid search runtime tuning combining BM25 keyword and KNN semantic queries.
+     */
+    hybridSearch?: HybridSearch;
     /**
      * Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)
      */
@@ -148,8 +160,10 @@ export interface NaturalLanguageSearch {
      * Maximum number of concurrent embedding API requests. Controls the semaphore used to
      * throttle calls to the embedding provider and prevent overwhelming HTTP/2 connection
      * limits.
+     * Maximum number of concurrent embedding and NLQ provider requests. Controls the semaphore
+     * used to throttle calls to the providers and prevent overwhelming HTTP/2 connection limits.
      */
-    maxConcurrentEmbeddingRequests?: number;
+    maxConcurrentRequests?: number;
     /**
      * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
      * endpoints.
@@ -186,9 +200,21 @@ export interface Bedrock {
      */
     embeddingModelId?: string;
     /**
+     * Maximum tokens the Bedrock model is allowed to generate.
+     */
+    maxTokens?: number;
+    /**
      * Bedrock model identifier to use for query transformation
      */
     modelId?: string;
+    /**
+     * Sampling temperature for Bedrock requests.
+     */
+    temperature?: number;
+    /**
+     * Bedrock InvokeModel API call timeout in seconds.
+     */
+    timeoutSeconds?: number;
 }
 
 /**
@@ -245,6 +271,84 @@ export interface Djl {
 }
 
 /**
+ * NLQ filter extractor cache and prompt tuning.
+ */
+export interface FilterExtractor {
+    /**
+     * Cache TTL in minutes for NLQ filter extraction results.
+     */
+    cacheExpiryMinutes?: number;
+    /**
+     * Max number of entries in the NLQ filter extraction result cache.
+     */
+    cacheMaxSize?: number;
+    /**
+     * Max sample values shown per filter category in the system prompt.
+     */
+    maxSampleValues?: number;
+}
+
+/**
+ * Google Gemini configuration for embedding generation via the Generative Language API.
+ */
+export interface Google {
+    /**
+     * API key from Google AI Studio for authenticating with the Generative Language API.
+     */
+    apiKey?: string;
+    /**
+     * Dimension of the embedding vector, sent to Google as `outputDimensionality`. For
+     * `gemini-embedding-001` valid values are 768, 1536, or 3072. For `text-embedding-004` use
+     * 768.
+     */
+    embeddingDimension?: number;
+    /**
+     * Gemini embedding model identifier (e.g., gemini-embedding-001, text-embedding-004).
+     */
+    embeddingModelId?: string;
+    /**
+     * Optional override for the full embedding endpoint URL. Must be the complete URL including
+     * the model and `:embedContent` action (e.g.
+     * `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent`),
+     * not just a base URL. Leave empty to use the default Generative Language API endpoint,
+     * which is constructed from `embeddingModelId`. The `key` query parameter is appended
+     * automatically.
+     */
+    endpoint?: string;
+    /**
+     * Gemini chat model identifier for query transformation (e.g., gemini-2.5-flash,
+     * gemini-1.5-flash).
+     */
+    modelId?: string;
+}
+
+/**
+ * Hybrid search runtime tuning combining BM25 keyword and KNN semantic queries.
+ */
+export interface HybridSearch {
+    /**
+     * Highlight fragment size (characters) for hybrid search hits.
+     */
+    fragmentSize?: number;
+    /**
+     * Maximum number of query terms forwarded to the shard-fair keyword sub-query.
+     */
+    maxQueryTerms?: number;
+    /**
+     * Pagination depth used by the hybrid query for RRF normalization.
+     */
+    paginationDepth?: number;
+    /**
+     * Name of the OpenSearch search pipeline used to normalize hybrid (BM25 + KNN) scores.
+     */
+    searchPipeline?: string;
+    /**
+     * Minimum score threshold for the semantic (KNN) sub-query results.
+     */
+    semanticScoreThreshold?: number;
+}
+
+/**
  * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
  * endpoints.
  */
@@ -275,9 +379,21 @@ export interface Openai {
      */
     endpoint?: string;
     /**
+     * Maximum tokens the OpenAI model is allowed to generate.
+     */
+    maxTokens?: number;
+    /**
      * OpenAI model identifier to use for query transformation (chat completions).
      */
     modelId?: string;
+    /**
+     * Sampling temperature for OpenAI requests.
+     */
+    temperature?: number;
+    /**
+     * OpenAI HTTP request and connect timeout in seconds.
+     */
+    timeoutSeconds?: number;
 }
 
 /**
