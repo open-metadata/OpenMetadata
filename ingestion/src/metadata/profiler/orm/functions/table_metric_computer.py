@@ -906,13 +906,13 @@ class ExasolTableMetricComputer(BaseTableMetricComputer):
         size_data = cte(
             self._build_query(
                 [
-                    Column("SCHEMA_NAME"),
+                    Column("ROOT_NAME"),
                     Column("OBJECT_NAME"),
                     Column("RAW_OBJECT_SIZE"),
                 ],
                 self._build_table("EXA_ALL_OBJECT_SIZES", "SYS"),
                 [
-                    Column("SCHEMA_NAME") == self.schema_name,
+                    Column("ROOT_NAME") == self.schema_name,
                     Column("OBJECT_NAME") == self.table_name,
                 ],
             )
@@ -930,7 +930,7 @@ class ExasolTableMetricComputer(BaseTableMetricComputer):
             .outerjoin(
                 size_data,
                 and_(
-                    row_data.c.TABLE_SCHEMA == size_data.c.SCHEMA_NAME,
+                    row_data.c.TABLE_SCHEMA == size_data.c.ROOT_NAME,
                     row_data.c.TABLE_NAME == size_data.c.OBJECT_NAME,
                 ),
             )
