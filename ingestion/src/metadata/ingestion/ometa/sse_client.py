@@ -36,7 +36,13 @@ class SSEClient:
         self.stream_completed: bool = False
         self.logger: Logger = ometa_logger()
 
-    def stream(self, method: str, path: str, data: None | dict[str, Any] = None) -> Generator[Any, Any, None]:
+    def stream(
+        self,
+        method: str,
+        path: str,
+        data: None | dict[str, Any] = None,
+        timeout: None | float | tuple[float, float] = None,
+    ) -> Generator[Any, Any, None]:
         """Connect to the SSE stream and yield events.
 
         Args:
@@ -87,10 +93,6 @@ class SSEClient:
                 if self.last_event_id:
                     headers["Last-Event-ID"] = self.last_event_id
 
-                # SSE transport uses `requests` rather than `httpx`: the SDK's REST client
-                # already uses requests, and some enterprise security middleboxes reject
-                # httpx's HTTP/1.1 wire pattern (lowercase header names, header/body in
-                # separate TCP segments) while passing requests/wget through unchanged.
                 request_kwargs = {
                     "method": method,
                     "url": str(url),
@@ -98,7 +100,7 @@ class SSEClient:
                     "json": opts.get("json"),
                     "params": opts.get("params"),
                     "stream": True,
-                    "timeout": None,
+                    "timeout": timeout,
                     "verify": (
                         self.config.verify if self.config.verify is not None else True
                     ),
