@@ -104,6 +104,7 @@ const AppearanceConfigSettingsPage = () => {
           successColor: values?.successColor ?? '',
           warningColor: values?.warningColor ?? '',
           infoColor: values?.infoColor ?? '',
+          panelBackgroundColor: values?.panelBackgroundColor ?? '',
         },
       };
 
@@ -137,6 +138,7 @@ const AppearanceConfigSettingsPage = () => {
           successColor: '',
           warningColor: '',
           infoColor: '',
+          panelBackgroundColor: '',
         },
       };
       const configData = {
@@ -208,6 +210,22 @@ const AppearanceConfigSettingsPage = () => {
       ],
       props: {
         'data-testid': 'hoverColor',
+      },
+    },
+    {
+      name: 'panelBackgroundColor',
+      id: 'panelBackgroundColor',
+      label: t('label.panel-background-color'),
+      required: false,
+      type: FieldTypes.COLOR_PICKER,
+      rules: [
+        {
+          pattern: HEX_COLOR_CODE_REGEX,
+          message: t('message.hex-color-validation'),
+        },
+      ],
+      props: {
+        'data-testid': 'panelBackgroundColor',
       },
     },
     {

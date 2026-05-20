@@ -132,6 +132,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     handleGraphNodeClick,
     handleGraphNodeDoubleClick,
     handleGraphPaneClick,
+    handleNodeDataUpdate,
   } = useOntologyExplorer({
     scope,
     entityId,
@@ -372,7 +373,12 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             relationTypes={relationTypes}
             totalTermCount={totalTermCount}
             viewModeDisabled={explorationMode === 'data'}
-            onClearAll={() => setFilters(DEFAULT_FILTERS)}
+            onClearAll={() =>
+              setFilters((prev) => ({
+                ...DEFAULT_FILTERS,
+                viewMode: prev.viewMode,
+              }))
+            }
             onFiltersChange={handleFiltersChange}
             onLoadMore={handleLoadMore}
             onViewModeChange={handleViewModeChange}
@@ -481,6 +487,11 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               {({ close }) => (
                 <EntitySummaryPanel
                   isSideDrawer
+                  afterEntityUpdate={(updatedData) => {
+                    if (selectedNode) {
+                      handleNodeDataUpdate(selectedNode.id, updatedData);
+                    }
+                  }}
                   entityDetails={buildOntologySlideoutEntityDetails(
                     selectedNode
                   )}
