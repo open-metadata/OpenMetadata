@@ -13,7 +13,7 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { Pencil01, XCircle } from '@untitledui/icons';
+import { Edit05, XCircle } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconSuccessBadge } from '../../../assets/svg/success-badge.svg';
@@ -56,14 +56,14 @@ const AppliedFilterText: FC<AppliedFilterTextProps> = ({
         <Box>
           <Button
             data-testid="advance-search-filter-btn"
-            iconLeading={Pencil01}
+            iconLeading={<Edit05 size={16} />}
             color="tertiary"
             size="sm"
             onClick={onEdit}
           />
           <Button
             data-testid="advance-search-filter-btn"
-            iconLeading={XCircle}
+            iconLeading={<XCircle size={16} />}
             color="tertiary"
             onClick={onClear}
           />
