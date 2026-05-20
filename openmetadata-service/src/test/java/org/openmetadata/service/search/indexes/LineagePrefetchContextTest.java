@@ -1,6 +1,6 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -39,7 +39,7 @@ class LineagePrefetchContextTest {
     LineagePrefetchContext.setUpstream(Collections.emptyList());
 
     List<EsLineageData> bound = LineagePrefetchContext.getUpstream();
-    assertNotSame(null, bound);
+    assertNotNull(bound);
     assertTrue(bound.isEmpty());
   }
 

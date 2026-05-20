@@ -325,9 +325,10 @@ public interface SearchIndex {
       List<CollectionDAO.EntityRelationshipObject> records) {
     Map<String, Set<UUID>> upstreamIdsByType = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject rec : records) {
-      upstreamIdsByType
-          .computeIfAbsent(rec.getFromEntity(), k -> new HashSet<>())
-          .add(UUID.fromString(rec.getFromId()));
+      UUID fromId = parseUuidOrNull(rec.getFromId());
+      if (fromId != null && !nullOrEmpty(rec.getFromEntity())) {
+        upstreamIdsByType.computeIfAbsent(rec.getFromEntity(), k -> new HashSet<>()).add(fromId);
+      }
     }
     Map<UUID, EntityReference> upstreamRefById = new HashMap<>();
     for (Map.Entry<String, Set<UUID>> entry : upstreamIdsByType.entrySet()) {
@@ -354,14 +355,26 @@ public interface SearchIndex {
       Map<UUID, EntityReference> toRefByEntityId,
       Map<UUID, List<EsLineageData>> result) {
     for (CollectionDAO.EntityRelationshipObject rec : records) {
-      UUID toId = UUID.fromString(rec.getToId());
-      UUID fromId = UUID.fromString(rec.getFromId());
-      EntityReference toRef = toRefByEntityId.get(toId);
-      EntityReference fromRef = upstreamRefById.get(fromId);
-      if (toRef != null) {
-        appendLineageEdge(rec, fromRef, toRef, fromId, result.get(toId));
+      UUID toId = parseUuidOrNull(rec.getToId());
+      UUID fromId = parseUuidOrNull(rec.getFromId());
+      if (toId != null && fromId != null) {
+        EntityReference toRef = toRefByEntityId.get(toId);
+        EntityReference fromRef = upstreamRefById.get(fromId);
+        if (toRef != null) {
+          appendLineageEdge(rec, fromRef, toRef, fromId, result.get(toId));
+        }
       }
     }
+  }
+
+  private static UUID parseUuidOrNull(String value) {
+    UUID parsed = null;
+    try {
+      parsed = UUID.fromString(value);
+    } catch (IllegalArgumentException | NullPointerException e) {
+      LOG.warn("Skipping prefetch record with invalid UUID '{}'", value);
+    }
+    return parsed;
   }
 
   private static void appendLineageEdge(

@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -34,7 +35,7 @@ class SearchIndexPrefetchTest {
 
   private static final String TABLE = "table";
   private static final String DASHBOARD = "dashboard";
-  private static final int UPSTREAM_ORDINAL = 13; // Relationship.UPSTREAM.ordinal()
+  private static final int UPSTREAM_ORDINAL = Relationship.UPSTREAM.ordinal();
 
   private static MockedStatic<Entity> entityStaticMock;
   private CollectionDAO dao;
@@ -238,6 +239,52 @@ class SearchIndexPrefetchTest {
     assertEquals(1, result.get(metric.getId()).size());
     EsLineageData edgeData = result.get(metric.getId()).get(0);
     assertEquals(upTable.getId(), edgeData.getFromEntity().getId());
+  }
+
+  @Test
+  void prefetchSkipsRecordsWithMalformedUuids() {
+    Table downstream = table("svc.db.s.d1");
+    EntityReference upTable = upstreamRef(TABLE, "svc.db.s.up_table");
+
+    CollectionDAO.EntityRelationshipObject good =
+        record(upTable.getId(), TABLE, downstream.getId(), TABLE, "{}");
+    CollectionDAO.EntityRelationshipObject badFromId =
+        CollectionDAO.EntityRelationshipObject.builder()
+            .fromId("not-a-uuid")
+            .fromEntity(TABLE)
+            .toId(downstream.getId().toString())
+            .toEntity(TABLE)
+            .relation(UPSTREAM_ORDINAL)
+            .json("{}")
+            .build();
+    CollectionDAO.EntityRelationshipObject badToId =
+        CollectionDAO.EntityRelationshipObject.builder()
+            .fromId(upTable.getId().toString())
+            .fromEntity(TABLE)
+            .toId("also-not-a-uuid")
+            .toEntity(TABLE)
+            .relation(UPSTREAM_ORDINAL)
+            .json("{}")
+            .build();
+    CollectionDAO.EntityRelationshipObject missingFromEntity =
+        CollectionDAO.EntityRelationshipObject.builder()
+            .fromId(UUID.randomUUID().toString())
+            .fromEntity(null)
+            .toId(downstream.getId().toString())
+            .toEntity(TABLE)
+            .relation(UPSTREAM_ORDINAL)
+            .json("{}")
+            .build();
+    when(relDao.findFromBatch(any(), anyInt(), any(Include.class)))
+        .thenReturn(List.of(good, badFromId, badToId, missingFromEntity));
+    entityStaticMock
+        .when(() -> Entity.getEntityReferencesByIds(eq(TABLE), any(), eq(Include.ALL)))
+        .thenReturn(List.of(upTable));
+
+    Map<UUID, List<EsLineageData>> result =
+        SearchIndex.prefetchUpstreamLineage(List.of(downstream));
+
+    assertEquals(1, result.get(downstream.getId()).size());
   }
 
   private static Table table(String fqn) {

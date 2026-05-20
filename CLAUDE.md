@@ -429,6 +429,19 @@ hand-editing formatting.
 - Use `List.of()`, `Map.of()`, `Set.of()` for immutable collection literals
 - Use `Optional` correctly: never as a field type, never as a parameter, never assign `null` to it
 - Use text blocks `"""` for multi-line strings
+- **Use `SequencedCollection` accessors on Lists/Deques** — `list.getFirst()` / `list.getLast()` (Java 21) instead of `list.get(0)` / `list.get(list.size() - 1)`. Same for `removeFirst()` / `removeLast()`. Reads more clearly and avoids off-by-one indexing.
+- **Collection emptiness: use the project's `nullOrEmpty(...)` helper** from `org.openmetadata.common.utils.CommonUtil` instead of hand-rolling `coll != null && !coll.isEmpty()` (or its negation). It's the established idiom across this codebase, handles `null` correctly, and reads as a single semantic check. Same applies to `String` checks — use `nullOrEmpty(str)` not `str != null && !str.isEmpty()`.
+  ```java
+  // BAD
+  if (entities != null && !entities.isEmpty()) {
+    process(entities.get(0));
+  }
+
+  // GOOD
+  if (!nullOrEmpty(entities)) {
+    process(entities.getFirst());
+  }
+  ```
 
 #### Common Bug Patterns to Avoid
 - `equals()` without `hashCode()` (or vice versa)

@@ -1,5 +1,6 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECREATE_CONTEXT;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
@@ -366,7 +367,7 @@ public class OpenSearchBulkSink implements BulkSink {
   private Map<UUID, List<EsLineageData>> prefetchLineageIfSupported(
       List<EntityInterface> entities) {
     Map<UUID, List<EsLineageData>> result = null;
-    if (entities != null && !entities.isEmpty() && supportsLineagePrefetch(entities.get(0))) {
+    if (!nullOrEmpty(entities) && supportsLineagePrefetch(entities.getFirst())) {
       Map<UUID, List<EsLineageData>> prefetched = SearchIndex.prefetchUpstreamLineage(entities);
       if (!prefetched.isEmpty()) {
         result = prefetched;
@@ -396,12 +397,12 @@ public class OpenSearchBulkSink implements BulkSink {
       Map<String, String> existingFingerprints,
       Map<UUID, List<EsLineageData>> prefetchedLineage) {
     boolean prefetchBound = false;
-    if (prefetchedLineage != null) {
-      LineagePrefetchContext.setUpstream(
-          prefetchedLineage.getOrDefault(entity.getId(), Collections.emptyList()));
-      prefetchBound = true;
-    }
     try {
+      if (prefetchedLineage != null) {
+        LineagePrefetchContext.setUpstream(
+            prefetchedLineage.getOrDefault(entity.getId(), Collections.emptyList()));
+        prefetchBound = true;
+      }
       String entityType = Entity.getEntityTypeFromObject(entity);
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
       String json = JsonUtils.pojoToJson(searchIndexDoc);
