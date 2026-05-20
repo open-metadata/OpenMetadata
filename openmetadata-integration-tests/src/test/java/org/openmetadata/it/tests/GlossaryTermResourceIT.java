@@ -3715,9 +3715,13 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
       byIds(client, "not-a-uuid,also-not-a-uuid", null);
       fail("Malformed UUID in ids must produce a 400");
     } catch (Exception e) {
+      // Require BOTH the HTTP 400 status AND the expected message
+      // substring — OR would let a 500 with "invalid" in the body pass.
       assertTrue(
-          e.getMessage().contains("400") || e.getMessage().toLowerCase().contains("invalid"),
-          "Expected 400 / invalid in error message, got: " + e.getMessage());
+          e.getMessage().contains("400"), "Expected HTTP 400 status, got: " + e.getMessage());
+      assertTrue(
+          e.getMessage().toLowerCase().contains("invalid"),
+          "Expected 'invalid' in the error body, got: " + e.getMessage());
     }
   }
 
@@ -3741,9 +3745,13 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
       byIds(client, ids.toString(), null);
       fail("Over-cap ids list must produce a 400");
     } catch (Exception e) {
+      // Require BOTH the HTTP 400 status AND the expected message
+      // substring — OR would let a 500 with "too many" in the body pass.
       assertTrue(
-          e.getMessage().contains("400") || e.getMessage().toLowerCase().contains("too many"),
-          "Expected 400 / too many in error message, got: " + e.getMessage());
+          e.getMessage().contains("400"), "Expected HTTP 400 status, got: " + e.getMessage());
+      assertTrue(
+          e.getMessage().toLowerCase().contains("too many"),
+          "Expected 'too many' in the error body, got: " + e.getMessage());
     }
   }
 
