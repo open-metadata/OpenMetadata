@@ -94,6 +94,14 @@ DATABRICKS_TAG = "DATABRICKS TAG"
 DATABRICKS_TAG_CLASSIFICATION = "DATABRICKS TAG CLASSIFICATION"
 DEFAULT_TAG_VALUE = "NONE"
 
+# Keys for the bounded, per-connection caches stored on ``connection.info``.
+# Scoping to the connection (one per thread, see CommonDbSourceService.connection)
+# keeps the size-1 caches thread-safe instead of sharing them on the engine-wide
+# dialect object.
+_DESCRIBE_JSON_CACHE_KEY = "databricks_describe_json"
+_DESCRIBE_JSON_SUPPORTED_KEY = "databricks_describe_json_supported"
+_TABLE_TYPES_CACHE_KEY = "databricks_table_types"
+
 
 class STRUCT(String):
     #  This class is added to support STRUCT datatype
@@ -149,7 +157,7 @@ def _fetch_nested_descriptions_via_describe_json(
     """Run ``DESCRIBE TABLE EXTENDED <fqn> AS JSON`` and return a per-column
     map of ``{field_path_tuple: comment}``.
 
-    ``DESCRIBE ... AS JSON`` is supported on Databricks Runtime 16.4+ and
+    ``DESCRIBE ... AS JSON`` is supported on Databricks Runtime 16.2+ and
     returns a structured payload with ``columns[].type.fields[].comment`` on
     nested struct fields — the only SQL path that exposes nested COMMENTs
     (Spark's regular ``simpleString`` output strips them).
@@ -272,11 +280,15 @@ def _json_type_to_sql_string(type_node: DescribeJsonType | None) -> str:
                 fields.append(f"{field.name}:{field_type}")
         return f"struct<{','.join(fields)}>"
     if name == "array":
-        return f"array<{_json_type_to_sql_string(type_node.element_type)}>"
+        element = _json_type_to_sql_string(type_node.element_type)
+        # An array whose element type is missing/unusable can't be rendered as a
+        # valid type — return "" so the caller skips the column (same as the
+        # legacy path for unparseable types) instead of emitting "array<>".
+        return f"array<{element}>" if element else ""
     if name == "map":
         key = _json_type_to_sql_string(type_node.key_type)
         value = _json_type_to_sql_string(type_node.value_type)
-        return f"map<{key},{value}>"
+        return f"map<{key},{value}>" if key and value else ""
     if name == "decimal" and type_node.precision is not None:
         if type_node.scale is not None:
             return f"decimal({type_node.precision},{type_node.scale})"
@@ -303,15 +315,19 @@ def _fetch_table_describe_json(
 
     Returns ``None`` on any failure (older runtime without ``AS JSON``, JSON or
     validation error, missing db/schema) so callers fall back to the legacy
-    per-statement ``DESCRIBE`` path. After the first ``AS JSON`` query errors,
-    ``_describe_json_supported`` short-circuits every later table so a Databricks
-    Runtime < 16.2 pays no repeated failed-query cost."""
-    if getattr(self, "_describe_json_supported", None) is False:
+    per-statement ``DESCRIBE`` path. State lives on ``connection.info`` so it is
+    scoped to the current thread's connection (the source hands each thread its
+    own connection) rather than the engine-shared dialect. After the first
+    ``AS JSON`` query errors, the ``supported`` flag short-circuits every later
+    table on that connection so a Databricks Runtime < 16.2 pays no repeated
+    failed-query cost."""
+    info = connection.info
+    if info.get(_DESCRIBE_JSON_SUPPORTED_KEY) is False:
         return None
     if not db_name or not schema:
         return None
     cache_key = (db_name, schema, table_name)
-    cached = getattr(self, "_databricks_describe_json", None)
+    cached = info.get(_DESCRIBE_JSON_CACHE_KEY)
     if isinstance(cached, dict) and cache_key in cached:
         return cached[cache_key]
     query = DATABRICKS_GET_TABLE_DESCRIBE_JSON.format(database_name=db_name, schema_name=schema, table_name=table_name)
@@ -320,9 +336,9 @@ def _fetch_table_describe_json(
     except Exception as err:  # pylint: disable=broad-except
         # The query itself erroring is the "older runtime / unsupported" signal.
         logger.debug(f"DESCRIBE AS JSON unsupported for {db_name}.{schema}.{table_name}: {err}")
-        self._describe_json_supported = False
+        info[_DESCRIBE_JSON_SUPPORTED_KEY] = False
         return None
-    self._describe_json_supported = True
+    info[_DESCRIBE_JSON_SUPPORTED_KEY] = True
     payload = None
     try:
         if result and result[0]:
@@ -332,7 +348,7 @@ def _fetch_table_describe_json(
         # for this table only without disabling AS JSON for the whole run.
         logger.debug(f"DESCRIBE AS JSON unparseable for {db_name}.{schema}.{table_name}: {err}")
     # Size-1: replace, don't accumulate — the previous table's payload is dead.
-    self._databricks_describe_json = {cache_key: payload}
+    info[_DESCRIBE_JSON_CACHE_KEY] = {cache_key: payload}
     return payload
 
 
@@ -740,20 +756,22 @@ def _get_schema_table_types(
     schema: str,
 ) -> dict[str, str]:
     """One ``information_schema.tables`` query per schema in place of a per-table
-    ``DESCRIBE``. Held in a size-1 cache: every ``get_table_type`` call for a
-    schema's tables runs inside one ``get_table_names`` pass, so the current
-    schema's map is reused, then evicted when the next schema is fetched — it is
-    never accumulated across the catalog. Returns an empty mapping on failure so
-    callers fall back to a per-table ``DESCRIBE``."""
+    ``DESCRIBE``. Held in a size-1 cache on ``connection.info`` so it is scoped to
+    the current thread's connection (the source hands each thread its own
+    connection) and bounded: every ``get_table_type`` call for a schema's tables
+    runs inside one ``get_table_names`` pass, so the current schema's map is
+    reused, then evicted when the next schema is fetched — never accumulated
+    across the catalog. Returns an empty mapping on failure so callers fall back
+    to a per-table ``DESCRIBE``."""
     cache_key = (database, schema)
-    cached = getattr(self, "_databricks_table_types", None)
+    cached = connection.info.get(_TABLE_TYPES_CACHE_KEY)
     if isinstance(cached, dict) and cache_key in cached:
         return cached[cache_key]
     table_types = {}
     if database:
         try:
             rows = connection.execute(
-                text(DATABRICKS_GET_TABLE_TYPES.format(database_name=database, schema_name=schema))
+                text(DATABRICKS_GET_TABLE_TYPES.format(database_name=database)).bindparams(schema_name=schema)
             )
             table_types = {row[0]: row[1] for row in rows}
         except Exception as err:  # pylint: disable=broad-except
@@ -761,7 +779,7 @@ def _get_schema_table_types(
                 f"Bulk table-type fetch failed for {database}.{schema}, falling back to per-table DESCRIBE: {err}"
             )
     # Size-1: replace, don't accumulate — the previous schema's map is dead.
-    self._databricks_table_types = {cache_key: table_types}
+    connection.info[_TABLE_TYPES_CACHE_KEY] = {cache_key: table_types}
     return table_types
 
 

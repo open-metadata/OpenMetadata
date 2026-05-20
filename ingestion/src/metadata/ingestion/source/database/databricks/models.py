@@ -12,7 +12,7 @@
 Databricks source models.
 
 Pydantic shapes for the ``DESCRIBE TABLE EXTENDED ... AS JSON`` payload
-(Databricks Runtime 16.4+).
+(Databricks Runtime 16.2+).
 """
 
 from typing import List, Optional  # noqa: UP035

@@ -56,7 +56,7 @@ DATABRICKS_GET_TABLE_TYPES = textwrap.dedent(
     """
     SELECT table_name, table_type
     FROM `{database_name}`.information_schema.tables
-    WHERE table_schema = '{schema_name}'
+    WHERE table_schema = :schema_name
     """
 )
 

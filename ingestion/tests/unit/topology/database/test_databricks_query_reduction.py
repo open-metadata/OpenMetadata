@@ -40,6 +40,7 @@ def test_get_table_type_uses_one_bulk_query_per_schema():
     information_schema.tables query, not a DESCRIBE per table."""
     dialect = SimpleNamespace()
     connection = Mock()
+    connection.info = {}
     connection.execute.return_value = [
         ("orders", "MANAGED"),
         ("customers", "EXTERNAL"),
@@ -57,6 +58,7 @@ def test_get_table_type_refetches_for_a_different_schema():
     """The bulk table-type lookup is cached per (catalog, schema)."""
     dialect = SimpleNamespace()
     connection = Mock()
+    connection.info = {}
     connection.execute.side_effect = [
         [("orders", "MANAGED")],
         [("events", "MANAGED")],
@@ -73,6 +75,7 @@ def test_get_table_type_falls_back_to_describe_when_bulk_query_fails(monkeypatch
     connector still resolves the type via a per-table DESCRIBE."""
     dialect = SimpleNamespace()
     connection = Mock()
+    connection.info = {}
     connection.execute.side_effect = Exception("information_schema not available")
 
     describe_calls = []
@@ -207,9 +210,19 @@ def test_json_type_to_sql_string_complex_types():
     )
 
 
+def test_json_type_to_sql_string_returns_empty_for_unusable_complex_types():
+    """An array/map whose inner type is missing can't be rendered as a valid type;
+    return "" so the caller skips the column instead of emitting array<> / map<,>."""
+    assert _json_type_to_sql_string(DescribeJsonType(name="array")) == ""
+    assert _json_type_to_sql_string(DescribeJsonType(name="array", element_type=DescribeJsonType())) == ""
+    assert _json_type_to_sql_string(DescribeJsonType(name="map", key_type=DescribeJsonType(name="string"))) == ""
+    assert _json_type_to_sql_string(DescribeJsonType(name="map", value_type=DescribeJsonType(name="int"))) == ""
+
+
 def test_fetch_table_describe_json_parses_and_caches():
     dialect = SimpleNamespace()
     connection = Mock()
+    connection.info = {}
     connection.execute.return_value.fetchone.return_value = (
         '{"comment": "t", "owner": "o", "columns": [{"name": "c", "type": {"name": "int"}}]}',
     )
@@ -220,21 +233,22 @@ def test_fetch_table_describe_json_parses_and_caches():
     assert payload.comment == "t"
     assert payload.owner == "o"
     assert payload.columns[0].name == "c"
-    assert dialect._describe_json_supported is True
+    assert connection.info["databricks_describe_json_supported"] is True
     # Cached — a second lookup does not re-query.
     _fetch_table_describe_json(dialect, connection, "db", "sch", "tbl")
     assert connection.execute.call_count == 1
 
 
 def test_fetch_table_describe_json_disables_after_query_error():
-    """DBR < 16.2: the AS JSON query errors, so the per-engine flag flips and
-    later tables skip the query entirely."""
+    """DBR < 16.2: the AS JSON query errors, so the per-connection flag flips and
+    later tables on that connection skip the query entirely."""
     dialect = SimpleNamespace()
     connection = Mock()
+    connection.info = {}
     connection.execute.side_effect = Exception("[PARSE_SYNTAX_ERROR] near 'AS JSON'")
 
     assert _fetch_table_describe_json(dialect, connection, "db", "sch", "t1") is None
-    assert dialect._describe_json_supported is False
+    assert connection.info["databricks_describe_json_supported"] is False
     # A second table must not even attempt the query.
     assert _fetch_table_describe_json(dialect, connection, "db", "sch", "t2") is None
     assert connection.execute.call_count == 1
@@ -245,14 +259,16 @@ def test_fetch_table_describe_json_none_on_unparseable_payload():
     AS JSON stays enabled for the rest of the run."""
     dialect = SimpleNamespace()
     connection = Mock()
+    connection.info = {}
     connection.execute.return_value.fetchone.return_value = ("not json {",)
 
     assert _fetch_table_describe_json(dialect, connection, "db", "sch", "tbl") is None
-    assert dialect._describe_json_supported is True
+    assert connection.info["databricks_describe_json_supported"] is True
 
 
 def test_fetch_table_describe_json_skips_without_db_or_schema():
     connection = Mock()
+    connection.info = {}
 
     assert _fetch_table_describe_json(SimpleNamespace(), connection, None, "sch", "tbl") is None
     assert _fetch_table_describe_json(SimpleNamespace(), connection, "db", None, "tbl") is None
@@ -350,6 +366,7 @@ def test_fetch_table_describe_json_cache_is_size_one():
     the previous table's payload is evicted, never accumulated for the run."""
     dialect = SimpleNamespace()
     connection = Mock()
+    connection.info = {}
     connection.execute.return_value.fetchone.return_value = ('{"comment": "c"}',)
 
     _fetch_table_describe_json(dialect, connection, "db", "sch", "t1")
@@ -358,7 +375,7 @@ def test_fetch_table_describe_json_cache_is_size_one():
 
     # t1 was evicted by t2, so the third lookup re-queries.
     assert connection.execute.call_count == 3
-    assert list(dialect._databricks_describe_json) == [("db", "sch", "t1")]
+    assert list(connection.info["databricks_describe_json"]) == [("db", "sch", "t1")]
 
 
 def test_get_table_type_cache_is_bounded_to_current_schema():
@@ -366,6 +383,7 @@ def test_get_table_type_cache_is_bounded_to_current_schema():
     new schema evicts the previous one rather than accumulating per catalog."""
     dialect = SimpleNamespace()
     connection = Mock()
+    connection.info = {}
     connection.execute.side_effect = [
         [("orders", "MANAGED")],
         [("events", "MANAGED")],
@@ -378,4 +396,4 @@ def test_get_table_type_cache_is_bounded_to_current_schema():
 
     # 'sales' was evicted by 'analytics', so the third lookup re-queries.
     assert connection.execute.call_count == 3
-    assert list(dialect._databricks_table_types) == [("main_prod", "sales")]
+    assert list(connection.info["databricks_table_types"]) == [("main_prod", "sales")]
