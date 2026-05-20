@@ -32,6 +32,7 @@ import { getDataProductByName } from '../rest/dataProductAPI';
 import { getDomainByName } from '../rest/domainAPI';
 import { getGlossariesByName, getGlossaryTermByFQN } from '../rest/glossaryAPI';
 import { getIngestionPipelineByFqn } from '../rest/ingestionPipelineAPI';
+import { getKnowledgePageByFqn } from '../rest/knowledgeCenterAPI';
 import { getKPIByName } from '../rest/KpiAPI';
 import { getTypeByFQN } from '../rest/metadataTypeAPI';
 import { getMetricByFqn } from '../rest/metricsAPI';
@@ -209,6 +210,10 @@ export const getEntityByFqnUtil = (
 
     case EntityType.QUERY:
       return getQueryByFqn(entityFQN);
+
+    case EntityType.KNOWLEDGE_PAGE:
+    case EntityType.KNOWLEDGE_CENTER:
+      return getKnowledgePageByFqn(entityFQN);
 
     default:
       return null;

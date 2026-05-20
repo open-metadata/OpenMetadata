@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { Alert } from '@openmetadata/ui-core-components';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
@@ -42,6 +43,8 @@ import {
   SERVICE_TYPES,
 } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -55,6 +58,7 @@ import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useDataAccessRequest } from '../../../hooks/useDataAccessRequest';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
   AnnouncementEntity,
@@ -64,6 +68,7 @@ import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
+import { hasEditAccess } from '../../../utils/CommonUtils';
 import {
   getDataAssetsHeaderInfo,
   isDataAssetsWithServiceField,
@@ -81,6 +86,7 @@ import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
+import { getDarButtonTooltip } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
@@ -142,6 +148,7 @@ export const DataAssetsHeader = ({
     serviceCategory: ServiceCategory;
   }>();
   const { currentUser } = useApplicationStore();
+  const { getResourcePermission } = usePermissionProvider();
   const { selectedUserSuggestions } = useSuggestionsContext();
   const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
@@ -160,6 +167,22 @@ export const DataAssetsHeader = ({
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
   const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
+  const [canCreateTask, setCanCreateTask] = useState(false);
+  const {
+    isDarDisabled,
+    isDarAwaitingGrant,
+    isDarGranted,
+    refetch: refetchExistingDar,
+  } = useDataAccessRequest({
+    entityFqn: dataAsset.fullyQualifiedName,
+    enabled: entityType === EntityType.TABLE,
+  });
+
+  useEffect(() => {
+    getResourcePermission(ResourceEntity.TASK)
+      .then((perm) => setCanCreateTask(Boolean(perm.Create)))
+      .catch(() => setCanCreateTask(false));
+  }, [getResourcePermission]);
 
   const fetchDataContract = async (entityId: string) => {
     try {
@@ -334,21 +357,14 @@ export const DataAssetsHeader = ({
     }
   };
 
-  const fetchContainerAncestors = async (containerFqn: string) => {
-    // Always reset state at the top so a navigation to a container without an FQN
-    // (or to one whose ancestor fetch fails) doesn't keep painting the previous
-    // container's breadcrumbs. Without this reset, switching between containers
-    // could leave stale ancestors visible after either an early return or an error.
-    setParentContainers([]);
-    if (isEmpty(containerFqn)) {
+  const fetchContainerAncestors = async (fqn: string) => {
+    if (isEmpty(fqn)) {
       return;
     }
     setIsBreadcrumbLoading(true);
     try {
-      // Single batched server call replaces what used to be one
-      // getContainerByName per ancestor level.
-      const ancestors = await getContainerAncestors(containerFqn);
-      setParentContainers(ancestors ?? []);
+      const ancestors = await getContainerAncestors(fqn);
+      setParentContainers(ancestors);
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
     } finally {
@@ -364,7 +380,7 @@ export const DataAssetsHeader = ({
     if (entityType === EntityType.CONTAINER && !isCustomizedView) {
       fetchContainerAncestors(dataAsset.fullyQualifiedName ?? '');
     }
-  }, [dataAsset.fullyQualifiedName, entityType, isTourPage, isCustomizedView]);
+  }, [dataAsset.fullyQualifiedName, isTourPage, isCustomizedView]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(
     () =>
@@ -581,24 +597,56 @@ export const DataAssetsHeader = ({
     permissions.Trigger,
   ]);
 
+  const isOwner = useMemo(
+    () =>
+      Boolean(
+        currentUser &&
+          dataAsset.owners?.length &&
+          hasEditAccess(dataAsset.owners, currentUser)
+      ),
+    [dataAsset.owners, currentUser]
+  );
+
   const requestDataAccessButton = useMemo(() => {
     if (
       !tableClassBase.getShowRequestDataAccess() ||
       SERVICE_TYPES.includes(entityType) ||
-      deleted
+      entityType !== EntityType.TABLE ||
+      deleted ||
+      isOwner ||
+      !canCreateTask
     ) {
       return null;
     }
 
-    return (
-      <Button
-        className="source-url-button font-semibold"
-        data-testid="request-data-access-button"
-        onClick={() => setIsRequestDataAccessOpen(true)}>
-        {t('label.request-data-access')}
-      </Button>
+    const tooltipTitle = getDarButtonTooltip(
+      isDarDisabled,
+      isDarGranted,
+      isDarAwaitingGrant,
+      t
     );
-  }, [entityType, deleted]);
+
+    return (
+      <Tooltip title={tooltipTitle}>
+        <Button
+          className="source-url-button font-semibold"
+          data-testid="request-data-access-button"
+          disabled={isDarDisabled}
+          onClick={() => setIsRequestDataAccessOpen(true)}>
+          {t('label.request-data-access')}
+        </Button>
+      </Tooltip>
+    );
+  }, [
+    entityType,
+    deleted,
+    isOwner,
+    isDarDisabled,
+    isDarAwaitingGrant,
+    isDarGranted,
+    canCreateTask,
+    t,
+  ]);
 
   useEffect(() => {
     if (dataAsset.id) {
@@ -612,6 +660,16 @@ export const DataAssetsHeader = ({
         className="data-assets-header-container"
         data-testid="data-assets-header"
         gutter={[0, 20]}>
+        {isDarAwaitingGrant && (
+          <Col span={24}>
+            <Alert
+              data-testid="dar-awaiting-grant-banner"
+              title={t('label.data-access-request-awaiting-grant')}
+              variant="brand">
+              {t('message.data-access-request-awaiting-grant-message')}
+            </Alert>
+          </Col>
+        )}
         <Col
           className={classNames('d-flex flex-col gap-3 ', {
             'p-l-xs': isCustomizedView,
@@ -916,7 +974,8 @@ export const DataAssetsHeader = ({
         () => setIsRequestDataAccessOpen(false),
         dataAsset.fullyQualifiedName ?? '',
         getEntityName(dataAsset),
-        entityType
+        entityType,
+        refetchExistingDar
       )}
     </>
   );

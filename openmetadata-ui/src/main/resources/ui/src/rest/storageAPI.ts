@@ -65,12 +65,14 @@ export const getContainerByName = async (name: string, params?: ListParams) => {
 
 export const getContainerChildrenByName = async (
   fqn: string,
-  params?: ListParamsWithOffset
+  params?: ListParamsWithOffset & { q?: string }
 ) => {
   // The /children endpoint returns slim Container summaries
   // (id, name, displayName, fullyQualifiedName, description, service) — not
   // EntityReferences. dataModel/tags/owners/extension are intentionally not
   // populated. Re-fetch via getContainerByName when full details are needed.
+  // `include` toggles between non-deleted (default), deleted-only, and all.
+  // `q` is a case-insensitive substring filter on the child container name.
   const response = await APIClient.get<PagingResponse<Container[]>>(
     `${BASE_URL}/name/${getEncodedFqn(fqn)}/children`,
     {

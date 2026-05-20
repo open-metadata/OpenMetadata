@@ -115,8 +115,7 @@ class TestTaskMixin:
             name="task-client-create",
             category=TaskCategory.MetadataUpdate,
             type=TaskEntityType.Suggestion,
-            about="sample.table",
-            aboutType="table",
+            about="<#E::table::sample.table>",
             payload={"fieldPath": "description"},
         )
         resolve_request = ResolveTaskRequest(
@@ -525,8 +524,7 @@ class TestClientModels:
             category=TaskCategory.MetadataUpdate,
             type=TaskEntityType.Suggestion,
             priority=TaskPriority.High,
-            about="sample.table",
-            aboutType="table",
+            about="<#E::table::sample.table>",
             domain="Marketing",
             assignees=["owner"],
             reviewers=["reviewer"],

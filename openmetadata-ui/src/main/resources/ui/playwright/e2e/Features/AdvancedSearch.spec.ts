@@ -36,7 +36,7 @@ import {
   showAdvancedSearchDialog,
   verifyAllConditions,
 } from '../../utils/advancedSearch';
-import { redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
@@ -627,6 +627,348 @@ test.describe(
       });
 
       await page.getByTestId('clear-filters').click();
+    });
+  }
+);
+
+let DESCRIPTION_TEXT: string;
+const ABSENT_WORD = 'xyzzyquux';
+let WORD_TO_SEARCH: string;
+const DESCRIPTION_FIELD = { id: 'Description', name: 'description' };
+
+let descFilterTable: TableClass;
+
+test.describe(
+  'Advanced Search – Description filter',
+  { tag: ['@advanced-search'] },
+  () => {
+    test.beforeAll(
+      'Setup – create table with unique description',
+      async ({ browser }) => {
+        const UNIQUE_WORD = `unique-word-${uuid()}`;
+        WORD_TO_SEARCH = `the word ${UNIQUE_WORD} to test`;
+        DESCRIPTION_TEXT = `This is a table description containing the word ${UNIQUE_WORD} to test the advanced search functionality.`;
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        descFilterTable = new TableClass();
+        await descFilterTable.create(apiContext);
+
+        await descFilterTable.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'replace',
+              path: '/description',
+              value: DESCRIPTION_TEXT,
+            },
+          ],
+        });
+
+        await afterAction();
+      }
+    );
+
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.EXPLORE);
+    });
+
+    test('Description Contains filter returns matching tables', async ({
+      page,
+    }) => {
+      await test.step('Open advanced search dialog', async () => {
+        await showAdvancedSearchDialog(page);
+      });
+
+      await test.step(`Apply Description Contains "${WORD_TO_SEARCH}" AND Service == service name`, async () => {
+        await fillRule(page, {
+          condition: 'Contains',
+          field: DESCRIPTION_FIELD,
+          searchCriteria: WORD_TO_SEARCH,
+          index: 1,
+        });
+
+        const searchRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await page.getByTestId('apply-btn').click();
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Filter chip reflects the description condition', async () => {
+        await expect(
+          page.getByTestId('advance-search-filter-container')
+        ).toContainText(WORD_TO_SEARCH);
+      });
+
+      await test.step('Table card is visible in results', async () => {
+        await expect(
+          page.getByTestId(
+            `table-data-card_${descFilterTable.entityResponseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
+      });
+
+      await page.getByTestId('clear-filters').click();
+    });
+
+    test('Not Contains – table is NOT visible when filtering by a word that IS in the description', async ({
+      page,
+    }) => {
+      await test.step('Open advanced search dialog', async () => {
+        await showAdvancedSearchDialog(page);
+      });
+
+      await test.step(`Apply Description Not Contains "${WORD_TO_SEARCH}" AND Service == service name`, async () => {
+        await fillRule(page, {
+          condition: 'Not Contains',
+          field: DESCRIPTION_FIELD,
+          searchCriteria: WORD_TO_SEARCH,
+          index: 1,
+        });
+
+        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+
+        await fillRule(page, {
+          condition: '==',
+          field: FIELDS.find((f) => f.id === 'Service')!,
+          searchCriteria: descFilterTable.serviceResponseData.name,
+          index: 2,
+        });
+
+        const searchRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await page.getByTestId('apply-btn').click();
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Table card is NOT visible', async () => {
+        await expect(
+          page.getByTestId(
+            `table-data-card_${descFilterTable.entityResponseData.fullyQualifiedName}`
+          )
+        ).not.toBeVisible();
+      });
+
+      await page.getByTestId('clear-filters').click();
+    });
+
+    test('Not Contains – table IS visible (word absent from description)', async ({
+      page,
+    }) => {
+      await test.step('Open advanced search dialog', async () => {
+        await showAdvancedSearchDialog(page);
+      });
+
+      await test.step(`Apply Description Not Contains "${ABSENT_WORD}" AND Service == service name`, async () => {
+        await fillRule(page, {
+          condition: 'Not Contains',
+          field: DESCRIPTION_FIELD,
+          searchCriteria: ABSENT_WORD,
+          index: 1,
+        });
+
+        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+
+        await fillRule(page, {
+          condition: '==',
+          field: FIELDS.find((f) => f.id === 'Service')!,
+          searchCriteria: descFilterTable.serviceResponseData.name,
+          index: 2,
+        });
+
+        const searchRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await page.getByTestId('apply-btn').click();
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Table card IS visible', async () => {
+        await expect(
+          page.getByTestId(
+            `table-data-card_${descFilterTable.entityResponseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
+      });
+
+      await page.getByTestId('clear-filters').click();
+    });
+
+    test('Is not null – table with a description is visible', async ({
+      page,
+    }) => {
+      await test.step('Open advanced search dialog', async () => {
+        await showAdvancedSearchDialog(page);
+      });
+
+      await test.step('Apply Description Is not null AND Service == service name', async () => {
+        await fillRule(page, {
+          condition: 'Is not null',
+          field: DESCRIPTION_FIELD,
+          index: 1,
+        });
+
+        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+
+        await fillRule(page, {
+          condition: '==',
+          field: FIELDS.find((f) => f.id === 'Service')!,
+          searchCriteria: descFilterTable.serviceResponseData.name,
+          index: 2,
+        });
+
+        const searchRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await page.getByTestId('apply-btn').click();
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Table card is visible', async () => {
+        await expect(
+          page.getByTestId(
+            `table-data-card_${descFilterTable.entityResponseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
+      });
+
+      await page.getByTestId('clear-filters').click();
+    });
+
+    test('Is null – table with a description is NOT visible', async ({
+      page,
+    }) => {
+      await test.step('Open advanced search dialog', async () => {
+        await showAdvancedSearchDialog(page);
+      });
+
+      await test.step('Apply Description Is null AND Service == service name', async () => {
+        await fillRule(page, {
+          condition: 'Is null',
+          field: DESCRIPTION_FIELD,
+          index: 1,
+        });
+
+        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+
+        await fillRule(page, {
+          condition: '==',
+          field: FIELDS.find((f) => f.id === 'Service')!,
+          searchCriteria: descFilterTable.serviceResponseData.name,
+          index: 2,
+        });
+
+        const searchRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await page.getByTestId('apply-btn').click();
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Table card is NOT visible', async () => {
+        await expect(
+          page.getByTestId(
+            `table-data-card_${descFilterTable.entityResponseData.fullyQualifiedName}`
+          )
+        ).not.toBeVisible();
+      });
+
+      await page.getByTestId('clear-filters').click();
+    });
+
+    test.describe('Description Status filter', () => {
+      test('Description Status == Complete – table with description is visible', async ({
+        page,
+      }) => {
+        await test.step('Open advanced search dialog', async () => {
+          await showAdvancedSearchDialog(page);
+        });
+
+        await test.step('Apply Description Status == Complete AND Service == service name', async () => {
+          await fillStaticListRule(page, {
+            fieldLabel: 'Description Status',
+            condition: '==',
+            value: 'Complete',
+            ruleIndex: 1,
+          });
+
+          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+
+          await fillRule(page, {
+            condition: '==',
+            field: FIELDS.find((f) => f.id === 'Service')!,
+            searchCriteria: descFilterTable.serviceResponseData.name,
+            index: 2,
+          });
+
+          const searchRes = page.waitForResponse(
+            '/api/v1/search/query?*index=dataAsset*'
+          );
+          await page.getByTestId('apply-btn').click();
+          await searchRes;
+          await waitForAllLoadersToDisappear(page);
+        });
+
+        await test.step('Table card is visible', async () => {
+          await expect(
+            page.getByTestId(
+              `table-data-card_${descFilterTable.entityResponseData.fullyQualifiedName}`
+            )
+          ).toBeVisible();
+        });
+
+        await page.getByTestId('clear-filters').click();
+      });
+
+      test('Description Status == Incomplete – table with description is NOT visible', async ({
+        page,
+      }) => {
+        await test.step('Open advanced search dialog', async () => {
+          await showAdvancedSearchDialog(page);
+        });
+
+        await test.step('Apply Description Status == Incomplete AND Service == service name', async () => {
+          await fillStaticListRule(page, {
+            fieldLabel: 'Description Status',
+            condition: '==',
+            value: 'Incomplete',
+            ruleIndex: 1,
+          });
+
+          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+
+          await fillRule(page, {
+            condition: '==',
+            field: FIELDS.find((f) => f.id === 'Service')!,
+            searchCriteria: descFilterTable.serviceResponseData.name,
+            index: 2,
+          });
+
+          const searchRes = page.waitForResponse(
+            '/api/v1/search/query?*index=dataAsset*'
+          );
+          await page.getByTestId('apply-btn').click();
+          await searchRes;
+          await waitForAllLoadersToDisappear(page);
+        });
+
+        await test.step('Table card is NOT visible', async () => {
+          await expect(
+            page.getByTestId(
+              `table-data-card_${descFilterTable.entityResponseData.fullyQualifiedName}`
+            )
+          ).not.toBeVisible();
+        });
+
+        await page.getByTestId('clear-filters').click();
+      });
     });
   }
 );

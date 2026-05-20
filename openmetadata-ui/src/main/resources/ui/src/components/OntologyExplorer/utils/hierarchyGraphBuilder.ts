@@ -247,7 +247,15 @@ export function buildHierarchyGraphs({
     }
 
     const comboId = `hierarchy-combo-${glossaryId}`;
-    const comboLabel = glossaryNames[glossaryId] ?? glossaryId;
+    // Prefer the glossary's name from the caller's visible glossary list, but
+    // fall back to a `group` value carried on any term node (the RDF endpoint
+    // populates this from the glossary's om:name) so callers who can see the
+    // term but not the parent glossary still see a human label instead of the
+    // raw UUID.
+    const groupFallback = comboNodes
+      .map((n) => n.group)
+      .find((g): g is string => typeof g === 'string' && g.length > 0);
+    const comboLabel = glossaryNames[glossaryId] ?? groupFallback ?? glossaryId;
     combos.push({ id: comboId, label: comboLabel, glossaryId });
     nodesToShow.forEach((n) => nodes.push(n));
     keptEdges.forEach((e) =>
