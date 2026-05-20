@@ -269,6 +269,39 @@ public interface SearchIndex {
   }
 
   /**
+   * Returns the batch-prefetched upstream lineage map for {@code entities} when the entity type
+   * supports lineage, or {@code null} when prefetch is not applicable (empty input, index doesn't
+   * implement {@link LineageIndex}, or prefetch produced no records). Callers should treat
+   * {@code null} as the signal to fall back to per-entity DB lookups via
+   * {@link #getLineageData(EntityReference)}.
+   *
+   * <p>Used by reindex bulk sinks to centralize the "probe + prefetch + null-on-miss" pattern so
+   * doc-build virtual threads never need a JDBI handle for lineage.
+   */
+  static Map<UUID, List<EsLineageData>> prefetchLineageIfSupported(
+      List<? extends EntityInterface> entities) {
+    Map<UUID, List<EsLineageData>> result = null;
+    if (!nullOrEmpty(entities) && supportsLineagePrefetch(entities.getFirst())) {
+      Map<UUID, List<EsLineageData>> prefetched = prefetchUpstreamLineage(entities);
+      if (!prefetched.isEmpty()) {
+        result = prefetched;
+      }
+    }
+    return result;
+  }
+
+  private static boolean supportsLineagePrefetch(EntityInterface probe) {
+    boolean supported = false;
+    try {
+      Object index = Entity.buildSearchIndex(Entity.getEntityTypeFromObject(probe), probe);
+      supported = index instanceof LineageIndex;
+    } catch (Exception e) {
+      LOG.warn("Could not determine LineageIndex support; skipping lineage prefetch", e);
+    }
+    return supported;
+  }
+
+  /**
    * Batch-prefetch upstream lineage for every entity in {@code entities} using one
    * {@code findFromBatch} call and one {@code getEntityReferencesByIds} call per upstream entity
    * type. The returned map is keyed by every input entity's id (entities with no upstream lineage

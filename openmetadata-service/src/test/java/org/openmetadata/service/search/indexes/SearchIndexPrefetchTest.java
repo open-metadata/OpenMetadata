@@ -2,6 +2,7 @@ package org.openmetadata.service.search.indexes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -287,6 +288,72 @@ class SearchIndexPrefetchTest {
     assertEquals(1, result.get(downstream.getId()).size());
   }
 
+  @Test
+  void prefetchLineageIfSupportedReturnsNullForNullEntities() {
+    assertNull(SearchIndex.prefetchLineageIfSupported(null));
+  }
+
+  @Test
+  void prefetchLineageIfSupportedReturnsNullForEmptyEntities() {
+    assertNull(SearchIndex.prefetchLineageIfSupported(Collections.emptyList()));
+  }
+
+  @Test
+  void prefetchLineageIfSupportedReturnsNullWhenIndexIsNotLineageIndex() {
+    Table downstream = table("svc.db.s.d1");
+    entityStaticMock.when(() -> Entity.getEntityTypeFromObject(downstream)).thenReturn(TABLE);
+    entityStaticMock
+        .when(() -> Entity.buildSearchIndex(TABLE, downstream))
+        .thenReturn(new BareSearchIndex());
+
+    assertNull(SearchIndex.prefetchLineageIfSupported(List.of(downstream)));
+  }
+
+  @Test
+  void prefetchLineageIfSupportedReturnsNullWhenBuildSearchIndexThrows() {
+    Table downstream = table("svc.db.s.d1");
+    entityStaticMock.when(() -> Entity.getEntityTypeFromObject(downstream)).thenReturn(TABLE);
+    entityStaticMock
+        .when(() -> Entity.buildSearchIndex(TABLE, downstream))
+        .thenThrow(new IllegalStateException("boom"));
+
+    assertNull(SearchIndex.prefetchLineageIfSupported(List.of(downstream)));
+  }
+
+  @Test
+  void prefetchLineageIfSupportedReturnsNullWhenPrefetchMapStaysEmpty() {
+    Table downstream = table("svc.db.s.d1");
+    entityStaticMock.when(() -> Entity.getEntityTypeFromObject(downstream)).thenReturn(TABLE);
+    entityStaticMock
+        .when(() -> Entity.buildSearchIndex(TABLE, downstream))
+        .thenReturn(new BareLineageIndex());
+    when(relDao.findFromBatch(any(), anyInt(), any(Include.class)))
+        .thenThrow(new RuntimeException("db unavailable"));
+
+    assertNull(SearchIndex.prefetchLineageIfSupported(List.of(downstream)));
+  }
+
+  @Test
+  void prefetchLineageIfSupportedReturnsMapWhenPrefetchYieldsRecords() {
+    Table downstream = table("svc.db.s.d1");
+    EntityReference upTable = upstreamRef(TABLE, "svc.db.s.up_table");
+    entityStaticMock.when(() -> Entity.getEntityTypeFromObject(downstream)).thenReturn(TABLE);
+    entityStaticMock
+        .when(() -> Entity.buildSearchIndex(TABLE, downstream))
+        .thenReturn(new BareLineageIndex());
+    when(relDao.findFromBatch(any(), anyInt(), any(Include.class)))
+        .thenReturn(List.of(record(upTable.getId(), TABLE, downstream.getId(), TABLE, "{}")));
+    entityStaticMock
+        .when(() -> Entity.getEntityReferencesByIds(eq(TABLE), any(), eq(Include.ALL)))
+        .thenReturn(List.of(upTable));
+
+    Map<UUID, List<EsLineageData>> result =
+        SearchIndex.prefetchLineageIfSupported(List.of(downstream));
+
+    assertNotNull(result);
+    assertEquals(1, result.get(downstream.getId()).size());
+  }
+
   private static Table table(String fqn) {
     return new Table().withId(UUID.randomUUID()).withFullyQualifiedName(fqn);
   }
@@ -308,5 +375,49 @@ class SearchIndexPrefetchTest {
         .relation(UPSTREAM_ORDINAL)
         .json(json)
         .build();
+  }
+
+  private static class BareSearchIndex implements SearchIndex {
+    @Override
+    public Map<String, Object> buildSearchIndexDoc() {
+      return Map.of();
+    }
+
+    @Override
+    public Object getEntity() {
+      return Map.of();
+    }
+
+    @Override
+    public String getEntityTypeName() {
+      return "bare";
+    }
+
+    @Override
+    public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
+      return esDoc;
+    }
+  }
+
+  private static class BareLineageIndex implements LineageIndex {
+    @Override
+    public Map<String, Object> buildSearchIndexDoc() {
+      return Map.of();
+    }
+
+    @Override
+    public Object getEntity() {
+      return Map.of();
+    }
+
+    @Override
+    public String getEntityTypeName() {
+      return "bare-lineage";
+    }
+
+    @Override
+    public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
+      return esDoc;
+    }
   }
 }

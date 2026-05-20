@@ -1,6 +1,5 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECREATE_CONTEXT;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
@@ -50,7 +49,6 @@ import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
-import org.openmetadata.service.search.indexes.LineageIndex;
 import org.openmetadata.service.search.indexes.LineagePrefetchContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
@@ -292,7 +290,7 @@ public class OpenSearchBulkSink implements BulkSink {
         // this, 50 concurrent virtual workers each ran findFrom under HikariCP's synchronized
         // borrow path and got pinned/stalled, tripping Hikari's 60s leak detector.
         Map<UUID, List<EsLineageData>> prefetchedLineage =
-            prefetchLineageIfSupported(entityInterfaces);
+            SearchIndex.prefetchLineageIfSupported(entityInterfaces);
 
         // Add entities to search index in parallel
         Map<String, String> finalFingerprints = existingFingerprints;
@@ -363,29 +361,6 @@ public class OpenSearchBulkSink implements BulkSink {
   }
 
   private static final int BULK_OPERATION_METADATA_OVERHEAD = 150;
-
-  private Map<UUID, List<EsLineageData>> prefetchLineageIfSupported(
-      List<EntityInterface> entities) {
-    Map<UUID, List<EsLineageData>> result = null;
-    if (!nullOrEmpty(entities) && supportsLineagePrefetch(entities.getFirst())) {
-      Map<UUID, List<EsLineageData>> prefetched = SearchIndex.prefetchUpstreamLineage(entities);
-      if (!prefetched.isEmpty()) {
-        result = prefetched;
-      }
-    }
-    return result;
-  }
-
-  private boolean supportsLineagePrefetch(EntityInterface probe) {
-    boolean supported = false;
-    try {
-      Object index = Entity.buildSearchIndex(Entity.getEntityTypeFromObject(probe), probe);
-      supported = index instanceof LineageIndex;
-    } catch (Exception e) {
-      LOG.warn("Could not determine LineageIndex support; skipping lineage prefetch", e);
-    }
-    return supported;
-  }
 
   private void addEntity(
       EntityInterface entity,
