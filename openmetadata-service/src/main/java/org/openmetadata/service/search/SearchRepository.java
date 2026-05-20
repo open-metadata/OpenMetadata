@@ -1528,26 +1528,39 @@ public class SearchRepository {
 
       candidates++;
       IndexMapping indexMapping = entityIndexMap.get(entityType);
-      runPropagationStep(
-          "inheritedFields",
-          entity,
-          () ->
-              propagateInheritedFieldsToChildren(
-                  entityType, entity.getId().toString(), changeDescription, indexMapping, entity));
-      runPropagationStep(
-          "glossaryTags",
-          entity,
-          () ->
-              propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription));
-      runPropagationStep(
-          "certificationTags",
-          entity,
-          () -> propagateCertificationTags(entityType, entity, changeDescription));
-      runPropagationStep(
-          "relatedEntities",
-          entity,
-          () -> propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity));
-      propagated++;
+      boolean allStepsSucceeded = true;
+      allStepsSucceeded &=
+          runPropagationStep(
+              "inheritedFields",
+              entity,
+              () ->
+                  propagateInheritedFieldsToChildren(
+                      entityType,
+                      entity.getId().toString(),
+                      changeDescription,
+                      indexMapping,
+                      entity));
+      allStepsSucceeded &=
+          runPropagationStep(
+              "glossaryTags",
+              entity,
+              () ->
+                  propagateGlossaryTags(
+                      entityType, entity.getFullyQualifiedName(), changeDescription));
+      allStepsSucceeded &=
+          runPropagationStep(
+              "certificationTags",
+              entity,
+              () -> propagateCertificationTags(entityType, entity, changeDescription));
+      allStepsSucceeded &=
+          runPropagationStep(
+              "relatedEntities",
+              entity,
+              () ->
+                  propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity));
+      if (allStepsSucceeded) {
+        propagated++;
+      }
     }
 
     if (candidates > 0) {
@@ -1674,11 +1687,15 @@ public class SearchRepository {
   /**
    * Runs a single propagation step under its own try/catch so a failure (script compile error,
    * transient ES outage, etc.) cannot abort the other independent propagators for the same entity.
-   * The failure is logged and queued for retry; subsequent propagators run unaffected.
+   * The failure is logged and queued for retry; subsequent propagators run unaffected. Returns
+   * {@code true} on success and {@code false} on failure so callers that track per-entity success
+   * (e.g. the bulk-flush metric) can distinguish "fully propagated" from "attempted".
    */
-  private void runPropagationStep(String stepName, EntityInterface entity, PropagationStep step) {
+  private boolean runPropagationStep(
+      String stepName, EntityInterface entity, PropagationStep step) {
     try {
       step.run();
+      return true;
     } catch (Exception e) {
       LOG.error(
           "Propagation step '{}' failed for entity [{}/{}]: {}",
@@ -1691,6 +1708,7 @@ public class SearchRepository {
           entity.getId() == null ? null : entity.getId().toString(),
           entity.getFullyQualifiedName(),
           SearchIndexRetryQueue.failureReason("propagate:" + stepName, e));
+      return false;
     }
   }
 
