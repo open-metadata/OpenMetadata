@@ -30,35 +30,41 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.playwright.ui.UiSession;
 import org.openmetadata.playwright.ui.UiSessionExtension;
 import org.openmetadata.playwright.ui.pages.SearchIndexAppPage;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Fan-out of {@link SearchAvailableDuringReindexUIIT}'s zero-downtime contract across
- * every kind {@link EntityLoader} produces (tables, topics, dashboards, pipelines).
- * Mirrors the same alias-swap guarantees from
+ * Whole-platform stability check while a recreate-mode reindex covers every kind
+ * {@link EntityLoader} produces. Generalises the single-table zero-downtime contract from
  * <a href="https://github.com/open-metadata/OpenMetadata/issues/23514">issue #23514</a>
- * but probes each per-kind alias independently — a recreate handler that breaks the swap
- * for, say, only the topic alias would pass the single-kind test and fail this one.
+ * across all 18 alias-bearing entity types so a regression in one alias swap surfaces
+ * here instead of being masked by the others.
  *
  * <p>Flow:
  * <ol>
- *   <li>Ingest a mixed cohort covering all four kinds.
+ *   <li>Ingest a mixed cohort spanning every kind in {@link #PER_KIND_BASE} (asset
+ *       entities, taxonomy, governance, quality). Per-kind counts scale with
+ *       {@link #SCALE} so the same test runs at PR scale (~3k entities) and at nightly
+ *       stress scale (~100k entities when {@code -Djpw.searchAvailableAllKinds.scale=40}).
  *   <li>Baseline reindex so each per-kind alias points at a known set.
- *   <li>Trigger a recreate-mode reindex for all four entity types with a deliberately
- *       small batch + single-thread config so the run spans wall-time long enough for the
- *       probe loop to observe mid-flight state.
- *   <li>While the run is non-terminal, probe every per-kind alias on each tick and assert
- *       (a) {@code total > 0} (no search blackout) and (b) no duplicates (alias swap
- *       didn't expose both old and staged indices simultaneously).
- *   <li>After terminal + an ES refresh grace, assert every baseline entity from each
- *       kind is still visible — recreate must not lose docs.
+ *   <li>Trigger a recreate-mode reindex for every entity type with a deliberately small
+ *       batch + single-thread config so the run spans wall-time long enough for the probe
+ *       loop to observe mid-flight state.
+ *   <li>While the run is non-terminal, sweep through every per-kind alias on each tick
+ *       and assert (a) {@code total > 0} (no search blackout), (b) no duplicates (alias
+ *       swap atomicity), and (c) {@code GET /v1/system/version} still answers 200 so we
+ *       know the API plane stays healthy under the indexer's load.
+ *   <li>After terminal + an ES refresh grace, assert every baseline entity per kind is
+ *       still visible — recreate must not lose docs.
  * </ol>
  *
- * <p>Defaults are PR-friendly. Stress runs override per-kind sizes via
- * {@code -Djpw.searchAvailableAllKinds.<kind>=N}; e.g.
- * {@code -Djpw.searchAvailableAllKinds.tables=100000} mirrors the scale of
- * {@code Scale100kEntitiesIT} but with multi-kind alias-swap coverage.
+ * <p>Defaults are PR-friendly. Stress runs override via system properties: every per-kind
+ * count is multiplied by {@code -Djpw.searchAvailableAllKinds.scale=N} (default 1.0), or
+ * any individual kind can be set explicitly via
+ * {@code -Djpw.searchAvailableAllKinds.<kind>=N}. {@code scale=40} produces roughly the
+ * 100k-entity load of {@code Scale100kEntitiesIT} but spread across all 18 alias-bearing
+ * kinds so every per-kind index gets exercised. Allow ~45 minutes for that scale.
  */
 @ExtendWith({UiSessionExtension.class, TestNamespaceExtension.class})
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
@@ -67,16 +73,44 @@ class SearchAvailableAllKindsDuringReindexUIIT {
   private static final Logger LOG =
       LoggerFactory.getLogger(SearchAvailableAllKindsDuringReindexUIIT.class);
 
-  private static final int TABLES = Integer.getInteger("jpw.searchAvailableAllKinds.tables", 200);
-  private static final int TOPICS = Integer.getInteger("jpw.searchAvailableAllKinds.topics", 100);
-  private static final int DASHBOARDS =
-      Integer.getInteger("jpw.searchAvailableAllKinds.dashboards", 100);
-  private static final int PIPELINES =
-      Integer.getInteger("jpw.searchAvailableAllKinds.pipelines", 100);
-  private static final int COLUMNS_PER_TABLE =
-      Integer.getInteger("jpw.searchAvailableAllKinds.cols", 5);
-  private static final int PARALLEL_INGEST_WORKERS =
-      Integer.getInteger("jpw.searchAvailableAllKinds.workers", 16);
+  private static final String SCALE_PROP = "jpw.searchAvailableAllKinds.scale";
+  private static final String PER_KIND_PROP_PREFIX = "jpw.searchAvailableAllKinds.";
+  private static final String COLS_PROP = PER_KIND_PROP_PREFIX + "cols";
+  private static final String WORKERS_PROP = PER_KIND_PROP_PREFIX + "workers";
+
+  private static final double SCALE = Double.parseDouble(System.getProperty(SCALE_PROP, "1.0"));
+  private static final int COLUMNS_PER_TABLE = Integer.getInteger(COLS_PROP, 5);
+  private static final int PARALLEL_INGEST_WORKERS = Integer.getInteger(WORKERS_PROP, 16);
+
+  // PR-scale baseline per kind. Each entry sets the floor at {@code scale=1.0}; total ≈ 2750
+  // entities runs in ~30s ingest + ~60s reindex on a healthy stack. {@code scale=40} ≈ 110k
+  // total which matches Scale100kEntitiesIT's bar while exercising every per-kind alias.
+  private static final Map<EntityKind, Integer> PER_KIND_BASE = new LinkedHashMap<>();
+
+  static {
+    PER_KIND_BASE.put(EntityKind.TABLE, 400);
+    PER_KIND_BASE.put(EntityKind.TOPIC, 200);
+    PER_KIND_BASE.put(EntityKind.DASHBOARD, 200);
+    PER_KIND_BASE.put(EntityKind.PIPELINE, 200);
+    PER_KIND_BASE.put(EntityKind.CHART, 200);
+    PER_KIND_BASE.put(EntityKind.ML_MODEL, 100);
+    PER_KIND_BASE.put(EntityKind.CONTAINER, 100);
+    PER_KIND_BASE.put(EntityKind.SEARCH_INDEX, 100);
+    PER_KIND_BASE.put(EntityKind.API_COLLECTION, 50);
+    PER_KIND_BASE.put(EntityKind.API_ENDPOINT, 100);
+    PER_KIND_BASE.put(EntityKind.STORED_PROCEDURE, 100);
+    PER_KIND_BASE.put(EntityKind.QUERY, 200);
+    PER_KIND_BASE.put(EntityKind.DASHBOARD_DATA_MODEL, 100);
+    PER_KIND_BASE.put(EntityKind.GLOSSARY_TERM, 200);
+    PER_KIND_BASE.put(EntityKind.TAG, 200);
+    PER_KIND_BASE.put(EntityKind.DOMAIN, 50);
+    PER_KIND_BASE.put(EntityKind.DATA_PRODUCT, 50);
+    PER_KIND_BASE.put(EntityKind.TEST_CASE, 200);
+  }
+
+  // Resolved counts: per-kind explicit override (e.g. -Djpw...tables=100000) wins;
+  // otherwise base * SCALE. Stored once so PROBE_PAGE_SIZE can size off the largest kind.
+  private static final Map<EntityKind, Integer> PER_KIND_COUNT = resolvePerKindCounts();
 
   // Slow-down knobs applied to the in-flight reindex so probes have time to observe
   // mid-flight state. Inline trigger config — does not persist on the app. Distributed
@@ -131,16 +165,27 @@ class SearchAvailableAllKindsDuringReindexUIIT {
     ENTITY_TYPE_BY_KIND.put(EntityKind.TEST_CASE, "testCase");
   }
 
-  private static final int PROBE_PAGE_SIZE = Math.max(TABLES, 1000) + 100;
+  private static final int LARGEST_KIND_COUNT =
+      PER_KIND_COUNT.values().stream().mapToInt(Integer::intValue).max().orElse(1000);
+  private static final int PROBE_PAGE_SIZE = LARGEST_KIND_COUNT + 100;
   private static final Duration PROBE_INTERVAL = Duration.ofMillis(1500);
-  private static final Duration REINDEX_TIMEOUT = Duration.ofMinutes(15);
+  // Reindex timeout scales loosely with total entities — at scale=40 (~100k) the slow
+  // single-thread config can take 30 min. Allow generous headroom; the test exits as soon
+  // as the run reaches terminal so the timeout is a safety net, not a target.
+  private static final Duration REINDEX_TIMEOUT = Duration.ofMinutes(45);
   // ES refresh interval is 1s; give a 3s grace before post-reindex assertions so we
   // don't flake on a yet-to-refresh segment.
   private static final Duration POST_REINDEX_REFRESH_GRACE = Duration.ofSeconds(3);
+  private static final String VERSION_PATH = "/v1/system/version";
 
   @Test
   void searchStaysAvailableAcrossAllKindsWhileRecreateReindexRuns(
       final UiSession ui, final TestNamespace ns) {
+    LOG.info(
+        "Scale={} → per-kind counts {} (total={})",
+        SCALE,
+        PER_KIND_COUNT,
+        PER_KIND_COUNT.values().stream().mapToInt(Integer::intValue).sum());
     final EntityLoadSummary seeded = ingestCohort(ns);
     final ServerHandle server = ui.server();
 
@@ -168,6 +213,7 @@ class SearchAvailableAllKindsDuringReindexUIIT {
         .until(
             () -> {
               final int sweep = probeSweep.incrementAndGet();
+              assertPlatformResponsive(server, sweep);
               for (Map.Entry<EntityKind, String> entry : ALIAS_BY_KIND.entrySet()) {
                 if (seeded.countOf(entry.getKey()) == 0) {
                   continue;
@@ -194,16 +240,43 @@ class SearchAvailableAllKindsDuringReindexUIIT {
   }
 
   private static EntityLoadSummary ingestCohort(final TestNamespace ns) {
-    final EntityLoadSpec spec =
+    final EntityLoadSpec.Builder builder =
         EntityLoadSpec.builder()
             .parallelWorkers(PARALLEL_INGEST_WORKERS)
-            .columnsPerTable(COLUMNS_PER_TABLE)
-            .count(EntityKind.TABLE, TABLES)
-            .count(EntityKind.TOPIC, TOPICS)
-            .count(EntityKind.DASHBOARD, DASHBOARDS)
-            .count(EntityKind.PIPELINE, PIPELINES)
-            .build();
-    return EntityLoader.load(spec, ns);
+            .columnsPerTable(COLUMNS_PER_TABLE);
+    PER_KIND_COUNT.forEach(
+        (kind, count) -> {
+          if (count > 0) {
+            builder.count(kind, count);
+          }
+        });
+    return EntityLoader.load(builder.build(), ns);
+  }
+
+  private static Map<EntityKind, Integer> resolvePerKindCounts() {
+    final Map<EntityKind, Integer> resolved = new LinkedHashMap<>();
+    PER_KIND_BASE.forEach(
+        (kind, base) -> {
+          final String override = System.getProperty(PER_KIND_PROP_PREFIX + propKeyFor(kind));
+          final int count =
+              (override != null && !override.isBlank())
+                  ? Integer.parseInt(override)
+                  : (int) Math.round(base * SCALE);
+          resolved.put(kind, Math.max(0, count));
+        });
+    return Map.copyOf(resolved);
+  }
+
+  private static String propKeyFor(final EntityKind kind) {
+    // Plural-camelCase to match the convention perf-test.sh + earlier overrides used:
+    // TABLE → "tables", ML_MODEL → "mlmodels", GLOSSARY_TERM → "glossaryTerms".
+    final String[] parts = kind.name().toLowerCase().split("_");
+    final StringBuilder out = new StringBuilder(parts[0]);
+    for (int i = 1; i < parts.length; i++) {
+      out.append(Character.toUpperCase(parts[i].charAt(0))).append(parts[i].substring(1));
+    }
+    out.append('s');
+    return out.toString();
   }
 
   private static Map<EntityKind, Set<String>> captureBaselineByKind(
@@ -244,6 +317,27 @@ class SearchAvailableAllKindsDuringReindexUIIT {
     config.put("useDistributedIndexing", false);
     config.put("autoTune", false);
     return config;
+  }
+
+  /**
+   * Lightweight liveness probe that does not touch search at all — confirms the dropwizard
+   * API plane stays responsive while the indexer thrashes the ES connection pool. A reindex
+   * that blocks request threads or starves the connection pool would surface here even if
+   * the per-kind search probes happen to still answer.
+   */
+  private static void assertPlatformResponsive(final ServerHandle server, final int sweep) {
+    try {
+      server.sdk().getHttpClient().execute(HttpMethod.GET, VERSION_PATH, null, Object.class);
+    } catch (final RuntimeException e) {
+      throw new AssertionError(
+          "sweep #"
+              + sweep
+              + ": "
+              + VERSION_PATH
+              + " failed during reindex — API plane is unhealthy: "
+              + e.getMessage(),
+          e);
+    }
   }
 
   /**
