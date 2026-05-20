@@ -285,7 +285,7 @@ public class OpenSearchBulkSink implements BulkSink {
         // for entities that will be re-embedded anyway.
         Map<String, JsonNode> existingEmbeddingsById = Collections.emptyMap();
         if (embeddingsEnabled) {
-          Map<String, String> currentFingerprintsById = HashMap.newHashMap(entityInterfaces.size());
+          Map<String, String> currentFingerprintsById = new HashMap<>(entityInterfaces.size());
           for (EntityInterface e : entityInterfaces) {
             currentFingerprintsById.put(
                 e.getId().toString(), VectorDocBuilder.computeFingerprintForEntity(e));
