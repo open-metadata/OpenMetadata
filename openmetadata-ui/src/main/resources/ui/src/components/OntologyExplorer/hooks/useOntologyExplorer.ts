@@ -1498,14 +1498,17 @@ export function useOntologyExplorer({
           description: updatedData.description ?? node.description,
           searchSource: {
             ...node.searchSource,
-            displayName: updatedData.displayName,
-            name: updatedData.name,
-            description: updatedData.description,
-            owners: updatedData.owners,
-            tags: updatedData.tags,
-            domains: updatedData.domains,
-            dataProducts: updatedData.dataProducts,
-            extension: updatedData.extension,
+            displayName:
+              updatedData.displayName ?? node.searchSource?.displayName,
+            name: updatedData.name ?? node.searchSource?.name,
+            description:
+              updatedData.description ?? node.searchSource?.description,
+            owners: updatedData.owners ?? node.searchSource?.owners,
+            tags: updatedData.tags ?? node.searchSource?.tags,
+            domains: updatedData.domains ?? node.searchSource?.domains,
+            dataProducts:
+              updatedData.dataProducts ?? node.searchSource?.dataProducts,
+            extension: updatedData.extension ?? node.searchSource?.extension,
           },
         };
       };
