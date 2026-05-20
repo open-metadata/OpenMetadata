@@ -16,13 +16,14 @@ import { capitalize, isEmpty, startCase } from 'lodash';
 import qs from 'qs';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { IngestionPipelineList } from '../../components/Settings/Services/Ingestion/IngestionPipelineList/IngestionPipelineList.component';
 import Services from '../../components/Settings/Services/Services';
+import { ROUTES } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -55,6 +56,10 @@ const ServicesPage = () => {
     (tab === GlobalSettingOptions.DATA_OBSERVABILITY
       ? 'pipelines'
       : 'services');
+
+  const isValidTab =
+    tab === GlobalSettingOptions.DATA_OBSERVABILITY ||
+    Boolean(SERVICE_CATEGORY[tab]);
 
   const serviceName = useMemo(
     () =>
@@ -109,6 +114,10 @@ const ServicesPage = () => {
 
     return crumbs;
   }, [tab, t, isEmbedded]);
+
+  if (!isValidTab) {
+    return <Navigate replace to={ROUTES.NOT_FOUND} />;
+  }
 
   return viewAllPermission ? (
     <PageLayoutV1 pageTitle={serviceName}>
