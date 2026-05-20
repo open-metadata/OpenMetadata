@@ -14,6 +14,7 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
@@ -29,6 +30,7 @@ import org.openmetadata.service.Entity;
  * conditions ({@code isTaskFiler()}, {@code isTaskAssignee()}, {@code isTaskReviewer()}) which
  * read the Task entity directly through this context's {@link #getEntity()}.
  */
+@Slf4j
 public class TaskResourceContext implements ResourceContextInterface {
   private final Task task;
 
@@ -44,7 +46,21 @@ public class TaskResourceContext implements ResourceContextInterface {
   @Override
   public List<EntityReference> getOwners() {
     EntityReference about = task.getAbout();
-    return about == null ? List.of() : Entity.getOwners(about);
+    if (about == null) {
+      return List.of();
+    }
+    try {
+      return Entity.getOwners(about);
+    } catch (Exception e) {
+      // The target entity may have been hard-deleted while the task still exists. Degrade to no
+      // owners rather than surfacing a 500 from a policy evaluation path.
+      LOG.debug(
+          "TaskResourceContext.getOwners: failed to resolve owners for task {} about {} ({})",
+          task.getId(),
+          about.getFullyQualifiedName(),
+          e.getMessage());
+      return List.of();
+    }
   }
 
   @Override

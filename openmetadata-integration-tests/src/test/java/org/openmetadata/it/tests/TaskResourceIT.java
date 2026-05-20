@@ -919,6 +919,71 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   @Test
+  void testFilerCannotReassignOwnTaskViaPatch(TestNamespace ns) {
+    // Regression: PATCH /assignees must require ReassignTask (entity-owner-only), not the default
+    // EditAll. Without the per-entity field mapping, filers could reassign their own task via PATCH
+    // since TaskAuthorPolicy grants them EditAll on the task.
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("filer-patch-assignees"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(List.of(shared.USER1.getFullyQualifiedName()));
+
+    Task task = SdkClients.user2Client().tasks().create(request);
+
+    String patch =
+        "[{\"op\":\"add\",\"path\":\"/assignees/-\",\"value\":{\"id\":\""
+            + shared.USER3.getId()
+            + "\",\"type\":\"user\",\"name\":\""
+            + shared.USER3.getName()
+            + "\"}}]";
+
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            SdkClients.user2Client()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.PATCH,
+                    "/v1/tasks/" + task.getId(),
+                    patch,
+                    org.openmetadata.sdk.network.RequestOptions.builder()
+                        .header("Content-Type", "application/json-patch+json")
+                        .build()));
+  }
+
+  @Test
+  void testFilerCannotChangePriorityViaPatch(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("filer-patch-priority"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(List.of(shared.USER1.getFullyQualifiedName()))
+            .withPriority(TaskPriority.Medium);
+
+    Task task = SdkClients.user2Client().tasks().create(request);
+
+    String patch = "[{\"op\":\"replace\",\"path\":\"/priority\",\"value\":\"High\"}]";
+
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            SdkClients.user2Client()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.PATCH,
+                    "/v1/tasks/" + task.getId(),
+                    patch,
+                    org.openmetadata.sdk.network.RequestOptions.builder()
+                        .header("Content-Type", "application/json-patch+json")
+                        .build()));
+  }
+
+  @Test
   void testAssignedEndpointReturnsUserTasks(TestNamespace ns) {
     SharedEntities shared = SharedEntities.get();
 

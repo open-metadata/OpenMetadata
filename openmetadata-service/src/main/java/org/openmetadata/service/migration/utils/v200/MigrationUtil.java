@@ -2,6 +2,7 @@ package org.openmetadata.service.migration.utils.v200;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -40,39 +41,38 @@ public class MigrationUtil {
   private MigrationUtil() {}
 
   /**
-   * Attach the {@code TaskAuthorPolicy} reference to the existing {@code DataConsumer} role if it
-   * is missing. The policy entity itself is created automatically by {@code
-   * PolicyRepository.initSeedDataFromResources()} on startup; this migration only handles the role
-   * attachment because {@link
-   * org.openmetadata.service.jdbi3.EntityRepository#initializeEntity(org.openmetadata.schema.EntityInterface)}
-   * is create-if-missing only and will not amend an existing role. Idempotent — safe to re-run.
+   * Ensure {@code TaskAuthorPolicy} is seeded and attached to the {@code DataConsumer} role on
+   * upgrades. Role→Policy attachments are modelled as {@code Relationship.HAS} edges in {@code
+   * entity_relationship} (the {@code policies} field on Role JSON is derived from those edges, not
+   * stored), so this migration writes the relationship directly via {@code
+   * relationshipDAO().insert(...)} which upserts and is therefore idempotent.
+   *
+   * <p>Migrations run before service startup, so {@code initSeedDataFromResources()} has not yet
+   * created {@code TaskAuthorPolicy}. The helper loads the seed JSON from the classpath and
+   * persists it via {@link PolicyRepository#initializeEntity} (create-if-missing) before adding
+   * the role relationship.
    */
   public static void addTaskAuthorPolicyToDataConsumerRole(CollectionDAO collectionDAO) {
     RoleRepository roleRepository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
     PolicyRepository policyRepository =
         (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
     try {
-      Role role = roleRepository.findByName(DATA_CONSUMER_ROLE, Include.NON_DELETED);
-      Policy policy = policyRepository.findByName(TASK_AUTHOR_POLICY, Include.NON_DELETED);
-      List<EntityReference> policies =
-          role.getPolicies() == null ? new ArrayList<>() : new ArrayList<>(role.getPolicies());
-      boolean alreadyPresent =
-          policies.stream().anyMatch(p -> TASK_AUTHOR_POLICY.equals(p.getName()));
-      if (alreadyPresent) {
-        LOG.debug("{} already attached to {}, skipping", TASK_AUTHOR_POLICY, DATA_CONSUMER_ROLE);
+      Policy policy = ensureTaskAuthorPolicySeeded(policyRepository);
+      if (policy == null) {
+        LOG.warn(
+            "{} seed not found on classpath, skipping DataConsumer attachment", TASK_AUTHOR_POLICY);
         return;
       }
-      policies.add(policy.getEntityReference());
-      role.setPolicies(policies);
+      Role role = roleRepository.findByName(DATA_CONSUMER_ROLE, Include.NON_DELETED);
       collectionDAO
-          .roleDAO()
-          .update(role.getId(), role.getFullyQualifiedName(), JsonUtils.pojoToJson(role));
+          .relationshipDAO()
+          .insert(
+              role.getId(), policy.getId(), Entity.ROLE, Entity.POLICY, Relationship.HAS.ordinal());
       LOG.info("Attached {} to {}", TASK_AUTHOR_POLICY, DATA_CONSUMER_ROLE);
     } catch (EntityNotFoundException ex) {
       LOG.warn(
-          "Skipping TaskAuthorPolicy backfill: {} or {} not found ({})",
+          "Skipping TaskAuthorPolicy backfill: {} not found ({})",
           DATA_CONSUMER_ROLE,
-          TASK_AUTHOR_POLICY,
           ex.getMessage());
     } catch (Exception ex) {
       LOG.error(
@@ -82,6 +82,30 @@ public class MigrationUtil {
           ex.getMessage(),
           ex);
     }
+  }
+
+  private static Policy ensureTaskAuthorPolicySeeded(PolicyRepository repository) {
+    Policy existing = null;
+    try {
+      existing = repository.findByName(TASK_AUTHOR_POLICY, Include.NON_DELETED);
+    } catch (EntityNotFoundException ignored) {
+      // Not seeded yet — fall through to seed-from-classpath path.
+    }
+    if (existing != null) {
+      return existing;
+    }
+    try {
+      List<Policy> seeds = repository.getEntitiesFromSeedData();
+      for (Policy seed : seeds) {
+        if (TASK_AUTHOR_POLICY.equals(seed.getName())) {
+          repository.initializeEntity(seed);
+          return repository.findByName(TASK_AUTHOR_POLICY, Include.NON_DELETED);
+        }
+      }
+    } catch (IOException e) {
+      LOG.error("Failed to load TaskAuthorPolicy seed data: {}", e.getMessage());
+    }
+    return null;
   }
 
   /**

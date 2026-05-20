@@ -132,4 +132,23 @@ class TaskResourceContextTest {
     Task task = new Task().withId(UUID.randomUUID());
     assertEquals(Entity.TASK, new TaskResourceContext(task).getResource());
   }
+
+  @Test
+  void getOwners_degradesGracefully_whenAboutEntityResolverThrows() {
+    // Simulate a task whose target entity type is unregistered (or hard-deleted to the point
+    // that the repository cannot resolve it). Entity.getOwners throws under those conditions;
+    // TaskResourceContext.getOwners must catch and return an empty list rather than letting
+    // a 500 surface from the policy evaluation path.
+    EntityReference unresolvableRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("nonexistent-entity-type")
+            .withName("ghost")
+            .withFullyQualifiedName("ghost");
+    Task task =
+        new Task().withId(UUID.randomUUID()).withName("stale-ref-task").withAbout(unresolvableRef);
+
+    TaskResourceContext context = new TaskResourceContext(task);
+    assertTrue(context.getOwners().isEmpty());
+  }
 }

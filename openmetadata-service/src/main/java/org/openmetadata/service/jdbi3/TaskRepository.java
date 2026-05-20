@@ -747,26 +747,48 @@ public class TaskRepository extends EntityRepository<Task> {
    * resolve the task".
    *
    * <p>For incident-style tasks ({@code TestCaseResolution}, {@code IncidentResolution}) a
-   * fallback is permitted: a user with {@code EditTests}/{@code EditAll} on the related entity
-   * can resolve the task even if the task policy alone would deny — preserving the historical
-   * behaviour that test owners can act on incidents.
+   * fallback is permitted: a non-filer user with {@code EditTests}/{@code EditAll} on the related
+   * entity can resolve the task even if the task policy alone would deny — preserving the
+   * historical behaviour that test owners can act on incidents. The filer check is intentional:
+   * mixing the task policy and the incident fallback in a single {@code AuthorizationLogic.ANY}
+   * call would let a filer who also owns the related entity bypass the {@code isTaskFiler()} deny
+   * rule and approve their own task. The two checks are therefore evaluated sequentially with the
+   * task policy acting as a hard gate.
    */
   public void checkPermissionsForResolveTask(
       Authorizer authorizer, Task task, boolean closeTask, SecurityContext securityContext) {
     MetadataOperation operation =
         closeTask ? MetadataOperation.CLOSE_TASK : MetadataOperation.RESOLVE_TASK;
-    List<AuthRequest> requests = new ArrayList<>();
-    requests.add(
-        new AuthRequest(
-            new OperationContext(Entity.TASK, operation), new TaskResourceContext(task)));
-    if (isIncidentTask(task)) {
-      addIncidentEditRequests(requests, task);
+    OperationContext taskOp = new OperationContext(Entity.TASK, operation);
+    ResourceContextInterface taskResource = new TaskResourceContext(task);
+    AuthorizationException taskDenial = null;
+    try {
+      authorizer.authorize(securityContext, taskOp, taskResource);
+    } catch (AuthorizationException denied) {
+      taskDenial = denied;
     }
-    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+
+    if (taskDenial != null) {
+      if (!isIncidentTask(task) || isUserTaskFiler(task, securityContext)) {
+        throw taskDenial;
+      }
+      List<AuthRequest> incidentRequests = new ArrayList<>();
+      addIncidentEditRequests(incidentRequests, task);
+      if (incidentRequests.isEmpty()) {
+        throw taskDenial;
+      }
+      authorizer.authorizeRequests(securityContext, incidentRequests, AuthorizationLogic.ANY);
+    }
 
     if (!closeTask) {
       validateUnderlyingEntityPermission(authorizer, securityContext, task);
     }
+  }
+
+  private boolean isUserTaskFiler(Task task, SecurityContext securityContext) {
+    return task.getCreatedBy() != null
+        && task.getCreatedBy().getName() != null
+        && task.getCreatedBy().getName().equals(securityContext.getUserPrincipal().getName());
   }
 
   /**

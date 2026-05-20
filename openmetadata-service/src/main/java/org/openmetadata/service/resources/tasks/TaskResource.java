@@ -117,6 +117,14 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
   public TaskResource(Authorizer authorizer, Limits limits) {
     super(Entity.TASK, authorizer, limits);
+    // PATCH on assignees / priority must require ReassignTask, not the default EditAll.
+    // Without this, any holder of EditAll on the task resource (filer, assignees, reviewers via
+    // TaskAuthorPolicy) could reassign or change priority through a JSON Patch, bypassing the
+    // entity-owner-only guard enforced in bulk operations.
+    org.openmetadata.service.ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, "assignees", MetadataOperation.REASSIGN_TASK);
+    org.openmetadata.service.ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, "priority", MetadataOperation.REASSIGN_TASK);
   }
 
   @Override
