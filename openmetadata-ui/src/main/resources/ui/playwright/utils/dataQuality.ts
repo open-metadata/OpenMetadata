@@ -489,12 +489,6 @@ export async function waitForIncidentToBeIndexed(
 }
 
 /**
- * Asserts that captured dataQualityReport requests referencing `filterFqn`
- * contain `expectedField` in the ES query JSON.
- * Pass `notExpectedPattern` to guard against a field that must NOT appear
- * (e.g. a regression check for an old wrong field path).
- */
-/**
  * Asserts that a dimension card (StatusCardWidget) on the Data Quality dashboard
  * shows the expected total, success, failed, and aborted counts.
  * Uses a generous timeout on total-value to accommodate ES indexing lag; the
@@ -541,6 +535,12 @@ export async function assertPieChartLegendCounts(
   }
 }
 
+/**
+ * Asserts that captured dataQualityReport requests referencing `filterFqn`
+ * contain `expectedField` in the ES query JSON.
+ * Pass `notExpectedPattern` to guard against a field that must NOT appear
+ * (e.g. a regression check for an old wrong field path).
+ */
 export function assertEsFieldInReports(
   reports: CapturedReport[],
   filterFqn: string,
