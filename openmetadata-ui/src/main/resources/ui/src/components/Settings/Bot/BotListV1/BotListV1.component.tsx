@@ -103,7 +103,7 @@ const BotListV1 = ({
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const latestSearchRequest = useRef(0);
-  const botUserIdMapRef = useRef<Promise<Map<string, Bot>> | null>(null);
+  const allBotsRef = useRef<Promise<Bot[]> | null>(null);
 
   const getBotIncludeFilter = useCallback(
     () => (showDeleted ? Include.Deleted : Include.NonDeleted),
@@ -126,14 +126,14 @@ const BotListV1 = ({
     };
   }, []);
 
-  const fetchAllBotsByBotUserName = useCallback(async () => {
-    if (botUserIdMapRef.current) {
-      return botUserIdMapRef.current;
+  const fetchAllBots = useCallback(async () => {
+    if (allBotsRef.current) {
+      return allBotsRef.current;
     }
 
     const include = getBotIncludeFilter();
     const promise = (async () => {
-      const botsByBotUserName = new Map<string, Bot>();
+      const all: Bot[] = [];
       let after: string | undefined;
 
       do {
@@ -142,24 +142,18 @@ const BotListV1 = ({
           limit: BOT_FETCH_PAGE_SIZE,
           include,
         });
-
-        data.forEach((bot) => {
-          if (bot.name) {
-            botsByBotUserName.set(bot.name.toLowerCase(), bot);
-          }
-        });
-
+        all.push(...data);
         after = paging.after;
       } while (after);
 
-      return botsByBotUserName;
+      return all;
     })();
 
-    botUserIdMapRef.current = promise;
+    allBotsRef.current = promise;
     try {
       return await promise;
     } catch (error) {
-      botUserIdMapRef.current = null;
+      allBotsRef.current = null;
 
       throw error;
     }
@@ -249,25 +243,51 @@ const BotListV1 = ({
       trackTotalHits: true,
     });
     const matchedBotUsers = formatUsersResponse(response.hits.hits);
+    const allBots = await fetchAllBots();
+    const botsByName = new Map<string, Bot>();
+    allBots.forEach((bot) => {
+      if (bot.name) {
+        botsByName.set(bot.name.toLowerCase(), bot);
+      }
+    });
 
-    if (!matchedBotUsers.length) {
-      return [];
-    }
+    const matchedById = new Map<string, Bot>();
+    const botUsersByName = new Map<string, User>();
+    matchedBotUsers.forEach((botUser) => {
+      if (botUser.name) {
+        botUsersByName.set(botUser.name.toLowerCase(), botUser);
+      }
+    });
 
-    const botsByBotUserName = await fetchAllBotsByBotUserName();
-
-    return matchedBotUsers.flatMap((botUser) => {
-      const lookupName = botUser.name?.toLowerCase();
-      const matchedBot = lookupName
-        ? botsByBotUserName.get(lookupName)
+    matchedBotUsers.forEach((botUser) => {
+      const matchedBot = botUser.name
+        ? botsByName.get(botUser.name.toLowerCase())
         : undefined;
 
-      if (!matchedBot) {
-        return [];
+      if (matchedBot?.id) {
+        matchedById.set(
+          matchedBot.id,
+          enrichBotWithMatchedUser(matchedBot, botUser)
+        );
       }
-
-      return [enrichBotWithMatchedUser(matchedBot, botUser)];
     });
+
+    const lowerText = text.trim().toLowerCase();
+    allBots.forEach((bot) => {
+      const matches =
+        bot.name?.toLowerCase().includes(lowerText) ||
+        bot.displayName?.toLowerCase().includes(lowerText) ||
+        bot.description?.toLowerCase().includes(lowerText);
+
+      if (matches && bot.id && !matchedById.has(bot.id)) {
+        const botUser = bot.name
+          ? botUsersByName.get(bot.name.toLowerCase())
+          : undefined;
+        matchedById.set(bot.id, enrichBotWithMatchedUser(bot, botUser));
+      }
+    });
+
+    return Array.from(matchedById.values());
   };
 
   const runActiveSearch = async (activeSearchTerm: string) => {
@@ -426,7 +446,7 @@ const BotListV1 = ({
    * handle after delete bot action
    */
   const handleDeleteAction = useCallback(async () => {
-    botUserIdMapRef.current = null;
+    allBotsRef.current = null;
     await getResourceLimit('bot', true, true);
     fetchBots(showDeleted);
   }, [selectedUser]);
@@ -460,7 +480,7 @@ const BotListV1 = ({
   };
 
   const handleShowDeletedBots = (checked: boolean) => {
-    botUserIdMapRef.current = null;
+    allBotsRef.current = null;
     handlePageChange(INITIAL_PAGING_VALUE, {
       cursorType: null,
       cursorValue: undefined,

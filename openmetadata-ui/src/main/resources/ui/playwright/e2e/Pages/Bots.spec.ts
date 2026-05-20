@@ -13,15 +13,19 @@
 import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import {
+  BOT_DETAILS,
   createBot,
   deleteBot,
   redirectToBotPage,
   tokenExpirationForDays,
   tokenExpirationUnlimitedDays,
   updateBotDetails,
-  verifyBotSearch,
   verifyGenerateTokenAPIContract,
 } from '../../utils/bot';
+import {
+  searchFromSearchInput,
+  updateSearchInputAndWait,
+} from '../../utils/common';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -49,8 +53,49 @@ test.describe(
         await updateBotDetails(page);
       });
 
-      await test.step('Verify bot search works by name and email', async () => {
-        await verifyBotSearch(page);
+      const searchInput = page.getByTestId('searchbar');
+      const createdBotLink = page.getByTestId(
+        `bot-link-${BOT_DETAILS.updatedBotName}`
+      );
+
+      await test.step('Search bot by display name', async () => {
+        await searchFromSearchInput(
+          page,
+          searchInput,
+          BOT_DETAILS.updatedBotName
+        );
+
+        await expect(createdBotLink).toBeVisible();
+      });
+
+      await test.step('Search bot by bot name', async () => {
+        await searchFromSearchInput(page, searchInput, BOT_DETAILS.botName);
+
+        await expect(createdBotLink).toBeVisible();
+      });
+
+      await test.step('Search bot by email', async () => {
+        await searchFromSearchInput(page, searchInput, BOT_DETAILS.botEmail);
+
+        await expect(createdBotLink).toBeVisible();
+      });
+
+      await test.step('Search with no match shows empty state', async () => {
+        await searchFromSearchInput(
+          page,
+          searchInput,
+          `${BOT_DETAILS.updatedBotName}-no-match`
+        );
+
+        await expect(
+          page.getByTestId('search-error-placeholder')
+        ).toBeVisible();
+      });
+
+      await test.step('Clear search restores full list', async () => {
+        await updateSearchInputAndWait(page, searchInput, '');
+
+        await expect(createdBotLink).toBeVisible();
       });
 
       await test.step('Verify generateToken API contract', async () => {

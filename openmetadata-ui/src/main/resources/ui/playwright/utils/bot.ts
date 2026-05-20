@@ -15,9 +15,7 @@ import { GlobalSettingOptions } from '../constant/settings';
 import {
   descriptionBox,
   redirectToHomePage,
-  searchFromSearchInput,
   toastNotification,
-  updateSearchInputAndWait,
   uuid,
 } from './common';
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
@@ -27,7 +25,7 @@ import { revokeToken } from './user';
 
 const botName = `a-bot-pw%test-${uuid()}`;
 
-const BOT_DETAILS = {
+export const BOT_DETAILS = {
   botName: botName,
   botEmail: `${botName}@mail.com`,
   description: `This is bot description for ${botName}`,
@@ -163,44 +161,6 @@ export const updateBotDetails = async (page: Page) => {
   await expect(
     page.locator(`[data-row-key="${botName}"] [data-testid="markdown-parser"]`)
   ).toContainText(BOT_DETAILS.updatedDescription);
-};
-
-export const verifyBotSearch = async (page: Page) => {
-  const searchInput = page.getByTestId('searchbar');
-  const createdBotLink = page.getByTestId(
-    `bot-link-${BOT_DETAILS.updatedBotName}`
-  );
-
-  // Search by updated display name
-  await searchFromSearchInput(page, searchInput, BOT_DETAILS.updatedBotName, {
-    waitForSearchApi: true,
-  });
-  await expect(createdBotLink).toBeVisible();
-
-  // Search by original bot name (which is also the bot user name)
-  await searchFromSearchInput(page, searchInput, BOT_DETAILS.botName, {
-    waitForSearchApi: true,
-  });
-  await expect(createdBotLink).toBeVisible();
-
-  // Search by bot email
-  await searchFromSearchInput(page, searchInput, BOT_DETAILS.botEmail, {
-    waitForSearchApi: true,
-  });
-  await expect(createdBotLink).toBeVisible();
-
-  // Search with no match
-  await searchFromSearchInput(
-    page,
-    searchInput,
-    `${BOT_DETAILS.updatedBotName}-no-match`,
-    { waitForSearchApi: true }
-  );
-  await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
-
-  // Clear search restores list
-  await updateSearchInputAndWait(page, searchInput, '');
-  await expect(createdBotLink).toBeVisible();
 };
 
 export const tokenExpirationForDays = async (page: Page) => {

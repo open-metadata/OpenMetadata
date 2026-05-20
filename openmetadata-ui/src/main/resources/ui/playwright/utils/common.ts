@@ -209,60 +209,22 @@ export const updateSearchInputAndWait = async (
   await waitForAllLoadersToDisappear(page);
 };
 
-type SearchInputOptions = {
-  waitForSearchApi?: boolean;
-  searchApiPattern?: string;
-};
-
 export const searchFromSearchInput = async (
   page: Page,
   searchInput: Locator,
-  searchTerm: string,
-  options: SearchInputOptions = {}
+  searchTerm: string
 ) => {
-  const {
-    waitForSearchApi = false,
-    searchApiPattern = '/api/v1/search/query',
-  } = options;
-  const normalizedSearchTerm = searchTerm.trim();
-  const normalizedSearchTermLowerCase = normalizedSearchTerm.toLowerCase();
+  await searchInput.clear();
+  await searchInput.fill(searchTerm);
+  await expect(searchInput).toHaveValue(searchTerm);
 
-  if (waitForSearchApi && normalizedSearchTerm) {
-    const [searchResponse] = await Promise.all([
-      page.waitForResponse((response) => {
-        if (
-          !response.url().includes(searchApiPattern) ||
-          response.request().method() !== 'GET'
-        ) {
-          return false;
-        }
-
-        try {
-          const params = new URL(response.url()).searchParams;
-          const qParam = params.get('q') ?? '';
-          const queryFilterParam = params.get('query_filter') ?? '';
-
-          return (
-            qParam.toLowerCase().includes(normalizedSearchTermLowerCase) ||
-            queryFilterParam
-              .toLowerCase()
-              .includes(normalizedSearchTermLowerCase)
-          );
-        } catch {
-          return response
-            .url()
-            .toLowerCase()
-            .includes(normalizedSearchTermLowerCase);
-        }
-      }),
-      updateSearchInputAndWait(page, searchInput, searchTerm),
-    ]);
-    expect(searchResponse.status()).toBe(200);
-
-    return;
-  }
-
-  await updateSearchInputAndWait(page, searchInput, searchTerm);
+  const searchPromise = await page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.request().method() === 'GET'
+  );
+  const searchResponse = await searchPromise;
+  expect(searchResponse.status()).toBe(200);
 };
 
 export const visitOwnProfilePage = async (page: Page) => {
