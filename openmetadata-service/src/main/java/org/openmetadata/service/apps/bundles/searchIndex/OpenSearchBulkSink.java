@@ -860,18 +860,24 @@ public class OpenSearchBulkSink implements BulkSink {
   }
 
   /**
-   * The cached payload from {@code fetchExistingEmbeddings} is already filtered to fingerprint
-   * matches by the service layer, so the only remaining check at the splice site is that the
-   * cached document is an object with a non-empty embedding array. Tree-model access is
-   * type-tolerant — a missing or unexpectedly-typed field returns a safe default rather than
-   * throwing.
+   * The cached payload from {@code fetchExistingEmbeddings} is pre-filtered by the service layer
+   * to entries whose state matches. As defense-in-depth at the splice site we also require the
+   * cached doc to (a) be an object, (b) have a non-empty {@code embedding} array, and (c) have a
+   * textual non-blank {@code fingerprint}. Tree-model access is type-tolerant — a missing or
+   * unexpectedly-typed field returns a safe default rather than throwing — and the fingerprint
+   * check ensures we never splice a vector into the new index without also carrying its
+   * fingerprint, which would silently break future reuse for that entity.
    */
   private static boolean canReuseCachedEmbedding(JsonNode cached) {
     if (cached == null || !cached.isObject()) {
       return false;
     }
     JsonNode embedding = cached.path("embedding");
-    return embedding.isArray() && !embedding.isEmpty();
+    if (!embedding.isArray() || embedding.isEmpty()) {
+      return false;
+    }
+    JsonNode fingerprint = cached.path("fingerprint");
+    return fingerprint.isTextual() && !fingerprint.asText().isBlank();
   }
 
   @Override
@@ -891,17 +897,15 @@ public class OpenSearchBulkSink implements BulkSink {
       }
 
       String entityType = entities.getFirst().getEntityReference().getType();
-      String targetIndex = indexName;
-      if (reindexContext != null) {
-        String stagedIndex = reindexContext.getOriginalIndex(entityType).orElse(null);
-        if (stagedIndex != null) {
-          targetIndex = stagedIndex;
-        }
-      }
-
-      return vectorService.getExistingEmbeddingsBatch(targetIndex, currentById);
+      // During a recreate, read embeddings from the pre-recreate live index (the staged index is
+      // empty by definition). Outside a recreate, read from the canonical index passed in.
+      String sourceIndex =
+          reindexContext != null
+              ? reindexContext.getOriginalIndex(entityType).orElse(indexName)
+              : indexName;
+      return vectorService.getExistingEmbeddingsBatch(sourceIndex, currentById);
     } catch (Exception e) {
-      LOG.warn("Failed to fetch existing embeddings from index {}", indexName, e);
+      LOG.warn("Failed to fetch existing embeddings (canonical index={})", indexName, e);
       return Collections.emptyMap();
     }
   }

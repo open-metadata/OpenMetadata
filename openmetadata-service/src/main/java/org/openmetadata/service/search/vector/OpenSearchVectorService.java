@@ -404,7 +404,7 @@ public class OpenSearchVectorService implements VectorIndexService {
           continue;
         }
         JsonNode cached = doc.source().to(JsonNode.class, JACKSON_JSONP_MAPPER);
-        if (cached != null && cached.has("embedding")) {
+        if (isSpliceable(cached)) {
           result.put(doc.id(), cached);
         }
       }
@@ -413,6 +413,24 @@ public class OpenSearchVectorService implements VectorIndexService {
       LOG.error("Failed to batch get embeddings in index={}", indexName, e);
       return Collections.emptyMap();
     }
+  }
+
+  /**
+   * The splice-site contract: callers can rely on every returned entry being a JSON object whose
+   * {@code embedding} is a non-empty array and whose {@code fingerprint} is non-blank text.
+   * Anything else is dropped — silently, since these only fail on corrupt or partial cached docs
+   * that the caller will regenerate from scratch anyway.
+   */
+  private static boolean isSpliceable(JsonNode cached) {
+    if (cached == null || !cached.isObject()) {
+      return false;
+    }
+    JsonNode embedding = cached.path("embedding");
+    if (!embedding.isArray() || embedding.isEmpty()) {
+      return false;
+    }
+    JsonNode fingerprint = cached.path("fingerprint");
+    return fingerprint.isTextual() && !fingerprint.asText().isBlank();
   }
 
   private static boolean cachedStateMatches(JsonNode header, EntityFingerprintInput input) {
