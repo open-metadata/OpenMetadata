@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.jdbi3.ListFilter.escape;
 import static org.openmetadata.service.jdbi3.ListFilter.escapeBackslashAndApostrophe;
+import static org.openmetadata.service.jdbi3.ListFilter.escapeForMySqlRegexReplacement;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -341,10 +342,16 @@ public interface EntityDAO<T extends EntityInterface> {
     if (!getNameHashColumn().equals("fqnHash")) {
       return;
     }
-    // escape() handles the regex source pattern (backslash + apostrophe + LIKE underscore).
-    // For the regex replacement, we still need backslash escaping (MySQL's default mode
-    // treats {@code \} as a string-literal escape char, so a stray "\n" in newPrefix would
-    // be parsed as a newline before REGEXP_REPLACE ever sees it).
+    // The regex replacement argument to MySQL's REGEXP_REPLACE has its own escape layer
+    // on top of the SQL string-literal layer — `\1`/`\2` are backreferences, `\\` is a
+    // literal backslash. Using escapeBackslashAndApostrophe here would only escape for the
+    // SQL layer, leaving a stray backslash in newPrefix to be interpreted by the regex
+    // engine. escapeForMySqlRegexReplacement applies both layers (regex-replacement first,
+    // then SQL string-literal) so an input backslash round-trips to a single literal
+    // backslash in the replacement output. The source pattern goes through escape() which
+    // already covers the SQL + LIKE-underscore layers — the regex-pattern layer is
+    // tolerated here because OpenMetadata's name validation forbids the regex metas that
+    // would matter (\ . * ? + ^ $ ( ) [ ] { } |).
     String mySqlUpdate =
         String.format(
             "UPDATE %s SET json = "
@@ -353,7 +360,7 @@ public interface EntityDAO<T extends EntityInterface> {
                 + "WHERE fqnHash LIKE '%s.%%'",
             getTableName(),
             escape(oldPrefix),
-            escapeBackslashAndApostrophe(newPrefix),
+            escapeForMySqlRegexReplacement(newPrefix),
             FullyQualifiedName.buildHash(oldPrefix),
             FullyQualifiedName.buildHash(newPrefix),
             FullyQualifiedName.buildHash(oldPrefix));
