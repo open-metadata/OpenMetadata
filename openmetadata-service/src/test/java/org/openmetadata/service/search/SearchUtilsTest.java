@@ -611,6 +611,22 @@ class SearchUtilsTest {
     assertEquals(cursor, result.get(0));
   }
 
+  @Test
+  void searchAfterAcceptsUrlSafeBase64Cursor() {
+    // The Python ingestion client emits URL-safe base64 to avoid '+' / '/' that
+    // would otherwise need percent-encoding. The server must decode both alphabets.
+    // Force a payload that produces the URL-safe-only characters '-' or '_': the
+    // bytes 0xFB,0xFF,0xBF encode to "+/+/" in standard base64 and "-_-_" in URL-safe.
+    byte[] urlSafeOnlyBytes = {(byte) 0xFB, (byte) 0xFF, (byte) 0xBF};
+    String urlSafeChunk = Base64.getUrlEncoder().encodeToString(urlSafeOnlyBytes);
+    assertTrue(urlSafeChunk.indexOf('-') >= 0 || urlSafeChunk.indexOf('_') >= 0);
+
+    String cursor =
+        Base64.getUrlEncoder().encodeToString("[\"alpha,beta\"]".getBytes(StandardCharsets.UTF_8));
+    List<Object> result = SearchUtils.searchAfter(cursor);
+    assertEquals(List.of("alpha,beta"), result);
+  }
+
   private static String encodeBase64Json(String json) {
     return Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
   }

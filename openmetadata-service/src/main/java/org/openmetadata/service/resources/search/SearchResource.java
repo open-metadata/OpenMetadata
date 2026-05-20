@@ -161,8 +161,8 @@ public class SearchResource {
       @Parameter(
               description =
                   "When paginating, specify the search_after cursor. Preferred form is the "
-                      + "base64-encoded JSON array returned by the previous page "
-                      + "(e.g. base64(\"[\\\"v1\\\",\\\"v2\\\"]\")); this form is unambiguous "
+                      + "URL-safe base64-encoded JSON array returned by the previous page "
+                      + "(e.g. base64(\"[\\\"v1\\\",\\\"v2\\\"]\")). This form is unambiguous "
                       + "when sort values contain commas (such as a glossary term FQN). "
                       + "A legacy comma-joined form (search_after=v1,v2) is also accepted but "
                       + "breaks when any value itself contains a ','.")
@@ -526,9 +526,9 @@ public class SearchResource {
       @Parameter(
               description =
                   "When paginating, specify the search_after cursor. Preferred form is the "
-                      + "base64-encoded JSON array returned by the previous page; the legacy "
-                      + "comma-joined form is also accepted but breaks when any sort value "
-                      + "contains a ','.")
+                      + "URL-safe base64-encoded JSON array returned by the previous page; "
+                      + "the legacy comma-joined form is also accepted but breaks when any "
+                      + "sort value contains a ','.")
           @QueryParam("search_after")
           String searchAfter,
       @Parameter(description = "Sort the search results by field")

@@ -85,7 +85,7 @@
       }
     },
     "searchAfter": {
-      "description": "When paginating, specify the search_after values. Use it ass search_after=<val1>,<val2>,...",
+      "description": "When paginating, specify the search_after cursor returned by the previous page. Preferred form is the URL-safe base64-encoded JSON array (e.g. base64(\"[\\\"v1\\\",\\\"v2\\\"]\")), which is unambiguous when sort values contain commas. A legacy comma-joined form (search_after=v1,v2) is also accepted but breaks when any value itself contains a ','.",
       "existingJavaType": "java.util.List<java.lang.Object>"
     },
     "domains": {

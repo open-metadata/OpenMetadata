@@ -398,12 +398,10 @@ class ESMixin(Generic[T]):
                 logger.debug("No more pages to fetch")
                 break
 
-            # Base64-encoded JSON array — unambiguous even when sort values contain ','
+            # URL-safe base64-encoded JSON array — unambiguous even when sort values contain ','
             # (e.g. a glossary term FQN). Server side decodes via SearchUtils.searchAfter,
             # falling back to legacy comma-split for older clients.
-            after = base64.b64encode(
-                json.dumps(list(last_hit.sort)).encode("utf-8")
-            ).decode("ascii")
+            after = base64.urlsafe_b64encode(json.dumps(list(last_hit.sort)).encode("utf-8")).decode("ascii")
 
     def paginate_es(
         self,

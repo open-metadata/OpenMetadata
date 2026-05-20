@@ -390,12 +390,8 @@ class TestOMetaESAPI:
                 f'{{"service.displayName.keyword":"{es_service.name.root}"}}'
                 "}]}}}"
             )
-            assets = list(
-                metadata.paginate_es(entity=Table, query_filter=query_filter, size=1)
-            )
-            assert (
-                len(assets) == 5
-            ), f"Expected 5 tables, got {len(assets)} — pagination truncated on comma in FQN"
+            assets = list(metadata.paginate_es(entity=Table, query_filter=query_filter, size=1))
+            assert len(assets) == 5, f"Expected 5 tables, got {len(assets)} — pagination truncated on comma in FQN"
         finally:
             for table in created_tables:
                 try:  # noqa: SIM105

@@ -336,8 +336,8 @@ public final class SearchUtils {
   /**
    * Decode an ES/OS search_after cursor passed as a query parameter.
    *
-   * <p>Preferred format: base64-encoded JSON array, e.g. base64("[\"v1\",\"v2\"]"). Unambiguous
-   * for values that contain ',' such as a glossary term FQN like
+   * <p>Preferred format: URL-safe base64-encoded JSON array, e.g. base64("[\"v1\",\"v2\"]").
+   * Unambiguous for values that contain ',' such as a glossary term FQN like
    * <pre>x alation archive.system glossary.sfmc (salesforce marketing cloud, exacttarget) (it system)</pre>
    *
    * <p>Legacy format: comma-joined values (e.g. "v1,v2"). Retained as a fallback so older
@@ -349,19 +349,37 @@ public final class SearchUtils {
     if (nullOrEmpty(searchAfter)) {
       return null;
     }
-    try {
-      byte[] decoded = Base64.getDecoder().decode(searchAfter);
-      String json = new String(decoded, StandardCharsets.UTF_8).trim();
-      if (json.startsWith("[")) {
-        return JsonUtils.readValue(json, new TypeReference<List<Object>>() {});
+    if (looksLikeBase64JsonCursor(searchAfter)) {
+      try {
+        // MIME decoder accepts both standard (+,/) and URL-safe (-,_) alphabets, tolerates
+        // missing padding, and ignores whitespace — covers every base64 variant a client may emit.
+        byte[] decoded = Base64.getMimeDecoder().decode(searchAfter);
+        String json = new String(decoded, StandardCharsets.UTF_8).trim();
+        if (json.startsWith("[")) {
+          return JsonUtils.readValue(json, new TypeReference<List<Object>>() {});
+        }
+      } catch (RuntimeException e) {
+        LOG.debug(
+            "search_after looked like a base64-JSON cursor but failed to decode, "
+                + "falling back to legacy comma split: {}",
+            e.getMessage());
       }
-    } catch (RuntimeException e) {
-      // IllegalArgumentException from Base64.decode or JsonUtils' parse exception:
-      // either way fall through to the legacy comma split.
-      LOG.debug(
-          "search_after is not a base64-JSON cursor, using legacy comma split: {}", e.getMessage());
     }
     return List.of(searchAfter.split(","));
+  }
+
+  /**
+   * Cheap pre-check to avoid attempting a base64 decode on values that obviously are not base64.
+   * Bypassing the decode + exception path keeps legacy-cursor requests off the slow path.
+   *
+   * <p>The base64 alphabet (standard and URL-safe) does not contain ',', so any cursor that
+   * contains one is necessarily a legacy comma-joined cursor and never a new base64-JSON cursor.
+   * Base64 output is also always a multiple of 4 chars (URL-safe with padding included). These two
+   * checks together exclude every legacy cursor with near-zero cost.
+   */
+  private static boolean looksLikeBase64JsonCursor(String value) {
+    int length = value.length();
+    return length >= 4 && length % 4 == 0 && value.indexOf(',') < 0;
   }
 
   public static List<String> sourceFields(String sourceFields) {
