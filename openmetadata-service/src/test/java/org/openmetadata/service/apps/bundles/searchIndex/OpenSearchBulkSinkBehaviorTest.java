@@ -2,7 +2,6 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -141,7 +140,7 @@ class OpenSearchBulkSinkBehaviorTest {
           tracker,
           false,
           Collections.emptyMap(),
-          null);
+          Collections.emptyMap());
 
       verify(processor)
           .add(any(), eq(entityId.toString()), eq(ENTITY_TYPE), eq(tracker), anyLong());
@@ -192,7 +191,7 @@ class OpenSearchBulkSinkBehaviorTest {
           tracker,
           false,
           Collections.emptyMap(),
-          null);
+          Collections.emptyMap());
 
       verify(processorConstruction.constructed().getFirst()).setFailureCallback(failureCallback);
       verify(tracker).recordProcess(StatsResult.FAILED);
@@ -340,12 +339,13 @@ class OpenSearchBulkSinkBehaviorTest {
   }
 
   @Test
-  void addEntityPassesPrefetchedLineageIntoDocBuildContext() throws Exception {
+  void addEntityLooksUpEntityContextFromMap() throws Exception {
     EntityInterface entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
     List<EsLineageData> edges = List.of(new EsLineageData());
-    Map<UUID, List<EsLineageData>> prefetched = Map.of(entityId, edges);
+    DocBuildContext ctxForEntity = DocBuildContext.withUpstreamLineage(edges);
+    Map<UUID, DocBuildContext> docBuildContexts = Map.of(entityId, ctxForEntity);
 
     try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> ignored =
             mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
@@ -378,15 +378,15 @@ class OpenSearchBulkSinkBehaviorTest {
           null,
           false,
           Collections.emptyMap(),
-          prefetched);
+          docBuildContexts);
 
-      assertNotNull(ContextCapturingIndex.observedContext);
+      assertSame(ctxForEntity, ContextCapturingIndex.observedContext);
       assertSame(edges, ContextCapturingIndex.observedContext.prefetchedUpstreamLineage());
     }
   }
 
   @Test
-  void addEntityPassesEmptyDocBuildContextWhenPrefetchMapIsNull() throws Exception {
+  void addEntityFallsBackToEmptyContextWhenEntityNotInMap() throws Exception {
     EntityInterface entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(UUID.randomUUID());
 
@@ -421,7 +421,7 @@ class OpenSearchBulkSinkBehaviorTest {
           null,
           false,
           Collections.emptyMap(),
-          null);
+          Collections.emptyMap());
 
       assertSame(DocBuildContext.empty(), ContextCapturingIndex.observedContext);
     }

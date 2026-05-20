@@ -38,7 +38,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
-import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
@@ -57,7 +56,6 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
-import org.openmetadata.service.search.indexes.SearchIndex;
 
 /**
  * Elasticsearch implementation using new Java API client with custom bulk handler
@@ -251,12 +249,14 @@ public class ElasticSearchBulkSink implements BulkSink {
       } else {
         List<EntityInterface> entityInterfaces = (List<EntityInterface>) entities;
 
-        // Pre-fetch upstream lineage for the whole batch on this caller thread so the
-        // doc-build virtual threads do not need to acquire JDBI handles per entity. Without
-        // this, 50 concurrent virtual workers each ran findFrom under HikariCP's synchronized
-        // borrow path and got pinned/stalled, tripping Hikari's 60s leak detector.
-        Map<UUID, List<EsLineageData>> prefetchedLineage =
-            SearchIndex.prefetchLineageIfSupported(entityType, entityInterfaces);
+        // Per-entity DocBuildContext is prepared by the upstream processor stage (see
+        // ReindexingUtil.populateDocBuildContext) and stuffed into contextData. The sink stays
+        // transport-only: it just looks up each entity's context by id and hands it to
+        // buildSearchIndexDoc, with no awareness of what's inside (lineage today, more later).
+        @SuppressWarnings("unchecked")
+        Map<UUID, DocBuildContext> docBuildContexts =
+            (Map<UUID, DocBuildContext>)
+                contextData.getOrDefault(DOC_BUILD_CONTEXT_KEY, Collections.emptyMap());
 
         // Add entities to search index in parallel
         List<CompletableFuture<Void>> futures =
@@ -266,7 +266,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                         CompletableFuture.runAsync(
                             () ->
                                 addEntity(
-                                    entity, indexName, recreateIndex, tracker, prefetchedLineage),
+                                    entity, indexName, recreateIndex, tracker, docBuildContexts),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
@@ -325,14 +325,10 @@ public class ElasticSearchBulkSink implements BulkSink {
       String indexName,
       boolean recreateIndex,
       StageStatsTracker tracker,
-      Map<UUID, List<EsLineageData>> prefetchedLineage) {
+      Map<UUID, DocBuildContext> docBuildContexts) {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
-      DocBuildContext ctx =
-          prefetchedLineage != null
-              ? DocBuildContext.withUpstreamLineage(
-                  prefetchedLineage.getOrDefault(entity.getId(), Collections.emptyList()))
-              : DocBuildContext.empty();
+      DocBuildContext ctx = docBuildContexts.getOrDefault(entity.getId(), DocBuildContext.empty());
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc(ctx);
       String json = JsonUtils.pojoToJson(searchIndexDoc);
       String docId = entity.getId().toString();
