@@ -345,21 +345,24 @@ const ExploreV1: React.FC<ExploreProps> = ({
     onResetAllFilters();
   };
 
-  const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
-    const must = getExploreQueryFilterMust(data);
+  const handleQuickFiltersChange = useCallback(
+    (data: ExploreQuickFilterField[]) => {
+      const must = getExploreQueryFilterMust(data);
 
-    onChangeAdvancedSearchQuickFilters(
-      isEmpty(must)
-        ? undefined
-        : {
-            query: {
-              bool: {
-                must,
+      onChangeAdvancedSearchQuickFilters(
+        isEmpty(must)
+          ? undefined
+          : {
+              query: {
+                bool: {
+                  must,
+                },
               },
-            },
-          }
-    );
-  };
+            }
+      );
+    },
+    [onChangeAdvancedSearchQuickFilters]
+  );
 
   const handleQuickFiltersValueSelect = (field: ExploreQuickFilterField) => {
     setSelectedQuickFilters((pre) => {
@@ -409,7 +412,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     }
 
     return <ExploreTree onFieldValueSelect={handleQuickFiltersChange} />;
-  }, [searchQueryParam, tabItems]);
+  }, [searchQueryParam, tabItems, handleQuickFiltersChange]);
 
   useEffect(() => {
     const escapeKeyHandler = (e: KeyboardEvent) => {
