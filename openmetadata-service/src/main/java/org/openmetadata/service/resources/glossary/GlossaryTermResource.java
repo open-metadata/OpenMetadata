@@ -546,17 +546,33 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
     List<UUID> ids = parseIdsParam(idsParam);
     List<GlossaryTerm> result = new ArrayList<>(ids.size());
     for (UUID id : ids) {
       try {
-        result.add(getInternal(uriInfo, securityContext, id, fieldsParam, include));
+        result.add(
+            getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations));
       } catch (EntityNotFoundException | AuthorizationException ex) {
-        // Silently omit missing, deleted, or unauthorized terms so a single
-        // bad Id doesn't 404/403 the whole batch — matches the documented
-        // contract and the old Promise.allSettled semantics on the client.
+        // Expected per-id misses — silently omit so a single bad Id doesn't
+        // 404/403 the whole batch. Matches the documented contract and the
+        // old Promise.allSettled semantics on the client.
         LOG.debug("byIds: glossary term {} not found or not visible — {}", id, ex.getMessage());
+      } catch (RuntimeException ex) {
+        // Unexpected per-id failure (validation, downstream 5xx surfaced as
+        // WebApplicationException, etc.). Keep the batch best-effort —
+        // dropping one term beats failing the whole request — but log at
+        // WARN so a real bug isn't silently swallowed.
+        LOG.warn("byIds: unexpected error hydrating glossary term {}", id, ex);
       }
     }
     return result;
