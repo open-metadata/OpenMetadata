@@ -74,6 +74,7 @@ import {
   METRIC_NODE_TYPE,
   searchHitSourceToEntityRef,
 } from '../utils/graphBuilders';
+import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
 import { useOntologyGraphDerived } from './useOntologyGraphDerived';
 
 const MODEL_TERM_FIELDS = [
@@ -504,6 +505,7 @@ export function useOntologyExplorer({
             fullyQualifiedName: entityRef.fullyQualifiedName,
             description: entityRef.description,
             entityRef,
+            searchSource: hit._source as Record<string, unknown>,
           });
           newEdges.push({
             from: entityRef.id,
@@ -1294,6 +1296,7 @@ export function useOntologyExplorer({
 
   const handleRefresh = useCallback(() => {
     if (explorationMode === 'data') {
+      setExpandedTermIds(new Set());
       if (scope === 'global') {
         setDataModeRefreshKey((k) => k + 1);
       } else {
@@ -1307,11 +1310,14 @@ export function useOntologyExplorer({
       fetchAllGlossaryData();
     } else if (scope === 'glossary' && glossaryId) {
       fetchAllGlossaryData(glossaryId);
+    } else if (scope === 'term') {
+      fetchAllGlossaryData(termGlossaryId);
     }
   }, [
     explorationMode,
     scope,
     glossaryId,
+    termGlossaryId,
     fetchAllGlossaryData,
     loadAssetsForDataMode,
   ]);
@@ -1476,6 +1482,37 @@ export function useOntologyExplorer({
     setSelectedNode(null);
   }, []);
 
+  const handleNodeDataUpdate = useCallback(
+    (nodeId: string, updatedData: EntityData) => {
+      const flatData = updatedData as unknown as Record<string, unknown>;
+      const applyToNode = (node: OntologyNode): OntologyNode => {
+        if (node.id !== nodeId) {
+          return node;
+        }
+        const newLabel = updatedData.displayName || updatedData.name || node.label;
+
+        return {
+          ...node,
+          label: newLabel,
+          originalLabel: newLabel,
+          description: updatedData.description ?? node.description,
+          searchSource: { ...node.searchSource, ...flatData },
+        };
+      };
+
+      setAssetGraphData((prev) =>
+        prev ? { ...prev, nodes: prev.nodes.map(applyToNode) } : prev
+      );
+
+      setGraphData((prev) =>
+        prev ? { ...prev, nodes: prev.nodes.map(applyToNode) } : prev
+      );
+
+      setSelectedNode((prev) => (prev ? applyToNode(prev) : prev));
+    },
+    []
+  );
+
   return {
     graphRef,
     loading,
@@ -1520,5 +1557,6 @@ export function useOntologyExplorer({
     handleGraphNodeClick,
     handleGraphNodeDoubleClick,
     handleGraphPaneClick,
+    handleNodeDataUpdate,
   };
 }
