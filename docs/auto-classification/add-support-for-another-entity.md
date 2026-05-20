@@ -480,13 +480,9 @@ class YourEntityAdapter(EntityAdapter):
             "service_connection_config": deepcopy(config.source.serviceConnection.root.config),
             "ometa_client": metadata,
             "entity": entity,
-            # schema_entity, database_entity, and table_config are Database-specific;
-            # pass None for non-database entities.
-            "schema_entity": None,
-            "database_entity": None,
-            "table_config": None,
-            "default_sample_config": SampleConfig(),
-            "default_sample_data_count": source_config.sampleDataCount,
+            "config": SamplerConfig(
+                sample_data_count=source_config.sampleDataCount,
+            ),
         }
 ```
 
@@ -634,6 +630,8 @@ class YourServiceSampler(SamplerInterface):
         )
 ```
 
+**No `create()` override needed:** `SamplerInterface.create()` is now a pure constructor that simply forwards its arguments to `__init__()`. Non-database samplers inherit it as-is — no override required.
+
 #### 3.5 Update Sampler Processor — No Changes Required
 
 `ingestion/src/metadata/sampler/processor.py` does **not** need to change. It resolves the service type and dispatches via the adapter registry:
@@ -645,8 +643,10 @@ self.service_type = _adapter.service_type             # ServiceType.Messaging
 
 # _run — picks up the new entity class automatically:
 adapter = adapter_for(entity)                         # finds TopicAdapter
-sampler_kwargs = adapter.build_sampler_kwargs(...)
+sampler_kwargs = adapter.build_sampler_kwargs(...)    # returns pre-resolved sampling values
 ```
+
+Config resolution (partition_details, sample_query, include/exclude columns, sample_config, sample_data_count) now happens inside `build_sampler_kwargs()`, so `SamplerInterface.create()` receives already-resolved values ready to initialize the sampler.
 
 The only file to change is `entity_adapters.py` (step 3.2).
 
@@ -1226,6 +1226,7 @@ Before submitting your PR, verify:
 ### Ingestion (Python)
 - [ ] `ClassifiableEntityType` union in `pii/types.py` includes new entity
 - [ ] `EntityAdapter` subclass added in `sampler/entity_adapters.py` with correct `pipeline_config_class`, `service_type`, `patch_fields`, `get_columns`, `set_columns`, `build_sampler_kwargs`
+- [ ] `build_sampler_kwargs` returns pre-resolved sampling values (`sample_config`, `sample_data_count`, etc.) — do NOT include `schema_entity`, `database_entity`, or `table_config` for non-database entities; those are database-specific and no longer part of `SamplerInterface.create()`
 - [ ] New adapter registered in `_BY_ENTITY` and `_BY_PIPELINE` dicts in `entity_adapters.py`
 - [ ] Fetcher strategy created for service type
 - [ ] Sampler implementation created for connector(s)
@@ -1292,6 +1293,8 @@ Before submitting your PR, verify:
 9. **Service type not found at startup**: If you see `ValueError: Could not determine service type from config`, the pipeline config class is not registered in `_BY_PIPELINE` in `entity_adapters.py`. Register it there — the sampler processor does not need any code changes.
 
 10. **Sample data not dispatched in sink**: `_ingest_entity_sample_data` in `metadata_rest.py` uses `@singledispatchmethod`. If you forget to add a `@register` for your entity type, calling it raises `NotImplementedError` and sample data is silently skipped. The column tag path (`patch_column_tags`) is fully adapter-driven and needs no sink changes — but sample data storage does require its own `@register`.
+
+11. **Passing `schema_entity=None` explicitly in non-database adapters:** `SamplerInterface.create()` no longer accepts `schema_entity`, `database_entity`, or `table_config`. These were removed from the interface entirely. Non-database adapters should return already-resolved values (`sample_config`, `sample_data_count`, `partition_details`, etc.) directly in `build_sampler_kwargs()` — not the database hierarchy params.
 
 ---
 

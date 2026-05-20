@@ -340,3 +340,18 @@ CREATE TABLE IF NOT EXISTS search_index_retry_queue (
   KEY idx_search_index_retry_queue_status (status),
   KEY idx_search_index_retry_queue_claimed_at (claimedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ContextMemory entity - reusable Context Center memory.
+CREATE TABLE IF NOT EXISTS context_memory (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') STORED NOT NULL,
+  nameHash VARCHAR(256) NOT NULL COLLATE ascii_bin,
+  json JSON NOT NULL,
+  updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') STORED NOT NULL,
+  deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted') STORED,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY unique_context_memory_name (nameHash),
+  INDEX idx_context_memory_updated_at (updatedAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

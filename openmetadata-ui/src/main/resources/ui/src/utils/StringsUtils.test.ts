@@ -36,6 +36,7 @@ import {
   ordinalize,
   removeAttachmentsWithoutUrl,
   replaceCallback,
+  slugify,
 } from './StringsUtils';
 
 describe('StringsUtils', () => {
@@ -189,6 +190,103 @@ describe('StringsUtils', () => {
 
     it('should return "101st" for 101', () => {
       expect(ordinalize(101)).toBe('101st');
+    });
+  });
+
+  describe('slugify', () => {
+    it('should convert string to lowercase', () => {
+      expect(slugify('HELLO')).toBe('hello');
+      expect(slugify('Hello World')).toBe('hello-world');
+    });
+
+    it('should replace spaces with hyphens', () => {
+      expect(slugify('hello world')).toBe('hello-world');
+      expect(slugify('foo bar baz')).toBe('foo-bar-baz');
+    });
+
+    it('should replace multiple spaces with single hyphen', () => {
+      expect(slugify('hello    world')).toBe('hello-world');
+      expect(slugify('foo  bar   baz')).toBe('foo-bar-baz');
+    });
+
+    it('should replace special characters with hyphens', () => {
+      expect(slugify('hello@world')).toBe('hello-world');
+      expect(slugify('foo#bar$baz')).toBe('foo-bar-baz');
+      expect(slugify('test!@#$%^&*()value')).toBe('test-value');
+    });
+
+    it('should remove leading and trailing hyphens', () => {
+      expect(slugify('-hello-')).toBe('hello');
+      expect(slugify('--foo--')).toBe('foo');
+      expect(slugify('---bar---')).toBe('bar');
+      expect(slugify('@hello@')).toBe('hello');
+    });
+
+    it('should remove multiple consecutive hyphens', () => {
+      expect(slugify('hello---world')).toBe('hello-world');
+      expect(slugify('foo@@bar')).toBe('foo-bar');
+    });
+
+    it('should preserve alphanumeric characters', () => {
+      expect(slugify('hello123world')).toBe('hello123world');
+      expect(slugify('test1-2-3')).toBe('test1-2-3');
+      expect(slugify('abc123xyz')).toBe('abc123xyz');
+    });
+
+    it('should handle long strings without truncation', () => {
+      const longString =
+        'this-is-a-very-long-string-that-exceeds-the-maximum-length-limit';
+      const result = slugify(longString);
+
+      expect(result).toBe(
+        'this-is-a-very-long-string-that-exceeds-the-maximum-length-limit'
+      );
+      expect(result.length).toBeGreaterThan(48);
+    });
+
+    it('should handle empty string', () => {
+      expect(slugify('')).toBe('');
+    });
+
+    it('should handle string with only special characters', () => {
+      expect(slugify('@#$%^&*()')).toBe('');
+      expect(slugify('!!!')).toBe('');
+    });
+
+    it('should handle string with mixed case and special characters', () => {
+      expect(slugify('Hello@World#123')).toBe('hello-world-123');
+      expect(slugify('Foo$Bar%Baz!')).toBe('foo-bar-baz');
+    });
+
+    it('should handle underscores as special characters', () => {
+      expect(slugify('hello_world')).toBe('hello-world');
+      expect(slugify('foo_bar_baz')).toBe('foo-bar-baz');
+    });
+
+    it('should handle dots and commas', () => {
+      expect(slugify('hello.world')).toBe('hello-world');
+      expect(slugify('foo,bar,baz')).toBe('foo-bar-baz');
+    });
+
+    it('should handle URLs and paths', () => {
+      expect(slugify('https://example.com/path')).toBe(
+        'https-example-com-path'
+      );
+      expect(slugify('/api/v1/users')).toBe('api-v1-users');
+    });
+
+    it('should handle complex real-world examples', () => {
+      expect(slugify('User Profile Settings')).toBe('user-profile-settings');
+      expect(slugify('2024-01-15 Report')).toBe('2024-01-15-report');
+      expect(slugify('Q1 Financial Report (2024)')).toBe(
+        'q1-financial-report-2024'
+      );
+    });
+
+    it('should handle unicode characters by removing them', () => {
+      expect(slugify('hello\u00A0world')).toBe('hello-world');
+      expect(slugify('café')).toBe('caf');
+      expect(slugify('naïve')).toBe('na-ve');
     });
   });
 

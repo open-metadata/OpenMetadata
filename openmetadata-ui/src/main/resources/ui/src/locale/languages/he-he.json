@@ -2601,6 +2601,7 @@
     "customize-home-page-page-header-for-persona": "התאמה אישית של חוויית דף הבית עבור <0>{{persona}}</0> פרסונה",
     "customize-your-navigation-subheader": "נהל וארגן את תפריט הניווט הצדדי לנגישות טובה יותר.",
     "data-access-request-already-exists": "קיימת כבר בקשת גישה לנתונים ממתינה עבור נכס זה.",
+    "data-access-request-already-granted": "כבר יש לך גישה פעילה לנתונים עבור נכס זה.",
     "data-access-request-awaiting-grant-message": "בקשת הגישה שלך אושרה וממתינה להקצאה. הגישה תהיה זמינה בקרוב לאחר שתוענק.",
     "data-access-request-message": "בקשת גישה לנתונים עבור",
     "data-asset-has-been-action-type": "נכנס של {{actionType}} נתונים",
