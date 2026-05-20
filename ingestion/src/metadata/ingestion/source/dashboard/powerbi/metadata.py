@@ -306,6 +306,12 @@ class PowerbiSource(DashboardServiceSource):
                 for dashboard in self.get_dashboards_list() or []:
                     dashboard_details = self.get_dashboard_details(dashboard)
                     dashboard_name = self.get_dashboard_name(dashboard_details)
+                    if not dashboard_name:
+                        logger.debug(
+                            "Skipping PowerBI dashboard with empty name on workspace [%s]",
+                            workspace.name,  # pyright: ignore[reportOptionalMemberAccess]
+                        )
+                        continue
                     if filter_by_dashboard(
                         self.source_config.dashboardFilterPattern,
                         dashboard_name,
@@ -338,7 +344,7 @@ class PowerbiSource(DashboardServiceSource):
         """
         return self.context.get().workspace.reports + self.context.get().workspace.dashboards  # pyright: ignore[reportAttributeAccessIssue]
 
-    def get_dashboard_name(self, dashboard: Union[PowerBIDashboard, PowerBIReport]) -> str:  # noqa: UP007
+    def get_dashboard_name(self, dashboard: Union[PowerBIDashboard, PowerBIReport]) -> str | None:  # noqa: UP007  # pyright: ignore[reportIncompatibleMethodOverride]
         """
         Get Dashboard Name
         """
@@ -375,7 +381,9 @@ class PowerbiSource(DashboardServiceSource):
             reports_prefix = RDL_REPORTS_PREFIX
         try:
             pages: Optional[List[ReportPage]] = self.client.api_client.fetch_report_pages(workspace_id, dashboard_id)  # noqa: UP006, UP045
-            if len(pages) >= 1:
+            if (
+                pages and pages[0].name
+            ):  # if there are pages and page has name then only add page id in url:  # if there are pages and page has name then only add page id in url
                 # get first page out of multiple pages otherwise
                 # get page if of single page
                 page_id = pages[0].name
@@ -494,7 +502,6 @@ class PowerbiSource(DashboardServiceSource):
                         if filter_by_chart(self.source_config.chartFilterPattern, chart_display_name):
                             self.status.filter(chart_display_name, "Chart Pattern not Allowed")
                             continue
-                        self.state.add_dashboard_chart(dashboard_details.id, chart.id)
                         chart_request = CreateChartRequest(
                             name=EntityName(chart.id),
                             displayName=chart_display_name,
@@ -509,6 +516,7 @@ class PowerbiSource(DashboardServiceSource):
                             service=FullyQualifiedEntityName(self.context.get().dashboard_service),  # pyright: ignore[reportAttributeAccessIssue]
                         )
                         yield Either(right=chart_request)
+                        self.state.add_dashboard_chart(dashboard_details.id, chart.id)
                         self.register_record_chart(chart_request=chart_request)
                     except Exception as exc:
                         yield Either(
@@ -525,6 +533,12 @@ class PowerbiSource(DashboardServiceSource):
         """
         measures = []
         for measure in table.measures or []:
+            if not measure.name:
+                logger.debug(
+                    "Skipping PowerBI measure with empty name on table [%s]",
+                    table.name,
+                )
+                continue
             try:
                 measure_type = DataType.MEASURE_VISIBLE
                 if measure.isHidden:
@@ -551,6 +565,12 @@ class PowerbiSource(DashboardServiceSource):
         """
         columns = []
         for column in table.columns or []:
+            if not column.name:
+                logger.debug(
+                    "Skipping PowerBI column with empty name on table [%s]",
+                    table.name,
+                )
+                continue
             try:
                 parsed_column = {
                     "dataTypeDisplay": (column.dataType if column.dataType else DataType.UNKNOWN.value),
@@ -571,6 +591,12 @@ class PowerbiSource(DashboardServiceSource):
         """Build columns from dataset"""
         datasource_columns = []
         for table in dataset.tables or []:
+            if not table.name:
+                logger.debug(
+                    "Skipping PowerBI table with empty name on dataset [id=%s]",
+                    dataset.id,
+                )
+                continue
             try:
                 table_display_name = None
                 if self.service_connection.displayTableNameFromSource:
@@ -603,6 +629,9 @@ class PowerbiSource(DashboardServiceSource):
         """Build columns from dataflow export response entities"""
         datasource_columns = []
         for entity in dataflow_export.entities or []:
+            if not entity.name:
+                logger.debug("Skipping PowerBI dataflow column entity with empty name")
+                continue
             try:
                 parsed_table = {
                     "dataTypeDisplay": "PowerBI Table",
@@ -614,6 +643,12 @@ class PowerbiSource(DashboardServiceSource):
                 }
                 child_columns = []
                 for attribute in entity.attributes or []:
+                    if not attribute.name:
+                        logger.debug(
+                            "Skipping PowerBI dataflow attribute(column entity) with empty name on entity [%s]",
+                            entity.name,
+                        )
+                        continue
                     try:
                         parsed_column = {
                             "dataTypeDisplay": (attribute.dataType if attribute.dataType else DataType.UNKNOWN.value),
@@ -651,6 +686,12 @@ class PowerbiSource(DashboardServiceSource):
             return cached
         filtered: list = []
         for dataset in self._get_datamodels_list() or []:
+            if not dataset.name:
+                logger.debug(
+                    "Skipping PowerBI data model with empty name [id=%s]",
+                    dataset.id,
+                )
+                continue
             if filter_by_datamodel(self.source_config.dataModelFilterPattern, dataset.name):
                 self.status.filter(dataset.name, "Data model filtered out.")
                 continue
@@ -662,55 +703,68 @@ class PowerbiSource(DashboardServiceSource):
         """
         Get All the Powerbi Datasets
         """
+        if not self.source_config.includeDataModels:
+            return
         try:
-            if self.source_config.includeDataModels:
-                for dataset in self._filtered_datamodels():
-                    if isinstance(dataset, Dataset):
-                        data_model_type = DataModelType.PowerBIDataModel.value
-                        datamodel_columns = self._get_column_info(dataset)
-                        source_url = self._get_dataset_url(
-                            workspace_id=self.context.get().workspace.id,  # pyright: ignore[reportAttributeAccessIssue]
-                            dataset_id=dataset.id,
-                        )
-                    elif isinstance(dataset, Dataflow):
-                        data_model_type = DataModelType.PowerBIDataFlow.value
-                        datamodel_columns = []
-                        source_url = self._get_dataflow_url(
-                            workspace_id=self.context.get().workspace.id,  # pyright: ignore[reportAttributeAccessIssue]
-                            dataflow_id=dataset.id,
-                        )
-                        # dataflow export api for detailed metadata
-                        # api: https://api.powerbi.com/v1.0/myorg/admin/dataflows/DATAFLOW_ID/export
-                        # doc: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin
-                        dataflow_export = self.client.api_client.fetch_dataflow_export(dataflow_id=dataset.id)
-                        if dataflow_export:
-                            self.state.cache_dataflow_export(dataset.id, dataflow_export)
-                            datamodel_columns = self._get_dataflow_column_info(dataflow_export)
-                    else:
-                        logger.warning(f"Unknown dataset type: {type(dataset)}, name: {dataset.name}")
-                        continue
-                    data_model_request = CreateDashboardDataModelRequest(
-                        name=EntityName(dataset.id),
-                        displayName=dataset.name,
-                        description=(Markdown(dataset.description) if dataset.description else None),
-                        service=FullyQualifiedEntityName(self.context.get().dashboard_service),  # pyright: ignore[reportAttributeAccessIssue]
-                        dataModelType=data_model_type,
-                        serviceType=DashboardServiceType.PowerBI.value,
-                        columns=datamodel_columns,
-                        project=self.get_project_name(dashboard_details=dataset),
-                        owners=self.get_owner_ref(dashboard_details=dataset),
-                        sourceUrl=SourceUrl(source_url),
-                    )
-                    yield Either(right=data_model_request)
-                    self.register_record_datamodel(datamodel_request=data_model_request)
+            datasets = self._filtered_datamodels()
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
-                    name=dataset.name,
-                    error=f"Error yielding Data Model [{dataset.name}]: {exc}",
+                    name="datamodels",
+                    error=f"Error fetching PowerBI data models: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )
+            return
+        for dataset in datasets:
+            try:
+                if isinstance(dataset, Dataset):
+                    data_model_type = DataModelType.PowerBIDataModel.value
+                    datamodel_columns = self._get_column_info(dataset)
+                    source_url = self._get_dataset_url(
+                        workspace_id=self.context.get().workspace.id,  # pyright: ignore[reportAttributeAccessIssue]
+                        dataset_id=dataset.id,
+                    )
+                elif isinstance(dataset, Dataflow):
+                    data_model_type = DataModelType.PowerBIDataFlow.value
+                    datamodel_columns = []
+                    source_url = self._get_dataflow_url(
+                        workspace_id=self.context.get().workspace.id,  # pyright: ignore[reportAttributeAccessIssue]
+                        dataflow_id=dataset.id,
+                    )
+                    # dataflow export api for detailed metadata
+                    # api: https://api.powerbi.com/v1.0/myorg/admin/dataflows/DATAFLOW_ID/export
+                    # doc: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin
+                    dataflow_export = self.client.api_client.fetch_dataflow_export(dataflow_id=dataset.id)
+                    if dataflow_export:
+                        self.state.cache_dataflow_export(dataset.id, dataflow_export)
+                        datamodel_columns = self._get_dataflow_column_info(dataflow_export)
+                else:
+                    logger.warning(f"Unknown dataset type: {type(dataset)}, name: {dataset.name}")
+                    continue
+                data_model_request = CreateDashboardDataModelRequest(  # pyright: ignore[reportCallIssue]
+                    name=EntityName(dataset.id),
+                    displayName=dataset.name,
+                    description=(Markdown(dataset.description) if dataset.description else None),
+                    service=FullyQualifiedEntityName(self.context.get().dashboard_service),  # pyright: ignore[reportAttributeAccessIssue]
+                    dataModelType=data_model_type,
+                    serviceType=DashboardServiceType.PowerBI.value,
+                    columns=datamodel_columns,
+                    project=self.get_project_name(dashboard_details=dataset),
+                    owners=self.get_owner_ref(dashboard_details=dataset),
+                    sourceUrl=SourceUrl(source_url),
+                )
+                yield Either(right=data_model_request)  # pyright: ignore[reportCallIssue]
+                self.register_record_datamodel(datamodel_request=data_model_request)
+            except Exception as exc:
+                dataset_name = dataset.name or dataset.id or ""
+                yield Either(  # pyright: ignore[reportCallIssue]
+                    left=StackTraceError(
+                        name=dataset_name,
+                        error=f"Error yielding Data Model [{dataset_name}]: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
 
     def create_report_dashboard_lineage(
         self,
@@ -743,10 +797,7 @@ class PowerbiSource(DashboardServiceSource):
                 )
                 return
             tile_report_ids = [
-                report.id
-                for chart in dashboard_details.tiles or []
-                for report in [self.state.find_report(chart.reportId)]
-                if report is not None
+                chart.reportId for chart in dashboard_details.tiles or [] if self.state.is_known_report(chart.reportId)
             ]
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
@@ -1399,7 +1450,17 @@ class PowerbiSource(DashboardServiceSource):
             table_info_list = self._parse_table_info_from_source_exp(table, datamodel_entity)
             if not table_info_list:
                 # if tables are not found from source expression
-                # try establishing lineage using powerbi's table name
+                # try establishing lineage using powerbi's table name.
+                # PowerBiTable.name is now Optional, so skip nameless tables here
+                # to match _get_column_info and avoid build_es_fqn_search_string
+                # raising on a None table_name (which surfaces as a noisy lineage
+                # error rather than a quiet skip).
+                if not table.name:
+                    logger.debug(
+                        "Skipping PowerBI table with empty name for lineage to datamodel [%s]",
+                        datamodel_entity.name,
+                    )
+                    return
                 table_info_list = [{"table": table.name}]
             if isinstance(table_info_list, List):  # noqa: UP006
                 for table_info in table_info_list:
@@ -1435,7 +1496,12 @@ class PowerbiSource(DashboardServiceSource):
                         fqn_search_string=fqn_search_string,
                     )
                     if table_entity and datamodel_entity:
-                        columns_list = [column.name for column in table.columns]
+                        logger.debug(
+                            "Creating lineage between db table=%s and datamodel=%s",
+                            table_entity.name.root,  # pyright: ignore[reportAttributeAccessIssue]
+                            datamodel_entity.name.root,
+                        )
+                        columns_list = [column.name for column in (table.columns or []) if column.name]
                         column_lineage = self._get_column_lineage(table_entity, datamodel_entity, columns_list)
                         yield self._get_add_lineage_request(
                             to_entity=datamodel_entity,
@@ -1787,8 +1853,10 @@ class PowerbiSource(DashboardServiceSource):
         server: Optional[str],  # noqa: UP045
     ) -> Optional[List[dict]]:  # noqa: UP006, UP045
         """
-        Extract table references from a SQL query found in a dataflow M expression.
-        Uses LineageParser to parse the SQL and extract source tables.
+        Extract table references from a T-SQL query found in a dataflow M expression
+        sourced from the Power Query Sql.Database / Value.NativeQuery connector
+        (SQL Server / Azure SQL). Uses LineageParser with the TSQL dialect so
+        bracket-quoted identifiers like [Column Name] parse correctly.
         """
         try:
             # Clean PowerBI special characters
@@ -1803,7 +1871,7 @@ class PowerbiSource(DashboardServiceSource):
             try:
                 parser = LineageParser(
                     cleaned_sql,
-                    dialect=Dialect.ANSI,
+                    dialect=Dialect.TSQL,
                     timeout_seconds=30,
                     parser_type=self.get_query_parser_type(),
                 )
@@ -1812,7 +1880,7 @@ class PowerbiSource(DashboardServiceSource):
                 return None
 
             if not parser.source_tables:
-                logger.debug("No source tables found in dataflow SQL query")
+                logger.debug("No source tables found in Power Query M SQL")
                 return None
 
             lineage_tables = []
@@ -1877,10 +1945,20 @@ class PowerbiSource(DashboardServiceSource):
                 logger.debug(f"No table references found in dataflow [{datamodel.name}] M document")
                 return
 
-            # Build a map of entity_name -> entity attributes for column lineage
+            # Build a map of entity_name -> entity attributes for column lineage.
+            # Skip nameless entities/attributes since both are now Optional and a
+            # None entity name can never match a parsed M-document reference,
+            # while None attribute names break the List[str] contract of
+            # _get_dataflow_column_lineage and produce noisy failed lookups.
             entity_attributes_map = {}
             for entity in dataflow_export.entities or []:
-                entity_attributes_map[entity.name] = [attr.name for attr in entity.attributes or []]
+                if not entity.name:
+                    logger.debug(
+                        "Skipping nameless dataflow entity while building attributes map for dataflow [%s]",
+                        datamodel.name,
+                    )
+                    continue
+                entity_attributes_map[entity.name] = [attr.name for attr in entity.attributes or [] if attr.name]
 
             for parsed_entity in parsed_entities:
                 entity_name = parsed_entity["entity_name"]

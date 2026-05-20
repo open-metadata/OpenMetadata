@@ -15,7 +15,7 @@ import { DataNode } from 'antd/es/tree';
 import { AntTreeNodeProps, DirectoryTreeProps, TreeProps } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
 import { ReactComponent as KnowledgeCenterIcon } from '../../../assets/svg/ic-knowledge-page.svg';
-import { CREATE_PAGE_HASH, ROUTES } from '../../../constants/constants';
+import { CREATE_PAGE_HASH } from '../../../constants/constants';
 import {
   CreateKnowledgePage,
   KnowledgePage,
@@ -47,7 +47,6 @@ import {
 } from '../../../rest/knowledgeCenterAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
-import { PlusOutlined } from '@ant-design/icons';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { compare } from 'fast-json-patch';
@@ -75,6 +74,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
@@ -84,7 +84,6 @@ import {
   findPageAndParentInTreeData,
   findPageInTreeData,
   getExpandedNodeKeys,
-  getKnowledgePagePath,
   getPageAllChildren,
   getUpdatePageHierarchy,
   getUpdatePageHierarchyForDelete,
@@ -103,6 +102,7 @@ interface KnowledgePagesHierarchyProps {
   isPageHeaderAvailable: boolean;
   activeKey?: DirectoryTreeProps['activeKey'];
   activePage?: KnowledgePage;
+  homeRoute?: string;
   onPageDelete?: (id: string | string[]) => void;
   onLoading?: (isLoading: boolean) => void;
 }
@@ -115,6 +115,7 @@ const KnowledgePagesHierarchy = forwardRef<
     {
       activeKey,
       activePage,
+      homeRoute,
       onPageDelete,
       onLoading,
       permissions,
@@ -227,7 +228,7 @@ const KnowledgePagesHierarchy = forwardRef<
           });
         }
 
-        if (isCreateHash) {
+        if (isCreateHash || forceRefresh) {
           setKnowledgePageHierarchy(data);
         } else {
           // Check if we have an activeFqn that represents a nested child node
@@ -351,12 +352,12 @@ const KnowledgePagesHierarchy = forwardRef<
             )
           );
 
-        // if the deleted page is the active page or parent of active page, navigate to knowledge center
+        // if the deleted page is the active page or parent of active page, navigate home
         if (
           activeKey === deletedPageData.fullyQualifiedName ||
           isActivePageParent
         ) {
-          navigate(ROUTES.KNOWLEDGE_CENTER);
+          navigate(homeRoute ?? contextCenterClassBase.getArticlesListPath());
         }
       },
       [knowledgePageHierarchy, onPageDelete, activeKey, activePage]
@@ -432,7 +433,9 @@ const KnowledgePagesHierarchy = forwardRef<
 
           // push to the newly created page
           navigate({
-            pathname: getKnowledgePagePath(response.fullyQualifiedName),
+            pathname: contextCenterClassBase.getArticlePath(
+              response.fullyQualifiedName
+            ),
           });
         } catch (error) {
           showErrorToast(error as AxiosError);
@@ -453,7 +456,7 @@ const KnowledgePagesHierarchy = forwardRef<
             data-testid={`page-node-${node.title}`}>
             <Link
               className="anchor-no-underline"
-              to={getKnowledgePagePath(nodeKey)}>
+              to={contextCenterClassBase.getArticlePath(nodeKey)}>
               <div
                 className={classNames(
                   'knowledge-hierarchy-page-title-wrapper',
@@ -486,15 +489,6 @@ const KnowledgePagesHierarchy = forwardRef<
                   style={{ verticalAlign: 'middle' }}
                   width={12}
                 />
-              </Button>
-              <Button
-                className="knowledge-hierarchy-action-btn-item"
-                data-testid={`${node.title}-add-page-btn`}
-                disabled={!permissions.Create}
-                title="Quickly add a page inside"
-                type="text"
-                onClick={() => handleAddPage(node)}>
-                <PlusOutlined className="text-grey-muted" />
               </Button>
             </div>
           </div>

@@ -1304,3 +1304,22 @@ export const isDarApprovalActive = (
 
   return parsed.isValid && now <= approvedAt + parsed.toMillis();
 };
+
+export const getDarButtonTooltip = (
+  isDarDisabled: boolean,
+  isDarGranted: boolean,
+  isDarAwaitingGrant: boolean,
+  t: (key: string) => string
+): string | undefined => {
+  if (!isDarDisabled) {
+    return undefined;
+  }
+  if (isDarGranted) {
+    return t('message.data-access-request-already-granted');
+  }
+  if (isDarAwaitingGrant) {
+    return t('message.data-access-request-awaiting-grant-message');
+  }
+
+  return t('message.data-access-request-already-exists');
+};

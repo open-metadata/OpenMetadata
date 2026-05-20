@@ -120,7 +120,7 @@ describe('Knowledge page version', () => {
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith(
-        '/knowledge-center/Article_oRKYYTCu'
+        '/context-center/articles/Article_oRKYYTCu'
       );
     });
   });

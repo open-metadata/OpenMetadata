@@ -34,7 +34,16 @@ export interface KnowledgePageHierarchyParams {
   limit: number;
 }
 
-export const getListKnowledgePages = async (params?: ListParams) => {
+export type KnowledgePageListParams = ListParams & {
+  pageType?: PageType;
+  entityType?: string;
+  entityId?: string;
+  tagFQN?: string;
+};
+
+export const getListKnowledgePages = async (
+  params?: KnowledgePageListParams
+) => {
   const response = await APIClient.get<PagingResponse<KnowledgePage[]>>(
     '/knowledgeCenter',
     { params }

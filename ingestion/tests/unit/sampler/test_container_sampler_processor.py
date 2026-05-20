@@ -175,24 +175,35 @@ def test_sampler_processor_handles_table(mock_import_sampler, table_entity, work
     metadata_mock.get_profiler_config_settings.return_value = None
 
     with patch("metadata.utils.profiler_utils.get_context_entities") as mock_get_context:
-        mock_get_context.return_value = (Mock(), Mock(), None)
+        mock_database_entity = MagicMock()
+        mock_get_context.return_value = (None, mock_database_entity, None)
 
         with patch("metadata.sampler.entity_adapters.build_database_service_conn_config") as mock_build_conn:
             mock_build_conn.return_value = {}
 
-            processor = SamplerProcessor(
-                config=workflow_config,
-                metadata=metadata_mock,
-            )
+            with patch("metadata.sampler.entity_adapters.get_profile_sample_config") as mock_sample_cfg:
+                from metadata.sampler.models import SampleConfig
 
-            profiler_source = MagicMock()
-            record = ProfilerSourceAndEntity.model_construct(profiler_source=profiler_source, entity=table_entity)
+                mock_sample_cfg.return_value = SampleConfig()
 
-            result = processor._run(record)
+                with patch("metadata.sampler.entity_adapters.get_sample_data_count_config") as mock_count:
+                    mock_count.return_value = 50
 
-            assert result.right is not None
-            assert result.left is None
-            assert result.right.entity == table_entity
+                    processor = SamplerProcessor(
+                        config=workflow_config,
+                        metadata=metadata_mock,
+                    )
+
+                    profiler_source = MagicMock()
+                    record = ProfilerSourceAndEntity.model_construct(
+                        profiler_source=profiler_source, entity=table_entity
+                    )
+
+                    result = processor._run(record)
+
+                    assert result.right is not None
+                    assert result.left is None
+                    assert result.right.entity == table_entity
 
 
 def test_sampler_processor_container_no_context_entities_needed(container_entity, workflow_config):
@@ -219,8 +230,8 @@ def test_sampler_processor_container_no_context_entities_needed(container_entity
         processor._run(record)
 
         call_args = mock_sampler_class.create.call_args
-        assert call_args.kwargs["schema_entity"] is None
-        assert call_args.kwargs["database_entity"] is None
+        assert "schema_entity" not in call_args.kwargs
+        assert "database_entity" not in call_args.kwargs
         assert call_args.kwargs["entity"] == container_entity
 
 

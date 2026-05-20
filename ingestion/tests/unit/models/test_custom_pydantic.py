@@ -558,8 +558,11 @@ class ExtendedCustomPydanticValidationTest(TestCase):
             (" test :: name ", " test __reserved__colon__ name "),
             # Multiple spaces
             ("test  ::  name", "test  __reserved__colon__  name"),
-            # Tabs and newlines (should be preserved)
-            ("test\t::\nname", "test\t__reserved__colon__\nname"),
+            # Tabs and newlines (now encoded as reserved keywords)
+            (
+                "test\t::\nname",
+                "test__reserved__tab____reserved__colon____reserved__newline__name",
+            ),
         ]
 
         for input_name, expected in whitespace_cases:

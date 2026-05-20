@@ -32,6 +32,7 @@ import {
 } from '../interface/knowledge-center.interface';
 
 import { Space } from 'antd';
+import { RecentlyViewedData } from 'Models';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
 import { ReactComponent as IconArticle } from '../assets/svg/ic-articles.svg';
@@ -42,8 +43,9 @@ import {
 } from '../constants/CustomizeWidgets.constants';
 import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../hooks/useApplicationStore';
-import { RecentlyViewedData } from '../Models';
 import { arraySorterByKey } from './CommonUtils';
+import contextCenterClassBase from './ContextCenterClassBase';
+import { getEntityName } from './EntityUtils';
 import Fqn from './Fqn';
 import i18n, { t } from './i18next/LocalUtil';
 
@@ -121,10 +123,12 @@ export const getKnowledgePagePath = (
   tab?: string,
   subTab = 'all'
 ) => {
-  let path = tab ? ROUTES.KNOWLEDGE_PAGE_WITH_TAB : ROUTES.KNOWLEDGE_PAGE;
+  let path = tab
+    ? ROUTES.CONTEXT_CENTER_ARTICLE_DETAIL_WITH_TAB
+    : ROUTES.CONTEXT_CENTER_ARTICLE_DETAIL;
 
   if (tab === EntityTabs.ACTIVITY_FEED) {
-    path = ROUTES.KNOWLEDGE_PAGE_WITH_SUB_TAB;
+    path = ROUTES.CONTEXT_CENTER_ARTICLE_DETAIL_WITH_SUB_TAB;
     path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
   }
 
@@ -133,6 +137,20 @@ export const getKnowledgePagePath = (
   }
 
   path = path.replace(PLACEHOLDER_ROUTE_FQN, pageName);
+
+  return path;
+};
+
+export const getContextCenterArticlePath = getKnowledgePagePath;
+
+export const getContextCenterArticleVersionsPath = (
+  knowledgePageName: string,
+  version: string
+) => {
+  let path = ROUTES.CONTEXT_CENTER_ARTICLE_VERSION;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, knowledgePageName)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;
 };
@@ -155,20 +173,22 @@ export const convertToTreeData = (
 ) => {
   const treeData: DataNode[] = pages.map((page) => {
     const isActive = activePage?.fullyQualifiedName === page.fullyQualifiedName;
-    const displayName = isActive ? activePage?.displayName : page.displayName;
+    const resolvedPage = isActive ? activePage : page;
+    const title =
+      getEntityName(resolvedPage as KnowledgePage) || i18n.t('label.untitled');
 
     const hasChildren = !isEmpty(page?.children);
     if (!hasChildren) {
       return {
         key: page.fullyQualifiedName,
-        title: displayName || i18n.t('label.untitled'),
+        title,
         // mark the node as leaf if it has no children
         isLeaf: page.childrenCount === 0,
       } as DataNode;
     } else {
       return {
         key: page.fullyQualifiedName,
-        title: displayName || i18n.t('label.untitled'),
+        title,
         children: convertToTreeData(activePage, page.children),
       } as DataNode;
     }
@@ -406,7 +426,7 @@ export const getLink = (knowledgePage: KnowledgePage, testIdPrefix: string) => {
   const isQuickLink = knowledgePage.pageType === PageType.QUICK_LINK;
   const path = isQuickLink
     ? (knowledgePage.page as QuickLink).url
-    : getKnowledgePagePath(knowledgePage.fullyQualifiedName);
+    : contextCenterClassBase.getArticlePath(knowledgePage.fullyQualifiedName);
 
   return (
     <Link
