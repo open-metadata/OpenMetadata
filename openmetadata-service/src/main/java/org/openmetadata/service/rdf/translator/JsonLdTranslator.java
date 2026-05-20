@@ -51,7 +51,9 @@ public class JsonLdTranslator {
       "governance",
       "quality",
       "operations",
-      "lineage"
+      "lineage",
+      "ai",
+      "automation"
     };
     for (String contextName : contexts) {
       try {
@@ -112,6 +114,7 @@ public class JsonLdTranslator {
       JsonNode entityJson = objectMapper.valueToTree(entity);
       Map<String, Object> entityMap = objectMapper.convertValue(entityJson, Map.class);
       addJsonLdPropertiesToReferences(entityMap);
+      assignColumnIds(entityMap);
 
       String entityType = entity.getEntityReference().getType();
       String id = baseUri + "entity/" + entityType + "/" + entity.getId();
@@ -168,6 +171,41 @@ public class JsonLdTranslator {
           if (item instanceof Map) {
             addJsonLdPropertiesToReferences((Map<String, Object>) item);
           }
+        }
+      }
+    }
+  }
+
+  /**
+   * Assign FQN-derived URIs to every Column nested in a Table (or another column) so each Column
+   * is a first-class named resource. The same URI is minted by column-level lineage so SPARQL can
+   * traverse from a lineage edge to the column it references.
+   */
+  private void assignColumnIds(Map<String, Object> entityMap) {
+    Object columnsValue = entityMap.get("columns");
+    if (columnsValue instanceof java.util.List) {
+      for (Object column : (java.util.List<?>) columnsValue) {
+        if (column instanceof Map) {
+          assignColumnId((Map<String, Object>) column);
+        }
+      }
+    }
+  }
+
+  private void assignColumnId(Map<String, Object> column) {
+    Object fqn = column.get("fullyQualifiedName");
+    if (fqn instanceof String && !((String) fqn).isEmpty()) {
+      String columnUri = RdfUtils.columnUri(baseUri, (String) fqn);
+      if (columnUri != null) {
+        column.put("@id", columnUri);
+        column.put("@type", "om:Column");
+      }
+    }
+    Object children = column.get("children");
+    if (children instanceof java.util.List) {
+      for (Object child : (java.util.List<?>) children) {
+        if (child instanceof Map) {
+          assignColumnId((Map<String, Object>) child);
         }
       }
     }
@@ -320,10 +358,6 @@ public class JsonLdTranslator {
           "testcaseresult",
           "testcaseresolutionstatus" -> contextCache.get("quality");
       case "ingestionpipeline",
-          "workflow",
-          "workflowdefinition",
-          "workflowinstance",
-          "workflowinstancestate",
           "eventsubscription",
           "kpi",
           "datainsightchart",
@@ -332,6 +366,17 @@ public class JsonLdTranslator {
           "appmarketplacedefinition",
           "document",
           "page" -> contextCache.get("operations");
+      case "llmmodel",
+          "aiapplication",
+          "mcpserver",
+          "mcpexecution",
+          "agentexecution",
+          "prompttemplate" -> contextCache.get("ai");
+      case "workflow",
+          "workflowdefinition",
+          "workflowinstance",
+          "workflowinstancestate",
+          "automation" -> contextCache.get("automation");
       default -> contextCache.get("base");
     };
   }

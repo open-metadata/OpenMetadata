@@ -149,6 +149,7 @@ export const ROUTES = {
   EXPLORE: '/explore',
   EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,
   ONTOLOGY_EXPLORER: '/governance/ontology',
+  SPARQL_PLAYGROUND: '/governance/sparql',
   WORKFLOWS: '/workflows',
   WORKFLOWS_WITH_FQN_TAB: `/workflows/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   SQL_BUILDER: '/sql-builder',

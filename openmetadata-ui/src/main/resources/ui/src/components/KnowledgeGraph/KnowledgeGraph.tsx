@@ -791,29 +791,27 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     </>
   );
 
-  const knowledgeGraph = loading ? (
+  const metadataModeBody = loading ? (
     <div className="knowledge-graph-loading">
       <div className="tw:flex tw:items-center tw:justify-center">
         <Loader />
       </div>
     </div>
+  ) : hasNoData ? (
+    <Card className="knowledge-graph-empty">
+      <ErrorPlaceHolder
+        className="tw:text-disabled"
+        icon={<LineageIcon height={SIZE.MEDIUM} width={SIZE.MEDIUM} />}
+        size={SIZE.X_SMALL}
+        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        {t('message.no-knowledge-graph-data')}
+      </ErrorPlaceHolder>
+    </Card>
   ) : (
     graphCanvas
   );
 
-  if (hasNoData && !loading) {
-    return (
-      <Card className="knowledge-graph-empty">
-        <ErrorPlaceHolder
-          className="tw:text-disabled"
-          icon={<LineageIcon height={SIZE.MEDIUM} width={SIZE.MEDIUM} />}
-          size={SIZE.X_SMALL}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          {t('message.no-knowledge-graph-data')}
-        </ErrorPlaceHolder>
-      </Card>
-    );
-  }
+  const knowledgeGraph = metadataModeBody;
 
   if (!entity) {
     return (
@@ -851,9 +849,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
               data-testid="knowledge-graph-controls"
               justify="between">
               <Box align="center" gap={4}>
-                <Typography className="tw:text-secondary" weight="medium">
-                  {t('label.view-entity', { entity: t('label.mode') }) + ':'}
-                </Typography>
                 <Tabs
                   className="tw:w-auto"
                   data-testid="layout-tabs"

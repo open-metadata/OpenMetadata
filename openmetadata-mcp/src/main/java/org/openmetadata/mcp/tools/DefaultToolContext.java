@@ -83,6 +83,21 @@ public class DefaultToolContext {
         case "create_metric":
           result = new CreateMetricTool().execute(authorizer, limits, securityContext, params);
           break;
+        case "sparql_query":
+          result = new SparqlQueryTool().execute(authorizer, securityContext, params);
+          break;
+        case "entity_neighborhood":
+          result = new EntityNeighborhoodTool().execute(authorizer, securityContext, params);
+          break;
+        case "find_by_tag":
+          result = new FindByTagTool().execute(authorizer, securityContext, params);
+          break;
+        case "shacl_validate":
+          result = new ShaclValidateTool().execute(authorizer, securityContext, params);
+          break;
+        case "ontology_describe":
+          result = new OntologyDescribeTool().execute(authorizer, securityContext, params);
+          break;
         default:
           return McpSchema.CallToolResult.builder()
               .content(
