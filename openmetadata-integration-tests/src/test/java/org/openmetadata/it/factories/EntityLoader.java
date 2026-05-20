@@ -622,7 +622,12 @@ public final class EntityLoader {
       final TestNamespace ns,
       final ExecutorService executor,
       final EntityLoadSummary.Builder summary) {
-    final Table table = ensureQueryTable(ns);
+    // CreateQuery requires the parent database service FQN (matches perf-test.sh:2145-2151
+    // and QueryResourceIT.java:72-78). Pulling it from the schema's service ref avoids
+    // creating a second service just for queries.
+    final DatabaseSchema schema = ensureTablesSchema(ns);
+    final Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    final String serviceFqn = schema.getService().getFullyQualifiedName();
     final int count = spec.countOf(EntityKind.QUERY);
     final String namePrefix = ns.prefix("query") + "_";
 
@@ -636,7 +641,8 @@ public final class EntityLoader {
                 .create(
                     new CreateQuery()
                         .withName(namePrefix + index)
-                        .withQuery("SELECT " + index + " AS n")
+                        .withQuery("SELECT " + index + " AS n_" + System.nanoTime())
+                        .withService(serviceFqn)
                         .withQueryUsedIn(List.of(table.getEntityReference()))));
     summary.recordCreated(EntityKind.QUERY, count);
   }
