@@ -1620,6 +1620,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public void postUpdate(TestCase original, TestCase updated) {
+    hydrateTestSuiteFieldsForSearch(updated);
     super.postUpdate(original, updated);
     if (EntityStatus.IN_REVIEW.equals(original.getEntityStatus())) {
       if (EntityStatus.APPROVED.equals(updated.getEntityStatus())) {
@@ -1641,6 +1642,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       } catch (EntityNotFoundException ignored) {
       } // No ApprovalTask is present, and thus we don't need to worry about this.
     }
+  }
+
+  private void hydrateTestSuiteFieldsForSearch(TestCase updated) {
+    setFieldsInternal(updated, getFields(TEST_SUITE_FIELD + "," + Entity.FIELD_TEST_SUITES));
   }
 
   private void closeApprovalTask(TestCase entity, String comment) {
