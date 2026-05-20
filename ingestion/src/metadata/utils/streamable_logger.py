@@ -196,7 +196,13 @@ class StreamableLogHandler(logging.Handler):
         self.flush_timed_out += 1
 
     def shutdown(self, timeout: float | None = None) -> None:
-        """Synchronous flush + close. Idempotent."""
+        """Synchronous flush + close. Idempotent.
+
+        `timeout` bounds the flush + worker-join phases. The post-stop metrics
+        POST and `/close` POST each carry their own HTTP timeouts on top, so
+        the total wall-time can be up to roughly `timeout + 2 * HTTP read`
+        (~`timeout + 32s` with defaults) in pathological cases.
+        """
         if self._closed:
             return
         self._closed = True
@@ -217,21 +223,22 @@ class StreamableLogHandler(logging.Handler):
         flush_budget = deadline_total / 2
         self.flush(timeout=flush_budget)
 
+        # Default: worker still owns self._client. If we force-stop the
+        # worker below, we use a LOCAL fresh REST for the post-stop POSTs so
+        # the dying worker's finally (which closes self._client) can't close
+        # the session under the main thread.
+        post_close_client = self._client
         self._stop_event.set()
         if self._worker is not None:
             self._worker.join(timeout=deadline_total - flush_budget)
             if self._worker.is_alive():
                 self.shutdown_timed_out += 1
-                # Force-stop the worker by closing its session so any in-flight
-                # POST raises; the worker then exits via _stop_event. Open a
-                # fresh REST so the metrics + /close POSTs below have a session
-                # that the dying worker can't race.
                 with contextlib.suppress(Exception):
                     if self._client is not None:
                         self._client.close()
                 self._worker.join(timeout=self.FORCE_STOP_JOIN_SEC)
                 with contextlib.suppress(Exception):
-                    self._client = REST(self.metadata.client.config)
+                    post_close_client = REST(self.metadata.client.config)
 
         metrics_line = self._format_shutdown_metrics()
         with contextlib.suppress(Exception):
@@ -242,7 +249,7 @@ class StreamableLogHandler(logging.Handler):
                     run_id=self.run_id,
                     log_content=metrics_line + "\n",
                     timeout=self.HTTP_TIMEOUT,
-                    client=self._client,
+                    client=post_close_client,
                 )
             finally:
                 _shipping_state.shipping = False
@@ -254,7 +261,7 @@ class StreamableLogHandler(logging.Handler):
                     pipeline_fqn=self.pipeline_fqn,
                     run_id=self.run_id,
                     timeout=(2.0, self.CLOSE_TIMEOUT_SEC),
-                    client=self._client,
+                    client=post_close_client,
                 )
             finally:
                 _shipping_state.shipping = False
