@@ -469,19 +469,123 @@ describe('getFieldByArgumentType tests', () => {
     expect(selectDiv).toBeInTheDocument();
   });
 
-  it('should return correct fields for argumentType entityIdList', () => {
+  it('should return correct fields for argumentType entityIdList', async () => {
+    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
+      '../../components/common/AsyncSelect/AsyncSelect'
+    );
+    MockedAsyncSelect.mockClear();
+
+    const field = getFieldByArgumentType(0, 'entityIdList', 0, 'table');
+
+    render(field);
+
+    expect(MockedAsyncSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        'data-testid': 'entity-id-select',
+        mode: 'multiple',
+        optionLabelProp: 'uuid',
+      }),
+      expect.anything()
+    );
+
+    const selectDiv = screen.getByText('AsyncSelect');
+    fireEvent.click(selectDiv);
+
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: '',
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: undefined,
+      searchIndex: SearchIndex.TABLE,
+    });
+  });
+
+  it('entityIdList: UUID-format input adds a term filter on the id field', async () => {
+    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
+      '../../components/common/AsyncSelect/AsyncSelect'
+    );
+    MockedAsyncSelect.mockClear();
+    (searchQuery as jest.Mock).mockClear();
+
+    const field = getFieldByArgumentType(0, 'entityIdList', 0, 'table');
+
+    render(field);
+
+    const apiFn = MockedAsyncSelect.mock.calls[0][0].api as (
+      s: string
+    ) => Promise<unknown>;
+    const uuid = '550e8400-e29b-41d4-a716-446655440000';
+    await apiFn(uuid);
+
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: uuid,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: getTermQuery({ id: uuid }),
+      searchIndex: SearchIndex.TABLE,
+    });
+  });
+
+  it('fqnList: strict-pick (mode="multiple", no free-text tags)', () => {
+    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
+      '../../components/common/AsyncSelect/AsyncSelect'
+    );
+    MockedAsyncSelect.mockClear();
+
+    const field = getFieldByArgumentType(0, 'fqnList', 0, 'table');
+
+    render(field);
+
+    expect(MockedAsyncSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        'data-testid': 'fqn-list-select',
+        mode: 'multiple',
+      }),
+      expect.anything()
+    );
+  });
+
+  it('tableNameList: strict-pick (mode="multiple", no free-text tags)', () => {
+    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
+      '../../components/common/AsyncSelect/AsyncSelect'
+    );
+    MockedAsyncSelect.mockClear();
+
+    const field = getFieldByArgumentType(0, 'tableNameList', 0, 'testCase');
+
+    render(field);
+
+    expect(MockedAsyncSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        'data-testid': 'table-name-select',
+        mode: 'multiple',
+      }),
+      expect.anything()
+    );
+  });
+
+  it('entityNameList: strict-pick (mode="multiple", no free-text tags)', () => {
+    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
+      '../../components/common/AsyncSelect/AsyncSelect'
+    );
+    MockedAsyncSelect.mockClear();
+
     const field = getFieldByArgumentType(
       0,
-      'entityIdList',
+      'entityNameList',
       0,
-      'selectedTrigger'
+      'dataContract'
     );
 
     render(field);
 
-    const selectDiv = screen.getByTestId('entity-id-select');
-
-    expect(selectDiv).toBeInTheDocument();
+    expect(MockedAsyncSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        'data-testid': 'entity-name-select',
+        mode: 'multiple',
+      }),
+      expect.anything()
+    );
   });
 
   it('should return correct fields for argumentType pipelineStateList', () => {
