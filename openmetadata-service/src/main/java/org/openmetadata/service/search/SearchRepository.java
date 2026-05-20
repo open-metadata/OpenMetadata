@@ -18,7 +18,6 @@ import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
 import static org.openmetadata.service.search.SearchClient.ADD_FOLLOWERS_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.CASCADE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
@@ -110,7 +109,6 @@ import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLangua
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
-import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
@@ -1303,11 +1301,26 @@ public class SearchRepository {
       if (requiresPropagation(changeDescription, entityType, entity)) {
         // Time propagation operations
         startTime = System.currentTimeMillis();
-        propagateInheritedFieldsToChildren(
-            entityType, entityId, changeDescription, indexMapping, entity);
-        propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
-        propagateCertificationTags(entityType, entity, changeDescription);
-        propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity);
+        runPropagationStep(
+            "inheritedFields",
+            entity,
+            () ->
+                propagateInheritedFieldsToChildren(
+                    entityType, entityId, changeDescription, indexMapping, entity));
+        runPropagationStep(
+            "glossaryTags",
+            entity,
+            () ->
+                propagateGlossaryTags(
+                    entityType, entity.getFullyQualifiedName(), changeDescription));
+        runPropagationStep(
+            "certificationTags",
+            entity,
+            () -> propagateCertificationTags(entityType, entity, changeDescription));
+        runPropagationStep(
+            "relatedEntities",
+            entity,
+            () -> propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity));
         propagateTime = System.currentTimeMillis() - startTime;
 
         LOG.info(
@@ -1514,21 +1527,27 @@ public class SearchRepository {
       }
 
       candidates++;
-      try {
-        IndexMapping indexMapping = entityIndexMap.get(entityType);
-        propagateInheritedFieldsToChildren(
-            entityType, entity.getId().toString(), changeDescription, indexMapping, entity);
-        propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
-        propagateCertificationTags(entityType, entity, changeDescription);
-        propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity);
-        propagated++;
-      } catch (Exception e) {
-        LOG.error(
-            "Error propagating bulk search updates for entity {} of type {}",
-            entity.getId(),
-            entityType,
-            e);
-      }
+      IndexMapping indexMapping = entityIndexMap.get(entityType);
+      runPropagationStep(
+          "inheritedFields",
+          entity,
+          () ->
+              propagateInheritedFieldsToChildren(
+                  entityType, entity.getId().toString(), changeDescription, indexMapping, entity));
+      runPropagationStep(
+          "glossaryTags",
+          entity,
+          () ->
+              propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription));
+      runPropagationStep(
+          "certificationTags",
+          entity,
+          () -> propagateCertificationTags(entityType, entity, changeDescription));
+      runPropagationStep(
+          "relatedEntities",
+          entity,
+          () -> propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity));
+      propagated++;
     }
 
     if (candidates > 0) {
@@ -1647,6 +1666,34 @@ public class SearchRepository {
    * Determines if changes require propagation to child entities.
    * Only propagate when fields that actually affect children have been modified.
    */
+  @FunctionalInterface
+  private interface PropagationStep {
+    void run() throws Exception;
+  }
+
+  /**
+   * Runs a single propagation step under its own try/catch so a failure (script compile error,
+   * transient ES outage, etc.) cannot abort the other independent propagators for the same entity.
+   * The failure is logged and queued for retry; subsequent propagators run unaffected.
+   */
+  private void runPropagationStep(String stepName, EntityInterface entity, PropagationStep step) {
+    try {
+      step.run();
+    } catch (Exception e) {
+      LOG.error(
+          "Propagation step '{}' failed for entity [{}/{}]: {}",
+          stepName,
+          entity.getEntityReference() == null ? "?" : entity.getEntityReference().getType(),
+          entity.getId(),
+          e.getMessage(),
+          e);
+      SearchIndexRetryQueue.enqueue(
+          entity.getId() == null ? null : entity.getId().toString(),
+          entity.getFullyQualifiedName(),
+          SearchIndexRetryQueue.failureReason("propagate:" + stepName, e));
+    }
+  }
+
   private boolean requiresPropagation(
       ChangeDescription changeDescription, String entityType, EntityInterface entity) {
     if (changeDescription == null) return false;
@@ -1678,7 +1725,7 @@ public class SearchRepository {
 
     Pair<String, Map<String, Object>> updates =
         getInheritedFieldChanges(changeDescription, entity, entityType);
-    if (updates.getKey() == null || updates.getKey().isEmpty()) {
+    if (updates.getKey() == null || updates.getKey().isBlank()) {
       return;
     }
 
@@ -1752,20 +1799,19 @@ public class SearchRepository {
     }
   }
 
-  private static final String CERTIFICATION_FIELD = "certification";
   private static final String CERTIFICATION_TAG_FQN_FIELD = "certification.tagLabel.tagFQN";
 
+  /**
+   * Rewrites cached cert pointers when a {@link Tag} entity that represents a certification is
+   * renamed. Entity-level cert add/change/remove propagation is driven declaratively via {@link
+   * PropagationDescriptor.PropagationType#RAW_REPLACE} on each repository's descriptors, not here.
+   */
   public void propagateCertificationTags(
       String entityType, EntityInterface entity, ChangeDescription changeDescription) {
-    if (changeDescription == null) {
+    if (changeDescription == null || !Entity.TAG.equalsIgnoreCase(entityType)) {
       return;
     }
-
-    if (Entity.TAG.equalsIgnoreCase(entityType)) {
-      handleTagEntityUpdate((Tag) entity, changeDescription);
-    } else {
-      handleEntityCertificationUpdate(entity, changeDescription);
-    }
+    handleTagEntityUpdate((Tag) entity, changeDescription);
   }
 
   private void handleTagEntityUpdate(Tag tagEntity, ChangeDescription changeDescription) {
@@ -1809,89 +1855,6 @@ public class SearchRepository {
                 .withValidityPeriod("P30D"),
             AssetCertificationSettings.class)
         .getAllowedClassification();
-  }
-
-  private void handleEntityCertificationUpdate(EntityInterface entity, ChangeDescription change) {
-    if (!isCertificationUpdated(change)) {
-      return;
-    }
-
-    AssetCertification certification = getCertificationFromEntity(entity);
-    updateEntityCertificationInSearch(entity, certification);
-    cascadeCertificationToChildren(entity, certification);
-  }
-
-  // Pushes the cert change onto every child search doc denormalized from this
-  // entity. Without this the cert filter on the DQ dashboard (which queries
-  // children like test_case/test_case_result/test_case_resolution_status by
-  // `certification.tagLabel.tagFQN`) would silently use the stale cert until a
-  // reindex. RAW_REPLACE in PropagationDescriptor can't be used because it
-  // restores the old value on delete; we drive a dedicated script instead.
-  private void cascadeCertificationToChildren(
-      EntityInterface entity, AssetCertification certification) {
-    String type = entity.getEntityReference().getType();
-    if (!Entity.TABLE.equalsIgnoreCase(type)) {
-      // Scope: Table only. Dashboard/ApiCollection children also have cert in
-      // their mappings; extend here when those denormalization paths are added.
-      return;
-    }
-    IndexMapping indexMapping = entityIndexMap.get(Entity.TABLE);
-    if (indexMapping == null) {
-      return;
-    }
-    List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
-    if (nullOrEmpty(childAliases)) {
-      return;
-    }
-
-    Map<String, Object> params = new HashMap<>();
-    params.put("certification", certification); // null when cert was removed
-
-    Pair<String, String> parentMatch = new ImmutablePair<>("table.id", entity.getId().toString());
-
-    try {
-      searchClient.updateChildren(
-          childAliases, parentMatch, new ImmutablePair<>(CASCADE_CERTIFICATION_SCRIPT, params));
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to cascade certification for table [{}]: {}",
-          entity.getFullyQualifiedName(),
-          e.getMessage(),
-          e);
-    }
-  }
-
-  private boolean isCertificationUpdated(ChangeDescription change) {
-    return Stream.concat(
-            Stream.concat(change.getFieldsUpdated().stream(), change.getFieldsAdded().stream()),
-            change.getFieldsDeleted().stream())
-        .anyMatch(fieldChange -> CERTIFICATION_FIELD.equals(fieldChange.getName()));
-  }
-
-  private AssetCertification getCertificationFromEntity(EntityInterface entity) {
-    return (AssetCertification) EntityUtil.getEntityField(entity, CERTIFICATION_FIELD);
-  }
-
-  private void updateEntityCertificationInSearch(
-      EntityInterface entity, AssetCertification certification) {
-    IndexMapping indexMapping = entityIndexMap.get(entity.getEntityReference().getType());
-    String indexName = getWriteIndexName(indexMapping);
-    Map<String, Object> paramMap = new HashMap<>();
-
-    if (certification != null && certification.getTagLabel() != null) {
-      paramMap.put("name", certification.getTagLabel().getName());
-      paramMap.put("description", certification.getTagLabel().getDescription());
-      paramMap.put("tagFQN", certification.getTagLabel().getTagFQN());
-      paramMap.put("style", certification.getTagLabel().getStyle());
-    } else {
-      paramMap.put("name", null);
-      paramMap.put("description", null);
-      paramMap.put("tagFQN", null);
-      paramMap.put("style", null);
-    }
-
-    searchClient.updateEntity(
-        indexName, entity.getId().toString(), paramMap, UPDATE_CERTIFICATION_SCRIPT);
   }
 
   public void propagateToRelatedEntities(
@@ -2057,14 +2020,7 @@ public class SearchRepository {
       case SIMPLE_VALUE -> {
         script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
       }
-      case RAW_REPLACE -> {
-        data.put(field.getName(), field.getNewValue());
-        script.append(
-            String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
-      }
-      case EXTERNAL_HANDLER -> {
-        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
-      }
+      case RAW_REPLACE -> appendReplaceScript(script, data, field, entity);
     }
     script.append(" ");
   }
@@ -2111,14 +2067,7 @@ public class SearchRepository {
       case SIMPLE_VALUE -> {
         script.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
       }
-      case RAW_REPLACE -> {
-        data.put(field.getName(), field.getOldValue());
-        script.append(
-            String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
-      }
-      case EXTERNAL_HANDLER -> {
-        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
-      }
+      case RAW_REPLACE -> script.append(String.format("ctx._source.remove('%s')", field.getName()));
     }
     script.append(" ");
   }
@@ -2177,16 +2126,22 @@ public class SearchRepository {
         script.append(
             String.format(PROPAGATE_NESTED_FIELD_SCRIPT, desc.nestPath(), field.getName()));
       }
-      case RAW_REPLACE -> {
-        data.put(field.getName(), field.getNewValue());
-        script.append(
-            String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
-      }
-      case EXTERNAL_HANDLER -> {
-        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
-      }
+      case RAW_REPLACE -> appendReplaceScript(script, data, field, entity);
     }
     script.append(" ");
+  }
+
+  /**
+   * Materialises {@code field.getName()} from {@code entity} (the post-update value) and emits a
+   * full-object replace into child docs. Reading from the live entity rather than {@code
+   * field.getNewValue()} avoids deserialising the JSON-encoded form that {@link
+   * org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater#recordChange(String, Object,
+   * Object, boolean)} stores for object-typed fields.
+   */
+  private void appendReplaceScript(
+      StringBuilder script, Map<String, Object> data, FieldChange field, EntityInterface entity) {
+    data.put(field.getName(), EntityUtil.getEntityField(entity, field.getName()));
+    script.append(String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
   }
 
   private List<EntityReference> resolveEntityReferenceList(
