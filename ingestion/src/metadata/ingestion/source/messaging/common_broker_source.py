@@ -16,7 +16,7 @@ Common Broker for fetching metadata
 import concurrent.futures
 import traceback
 from abc import ABC
-from typing import Iterable, Optional
+from typing import Any, Iterable, Optional
 
 import confluent_kafka
 from confluent_kafka import KafkaError, KafkaException
@@ -327,8 +327,11 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 )
             )
 
-    def decode_message(self, record: bytes, schema: str, schema_type: SchemaType):
+    def decode_message(self, record: Any, schema: str, schema_type: SchemaType):
         if schema_type == SchemaType.Avro:
+            # DeserializingConsumer may already return decoded dict/object values.
+            if not isinstance(record, (bytes, bytearray, memoryview)):
+                return str(record)
             deserializer = AvroDeserializer(
                 schema_str=schema, schema_registry_client=self.schema_registry_client
             )
@@ -336,7 +339,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         if schema_type == SchemaType.Protobuf:
             logger.debug("Protobuf deserializing sample data is not supported")
             return ""
-        return str(record.decode("utf-8"))
+        if isinstance(record, (bytes, bytearray, memoryview)):
+            return bytes(record).decode("utf-8")
+        return str(record)
 
     def close(self):
         if self.generate_sample_data and self.consumer_client:
