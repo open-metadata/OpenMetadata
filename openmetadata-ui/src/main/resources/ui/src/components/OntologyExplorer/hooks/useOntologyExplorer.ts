@@ -650,8 +650,10 @@ export function useOntologyExplorer({
 
       if (!isDataMode) {
         // BATCH_SIZE caps how many Ids we send to /glossaryTerms/byIds per
-        // round-trip. The backend caps at 200; keeping it well below that
-        // keeps URLs short and isolates a single bad Id to one batch.
+        // round-trip. Matches the backend MAX_BATCH_BY_IDS (100), which is
+        // sized to keep the comma-encoded ids list well below Jetty's 8 KB
+        // request-header limit. Going higher would 431 before hitting the
+        // server-side validator.
         const BATCH_SIZE = 100;
         const MAX_RESOLUTION_DEPTH = 5;
         const loadedIds = new Set(accumulated.map((term) => term.id ?? ''));
@@ -830,8 +832,10 @@ export function useOntologyExplorer({
 
       if (glossaryIdParam) {
         // BATCH_SIZE caps how many Ids we send to /glossaryTerms/byIds per
-        // round-trip. The backend caps at 200; keeping it well below that
-        // keeps URLs short and isolates a single bad Id to one batch.
+        // round-trip. Matches the backend MAX_BATCH_BY_IDS (100), which is
+        // sized to keep the comma-encoded ids list well below Jetty's 8 KB
+        // request-header limit. Going higher would 431 before hitting the
+        // server-side validator.
         const BATCH_SIZE = 100;
         const MAX_RESOLUTION_DEPTH = 5;
         const fetchedIds = new Set(allTerms.map((term) => term.id ?? ''));

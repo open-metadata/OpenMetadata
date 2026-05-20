@@ -3670,7 +3670,9 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertTrue(
         relatedTerms.isArray() && relatedTerms.size() == 1,
         "relatedTerms should be hydrated when requested via fields=relatedTerms");
-    assertEquals(related.getId().toString(), relatedTerms.get(0).path("id").asText());
+    // TermRelation shape is {relationType, term: {id, ...}} — the id lives
+    // nested under `term`, not at the top of the array element.
+    assertEquals(related.getId().toString(), relatedTerms.get(0).path("term").path("id").asText());
   }
 
   @Test
@@ -3723,9 +3725,12 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   void getGlossaryTermsByIds_tooManyIds_returns400(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // 201 > MAX_BATCH_BY_IDS (200) — exact cap is enforced server-side.
+    // 101 > MAX_BATCH_BY_IDS (100) — small enough that the URL stays well
+    // under Jetty's 8 KB request-header limit so the request reaches the
+    // resource's server-side cap and gets a real 400 (instead of being
+    // rejected upstream with 431 Request Header Fields Too Large).
     StringBuilder ids = new StringBuilder();
-    for (int i = 0; i < 201; i++) {
+    for (int i = 0; i < 101; i++) {
       if (i > 0) {
         ids.append(',');
       }

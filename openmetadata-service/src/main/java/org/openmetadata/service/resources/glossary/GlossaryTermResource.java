@@ -113,7 +113,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public static final String COLLECTION_PATH = "/v1/glossaryTerms/";
   static final String FIELDS =
       "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount";
-  private static final int MAX_BATCH_BY_IDS = 200;
+  // 100 keeps the query-string-encoded ids list (~37 chars per UUID +
+  // separators) well below Jetty's default 8 KB request-header limit
+  // and matches the client's BATCH_SIZE in useOntologyExplorer.ts.
+  private static final int MAX_BATCH_BY_IDS = 100;
 
   @Override
   public GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {
@@ -528,7 +531,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context SecurityContext securityContext,
       @Parameter(
               description =
-                  "Comma-separated list of glossary term Ids (UUIDs). Max 200 per call. "
+                  "Comma-separated list of glossary term Ids (UUIDs). Max 100 per call. "
                       + "Omit or pass blank to receive an empty list.",
               schema = @Schema(type = "string"))
           @QueryParam("ids")
