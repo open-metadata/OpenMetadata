@@ -25,6 +25,7 @@ import fivetranConnection from '../jsons/connectionSchemas/connections/pipeline/
 import flinkConnection from '../jsons/connectionSchemas/connections/pipeline/flinkConnection.json';
 import gluePipelineConnection from '../jsons/connectionSchemas/connections/pipeline/gluePipelineConnection.json';
 import KafkaConnectConnection from '../jsons/connectionSchemas/connections/pipeline/kafkaConnectConnection.json';
+import kestraConnection from '../jsons/connectionSchemas/connections/pipeline/kestraConnection.json';
 import microsoftFabricPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/microsoftFabricPipelineConnection.json';
 import nifiConnection from '../jsons/connectionSchemas/connections/pipeline/nifiConnection.json';
 import openLineageConnection from '../jsons/connectionSchemas/connections/pipeline/openLineageConnection.json';
@@ -52,6 +53,11 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
     }
     case PipelineServiceType.KafkaConnect: {
       schema = KafkaConnectConnection;
+
+      break;
+    }
+    case PipelineServiceType.Kestra: {
+      schema = kestraConnection;
 
       break;
     }
