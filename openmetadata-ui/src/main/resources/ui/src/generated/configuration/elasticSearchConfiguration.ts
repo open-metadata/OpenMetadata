@@ -157,9 +157,6 @@ export interface NaturalLanguageSearch {
      */
     knnNumCandidatesMultiplier?: number;
     /**
-     * Maximum number of concurrent embedding API requests. Controls the semaphore used to
-     * throttle calls to the embedding provider and prevent overwhelming HTTP/2 connection
-     * limits.
      * Maximum number of concurrent embedding and NLQ provider requests. Controls the semaphore
      * used to throttle calls to the providers and prevent overwhelming HTTP/2 connection limits.
      */
