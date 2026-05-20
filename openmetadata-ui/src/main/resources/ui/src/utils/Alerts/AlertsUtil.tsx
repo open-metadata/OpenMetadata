@@ -68,6 +68,7 @@ import {
   EXTERNAL_CATEGORY_OPTIONS,
 } from '../../constants/Alerts.constants';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
+import { UUID_REGEX } from '../../constants/regex.constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -103,9 +104,6 @@ import searchClassBase from '../SearchClassBase';
 import { getTermQuery } from '../SearchUtils';
 import { showErrorToast } from '../ToastUtils';
 import './alerts-util.less';
-
-const UUID_PATTERN =
-  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {
@@ -1064,7 +1062,7 @@ export const getFieldByArgumentType = (
     const searchIndexMapping =
       searchClassBase.getEntityTypeSearchIndexMapping();
     const trimmed = (searchText ?? '').trim();
-    const isUuidInput = UUID_PATTERN.test(trimmed);
+    const isUuidInput = UUID_REGEX.test(trimmed);
 
     try {
       const response = await searchQuery({
