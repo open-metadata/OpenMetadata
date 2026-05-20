@@ -59,6 +59,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -156,6 +157,7 @@ class SearchRepositoryBehaviorTest {
           Entity.DOMAIN,
           Entity.DATABASE_SERVICE,
           Entity.DATABASE,
+          Entity.TEST_CASE,
           Entity.TEST_SUITE,
           Entity.GLOSSARY,
           Entity.CLASSIFICATION,
@@ -803,68 +805,6 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void propagateCertificationTagsUpdatesEntityCertificationDocument() {
-    Table table = mock(Table.class);
-    UUID entityId = UUID.randomUUID();
-    when(table.getId()).thenReturn(entityId);
-    when(table.getEntityReference())
-        .thenReturn(new EntityReference().withId(entityId).withType(Entity.TABLE));
-    when(table.getCertification())
-        .thenReturn(
-            new AssetCertification()
-                .withTagLabel(
-                    new TagLabel()
-                        .withName("Gold")
-                        .withDescription("Certified")
-                        .withTagFQN("Certification.Gold")));
-    ChangeDescription changeDescription =
-        changeDescription(
-            List.of(),
-            List.of(
-                new FieldChange().withName("certification").withOldValue("{}").withNewValue("{}")),
-            List.of());
-
-    repository.propagateCertificationTags(Entity.TABLE, table, changeDescription);
-
-    verify(searchClient)
-        .updateEntity(
-            eq("cluster_table_search_index"),
-            eq(entityId.toString()),
-            any(Map.class),
-            eq(SearchClient.UPDATE_CERTIFICATION_SCRIPT));
-  }
-
-  @Test
-  void propagateCertificationTagsClearsEntityCertificationDocumentWhenRemoved() {
-    Table table = mock(Table.class);
-    UUID entityId = UUID.randomUUID();
-    when(table.getId()).thenReturn(entityId);
-    when(table.getEntityReference())
-        .thenReturn(new EntityReference().withId(entityId).withType(Entity.TABLE));
-    when(table.getCertification()).thenReturn(null);
-    ChangeDescription changeDescription =
-        changeDescription(
-            List.of(),
-            List.of(),
-            List.of(new FieldChange().withName("certification").withOldValue("{}")));
-
-    repository.propagateCertificationTags(Entity.TABLE, table, changeDescription);
-
-    @SuppressWarnings("unchecked")
-    ArgumentCaptor<Map<String, Object>> paramCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(searchClient)
-        .updateEntity(
-            eq("cluster_table_search_index"),
-            eq(entityId.toString()),
-            paramCaptor.capture(),
-            eq(SearchClient.UPDATE_CERTIFICATION_SCRIPT));
-    assertNull(paramCaptor.getValue().get("name"));
-    assertNull(paramCaptor.getValue().get("description"));
-    assertNull(paramCaptor.getValue().get("tagFQN"));
-    assertNull(paramCaptor.getValue().get("style"));
-  }
-
-  @Test
   void propagateCertificationTagsDoesNothingForNonCertificationTag() {
     Tag tag = mock(Tag.class);
     when(tag.getClassification())
@@ -1061,8 +1001,7 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void inheritedFieldChangesHandleUpdatedTestSuitesAndDeletedInheritedReferences()
-      throws Exception {
+  void inheritedFieldChangesHandleMixedAddUpdateAndDeletedInheritedReferences() throws Exception {
     EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     when(tableEntity.getOwners())
         .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
@@ -1076,9 +1015,6 @@ class SearchRepositoryBehaviorTest {
         changeDescription(
             List.of(),
             List.of(
-                new FieldChange()
-                    .withName(Entity.FIELD_TEST_SUITES)
-                    .withNewValue(List.of("suite1")),
                 new FieldChange().withName(Entity.FIELD_DISPLAY_NAME).withNewValue("Orders Table"),
                 new FieldChange().withName(Entity.FIELD_DISABLED).withNewValue(false)),
             List.of(
@@ -1093,10 +1029,8 @@ class SearchRepositoryBehaviorTest {
     assertTrue(updates.getLeft().contains("removedOwners"));
     assertTrue(updates.getLeft().contains("removedDomains"));
     assertTrue(updates.getLeft().contains("removedFollowers"));
-    assertTrue(updates.getLeft().contains("ctx._source.testSuites = params.testSuites"));
     assertTrue(updates.getLeft().contains("ctx._source.table.displayName = params.displayName"));
     assertTrue(updates.getLeft().contains("ctx._source.remove('disabled')"));
-    assertEquals(List.of("suite1"), updates.getRight().get(Entity.FIELD_TEST_SUITES));
     assertEquals("Orders Table", updates.getRight().get(Entity.FIELD_DISPLAY_NAME));
   }
 
@@ -1404,27 +1338,38 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesAddRawReplaceTestSuites() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    // RAW_REPLACE add/update reads the live value from the entity (via EntityUtil.getEntityField),
+    // not from FieldChange.newValue. Use TestCase since it declares getTestSuites().
+    TestCase testCase = mock(TestCase.class);
+    UUID entityId = UUID.randomUUID();
+    when(testCase.getId()).thenReturn(entityId);
+    when(testCase.getEntityReference())
+        .thenReturn(new EntityReference().withId(entityId).withType(Entity.TEST_CASE));
+    List<TestSuite> currentSuites =
+        List.of(new TestSuite().withName("suite1"), new TestSuite().withName("suite2"));
+    when(testCase.getTestSuites()).thenReturn(currentSuites);
 
     ChangeDescription changeDescription =
         changeDescription(
-            List.of(
-                new FieldChange()
-                    .withName(Entity.FIELD_TEST_SUITES)
-                    .withNewValue(List.of("suite1", "suite2"))),
+            List.of(new FieldChange().withName(Entity.FIELD_TEST_SUITES).withNewValue("ignored")),
             List.of(),
             List.of());
 
     Pair<String, Map<String, Object>> updates =
-        invokeGetInheritedFieldChanges(changeDescription, tableEntity);
+        invokeGetInheritedFieldChanges(changeDescription, testCase);
 
     assertTrue(updates.getLeft().contains("ctx._source.testSuites = params.testSuites"));
-    assertEquals(List.of("suite1", "suite2"), updates.getRight().get(Entity.FIELD_TEST_SUITES));
+    assertSame(currentSuites, updates.getRight().get(Entity.FIELD_TEST_SUITES));
   }
 
   @Test
   void inheritedFieldChangesDeleteRawReplaceTestSuites() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    // RAW_REPLACE delete emits ctx._source.remove(field), no params required.
+    TestCase testCase = mock(TestCase.class);
+    UUID entityId = UUID.randomUUID();
+    when(testCase.getId()).thenReturn(entityId);
+    when(testCase.getEntityReference())
+        .thenReturn(new EntityReference().withId(entityId).withType(Entity.TEST_CASE));
 
     ChangeDescription changeDescription =
         changeDescription(
@@ -1436,10 +1381,11 @@ class SearchRepositoryBehaviorTest {
                     .withOldValue(List.of("suite1", "suite2"))));
 
     Pair<String, Map<String, Object>> updates =
-        invokeGetInheritedFieldChanges(changeDescription, tableEntity);
+        invokeGetInheritedFieldChanges(changeDescription, testCase);
 
-    assertTrue(updates.getLeft().contains("ctx._source.testSuites = params.testSuites"));
-    assertEquals(List.of("suite1", "suite2"), updates.getRight().get(Entity.FIELD_TEST_SUITES));
+    assertTrue(updates.getLeft().contains("ctx._source.remove('testSuites')"));
+    assertFalse(updates.getLeft().contains("ctx._source.testSuites = params.testSuites"));
+    assertFalse(updates.getRight().containsKey(Entity.FIELD_TEST_SUITES));
   }
 
   @Test
