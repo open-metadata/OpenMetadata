@@ -613,18 +613,19 @@ class SearchUtilsTest {
 
   @Test
   void searchAfterAcceptsUrlSafeBase64Cursor() {
-    // The Python ingestion client emits URL-safe base64 to avoid '+' / '/' that
-    // would otherwise need percent-encoding. The server must decode both alphabets.
-    // Force a payload that produces the URL-safe-only characters '-' or '_': the
-    // bytes 0xFB,0xFF,0xBF encode to "+/+/" in standard base64 and "-_-_" in URL-safe.
-    byte[] urlSafeOnlyBytes = {(byte) 0xFB, (byte) 0xFF, (byte) 0xBF};
-    String urlSafeChunk = Base64.getUrlEncoder().encodeToString(urlSafeOnlyBytes);
-    assertTrue(urlSafeChunk.indexOf('-') >= 0 || urlSafeChunk.indexOf('_') >= 0);
+    // The Python ingestion client emits URL-safe base64. The payload "[\"~~~\"]" base64-encodes
+    // to "WyJ-fn4iXQ==" which contains the URL-safe-only character '-' (the standard base64
+    // encoder would produce "WyJ+fn4iXQ=="). A decoder paired to the wrong alphabet either
+    // throws or silently drops the '-' / '_' chars, masking the bug — pick a payload that
+    // actually exercises the URL-safe alphabet so this test fails if the decoder ever drifts.
+    String json = "[\"~~~\"]";
+    String cursor = Base64.getUrlEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+    assertTrue(
+        cursor.indexOf('-') >= 0 || cursor.indexOf('_') >= 0,
+        "test payload must produce URL-safe-only base64 chars to exercise the decoder");
 
-    String cursor =
-        Base64.getUrlEncoder().encodeToString("[\"alpha,beta\"]".getBytes(StandardCharsets.UTF_8));
     List<Object> result = SearchUtils.searchAfter(cursor);
-    assertEquals(List.of("alpha,beta"), result);
+    assertEquals(List.of("~~~"), result);
   }
 
   private static String encodeBase64Json(String json) {

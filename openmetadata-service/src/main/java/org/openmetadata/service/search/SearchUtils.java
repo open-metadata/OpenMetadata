@@ -351,9 +351,9 @@ public final class SearchUtils {
     }
     if (looksLikeBase64JsonCursor(searchAfter)) {
       try {
-        // MIME decoder accepts both standard (+,/) and URL-safe (-,_) alphabets, tolerates
-        // missing padding, and ignores whitespace — covers every base64 variant a client may emit.
-        byte[] decoded = Base64.getMimeDecoder().decode(searchAfter);
+        // URL-safe decoder paired with the URL-safe encoder used on the ingestion side,
+        // matching the symmetric pattern in RestUtil.encodeCursor/decodeCursor.
+        byte[] decoded = Base64.getUrlDecoder().decode(searchAfter);
         String json = new String(decoded, StandardCharsets.UTF_8).trim();
         if (json.startsWith("[")) {
           return JsonUtils.readValue(json, new TypeReference<List<Object>>() {});
