@@ -68,6 +68,20 @@ HIVE_MSSQL_PYTDS_SCHEME = "hive+mssql.pytds"
 HIVE_MSSQL_PYMSSQL_SCHEME = "hive+mssql.pymssql"
 HIVE_ORACLE_SCHEME = "hive+oracle"
 
+METASTORE_CONNECTION_TYPES = (
+    PostgresConnection,
+    MysqlConnection,
+    MssqlConnection,
+    OracleConnection,
+)
+
+METASTORE_CONNECTION_TYPE_BY_TYPE = {
+    "Postgres": PostgresConnection,
+    "Mysql": MysqlConnection,
+    "Mssql": MssqlConnection,
+    "Oracle": OracleConnection,
+}
+
 # Monkey-patch the pyhive.hive module to use our custom connection
 import pyhive.hive  # noqa: E402
 
@@ -157,6 +171,45 @@ def get_mssql_metastore_connection_url(connection: MssqlConnection) -> str:
         url += f"driver={quote_plus(connection.driver)}"
 
     return url
+
+
+def get_validated_metastore_connection(
+    metastore_conn: Any,
+) -> PostgresConnection | MysqlConnection | MssqlConnection | OracleConnection | None:
+    """
+    Validate and return a Hive metastore connection.
+    Raw dicts are resolved by the type discriminator first to avoid matching a
+    different generated connection model with overlapping fields.
+    """
+    if not metastore_conn:
+        return None
+
+    if isinstance(metastore_conn, METASTORE_CONNECTION_TYPES):
+        return metastore_conn
+
+    if not isinstance(metastore_conn, dict) or len(metastore_conn) == 0:
+        return None
+
+    conn_type = metastore_conn.get("type")
+    if isinstance(conn_type, Enum):
+        conn_type = conn_type.value
+
+    if conn_type:
+        conn_cls = METASTORE_CONNECTION_TYPE_BY_TYPE.get(conn_type)
+        if not conn_cls:
+            return None
+        try:
+            return conn_cls.model_validate(metastore_conn)
+        except ValidationError:
+            return None
+
+    for conn_cls in METASTORE_CONNECTION_TYPES:
+        try:
+            return conn_cls.model_validate(metastore_conn)
+        except ValidationError:
+            continue
+
+    return None
 
 
 @singledispatch
@@ -300,26 +353,11 @@ def test_connection(
     metastore_conn = service_connection.metastoreConnection
 
     if metastore_conn:
-        if isinstance(
-            metastore_conn,
-            PostgresConnection | MysqlConnection | MssqlConnection | OracleConnection,
-        ):
-            engine = get_metastore_connection(metastore_conn)
-        elif isinstance(metastore_conn, dict) and len(metastore_conn) > 0:
-            for conn_cls in (
-                PostgresConnection,
-                MysqlConnection,
-                MssqlConnection,
-                OracleConnection,
-            ):
-                try:
-                    service_connection.metastoreConnection = conn_cls.model_validate(metastore_conn)
-                    break
-                except ValidationError:
-                    continue
-            else:
-                raise ValueError("Invalid metastore connection")
-            engine = get_metastore_connection(service_connection.metastoreConnection)
+        metastore_conn = get_validated_metastore_connection(metastore_conn)
+        if not metastore_conn:
+            raise ValueError("Invalid metastore connection")
+        service_connection.metastoreConnection = metastore_conn
+        engine = get_metastore_connection(metastore_conn)
 
     return test_connection_db_schema_sources(
         metadata=metadata,

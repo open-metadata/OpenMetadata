@@ -14,7 +14,6 @@ Hive source methods.
 
 import traceback
 
-from pydantic import ValidationError
 from pyhive.sqlalchemy_hive import HiveDialect
 from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
@@ -41,7 +40,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.ingestion.source.database.hive.connection import get_metastore_connection
+from metadata.ingestion.source.database.hive.connection import (
+    get_metastore_connection,
+    get_validated_metastore_connection,
+)
 from metadata.ingestion.source.database.hive.utils import (
     get_columns,
     get_table_comment,
@@ -95,26 +97,11 @@ class HiveSource(CommonDbSourceService):
         if not metastore_conn:
             return None
 
-        metastore_connection_types = (
-            PostgresConnection,
-            MysqlConnection,
-            MssqlConnection,
-            OracleConnection,
-        )
-
-        if isinstance(metastore_conn, metastore_connection_types):
-            return metastore_conn
-
-        if isinstance(metastore_conn, dict) and len(metastore_conn) > 0:
-            for conn_cls in metastore_connection_types:
-                try:
-                    return conn_cls.model_validate(metastore_conn)
-                except ValidationError:
-                    continue
+        metastore_conn = get_validated_metastore_connection(metastore_conn)
+        if not metastore_conn:
             logger.warning("Invalid metastore connection configuration")
-            return None
 
-        return None
+        return metastore_conn
 
     def prepare(self):
         """

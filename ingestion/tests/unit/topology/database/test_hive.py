@@ -68,6 +68,7 @@ from metadata.ingestion.source.database.hive.connection import (
     get_connection,
     get_connection_url,
     get_mssql_metastore_connection_url,
+    get_validated_metastore_connection,
 )
 from metadata.ingestion.source.database.hive.connection import (
     test_connection as hive_test_connection,
@@ -1237,6 +1238,38 @@ class HiveSourceMetastoreValidationTest(TestCase):
         result = self.hive._get_validated_metastore_connection()
         self.assertIsInstance(result, OracleConnection)
         self.assertEqual(result.username, "oracle_user")
+
+    def test_get_validated_metastore_connection_uses_type_discriminator(self):
+        """
+        Test metastore dict validation uses type before trying overlapping models.
+        """
+        mssql_dict = {
+            "type": "Mssql",
+            "username": "mssql_user",
+            "hostPort": "localhost:1433",
+            "database": "hive_metastore",
+        }
+
+        result = get_validated_metastore_connection(mssql_dict)
+
+        self.assertIsInstance(result, MssqlConnection)
+        if isinstance(result, MssqlConnection):
+            self.assertEqual(result.username, "mssql_user")
+
+    def test_get_validated_metastore_connection_rejects_unknown_type(self):
+        """
+        Test unknown type values do not fall through to overlapping models.
+        """
+        invalid_dict = {
+            "type": "Unknown",
+            "username": "postgres_user",
+            "hostPort": "localhost:5432",
+            "database": "hive_metastore",
+        }
+
+        result = get_validated_metastore_connection(invalid_dict)
+
+        self.assertIsNone(result)
 
     def test_mssql_metastore_url_preserves_pytds_driver(self):
         """
