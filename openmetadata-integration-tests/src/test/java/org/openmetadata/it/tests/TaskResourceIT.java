@@ -750,6 +750,175 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   @Test
+  void testFilerCannotResolveOwnTask(TestNamespace ns) {
+    // user2 (non-admin) files a task and tries to approve it themselves.
+    // TaskAuthorPolicy's deny rule (isTaskFiler() && operations=ResolveTask) must reject.
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("filer-no-self-approve"))
+            .withDescription("Filer cannot approve own task")
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(List.of(shared.USER1.getFullyQualifiedName()));
+
+    Task task = SdkClients.user2Client().tasks().create(request);
+    assertEquals(shared.USER2.getName(), task.getCreatedBy().getName());
+
+    ResolveTask resolveRequest =
+        new ResolveTask()
+            .withResolutionType(TaskResolutionType.Approved)
+            .withComment("Should be denied");
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> SdkClients.user2Client().tasks().resolve(task.getId().toString(), resolveRequest));
+  }
+
+  @Test
+  void testFilerCannotRejectOwnTask(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("filer-no-self-reject"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(List.of(shared.USER1.getFullyQualifiedName()));
+
+    Task task = SdkClients.user2Client().tasks().create(request);
+
+    ResolveTask rejectRequest =
+        new ResolveTask()
+            .withResolutionType(TaskResolutionType.Rejected)
+            .withComment("Should also be denied");
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> SdkClients.user2Client().tasks().resolve(task.getId().toString(), rejectRequest));
+  }
+
+  @Test
+  void testFilerCanCloseOwnTask(TestNamespace ns) {
+    // user2 (non-admin) files a task and cancels it. CloseTask must be allowed by the filer.
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("filer-close-own"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(List.of(shared.USER1.getFullyQualifiedName()));
+
+    Task task = SdkClients.user2Client().tasks().create(request);
+    Task closedTask = SdkClients.user2Client().tasks().close(task.getId().toString());
+
+    assertEquals(TaskEntityStatus.Cancelled, closedTask.getStatus());
+  }
+
+  @Test
+  void testFilerCanDeleteOwnTask(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("filer-delete-own"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(List.of(shared.USER1.getFullyQualifiedName()));
+
+    Task task = SdkClients.user2Client().tasks().create(request);
+    SdkClients.user2Client().tasks().delete(task.getId().toString());
+
+    assertThrows(
+        ApiException.class, () -> SdkClients.adminClient().tasks().get(task.getId().toString()));
+  }
+
+  @Test
+  void testCreatorWhoIsAlsoAssigneeCannotApprove(TestNamespace ns) {
+    // The headline self-approval bug: user2 files the task AND is also in the assignees list.
+    // Old behaviour allowed self-approval because assignee check passed. New behaviour: deny rule
+    // on isTaskFiler() short-circuits ResolveTask regardless of assignee status.
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("filer-also-assignee"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(
+                List.of(
+                    shared.USER1.getFullyQualifiedName(), shared.USER2.getFullyQualifiedName()));
+
+    Task task = SdkClients.user2Client().tasks().create(request);
+    assertEquals(shared.USER2.getName(), task.getCreatedBy().getName());
+
+    ResolveTask resolveRequest =
+        new ResolveTask()
+            .withResolutionType(TaskResolutionType.Approved)
+            .withComment("Filer-assignee should not be able to approve");
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> SdkClients.user2Client().tasks().resolve(task.getId().toString(), resolveRequest));
+
+    // Sanity check: a *different* assignee (USER1) can still approve the same task.
+    Task approved =
+        SdkClients.user1Client()
+            .tasks()
+            .resolve(
+                task.getId().toString(),
+                new ResolveTask()
+                    .withResolutionType(TaskResolutionType.Approved)
+                    .withComment("Approved by USER1"));
+    assertEquals(TaskEntityStatus.Approved, approved.getStatus());
+  }
+
+  @Test
+  void testFilerCannotBulkApproveOwnTask(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("filer-bulk-no-self-approve"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(
+                List.of(
+                    shared.USER1.getFullyQualifiedName(), shared.USER2.getFullyQualifiedName()));
+
+    Task task = SdkClients.user2Client().tasks().create(request);
+
+    BulkTaskOperation bulkOp =
+        new BulkTaskOperation()
+            .withTaskIds(List.of(task.getId().toString()))
+            .withOperation(BulkTaskOperationType.Approve)
+            .withParams(new BulkTaskOperationParams().withComment("Bulk self-approval attempt"));
+
+    BulkTaskOperationResult result =
+        SdkClients.user2Client()
+            .getHttpClient()
+            .execute(HttpMethod.POST, "/v1/tasks/bulk", bulkOp, BulkTaskOperationResult.class);
+
+    assertNotNull(result);
+    assertEquals(0, result.getSuccessful());
+    assertEquals(1, result.getFailed());
+  }
+
+  @Test
+  void testAssigneeCannotDeleteTask(TestNamespace ns) {
+    // user2 is the assignee (and admin filed it). Assignees can resolve but must not delete.
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("assignee-no-delete"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(List.of(shared.USER2.getFullyQualifiedName()));
+
+    Task task = SdkClients.adminClient().tasks().create(request);
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> SdkClients.user2Client().tasks().delete(task.getId().toString()));
+  }
+
+  @Test
   void testAssignedEndpointReturnsUserTasks(TestNamespace ns) {
     SharedEntities shared = SharedEntities.get();
 

@@ -18,13 +18,11 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
-import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
-import static org.openmetadata.service.jdbi3.UserRepository.TEAMS_FIELD;
 
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
@@ -41,7 +39,6 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.tasks.Task;
-import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.EntityReference;
@@ -70,6 +67,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.TaskResourceContext;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
 import org.openmetadata.service.tasks.TaskFieldValidator;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver;
@@ -734,132 +732,61 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   /**
-   * Check if user has permission to resolve or close a task.
-   * Follows the same pattern as FeedRepository.checkPermissionsForResolveTask.
+   * Authorize a user to resolve or close a task.
    *
-   * Authorization rules:
-   * - Admin can always resolve/close
-   * - Assignee can resolve (with permission check on underlying entity) or close
-   * - Creator can close (not resolve, unless also assignee)
-   * - Owner of target entity can resolve/close
-   * - Team member of assigned team can resolve/close
-   * - Team member of target entity owner team can resolve/close
+   * <p>Delegates to the policy engine using the {@code ResolveTask} or {@code CloseTask}
+   * operation on the {@link Entity#TASK} resource. The seed {@code TaskAuthorPolicy} rules
+   * combined with {@link TaskResourceContext} translate the operation into the right outcome:
+   * filers can close (but not resolve) their own task, assignees/reviewers can resolve, and the
+   * target entity owner can do both (via {@code OrganizationPolicy} {@code isOwner()} rule).
+   *
+   * <p>After the policy passes for a resolve, {@link #validateUnderlyingEntityPermission} is
+   * called so that, for tasks whose resolution applies a change to the target entity (e.g.
+   * {@code DescriptionUpdate}), the user must additionally have rights to apply that change.
+   * This is the orthogonal "execution-time" check and is intentionally separate from "who can
+   * resolve the task".
+   *
+   * <p>For incident-style tasks ({@code TestCaseResolution}, {@code IncidentResolution}) a
+   * fallback is permitted: a user with {@code EditTests}/{@code EditAll} on the related entity
+   * can resolve the task even if the task policy alone would deny — preserving the historical
+   * behaviour that test owners can act on incidents.
    */
   public void checkPermissionsForResolveTask(
       Authorizer authorizer, Task task, boolean closeTask, SecurityContext securityContext) {
-    String userName = securityContext.getUserPrincipal().getName();
-    User user = Entity.getEntityByName(USER, userName, TEAMS_FIELD, NON_DELETED);
-
-    if (Boolean.TRUE.equals(user.getIsAdmin())) {
-      return;
+    MetadataOperation operation =
+        closeTask ? MetadataOperation.CLOSE_TASK : MetadataOperation.RESOLVE_TASK;
+    List<AuthRequest> requests = new ArrayList<>();
+    requests.add(
+        new AuthRequest(
+            new OperationContext(Entity.TASK, operation), new TaskResourceContext(task)));
+    if (isIncidentTask(task)) {
+      addIncidentEditRequests(requests, task);
     }
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
 
-    EntityReference about = task.getAbout();
-    List<EntityReference> assignees = task.getAssignees();
-
-    // Allow if user is owner of the target entity
-    List<EntityReference> owners = about != null ? Entity.getOwners(about) : null;
-    LOG.info(
-        "[TaskRepository] checkPermissionsForResolveTask taskId='{}' user='{}' closeTask={} type='{}' about='{}' assignees={} owners={}",
-        task.getId(),
-        userName,
-        closeTask,
-        task.getType(),
-        about != null ? about.getFullyQualifiedName() : null,
-        assignees != null ? assignees.stream().map(EntityReference::getName).toList() : null,
-        owners != null ? owners.stream().map(EntityReference::getName).toList() : null);
-    if (!nullOrEmpty(owners)
-        && owners.stream().anyMatch(owner -> owner.getName().equals(userName))) {
-      return;
+    if (!closeTask) {
+      validateUnderlyingEntityPermission(authorizer, securityContext, task);
     }
-
-    // Allow creator to close (not resolve)
-    if (closeTask
-        && task.getCreatedBy() != null
-        && task.getCreatedBy().getName().equals(userName)) {
-      return;
-    }
-
-    // Allow if user is a direct assignee
-    if (!nullOrEmpty(assignees)
-        && assignees.stream().anyMatch(assignee -> assignee.getName().equals(userName))) {
-      // For approval tasks, assignees (reviewers) are authorized by assignment itself
-      if (about != null && !isApprovalTask(task)) {
-        validateUnderlyingEntityPermission(authorizer, securityContext, task);
-      }
-      return;
-    }
-
-    // Allow if user belongs to an assigned team or owner team
-    List<EntityReference> teams = user.getTeams();
-    if (!nullOrEmpty(teams)) {
-      List<String> teamNames = teams.stream().map(EntityReference::getName).toList();
-
-      // Check if user's team is an assignee
-      if (!nullOrEmpty(assignees)
-          && assignees.stream().anyMatch(assignee -> teamNames.contains(assignee.getName()))) {
-        // For resolution (not just closing), team members also need entity permission
-        // unless it's an approval task where assignment itself grants authorization
-        if (!closeTask && about != null && !isApprovalTask(task)) {
-          validateUnderlyingEntityPermission(authorizer, securityContext, task);
-        }
-        return;
-      }
-
-      // Check if user's team is owner of target entity
-      if (!nullOrEmpty(owners)
-          && owners.stream().anyMatch(owner -> teamNames.contains(owner.getName()))) {
-        return;
-      }
-    }
-
-    if (isIncidentTask(task) && hasIncidentEditPermission(authorizer, securityContext, task)) {
-      return;
-    }
-
-    throw new AuthorizationException(
-        CatalogExceptionMessage.taskOperationNotAllowed(
-            userName, closeTask ? "closeTask" : "resolveTask"));
   }
 
   /**
-   * Check that the user is allowed to perform an owner-only mutating action on a task,
-   * such as reassigning it or changing its priority. Per the task permission matrix,
-   * these actions are restricted to:
-   * <ul>
-   *   <li>Admins</li>
-   *   <li>Direct or team owner of the target entity</li>
-   *   <li>Domain owner of any domain the target entity belongs to (via team membership)</li>
-   * </ul>
-   * Assignees and creators cannot perform these actions.
+   * Authorize a user to reassign a task or change its priority. Delegates to the policy engine
+   * using the {@code ReassignTask} operation. The default {@code OrganizationPolicy} owner
+   * rule grants this to admins and target entity owners; assignees and creators are not
+   * authorized to reassign or change priority.
    */
   public void checkPermissionsForOwnerOnlyAction(
-      SecurityContext securityContext, Task task, String action) {
-    String userName = securityContext.getUserPrincipal().getName();
-    User user = Entity.getEntityByName(USER, userName, TEAMS_FIELD, NON_DELETED);
-
-    if (Boolean.TRUE.equals(user.getIsAdmin())) {
-      return;
+      Authorizer authorizer, SecurityContext securityContext, Task task, String action) {
+    OperationContext operationContext =
+        new OperationContext(Entity.TASK, MetadataOperation.REASSIGN_TASK);
+    ResourceContextInterface resourceContext = new TaskResourceContext(task);
+    try {
+      authorizer.authorize(securityContext, operationContext, resourceContext);
+    } catch (AuthorizationException e) {
+      String userName = securityContext.getUserPrincipal().getName();
+      throw new AuthorizationException(
+          CatalogExceptionMessage.taskOperationNotAllowed(userName, action));
     }
-
-    EntityReference about = task.getAbout();
-    List<EntityReference> owners = about != null ? Entity.getOwners(about) : null;
-
-    if (!nullOrEmpty(owners)
-        && owners.stream().anyMatch(owner -> owner.getName().equals(userName))) {
-      return;
-    }
-
-    List<EntityReference> teams = user.getTeams();
-    if (!nullOrEmpty(teams) && !nullOrEmpty(owners)) {
-      List<String> teamNames = teams.stream().map(EntityReference::getName).toList();
-      if (owners.stream().anyMatch(owner -> teamNames.contains(owner.getName()))) {
-        return;
-      }
-    }
-
-    throw new AuthorizationException(
-        CatalogExceptionMessage.taskOperationNotAllowed(userName, action));
   }
 
   private boolean isIncidentTask(Task task) {
@@ -868,20 +795,17 @@ public class TaskRepository extends EntityRepository<Task> {
         || taskType == TaskEntityType.IncidentResolution;
   }
 
-  private boolean hasIncidentEditPermission(
-      Authorizer authorizer, SecurityContext securityContext, Task task) {
+  private void addIncidentEditRequests(List<AuthRequest> requests, Task task) {
     EntityReference about = task.getAbout();
     if (about == null || about.getId() == null || !Entity.TEST_CASE.equals(about.getType())) {
-      return false;
+      return;
     }
-
     try {
       TestCase testCase =
           Entity.getEntity(Entity.TEST_CASE, about.getId(), "entityLink", Include.ALL);
       if (testCase == null) {
-        return false;
+        return;
       }
-
       ResourceContextInterface testCaseResourceContext =
           TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
       EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
@@ -890,7 +814,6 @@ public class TaskRepository extends EntityRepository<Task> {
               ? TestCaseResourceContext.builder().entityLink(entityLink).build()
               : TestCaseResourceContext.builder().build();
 
-      List<AuthRequest> requests = new ArrayList<>();
       if (entityLink != null) {
         requests.add(
             new AuthRequest(
@@ -909,22 +832,11 @@ public class TaskRepository extends EntityRepository<Task> {
           new AuthRequest(
               new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL),
               testCaseResourceContext));
-
-      authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
-      return true;
-    } catch (AuthorizationException e) {
-      LOG.debug(
-          "[TaskRepository] Incident permission fallback denied for task '{}' and user '{}': {}",
-          task.getId(),
-          securityContext.getUserPrincipal().getName(),
-          e.getMessage());
-      return false;
     } catch (Exception e) {
       LOG.warn(
-          "[TaskRepository] Failed incident permission fallback for task '{}': {}",
+          "[TaskRepository] Failed to build incident permission fallback for task '{}': {}",
           task.getId(),
           e.getMessage());
-      return false;
     }
   }
 
@@ -973,21 +885,18 @@ public class TaskRepository extends EntityRepository<Task> {
       return getOperationForSuggestion(task);
     }
 
+    // Approval tasks (Glossary/Request approval, Data Access Request) and incident tasks
+    // intentionally return null: the approval itself is the authorization and we must not
+    // require the approver to additionally hold EditAll on the target entity. The task-level
+    // policy check in checkPermissionsForResolveTask covers who is allowed to approve.
     return switch (taskType) {
       case DescriptionUpdate -> MetadataOperation.EDIT_DESCRIPTION;
       case TagUpdate -> MetadataOperation.EDIT_TAGS;
-      case GlossaryApproval, RequestApproval -> MetadataOperation.EDIT_ALL;
       case OwnershipUpdate -> MetadataOperation.EDIT_OWNERS;
       case TierUpdate -> MetadataOperation.EDIT_TIER;
       case DomainUpdate -> MetadataOperation.EDIT_ALL;
       default -> null;
     };
-  }
-
-  private boolean isApprovalTask(Task task) {
-    TaskEntityType taskType = task.getType();
-    return taskType == TaskEntityType.GlossaryApproval
-        || taskType == TaskEntityType.RequestApproval;
   }
 
   private MetadataOperation getOperationForSuggestion(Task task) {

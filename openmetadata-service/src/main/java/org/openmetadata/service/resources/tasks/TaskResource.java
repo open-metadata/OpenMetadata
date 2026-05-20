@@ -68,6 +68,7 @@ import org.openmetadata.schema.type.DataAccessType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.type.TaskEntityStatus;
@@ -116,6 +117,14 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
   public TaskResource(Authorizer authorizer, Limits limits) {
     super(Entity.TASK, authorizer, limits);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    return List.of(
+        MetadataOperation.RESOLVE_TASK,
+        MetadataOperation.CLOSE_TASK,
+        MetadataOperation.REASSIGN_TASK);
   }
 
   public static class TaskList extends ResultList<Task> {
@@ -1368,7 +1377,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         if (params == null || params.getAssignees() == null || params.getAssignees().isEmpty()) {
           throw new IllegalArgumentException("Assignees required for Assign operation");
         }
-        repository.checkPermissionsForOwnerOnlyAction(securityContext, task, "reassignTask");
+        repository.checkPermissionsForOwnerOnlyAction(
+            authorizer, securityContext, task, "reassignTask");
         List<EntityReference> newAssignees =
             params.getAssignees().stream().map(this::resolveUserOrTeam).toList();
         task.setAssignees(newAssignees);
@@ -1380,7 +1390,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         if (params == null || params.getPriority() == null) {
           throw new IllegalArgumentException("Priority required for UpdatePriority operation");
         }
-        repository.checkPermissionsForOwnerOnlyAction(securityContext, task, "changeTaskPriority");
+        repository.checkPermissionsForOwnerOnlyAction(
+            authorizer, securityContext, task, "changeTaskPriority");
         task.setPriority(params.getPriority());
         task.setUpdatedBy(userName);
         task.setUpdatedAt(System.currentTimeMillis());

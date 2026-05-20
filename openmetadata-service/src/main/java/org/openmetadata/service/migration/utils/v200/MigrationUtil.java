@@ -13,14 +13,19 @@ import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AnnouncementRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.PolicyRepository;
+import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
@@ -29,7 +34,55 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class MigrationUtil {
 
+  private static final String DATA_CONSUMER_ROLE = "DataConsumer";
+  private static final String TASK_AUTHOR_POLICY = "TaskAuthorPolicy";
+
   private MigrationUtil() {}
+
+  /**
+   * Attach the {@code TaskAuthorPolicy} reference to the existing {@code DataConsumer} role if it
+   * is missing. The policy entity itself is created automatically by {@code
+   * PolicyRepository.initSeedDataFromResources()} on startup; this migration only handles the role
+   * attachment because {@link
+   * org.openmetadata.service.jdbi3.EntityRepository#initializeEntity(org.openmetadata.schema.EntityInterface)}
+   * is create-if-missing only and will not amend an existing role. Idempotent — safe to re-run.
+   */
+  public static void addTaskAuthorPolicyToDataConsumerRole(CollectionDAO collectionDAO) {
+    RoleRepository roleRepository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
+    PolicyRepository policyRepository =
+        (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+    try {
+      Role role = roleRepository.findByName(DATA_CONSUMER_ROLE, Include.NON_DELETED);
+      Policy policy = policyRepository.findByName(TASK_AUTHOR_POLICY, Include.NON_DELETED);
+      List<EntityReference> policies =
+          role.getPolicies() == null ? new ArrayList<>() : new ArrayList<>(role.getPolicies());
+      boolean alreadyPresent =
+          policies.stream().anyMatch(p -> TASK_AUTHOR_POLICY.equals(p.getName()));
+      if (alreadyPresent) {
+        LOG.debug("{} already attached to {}, skipping", TASK_AUTHOR_POLICY, DATA_CONSUMER_ROLE);
+        return;
+      }
+      policies.add(policy.getEntityReference());
+      role.setPolicies(policies);
+      collectionDAO
+          .roleDAO()
+          .update(role.getId(), role.getFullyQualifiedName(), JsonUtils.pojoToJson(role));
+      LOG.info("Attached {} to {}", TASK_AUTHOR_POLICY, DATA_CONSUMER_ROLE);
+    } catch (EntityNotFoundException ex) {
+      LOG.warn(
+          "Skipping TaskAuthorPolicy backfill: {} or {} not found ({})",
+          DATA_CONSUMER_ROLE,
+          TASK_AUTHOR_POLICY,
+          ex.getMessage());
+    } catch (Exception ex) {
+      LOG.error(
+          "Failed to attach {} to {}: {}",
+          TASK_AUTHOR_POLICY,
+          DATA_CONSUMER_ROLE,
+          ex.getMessage(),
+          ex);
+    }
+  }
 
   /**
    * Migrate suggestions from the old suggestions table to the new task_entity table. Each

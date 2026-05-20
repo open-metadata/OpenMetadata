@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.security.policyevaluator;
 
-import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
@@ -22,9 +21,13 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 
 /**
- * Task-specific resource context that maps task assignees as owners for policy evaluation. This
- * allows the existing isOwner() policy condition to work with task assignees, and SubjectContext
- * handles team expansion automatically.
+ * Task-specific resource context.
+ *
+ * <p>{@code getOwners()} returns the owners of the entity the task is <em>about</em>, so the
+ * standard {@code isOwner()} SpEL condition retains its conventional meaning ("user owns the
+ * target entity"). The filer / assignee / reviewer roles are exposed via dedicated SpEL
+ * conditions ({@code isTaskFiler()}, {@code isTaskAssignee()}, {@code isTaskReviewer()}) which
+ * read the Task entity directly through this context's {@link #getEntity()}.
  */
 public class TaskResourceContext implements ResourceContextInterface {
   private final Task task;
@@ -40,14 +43,8 @@ public class TaskResourceContext implements ResourceContextInterface {
 
   @Override
   public List<EntityReference> getOwners() {
-    List<EntityReference> owners = new ArrayList<>();
-    if (task.getAssignees() != null) {
-      owners.addAll(task.getAssignees());
-    }
-    if (task.getCreatedBy() != null) {
-      owners.add(task.getCreatedBy());
-    }
-    return owners;
+    EntityReference about = task.getAbout();
+    return about == null ? List.of() : Entity.getOwners(about);
   }
 
   @Override
