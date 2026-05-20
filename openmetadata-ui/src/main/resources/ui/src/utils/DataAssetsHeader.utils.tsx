@@ -62,6 +62,7 @@ import { PipelineService } from '../generated/entity/services/pipelineService';
 import { SearchService } from '../generated/entity/services/searchService';
 import { SecurityService } from '../generated/entity/services/securityService';
 import { StorageService } from '../generated/entity/services/storageService';
+import { EntityReference } from '../generated/type/entityReference';
 import { formatDateTime } from './date-time/DateTimeUtils';
 import {
   getBreadcrumbForEntitiesWithServiceOnly,
@@ -168,7 +169,7 @@ export const getDataAssetsHeaderInfo = (
   entityType: DataAssetsHeaderProps['entityType'],
   dataAsset: DataAssetsHeaderProps['dataAsset'],
   entityName: string,
-  parentContainers: Container[]
+  parentContainers: EntityReference[]
 ) => {
   const returnData: DataAssetHeaderInfo = {
     extraInfo: <></>,

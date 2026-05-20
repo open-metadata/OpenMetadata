@@ -190,6 +190,21 @@ describe('AppSchedule component', () => {
     ).toBeInTheDocument();
   });
 
+  it('should show runtime disabled reason when app is unavailable', () => {
+    render(
+      <AppSchedule
+        {...mockProps1}
+        disabled
+        disabledReason="message.cache-service-not-configured-message"
+      />
+    );
+
+    expect(
+      screen.getByText('message.cache-service-not-configured-message')
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'label.run-now' })).toBeNull();
+  });
+
   it('if failed in fetch pipelineDetails, should not show AppRunsHistory', () => {
     mockGetIngestionPipelineByFqn.mockRejectedValueOnce({});
     render(<AppSchedule {...mockProps2} />);

@@ -209,6 +209,7 @@ export enum PipelineType {
     ElasticSearchReindex = "elasticSearchReindex",
     Lineage = "lineage",
     Metadata = "metadata",
+    PolicyAgent = "policyAgent",
     Profiler = "profiler",
     TestSuite = "TestSuite",
     Usage = "usage",
@@ -273,6 +274,8 @@ export interface SourceConfig {
  * Apply a set of operations on a service
  *
  * McpService Metadata Pipeline Configuration.
+ *
+ * Policy Agent Pipeline Configuration. Applies access grants against the source system.
  */
 export interface Pipeline {
     /**
@@ -782,12 +785,6 @@ export interface Pipeline {
      */
     entityFullyQualifiedName?: string;
     /**
-     * Percentage of data or no. of rows we want to execute the profiler and tests on
-     */
-    profileSample?:      number;
-    profileSampleType?:  ProfileSampleType;
-    samplingMethodType?: SamplingMethodType;
-    /**
      * Service connections to be used for the logical test suite.
      */
     serviceConnections?: ServiceConnections[];
@@ -898,6 +895,10 @@ export interface Pipeline {
      * Regex to only fetch MCP servers with names matching the pattern.
      */
     serverFilterPattern?: FilterPattern;
+    /**
+     * List of access grants to apply on the source.
+     */
+    policies?: Policy[];
 }
 
 /**
@@ -1103,9 +1104,14 @@ export interface CollateAIAppConfig {
      */
     autoTune?: boolean;
     /**
+     * Overrides applied to staged indexes during bulk reindex. Reverted to liveIndexSettings
+     * before alias swap. Nothing reads from staged indexes, so refresh=-1 and replicas=0 are
+     * safe. Defaults: refresh=-1, replicas=0, durability=async, syncInterval=30s,
+     * forceMergeOnPromote=false.
+     */
+    bulkIndexSettings?: BulkIndexOverrides;
+    /**
      * Number of threads to use for reindexing
-     *
-     * Number of parallel threads for processing entities and warming cache.
      */
     consumerThreads?: number;
     /**
@@ -1118,6 +1124,19 @@ export interface CollateAIAppConfig {
      * Initial backoff time in milliseconds
      */
     initialBackoff?: number;
+    /**
+     * Settings applied to staged indexes before alias swap (live serving values). Tune for read
+     * freshness and HA. Defaults: refresh=1s (near-real-time, required if users/agents
+     * read-after-write), replicas=1, shards=1, durability=request.
+     */
+    liveIndexSettings?: IndexSettings;
+    /**
+     * Override liveIndexSettings for specific entity types. Useful for large or specialized
+     * entities (e.g. 'container' on instances with 500k+ assets, 'queryCostRecord' for
+     * high-cardinality time series). Keys are entity type names; values override the global
+     * liveIndexSettings.
+     */
+    liveIndexSettingsByEntity?: { [key: string]: IndexSettings };
     /**
      * Maximum backoff time in milliseconds
      */
@@ -1145,16 +1164,10 @@ export interface CollateAIAppConfig {
     producerThreads?: number;
     /**
      * Queue Size to user internally for reindexing.
-     *
-     * Internal queue size for entity processing pipeline.
      */
     queueSize?: number;
     /**
-     * This schema publisher run modes.
-     */
-    recreateIndex?: boolean;
-    /**
-     * Recreate Indexes with updated Language
+     * Search index mapping language.
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
@@ -1169,14 +1182,26 @@ export interface CollateAIAppConfig {
      */
     timeSeriesMaxDays?: number;
     /**
-     * Enable distributed indexing to scale reindexing across multiple servers with fault
-     * tolerance and parallel processing
+     * In multi-instance deployments, claim each entity type via Redis SETNX so only one
+     * instance warms it. Disable to let every instance warm independently (idempotent but
+     * redundant).
      */
-    useDistributedIndexing?: boolean;
+    enableDistributedClaim?: boolean;
     /**
      * Force cache warmup even if another instance is detected (use with caution).
      */
     force?: boolean;
+    /**
+     * Pre-warm the per-entity bundle cache (tags + certification) so the first read after
+     * deploy doesn't fan out to the DB. Disable for very large installs.
+     */
+    warmBundles?: boolean;
+    /**
+     * Optionally pre-warm common relationship fields in the read bundle cache. Requires Warm
+     * Read Bundles. This adds extra relationship-table and entity-reference reads during
+     * warmup, so enable it only when first-read relationship latency matters.
+     */
+    warmRelationships?: boolean;
     /**
      * Enter the retention period for Activity Threads of type = 'Conversation' records in days
      * (e.g., 30 for one month, 60 for two months).
@@ -1934,6 +1959,69 @@ export interface BackfillConfiguration {
 }
 
 /**
+ * Overrides applied to staged indexes during bulk reindex. Reverted to liveIndexSettings
+ * before alias swap. Nothing reads from staged indexes, so refresh=-1 and replicas=0 are
+ * safe. Defaults: refresh=-1, replicas=0, durability=async, syncInterval=30s,
+ * forceMergeOnPromote=false.
+ *
+ * Overrides applied to a staged index DURING bulk reindex for write throughput. Reverted to
+ * indexSettings before alias swap. Nothing reads from the staged index, so refresh=-1 and
+ * replicas=0 are safe here.
+ */
+export interface BulkIndexOverrides {
+    /**
+     * Run _forcemerge to 1 segment before swapping the alias. Improves post-reindex query
+     * performance at the cost of build time.
+     */
+    forceMergeOnPromote?:  boolean;
+    numberOfReplicas?:     number;
+    refreshInterval?:      string;
+    translogDurability?:   TranslogDurability;
+    translogSyncInterval?: string;
+}
+
+/**
+ * 'request' = fsync per write (durable). 'async' = fsync on interval (faster, can lose
+ * <syncInterval seconds on crash).
+ */
+export enum TranslogDurability {
+    Async = "async",
+    Request = "request",
+}
+
+/**
+ * Settings applied to staged indexes before alias swap (live serving values). Tune for read
+ * freshness and HA. Defaults: refresh=1s (near-real-time, required if users/agents
+ * read-after-write), replicas=1, shards=1, durability=request.
+ *
+ * Index settings applied to live (post-promote) search indexes. Tune for read freshness,
+ * durability, and HA. These do not affect bulk reindex throughput; bulkIndexOverrides
+ * controls that. number_of_shards is intentionally omitted — it can only be set at index
+ * creation time and the staged-index reindex flow uses the static mapping JSON for creation.
+ */
+export interface IndexSettings {
+    /**
+     * Replica shard count. 1 for HA on multi-node clusters; 0 for single-node.
+     */
+    numberOfReplicas?: number;
+    /**
+     * How often new writes become searchable. '1s' = near-real-time (default; required if
+     * users/agents read-after-write). Higher values reduce CPU/segment churn but delay search
+     * visibility.
+     */
+    refreshInterval?: string;
+    /**
+     * 'request' = fsync per write (durable). 'async' = fsync on interval (faster, can lose
+     * <syncInterval seconds on crash).
+     */
+    translogDurability?: TranslogDurability;
+    /**
+     * Translog fsync cadence when durability=async. Ignored when durability=request.
+     */
+    translogSyncInterval?: string;
+}
+
+/**
  * Different Module Configurations
  */
 export interface ModuleConfiguration {
@@ -2036,6 +2124,8 @@ export interface Resource {
  * Recreate Indexes with updated Language
  *
  * This schema defines the language options available for search index mappings.
+ *
+ * Search index mapping language.
  */
 export enum SearchIndexMappingLanguage {
     En = "EN",
@@ -2795,6 +2885,71 @@ export interface OwnerConfiguration {
 }
 
 /**
+ * A single access grant entry. The per-service shape lives under `config`.
+ */
+export interface Policy {
+    /**
+     * Per-service-type policy configuration.
+     */
+    config: DatabasePolicyConfig;
+    /**
+     * Unique id of the policy entry.
+     */
+    id: string;
+}
+
+/**
+ * Per-service-type policy configuration.
+ *
+ * Policy config for database service connectors (snowflake, postgres, etc.).
+ */
+export interface DatabasePolicyConfig {
+    /**
+     * Column on which the grant is applied. Requires tableName. Supported only by connectors
+     * that allow column-level grants; ignored otherwise.
+     */
+    columnName?: string;
+    /**
+     * Database on which the grant is applied.
+     */
+    databaseName: string;
+    /**
+     * Grantee identifier. For USER this is typically the email/username; for ROLE the role name.
+     */
+    principal:      string;
+    principalType?: PrincipalType;
+    privilege:      Privilege;
+    /**
+     * Schema on which the grant is applied. If omitted, the grant is scoped to the database.
+     */
+    schemaName?: string;
+    /**
+     * Table on which the grant is applied. Requires schemaName.
+     */
+    tableName?: string;
+}
+
+/**
+ * Type of principal the grant is issued to.
+ */
+export enum PrincipalType {
+    Role = "ROLE",
+    User = "USER",
+}
+
+/**
+ * Privilege to grant.
+ */
+export enum Privilege {
+    All = "ALL",
+    Delete = "DELETE",
+    Insert = "INSERT",
+    Select = "SELECT",
+    Update = "UPDATE",
+    Usage = "USAGE",
+}
+
+/**
  * Processing Engine Configuration. If not provided, the Native Engine will be used by
  * default.
  *
@@ -2852,6 +3007,11 @@ export interface ProfileSampleConfig {
  * Configuration for static sampling based on table row count.
  */
 export interface ICSamplingConfig {
+    /**
+     * Set to true to dynamically determine sampling percentage based on row count thresholds.
+     * If false, the thresholds values passed will be used as the sampling configuration.
+     */
+    smartSampling?: boolean;
     /**
      * Row count thresholds for sampling. Evaluated in order from highest to lowest threshold.
      * Tables below the lowest threshold are profiled at 100% (no sampling).
@@ -3140,6 +3300,8 @@ export interface ServiceConnection {
  * IBM Informix Database Connection Config
  *
  * IOMETE Connection Config
+ *
+ * QuestDB Connection Config
  *
  * Kafka Connection Config
  *
@@ -3506,6 +3668,8 @@ export interface ConfigObject {
      *
      * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
      *
+     * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
+     *
      * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
@@ -3761,6 +3925,8 @@ export interface ConfigObject {
      * metadata in Informix.
      *
      * Username to connect to IOMETE.
+     *
+     * Username to connect to QuestDB.
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -7186,7 +7352,7 @@ export enum ConfigScheme {
     ClickhouseNative = "clickhouse+native",
     CockroachdbPsycopg2 = "cockroachdb+psycopg2",
     Couchbase = "couchbase",
-    DatabricksConnector = "databricks+connector",
+    Databricks = "databricks",
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
     Druid = "druid",
@@ -7615,6 +7781,7 @@ export enum PurpleType {
     PubSub = "PubSub",
     QlikCloud = "QlikCloud",
     QlikSense = "QlikSense",
+    QuestDB = "QuestDB",
     QuickSight = "QuickSight",
     REST = "Rest",
     Ranger = "Ranger",
@@ -7737,6 +7904,8 @@ export interface StorageMetadataBucketDetails {
  * Reverse Ingestion Config Pipeline type
  *
  * MCP Source Config Metadata Pipeline type
+ *
+ * Policy Agent Pipeline type
  */
 export enum FluffyType {
     APIMetadata = "ApiMetadata",
@@ -7754,6 +7923,7 @@ export enum FluffyType {
     MetadataToElasticSearch = "MetadataToElasticSearch",
     MlModelMetadata = "MlModelMetadata",
     PipelineMetadata = "PipelineMetadata",
+    PolicyAgent = "PolicyAgent",
     Profiler = "Profiler",
     ReverseIngestion = "ReverseIngestion",
     SearchMetadata = "SearchMetadata",

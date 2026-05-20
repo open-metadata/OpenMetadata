@@ -76,12 +76,9 @@ export const deleteDataProduct = (id: string) => {
   return APIClient.delete(`${BASE_URL}/${id}`);
 };
 
-export const getDataProductVersionsList = async (
-  id: string,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
-) => {
+export const getDataProductVersionsList = async (id: string) => {
   const url = `${BASE_URL}/${id}/versions`;
-  const response = await APIClient.get<EntityHistory>(url, { params });
+  const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };

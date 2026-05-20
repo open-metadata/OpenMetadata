@@ -49,6 +49,7 @@ import { DatabaseService } from '../generated/entity/services/databaseService';
 import { DriveService } from '../generated/entity/services/driveService';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MessagingService } from '../generated/entity/services/messagingService';
+import { MetadataService } from '../generated/entity/services/metadataService';
 import { MlmodelService } from '../generated/entity/services/mlmodelService';
 import { PipelineService } from '../generated/entity/services/pipelineService';
 import { SearchService } from '../generated/entity/services/searchService';
@@ -61,6 +62,7 @@ import { TestCaseResolutionStatus } from '../generated/tests/testCaseResolutionS
 import { TestSuite } from '../generated/tests/testSuite';
 import { TagLabel } from '../generated/type/tagLabel';
 import { AggregatedCostAnalysisReportDataSearchSource } from './data-insight.interface';
+import { KnowledgePage } from './knowledge-center.interface';
 
 /**
  * The `keyof` operator, when applied to a union type, expands to the keys are common for
@@ -209,6 +211,10 @@ export interface StorageServiceSearchSource
 
 export interface APIServiceSearchSource extends SearchSourceBase, APIService {}
 
+export interface MetadataServiceSearchSource
+  extends SearchSourceBase,
+    MetadataService {}
+
 export interface DriveServiceSearchSource
   extends SearchSourceBase,
     DriveService {}
@@ -232,6 +238,10 @@ export interface SpreadsheetSearchSource
     Spreadsheet {}
 
 export interface WorksheetSearchSource extends SearchSourceBase, Worksheet {}
+
+export interface KnowledgePageSearchSource
+  extends SearchSourceBase,
+    KnowledgePage {}
 
 export type ExploreSearchSource =
   | TableSearchSource
@@ -264,7 +274,8 @@ export type ExploreSearchSource =
   | APICollectionSearchSource
   | APIEndpointSearchSource
   | MetricSearchSource
-  | TableColumnSearchSource;
+  | TableColumnSearchSource
+  | KnowledgePageSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
   [SearchIndex.ALL]: TableSearchSource;
@@ -302,6 +313,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TEST_SUITE]: TestSuiteSearchSource;
   [SearchIndex.INGESTION_PIPELINE]: IngestionPipelineSearchSource;
   [SearchIndex.API_SERVICE]: APIServiceSearchSource;
+  [SearchIndex.METADATA_SERVICE]: MetadataServiceSearchSource;
   [SearchIndex.API_COLLECTION]: APICollectionSearchSource;
   [SearchIndex.API_ENDPOINT]: APIEndpointSearchSource;
   [SearchIndex.METRIC]: MetricSearchSource;
@@ -310,19 +322,15 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.SPREADSHEET]: SpreadsheetSearchSource;
   [SearchIndex.WORKSHEET]: WorksheetSearchSource;
   [SearchIndex.COLUMN]: TableColumnSearchSource;
+  [SearchIndex.KNOWLEDGE_PAGE_INDEX]: KnowledgePageSearchSource;
+  [SearchIndex.MARKETPLACE]: DataProductSearchSource | DomainSearchSource;
 };
 
 export type SearchRequest<
   SI extends SearchIndex | SearchIndex[],
   TIncludeFields extends KeysOfUnion<
-    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-      ? SI[number]
-      : SI]
-  > = KeysOfUnion<
-    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-      ? SI[number]
-      : SI]
-  >
+    SearchIndexSearchSourceMapping[SI]
+  > = KeysOfUnion<SearchIndexSearchSourceMapping[SI]>
 > = {
   pageNumber?: number;
   pageSize?: number;
@@ -348,11 +356,7 @@ export type SearchRequest<
 
 export type SuggestRequest<
   SI extends SearchIndex | SearchIndex[],
-  TIncludeFields extends KeysOfUnion<
-    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-      ? SI[number]
-      : SI]
-  >
+  TIncludeFields extends KeysOfUnion<SearchIndexSearchSourceMapping[SI]>
 > = {
   query?: string;
   searchIndex?: SI;
@@ -370,7 +374,7 @@ export type SuggestRequest<
 export interface SearchHitBody<SI extends SearchIndex | DataInsightIndex, T> {
   _index: SI;
   _type?: string;
-  _id?: string;
+  _id: string;
   _score?: number;
   highlight?: Record<string, string[]>;
   sort?: number[];

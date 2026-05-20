@@ -1251,7 +1251,10 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       }
 
       if (sortField.equalsIgnoreCase(SORT_FIELD_SCORE) || isExport) {
-        requestBuilder.sort("name.keyword", SortOrder.Asc, SORT_TYPE_KEYWORD);
+        if (!sortField.equalsIgnoreCase("name.keyword")) {
+          requestBuilder.sort("name.keyword", SortOrder.Asc, SORT_TYPE_KEYWORD);
+        }
+        requestBuilder.sort("id.keyword", SortOrder.Asc, SORT_TYPE_KEYWORD);
       }
     }
 
