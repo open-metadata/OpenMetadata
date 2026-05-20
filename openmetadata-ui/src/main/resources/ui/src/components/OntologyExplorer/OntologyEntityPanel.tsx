@@ -43,7 +43,7 @@ export const OntologyEntityPanel = ({
   const { alert, resetAlert } = useAlertStore();
   const [localToast, setLocalToast] = useState<{
     open: boolean;
-    message: string;
+    message: string | JSX.Element;
     type: 'success' | 'error';
   }>({ message: '', open: false, type: 'success' });
 
@@ -54,7 +54,7 @@ export const OntologyEntityPanel = ({
       return;
     }
     setLocalToast({
-      message: typeof alert.message === 'string' ? alert.message : '',
+      message: alert.message,
       open: true,
       type: alert.type === 'error' ? 'error' : 'success',
     });

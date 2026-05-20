@@ -25,7 +25,6 @@ import { useTranslation } from 'react-i18next';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useGenericContext } from '../Customization/GenericProvider/GenericProvider';
 import { buildOntologySlideoutEntityDetails } from './buildOntologySlideoutEntityDetails';
-import { OntologyEntityPanel } from './OntologyEntityPanel';
 import ExportGraphPanel from './ExportGraphPanel';
 import FilterToolbar from './FilterToolbar';
 import GraphSettingsPanel from './GraphSettingsPanel';
@@ -34,6 +33,7 @@ import {
   useOntologyExplorer,
 } from './hooks/useOntologyExplorer';
 import OntologyControlButtons from './OntologyControlButtons';
+import { OntologyEntityPanel } from './OntologyEntityPanel';
 import { withoutOntologyAutocompleteAll } from './OntologyExplorer.constants';
 import {
   ExplorationMode,
@@ -53,7 +53,6 @@ const ONTOLOGY_GRAPH_BACKDROP_CLASS =
 
 const ONTOLOGY_TOOLBAR_CARD_CLASS =
   'tw:z-1 tw:border tw:border-utility-gray-blue-100 tw:ring-0 tw:shadow-md';
-
 
 interface GraphEmptyStateProps {
   readonly message: string;
