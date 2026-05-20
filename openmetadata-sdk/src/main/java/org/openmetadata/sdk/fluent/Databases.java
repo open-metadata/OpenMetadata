@@ -247,8 +247,9 @@ public final class Databases {
       return new DatabaseDeleter(client, identifier);
     }
 
-    public DatabaseRestorer restore() {
-      return new DatabaseRestorer(client, identifier);
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Database> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.databases(), identifier);
     }
   }
 
@@ -280,47 +281,6 @@ public final class Databases {
       if (recursive) params.put("recursive", "true");
       if (hardDelete) params.put("hardDelete", "true");
       client.databases().delete(id, params);
-    }
-  }
-
-  // ==================== Restorer ====================
-
-  /**
-   * Fluent restore builder. {@link #execute()} runs the synchronous restore and returns the
-   * restored {@link Database}. Switching to {@link #async()} returns an
-   * {@link AsyncDatabaseRestorer} whose {@code execute()} triggers the server-side async
-   * path and returns an {@link org.openmetadata.sdk.models.AsyncJobResponse} with a job id —
-   * use this for services with thousands of schemas / tables (issue #4003).
-   */
-  public static class DatabaseRestorer {
-    private final OpenMetadataClient client;
-    private final String id;
-
-    public DatabaseRestorer(OpenMetadataClient client, String id) {
-      this.client = client;
-      this.id = id;
-    }
-
-    public AsyncDatabaseRestorer async() {
-      return new AsyncDatabaseRestorer(client, id);
-    }
-
-    public Database execute() {
-      return client.databases().restore(id);
-    }
-  }
-
-  public static class AsyncDatabaseRestorer {
-    private final OpenMetadataClient client;
-    private final String id;
-
-    public AsyncDatabaseRestorer(OpenMetadataClient client, String id) {
-      this.client = client;
-      this.id = id;
-    }
-
-    public org.openmetadata.sdk.models.AsyncJobResponse execute() {
-      return client.databases().restoreServerAsync(id);
     }
   }
 
