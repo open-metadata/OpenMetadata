@@ -102,6 +102,7 @@ class DatabaseServiceBuilderPy:
                 supportsUsageExtraction=None,
                 supportsLineageExtraction=None,
                 useSlowLogs=False,
+                queryHistoryTable=None,
             )
         )
         self.connection_val = conn
