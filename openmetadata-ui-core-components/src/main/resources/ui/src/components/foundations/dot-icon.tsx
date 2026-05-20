@@ -1,6 +1,11 @@
 import type { HTMLAttributes } from 'react';
 
 const sizes = {
+  xs: {
+    wh: 6,
+    c: 3,
+    r: 2,
+  },
   sm: {
     wh: 8,
     c: 4,
@@ -16,7 +21,7 @@ const sizes = {
 export const Dot = ({
   size = 'md',
   ...props
-}: HTMLAttributes<HTMLOrSVGElement> & { size?: 'sm' | 'md' }) => {
+}: HTMLAttributes<HTMLOrSVGElement> & { size?: 'sm' | 'md' | 'xs' }) => {
   return (
     <svg
       fill="none"

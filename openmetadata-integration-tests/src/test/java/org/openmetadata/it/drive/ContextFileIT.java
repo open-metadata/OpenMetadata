@@ -3,6 +3,7 @@ package org.openmetadata.it.drive;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -15,12 +16,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateFolder;
+import org.openmetadata.schema.api.data.MoveContextFileRequest;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileSourceType;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.sdk.test.util.TestNamespace;
@@ -29,8 +32,8 @@ import org.openmetadata.sdk.test.util.TestNamespaceExtension;
 @ExtendWith(TestNamespaceExtension.class)
 class ContextFileIT {
 
-  private static final String FILE_PATH = "v1/drive/files";
-  private static final String FOLDER_PATH = "v1/drive/folders";
+  private static final String FILE_PATH = "v1/contextCenter/drive/files";
+  private static final String FOLDER_PATH = "v1/contextCenter/drive/folders";
 
   private ContextFile createFile(RestClient rest, CreateContextFile request)
       throws HttpResponseException {
@@ -359,6 +362,114 @@ class ContextFileIT {
   }
 
   // --- Search ---
+
+  // --- Move ---
+
+  private ContextFile moveFile(RestClient rest, UUID id, EntityReference newFolder)
+      throws HttpResponseException {
+    MoveContextFileRequest body = new MoveContextFileRequest().withFolder(newFolder);
+    try (Response response = rest.rawPut(FILE_PATH + "/" + id + "/move", body)) {
+      if (response.getStatus() >= 400) {
+        throw new HttpResponseException(response.getStatus(), response.readEntity(String.class));
+      }
+      return JsonUtils.readValue(response.readEntity(String.class), ContextFile.class);
+    }
+  }
+
+  @Test
+  void testMoveFileBetweenFolders(TestNamespace ns) throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    Folder folderA = createFolder(rest, new CreateFolder().withName(ns.prefix("folder-a")));
+    Folder folderB = createFolder(rest, new CreateFolder().withName(ns.prefix("folder-b")));
+
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("move-between"))
+                .withFileType(ContextFileType.PDF)
+                .withFolder(folderA.getFullyQualifiedName())
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    assertEquals(folderA.getId(), file.getFolder().getId());
+
+    ContextFile moved = moveFile(rest, file.getId(), folderB.getEntityReference());
+
+    assertEquals(folderB.getId(), moved.getFolder().getId());
+    assertTrue(
+        moved.getFullyQualifiedName().contains(folderB.getName()),
+        "Moved file FQN should reflect new folder, got " + moved.getFullyQualifiedName());
+
+    ContextFile reloaded = getFile(rest, file.getId(), "folder");
+    assertEquals(folderB.getId(), reloaded.getFolder().getId());
+  }
+
+  @Test
+  void testMoveFileToRoot(TestNamespace ns) throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    Folder folder = createFolder(rest, new CreateFolder().withName(ns.prefix("folder-root-test")));
+
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("move-to-root"))
+                .withFileType(ContextFileType.PDF)
+                .withFolder(folder.getFullyQualifiedName())
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+
+    ContextFile moved = moveFile(rest, file.getId(), null);
+
+    assertNull(moved.getFolder(), "File moved to root should have no folder reference");
+    assertEquals(
+        file.getName(), moved.getFullyQualifiedName(), "Root-level FQN should equal the file name");
+  }
+
+  @Test
+  void testMoveFileNonExistentFolder(TestNamespace ns) throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("move-bad-folder"))
+                .withFileType(ContextFileType.PDF)
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+
+    EntityReference bogus = new EntityReference().withId(UUID.randomUUID()).withType("folder");
+
+    HttpResponseException ex =
+        assertThrows(HttpResponseException.class, () -> moveFile(rest, file.getId(), bogus));
+    assertEquals(404, ex.getStatusCode());
+  }
+
+  @Test
+  void testMoveFilePermissions(TestNamespace ns) throws HttpResponseException {
+    RestClient adminRest = RestClient.admin();
+    User owner = DriveTestUsers.createUser(ns, "file-mover");
+
+    Folder folderA = createFolder(adminRest, new CreateFolder().withName(ns.prefix("perm-a")));
+    Folder folderB = createFolder(adminRest, new CreateFolder().withName(ns.prefix("perm-b")));
+
+    ContextFile file =
+        createFile(
+            adminRest,
+            new CreateContextFile()
+                .withName(ns.prefix("perm-move"))
+                .withFileType(ContextFileType.PDF)
+                .withFolder(folderA.getFullyQualifiedName())
+                .withOwners(List.of(owner.getEntityReference()))
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+
+    RestClient consumerRest = RestClient.forUser("test@open-metadata.org", new String[] {});
+
+    HttpResponseException ex =
+        assertThrows(
+            HttpResponseException.class,
+            () -> moveFile(consumerRest, file.getId(), folderB.getEntityReference()));
+    assertTrue(
+        ex.getStatusCode() == 403 || ex.getStatusCode() == 401,
+        "Expected 403/401, got " + ex.getStatusCode());
+  }
 
   @Test
   void testFileAppearsInSearch(TestNamespace ns) throws Exception {

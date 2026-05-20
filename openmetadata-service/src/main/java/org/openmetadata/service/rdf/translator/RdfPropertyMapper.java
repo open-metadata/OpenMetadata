@@ -1128,7 +1128,17 @@ public class RdfPropertyMapper {
       XSDDatatype datatype = getXSDDatatype(xsdType);
 
       if (datatype != null && !value.isNull()) {
-        resource.addProperty(property, model.createTypedLiteral(value.asText(), datatype));
+        String literal = value.asText();
+        // Skip blank xsd:string triples. An empty literal carries no real
+        // information and downstream readers had to special-case it — most
+        // visibly skos:prefLabel="" winning over rdfs:label in the glossary
+        // term graph SPARQL. By not writing the triple at all, OPTIONAL
+        // patterns and COALESCE on the read side behave correctly with no
+        // extra logic.
+        if (XSDDatatype.XSDstring.equals(datatype) && literal.isBlank()) {
+          return;
+        }
+        resource.addProperty(property, model.createTypedLiteral(literal, datatype));
       }
     } else {
       addSimpleProperty(resource, propertyId, value, model);

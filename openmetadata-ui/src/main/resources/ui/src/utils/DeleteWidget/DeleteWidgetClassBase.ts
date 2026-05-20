@@ -54,7 +54,7 @@ class DeleteWidgetClassBase {
         return `drives/${entityType}s`;
       case EntityType.KNOWLEDGE_CENTER:
       case EntityType.KNOWLEDGE_PAGE:
-        return 'knowledgeCenter';
+        return 'contextCenter/pages';
       default:
         return `${entityType}s`;
     }

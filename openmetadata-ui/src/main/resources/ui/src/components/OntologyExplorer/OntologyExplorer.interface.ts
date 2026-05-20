@@ -44,6 +44,7 @@ export interface OntologyNode {
   group?: string;
   glossaryId?: string;
   entityRef?: EntityReference;
+  searchSource?: Record<string, unknown>;
   owners?: EntityReference[];
   termId?: string;
   originalGlossary?: string;
@@ -116,6 +117,7 @@ export interface OntologyGraphProps {
   hierarchyCombos?: HierarchyComboInfo[];
   focusNodeId?: string | null;
   graphSearchHighlight?: GraphSearchHighlightInput | null;
+  relationTypes?: GlossaryTermRelationType[];
   onNodeClick: (
     node: OntologyNode,
     position?: { x: number; y: number },
@@ -220,4 +222,5 @@ export interface BuildGraphDataProps {
   layoutType: LayoutEngineType;
   hierarchyCombos?: HierarchyComboInfo[];
   graphSearchHighlight?: GraphSearchHighlightInput | null;
+  relationTypes?: GlossaryTermRelationType[];
 }

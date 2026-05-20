@@ -34,9 +34,18 @@ export interface KnowledgePageHierarchyParams {
   limit: number;
 }
 
-export const getListKnowledgePages = async (params?: ListParams) => {
+export type KnowledgePageListParams = ListParams & {
+  pageType?: PageType;
+  entityType?: string;
+  entityId?: string;
+  tagFQN?: string;
+};
+
+export const getListKnowledgePages = async (
+  params?: KnowledgePageListParams
+) => {
   const response = await APIClient.get<PagingResponse<KnowledgePage[]>>(
-    '/knowledgeCenter',
+    '/contextCenter/pages',
     { params }
   );
 
@@ -48,7 +57,7 @@ export const getKnowledgePageByFqn = async (
   params?: ListParams
 ) => {
   const response = await APIClient.get<KnowledgePage>(
-    `/knowledgeCenter/name/${pageName}`,
+    `/contextCenter/pages/name/${pageName}`,
     {
       params,
     }
@@ -61,7 +70,7 @@ export const postKnowledgePage = async (data: CreateKnowledgePage) => {
   const response = await APIClient.post<
     CreateKnowledgePage,
     AxiosResponse<KnowledgePage>
-  >('/knowledgeCenter', data);
+  >('/contextCenter/pages', data);
 
   return response.data;
 };
@@ -70,7 +79,7 @@ export const putKnowledgePage = async (data: CreateKnowledgePage) => {
   const response = await APIClient.put<
     CreateKnowledgePage,
     AxiosResponse<KnowledgePage>
-  >('/knowledgeCenter', data);
+  >('/contextCenter/pages', data);
 
   return response.data;
 };
@@ -83,7 +92,7 @@ export const patchKnowledgePage = async (id: string, data: Operation[]) => {
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<KnowledgePage>
-  >(`/knowledgeCenter/${id}`, data, configOptions);
+  >(`/contextCenter/pages/${id}`, data, configOptions);
 
   return response.data;
 };
@@ -95,7 +104,7 @@ export const updateKnowledgePageVote = async (
   const response = await APIClient.put<
     VotingDataProps,
     AxiosResponse<KnowledgePagePutResponse>
-  >(`/knowledgeCenter/${id}/vote`, data);
+  >(`/contextCenter/pages/${id}/vote`, data);
 
   return response.data;
 };
@@ -113,7 +122,7 @@ export const followKnowledgePage = async (
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`/knowledgeCenter/${KnowledgePageId}/followers`, userId, configOptions);
+  >(`/contextCenter/pages/${KnowledgePageId}/followers`, userId, configOptions);
 
   return response.data;
 };
@@ -133,13 +142,16 @@ export const unFollowKnowledgePage = async (
         fieldsDeleted: { oldValue: EntityReference[] }[];
       };
     }>
-  >(`/knowledgeCenter/${KnowledgePageId}/followers/${userId}`, configOptions);
+  >(
+    `/contextCenter/pages/${KnowledgePageId}/followers/${userId}`,
+    configOptions
+  );
 
   return response.data;
 };
 
 export const getKnowledgePageVersionsList = async (id: string) => {
-  const url = `knowledgeCenter/${id}/versions`;
+  const url = `contextCenter/pages/${id}/versions`;
   const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
@@ -149,7 +161,7 @@ export const getKnowledgePageVersionData = async (
   id: string,
   version: string
 ) => {
-  const url = `knowledgeCenter/${id}/versions/${version}`;
+  const url = `contextCenter/pages/${id}/versions/${version}`;
   const response = await APIClient.get<KnowledgePage>(url);
 
   return response.data;
@@ -158,7 +170,7 @@ export const getKnowledgePageVersionData = async (
 export const getPageHierarchy = async (
   pageType: PageType = PageType.ARTICLE
 ) => {
-  const url = `knowledgeCenter/hierarchy`;
+  const url = `contextCenter/pages/hierarchy`;
   const response = await APIClient.get<PagingResponse<PageHierarchy[]>>(url, {
     params: { pageType },
   });
@@ -173,7 +185,7 @@ export const getPageHierarchyFromES = async (
   limit = 100,
   activeFqn?: string
 ) => {
-  const url = `knowledgeCenter/search/hierarchy`;
+  const url = `contextCenter/pages/search/hierarchy`;
   const response = await APIClient.get<KnowledgePageHierarchyResponse>(url, {
     params: { parent, pageType, offset, limit, activeFqn },
   });

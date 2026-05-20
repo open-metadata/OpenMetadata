@@ -44,6 +44,7 @@ import OntologyGraph from './OntologyGraphG6';
 import { OntologyNodeRelationsContent } from './OntologyNodeRelationsContent';
 import {
   ASSET_NODE_TYPE,
+  ASSET_RELATION_TYPE,
   isDataAssetLikeNode,
   METRIC_NODE_TYPE,
 } from './utils/graphBuilders';
@@ -131,6 +132,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     handleGraphNodeClick,
     handleGraphNodeDoubleClick,
     handleGraphPaneClick,
+    handleNodeDataUpdate,
   } = useOntologyExplorer({
     scope,
     entityId,
@@ -298,6 +300,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             nodePositions={hierarchyBakedPositions}
             nodes={graphDataToShow.nodes}
             ref={graphRef}
+            relationTypes={relationTypes}
             selectedNodeId={
               explorationMode === 'data' && expandedTermIds.size > 1
                 ? null
@@ -370,7 +373,12 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             relationTypes={relationTypes}
             totalTermCount={totalTermCount}
             viewModeDisabled={explorationMode === 'data'}
-            onClearAll={() => setFilters(DEFAULT_FILTERS)}
+            onClearAll={() =>
+              setFilters((prev) => ({
+                ...DEFAULT_FILTERS,
+                viewMode: prev.viewMode,
+              }))
+            }
             onFiltersChange={handleFiltersChange}
             onLoadMore={handleLoadMore}
             onViewModeChange={handleViewModeChange}
@@ -479,6 +487,11 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               {({ close }) => (
                 <EntitySummaryPanel
                   isSideDrawer
+                  afterEntityUpdate={(updatedData) => {
+                    if (selectedNode) {
+                      handleNodeDataUpdate(selectedNode.id, updatedData);
+                    }
+                  }}
                   entityDetails={buildOntologySlideoutEntityDetails(
                     selectedNode
                   )}
@@ -490,7 +503,9 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                   ontologyExplorerRelationsSlot={
                     isDataAssetLikeNode(selectedNode) ? undefined : (
                       <OntologyNodeRelationsContent
-                        edges={filteredGraphData?.edges ?? []}
+                        edges={(filteredGraphData?.edges ?? []).filter(
+                          (e) => e.relationType !== ASSET_RELATION_TYPE
+                        )}
                         node={selectedNode}
                         nodes={filteredGraphData?.nodes ?? []}
                         relationTypes={relationTypes}
