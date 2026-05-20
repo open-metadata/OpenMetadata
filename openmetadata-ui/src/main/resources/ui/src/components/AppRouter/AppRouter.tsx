@@ -16,6 +16,8 @@ import { lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { APP_ROUTER_ROUTES } from '../../constants/router.constants';
+import { useAppMode } from '../../hooks/useAppMode';
+import { useAppRoutesRegistry } from '../../hooks/useAppRoutesRegistry';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Loader from '../common/Loader/Loader';
@@ -76,6 +78,9 @@ const AppRouter = () => {
     }))
   );
 
+  const appMode = useAppMode();
+  const ModeRoutes = useAppRoutesRegistry((state) => state.routes[appMode]);
+
   /**
    * isApplicationLoading is true when the application is loading in AuthProvider
    * and is false when the application is loaded.
@@ -89,9 +94,11 @@ const AppRouter = () => {
   }
 
   if (isAuthenticated) {
+    const AuthenticatedRoutesComponent = ModeRoutes ?? AuthenticatedRoutes;
+
     return (
       <AuthenticatedApp>
-        <AuthenticatedRoutes />
+        <AuthenticatedRoutesComponent />
       </AuthenticatedApp>
     );
   }
