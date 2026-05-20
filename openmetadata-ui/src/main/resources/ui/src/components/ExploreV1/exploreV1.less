@@ -35,6 +35,13 @@
     }
   }
 
+  .content-height-with-resizable-panel {
+    height: calc(
+      100vh - @om-navbar-height - @quick-filters-container-height - @size-xs
+    );
+    overflow-y: auto;
+  }
+
   .explore-icon {
     width: 16px;
     height: 16px;
@@ -83,10 +90,7 @@
   }
 
   .explore-data-container {
-    height: calc(
-      100vh - @om-navbar-height - @quick-filters-container-height - @size-mlg
-    );
-    overflow-y: auto;
+    min-height: 0;
     margin-right: 0;
   }
 
@@ -130,4 +134,18 @@
       padding: 0;
     }
   }
+}
+
+.explore-main-card {
+  .ant-pagination {
+    bottom: -20px;
+    background: white;
+    margin: -10px;
+    border-radius: 12px;
+  }
+}
+
+.explore-page-right-panel {
+  // fixed width to right panel
+  flex: 0 0 400px;
 }
