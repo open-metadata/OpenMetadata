@@ -388,7 +388,9 @@ export const getExportModalContent = (page: Page) =>
   page.getByTestId('export-scope-modal').locator('.ant-modal-content');
 
 export const openExportScopeModal = async (page: Page) => {
-  await page.getByTestId('export-search-results-button').click();
+  await page.getByRole('button', { name: 'Tools' }).click();
+  await page.getByRole('menuitemradio', { name: 'Export' }).click();
+
   await expect(getExportModalContent(page)).toBeVisible();
 };
 

@@ -43,6 +43,7 @@ const SortingDropDown: React.FC<SortingDropdownProps> = ({
   return (
     <Dropdown.Root data-testid="dropdown">
       <Button
+        data-testid="sorting-dropdown-label"
         className="tw:p-0"
         color="tertiary"
         iconTrailing={<ChevronDown size={14} />}>

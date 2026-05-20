@@ -16,10 +16,10 @@ import {
   Box,
   Button,
   Card as CoreCard,
+  Typography as CoreTypography,
   Divider,
   Dropdown,
   Toggle,
-  Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
@@ -532,7 +532,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 )
               }
               size="sm"
-              onClick={() =>
+              aria-label="Sort order"
+              onPress={() =>
                 onChangeSortOder(
                   isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
                 )
@@ -571,13 +572,13 @@ const ExploreV1: React.FC<ExploreProps> = ({
                   <Dropdown.Item
                     icon={Download01}
                     label={t('label.export')}
-                    onAction={handleOpenExportScopeModal}
+                    onPress={handleOpenExportScopeModal}
                   />
 
                   <Dropdown.Item
                     icon={Trash01}
                     id="show-deleted"
-                    onAction={() => onChangeShowDeleted(!showDeleted)}>
+                    onPress={() => onChangeShowDeleted(!showDeleted)}>
                     <Box justify="between">
                       {t('label.deleted')}
                       <Toggle isSelected={showDeleted} />
@@ -587,7 +588,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                   <Dropdown.Item
                     icon={FilterFunnel01}
                     label={t('label.filter')}
-                    onAction={() => toggleModal(true)}
+                    onPress={() => toggleModal(true)}
                   />
                 </Dropdown.Menu>
               </Dropdown.Popover>

@@ -119,12 +119,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Item: ({
       children,
       onClick,
+      onPress,
       ...props
     }: {
       children?: import('react').ReactNode;
       onClick?: () => void;
     } & Record<string, unknown>) => (
-      <div role="menuitem" onClick={onClick} {...props}>
+      <div role="menuitem" onClick={onPress ?? onClick} {...props}>
         {children}
       </div>
     ),
