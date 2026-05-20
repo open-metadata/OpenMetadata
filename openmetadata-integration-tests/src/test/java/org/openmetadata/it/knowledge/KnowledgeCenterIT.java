@@ -35,7 +35,7 @@ import org.openmetadata.sdk.test.util.TestNamespaceExtension;
 @ExtendWith(TestNamespaceExtension.class)
 public class KnowledgeCenterIT {
 
-  private static final String KC_PATH = "v1/knowledgeCenter";
+  private static final String KC_PATH = "v1/contextCenter/pages";
 
   private Page createPage(RestClient rest, CreatePage request) throws HttpResponseException {
     return rest.create(KC_PATH, request, Page.class);
