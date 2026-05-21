@@ -1,11 +1,7 @@
 package org.openmetadata.playwright.scenarios.search.reindex;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microsoft.playwright.assertions.LocatorAssertions;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
@@ -95,15 +91,15 @@ import org.slf4j.LoggerFactory;
  *   <li>{@code TestCaseIndex.testSuite/testCaseResult} → DQ → Test Cases list presence.
  *   <li>{@code TestSuiteIndex.summary} → DQ → Test Suites list presence (basic suite).
  *   <li>{@code WorksheetIndex.columns} → Explore → Worksheets column-name search.
- *   <li><strong>Suspected gap</strong> — {@code TableIndex} does <em>not</em> currently request
- *       {@code usageSummary}, but {@code TableRepository.clearFields} nulls it when not
- *       requested. The UI Explore → Tables "Sort by Weekly Usage" surface reads
- *       {@code _source.usageSummary.weeklyStats.count} (see
- *       {@code tableSortingFields} in {@code explore.constants.ts}). Until
- *       {@code TableIndex.getRequiredReindexFields()} adds {@code "usageSummary"} this test
- *       fails AFTER reindex — that's the regression gate. Tracked via a separate one-line
- *       OM fix PR.
  * </ul>
+ *
+ * <p>Not covered here (intentionally): {@code TableIndex.usageSummary} →
+ * Explore → Tables "Sort by Weekly Usage" (reads {@code
+ * _source.usageSummary.weeklyStats.count}). Usage is not indexed via the live path — a
+ * usage report doesn't drive {@code SearchIndexHandler} — so the field only appears after
+ * a reindex, and only once {@code TableIndex.getRequiredReindexFields()} requests it
+ * (OM PR #28350). Re-add an after-reindex-only assertion here once that merges and this
+ * branch rebases.
  *
  * <p>Fields added back defensively without a UI surface backed by search ({@code
  * Table.schemaDefinition}, {@code Table.tableConstraints}, {@code File.columns}, {@code
@@ -150,13 +146,10 @@ class SelectiveFieldReindexUIIT {
   // DriveServiceTestFactory.
   private static final String DRIVE_SERVICES_PATH = "/v1/services/driveServices";
 
-  // Daily usage we POST against the seeded table so weeklyStats.count is non-zero. The exact
-  // count value doesn't matter — only that _source.usageSummary.weeklyStats.count > 0 after
-  // live indexing (BEFORE) and stays > 0 after reindex (AFTER) once the OM fix lands.
+  // Daily usage we POST against the seeded table. The usageSummary search assertion is
+  // currently removed (see class javadoc / OM PR #28350); this seed stays so re-adding an
+  // after-reindex usageSummary assertion later needs no new fixture wiring.
   private static final int SEED_USAGE_COUNT = 100;
-
-  // Reused for parsing the /api/v1/search/query response.
-  private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
   @Test
   void selectiveFieldReindexPreservesUiCriticalFields(final UiSession ui, final TestNamespace ns) {
@@ -179,7 +172,11 @@ class SelectiveFieldReindexUIIT {
     assertWorksheetSearchableByColumnName(ui, fixtures, phase);
     assertTestCaseAppearsInDqList(ui, fixtures, phase);
     assertTestSuiteAppearsInDqList(ui, fixtures, phase);
-    assertTableUsageSummaryInSource(ui, fixtures, phase);
+    // NOTE: the TableIndex.usageSummary → "Sort by Weekly Usage" assertion lived here but
+    // was removed: usage is not indexed via the live path (a usage report doesn't drive
+    // SearchIndexHandler), so the field is only present after a reindex once
+    // TableIndex.getRequiredReindexFields() requests it. That reindex fix is OM PR #28350;
+    // re-add an after-reindex-only assertion here once it merges and this branch rebases.
   }
 
   private static void assertTableSearchableByColumnName(
@@ -247,50 +244,6 @@ class SelectiveFieldReindexUIIT {
             DataQualityListPage.open(ui)
                 .searchByName(fixtures.testCaseName)
                 .assertTestCaseVisible(fixtures.testCaseName));
-  }
-
-  /**
-   * Asserts {@code _source.usageSummary.weeklyStats.count > 0} on the table's search doc.
-   * Uses the UiSession's authenticated request context to hit {@code /api/v1/search/query}
-   * directly — the UI surface that depends on this field is Explore → Tables "Sort by Weekly
-   * Usage", which doesn't visibly render the count, so a DOM-only assertion can't cleanly
-   * distinguish "field dropped" from "field present but tied with others". The {@code
-   * _source} shape is the cleanest signal.
-   */
-  private static void assertTableUsageSummaryInSource(
-      final UiSession ui, final SeededFixtures fixtures, final String phase) {
-    final String description =
-        "TableIndex.usageSummary → table_search_index._source.usageSummary.weeklyStats.count"
-            + " for '"
-            + fixtures.tableName
-            + "' — "
-            + phase;
-    LOG.info("Asserting {}", description);
-    pollUiAssertion(
-        description,
-        () -> {
-          // Query the search API through the authenticated SDK HTTP client, not the
-          // browser's APIRequestContext: auth is injected into localStorage (read by the
-          // SPA), and ui.context().request() doesn't run page JS so it sends no Bearer
-          // header -> 401. The _source shape is identical regardless of caller.
-          final String path =
-              "/v1/search/query?q="
-                  + URLEncoder.encode(fixtures.tableName, StandardCharsets.UTF_8)
-                  + "&index=table_search_index&from=0&size=1";
-          final Object raw =
-              ui.server().sdk().getHttpClient().execute(HttpMethod.GET, path, null, Object.class);
-          final JsonNode body = JSON_MAPPER.valueToTree(raw);
-          final JsonNode count = body.at("/hits/hits/0/_source/usageSummary/weeklyStats/count");
-          if (count.isMissingNode() || count.isNull() || count.asLong() <= 0) {
-            throw new AssertionError(
-                "Expected _source.usageSummary.weeklyStats.count > 0 for table '"
-                    + fixtures.tableName
-                    + "', got: "
-                    + count
-                    + ". If this only fails AFTER reindex, TableIndex.getRequiredReindexFields()"
-                    + " is missing \"usageSummary\".");
-          }
-        });
   }
 
   private static void assertTestSuiteAppearsInDqList(
@@ -402,9 +355,9 @@ class SelectiveFieldReindexUIIT {
   }
 
   /**
-   * Reports a daily usage count against the seeded table so the change-event indexing path
-   * populates {@code _source.usageSummary.weeklyStats.count}. The AFTER-reindex check then
-   * verifies the field survives the selective-fields reindex path.
+   * Reports a daily usage count against the seeded table. Kept as seed scaffolding for a
+   * future after-reindex {@code usageSummary} assertion (OM PR #28350); usage is not indexed
+   * via the live path today, so nothing asserts on it yet.
    */
   private static void reportTableUsage(final Table table) {
     final DailyCount usage =
