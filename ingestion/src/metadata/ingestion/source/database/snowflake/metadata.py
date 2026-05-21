@@ -385,9 +385,11 @@ class SnowflakeSource(
 
     def get_database_names_raw(self) -> Iterable[str]:
         results = self.connection.execute(text(SNOWFLAKE_GET_DATABASES)).fetchall()
-        for res in results:
-            row = list(res)
-            yield row[1]
+        database_names = [list(res)[1] for res in results]
+        logger.info(
+            f"SHOW DATABASES returned {len(database_names)} database(s) visible to the ingestion role: {database_names}"
+        )
+        yield from database_names
 
     def get_database_names(self) -> Iterable[str]:
         configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
@@ -410,10 +412,16 @@ class SnowflakeSource(
                     database_name=new_database,
                 )
 
+                filter_name = database_fqn if self.source_config.useFqnForFiltering else new_database
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    (database_fqn if self.source_config.useFqnForFiltering else new_database),
+                    filter_name,
                 ):
+                    logger.info(
+                        f"Filtering out database '{new_database}': did not pass "
+                        f"databaseFilterPattern (matched against '{filter_name}', "
+                        f"useFqnForFiltering={self.source_config.useFqnForFiltering})"
+                    )
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
 
