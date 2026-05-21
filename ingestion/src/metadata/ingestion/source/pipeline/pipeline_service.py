@@ -350,7 +350,10 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def close(self):
         """Method to implement any required logic after the ingestion process is completed"""
-        log_step_summary(logger, self.status, self.config.serviceName)
+        try:
+            log_step_summary(logger, self.status, self.config.serviceName)
+        except Exception:
+            logger.warning("Filter visibility report failed; continuing close()", exc_info=True)
         self.metadata.compute_percentile(Pipeline, self.today)
 
     def get_services(self) -> Iterable[WorkflowSource]:

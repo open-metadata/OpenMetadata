@@ -61,6 +61,10 @@ class Status(BaseModel):
     filtered: Annotated[List[Dict[str, str]], Field(default_factory=list)]  # noqa: UP006
     failures: Annotated[List[TruncatedStackTraceError], Field(default_factory=list)]  # noqa: UP006
     discovered_counts: Annotated[Dict[str, int], Field(default_factory=dict)]  # noqa: UP006
+    # True per-entity-type count of filter rejections, even when the name is
+    # not appended to `filtered` because the per-type cap was hit. Source of
+    # truth for the end-of-step FILTER VISIBILITY REPORT count.
+    filtered_counts: Annotated[Dict[str, int], Field(default_factory=dict)]  # noqa: UP006
 
     def scanned(self, record: Any) -> None:
         """

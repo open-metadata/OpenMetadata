@@ -175,7 +175,10 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def close(self):
         """By default, nothing to close"""
-        log_step_summary(logger, self.status, self.config.serviceName)
+        try:
+            log_step_summary(logger, self.status, self.config.serviceName)
+        except Exception:
+            logger.warning("Filter visibility report failed; continuing close()", exc_info=True)
 
     def test_connection(self) -> None:
         test_connection_common(self.metadata, self.connection_obj, self.service_connection)

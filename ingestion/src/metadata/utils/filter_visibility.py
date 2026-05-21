@@ -24,10 +24,20 @@ REPORT block. The report is the diagnostic anchor: one log block, easy to
 grep ("FILTER VISIBILITY REPORT"), containing exactly the information that
 isn't derivable from elsewhere.
 
+Defensive contract: these helpers are observability only. Any exception
+raised internally is caught and logged as a single warning; helpers MUST
+NOT propagate failures to the connector ingestion path.
+
 Memory profile: we deliberately store only the *diff* — discovered count
 (int) plus the names of items the filter rejected (plus their reasons).
 Visible names and kept names are not stored; they're derivable as counts
 and the kept items show up in normal ingestion logs / Status.records.
+
+Bounded growth: per-entity-type cap on stored filtered names
+(MAX_FILTERED_ENTRIES_PER_TYPE). Past the cap, only the true count keeps
+growing — names beyond the cap are dropped and the report annotates the
+truncation. Prevents OOM on pathological catalogs (e.g., 10M filtered
+S3 objects) while preserving correctness of counts.
 """
 
 import logging
@@ -36,6 +46,7 @@ from typing import Iterable  # noqa: UP035
 from metadata.ingestion.api.status import Status
 
 REPORT_HEADER_PREFIX = "FILTER VISIBILITY REPORT"
+MAX_FILTERED_ENTRIES_PER_TYPE = 50_000
 _REASON_SUFFIX = "Filtered Out"
 
 
@@ -50,20 +61,29 @@ def log_discovered(
     can compute discovered vs. kept. Names are emitted at DEBUG only — the
     actionable diff (what got filtered) lives in log_filtered + the
     end-of-step report; the full visible list would explode logs on large
-    catalogs without adding actionable information."""
-    name_list = list(names)
-    count = len(name_list)
-    status.record_discovered(entity_type, count)
-    logger.info(
-        "Discovered %d %s(s) visible to the ingestion user",
-        count,
-        entity_type.lower(),
-    )
-    logger.debug(
-        "%s(s) visible to the ingestion user: %s",
-        entity_type,
-        name_list,
-    )
+    catalogs without adding actionable information.
+
+    Exceptions are swallowed: observability must never break ingestion."""
+    try:
+        name_list = list(names)
+        count = len(name_list)
+        status.record_discovered(entity_type, count)
+        logger.info(
+            "Discovered %d %s(s) visible to the ingestion user",
+            count,
+            entity_type.lower(),
+        )
+        logger.debug(
+            "%s(s) visible to the ingestion user: %s",
+            entity_type,
+            name_list,
+        )
+    except Exception:
+        logger.warning(
+            "log_discovered failed for entity_type=%r; continuing ingestion",
+            entity_type,
+            exc_info=True,
+        )
 
 
 def log_filtered(
@@ -75,22 +95,46 @@ def log_filtered(
     matched_against: str | None = None,
     use_fqn_for_filtering: bool | None = None,
 ) -> None:
-    """Log a filter-pattern rejection and record it on Status. The
-    reason string stored on Status is rich enough that the end-of-step
-    report can reproduce the full diagnostic (which pattern field,
-    what was matched against, whether FQN filtering was on) without
-    needing to retain any extra state."""
-    pattern_field = _pattern_field(entity_type)
-    detail_parts = [f"did not pass {pattern_field}"]
-    if matched_against is not None and matched_against != name:
-        detail_parts.append(f"matched against '{matched_against}'")
-    if use_fqn_for_filtering is not None:
-        detail_parts.append(f"useFqnForFiltering={use_fqn_for_filtering}")
-    detail = ", ".join(detail_parts)
+    """Log a filter-pattern rejection and record it on Status. The reason
+    string stored on Status is rich enough that the end-of-step report can
+    reproduce the full diagnostic (which pattern field, what was matched
+    against, whether FQN filtering was on) without needing extra state.
 
-    logger.info("Filtering out %s '%s': %s", entity_type.lower(), name, detail)
-    reason = f"{entity_type} {_REASON_SUFFIX}: {detail}"
-    status.filter(name, reason)
+    Per-entity-type cap: once a type has accumulated
+    MAX_FILTERED_ENTRIES_PER_TYPE entries in Status.filtered, subsequent
+    rejections only bump Status.filtered_counts (cheap) and drop the name
+    to avoid unbounded memory growth. The report flags the truncation.
+
+    Exceptions are swallowed: observability must never break ingestion."""
+    try:
+        current_count = status.filtered_counts.get(entity_type, 0)
+        status.filtered_counts[entity_type] = current_count + 1
+
+        pattern_field = _pattern_field(entity_type)
+        detail_parts = [f"did not pass {pattern_field}"]
+        if matched_against is not None and matched_against != name:
+            detail_parts.append(f"matched against '{matched_against}'")
+        if use_fqn_for_filtering is not None:
+            detail_parts.append(f"useFqnForFiltering={use_fqn_for_filtering}")
+        detail = ", ".join(detail_parts)
+
+        if current_count < MAX_FILTERED_ENTRIES_PER_TYPE:
+            logger.info("Filtering out %s '%s': %s", entity_type.lower(), name, detail)
+            reason = f"{entity_type} {_REASON_SUFFIX}: {detail}"
+            status.filter(name, reason)
+        elif current_count == MAX_FILTERED_ENTRIES_PER_TYPE:
+            logger.warning(
+                "Reached cap of %d filtered %s names; subsequent rejections will be counted but not stored",
+                MAX_FILTERED_ENTRIES_PER_TYPE,
+                entity_type.lower(),
+            )
+    except Exception:
+        logger.warning(
+            "log_filtered failed for entity_type=%r name=%r; continuing ingestion",
+            entity_type,
+            name,
+            exc_info=True,
+        )
 
 
 def log_step_summary(
@@ -102,24 +146,34 @@ def log_step_summary(
     framed with grep-friendly markers, listing per entity type:
         - count visible to the ingestion user
         - count + names + reasons of everything the filter dropped
+          (with "and N more (truncated at cap)" footer if applicable)
         - count that will be published to OpenMetadata
-    No-op when there's nothing to report (e.g., a sink-only step)."""
-    by_type = _group_filtered_by_entity_type(status)
-    entity_types = sorted(set(status.discovered_counts) | set(by_type))
-    if not entity_types:
-        return
+    No-op when there's nothing to report (e.g., a sink-only step).
 
-    border = "=" * 70
-    lines = [
-        "",
-        border,
-        f" {REPORT_HEADER_PREFIX}: {source_name}",
-        border,
-    ]
-    for entity_type in entity_types:
-        lines.extend(_format_entity_section(status, entity_type, by_type.get(entity_type, [])))
-    lines.append(border)
-    logger.info("\n".join(lines))
+    Exceptions are swallowed: observability must never break ingestion."""
+    try:
+        by_type = _group_filtered_by_entity_type(status)
+        entity_types = sorted(set(status.discovered_counts) | set(by_type) | set(status.filtered_counts))
+        if not entity_types:
+            return
+
+        border = "=" * 70
+        lines = [
+            "",
+            border,
+            f" {REPORT_HEADER_PREFIX}: {source_name}",
+            border,
+        ]
+        for entity_type in entity_types:
+            lines.extend(_format_entity_section(status, entity_type, by_type.get(entity_type, [])))
+        lines.append(border)
+        logger.info("\n".join(lines))
+    except Exception:
+        logger.warning(
+            "log_step_summary failed for source=%r; continuing ingestion",
+            source_name,
+            exc_info=True,
+        )
 
 
 def _format_entity_section(
@@ -129,23 +183,31 @@ def _format_entity_section(
 ) -> list[str]:
     """Format a single entity type's section of the report. Visible and
     kept are counts only; filtered shows every name + the reason it was
-    rejected so the user can diff against their own filterPattern config."""
+    rejected so the user can diff against their own filterPattern config.
+    True filter count comes from Status.filtered_counts so the kept math
+    stays correct even when names were dropped past the per-type cap."""
     pattern_field = _pattern_field(entity_type)
     discovered = status.discovered_counts.get(entity_type)
-    filtered_count = len(filtered_entries)
+    stored_count = len(filtered_entries)
+    true_count = status.filtered_counts.get(entity_type, stored_count)
     section = ["", f"{entity_type} ({pattern_field}):"]
 
     if discovered is not None:
         section.append(f"  Visible to ingestion user: {discovered}")
-    section.append(f"  Filtered out ({filtered_count}):")
+    section.append(f"  Filtered out ({true_count}):")
     if filtered_entries:
         max_name_width = max(len(name) for name, _ in filtered_entries)
         name_pad = min(max_name_width, 50)
         for name, reason in filtered_entries:
             detail = reason.split(": ", 1)[1] if ": " in reason else reason
             section.append(f"    {name:<{name_pad}}  → {detail}")
+    if true_count > stored_count:
+        section.append(
+            f"    ... and {true_count - stored_count} more "
+            f"(full list truncated at cap of {MAX_FILTERED_ENTRIES_PER_TYPE})"
+        )
     if discovered is not None:
-        kept = discovered - filtered_count
+        kept = discovered - true_count
         section.append(f"  Will be published to OpenMetadata: {kept}")
 
     return section

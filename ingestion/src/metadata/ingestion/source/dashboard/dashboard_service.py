@@ -423,7 +423,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             return
 
     def close(self):
-        log_step_summary(logger, self.status, self.config.serviceName)
+        try:
+            log_step_summary(logger, self.status, self.config.serviceName)
+        except Exception:
+            logger.warning("Filter visibility report failed; continuing close()", exc_info=True)
         self.metadata.close()
 
     def get_services(self) -> Iterable[WorkflowSource]:

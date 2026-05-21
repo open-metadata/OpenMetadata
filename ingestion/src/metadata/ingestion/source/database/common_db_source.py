@@ -773,7 +773,13 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         return self._inspector_map[thread_id]
 
     def close(self):
-        log_step_summary(logger, self.status, self.config.serviceName)
+        # Defense-in-depth: helper has its own internal try/except, but a
+        # bug in close()'s observability step must never block the real
+        # cleanup work (engine release, SSL temp file cleanup).
+        try:
+            log_step_summary(logger, self.status, self.config.serviceName)
+        except Exception:
+            logger.warning("Filter visibility report failed; continuing close()", exc_info=True)
         self._release_engine()
         if hasattr(self, "ssl_manager") and self.ssl_manager:
             self.ssl_manager = cast(SSLManager, self.ssl_manager)  # noqa: TC006

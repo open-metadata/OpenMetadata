@@ -303,7 +303,10 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def close(self):
         """By default, nothing needs to be closed"""
-        log_step_summary(logger, self.status, self.config.serviceName)
+        try:
+            log_step_summary(logger, self.status, self.config.serviceName)
+        except Exception:
+            logger.warning("Filter visibility report failed; continuing close()", exc_info=True)
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
