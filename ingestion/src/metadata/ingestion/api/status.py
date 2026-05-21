@@ -106,6 +106,15 @@ class Status(BaseModel):
     def filter(self, key: str, reason: str) -> None:
         self.filtered.append({key: reason})
 
+    def get_filtered_count(self) -> int:
+        """True count of filter rejections, including any entries past the
+        per-entity-type cap that were counted in `filtered_counts` but not
+        appended to `filtered` to bound memory. Returns the larger of the
+        stored list length and the sum of per-type true counts; this stays
+        correct under both legacy callers (only populate `filtered`) and
+        the helper-driven path (populates `filtered_counts` even past cap)."""
+        return max(len(self.filtered), sum(self.filtered_counts.values()))
+
     def record_discovered(self, entity_type: str, count: int) -> None:
         """Record the count of entities discovered from the source before any
         filter pattern is applied. Used by log_step_summary to report the

@@ -117,7 +117,7 @@ class Summary(StepSummary):
             updated_records=len(step.status.updated_records),
             warnings=len(step.status.warnings),
             errors=len(step.status.failures),
-            filtered=len(step.status.filtered),
+            filtered=step.status.get_filtered_count(),
             failures=step.status.failures[0:10] if step.status.failures else None,
             progress=progress_tracker.get_progress_as_dict() or None,
             operationMetrics=operation_metrics.get_summary() or None,

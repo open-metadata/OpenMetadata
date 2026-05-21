@@ -363,13 +363,14 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         yield Either(right=self.metadata.get_create_service_from_source(entity=PipelineService, config=config))
 
     def get_pipeline(self) -> Any:
-        pipelines = list(self.get_pipelines_list() or [])
-        log_discovered(
-            logger,
-            self.status,
-            "Pipeline",
-            (self.get_pipeline_name(p) for p in pipelines),
-        )
+        # `or []` for null safety + isinstance check to skip the redundant
+        # shallow copy when the source already returned a list.
+        pipelines_result = self.get_pipelines_list() or []
+        pipelines = pipelines_result if isinstance(pipelines_result, list) else list(pipelines_result)
+        # Materialize names once into a list so log_discovered takes the
+        # zero-allocation Sized path instead of re-listing a generator.
+        pipeline_names = [self.get_pipeline_name(p) for p in pipelines]
+        log_discovered(logger, self.status, "Pipeline", pipeline_names)
         for pipeline_detail in pipelines:
             pipeline_name = self.get_pipeline_name(pipeline_detail)
             if filter_by_pipeline(

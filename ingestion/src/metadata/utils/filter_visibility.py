@@ -161,7 +161,10 @@ def log_step_summary(
         - count visible to the ingestion user
         - count + names + reasons of everything the filter dropped
           (with "and N more (truncated at cap)" footer if applicable)
-        - count that will be published to OpenMetadata
+        - count that passed all filter patterns (this is a filter-decision
+          count, NOT the final ingested count; downstream extraction
+          failures and secondary filters like projectFilterPattern are
+          not subtracted — see the note printed inside the report)
     No-op when there's nothing to report (e.g., a sink-only step).
 
     Exceptions are swallowed: observability must never break ingestion."""

@@ -264,6 +264,31 @@ def test_log_step_summary_matches_legacy_lowercase_out_variant(status, logger, c
     assert "Passed filter patterns: 2" in summary
 
 
+def test_get_filtered_count_returns_true_count_past_cap(status, logger):
+    """Status.get_filtered_count must surface the true count (including
+    overflow past the per-type cap) so persisted StepSummary.filtered
+    stays accurate even when names were dropped to bound memory."""
+    for i in range(MAX_FILTERED_ENTRIES_PER_TYPE + 17):
+        log_filtered(logger, status, "Table", f"t{i}")
+
+    assert len(status.filtered) == MAX_FILTERED_ENTRIES_PER_TYPE
+    # get_filtered_count returns the true count, not the stored len
+    assert status.get_filtered_count() == MAX_FILTERED_ENTRIES_PER_TYPE + 17
+
+
+def test_get_filtered_count_handles_legacy_only_entries(status):
+    """If a legacy caller bypassed the helper and called status.filter()
+    directly, the count is len(filtered) (filtered_counts is empty)."""
+    status.filter("a", "Database Filtered Out")
+    status.filter("b", "Database Filtered Out")
+
+    assert status.get_filtered_count() == 2
+
+
+def test_get_filtered_count_empty_status_is_zero(status):
+    assert status.get_filtered_count() == 0
+
+
 def test_log_step_summary_includes_clarifying_note(status, logger, caplog):
     """Kept counts can over-report actual ingestion when downstream
     extraction fails or secondary filters reject items. The report header

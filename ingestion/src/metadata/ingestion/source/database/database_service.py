@@ -552,10 +552,12 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         mark_databases_as_deleted), not the main ingestion path. Discovery
         logging lives in each connector's get_database_names() to avoid
         double-counting; this method only emits filter-rejection logs when
-        add_to_status=True.
+        add_to_status=True. The raw names iterable is consumed once and
+        streamed — never materialized — so mark-deleted stays O(1) memory
+        on large catalogs.
         """
-        raw_names = list(getattr(self, "get_database_names_raw", self.get_database_names)())
-        for database_name in raw_names:
+        raw_names_iter = getattr(self, "get_database_names_raw", self.get_database_names)()
+        for database_name in raw_names_iter:
             database_fqn = fqn.build(
                 self.metadata,
                 entity_type=Database,

@@ -672,7 +672,16 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             # 2. Pipeline-level containerFilterPattern against the dataPath.
             if pattern and filter_by_container(pattern, path):
                 if hasattr(self, "status") and hasattr(self.status, "filter"):
-                    log_filtered(logger, self.status, "Container", path)
+                    # Use bucket/path as the stored name so operators can
+                    # tell which bucket an entry came from — dataPath alone
+                    # is not unique across buckets.
+                    log_filtered(
+                        logger,
+                        self.status,
+                        "Container",
+                        f"{bucket_name}/{path}",
+                        matched_against=path,
+                    )
                 else:
                     logger.info(
                         f"Skipping manifest entry '{path}' in bucket '{bucket_name}' "
