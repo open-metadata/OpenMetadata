@@ -191,11 +191,11 @@ describe('BotListV1', () => {
     expect(await screen.findByTestId('bot-link-testbots')).toBeInTheDocument();
   });
 
-  it('caches bot list and does not refetch on subsequent searches', async () => {
+  it('matches bots by client-side field when bot user does not match', async () => {
     mockSearchQuery.mockResolvedValue({
       hits: {
-        total: { value: 1 },
-        hits: [MOCK_SEARCH_USER_HIT],
+        total: { value: 0 },
+        hits: [],
       },
     } as unknown as Awaited<ReturnType<typeof searchQuery>>);
 
@@ -204,22 +204,14 @@ describe('BotListV1', () => {
     const searchInput = await screen.findByTestId('searchbar');
 
     await act(async () => {
-      fireEvent.change(searchInput, { target: { value: 'testbot' } });
-    });
-    // Wait for first search to finish building the cache (getBots called for cache).
-    await waitFor(() => {
-      expect(mockGetBots.mock.calls.length).toBeGreaterThanOrEqual(2);
-    });
-    const callsAfterFirstSearch = mockGetBots.mock.calls.length;
-
-    await act(async () => {
-      fireEvent.change(searchInput, { target: { value: 'testbots' } });
-    });
-    await waitFor(() => {
-      expect(mockSearchQuery.mock.calls.length).toBeGreaterThan(1);
+      fireEvent.change(searchInput, {
+        target: { value: 'AutoClassification' },
+      });
     });
 
-    // Second search must reuse cached bot map => no extra getBots call.
-    expect(mockGetBots.mock.calls.length).toBe(callsAfterFirstSearch);
+    // Server returns 0 user hits; client-side bot.displayName match should find it.
+    expect(
+      await screen.findByTestId('bot-link-AutoClassificationBot')
+    ).toBeInTheDocument();
   });
 });

@@ -62,7 +62,6 @@ import PageHeader from '../../../PageHeader/PageHeader.component';
 import './bot-list-v1.less';
 import { BotListV1Props } from './BotListV1.interfaces';
 
-const BOT_FETCH_PAGE_SIZE = 100;
 const BOT_SEARCH_PAGE_SIZE = 100;
 
 const getBotUserFromUser = (
@@ -103,7 +102,6 @@ const BotListV1 = ({
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const latestSearchRequest = useRef(0);
-  const allBotsRef = useRef<Promise<Bot[]> | null>(null);
 
   const getBotIncludeFilter = useCallback(
     () => (showDeleted ? Include.Deleted : Include.NonDeleted),
@@ -127,163 +125,74 @@ const BotListV1 = ({
   }, []);
 
   const fetchAllBots = useCallback(async () => {
-    if (allBotsRef.current) {
-      return allBotsRef.current;
-    }
+    const { data } = await getBots({
+      limit: BOT_SEARCH_PAGE_SIZE,
+      include: getBotIncludeFilter(),
+    });
 
-    const include = getBotIncludeFilter();
-    const promise = (async () => {
-      const all: Bot[] = [];
-      let after: string | undefined;
-
-      do {
-        const { data, paging } = await getBots({
-          after,
-          limit: BOT_FETCH_PAGE_SIZE,
-          include,
-        });
-        all.push(...data);
-        after = paging.after;
-      } while (after);
-
-      return all;
-    })();
-
-    allBotsRef.current = promise;
-    try {
-      return await promise;
-    } catch (error) {
-      allBotsRef.current = null;
-
-      throw error;
-    }
+    return data;
   }, [getBotIncludeFilter]);
 
-  const enrichBotsWithBotUsers = async (bots: Bot[]) => {
-    if (!bots.length) {
-      return bots;
+  const searchBots = async (text: string): Promise<Bot[]> => {
+    const term = text.trim();
+
+    if (!term) {
+      return [];
     }
 
-    try {
-      const botNames = bots
-        .map((bot) => bot.name)
-        .filter((name): name is string => Boolean(name));
-
-      if (!botNames.length) {
-        return bots;
-      }
-
-      const response = await searchQuery({
-        query: '',
-        pageNumber: 1,
-        pageSize: botNames.length,
-        includeDeleted: showDeleted,
-        searchIndex: SearchIndex.USER,
-        queryFilter: {
-          query: {
-            bool: {
-              must: [{ term: { isBot: true } }],
-              should: botNames.map((name) => ({
-                term: { 'name.keyword': name.toLowerCase() },
-              })),
-              minimum_should_match: 1,
-            },
-          },
-        },
-      });
-      const botUsers = formatUsersResponse(response.hits.hits);
-      const botUsersByName = new Map<string, User>(
-        botUsers
-          .filter((botUser): botUser is User & { name: string } =>
-            Boolean(botUser.name)
-          )
-          .map((botUser) => [botUser.name.toLowerCase(), botUser])
-      );
-
-      return bots.map((bot) =>
-        enrichBotWithMatchedUser(
-          bot,
-          bot.name ? botUsersByName.get(bot.name.toLowerCase()) : undefined
-        )
-      );
-    } catch {
-      return bots;
-    }
-  };
-
-  const searchBots = async (text: string) => {
-    const escaped = escapeESReservedCharacters(text.trim());
-    const wildcardPattern = `*${escaped}*`;
-    const wildcardClause = (field: string) => ({
-      wildcard: {
-        [field]: { value: wildcardPattern, case_insensitive: true },
-      },
-    });
+    const wildcardPattern = `*${escapeESReservedCharacters(term)}*`;
+    const lowerTerm = term.toLowerCase();
 
     const response = await searchQuery({
       query: '',
       pageNumber: 1,
       pageSize: BOT_SEARCH_PAGE_SIZE,
       includeDeleted: showDeleted,
+      searchIndex: SearchIndex.USER,
+      trackTotalHits: true,
       queryFilter: {
         query: {
           bool: {
             must: [{ term: { isBot: true } }],
             should: [
-              wildcardClause('name.keyword'),
-              wildcardClause('displayName.keyword'),
-              wildcardClause('fullyQualifiedName.keyword'),
-              wildcardClause('email.keyword'),
-            ],
+              'name.keyword',
+              'displayName.keyword',
+              'fullyQualifiedName.keyword',
+              'email.keyword',
+            ].map((field) => ({
+              wildcard: {
+                [field]: { value: wildcardPattern, case_insensitive: true },
+              },
+            })),
             minimum_should_match: 1,
           },
         },
       },
-      searchIndex: SearchIndex.USER,
-      trackTotalHits: true,
     });
-    const matchedBotUsers = formatUsersResponse(response.hits.hits);
+    const matchedUsers = formatUsersResponse(response.hits.hits);
+    const usersByBotName = new Map<string, User>(
+      matchedUsers
+        .filter((user): user is User & { name: string } => Boolean(user.name))
+        .map((user) => [user.name.toLowerCase(), user])
+    );
+
     const allBots = await fetchAllBots();
-    const botsByName = new Map<string, Bot>();
-    allBots.forEach((bot) => {
-      if (bot.name) {
-        botsByName.set(bot.name.toLowerCase(), bot);
-      }
-    });
-
     const matchedById = new Map<string, Bot>();
-    const botUsersByName = new Map<string, User>();
-    matchedBotUsers.forEach((botUser) => {
-      if (botUser.name) {
-        botUsersByName.set(botUser.name.toLowerCase(), botUser);
-      }
-    });
 
-    matchedBotUsers.forEach((botUser) => {
-      const matchedBot = botUser.name
-        ? botsByName.get(botUser.name.toLowerCase())
-        : undefined;
-
-      if (matchedBot?.id) {
-        matchedById.set(
-          matchedBot.id,
-          enrichBotWithMatchedUser(matchedBot, botUser)
-        );
-      }
-    });
-
-    const lowerText = text.trim().toLowerCase();
     allBots.forEach((bot) => {
-      const matches =
-        bot.name?.toLowerCase().includes(lowerText) ||
-        bot.displayName?.toLowerCase().includes(lowerText) ||
-        bot.description?.toLowerCase().includes(lowerText);
+      if (!bot.id || !bot.name) {
+        return;
+      }
 
-      if (matches && bot.id && !matchedById.has(bot.id)) {
-        const botUser = bot.name
-          ? botUsersByName.get(bot.name.toLowerCase())
-          : undefined;
-        matchedById.set(bot.id, enrichBotWithMatchedUser(bot, botUser));
+      const botKey = bot.name.toLowerCase();
+      const matchedUser = usersByBotName.get(botKey);
+      const matchesBotFields =
+        botKey.includes(lowerTerm) ||
+        bot.displayName?.toLowerCase().includes(lowerTerm) ||
+        bot.description?.toLowerCase().includes(lowerTerm);
+
+      if (matchedUser || matchesBotFields) {
+        matchedById.set(bot.id, enrichBotWithMatchedUser(bot, matchedUser));
       }
     });
 
@@ -323,22 +232,16 @@ const BotListV1 = ({
         limit: pageSize,
         include: showDeleted ? Include.Deleted : Include.NonDeleted,
       });
-      const botsWithUsers = await enrichBotsWithBotUsers(data);
       const activeSearchTerm = searchTerm.trim();
 
       handlePagingChange(paging);
-      setBotUsers(botsWithUsers);
+      setBotUsers(data);
       if (activeSearchTerm) {
         await runActiveSearch(activeSearchTerm);
       } else {
-        setSearchedData(botsWithUsers);
+        setSearchedData(data);
       }
-
-      if (!showDeleted && isEmpty(botsWithUsers)) {
-        setHandleErrorPlaceholder(true);
-      } else {
-        setHandleErrorPlaceholder(false);
-      }
+      setHandleErrorPlaceholder(!showDeleted && isEmpty(data));
     } catch (error) {
       showErrorToast((error as AxiosError).message);
     } finally {
@@ -446,7 +349,6 @@ const BotListV1 = ({
    * handle after delete bot action
    */
   const handleDeleteAction = useCallback(async () => {
-    allBotsRef.current = null;
     await getResourceLimit('bot', true, true);
     fetchBots(showDeleted);
   }, [selectedUser]);
@@ -480,7 +382,6 @@ const BotListV1 = ({
   };
 
   const handleShowDeletedBots = (checked: boolean) => {
-    allBotsRef.current = null;
     handlePageChange(INITIAL_PAGING_VALUE, {
       cursorType: null,
       cursorValue: undefined,
