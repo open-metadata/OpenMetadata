@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { toLower } from 'lodash';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -73,7 +73,7 @@ test.describe('Verify RTL Layout for landing page', () => {
     await quickFilterResponse;
 
     await expect(
-      page.getByRole('button', { name: `סוג השירות : ${serviceType}` })
+      page.getByRole('button', { name: 'סוג השירות : (1)' })
     ).toBeAttached();
 
     await expect(

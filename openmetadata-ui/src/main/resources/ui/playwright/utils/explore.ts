@@ -301,13 +301,13 @@ export const validateBucketsForIndexAndSort = async (
 export const selectSortOrder = async (page: Page, sortOrder: string) => {
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('sorting-dropdown-label').click();
-  await page.getByRole('menuitem', { name: sortOrder }).waitFor({
+  await page.getByRole('menuitemradio', { name: sortOrder }).waitFor({
     state: 'visible',
   });
   const nameFilter = page.waitForResponse(
     `/api/v1/search/query?q=&index=dataAsset&*sort_field=displayName.keyword&sort_order=desc*`
   );
-  await page.getByRole('menuitem', { name: sortOrder }).click();
+  await page.getByRole('menuitemradio', { name: sortOrder }).click();
   await nameFilter;
 
   await expect(page.getByTestId('sorting-dropdown-label')).toHaveText(

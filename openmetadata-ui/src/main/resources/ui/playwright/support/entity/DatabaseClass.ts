@@ -125,11 +125,22 @@ export class DatabaseClass extends EntityClass {
   tableResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
 
-  constructor(name?: string) {
+  createTable = false;
+  createSchema = false;
+
+  constructor(
+    name?: string,
+    { addSchema, addTable }: { addSchema: boolean; addTable: boolean } = {
+      addSchema: false,
+      addTable: false,
+    }
+  ) {
     super(EntityTypeEndpoint.Database);
     this.service.name = name ?? this.service.name;
     this.type = 'Database';
     this.serviceType = ServiceTypes.DATABASE_SERVICES;
+    this.createSchema = addSchema;
+    this.createTable = addTable;
   }
 
   async create(apiContext: APIRequestContext) {
@@ -143,29 +154,34 @@ export class DatabaseClass extends EntityClass {
       data: this.entity,
     });
 
-    const schemaResponse = await apiContext.post('/api/v1/databaseSchemas', {
-      data: this.schema,
-    });
+    if (this.createSchema) {
+      const schemaResponse = await apiContext.post('/api/v1/databaseSchemas', {
+        data: this.schema,
+      });
+      const schema = await schemaResponse.json();
 
-    const tableResponse = await apiContext.post('/api/v1/tables', {
-      data: this.table,
-    });
+      this.schemaResponseData = schema;
+    }
+
+    if (this.createTable) {
+      const tableResponse = await apiContext.post('/api/v1/tables', {
+        data: this.table,
+      });
+      const table = await tableResponse.json();
+      this.tableResponseData = table;
+    }
 
     const service = await serviceResponse.json();
     const entity = await entityResponse.json();
-    const schema = await schemaResponse.json();
-    const table = await tableResponse.json();
 
     this.serviceResponseData = service;
     this.entityResponseData = entity;
-    this.schemaResponseData = schema;
-    this.tableResponseData = table;
 
     return {
       service,
       entity,
-      table,
-      schema,
+      table: this.tableResponseData,
+      schema: this.schemaResponseData,
     };
   }
 

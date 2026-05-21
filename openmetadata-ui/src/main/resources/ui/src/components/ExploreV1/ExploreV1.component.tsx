@@ -587,7 +587,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
                   <Dropdown.Item
                     icon={FilterFunnel01}
-                    label={t('label.filter')}
+                    label={t('label.advanced-search')}
                     onPress={() => toggleModal(true)}
                   />
                 </Dropdown.Menu>
