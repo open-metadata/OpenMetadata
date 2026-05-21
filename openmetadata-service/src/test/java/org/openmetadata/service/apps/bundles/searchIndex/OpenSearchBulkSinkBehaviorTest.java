@@ -33,6 +33,7 @@ import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
@@ -40,6 +41,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
@@ -131,6 +133,7 @@ class OpenSearchBulkSinkBehaviorTest {
             ReindexContext.class,
             StageStatsTracker.class,
             boolean.class,
+            Map.class,
             Map.class
           },
           entity,
@@ -138,6 +141,7 @@ class OpenSearchBulkSinkBehaviorTest {
           null,
           tracker,
           false,
+          Collections.emptyMap(),
           Collections.emptyMap());
 
       verify(processor)
@@ -178,6 +182,7 @@ class OpenSearchBulkSinkBehaviorTest {
             ReindexContext.class,
             StageStatsTracker.class,
             boolean.class,
+            Map.class,
             Map.class
           },
           entity,
@@ -185,6 +190,7 @@ class OpenSearchBulkSinkBehaviorTest {
           null,
           tracker,
           false,
+          Collections.emptyMap(),
           Collections.emptyMap());
 
       verify(processorConstruction.constructed().getFirst()).setFailureCallback(failureCallback);
@@ -333,6 +339,51 @@ class OpenSearchBulkSinkBehaviorTest {
   }
 
   @Test
+  void addEntityLooksUpEntityContextFromMap() throws Exception {
+    EntityInterface entity = mock(EntityInterface.class);
+    UUID entityId = UUID.randomUUID();
+    when(entity.getId()).thenReturn(entityId);
+    List<EsLineageData> edges = List.of(new EsLineageData());
+    DocBuildContext ctxForEntity = DocBuildContext.withUpstreamLineage(edges);
+    Map<UUID, DocBuildContext> docBuildContexts = Map.of(entityId, ctxForEntity);
+
+    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> ignored =
+            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
+      ContextCapturingIndex.reset();
+      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(ENTITY_TYPE);
+      entityMock
+          .when(() -> Entity.buildSearchIndex(ENTITY_TYPE, entity))
+          .thenReturn(new ContextCapturingIndex());
+
+      invokePrivate(
+          sink,
+          "addEntity",
+          new Class<?>[] {
+            EntityInterface.class,
+            String.class,
+            ReindexContext.class,
+            StageStatsTracker.class,
+            boolean.class,
+            Map.class,
+            Map.class
+          },
+          entity,
+          "table_index",
+          null,
+          null,
+          false,
+          Collections.emptyMap(),
+          docBuildContexts);
+
+      assertSame(ctxForEntity, ContextCapturingIndex.observedContext);
+      assertSame(edges, ContextCapturingIndex.observedContext.prefetchedUpstreamLineage());
+    }
+  }
+
+  @Test
   void enrichWithEmbeddingReusesCachedFieldsWhenServiceReportsMatch() throws Exception {
     // The service-layer two-step fetch already pre-filters to fingerprint matches; if an entry is
     // present in the map, the splice path is taken without any further fingerprint check.
@@ -385,6 +436,46 @@ class OpenSearchBulkSinkBehaviorTest {
       assertTrue(embedding.isArray());
       assertEquals(3, embedding.size());
       assertEquals("cached-text", resultNode.get("textToEmbed").asText());
+    }
+  }
+
+  @Test
+  void addEntityFallsBackToEmptyContextWhenEntityNotInMap() throws Exception {
+    EntityInterface entity = mock(EntityInterface.class);
+    when(entity.getId()).thenReturn(UUID.randomUUID());
+
+    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> ignored =
+            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
+      ContextCapturingIndex.reset();
+      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(ENTITY_TYPE);
+      entityMock
+          .when(() -> Entity.buildSearchIndex(ENTITY_TYPE, entity))
+          .thenReturn(new ContextCapturingIndex());
+
+      invokePrivate(
+          sink,
+          "addEntity",
+          new Class<?>[] {
+            EntityInterface.class,
+            String.class,
+            ReindexContext.class,
+            StageStatsTracker.class,
+            boolean.class,
+            Map.class,
+            Map.class
+          },
+          entity,
+          "table_index",
+          null,
+          null,
+          false,
+          Collections.emptyMap(),
+          Collections.emptyMap());
+
+      assertSame(DocBuildContext.empty(), ContextCapturingIndex.observedContext);
     }
   }
 
@@ -523,12 +614,12 @@ class OpenSearchBulkSinkBehaviorTest {
     }
   }
 
-  private void invokePrivate(
+  private Object invokePrivate(
       Object target, String methodName, Class<?>[] parameterTypes, Object... args)
       throws Exception {
     Method method = target.getClass().getDeclaredMethod(methodName, parameterTypes);
     method.setAccessible(true);
-    method.invoke(target, args);
+    return method.invoke(target, args);
   }
 
   private void setAtomicField(Object target, String fieldName, long value) throws Exception {
@@ -552,7 +643,7 @@ class OpenSearchBulkSinkBehaviorTest {
     }
 
     @Override
-    public Map<String, Object> buildSearchIndexDoc() {
+    public Map<String, Object> buildSearchIndexDoc(DocBuildContext ctx) {
       return doc;
     }
 
@@ -569,6 +660,35 @@ class OpenSearchBulkSinkBehaviorTest {
     @Override
     public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
       return doc;
+    }
+  }
+
+  private static class ContextCapturingIndex implements SearchIndex {
+    private static DocBuildContext observedContext;
+
+    static void reset() {
+      observedContext = null;
+    }
+
+    @Override
+    public Map<String, Object> buildSearchIndexDoc(DocBuildContext ctx) {
+      observedContext = ctx;
+      return Map.of("field", "value");
+    }
+
+    @Override
+    public Object getEntity() {
+      return Map.of();
+    }
+
+    @Override
+    public String getEntityTypeName() {
+      return "stub-ctx";
+    }
+
+    @Override
+    public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
+      return esDoc;
     }
   }
 }

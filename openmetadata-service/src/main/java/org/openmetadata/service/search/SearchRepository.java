@@ -1470,6 +1470,7 @@ public class SearchRepository {
         bulkSink = createBulkSink(batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
         Map<String, Object> contextData = new HashMap<>();
         contextData.put(ReindexingUtil.ENTITY_TYPE_KEY, entityType);
+        ReindexingUtil.populateDocBuildContext(contextData, entityType, typeEntities);
         bulkSink.write(typeEntities, contextData);
         bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
       } catch (Exception e) {

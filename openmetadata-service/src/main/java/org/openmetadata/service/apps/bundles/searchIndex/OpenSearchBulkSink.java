@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -50,6 +51,7 @@ import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
+import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
@@ -294,6 +296,15 @@ public class OpenSearchBulkSink implements BulkSink {
               fetchExistingEmbeddings(entityInterfaces, currentById, indexName, reindexContext);
         }
 
+        // Per-entity DocBuildContext is prepared by the upstream processor stage (see
+        // ReindexingUtil.populateDocBuildContext) and stuffed into contextData. The sink stays
+        // transport-only: it just looks up each entity's context by id and hands it to
+        // buildSearchIndexDoc, with no awareness of what's inside (lineage today, more later).
+        @SuppressWarnings("unchecked")
+        Map<UUID, DocBuildContext> docBuildContexts =
+            (Map<UUID, DocBuildContext>)
+                contextData.getOrDefault(DOC_BUILD_CONTEXT_KEY, Collections.emptyMap());
+
         // Add entities to search index in parallel
         Map<String, JsonNode> finalEmbeddingsById = existingEmbeddingsById;
         List<CompletableFuture<Void>> futures =
@@ -308,7 +319,8 @@ public class OpenSearchBulkSink implements BulkSink {
                                     reindexContext,
                                     tracker,
                                     embeddingsEnabled,
-                                    finalEmbeddingsById),
+                                    finalEmbeddingsById,
+                                    docBuildContexts),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
@@ -367,10 +379,12 @@ public class OpenSearchBulkSink implements BulkSink {
       ReindexContext reindexContext,
       StageStatsTracker tracker,
       boolean embeddingsEnabled,
-      Map<String, JsonNode> existingEmbeddingsById) {
+      Map<String, JsonNode> existingEmbeddingsById,
+      Map<UUID, DocBuildContext> docBuildContexts) {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
-      Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
+      DocBuildContext ctx = docBuildContexts.getOrDefault(entity.getId(), DocBuildContext.empty());
+      Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc(ctx);
       String json = JsonUtils.pojoToJson(searchIndexDoc);
 
       if (embeddingsEnabled) {

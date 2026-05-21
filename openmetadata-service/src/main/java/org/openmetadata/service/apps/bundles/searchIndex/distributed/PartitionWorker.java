@@ -718,6 +718,7 @@ public class PartitionWorker {
 
     if (!TIME_SERIES_ENTITIES.contains(entityType)) {
       List<EntityInterface> entities = (List<EntityInterface>) resultList.getData();
+      ReindexingUtil.populateDocBuildContext(contextData, entityType, entities);
       searchIndexSink.write(entities, contextData);
     } else {
       List<EntityTimeSeriesInterface> entities =

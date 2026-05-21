@@ -270,8 +270,32 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 **Always run `mvn spotless:apply` when generating/modifying .java files.**
 
 #### Method Size and Complexity (Kafka-Grade Standards)
-- **Methods must be 15 lines or fewer** (excluding blank lines and braces). If a method is longer, break it into smaller focused methods with descriptive names.
-- **Maximum 3 levels of nesting.** Use early returns to reduce nesting:
+- **Methods must be small and focused — aim for 15 lines or fewer** (excluding blank lines and braces). A method longer than that is almost always hiding multiple responsibilities; break it into smaller methods with descriptive names. "Meaningful" means each method does one nameable thing — if you can't fit the body comfortably on a screen, it's too big.
+- **One return statement per method, placed at the end.** No early-return guard clauses, no scattered returns in the middle. Initialize a `result` variable, structure the work as `if/else`, or extract a helper — the control flow then stays linear and easy to reason about. (Returns inside `lambda` bodies, `switch` expressions, and anonymous classes are scoped to those constructs and don't count against the outer method.)
+  ```java
+  // BAD: four scattered early returns
+  Map<UUID, X> compute(List<EntityInterface> entities) {
+    if (entities == null) return Collections.emptyMap();
+    if (entities.isEmpty()) return Collections.emptyMap();
+    if (!supportsX(entities.get(0))) return null;
+    Map<UUID, X> prefetched = doWork(entities);
+    if (prefetched.isEmpty()) return null;
+    return prefetched;
+  }
+
+  // GOOD: single trailing return; guards become extracted helpers + a result variable
+  Map<UUID, X> compute(List<EntityInterface> entities) {
+    Map<UUID, X> result = null;
+    if (entities != null && !entities.isEmpty() && supportsX(entities.get(0))) {
+      Map<UUID, X> prefetched = doWork(entities);
+      if (!prefetched.isEmpty()) {
+        result = prefetched;
+      }
+    }
+    return result;
+  }
+  ```
+- **Maximum 3 levels of nesting.** Don't flatten by sprinkling early returns — extract a named helper or combine conditions into a single boolean:
   ```java
   // BAD: deeply nested
   if (entity != null) {
@@ -282,11 +306,14 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
       }
   }
 
-  // GOOD: early returns, flat
-  if (entity == null) return;
-  if (!entity.isActive()) return;
-  if (!hasPermission(entity)) return;
-  process(entity);
+  // GOOD: extract the eligibility check
+  if (isEligibleForProcessing(entity)) {
+    process(entity);
+  }
+
+  private boolean isEligibleForProcessing(Entity entity) {
+    return entity != null && entity.isActive() && hasPermission(entity);
+  }
   ```
 - **Maximum 10 cyclomatic complexity.** Extract complex conditions into named methods:
   ```java
@@ -379,6 +406,19 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - Use `List.of()`, `Map.of()`, `Set.of()` for immutable collection literals
 - Use `Optional` correctly: never as a field type, never as a parameter, never assign `null` to it
 - Use text blocks `"""` for multi-line strings
+- **Use `SequencedCollection` accessors on Lists/Deques** — `list.getFirst()` / `list.getLast()` (Java 21) instead of `list.get(0)` / `list.get(list.size() - 1)`. Same for `removeFirst()` / `removeLast()`. Reads more clearly and avoids off-by-one indexing.
+- **Collection emptiness: use the project's `nullOrEmpty(...)` helper** from `org.openmetadata.common.utils.CommonUtil` instead of hand-rolling `coll != null && !coll.isEmpty()` (or its negation). It's the established idiom across this codebase, handles `null` correctly, and reads as a single semantic check. Same applies to `String` checks — use `nullOrEmpty(str)` not `str != null && !str.isEmpty()`.
+  ```java
+  // BAD
+  if (entities != null && !entities.isEmpty()) {
+    process(entities.get(0));
+  }
+
+  // GOOD
+  if (!nullOrEmpty(entities)) {
+    process(entities.getFirst());
+  }
+  ```
 
 #### Common Bug Patterns to Avoid
 - `equals()` without `hashCode()` (or vice versa)

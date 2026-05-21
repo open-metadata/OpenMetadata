@@ -469,6 +469,7 @@ public class SearchIndexRetryWorker implements Managed {
       for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
         Map<String, Object> context = new HashMap<>();
         context.put(ReindexingUtil.ENTITY_TYPE_KEY, entry.getKey());
+        ReindexingUtil.populateDocBuildContext(context, entry.getKey(), entry.getValue());
         bulkSink.write(entry.getValue(), context);
       }
 
