@@ -14,6 +14,7 @@ Snowflake lineage module
 
 import json
 import traceback
+from datetime import datetime, timedelta
 from typing import Any, Iterable, Iterator, List, Optional, Tuple, Union  # noqa: UP035
 
 from cachetools import LRUCache
@@ -68,6 +69,8 @@ logger = ingestion_logger()
 USE_ACCESS_HISTORY_OPTION_KEY = "useAccessHistory"
 
 TABLE_CACHE_MAX_SIZE = 100
+
+ACCESS_HISTORY_CHUNK_DAYS = 1
 
 EXTERNAL_STAGE_PREFIXES = ("s3://", "azure://", "gcs://", "https://")
 
@@ -241,41 +244,38 @@ class SnowflakeLineageSource(
         yield from self._yield_combined_access_history()
         yield from self._yield_copy_history_lineage()
 
+    def _iter_lineage_date_windows(self) -> Iterable[Tuple[datetime, datetime]]:  # noqa: UP006
+        """
+        Split the configured [start, end] window into ACCESS_HISTORY_CHUNK_DAYS
+        chunks. A single query over a large window (e.g. queryLogDuration=180)
+        builds a FLATTEN-heavy plan that Snowflake cancels on a client/server
+        timeout; per-chunk queries keep each scan bounded and let one slow
+        window fail without aborting the run.
+        """
+        window_start = self.start
+        while window_start < self.end:
+            window_end = min(window_start + timedelta(days=ACCESS_HISTORY_CHUNK_DAYS), self.end)
+            yield window_start, window_end
+            window_start = window_end
+
     def _yield_combined_access_history(self) -> Iterable[Either[AddLineageRequest]]:
         """
-        Run the single combined ACCESS_HISTORY query and emit one
-        `AddLineageRequest` per row. Uses `stream_results=True` so the
-        snowflake-sqlalchemy cursor streams rather than buffering.
+        Stream the combined ACCESS_HISTORY query per date window and emit one
+        `AddLineageRequest` per row, accumulating counters across all windows.
         """
-        sql_statement = SNOWFLAKE_ACCESS_HISTORY_LINEAGE.format(
-            account_usage=self.service_connection.accountUsageSchema,
-            start_time=self.start,
-            end_time=self.end,
-            filter_condition=self._build_filter_condition_clause(),
-        )
         emitted = 0
         emitted_with_sql = 0
         skipped = 0
-        try:
-            for engine in self.get_engine():
-                if engine is None:
+        for window_start, window_end in self._iter_lineage_date_windows():
+            for row in self._fetch_access_history_rows(window_start, window_end):
+                edge = self._build_access_history_edge(row)
+                if edge is None:
+                    skipped += 1
                     continue
-                with engine.connect() as conn:
-                    logger.debug("Executing combined ACCESS_HISTORY lineage query: %s", sql_statement)
-                    rows = conn.execution_options(stream_results=True, max_row_buffer=1000).execute(text(sql_statement))
-                    for raw_row in rows:
-                        row = AccessHistoryRow(**self._row_to_lower_dict(raw_row))
-                        edge = self._build_access_history_edge(row)
-                        if edge is None:
-                            skipped += 1
-                            continue
-                        emitted += 1
-                        if row.query_text:
-                            emitted_with_sql += 1
-                        yield Either(right=edge)  # pyright: ignore[reportCallIssue]
-        except Exception as exc:
-            logger.warning("Failed to extract lineage from ACCESS_HISTORY: %s", exc)
-            logger.debug(traceback.format_exc())
+                emitted += 1
+                if row.query_text:
+                    emitted_with_sql += 1
+                yield Either(right=edge)  # pyright: ignore[reportCallIssue]
         logger.info(
             "ACCESS_HISTORY lineage: emitted %d edges (%d with SQL text), "
             "skipped %d (unresolvable downstream/upstream tables)",
@@ -283,6 +283,38 @@ class SnowflakeLineageSource(
             emitted_with_sql,
             skipped,
         )
+
+    def _fetch_access_history_rows(self, window_start: datetime, window_end: datetime) -> Iterable[AccessHistoryRow]:
+        """
+        Run the combined ACCESS_HISTORY query for a single [window_start,
+        window_end) window and yield parsed rows. Uses `stream_results=True`
+        so the snowflake-sqlalchemy cursor streams rather than buffering.
+        A failure on one window is logged and swallowed so the remaining
+        windows still run.
+        """
+        sql_statement = SNOWFLAKE_ACCESS_HISTORY_LINEAGE.format(
+            account_usage=self.service_connection.accountUsageSchema,
+            start_time=window_start,
+            end_time=window_end,
+            filter_condition=self._build_filter_condition_clause(),
+        )
+        try:
+            for engine in self.get_engine():
+                if engine is None:
+                    continue
+                with engine.connect() as conn:
+                    logger.debug("Executing ACCESS_HISTORY lineage query for %s - %s", window_start, window_end)
+                    rows = conn.execution_options(stream_results=True, max_row_buffer=1000).execute(text(sql_statement))
+                    for raw_row in rows:
+                        yield AccessHistoryRow(**self._row_to_lower_dict(raw_row))
+        except Exception as exc:
+            logger.warning(
+                "Failed to extract lineage from ACCESS_HISTORY for window %s - %s: %s",
+                window_start,
+                window_end,
+                exc,
+            )
+            logger.debug(traceback.format_exc())
 
     def _build_access_history_edge(self, row: AccessHistoryRow) -> Optional[AddLineageRequest]:  # noqa: UP045
         """
@@ -296,6 +328,14 @@ class SnowflakeLineageSource(
         downstream_entity = self._resolve_snowflake_table(row.downstream_table)
         upstream_entity = self._resolve_snowflake_table(row.upstream_table)
         if downstream_entity is None or upstream_entity is None:
+            logger.debug(
+                "Skipping ACCESS_HISTORY edge: table not found in OpenMetadata "
+                "(upstream=`%s` found=%s, downstream=`%s` found=%s)",
+                row.upstream_table,
+                upstream_entity is not None,
+                row.downstream_table,
+                downstream_entity is not None,
+            )
             return None
 
         column_pairs = self._parse_column_pairs(row.column_pairs)
