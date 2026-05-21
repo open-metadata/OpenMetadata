@@ -406,7 +406,7 @@ public class MigrationUtil {
         + "  ) "
         + "LIMIT "
         + BATCH_SIZE
-        + " ON CONFLICT (fromId, toId, relation) DO NOTHING";
+        + " ON CONFLICT DO NOTHING";
   }
 
   // ---------------------------------------------------------------------------
