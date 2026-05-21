@@ -1,8 +1,13 @@
 package org.openmetadata.playwright.scenarios.search.reindex;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.microsoft.playwright.APIResponse;
 import com.microsoft.playwright.assertions.LocatorAssertions;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
+import java.io.IOException;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.List;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -43,7 +48,10 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.DriveConnection;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityUsage;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
@@ -87,6 +95,14 @@ import org.slf4j.LoggerFactory;
  *   <li>{@code TestCaseIndex.testSuite/testCaseResult} → DQ → Test Cases list presence.
  *   <li>{@code TestSuiteIndex.summary} → DQ → Test Suites list presence (basic suite).
  *   <li>{@code WorksheetIndex.columns} → Explore → Worksheets column-name search.
+ *   <li><strong>Suspected gap</strong> — {@code TableIndex} does <em>not</em> currently request
+ *       {@code usageSummary}, but {@code TableRepository.clearFields} nulls it when not
+ *       requested. The UI Explore → Tables "Sort by Weekly Usage" surface reads
+ *       {@code _source.usageSummary.weeklyStats.count} (see
+ *       {@code tableSortingFields} in {@code explore.constants.ts}). Until
+ *       {@code TableIndex.getRequiredReindexFields()} adds {@code "usageSummary"} this test
+ *       fails AFTER reindex — that's the regression gate. Tracked via a separate one-line
+ *       OM fix PR.
  * </ul>
  *
  * <p>Fields added back defensively without a UI surface backed by search ({@code
@@ -134,6 +150,14 @@ class SelectiveFieldReindexUIIT {
   // DriveServiceTestFactory.
   private static final String DRIVE_SERVICES_PATH = "/v1/services/driveServices";
 
+  // Daily usage we POST against the seeded table so weeklyStats.count is non-zero. The exact
+  // count value doesn't matter — only that _source.usageSummary.weeklyStats.count > 0 after
+  // live indexing (BEFORE) and stays > 0 after reindex (AFTER) once the OM fix lands.
+  private static final int SEED_USAGE_COUNT = 100;
+
+  // Reused for parsing the /api/v1/search/query response.
+  private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+
   @Test
   void selectiveFieldReindexPreservesUiCriticalFields(final UiSession ui, final TestNamespace ns) {
     final SeededFixtures fixtures = seed(ns);
@@ -155,6 +179,7 @@ class SelectiveFieldReindexUIIT {
     assertWorksheetSearchableByColumnName(ui, fixtures, phase);
     assertTestCaseAppearsInDqList(ui, fixtures, phase);
     assertTestSuiteAppearsInDqList(ui, fixtures, phase);
+    assertTableUsageSummaryInSource(ui, fixtures, phase);
   }
 
   private static void assertTableSearchableByColumnName(
@@ -224,6 +249,56 @@ class SelectiveFieldReindexUIIT {
                 .assertTestCaseVisible(fixtures.testCaseName));
   }
 
+  /**
+   * Asserts {@code _source.usageSummary.weeklyStats.count > 0} on the table's search doc.
+   * Uses the UiSession's authenticated request context to hit {@code /api/v1/search/query}
+   * directly — the UI surface that depends on this field is Explore → Tables "Sort by Weekly
+   * Usage", which doesn't visibly render the count, so a DOM-only assertion can't cleanly
+   * distinguish "field dropped" from "field present but tied with others". The {@code
+   * _source} shape is the cleanest signal.
+   */
+  private static void assertTableUsageSummaryInSource(
+      final UiSession ui, final SeededFixtures fixtures, final String phase) {
+    final String description =
+        "TableIndex.usageSummary → table_search_index._source.usageSummary.weeklyStats.count"
+            + " for '"
+            + fixtures.tableName
+            + "' — "
+            + phase;
+    LOG.info("Asserting {}", description);
+    pollUiAssertion(
+        description,
+        () -> {
+          final String url =
+              ui.uiUrl(
+                  "/api/v1/search/query?q="
+                      + fixtures.tableName
+                      + "&index=table_search_index&from=0&size=1");
+          final APIResponse response = ui.context().request().get(url);
+          if (response.status() != 200) {
+            throw new AssertionError(
+                "Search query returned status " + response.status() + " for " + url);
+          }
+          final JsonNode body;
+          try {
+            body = JSON_MAPPER.readTree(response.body());
+          } catch (final IOException e) {
+            throw new AssertionError("Failed to parse search response body", e);
+          }
+          final JsonNode count =
+              body.at("/hits/hits/0/_source/usageSummary/weeklyStats/count");
+          if (count.isMissingNode() || count.isNull() || count.asLong() <= 0) {
+            throw new AssertionError(
+                "Expected _source.usageSummary.weeklyStats.count > 0 for table '"
+                    + fixtures.tableName
+                    + "', got: "
+                    + count
+                    + ". If this only fails AFTER reindex, TableIndex.getRequiredReindexFields()"
+                    + " is missing \"usageSummary\".");
+          }
+        });
+  }
+
   private static void assertTestSuiteAppearsInDqList(
       final UiSession ui, final SeededFixtures fixtures, final String phase) {
     final String description =
@@ -267,6 +342,7 @@ class SelectiveFieldReindexUIIT {
 
     final String tableColumnMarker = "tcol" + shortId;
     final Table table = createTable(shortId, schema.getFullyQualifiedName(), tableColumnMarker);
+    reportTableUsage(table);
     createQueryLinkedTo(shortId, dbService.getFullyQualifiedName(), table);
     final TestCaseSeed testCaseSeed = createTestCaseWithResult(shortId, table);
 
@@ -329,6 +405,24 @@ class SelectiveFieldReindexUIIT {
             .withColumns(List.of(idColumn, markerColumn))
             .withTableConstraints(List.of(primaryKey));
     return SdkClients.adminClient().tables().create(request);
+  }
+
+  /**
+   * Reports a daily usage count against the seeded table so the change-event indexing path
+   * populates {@code _source.usageSummary.weeklyStats.count}. The AFTER-reindex check then
+   * verifies the field survives the selective-fields reindex path.
+   */
+  private static void reportTableUsage(final Table table) {
+    final DailyCount usage =
+        new DailyCount().withDate(LocalDate.now().toString()).withCount(SEED_USAGE_COUNT);
+    try {
+      SdkClients.adminClient()
+          .getHttpClient()
+          .execute(HttpMethod.POST, "/v1/usage/table/" + table.getId(), usage, EntityUsage.class);
+    } catch (final OpenMetadataException e) {
+      throw new IllegalStateException(
+          "Failed to POST daily usage for table " + table.getName(), e);
+    }
   }
 
   private static void createQueryLinkedTo(
