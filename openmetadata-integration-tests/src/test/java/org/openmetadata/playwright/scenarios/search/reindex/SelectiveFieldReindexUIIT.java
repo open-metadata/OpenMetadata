@@ -285,8 +285,7 @@ class SelectiveFieldReindexUIIT {
           } catch (final IOException e) {
             throw new AssertionError("Failed to parse search response body", e);
           }
-          final JsonNode count =
-              body.at("/hits/hits/0/_source/usageSummary/weeklyStats/count");
+          final JsonNode count = body.at("/hits/hits/0/_source/usageSummary/weeklyStats/count");
           if (count.isMissingNode() || count.isNull() || count.asLong() <= 0) {
             throw new AssertionError(
                 "Expected _source.usageSummary.weeklyStats.count > 0 for table '"
@@ -420,18 +419,26 @@ class SelectiveFieldReindexUIIT {
           .getHttpClient()
           .execute(HttpMethod.POST, "/v1/usage/table/" + table.getId(), usage, EntityUsage.class);
     } catch (final OpenMetadataException e) {
-      throw new IllegalStateException(
-          "Failed to POST daily usage for table " + table.getName(), e);
+      throw new IllegalStateException("Failed to POST daily usage for table " + table.getName(), e);
     }
   }
 
   private static void createQueryLinkedTo(
       final String shortId, final String dbServiceFqn, final Table table) {
+    // EntityReference.type is @NotNull and table.getEntityReference() can come back with a
+    // null type (the SDK-returned Table's class name doesn't resolve in the canonical-name
+    // map), which 400s queryUsedIn validation. Build the ref with the type set explicitly.
+    final EntityReference tableRef =
+        new EntityReference()
+            .withId(table.getId())
+            .withType("table")
+            .withName(table.getName())
+            .withFullyQualifiedName(table.getFullyQualifiedName());
     final CreateQuery request =
         new CreateQuery()
             .withName("q_" + shortId)
             .withQuery("SELECT * FROM " + table.getName())
-            .withQueryUsedIn(List.of(table.getEntityReference()))
+            .withQueryUsedIn(List.of(tableRef))
             .withService(dbServiceFqn)
             .withDuration(0.0)
             .withQueryDate(System.currentTimeMillis());
