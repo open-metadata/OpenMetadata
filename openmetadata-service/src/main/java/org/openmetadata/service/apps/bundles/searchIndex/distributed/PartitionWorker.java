@@ -693,6 +693,7 @@ public class PartitionWorker {
 
     if (!SearchIndexEntityTypes.isTimeSeriesEntity(normalizedEntityType)) {
       List<EntityInterface> entities = (List<EntityInterface>) resultList.getData();
+      ReindexingUtil.populateDocBuildContext(contextData, normalizedEntityType, entities);
       searchIndexSink.write(entities, contextData);
     } else {
       List<EntityTimeSeriesInterface> entities =
