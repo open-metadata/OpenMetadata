@@ -37,6 +37,7 @@ import {
   validateSecurityConfiguration,
 } from '../../../rest/securityConfigAPI';
 import { getAuthConfig } from '../../../utils/AuthProvider.util';
+import { requiresFreshTestLogin } from '../../../utils/SSOUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import SSOConfigurationFormRJSF from './SSOConfigurationForm';
@@ -46,6 +47,112 @@ import { SSOConfigurationFormProps } from './SSOConfigurationForm.interface';
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
+}));
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Accordion: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="accordion">{children}</div>
+  ),
+  AccordionItem: ({
+    children,
+    id,
+  }: {
+    children: React.ReactNode;
+    id?: string;
+  }) => (
+    <div data-id={id} data-testid="accordion-item">
+      {children}
+    </div>
+  ),
+  AccordionHeader: ({
+    children,
+    ...rest
+  }: React.PropsWithChildren<Record<string, unknown>>) => (
+    <button data-testid="accordion-header" {...rest}>
+      {children}
+    </button>
+  ),
+  AccordionPanel: ({
+    children,
+    ...rest
+  }: React.PropsWithChildren<Record<string, unknown>>) => (
+    <div data-testid="accordion-panel" {...rest}>
+      {children}
+    </div>
+  ),
+  Button: ({
+    children,
+    onPress,
+    isDisabled,
+    isLoading,
+    iconLeading: _iconLeading,
+    color: _color,
+    size: _size,
+    ...rest
+  }: React.PropsWithChildren<{
+    onPress?: () => void;
+    isDisabled?: boolean;
+    isLoading?: boolean;
+    iconLeading?: unknown;
+    color?: string;
+    size?: string;
+  }> &
+    Record<string, unknown>) => (
+    <button
+      disabled={isDisabled || isLoading}
+      type="button"
+      {...rest}
+      onClick={onPress}>
+      {children}
+    </button>
+  ),
+  FileTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Input: ({
+    label,
+    value,
+    onChange,
+    ...rest
+  }: {
+    label?: string;
+    value?: string;
+    onChange?: (value: string) => void;
+  } & Record<string, unknown>) => (
+    <label>
+      {label}
+      <input
+        value={value ?? ''}
+        {...rest}
+        onChange={(event) => onChange?.(event.target.value)}
+      />
+    </label>
+  ),
+  ModalOverlay: ({
+    children,
+    isOpen,
+  }: {
+    children: React.ReactNode;
+    isOpen?: boolean;
+  }) => (isOpen ? <div data-testid="modal-overlay">{children}</div> : null),
+  Modal: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Dialog: Object.assign(
+    ({
+      children,
+      title,
+      ...rest
+    }: React.PropsWithChildren<Record<string, unknown>> & {
+      title?: string;
+    }) => (
+      <div role="dialog" {...rest}>
+        {title && <h3>{title}</h3>}
+        {children}
+      </div>
+    ),
+    {
+      Header: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+      Content: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+      Footer: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    }
+  ),
 }));
 
 // Mock SSOUtils - use actual implementations where needed
@@ -59,6 +166,10 @@ jest.mock('../../../utils/SSOUtils', () => {
     cleanupProviderSpecificFields: jest.fn(
       actual.cleanupProviderSpecificFields
     ),
+    // Default-bypass the lockout-risk save gate so existing tests that drive
+    // Save directly can still assert on validate/apply. Tests covering the
+    // gate itself flip this to `true` explicitly.
+    requiresFreshTestLogin: jest.fn(() => false),
   };
 });
 
@@ -205,7 +316,6 @@ const mockGetSecurityConfiguration =
   getSecurityConfiguration as jest.MockedFunction<
     typeof getSecurityConfiguration
   >;
-
 const mockFetchAuthenticationConfig =
   fetchAuthenticationConfig as jest.MockedFunction<
     typeof fetchAuthenticationConfig
@@ -216,6 +326,8 @@ const mockFetchAuthorizerConfig = fetchAuthorizerConfig as jest.MockedFunction<
 const mockGetAuthConfig = getAuthConfig as jest.MockedFunction<
   typeof getAuthConfig
 >;
+const mockRequiresFreshTestLogin =
+  requiresFreshTestLogin as jest.MockedFunction<typeof requiresFreshTestLogin>;
 
 const mockUseApplicationStore = useApplicationStore as jest.MockedFunction<
   typeof useApplicationStore
@@ -269,10 +381,12 @@ describe('SSOConfigurationForm', () => {
       writable: true,
     });
 
-    // Mock sessionStorage and localStorage
     Object.defineProperty(window, 'sessionStorage', {
       value: {
         clear: jest.fn(),
+        getItem: jest.fn(() => null),
+        setItem: jest.fn(),
+        removeItem: jest.fn(),
       },
       writable: true,
     });
@@ -280,6 +394,9 @@ describe('SSOConfigurationForm', () => {
     Object.defineProperty(window, 'localStorage', {
       value: {
         clear: jest.fn(),
+        getItem: jest.fn(() => null),
+        setItem: jest.fn(),
+        removeItem: jest.fn(),
       },
       writable: true,
     });
@@ -1955,6 +2072,154 @@ describe('SSOConfigurationForm', () => {
     });
   });
 
+  describe('Provider-specific Display Blocks', () => {
+    beforeEach(() => {
+      mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
+    });
+
+    it('should render OIDC email-claim status block for Google provider', async () => {
+      // The OIDC-specific UI block in the form (rendered when isOidcCallbackProvider)
+      // surfaces the email-claim status surface; this used to be the callback URL display.
+      renderComponent({ selectedProvider: AuthProvider.Google });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('email-claim-status')).toBeInTheDocument();
+      });
+    });
+
+    it('should render SAML ACS info banner with ACS URL and SP Entity ID', async () => {
+      renderComponent({ selectedProvider: AuthProvider.Saml });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('saml-acs-info-banner')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('saml-acs-url')).toBeInTheDocument();
+      expect(screen.getByTestId('saml-sp-entity-id')).toBeInTheDocument();
+    });
+
+    it('should not render OIDC callback display for SAML provider', async () => {
+      renderComponent({ selectedProvider: AuthProvider.Saml });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('saml-acs-info-banner')).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByTestId('oidc-callback-url-display')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not render SAML banner for OIDC providers', async () => {
+      renderComponent({ selectedProvider: AuthProvider.Okta });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('email-claim-status')).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByTestId('saml-acs-info-banner')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not render OIDC callback display for LDAP provider', async () => {
+      renderComponent({ selectedProvider: AuthProvider.LDAP });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-configuration-form-card')
+        ).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByTestId('oidc-callback-url-display')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('saml-acs-info-banner')
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Advanced Fields Accordion', () => {
+    beforeEach(() => {
+      mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
+    });
+
+    it('should render exactly one top-level Advanced Fields accordion when a provider is selected', async () => {
+      renderComponent({ selectedProvider: AuthProvider.Google });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-advanced-fields-toggle')
+        ).toBeInTheDocument();
+      });
+
+      expect(screen.getAllByTestId('sso-advanced-fields-toggle')).toHaveLength(
+        1
+      );
+      expect(
+        screen.getByTestId('sso-advanced-fields-panel')
+      ).toBeInTheDocument();
+    });
+
+    it('should render the Advanced Fields accordion for SAML provider', async () => {
+      renderComponent({ selectedProvider: AuthProvider.Saml });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-advanced-fields-toggle')
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should render the Advanced Fields accordion for LDAP provider', async () => {
+      renderComponent({ selectedProvider: AuthProvider.LDAP });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-advanced-fields-toggle')
+        ).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Test Login Flow', () => {
+    const mockSetCurrentUser = jest.fn();
+
+    beforeEach(() => {
+      mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
+      mockUseApplicationStore.mockReturnValue({
+        setIsAuthenticated: mockSetIsAuthenticated,
+        setAuthConfig: mockSetAuthConfig,
+        setAuthorizerConfig: mockSetAuthorizerConfig,
+        setCurrentUser: mockSetCurrentUser,
+        currentUser: { email: 'admin@example.com' },
+      } as unknown as ApplicationStore);
+    });
+
+    it('should render Test Login button when a provider is selected', async () => {
+      renderComponent({ selectedProvider: AuthProvider.Google });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test-login-button')).toBeInTheDocument();
+      });
+    });
+
+    it('should show error toast when required OIDC fields are missing', async () => {
+      renderComponent({ selectedProvider: AuthProvider.Google });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test-login-button')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('test-login-button'));
+
+      await waitFor(() => {
+        expect(mockShowErrorToast).toHaveBeenCalled();
+      });
+    });
+  });
+
   describe('Extract Field Name Utility', () => {
     it('should handle field name extraction from field IDs', async () => {
       mockGetSecurityConfiguration.mockResolvedValue(
@@ -1996,6 +2261,80 @@ describe('SSOConfigurationForm', () => {
       const docPanel = screen.getByTestId('sso-doc-panel');
 
       expect(docPanel).toBeInTheDocument();
+    });
+  });
+
+  describe('Lockout-risk Save Gate', () => {
+    beforeEach(() => {
+      mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
+    });
+
+    it('should block save with lockout toast when fresh Test Login is required', async () => {
+      mockRequiresFreshTestLogin.mockReturnValue(true);
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('Select Google'));
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('save-sso-configuration')
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('save-sso-configuration'));
+
+      await waitFor(() => {
+        expect(mockShowErrorToast).toHaveBeenCalledWith(
+          'server.test-login-required-before-save'
+        );
+      });
+
+      expect(mockValidateSecurityConfiguration).not.toHaveBeenCalled();
+      expect(mockApplySecurityConfiguration).not.toHaveBeenCalled();
+    });
+
+    it('should allow save when fresh Test Login is not required', async () => {
+      mockRequiresFreshTestLogin.mockReturnValue(false);
+      mockValidateSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse({
+          status: VALIDATION_STATUS.SUCCESS,
+          message: 'Validation successful',
+          results: [],
+        })
+      );
+      mockApplySecurityConfiguration.mockResolvedValue(
+        createAxiosResponse({} as SecurityConfiguration)
+      );
+      mockOnLogoutHandler.mockResolvedValue(undefined);
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('Select Google'));
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('save-sso-configuration')
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('save-sso-configuration'));
+
+      await waitFor(() => {
+        expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
+      });
+
+      expect(mockShowErrorToast).not.toHaveBeenCalledWith(
+        'server.test-login-required-before-save'
+      );
     });
   });
 });

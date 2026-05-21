@@ -17,7 +17,7 @@ export interface AuthorizerConfiguration {
     /**
      * List of unique admin principals.
      */
-    adminPrincipals: string[];
+    adminPrincipals?: string[];
     /**
      * Allowed Domains to access
      */
@@ -54,7 +54,7 @@ export interface AuthorizerConfiguration {
     /**
      * Principal Domain
      */
-    principalDomain: string;
+    principalDomain?: string;
     /**
      * List of unique principals used as test users. **NOTE THIS IS ONLY FOR TEST SETUP AND NOT
      * TO BE USED IN PRODUCTION SETUP**

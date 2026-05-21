@@ -12,12 +12,19 @@
  */
 import { Page } from '@playwright/test';
 import { ProviderConfigOverride, ProviderCredentials } from '../ssoAuth';
+import { customOidcProviderHelper } from './custom-oidc';
 import { keycloakAzureSamlProviderHelper } from './keycloak-saml';
 import { oktaProviderHelper } from './okta';
+import { openldapProviderHelper } from './openldap';
 
 export type ProviderConfigPayload =
   | ProviderConfigOverride
   | Promise<ProviderConfigOverride>;
+
+export interface FillFormOverrides {
+  secret?: string;
+  cert?: string;
+}
 
 export interface ProviderHelper {
   expectedButtonText: string;
@@ -27,6 +34,7 @@ export interface ProviderHelper {
     page: Page,
     credentials: ProviderCredentials
   ) => Promise<void>;
+  fillForm?: (page: Page, overrides?: FillFormOverrides) => Promise<void>;
 }
 
 export const getProviderHelper = (providerType: string): ProviderHelper => {
@@ -35,10 +43,14 @@ export const getProviderHelper = (providerType: string): ProviderHelper => {
       return oktaProviderHelper;
     case 'keycloak-azure-saml':
       return keycloakAzureSamlProviderHelper;
+    case 'custom-oidc':
+      return customOidcProviderHelper;
+    case 'ldap':
+      return openldapProviderHelper;
     default:
       throw new Error(
         `No SSO provider helper registered for "${providerType}". ` +
-          `Supported providers: okta, keycloak-azure-saml`
+          `Supported providers: okta, keycloak-azure-saml, custom-oidc, ldap`
       );
   }
 };

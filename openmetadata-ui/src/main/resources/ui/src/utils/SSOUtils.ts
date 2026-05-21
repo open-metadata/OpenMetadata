@@ -29,7 +29,9 @@ import {
   DEFAULT_AUTHORIZER_CLASS_NAME,
   DEFAULT_CALLBACK_URL,
   DEFAULT_CONTAINER_REQUEST_FILTER,
+  getLockoutRiskFields,
   GOOGLE_SSO_DEFAULTS,
+  OIDC_PROVIDERS,
   OIDC_SSO_DEFAULTS,
   PROVIDERS_WITHOUT_BOT_PRINCIPALS,
   PROVIDER_FIELD_MAPPINGS,
@@ -343,7 +345,13 @@ export const getDefaultsForProvider = (
     publicKeyUrls = [],
   } = isGoogle ? GOOGLE_SSO_DEFAULTS : {};
 
-  const { tokenValidity, serverUrl, sessionExpiry } = OIDC_SSO_DEFAULTS;
+  const {
+    azureScope,
+    preferredJwsAlgorithm,
+    scope,
+    tokenValidity,
+    sessionExpiry,
+  } = OIDC_SSO_DEFAULTS;
 
   const authConfig: AuthenticationConfiguration = {
     provider: provider,
@@ -357,6 +365,7 @@ export const getDefaultsForProvider = (
     tokenValidationAlgorithm: 'RS256',
     jwtPrincipalClaims: getProviderJwtClaims(provider),
     jwtPrincipalClaimsMapping: [],
+    enableAutoRedirect: false,
     // Always include authority and publicKeyUrls for Google (required by backend)
     ...(isGoogle
       ? {
@@ -402,22 +411,20 @@ export const getDefaultsForProvider = (
   // For confidential clients, fields go in oidcConfiguration
   // For public clients, use root level fields (but not for SAML which has its own config)
   if (!isSaml && clientType === ClientType.Confidential) {
+    authConfig.callbackUrl = DEFAULT_CALLBACK_URL;
     authConfig.oidcConfiguration = {
       type: provider,
       id: '',
       secret: '',
-      scope: 'openid email profile',
+      scope: provider === AuthProvider.Azure ? azureScope : scope,
       discoveryUri,
-      useNonce: false,
-      preferredJwsAlgorithm: 'RS256',
-      responseType: 'code',
-      disablePkce: false,
+      useNonce: true,
+      preferredJwsAlgorithm,
+      disablePkce: true,
       maxClockSkew: 0,
       clientAuthenticationMethod: 'client_secret_post',
       tokenValidity,
       customParams: {},
-      tenant: '',
-      serverUrl,
       callbackUrl: DEFAULT_CALLBACK_URL,
       maxAge: 0,
       prompt: '',
@@ -456,9 +463,6 @@ const cleanupOidcConfiguration = (
   }
   if (typeof oidcConfig.callbackUrl === 'string') {
     authConfig.callbackUrl = oidcConfig.callbackUrl;
-  }
-  if (typeof oidcConfig.serverUrl === 'string') {
-    oidcConfig.serverUrl = oidcConfig.serverUrl.replace(/\/callback\/?$/, '');
   }
 };
 
@@ -873,11 +877,72 @@ export const handleConfidentialToPublicSwitch = (
   authConfig.callbackUrl ??=
     (oidcConfig?.callbackUrl as string) ?? DEFAULT_CALLBACK_URL;
 
+  // Promote OIDC-config fields to root so the Public-client validator (which
+  // reads root-level fields) sees the values the user already entered in the
+  // Confidential-shaped form.
+  const oidcClientId =
+    typeof oidcConfig?.id === 'string' ? oidcConfig.id : undefined;
+  if (!authConfig.clientId && oidcClientId) {
+    authConfig.clientId = oidcClientId;
+  }
+  if (!authConfig.authority) {
+    const discoveryUri = (oidcConfig?.discoveryUri as string | undefined) ?? '';
+    if (discoveryUri) {
+      authConfig.authority = discoveryUri
+        .replace(/\/?\.well-known\/openid-configuration\/?$/, '')
+        .replace(/\/$/, '');
+    }
+  }
+
   // For Google SSO, prepopulate Authority and Public Key URLs when switching to Public
   const isGoogle = authConfig.provider === AuthProvider.Google;
   if (isGoogle) {
     authConfig.authority = GOOGLE_SSO_DEFAULTS.authority;
     authConfig.publicKeyUrls = GOOGLE_SSO_DEFAULTS.publicKeyUrls;
+  }
+};
+
+/**
+ * Resolves a Discovery URI from oidcConfiguration or authority. Returns null
+ * if neither is set.
+ */
+export const resolveDiscoveryUri = (
+  authConfig: AuthenticationConfiguration | undefined
+): string | null => {
+  const fromOidc = authConfig?.oidcConfiguration?.discoveryUri as
+    | string
+    | undefined;
+  if (fromOidc) {
+    return fromOidc;
+  }
+  const authority = authConfig?.authority;
+  if (authority) {
+    return `${authority.replace(/\/$/, '')}/.well-known/openid-configuration`;
+  }
+
+  return null;
+};
+
+/**
+ * Fetches an OIDC discovery document and returns the parsed JSON. Returns
+ * null on any failure (network, CORS, non-OK status, invalid JSON) — callers
+ * should treat the result as best-effort and fall back to manual entry.
+ */
+export const fetchOidcDiscoveryDocument = async (
+  discoveryUri: string
+): Promise<Record<string, unknown> | null> => {
+  try {
+    const response = await fetch(discoveryUri, {
+      method: 'GET',
+      credentials: 'omit',
+    });
+    if (!response.ok) {
+      return null;
+    }
+
+    return (await response.json()) as Record<string, unknown>;
+  } catch {
+    return null;
   }
 };
 
@@ -904,18 +969,152 @@ export const handlePublicToConfidentialSwitch = (
     oidcConfig.discoveryUri = GOOGLE_SSO_DEFAULTS.discoveryUri;
     oidcConfig.tokenValidity = OIDC_SSO_DEFAULTS.tokenValidity;
     oidcConfig.sessionExpiry = OIDC_SSO_DEFAULTS.sessionExpiry;
-    oidcConfig.serverUrl = OIDC_SSO_DEFAULTS.serverUrl;
     // Set default values for other required OIDC fields
-    oidcConfig.scope = oidcConfig.scope || 'openid email profile';
-    oidcConfig.useNonce = oidcConfig.useNonce ?? false;
+    oidcConfig.scope = oidcConfig.scope || OIDC_SSO_DEFAULTS.scope;
+    oidcConfig.useNonce = oidcConfig.useNonce ?? true;
     oidcConfig.preferredJwsAlgorithm =
-      oidcConfig.preferredJwsAlgorithm || 'RS256';
-    oidcConfig.responseType = oidcConfig.responseType || 'code';
-    oidcConfig.disablePkce = oidcConfig.disablePkce ?? false;
+      oidcConfig.preferredJwsAlgorithm ||
+      OIDC_SSO_DEFAULTS.preferredJwsAlgorithm;
+    oidcConfig.disablePkce = oidcConfig.disablePkce ?? true;
     oidcConfig.maxClockSkew = oidcConfig.maxClockSkew ?? 0;
     oidcConfig.clientAuthenticationMethod =
       oidcConfig.clientAuthenticationMethod || 'client_secret_post';
   }
+};
+
+const isOidcProvider = (provider: string | undefined): boolean =>
+  !!provider && OIDC_PROVIDERS.has(provider);
+
+/**
+ * Derives clientType for an OIDC provider from the presence of a Client
+ * Secret. Filled secret → Confidential. Empty/missing → Public. Non-OIDC
+ * providers are not the caller's concern; this helper is OIDC-only.
+ */
+export const deriveOidcClientType = (
+  authConfig: AuthenticationConfiguration | undefined
+): ClientType => {
+  const secret = authConfig?.oidcConfiguration?.secret;
+
+  return typeof secret === 'string' && secret.trim() !== ''
+    ? ClientType.Confidential
+    : ClientType.Public;
+};
+
+/**
+ * Lifts a stored Public-OIDC config into the canonical Confidential-shape the
+ * form renders. Root clientId/authority become oidcConfiguration.id/
+ * discoveryUri so the same 4 fields display populated. Root values are
+ * cleared so the submit-time reshape picks fresh values from oidcConfiguration.
+ * The form-state clientType is set to Confidential as a UI hint; the network
+ * payload value is derived from the secret at submit.
+ */
+export const liftPublicOidcToConfidentialShape = (
+  authConfig: AuthenticationConfiguration | undefined
+): void => {
+  if (!authConfig || !isOidcProvider(authConfig.provider)) {
+    return;
+  }
+  if (authConfig.clientType !== ClientType.Public) {
+    return;
+  }
+
+  const existing = (authConfig.oidcConfiguration ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const liftedClientId = authConfig.clientId ?? '';
+  const liftedAuthority = authConfig.authority ?? '';
+  const liftedDiscoveryUri = liftedAuthority
+    ? `${liftedAuthority.replace(/\/$/, '')}/.well-known/openid-configuration`
+    : '';
+  const isAzure = authConfig.provider === AuthProvider.Azure;
+  const defaultScope = isAzure
+    ? OIDC_SSO_DEFAULTS.azureScope
+    : OIDC_SSO_DEFAULTS.scope;
+
+  authConfig.oidcConfiguration = {
+    type: authConfig.provider,
+    id: liftedClientId,
+    secret: '',
+    scope: defaultScope,
+    discoveryUri: liftedDiscoveryUri,
+    useNonce: true,
+    preferredJwsAlgorithm: OIDC_SSO_DEFAULTS.preferredJwsAlgorithm,
+    disablePkce: true,
+    maxClockSkew: 0,
+    clientAuthenticationMethod: 'client_secret_post',
+    tokenValidity: OIDC_SSO_DEFAULTS.tokenValidity,
+    customParams: {},
+    callbackUrl: authConfig.callbackUrl ?? DEFAULT_CALLBACK_URL,
+    maxAge: 0,
+    prompt: '',
+    sessionExpiry: OIDC_SSO_DEFAULTS.sessionExpiry,
+    ...existing,
+  };
+
+  authConfig.clientId = '';
+  authConfig.authority = '';
+  authConfig.clientType = ClientType.Confidential;
+};
+
+/**
+ * Reshapes the form's Confidential-shape OIDC payload into the network shape
+ * the backend expects, deriving clientType from secret presence. For
+ * Confidential (secret filled), the payload is just cleaned. For Public
+ * (secret blank), id/discoveryUri are promoted to root clientId/authority,
+ * the secret is dropped, and a slim oidcConfiguration with just discoveryUri
+ * is kept so backend validators that dereference oidcConfig.discoveryUri
+ * (e.g. CustomOidcValidator.extractDiscoveryUri) don't NPE. Non-OIDC
+ * providers fall through to the existing cleanup unchanged.
+ */
+export const prepareOidcSubmitPayload = (
+  data: FormData | undefined
+): FormData | undefined => {
+  if (!data?.authenticationConfiguration) {
+    return cleanupProviderSpecificFields(data, '');
+  }
+
+  const provider = data.authenticationConfiguration.provider as string;
+  if (!isOidcProvider(provider)) {
+    return cleanupProviderSpecificFields(data, provider);
+  }
+
+  const cloned = structuredClone(data) as FormData;
+  const authConfig = cloned.authenticationConfiguration;
+  const derivedClientType = deriveOidcClientType(authConfig);
+  authConfig.clientType = derivedClientType;
+
+  // Mirror nested oidcConfiguration.discoveryUri up to the root for both
+  // Public and Confidential paths so the backend's normalizeForPersistence
+  // can derive authority, publicKeyUrls (overwriting any stale value), and
+  // Azure tenant — it only reads root-level discoveryUri for derivation.
+  const authConfigWithDiscovery = authConfig as AuthenticationConfiguration & {
+    discoveryUri?: string;
+  };
+  const nestedDiscoveryUri = authConfig.oidcConfiguration?.discoveryUri as
+    | string
+    | undefined;
+  if (!authConfigWithDiscovery.discoveryUri && nestedDiscoveryUri) {
+    authConfigWithDiscovery.discoveryUri = nestedDiscoveryUri;
+  }
+
+  if (derivedClientType !== ClientType.Public) {
+    return cleanupProviderSpecificFields(cloned, provider);
+  }
+
+  handleConfidentialToPublicSwitch(authConfig);
+
+  const cleaned = cleanupProviderSpecificFields(cloned, provider);
+  if (!cleaned) {
+    return cleaned;
+  }
+
+  // Public OIDC's canonical shape is root-level only — matches the schema
+  // (Public requires only ["publicKeyUrls","authority","callbackUrl","clientId"])
+  // and the 5/6 sibling validators whose Public-path methods take only authConfig.
+  delete cleaned.authenticationConfiguration.oidcConfiguration;
+
+  return cleaned;
 };
 
 /**
@@ -1221,4 +1420,45 @@ export const parseSamlMetadataXml = (xmlString: string): SamlIdpMetadata => {
     ssoLoginUrl,
     idpX509Certificate: `-----BEGIN CERTIFICATE-----\n${certText}\n-----END CERTIFICATE-----`,
   };
+};
+
+/**
+ * Returns true if any field changed between savedData and currentData is in
+ * the lockout-risk set for the given provider. Used to gate save behind a
+ * fresh Test Login on existing-config edits.
+ */
+export const hasLockoutRiskChange = (
+  savedData: unknown,
+  currentData: unknown,
+  provider: string | undefined
+): boolean => {
+  const lockoutRiskFields = getLockoutRiskFields(provider);
+  if (lockoutRiskFields.size === 0) {
+    return false;
+  }
+  const changedFields = findChangedFields(savedData, currentData);
+
+  return changedFields.some((field) => lockoutRiskFields.has(field));
+};
+
+/**
+ * Returns true if Save must be gated behind a fresh Test Login. New configs
+ * always require it; existing configs require it only when a lockout-risk
+ * field changed. A successful Test Login (testLoginPassed) lifts the gate.
+ */
+export const requiresFreshTestLogin = (
+  hasExistingConfig: boolean,
+  savedData: FormData | undefined,
+  internalData: FormData | undefined,
+  provider: string | undefined,
+  testLoginPassed: boolean
+): boolean => {
+  if (testLoginPassed) {
+    return false;
+  }
+  if (!hasExistingConfig) {
+    return true;
+  }
+
+  return hasLockoutRiskChange(savedData, internalData, provider);
 };

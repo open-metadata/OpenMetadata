@@ -1,0 +1,349 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { expect } from '@playwright/test';
+import { SSO_ENV } from '../../constant/ssoAuth';
+import {
+  clickTestLoginButton,
+  enableSSOEditMode,
+  expandSSOAdvancedFields,
+  expectSaveDisabledForLockoutRisk,
+  expectSaveEnabled,
+  pickEmailClaim,
+  readTestLoginResultFromStorage,
+  runTestLoginViaPopup,
+  selectSSOProvider,
+  TEST_LOGIN_NETWORK_TIMEOUT_MS,
+} from '../../utils/sso';
+import { keycloakAzureSamlProviderHelper } from '../../utils/sso-providers/keycloak-saml';
+import { ssoTest as test } from '../../utils/sso-test-fixtures';
+import {
+  applyProviderConfig,
+  expectPersistedSecurityConfig,
+  ProviderConfigOverride,
+} from '../../utils/ssoAuth';
+
+const username = process.env[SSO_ENV.USERNAME] ?? '';
+const password = process.env[SSO_ENV.PASSWORD] ?? '';
+
+test.describe('SSO Test Login — SAML', () => {
+  test.beforeAll(() => {
+    if (!username || !password) {
+      throw new Error(
+        `SAML Test Login spec needs ${SSO_ENV.USERNAME} and ${SSO_ENV.PASSWORD}` +
+          ' (Keycloak realm credentials). Set them in the environment before running the suite.'
+      );
+    }
+  });
+
+  let cachedSamlPayload: ProviderConfigOverride | undefined;
+  const getSamlPayload = async (): Promise<ProviderConfigOverride> => {
+    if (!cachedSamlPayload) {
+      cachedSamlPayload =
+        await keycloakAzureSamlProviderHelper.buildConfigPayload();
+    }
+
+    return cachedSamlPayload;
+  };
+
+  test.beforeEach(async ({ originalConfig: _ }) => {});
+
+  test('happy path: configure → test login → claim selector → save', async ({
+    page,
+    adminApiContext: apiContext,
+  }) => {
+    const samlPayload = await getSamlPayload();
+
+    await enableSSOEditMode(page);
+    await selectSSOProvider(page, 'saml');
+    await keycloakAzureSamlProviderHelper.fillForm?.(page);
+
+    const result = await runTestLoginViaPopup(
+      page,
+      keycloakAzureSamlProviderHelper,
+      { username, password }
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.claims).toBeDefined();
+    const pickedEmailClaim = result.suggestedEmailClaim ?? 'email';
+    await pickEmailClaim(page, pickedEmailClaim);
+    await expectSaveEnabled(page);
+
+    const saveResponsePromise = page.waitForResponse(
+      (r) =>
+        r.url().includes('/system/security/config') &&
+        ['PUT', 'PATCH'].includes(r.request().method()),
+      { timeout: TEST_LOGIN_NETWORK_TIMEOUT_MS }
+    );
+    await page.getByTestId('save-sso-configuration').click();
+    expect((await saveResponsePromise).ok()).toBe(true);
+
+    const expectedIdp = (
+      samlPayload.authenticationConfiguration as {
+        samlConfiguration: {
+          idp: {
+            entityId: string;
+            ssoLoginUrl: string;
+            idpX509Certificate: string;
+          };
+        };
+      }
+    ).samlConfiguration.idp;
+    await expectPersistedSecurityConfig(apiContext, (auth) => {
+      expect(auth.provider).toBe('saml');
+      expect(auth.emailClaim).toBe(pickedEmailClaim);
+      const samlIdp = (
+        auth.samlConfiguration as
+          | {
+              idp?: {
+                entityId?: string;
+                ssoLoginUrl?: string;
+                idpX509Certificate?: string;
+              };
+            }
+          | undefined
+      )?.idp;
+      expect(samlIdp?.entityId).toBe(expectedIdp.entityId);
+      expect(samlIdp?.ssoLoginUrl).toBe(expectedIdp.ssoLoginUrl);
+      const expectedCertBody = expectedIdp.idpX509Certificate.replace(
+        /-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----|\s+/g,
+        ''
+      );
+      const persistedCertBody = (samlIdp?.idpX509Certificate ?? '').replace(
+        /-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----|\s+/g,
+        ''
+      );
+      expect(persistedCertBody).toBe(expectedCertBody);
+    });
+  });
+
+  test('failure path: tampered IdP cert surfaces signature error', async ({
+    page,
+  }) => {
+    await getSamlPayload();
+    await enableSSOEditMode(page);
+    await selectSSOProvider(page, 'saml');
+    await keycloakAzureSamlProviderHelper.fillForm?.(page);
+
+    const tamperedCert =
+      '-----BEGIN CERTIFICATE-----\nMIIBIjANBg=\n-----END CERTIFICATE-----';
+    await page
+      .getByRole('textbox', { name: /^IdP X\.509 Certificate/ })
+      .fill(tamperedCert);
+
+    await clickTestLoginButton(page);
+
+    const errorBanner = page
+      .getByRole('alert')
+      .or(page.locator('.ant-message-error'))
+      .or(page.locator('.ant-notification-notice-error'))
+      .first();
+    await expect(errorBanner).toBeVisible({ timeout: 15_000 });
+    await expect(errorBanner).toContainText(
+      /cert|x\.?509|saml|signature|invalid|idp/i,
+      { timeout: 15_000 }
+    );
+
+    await expectSaveDisabledForLockoutRisk(page);
+  });
+
+  test('mode=existing overlay: re-test after save without retyping cert', async ({
+    page,
+    adminApiContext,
+    originalConfig,
+  }) => {
+    const samlPayload = await getSamlPayload();
+    await applyProviderConfig(adminApiContext, originalConfig, samlPayload);
+
+    await enableSSOEditMode(page);
+    await expect(page.getByTestId('save-sso-configuration')).toBeVisible();
+
+    let initiateBody: string | undefined;
+    const initiateSeenPromise = new Promise<void>((resolve) => {
+      page.context().on('request', (request) => {
+        if (
+          request
+            .url()
+            .includes('/system/config/auth/test-login/saml-initiate') &&
+          request.method() === 'POST'
+        ) {
+          initiateBody = request.postData() ?? '';
+          resolve();
+        }
+      });
+    });
+    const popupPromise = page.context().waitForEvent('page', {
+      timeout: TEST_LOGIN_NETWORK_TIMEOUT_MS,
+    });
+    await clickTestLoginButton(page);
+
+    await Promise.race([
+      initiateSeenPromise,
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error('saml-initiate POST never observed')),
+          TEST_LOGIN_NETWORK_TIMEOUT_MS
+        )
+      ),
+    ]);
+    expect(initiateBody ?? '').toContain('mode=existing');
+
+    const popup = await popupPromise;
+    const closePromise = popup.waitForEvent('close', { timeout: 60_000 });
+    await popup.waitForLoadState('domcontentloaded').catch(() => undefined);
+    if (!popup.isClosed()) {
+      await keycloakAzureSamlProviderHelper.performProviderLogin(popup, {
+        username,
+        password,
+      });
+    }
+    await closePromise;
+
+    const stored = await readTestLoginResultFromStorage(page);
+    expect(stored.success).toBe(true);
+  });
+
+  test('lockout-risk gate: editing idpX509Certificate disables save until re-tested', async ({
+    page,
+  }) => {
+    const samlPayload = await getSamlPayload();
+    const originalCert = (
+      samlPayload.authenticationConfiguration as {
+        samlConfiguration: { idp: { idpX509Certificate: string } };
+      }
+    ).samlConfiguration.idp.idpX509Certificate;
+
+    await enableSSOEditMode(page);
+    await selectSSOProvider(page, 'saml');
+    await keycloakAzureSamlProviderHelper.fillForm?.(page);
+
+    const first = await runTestLoginViaPopup(
+      page,
+      keycloakAzureSamlProviderHelper,
+      { username, password }
+    );
+    expect(first.success).toBe(true);
+    await pickEmailClaim(page, first.suggestedEmailClaim ?? 'email');
+    await expectSaveEnabled(page);
+
+    const altCert =
+      '-----BEGIN CERTIFICATE-----\nMIICchanged=\n-----END CERTIFICATE-----';
+    await page
+      .getByRole('textbox', { name: /^IdP X\.509 Certificate/ })
+      .fill(altCert);
+    await expectSaveDisabledForLockoutRisk(page);
+
+    await page
+      .getByRole('textbox', { name: /^IdP X\.509 Certificate/ })
+      .fill(originalCert);
+
+    const retry = await runTestLoginViaPopup(
+      page,
+      keycloakAzureSamlProviderHelper,
+      { username, password }
+    );
+    expect(retry.success).toBe(true);
+    await pickEmailClaim(page, retry.suggestedEmailClaim ?? 'email');
+    await expectSaveEnabled(page);
+
+    const saveResponsePromise = page.waitForResponse(
+      (r) =>
+        r.url().includes('/system/security/config') &&
+        ['PUT', 'PATCH'].includes(r.request().method()),
+      { timeout: TEST_LOGIN_NETWORK_TIMEOUT_MS }
+    );
+    await page.getByTestId('save-sso-configuration').click();
+    expect((await saveResponsePromise).ok()).toBe(true);
+  });
+
+  test('upgrade: existing SAML config shows ACS info banner, IdP fields in main, SP fields under Advanced', async ({
+    page,
+    adminApiContext,
+    originalConfig,
+  }) => {
+    const samlPayload = await getSamlPayload();
+    await applyProviderConfig(adminApiContext, originalConfig, samlPayload);
+
+    await enableSSOEditMode(page);
+    await expect(page.getByTestId('save-sso-configuration')).toBeVisible();
+
+    await expect(page.getByTestId('saml-acs-info-banner')).toBeVisible();
+    await expect(page.getByTestId('saml-acs-url')).toBeVisible();
+
+    const expectedIdp = (
+      samlPayload.authenticationConfiguration as {
+        samlConfiguration: {
+          idp: { entityId: string; ssoLoginUrl: string };
+        };
+      }
+    ).samlConfiguration.idp;
+    await expect(
+      page.getByRole('textbox', { name: /^IdP Entity ID/ })
+    ).toHaveValue(expectedIdp.entityId);
+    await expect(
+      page.getByRole('textbox', { name: /^IdP SSO Login URL/ })
+    ).toHaveValue(expectedIdp.ssoLoginUrl);
+    await expect(
+      page.getByRole('textbox', { name: /^IdP X\.509 Certificate/ })
+    ).not.toHaveValue('');
+
+    await expandSSOAdvancedFields(page);
+  });
+
+  test('lockout-risk gate: editing IdP entityId disables save until re-tested', async ({
+    page,
+  }) => {
+    await getSamlPayload();
+    await enableSSOEditMode(page);
+    await selectSSOProvider(page, 'saml');
+    await keycloakAzureSamlProviderHelper.fillForm?.(page);
+
+    const first = await runTestLoginViaPopup(
+      page,
+      keycloakAzureSamlProviderHelper,
+      { username, password }
+    );
+    expect(first.success).toBe(true);
+    await pickEmailClaim(page, first.suggestedEmailClaim ?? 'email');
+    await expectSaveEnabled(page);
+
+    await page
+      .getByRole('textbox', { name: /^IdP Entity ID/ })
+      .fill('https://attacker.example.com/idp');
+    await expectSaveDisabledForLockoutRisk(page);
+  });
+
+  test('lockout-risk gate: editing SSO Login URL disables save until re-tested', async ({
+    page,
+  }) => {
+    await getSamlPayload();
+    await enableSSOEditMode(page);
+    await selectSSOProvider(page, 'saml');
+    await keycloakAzureSamlProviderHelper.fillForm?.(page);
+
+    const first = await runTestLoginViaPopup(
+      page,
+      keycloakAzureSamlProviderHelper,
+      { username, password }
+    );
+    expect(first.success).toBe(true);
+    await pickEmailClaim(page, first.suggestedEmailClaim ?? 'email');
+    await expectSaveEnabled(page);
+
+    await page
+      .getByRole('textbox', { name: /^IdP SSO Login URL/ })
+      .fill('https://attacker.example.com/sso');
+    await expectSaveDisabledForLockoutRisk(page);
+  });
+});

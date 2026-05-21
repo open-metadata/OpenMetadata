@@ -22,6 +22,7 @@ import {
   createDOMFocusHandler,
   createFormKeyDownHandler,
   createFreshFormData,
+  deriveOidcClientType,
   extractFieldName,
   findChangedFields,
   FormData,
@@ -35,10 +36,12 @@ import {
   hasFieldValidationErrors,
   isValidNonBasicProvider,
   isValidUrl,
+  liftPublicOidcToConfidentialShape,
   parseSamlMetadataXml,
   parseValidationErrors,
   populateSamlIdpAuthority,
   populateSamlSpCallback,
+  prepareOidcSubmitPayload,
   removeRequiredFields,
   removeSchemaFields,
   updateLoadingState,
@@ -46,7 +49,7 @@ import {
 
 // Mock the constants module
 jest.mock('../constants/SSO.constant', () => ({
-  COMMON_AUTH_FIELDS_TO_REMOVE: ['responseType'],
+  COMMON_AUTH_FIELDS_TO_REMOVE: ['forceSecureSessionCookie'],
   COMMON_AUTHORIZER_FIELDS_TO_REMOVE: [
     'testPrincipals',
     'allowedEmailRegistrationDomains',
@@ -58,10 +61,20 @@ jest.mock('../constants/SSO.constant', () => ({
   DEFAULT_CONTAINER_REQUEST_FILTER:
     'org.openmetadata.service.security.JwtFilter',
   DEFAULT_CALLBACK_URL: 'http://localhost:8585/callback',
+  OIDC_PROVIDERS: new Set([
+    'google',
+    'auth0',
+    'azure',
+    'okta',
+    'aws-cognito',
+    'custom-oidc',
+  ]),
   OIDC_SSO_DEFAULTS: {
+    scope: 'openid email profile',
+    azureScope: 'openid email profile offline_access',
     tokenValidity: 3600,
     sessionExpiry: 604800,
-    serverUrl: 'http://localhost:8585',
+    preferredJwsAlgorithm: 'RS256',
   },
   GOOGLE_SSO_DEFAULTS: {
     authority: 'https://accounts.google.com',
@@ -95,6 +108,12 @@ jest.mock('../constants/SSO.constant', () => ({
       'enableSelfSignup',
     ],
     azure: [
+      'ldapConfiguration',
+      'samlConfiguration',
+      'oidcConfiguration',
+      'enableSelfSignup',
+    ],
+    'custom-oidc': [
       'ldapConfiguration',
       'samlConfiguration',
       'oidcConfiguration',
@@ -433,7 +452,7 @@ describe('SSOUtils', () => {
         result.authenticationConfiguration.oidcConfiguration
       ).toBeDefined();
       expect(result.authenticationConfiguration.oidcConfiguration?.scope).toBe(
-        'openid email profile'
+        'openid email profile offline_access'
       );
     });
 
@@ -579,7 +598,6 @@ describe('SSOUtils', () => {
             id: 'test-id',
             secret: 'test-secret',
             callbackUrl: 'http://localhost:8585/callback',
-            serverUrl: 'http://localhost:8585/callback',
           },
         },
         authorizerConfiguration: {
@@ -875,44 +893,6 @@ describe('SSOUtils', () => {
       expect(result?.authenticationConfiguration.clientType).toBe(
         ClientType.Public
       );
-    });
-
-    it('should clean up serverUrl to remove /callback suffix', () => {
-      const data: FormData = {
-        authenticationConfiguration: {
-          provider: 'google',
-          providerName: 'Google',
-          clientType: ClientType.Confidential,
-          authority: 'https://accounts.google.com',
-          clientId: 'test-client-id',
-          callbackUrl: 'http://localhost:8585/callback',
-          publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
-          tokenValidationAlgorithm: 'RS256',
-          jwtPrincipalClaims: ['email'],
-          jwtPrincipalClaimsMapping: [],
-          enableSelfSignup: true,
-          oidcConfiguration: {
-            id: 'test-id',
-            secret: 'test-secret',
-            callbackUrl: 'http://localhost:8585/callback',
-            serverUrl: 'http://localhost:8585/callback/',
-          },
-        },
-        authorizerConfiguration: {
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
-          adminPrincipals: [],
-          principalDomain: '',
-          enforcePrincipalDomain: false,
-          enableSecureSocketConnection: false,
-        },
-      };
-
-      const result = cleanupProviderSpecificFields(data, 'google');
-
-      expect(
-        result?.authenticationConfiguration.oidcConfiguration?.serverUrl
-      ).toBe('http://localhost:8585');
     });
   });
 
@@ -2138,12 +2118,10 @@ describe('SSOUtils', () => {
       );
       expect(oidcConfig.tokenValidity).toBe(3600);
       expect(oidcConfig.sessionExpiry).toBe(604800);
-      expect(oidcConfig.serverUrl).toBe('http://localhost:8585');
       expect(oidcConfig.scope).toBe('openid email profile');
-      expect(oidcConfig.useNonce).toBe(false);
+      expect(oidcConfig.useNonce).toBe(true);
       expect(oidcConfig.preferredJwsAlgorithm).toBe('RS256');
-      expect(oidcConfig.responseType).toBe('code');
-      expect(oidcConfig.disablePkce).toBe(false);
+      expect(oidcConfig.disablePkce).toBe(true);
       expect(oidcConfig.maxClockSkew).toBe(0);
       expect(oidcConfig.clientAuthenticationMethod).toBe('client_secret_post');
     });
@@ -2156,7 +2134,6 @@ describe('SSOUtils', () => {
           scope: 'custom scope',
           useNonce: true,
           preferredJwsAlgorithm: 'ES256',
-          responseType: 'id_token',
           disablePkce: true,
           maxClockSkew: 10,
           clientAuthenticationMethod: 'client_secret_basic',
@@ -2173,7 +2150,6 @@ describe('SSOUtils', () => {
       expect(oidcConfig.scope).toBe('custom scope');
       expect(oidcConfig.useNonce).toBe(true);
       expect(oidcConfig.preferredJwsAlgorithm).toBe('ES256');
-      expect(oidcConfig.responseType).toBe('id_token');
       expect(oidcConfig.disablePkce).toBe(true);
       expect(oidcConfig.maxClockSkew).toBe(10);
       expect(oidcConfig.clientAuthenticationMethod).toBe('client_secret_basic');
@@ -3339,5 +3315,342 @@ describe('parseSamlMetadataXml', () => {
     expect(() => parseSamlMetadataXml(unsupportedBindingsMetadata)).toThrow(
       'no SingleSignOnService'
     );
+  });
+});
+
+const buildOidcAuthConfig = (
+  overrides: Partial<FormData['authenticationConfiguration']> = {},
+  oidcOverrides: Record<string, unknown> = {}
+): FormData['authenticationConfiguration'] => ({
+  provider: AuthProvider.CustomOidc,
+  providerName: 'Custom OIDC',
+  authority: '',
+  clientId: '',
+  callbackUrl: 'http://localhost:8585/callback',
+  publicKeyUrls: [],
+  tokenValidationAlgorithm: 'RS256',
+  jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
+  jwtPrincipalClaimsMapping: [],
+  enableSelfSignup: true,
+  clientType: ClientType.Confidential,
+  oidcConfiguration: {
+    type: AuthProvider.CustomOidc,
+    id: 'client-abc',
+    secret: 'super-secret',
+    discoveryUri: 'https://idp.example.com/.well-known/openid-configuration',
+    callbackUrl: 'http://localhost:8585/callback',
+    ...oidcOverrides,
+  },
+  ...overrides,
+});
+
+const buildAuthorizerConfig = (): FormData['authorizerConfiguration'] => ({
+  className: 'org.openmetadata.service.security.DefaultAuthorizer',
+  containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+  adminPrincipals: [],
+  principalDomain: '',
+  enforcePrincipalDomain: false,
+  enableSecureSocketConnection: false,
+});
+
+describe('deriveOidcClientType', () => {
+  it('returns Confidential when oidcConfiguration.secret is non-empty', () => {
+    const authConfig = buildOidcAuthConfig();
+
+    expect(deriveOidcClientType(authConfig)).toBe(ClientType.Confidential);
+  });
+
+  it('returns Public when oidcConfiguration.secret is an empty string', () => {
+    const authConfig = buildOidcAuthConfig({}, { secret: '' });
+
+    expect(deriveOidcClientType(authConfig)).toBe(ClientType.Public);
+  });
+
+  it('returns Public when secret is whitespace-only', () => {
+    const authConfig = buildOidcAuthConfig({}, { secret: '   ' });
+
+    expect(deriveOidcClientType(authConfig)).toBe(ClientType.Public);
+  });
+
+  it('returns Public when oidcConfiguration is missing', () => {
+    const authConfig = buildOidcAuthConfig();
+    delete authConfig.oidcConfiguration;
+
+    expect(deriveOidcClientType(authConfig)).toBe(ClientType.Public);
+  });
+
+  it('returns Public when authConfig is undefined', () => {
+    expect(deriveOidcClientType(undefined)).toBe(ClientType.Public);
+  });
+});
+
+describe('liftPublicOidcToConfidentialShape', () => {
+  it('promotes root clientId/authority into oidcConfiguration', () => {
+    const authConfig: FormData['authenticationConfiguration'] = {
+      provider: AuthProvider.CustomOidc,
+      providerName: 'Custom OIDC',
+      authority: 'https://idp.example.com',
+      clientId: 'public-client-id',
+      callbackUrl: 'http://localhost:8585/callback',
+      publicKeyUrls: ['https://idp.example.com/jwks'],
+      tokenValidationAlgorithm: 'RS256',
+      jwtPrincipalClaims: ['email'],
+      jwtPrincipalClaimsMapping: [],
+      enableSelfSignup: true,
+      clientType: ClientType.Public,
+    };
+
+    liftPublicOidcToConfidentialShape(authConfig);
+
+    expect(authConfig.oidcConfiguration?.id).toBe('public-client-id');
+    expect(authConfig.oidcConfiguration?.discoveryUri).toBe(
+      'https://idp.example.com/.well-known/openid-configuration'
+    );
+    expect(authConfig.oidcConfiguration?.secret).toBe('');
+    expect(authConfig.oidcConfiguration?.callbackUrl).toBe(
+      'http://localhost:8585/callback'
+    );
+    expect(authConfig.clientId).toBe('');
+    expect(authConfig.authority).toBe('');
+    expect(authConfig.clientType).toBe(ClientType.Confidential);
+  });
+
+  it('strips trailing slash from authority before constructing discoveryUri', () => {
+    const authConfig: FormData['authenticationConfiguration'] = {
+      provider: AuthProvider.Google,
+      providerName: 'Google',
+      authority: 'https://accounts.google.com/',
+      clientId: 'gid',
+      callbackUrl: 'http://localhost:8585/callback',
+      publicKeyUrls: [],
+      tokenValidationAlgorithm: 'RS256',
+      jwtPrincipalClaims: ['email'],
+      jwtPrincipalClaimsMapping: [],
+      enableSelfSignup: true,
+      clientType: ClientType.Public,
+    };
+
+    liftPublicOidcToConfidentialShape(authConfig);
+
+    expect(authConfig.oidcConfiguration?.discoveryUri).toBe(
+      'https://accounts.google.com/.well-known/openid-configuration'
+    );
+  });
+
+  it('uses Azure-specific scope when provider is Azure', () => {
+    const authConfig: FormData['authenticationConfiguration'] = {
+      provider: AuthProvider.Azure,
+      providerName: 'Azure AD',
+      authority: 'https://login.microsoftonline.com/tenant-id',
+      clientId: 'azure-client',
+      callbackUrl: 'http://localhost:8585/callback',
+      publicKeyUrls: [],
+      tokenValidationAlgorithm: 'RS256',
+      jwtPrincipalClaims: ['email'],
+      jwtPrincipalClaimsMapping: [],
+      enableSelfSignup: true,
+      clientType: ClientType.Public,
+    };
+
+    liftPublicOidcToConfidentialShape(authConfig);
+
+    expect(authConfig.oidcConfiguration?.scope).toBe(
+      'openid email profile offline_access'
+    );
+  });
+
+  it('is a no-op when clientType is already Confidential', () => {
+    const authConfig = buildOidcAuthConfig();
+    const before = JSON.parse(JSON.stringify(authConfig));
+
+    liftPublicOidcToConfidentialShape(authConfig);
+
+    expect(authConfig).toEqual(before);
+  });
+
+  it('is a no-op for non-OIDC providers', () => {
+    const authConfig: FormData['authenticationConfiguration'] = {
+      provider: AuthProvider.Saml,
+      providerName: 'SAML',
+      authority: 'https://saml.idp/login',
+      clientId: 'sp-id',
+      callbackUrl: 'http://localhost:8585/callback',
+      publicKeyUrls: [],
+      tokenValidationAlgorithm: 'RS256',
+      jwtPrincipalClaims: ['email'],
+      jwtPrincipalClaimsMapping: [],
+      enableSelfSignup: true,
+      clientType: ClientType.Public,
+    };
+    const before = JSON.parse(JSON.stringify(authConfig));
+
+    liftPublicOidcToConfidentialShape(authConfig);
+
+    expect(authConfig).toEqual(before);
+  });
+
+  it('preserves existing oidcConfiguration values via spread', () => {
+    const authConfig: FormData['authenticationConfiguration'] = {
+      provider: AuthProvider.CustomOidc,
+      providerName: 'Custom OIDC',
+      authority: 'https://idp.example.com',
+      clientId: 'public-client-id',
+      callbackUrl: 'http://localhost:8585/callback',
+      publicKeyUrls: [],
+      tokenValidationAlgorithm: 'RS256',
+      jwtPrincipalClaims: ['email'],
+      jwtPrincipalClaimsMapping: [],
+      enableSelfSignup: true,
+      clientType: ClientType.Public,
+      oidcConfiguration: {
+        prompt: 'login',
+      },
+    };
+
+    liftPublicOidcToConfidentialShape(authConfig);
+
+    expect(authConfig.oidcConfiguration?.prompt).toBe('login');
+    expect(authConfig.oidcConfiguration?.id).toBe('public-client-id');
+  });
+});
+
+describe('prepareOidcSubmitPayload', () => {
+  it('returns undefined for undefined input', () => {
+    expect(prepareOidcSubmitPayload(undefined)).toBeUndefined();
+  });
+
+  it('keeps Confidential shape when secret is filled', () => {
+    const data: FormData = {
+      authenticationConfiguration: buildOidcAuthConfig(),
+      authorizerConfiguration: buildAuthorizerConfig(),
+    };
+
+    const result = prepareOidcSubmitPayload(data);
+    const auth = result?.authenticationConfiguration;
+
+    expect(auth?.clientType).toBe(ClientType.Confidential);
+    expect(auth?.oidcConfiguration).toBeDefined();
+    expect(auth?.oidcConfiguration?.secret).toBe('super-secret');
+  });
+
+  it('mirrors nested discoveryUri to root on Confidential so backend can derive authority and Azure tenant', () => {
+    const data: FormData = {
+      authenticationConfiguration: buildOidcAuthConfig({
+        provider: AuthProvider.Azure,
+        providerName: 'azure',
+      }),
+      authorizerConfiguration: buildAuthorizerConfig(),
+    };
+
+    const result = prepareOidcSubmitPayload(data);
+    const auth = result?.authenticationConfiguration as
+      | (FormData['authenticationConfiguration'] & { discoveryUri?: string })
+      | undefined;
+
+    expect(auth?.clientType).toBe(ClientType.Confidential);
+    expect(auth?.discoveryUri).toBe(
+      'https://idp.example.com/.well-known/openid-configuration'
+    );
+    expect(auth?.oidcConfiguration?.discoveryUri).toBe(
+      'https://idp.example.com/.well-known/openid-configuration'
+    );
+  });
+
+  it('does not override an explicit root discoveryUri on the Confidential path', () => {
+    const data: FormData = {
+      authenticationConfiguration: {
+        ...buildOidcAuthConfig({
+          provider: AuthProvider.Azure,
+          providerName: 'azure',
+        }),
+        discoveryUri:
+          'https://explicit.example.com/.well-known/openid-configuration',
+      } as FormData['authenticationConfiguration'] & { discoveryUri?: string },
+      authorizerConfiguration: buildAuthorizerConfig(),
+    };
+
+    const result = prepareOidcSubmitPayload(data);
+    const auth = result?.authenticationConfiguration as
+      | (FormData['authenticationConfiguration'] & { discoveryUri?: string })
+      | undefined;
+
+    expect(auth?.discoveryUri).toBe(
+      'https://explicit.example.com/.well-known/openid-configuration'
+    );
+  });
+
+  it('reshapes to Public when secret is blank', () => {
+    const data: FormData = {
+      authenticationConfiguration: buildOidcAuthConfig({}, { secret: '' }),
+      authorizerConfiguration: buildAuthorizerConfig(),
+    };
+
+    const result = prepareOidcSubmitPayload(data);
+    const auth = result?.authenticationConfiguration;
+
+    expect(auth?.clientType).toBe(ClientType.Public);
+    expect(auth?.clientId).toBe('client-abc');
+    expect(auth?.authority).toBe('https://idp.example.com');
+    expect(auth?.callbackUrl).toBe('http://localhost:8585/callback');
+  });
+
+  it('drops oidcConfiguration on Public — canonical shape is root-level only', () => {
+    const data: FormData = {
+      authenticationConfiguration: buildOidcAuthConfig({}, { secret: '' }),
+      authorizerConfiguration: buildAuthorizerConfig(),
+    };
+
+    const result = prepareOidcSubmitPayload(data);
+    const auth = result?.authenticationConfiguration as
+      | (FormData['authenticationConfiguration'] & { discoveryUri?: string })
+      | undefined;
+
+    expect(auth?.clientType).toBe(ClientType.Public);
+    expect(auth?.oidcConfiguration).toBeUndefined();
+    expect(auth?.discoveryUri).toBe(
+      'https://idp.example.com/.well-known/openid-configuration'
+    );
+    expect(auth?.authority).toBe('https://idp.example.com');
+    expect(auth?.clientId).toBe('client-abc');
+    expect(auth?.callbackUrl).toBe('http://localhost:8585/callback');
+  });
+
+  it('does not mutate the input on the Public path', () => {
+    const data: FormData = {
+      authenticationConfiguration: buildOidcAuthConfig({}, { secret: '' }),
+      authorizerConfiguration: buildAuthorizerConfig(),
+    };
+    const before = JSON.parse(JSON.stringify(data));
+
+    prepareOidcSubmitPayload(data);
+
+    expect(data).toEqual(before);
+  });
+
+  it('skips the OIDC reshape for SAML providers', () => {
+    const data: FormData = {
+      authenticationConfiguration: {
+        provider: AuthProvider.Saml,
+        providerName: 'SAML',
+        authority: 'https://saml.idp/login',
+        clientId: 'sp-id',
+        callbackUrl: 'http://localhost:8585/callback',
+        publicKeyUrls: [],
+        tokenValidationAlgorithm: 'RS256',
+        jwtPrincipalClaims: ['email'],
+        jwtPrincipalClaimsMapping: [],
+        enableSelfSignup: true,
+        clientType: ClientType.Public,
+        samlConfiguration: { debugMode: false },
+      },
+      authorizerConfiguration: buildAuthorizerConfig(),
+    };
+
+    const result = prepareOidcSubmitPayload(data);
+
+    expect(result?.authenticationConfiguration.clientType).toBe(
+      ClientType.Public
+    );
+    expect(result?.authenticationConfiguration.samlConfiguration).toBeDefined();
   });
 });

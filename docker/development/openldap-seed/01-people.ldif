@@ -1,0 +1,29 @@
+# People organizational unit + seed users for SSO Test Login E2E specs.
+# Baked into the openldap-test image at build time (see Dockerfile).
+# Mirrors the fixture used by openmetadata-service TestLdapHandlerTest so the
+# E2E and unit-test bind shapes stay aligned.
+
+dn: ou=people,dc=test,dc=local
+objectClass: organizationalUnit
+ou: people
+
+dn: cn=alice,ou=people,dc=test,dc=local
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+cn: alice
+sn: Smith
+givenName: Alice
+mail: alice@company.com
+userPassword: alice-pass
+
+dn: cn=bob,ou=people,dc=test,dc=local
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+cn: bob
+sn: Jones
+givenName: Bob
+userPassword: bob-pass

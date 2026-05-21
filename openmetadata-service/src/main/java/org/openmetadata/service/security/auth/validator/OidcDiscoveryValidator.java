@@ -81,6 +81,11 @@ public class OidcDiscoveryValidator {
         return null;
       }
 
+      if (oidcConfig == null) {
+        LOG.debug("No OidcClientConfig provided, skipping per-config discovery validation");
+        return null;
+      }
+
       LOG.debug("Fetching OIDC discovery document from: {}", discoveryUri);
       ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUri);
 

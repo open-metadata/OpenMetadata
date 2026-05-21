@@ -55,7 +55,9 @@ public class CustomOidcValidator {
       if (endpoints == null) {
         return ValidationErrorBuilder.createFieldError(
             ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
-            "Failed to extract required endpoints from discovery document");
+            "Discovery document is missing required endpoints (authorization_endpoint,"
+                + " token_endpoint, jwks_uri). Verify the Discovery URI points to a compliant"
+                + " OIDC provider.");
       }
 
       FieldError jwksValidation = validateJwksEndpoint(endpoints.jwksUri, authConfig);
@@ -94,7 +96,9 @@ public class CustomOidcValidator {
       if (endpoints == null) {
         return ValidationErrorBuilder.createFieldError(
             ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
-            "Failed to extract required endpoints from discovery document");
+            "Discovery document is missing required endpoints (authorization_endpoint,"
+                + " token_endpoint, jwks_uri). Verify the Discovery URI points to a compliant"
+                + " OIDC provider.");
       }
 
       FieldError jwksValidation = validateJwksEndpoint(endpoints.jwksUri, authConfig);
@@ -129,7 +133,7 @@ public class CustomOidcValidator {
 
   private String extractDiscoveryUri(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
-    if (!nullOrEmpty(oidcConfig.getDiscoveryUri())) {
+    if (oidcConfig != null && !nullOrEmpty(oidcConfig.getDiscoveryUri())) {
       return oidcConfig.getDiscoveryUri();
     }
 
@@ -142,7 +146,7 @@ public class CustomOidcValidator {
     }
 
     // Priority 3: Try serverUrl as fallback
-    if (!nullOrEmpty(oidcConfig.getServerUrl())) {
+    if (oidcConfig != null && !nullOrEmpty(oidcConfig.getServerUrl())) {
       String serverUrl = oidcConfig.getServerUrl();
       if (!serverUrl.endsWith("/")) {
         serverUrl += "/";

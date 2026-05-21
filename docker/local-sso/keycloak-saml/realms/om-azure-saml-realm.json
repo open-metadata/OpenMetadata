@@ -10,7 +10,7 @@
   "editUsernameAllowed": false,
   "clients": [
     {
-      "clientId": "http://localhost:8585/api/v1/saml/metadata",
+      "clientId": "http://localhost:8585",
       "name": "OpenMetadata",
       "enabled": true,
       "protocol": "saml",

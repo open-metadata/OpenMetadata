@@ -89,6 +89,6 @@
       "type": "string"
     }
   },
-  "required": ["className", "containerRequestFilter", "adminPrincipals", "principalDomain", "enforcePrincipalDomain", "enableSecureSocketConnection"],
+  "required": ["className", "containerRequestFilter", "enforcePrincipalDomain", "enableSecureSocketConnection"],
   "additionalProperties": false
 }

@@ -24,6 +24,7 @@ public class ValidationErrorBuilder {
     public static final String AUTH_AUTHORITY = "authenticationConfiguration.authority";
     public static final String AUTH_CLIENT_ID = "authenticationConfiguration.clientId";
     public static final String AUTH_CALLBACK_URL = "authenticationConfiguration.callbackUrl";
+    public static final String AUTH_DISCOVERY_URI = "authenticationConfiguration.discoveryUri";
 
     // OIDC Configuration
     public static final String OIDC_CLIENT_ID = "authenticationConfiguration.oidcConfiguration.id";

@@ -11,9 +11,80 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
 import { settingClick } from './sidebar';
+
+export const TEST_LOGIN_LOCALSTORAGE_KEY = 'sso-test-login-result';
+export const TEST_LOGIN_CAPTURE_WINDOW_KEY = '__capturedSsoTestLoginResult';
+export const TEST_LOGIN_POPUP_TIMEOUT_MS = 60_000;
+export const TEST_LOGIN_NETWORK_TIMEOUT_MS = 30_000;
+
+/**
+ * Install a localStorage.removeItem shim that snapshots the SSO Test Login
+ * result onto window before the SUT clears it. Without this, the parent
+ * page's storage listener consumes and removes the value before assertions
+ * have a chance to read it.
+ */
+export const installTestLoginCapture = async (page: Page): Promise<void> => {
+  await page.addInitScript(
+    ({ key, captureKey }) => {
+      const ls = window.localStorage;
+      const originalRemove = ls.removeItem.bind(ls);
+      const originalSet = ls.setItem.bind(ls);
+      ls.setItem = (storageKey: string, value: string) => {
+        if (storageKey === key) {
+          (window as unknown as Record<string, unknown>)[captureKey] = value;
+        }
+
+        return originalSet(storageKey, value);
+      };
+      ls.removeItem = (storageKey: string) => {
+        if (storageKey === key) {
+          const existing = ls.getItem(key);
+          if (existing) {
+            (window as unknown as Record<string, unknown>)[captureKey] =
+              existing;
+          }
+        }
+
+        return originalRemove(storageKey);
+      };
+    },
+    {
+      key: TEST_LOGIN_LOCALSTORAGE_KEY,
+      captureKey: TEST_LOGIN_CAPTURE_WINDOW_KEY,
+    }
+  );
+};
+
+export const clearCapturedTestLoginResult = async (
+  page: Page
+): Promise<void> => {
+  await page.evaluate((captureKey) => {
+    delete (window as unknown as Record<string, unknown>)[captureKey];
+  }, TEST_LOGIN_CAPTURE_WINDOW_KEY);
+};
+
+export type TestLoginClaimValue = string | number | boolean | string[];
+
+export interface TestLoginResultPayload {
+  type: 'sso-test-login';
+  success: boolean;
+  error?: string;
+  claims?: Record<string, TestLoginClaimValue>;
+  suggestedEmailClaim?: string;
+  derivedPrincipalDomain?: string;
+  suggestedAdminPrincipal?: string;
+  hasRefreshToken?: boolean;
+}
+
+export interface PopupLoginDriver {
+  performProviderLogin(
+    popup: Page,
+    credentials: { username: string; password: string }
+  ): Promise<void>;
+}
 
 export interface SSOConfig {
   authenticationConfiguration: {
@@ -28,7 +99,7 @@ export interface SSOConfig {
     enableSelfSignup: boolean;
     clientType?: string;
     secret?: string;
-    oidcConfiguration?: Record<string, any>;
+    oidcConfiguration?: Record<string, unknown>;
   };
   authorizerConfiguration: {
     className: string;
@@ -363,6 +434,209 @@ export const selectClientType = async (page: Page, clientType: string) => {
   await page.getByText(clientType).click();
 };
 
+export const expandSSOAdvancedFields = async (page: Page) => {
+  const toggle = page.getByTestId('sso-advanced-fields-toggle');
+  if ((await toggle.count()) === 0) {
+    return;
+  }
+  const panel = page.getByTestId('sso-advanced-fields-panel');
+  if (await panel.isVisible().catch(() => false)) {
+    return;
+  }
+  await toggle.click();
+  await expect(panel).toBeVisible();
+};
+
+export const clickTestLoginButton = async (page: Page) => {
+  const button = page.getByTestId('test-login-button');
+  await expect(button).toBeEnabled();
+  await button.click();
+};
+
+export const runTestLoginViaPopup = async (
+  page: Page,
+  driver: PopupLoginDriver,
+  credentials: { username: string; password: string }
+): Promise<TestLoginResultPayload> => {
+  // OIDC pre-flights /security/validate; SAML doesn't. Best-effort capture.
+  const validatePromise = page
+    .waitForResponse(
+      (response) =>
+        response.url().includes('/system/security/validate') &&
+        response.request().method() === 'POST',
+      { timeout: 5_000 }
+    )
+    .catch(() => undefined);
+  const popupPromise = page.context().waitForEvent('page', {
+    timeout: TEST_LOGIN_NETWORK_TIMEOUT_MS,
+  });
+
+  await clickTestLoginButton(page);
+  await validatePromise;
+  const popup = await popupPromise;
+
+  // Attach close listener before any awaits — non-interactive IdPs (mock
+  // OIDC) auto-close immediately and we'd miss the event otherwise.
+  // If popup is already closed by the time we observe it (very fast SSO
+  // auto-completion on a second SAML test login, for example),
+  // waitForEvent('close') would never resolve, so fall back to an
+  // already-resolved promise in that case.
+  const closePromise: Promise<unknown> = popup.isClosed()
+    ? Promise.resolve()
+    : popup.waitForEvent('close', { timeout: TEST_LOGIN_POPUP_TIMEOUT_MS });
+
+  await popup.waitForLoadState('domcontentloaded').catch(() => undefined);
+
+  if (!popup.isClosed()) {
+    await driver.performProviderLogin(popup, credentials).catch((error) => {
+      if (!popup.isClosed()) {
+        throw error;
+      }
+    });
+  }
+
+  if (!popup.isClosed()) {
+    await closePromise;
+  }
+
+  return readTestLoginResultFromStorage(page);
+};
+
+export const readTestLoginResultFromStorage = async (
+  page: Page
+): Promise<TestLoginResultPayload> => {
+  const raw = await page.evaluate(
+    ({ key, captureKey }) => {
+      const captured = (window as unknown as Record<string, unknown>)[
+        captureKey
+      ];
+      if (typeof captured === 'string') {
+        return captured;
+      }
+
+      return window.localStorage.getItem(key);
+    },
+    {
+      key: TEST_LOGIN_LOCALSTORAGE_KEY,
+      captureKey: TEST_LOGIN_CAPTURE_WINDOW_KEY,
+    }
+  );
+  if (!raw) {
+    throw new Error(
+      `Expected sso-test-login-result to be captured after popup closed, but it was empty. Make sure installTestLoginCapture(page) ran in beforeEach.`
+    );
+  }
+
+  return JSON.parse(raw) as TestLoginResultPayload;
+};
+
+export const runTestLoginViaLdapModal = async (
+  page: Page,
+  credentials: { email: string; password: string }
+): Promise<TestLoginResultPayload> => {
+  await clickTestLoginButton(page);
+
+  const modal = page.getByTestId('ldap-test-login-modal');
+  await expect(modal).toBeVisible();
+
+  // The Input core component places data-testid on a wrapper div; the actual
+  // <input> element is a descendant. Drill into it explicitly so .fill works.
+  await modal
+    .getByTestId('ldap-test-login-email')
+    .locator('input')
+    .fill(credentials.email);
+  await modal
+    .getByTestId('ldap-test-login-password')
+    .locator('input')
+    .fill(credentials.password);
+
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/system/config/auth/test-login') &&
+      response.request().method() === 'POST',
+    { timeout: TEST_LOGIN_NETWORK_TIMEOUT_MS }
+  );
+
+  await modal.getByTestId('ldap-test-login-submit').click();
+
+  const response = await responsePromise;
+
+  return (await response.json()) as TestLoginResultPayload;
+};
+
+export const pickEmailClaim = async (page: Page, claimName: string) => {
+  const modal = page.getByTestId('sso-claim-selector-modal');
+  await expect(modal).toBeVisible();
+
+  await modal.getByTestId(`sso-claim-row-${claimName}`).click();
+
+  const confirmButton = modal.getByTestId('sso-claim-selector-confirm');
+  await expect(confirmButton).toBeEnabled();
+  await confirmButton.click();
+  await expect(modal).toBeHidden();
+};
+
+export const expectEmailClaimStatusSet = async (
+  page: Page,
+  expectedClaim: string
+) => {
+  const status = page.getByTestId('email-claim-status');
+  await expect(status).toBeVisible();
+  await expect(status.getByTestId('email-claim-status-set')).toContainText(
+    expectedClaim
+  );
+};
+
+export const getSavedSecurityConfig = async (
+  request: APIRequestContext
+): Promise<Record<string, unknown>> => {
+  const response = await request.get('/api/v1/system/security/config');
+  expect(response.ok()).toBeTruthy();
+
+  return response.json();
+};
+
+// SSOConfigurationForm.tsx keeps Save enabled and gates at click-time
+// (`isLockoutRiskEdit && !testLoginPassed` → toast, no PUT). Both helpers
+// assert that contract; the alias keeps lockout-risk callsites readable.
+export const expectSaveDisabledForLockoutRisk = async (page: Page) => {
+  await expectSaveBlockedAtClick(page);
+};
+
+export const expectSaveBlockedAtClick = async (page: Page) => {
+  const saveButton = page.getByTestId('save-sso-configuration');
+  await expect(saveButton).toBeEnabled();
+
+  let saveRequestSent = false;
+  const onRequest = (request: import('@playwright/test').Request) => {
+    if (
+      request.url().includes('/system/security/config') &&
+      ['PUT', 'PATCH'].includes(request.method())
+    ) {
+      saveRequestSent = true;
+    }
+  };
+  page.on('request', onRequest);
+
+  try {
+    await saveButton.click();
+    const errorIndicator = page
+      .locator('.ant-message-error')
+      .or(page.locator('.ant-notification-notice-error'))
+      .or(page.getByRole('alert'))
+      .first();
+    await expect(errorIndicator).toBeVisible({ timeout: 10_000 });
+    expect(saveRequestSent).toBe(false);
+  } finally {
+    page.off('request', onRequest);
+  }
+};
+
+export const expectSaveEnabled = async (page: Page) => {
+  const saveButton = page.getByTestId('save-sso-configuration');
+  await expect(saveButton).toBeEnabled();
+};
+
 /**
  * Verify field visibility for a specific provider
  */
@@ -389,6 +663,12 @@ export const verifyProviderFields = async (
       'sso-configuration-form-array-field-template-allowedDomains',
   };
 
+  // CopyableUrlField widgets render as <div data-testid="<rjsf-id>"> instead
+  // of as labelled inputs — see CallbackUrlWidget in SSOConfigurationForm.tsx.
+  const COPYABLE_FIELD_TESTIDS: Record<string, string> = {
+    'Callback URL': 'root/authenticationConfiguration/callbackUrl',
+  };
+
   // Verify visible fields
   for (const field of expectedVisibleFields) {
     const labelLocator = page.getByLabel(field);
@@ -397,7 +677,8 @@ export const verifyProviderFields = async (
     if (labelCount > 0) {
       await expect(labelLocator.first()).toBeVisible();
     } else {
-      const testId = ARRAY_FIELD_TESTIDS[field];
+      const testId =
+        ARRAY_FIELD_TESTIDS[field] ?? COPYABLE_FIELD_TESTIDS[field];
 
       if (testId) {
         await expect(page.getByTestId(testId)).toBeVisible();
@@ -415,7 +696,8 @@ export const verifyProviderFields = async (
     if (labelCount > 0) {
       await expect(labelLocator).not.toBeVisible();
     } else {
-      const testId = ARRAY_FIELD_TESTIDS[field];
+      const testId =
+        ARRAY_FIELD_TESTIDS[field] ?? COPYABLE_FIELD_TESTIDS[field];
 
       if (testId) {
         await expect(page.getByTestId(testId)).not.toBeVisible();

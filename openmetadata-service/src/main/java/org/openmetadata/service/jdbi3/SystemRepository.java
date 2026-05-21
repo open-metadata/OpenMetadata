@@ -8,6 +8,9 @@ import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.getDataStreamName;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.LDAPConnectionOptions;
@@ -87,12 +90,12 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.validator.Auth0Validator;
 import org.openmetadata.service.security.auth.validator.AzureAuthValidator;
 import org.openmetadata.service.security.auth.validator.CognitoAuthValidator;
 import org.openmetadata.service.security.auth.validator.CustomOidcValidator;
 import org.openmetadata.service.security.auth.validator.GoogleAuthValidator;
-import org.openmetadata.service.security.auth.validator.OidcDiscoveryValidator;
 import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
 import org.openmetadata.service.security.auth.validator.SamlValidator;
 import org.openmetadata.service.util.EntityUtil;
@@ -101,6 +104,7 @@ import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ValidationErrorBuilder;
 import org.openmetadata.service.util.ValidationErrorBuilder.FieldPaths;
+import org.openmetadata.service.util.ValidationHttpUtil;
 
 @Slf4j
 @Repository
@@ -1052,11 +1056,30 @@ public class SystemRepository {
       SecurityConfiguration securityConfig,
       OpenMetadataApplicationConfig applicationConfig,
       String currentUsername) {
+    return validateSecurityConfiguration(securityConfig, applicationConfig, currentUsername, false);
+  }
+
+  public SecurityValidationResponse validateSecurityConfiguration(
+      SecurityConfiguration securityConfig,
+      OpenMetadataApplicationConfig applicationConfig,
+      String currentUsername,
+      boolean skipTestLoginFields) {
     List<FieldError> errors = new ArrayList<>();
 
     try {
       if (securityConfig.getAuthenticationConfiguration() != null) {
         AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
+
+        // Upstream: if discoveryUri is provided for OIDC, verify it's reachable and valid
+        // BEFORE downstream validators run. This surfaces the root cause ("Could not reach
+        // Discovery URI") rather than cascading misleading errors about derived fields.
+        FieldError discoveryError = validateDiscoveryUriReachable(authConfig);
+        if (discoveryError != null) {
+          SecurityValidationResponse response = new SecurityValidationResponse();
+          response.setStatus(SecurityValidationResponse.Status.FAILED);
+          response.setErrors(List.of(discoveryError));
+          return response;
+        }
 
         // First validate all required fields from AuthenticationConfiguration schema
         FieldError baseError = validateAuthenticationConfigurationBaseFields(authConfig);
@@ -1104,7 +1127,7 @@ public class SystemRepository {
       if (securityConfig.getAuthorizerConfiguration() != null) {
         FieldError authzError =
             validateAuthorizerConfiguration(
-                securityConfig.getAuthorizerConfiguration(), currentUsername);
+                securityConfig.getAuthorizerConfiguration(), currentUsername, skipTestLoginFields);
         if (authzError != null) {
           errors.add(authzError);
         }
@@ -1321,52 +1344,350 @@ public class SystemRepository {
     }
   }
 
+  private static final Pattern AZURE_TENANT_PATTERN =
+      Pattern.compile(
+          "login\\.(?:microsoftonline|partner\\.microsoftonline)\\.(?:com|us|cn)/([^/]+)/");
+
+  private static final String DEFAULT_CALLBACK_PATH = "/callback";
+
   /**
-   * Auto-populates publicKeyUrls from OIDC discovery document for confidential clients
-   * This is called during save operation to ensure publicKeyUrls is populated before persisting
+   * Upstream validation: verifies the OIDC discoveryUri is reachable and returns a
+   * valid discovery document before downstream validators run. Short-circuits with
+   * a clear root-cause error ("Could not reach Discovery URI"), preventing cascading
+   * misleading errors about fields (authority, tenant, publicKeyUrls) that would
+   * otherwise have been derived from the document.
+   * Returns null for non-OIDC providers and when discoveryUri is absent (legacy mode).
    */
-  public void autoPopulatePublicKeyUrlsIfNeeded(AuthenticationConfiguration authConfig) {
+  public FieldError validateDiscoveryUriReachable(AuthenticationConfiguration authConfig) {
+    if (authConfig == null || !isOidcAuthProvider(authConfig.getProvider())) {
+      return null;
+    }
+    String uri = authConfig.getDiscoveryUri();
+    if (nullOrEmpty(uri)) {
+      return null;
+    }
+
+    if (!isValidHttpUrl(uri)) {
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.AUTH_DISCOVERY_URI,
+          "Discovery URI is not a valid HTTP(S) URL: " + uri);
+    }
+
+    try {
+      ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(uri);
+      if (response.getStatusCode() != 200) {
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_DISCOVERY_URI,
+            String.format(
+                "Could not reach Discovery URI (HTTP %d): %s", response.getStatusCode(), uri));
+      }
+      JsonNode doc = JsonUtils.readTree(response.getBody());
+      if (!doc.has("issuer") || !doc.has("jwks_uri")) {
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_DISCOVERY_URI,
+            "Discovery document is missing required fields (issuer, jwks_uri)");
+      }
+    } catch (Exception e) {
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.AUTH_DISCOVERY_URI,
+          "Failed to fetch Discovery URI: " + e.getMessage());
+    }
+
+    if (authConfig.getProvider() == AuthProvider.AZURE
+        && !AZURE_TENANT_PATTERN.matcher(uri).find()) {
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.AUTH_DISCOVERY_URI,
+          "Discovery URI does not match Azure AD format. Expected: "
+              + "https://login.microsoftonline.com/<tenant>/v2.0/.well-known/openid-configuration");
+    }
+
+    return null;
+  }
+
+  private boolean isOidcAuthProvider(AuthProvider provider) {
+    return provider == AuthProvider.CUSTOM_OIDC
+        || provider == AuthProvider.GOOGLE
+        || provider == AuthProvider.AZURE
+        || provider == AuthProvider.OKTA
+        || provider == AuthProvider.AUTH_0
+        || provider == AuthProvider.AWS_COGNITO;
+  }
+
+  private boolean isValidHttpUrl(String uri) {
+    try {
+      java.net.URI parsed = java.net.URI.create(uri);
+      String scheme = parsed.getScheme();
+      return ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))
+          && !nullOrEmpty(parsed.getHost());
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
+  /**
+   * Overlays the request's edits on top of the saved SecurityConfiguration and
+   * returns the merged result. Used by /security/validate and Test Login flows
+   * in "existing" mode so admins can re-test or re-validate without retyping
+   * masked secrets.
+   *
+   * <p>Implementation: load saved → serialize both to JsonNode → recursively
+   * deep-merge (request fields win, missing/empty/masked fields fall through
+   * to saved) → deserialize back. Robust to schema additions because the
+   * merge walks the JSON tree rather than enumerating fields.
+   *
+   * <p>Conceptually a JSON Merge Patch (RFC 7396) of request onto saved, with
+   * three additional "treat as not-specified" rules: empty arrays, empty
+   * strings, and the {@link PasswordEntityMasker#PASSWORD_MASK} placeholder.
+   */
+  public SecurityConfiguration overlayOnSavedSecurityConfig(JsonNode requestBody) {
+    ObjectMapper mapper = JsonUtils.getObjectMapper();
+    if (requestBody == null || requestBody.isNull()) {
+      requestBody = mapper.createObjectNode();
+    }
+    SecurityConfiguration saved =
+        SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
+    if (saved == null) {
+      // No saved config to merge with — just deserialize the request as-is
+      return mapper.convertValue(requestBody, SecurityConfiguration.class);
+    }
+    JsonNode savedNode = mapper.valueToTree(saved);
+    JsonNode merged = deepMerge(savedNode, requestBody);
+    try {
+      return mapper.treeToValue(merged, SecurityConfiguration.class);
+    } catch (Exception e) {
+      LOG.error("Failed to deserialize merged SecurityConfiguration; falling back to saved", e);
+      return saved;
+    }
+  }
+
+  /**
+   * Recursive JSON tree merge. For matching object nodes, recurse field-by-field.
+   * Otherwise, the patch value replaces the saved value — unless the patch value
+   * is "empty-ish" ({@link #shouldUsePatchValue}), in which case saved wins.
+   */
+  private static JsonNode deepMerge(JsonNode saved, JsonNode patch) {
+    if (!shouldUsePatchValue(patch)) {
+      return saved;
+    }
+    if (!saved.isObject() || !patch.isObject()) {
+      return patch;
+    }
+    ObjectNode result = saved.deepCopy();
+    patch
+        .fields()
+        .forEachRemaining(
+            entry -> {
+              String key = entry.getKey();
+              JsonNode patchValue = entry.getValue();
+              JsonNode savedValue = result.get(key);
+              if (!shouldUsePatchValue(patchValue)) {
+                return;
+              }
+              if (patchValue.isObject() && savedValue != null && savedValue.isObject()) {
+                result.set(key, deepMerge(savedValue, patchValue));
+              } else {
+                result.set(key, patchValue);
+              }
+            });
+    return result;
+  }
+
+  /**
+   * Returns false if the value should be treated as "not specified" — i.e., the
+   * caller wants the saved value to remain. Catches: null, JSON null, empty
+   * arrays, empty strings, and the password mask placeholder.
+   */
+  private static boolean shouldUsePatchValue(JsonNode value) {
+    if (value == null || value.isNull()) {
+      return false;
+    }
+    if (value.isArray() && value.isEmpty()) {
+      return false;
+    }
+    if (value.isTextual()) {
+      String text = value.asText();
+      if (text.isEmpty() || PasswordEntityMasker.PASSWORD_MASK.equals(text)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Normalizes authentication configuration for persistence.
+   * Accepts any partial payload and produces a complete, runtime-ready config:
+   *   - Mirrors canonical and legacy field locations using explicit priority (firstNonEmpty).
+   *   - Derives authority and publicKeyUrls from discoveryUri (discovery doc is authoritative).
+   *   - Extracts Azure tenant from discoveryUri when applicable.
+   *   - Defaults callbackUrl when missing.
+   * Safe for all callers: UI, CLI, SDK, Postman.
+   */
+  public void normalizeForPersistence(AuthenticationConfiguration authConfig) {
     if (authConfig == null) {
       return;
     }
 
-    // Only auto-populate for OIDC providers with confidential client type
-    boolean isOidcProvider =
-        authConfig.getProvider() == AuthProvider.CUSTOM_OIDC
-            || authConfig.getProvider() == AuthProvider.GOOGLE
-            || authConfig.getProvider() == AuthProvider.AZURE
-            || authConfig.getProvider() == AuthProvider.OKTA
-            || authConfig.getProvider() == AuthProvider.AUTH_0
-            || authConfig.getProvider() == AuthProvider.AWS_COGNITO;
-
-    boolean isConfidentialClient = authConfig.getClientType() == ClientType.CONFIDENTIAL;
-
-    if (!isOidcProvider || !isConfidentialClient) {
-      LOG.debug("Skipping publicKeyUrls auto-population - not OIDC confidential client");
-      return;
-    }
-
-    // Skip if already populated
-    if (authConfig.getPublicKeyUrls() != null && !authConfig.getPublicKeyUrls().isEmpty()) {
-      LOG.debug("publicKeyUrls already populated, skipping auto-population");
-      return;
-    }
-
     OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
-    if (oidcConfig == null || nullOrEmpty(oidcConfig.getDiscoveryUri())) {
-      LOG.warn("Cannot auto-populate publicKeyUrls - missing oidcConfiguration or discoveryUri");
-      return;
+
+    // Mirror root→nested only. Never nested→root — that's hydrateForResponse's job
+    // (read path only). This prevents legacy configs (only nested discoveryUri) from
+    // accidentally triggering derivation on unrelated PATCHes.
+    String discoveryUri = authConfig.getDiscoveryUri();
+    if (!nullOrEmpty(discoveryUri) && oidcConfig != null) {
+      oidcConfig.setDiscoveryUri(discoveryUri);
     }
 
-    try {
-      OidcDiscoveryValidator discoveryValidator = new OidcDiscoveryValidator();
-      discoveryValidator.autoPopulatePublicKeyUrls(oidcConfig.getDiscoveryUri(), authConfig);
-      LOG.info(
-          "Auto-populated publicKeyUrls from discovery document for provider: {}",
-          authConfig.getProvider());
-    } catch (Exception e) {
-      LOG.error("Failed to auto-populate publicKeyUrls: {}", e.getMessage(), e);
+    String clientId =
+        firstNonEmpty(oidcConfig != null ? oidcConfig.getId() : null, authConfig.getClientId());
+    if (!nullOrEmpty(clientId)) {
+      authConfig.setClientId(clientId);
+      if (oidcConfig != null) {
+        oidcConfig.setId(clientId);
+      }
     }
+
+    String defaultCallback = buildDefaultCallbackUrl();
+    String callbackUrl =
+        firstNonEmpty(
+            authConfig.getCallbackUrl(),
+            oidcConfig != null ? oidcConfig.getCallbackUrl() : null,
+            defaultCallback);
+    if (!nullOrEmpty(callbackUrl)) {
+      authConfig.setCallbackUrl(callbackUrl);
+      if (oidcConfig != null) {
+        oidcConfig.setCallbackUrl(callbackUrl);
+      }
+    }
+
+    if (oidcConfig != null && nullOrEmpty(oidcConfig.getServerUrl())) {
+      String serverUrl =
+          firstNonEmpty(
+              callbackUrl != null ? callbackUrl.replaceAll("/callback/?$", "") : null,
+              defaultCallback != null ? defaultCallback.replaceAll("/callback/?$", "") : null);
+      if (!nullOrEmpty(serverUrl)) {
+        oidcConfig.setServerUrl(serverUrl);
+      }
+    }
+
+    if (!nullOrEmpty(discoveryUri)) {
+      deriveFromDiscoveryDocument(authConfig, discoveryUri);
+    }
+
+    deriveProviderSpecificFields(authConfig);
+    deriveClientTypeFromSecret(authConfig);
+  }
+
+  /**
+   * Hydrates canonical fields from legacy locations for GET responses.
+   * In-memory transform only (no network I/O, no DB writes) so legacy configs
+   * display consistently for all API consumers (UI, CLI, SDK).
+   */
+  public void hydrateForResponse(AuthenticationConfiguration authConfig) {
+    if (authConfig == null) {
+      return;
+    }
+    OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
+
+    if (nullOrEmpty(authConfig.getDiscoveryUri())
+        && oidcConfig != null
+        && !nullOrEmpty(oidcConfig.getDiscoveryUri())) {
+      authConfig.setDiscoveryUri(oidcConfig.getDiscoveryUri());
+    }
+
+    if (oidcConfig != null
+        && nullOrEmpty(oidcConfig.getId())
+        && !nullOrEmpty(authConfig.getClientId())) {
+      oidcConfig.setId(authConfig.getClientId());
+    }
+
+    if (oidcConfig != null
+        && nullOrEmpty(oidcConfig.getCallbackUrl())
+        && !nullOrEmpty(authConfig.getCallbackUrl())) {
+      oidcConfig.setCallbackUrl(authConfig.getCallbackUrl());
+    }
+  }
+
+  /**
+   * @deprecated Use {@link #normalizeForPersistence} instead.
+   * Kept as a thin delegate for backward compatibility during migration.
+   */
+  @Deprecated
+  public void syncFieldsFromDiscoveryUri(AuthenticationConfiguration authConfig) {
+    normalizeForPersistence(authConfig);
+  }
+
+  private void deriveFromDiscoveryDocument(
+      AuthenticationConfiguration authConfig, String discoveryUri) {
+    try {
+      ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUri);
+      if (response.getStatusCode() != 200) {
+        return;
+      }
+      JsonNode discoveryDoc = JsonUtils.readTree(response.getBody());
+      if (discoveryDoc.has("issuer")) {
+        authConfig.setAuthority(discoveryDoc.get("issuer").asText());
+      }
+      if (discoveryDoc.has("jwks_uri")) {
+        authConfig.setPublicKeyUrls(List.of(discoveryDoc.get("jwks_uri").asText()));
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to derive fields from discoveryUri: {}", e.getMessage());
+    }
+  }
+
+  private void deriveProviderSpecificFields(AuthenticationConfiguration authConfig) {
+    if (authConfig.getProvider() == AuthProvider.AZURE) {
+      deriveAzureTenant(authConfig);
+    }
+  }
+
+  private void deriveAzureTenant(AuthenticationConfiguration authConfig) {
+    OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
+    if (oidcConfig == null) {
+      return;
+    }
+    String discoveryUri = authConfig.getDiscoveryUri();
+    if (nullOrEmpty(discoveryUri)) {
+      return;
+    }
+    Matcher m = AZURE_TENANT_PATTERN.matcher(discoveryUri);
+    if (m.find()) {
+      oidcConfig.setTenant(m.group(1));
+    }
+  }
+
+  private void deriveClientTypeFromSecret(AuthenticationConfiguration authConfig) {
+    OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
+    if (authConfig.getClientType() != null || oidcConfig == null) {
+      return;
+    }
+    boolean hasSecret = !nullOrEmpty(oidcConfig.getSecret());
+    authConfig.setClientType(hasSecret ? ClientType.CONFIDENTIAL : ClientType.PUBLIC);
+  }
+
+  private String buildDefaultCallbackUrl() {
+    try {
+      Settings setting = getOMBaseUrlConfigInternal();
+      if (setting != null) {
+        OpenMetadataBaseUrlConfiguration urlConfig =
+            (OpenMetadataBaseUrlConfiguration) setting.getConfigValue();
+        if (urlConfig != null && !nullOrEmpty(urlConfig.getOpenMetadataUrl())) {
+          return urlConfig.getOpenMetadataUrl().replaceAll("/+$", "") + DEFAULT_CALLBACK_PATH;
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to build default callback URL: {}", e.getMessage());
+    }
+    return null;
+  }
+
+  private static String firstNonEmpty(String... values) {
+    for (String v : values) {
+      if (!nullOrEmpty(v)) {
+        return v;
+      }
+    }
+    return null;
   }
 
   private FieldError validateLdapConfiguration(LdapConfiguration ldapConfig) {
@@ -1759,7 +2080,7 @@ public class SystemRepository {
   }
 
   private FieldError validateAuthorizerConfiguration(
-      AuthorizerConfiguration authzConfig, String currentUsername) {
+      AuthorizerConfiguration authzConfig, String currentUsername, boolean skipTestLoginFields) {
     try {
       // Validate required fields
       if (nullOrEmpty(authzConfig.getClassName())) {
@@ -1767,14 +2088,16 @@ public class SystemRepository {
             "authorizerConfiguration.className", "Class name is required");
       }
 
-      // Validate admin principals
-      if (authzConfig.getAdminPrincipals() == null || authzConfig.getAdminPrincipals().isEmpty()) {
+      // Validate admin principals (skip in test login context — set via Claim Selector)
+      if (!skipTestLoginFields
+          && (authzConfig.getAdminPrincipals() == null
+              || authzConfig.getAdminPrincipals().isEmpty())) {
         return ValidationErrorBuilder.createFieldError(
             FieldPaths.AUTHZ_ADMIN_PRINCIPALS, "At least one admin principal is required");
       }
 
-      // Validate principal domain (required field)
-      if (nullOrEmpty(authzConfig.getPrincipalDomain())) {
+      // Validate principal domain (skip in test login context — derived from email claim)
+      if (!skipTestLoginFields && nullOrEmpty(authzConfig.getPrincipalDomain())) {
         return ValidationErrorBuilder.createFieldError(
             FieldPaths.AUTHZ_PRINCIPAL_DOMAIN, "Principal domain is required");
       }

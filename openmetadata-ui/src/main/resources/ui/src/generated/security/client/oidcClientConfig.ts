@@ -65,7 +65,7 @@ export interface OidcClientConfig {
     /**
      * Client Secret.
      */
-    secret: string;
+    secret?: string;
     /**
      * Server Url.
      */

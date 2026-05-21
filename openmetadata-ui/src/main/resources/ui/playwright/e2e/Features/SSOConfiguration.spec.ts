@@ -22,6 +22,7 @@ import {
 import { redirectToHomePage } from '../../utils/common';
 import {
   enableSSOEditMode,
+  expandSSOAdvancedFields,
   selectSSOProvider,
   verifyProviderFields,
 } from '../../utils/sso';
@@ -109,25 +110,20 @@ test.describe('SSO Configuration Tests', () => {
     }) => {
       await selectSSOProvider(page, 'google');
 
-      // Verify Confidential client type is selected by default
-      const confidentialRadio = page.getByRole('radio', {
-        name: /confidential/i,
-      });
+      // Confidential mode is signaled by the OIDC client secret input being
+      // present — clientType radio is hidden and derived from secret presence
+      // at save time.
+      const secretField = page.locator(
+        '[id="root/authenticationConfiguration/oidcConfiguration/secret"]'
+      );
 
-      await expect(confidentialRadio).toBeChecked();
+      await expect(secretField).toBeVisible();
 
-      // Verify common fields are visible
-      await verifyProviderFields(page, SSO_COMMON_FIELDS);
-
-      // Verify OIDC specific fields with OIDC prefix in labels
-
-      for (const field of OIDC_COMMON_FIELDS) {
-        const fieldElement = page.getByLabel(field);
-        const fieldCount = await fieldElement.count();
-        if (fieldCount > 0) {
-          await expect(fieldElement.first()).toBeVisible();
-        }
-      }
+      // Verify common (root-level) fields and OIDC subsection main fields
+      await verifyProviderFields(page, [
+        ...SSO_COMMON_FIELDS,
+        ...OIDC_COMMON_FIELDS,
+      ]);
     });
 
     test('should show correct fields for Auth0 provider with confidential client', async ({
@@ -135,26 +131,16 @@ test.describe('SSO Configuration Tests', () => {
     }) => {
       await selectSSOProvider(page, 'auth0');
 
-      // Verify Confidential client type is selected by default
-      const confidentialRadio = page.getByRole('radio', {
-        name: /confidential/i,
-      });
+      const secretField = page.locator(
+        '[id="root/authenticationConfiguration/oidcConfiguration/secret"]'
+      );
 
-      await expect(confidentialRadio).toBeChecked();
+      await expect(secretField).toBeVisible();
 
-      // Verify common fields are visible
-      await verifyProviderFields(page, SSO_COMMON_FIELDS);
-
-      // Verify OIDC specific fields with OIDC prefix in labels
-      const oidcFields = [...OIDC_COMMON_FIELDS, 'OIDC Tenant'];
-
-      for (const field of oidcFields) {
-        const fieldElement = page.getByLabel(field);
-        const fieldCount = await fieldElement.count();
-        if (fieldCount > 0) {
-          await expect(fieldElement.first()).toBeVisible();
-        }
-      }
+      await verifyProviderFields(page, [
+        ...SSO_COMMON_FIELDS,
+        ...OIDC_COMMON_FIELDS,
+      ]);
     });
 
     test('should show correct fields for Okta provider with confidential client', async ({
@@ -162,56 +148,61 @@ test.describe('SSO Configuration Tests', () => {
     }) => {
       await selectSSOProvider(page, 'okta');
 
-      // Verify Confidential client type is selected by default
-      const confidentialRadio = page.getByRole('radio', {
-        name: /confidential/i,
-      });
+      const secretField = page.locator(
+        '[id="root/authenticationConfiguration/oidcConfiguration/secret"]'
+      );
 
-      await expect(confidentialRadio).toBeChecked();
+      await expect(secretField).toBeVisible();
 
-      // Verify common fields are visible
-      await verifyProviderFields(page, SSO_COMMON_FIELDS);
-
-      // Verify OIDC specific fields with OIDC prefix in labels
-      const oidcFields = [...OIDC_COMMON_FIELDS, 'OIDC Tenant'];
-
-      for (const field of oidcFields) {
-        const fieldElement = page.getByLabel(field);
-        const fieldCount = await fieldElement.count();
-        if (fieldCount > 0) {
-          await expect(fieldElement.first()).toBeVisible();
-        }
-      }
+      await verifyProviderFields(page, [
+        ...SSO_COMMON_FIELDS,
+        ...OIDC_COMMON_FIELDS,
+      ]);
     });
   });
 
-  test.describe('Provider Field Visibility Checks - Public Client', () => {
+  test.describe('Non-OIDC Provider Field Visibility Checks', () => {
     test('should show correct fields when selecting SAML provider', async ({
       page,
     }) => {
       await selectSSOProvider(page, 'saml');
 
+      // Main-tier IdP fields are visible inline
       await verifyProviderFields(page, SAML_VISIBLE_FIELDS);
 
-      const commonFields = ['Provider Name'];
+      // SP entity ID and ACS URL are surfaced via the "Register with your
+      // Identity Provider" copyable banner, not the form.
+      await expect(page.getByTestId('saml-sp-entity-id')).toBeVisible();
+      await expect(page.getByTestId('saml-acs-url')).toBeVisible();
 
-      await verifyProviderFields(page, commonFields);
-
+      // OIDC and LDAP-only inputs must be absent for SAML
       const hiddenFields = [
         'LDAP Host',
         'LDAP Port',
-        'OIDC Client ID',
-        'OIDC Client Secret',
-        'Use Roles From Provider',
         'Allowed Email Registration Domains',
-        'Token Validity (seconds)',
-        'Client ID',
-        'Callback URL',
-        'Public Key URLs',
-        'JWT Principal Claims',
       ];
 
       await verifyProviderFields(page, [], hiddenFields);
+
+      // Root-level OIDC inputs must not render for SAML
+      await expect(
+        page.locator(
+          '[id="root/authenticationConfiguration/oidcConfiguration/id"]'
+        )
+      ).toHaveCount(0);
+      await expect(
+        page.locator(
+          '[id="root/authenticationConfiguration/oidcConfiguration/secret"]'
+        )
+      ).toHaveCount(0);
+      await expect(
+        page.locator('[id="root/authenticationConfiguration/publicKeyUrls"]')
+      ).toHaveCount(0);
+      await expect(
+        page.locator(
+          '[id="root/authenticationConfiguration/jwtPrincipalClaims"]'
+        )
+      ).toHaveCount(0);
     });
 
     test('should show correct fields when selecting LDAP provider', async ({
@@ -227,234 +218,166 @@ test.describe('SSO Configuration Tests', () => {
         'Allowed Email Registration Domains',
         'Use Roles From Provider',
         'Username Attribute Name',
-        'Auth Roles Mapping',
-        'Allowed Email Registration Domains',
-        'Use Roles From Provider',
       ];
 
       await verifyProviderFields(page, [], hiddenFields);
-    });
 
-    test('should show correct fields when selecting Google provider', async ({
-      page,
-    }) => {
-      await selectSSOProvider(page, 'google');
-
-      // Click on Public client type
-      const publicRadio = page.getByRole('radio', { name: /public/i });
-      await publicRadio.click();
-
-      await expect(publicRadio).toBeChecked();
-
-      // Verify public client fields are visible
-      await verifyProviderFields(page, [
-        ...SSO_COMMON_FIELDS,
-        'Public Key URLs',
-      ]);
-
-      // Verify Client Type radio group is visible
-      await expect(page.locator('.field-radio-group').first()).toBeVisible();
-
-      // Verify Secret field is NOT visible for public client
-      await expect(page.getByLabel('Secret Key')).not.toBeVisible();
-
-      // Verify OIDC configuration fields are NOT visible for public client
-      await expect(page.locator('[id*="oidcConfiguration"]')).not.toBeVisible();
-    });
-
-    test('should show correct fields when selecting Auth0 provider', async ({
-      page,
-    }) => {
-      await selectSSOProvider(page, 'auth0');
-
-      // Click on Public client type
-      const publicRadio = page.getByRole('radio', { name: /public/i });
-      await publicRadio.click();
-
-      await expect(publicRadio).toBeChecked();
-
-      // Verify public client fields are visible
-      await verifyProviderFields(page, [
-        ...SSO_COMMON_FIELDS,
-        'Public Key URLs',
-      ]);
-
-      // Verify Client Type radio group is visible
-      await expect(page.locator('.field-radio-group').first()).toBeVisible();
-
-      const hiddenFields = [
-        'LDAP Host',
-        'IdP Entity ID',
-        'IdP SSO Login URL',
-        'Token Validation Algorithm',
-        'Allowed Email Registration Domains',
-      ];
-      await verifyProviderFields(page, [], hiddenFields);
-
-      // Verify Secret field is NOT visible for public client
-      await expect(page.getByLabel('Secret Key')).not.toBeVisible();
-
-      // Verify OIDC configuration fields are NOT visible for public client
-      await expect(page.locator('[id*="oidcConfiguration"]')).not.toBeVisible();
-    });
-
-    test('should show correct fields when selecting Okta provider', async ({
-      page,
-    }) => {
-      await selectSSOProvider(page, 'okta');
-
-      // Click on Public client type
-      const publicRadio = page.getByRole('radio', { name: /public/i });
-      await publicRadio.click();
-
-      await expect(publicRadio).toBeChecked();
-
-      // Verify public client fields are visible
-      await verifyProviderFields(page, [
-        ...SSO_COMMON_FIELDS,
-        'Public Key URLs',
-      ]);
-
-      // Verify Client Type radio group is visible
-      await expect(page.locator('.field-radio-group').first()).toBeVisible();
-
-      const hiddenFields = [
-        'LDAP Host',
-        'IdP Entity ID',
-        'IdP SSO Login URL',
-        'Token Validation Algorithm',
-        'Allowed Email Registration Domains',
-      ];
-      await verifyProviderFields(page, [], hiddenFields);
-
-      // Verify Secret field is NOT visible for public client
-      await expect(page.getByLabel('Secret Key')).not.toBeVisible();
-
-      // Verify OIDC configuration fields are NOT visible for public client
-      await expect(page.locator('[id*="oidcConfiguration"]')).not.toBeVisible();
+      // Username Attribute Name is hidden via UI schema for LDAP
+      await expect(
+        page.locator(
+          '[id="root/authenticationConfiguration/ldapConfiguration/usernameAttributeName"]'
+        )
+      ).toHaveCount(0);
     });
   });
 
   test.describe('Form Field Changes Tests', () => {
-    test('should show OIDC Callback URL as readonly for Google provider', async ({
+    test('should show callback URL as a copyable read-only widget for Google provider', async ({
       page,
     }) => {
       await selectSSOProvider(page, 'google');
 
-      const confidentialRadio = page.getByRole('radio', {
-        name: /confidential/i,
-      });
-
-      await expect(confidentialRadio).toBeChecked();
-
-      const callbackUrlField = page.locator(
-        '[id="root/authenticationConfiguration/oidcConfiguration/callbackUrl"]'
+      // Root-level callbackUrl renders via the CallbackUrlWidget
+      // (CopyableUrlField) — read-only by design, with a Copy action.
+      const callbackUrlWidget = page.getByTestId(
+        'root/authenticationConfiguration/callbackUrl'
       );
 
-      await expect(callbackUrlField).toBeVisible();
-      await expect(callbackUrlField).toHaveAttribute('readonly');
+      await expect(callbackUrlWidget).toBeVisible();
+      await expect(
+        callbackUrlWidget.getByTestId(
+          'root/authenticationConfiguration/callbackUrl-value'
+        )
+      ).toContainText('/callback');
+      await expect(
+        callbackUrlWidget.getByTestId(
+          'root/authenticationConfiguration/callbackUrl-copy'
+        )
+      ).toBeVisible();
 
-      const helpText = page.getByText(/auto-generated callback url/i);
-
-      await expect(helpText).toBeVisible();
+      // The nested OIDC callbackUrl is hidden — it would be redundant.
+      await expect(
+        page.locator(
+          '[id="root/authenticationConfiguration/oidcConfiguration/callbackUrl"]'
+        )
+      ).toHaveCount(0);
     });
 
-    test('should show OIDC Callback URL as readonly for Auth0 provider', async ({
+    test('should show callback URL as a copyable read-only widget for Auth0 provider', async ({
       page,
     }) => {
       await selectSSOProvider(page, 'auth0');
 
-      const callbackUrlField = page.locator(
-        '[id="root/authenticationConfiguration/oidcConfiguration/callbackUrl"]'
+      const callbackUrlWidget = page.getByTestId(
+        'root/authenticationConfiguration/callbackUrl'
       );
 
-      await expect(callbackUrlField).toBeVisible();
-      await expect(callbackUrlField).toHaveAttribute('readonly');
+      await expect(callbackUrlWidget).toBeVisible();
+      await expect(
+        callbackUrlWidget.getByTestId(
+          'root/authenticationConfiguration/callbackUrl-copy'
+        )
+      ).toBeVisible();
     });
 
-    test('should show OIDC Callback URL as readonly for Okta provider', async ({
+    test('should show callback URL as a copyable read-only widget for Okta provider', async ({
       page,
     }) => {
       await selectSSOProvider(page, 'okta');
 
-      const callbackUrlField = page.locator(
-        '[id="root/authenticationConfiguration/oidcConfiguration/callbackUrl"]'
+      const callbackUrlWidget = page.getByTestId(
+        'root/authenticationConfiguration/callbackUrl'
       );
 
-      await expect(callbackUrlField).toBeVisible();
-      await expect(callbackUrlField).toHaveAttribute('readonly');
+      await expect(callbackUrlWidget).toBeVisible();
+      await expect(
+        callbackUrlWidget.getByTestId(
+          'root/authenticationConfiguration/callbackUrl-copy'
+        )
+      ).toBeVisible();
     });
 
-    test('should show OIDC Callback URL as readonly for Azure AD provider', async ({
+    test('should show callback URL as a copyable read-only widget for Azure AD provider', async ({
       page,
     }) => {
       await selectSSOProvider(page, 'azure');
 
-      const callbackUrlField = page.locator(
-        '[id="root/authenticationConfiguration/oidcConfiguration/callbackUrl"]'
+      const callbackUrlWidget = page.getByTestId(
+        'root/authenticationConfiguration/callbackUrl'
       );
 
-      await expect(callbackUrlField).toBeVisible();
-      await expect(callbackUrlField).toHaveAttribute('readonly');
+      await expect(callbackUrlWidget).toBeVisible();
+      await expect(
+        callbackUrlWidget.getByTestId(
+          'root/authenticationConfiguration/callbackUrl-copy'
+        )
+      ).toBeVisible();
     });
 
-    test('should show SAML SP Entity ID and ACS URL as readonly', async ({
+    test('should show SAML SP Entity ID and ACS URL as copyable read-only widgets', async ({
       page,
     }) => {
       await selectSSOProvider(page, 'saml');
 
-      const spEntityIdField = page.locator(
-        '[id="root/authenticationConfiguration/samlConfiguration/sp/entityId"]'
+      // SP details now render in the "Register with your Identity Provider"
+      // banner above the form, via dedicated CopyableUrlField components —
+      // not as RJSF input fields.
+      const banner = page.getByTestId('saml-acs-info-banner');
+
+      await expect(banner).toBeVisible();
+
+      const acsUrl = banner.getByTestId('saml-acs-url');
+
+      await expect(acsUrl).toBeVisible();
+      await expect(banner.getByTestId('saml-acs-url-value')).toContainText(
+        '/callback'
       );
+      await expect(banner.getByTestId('saml-acs-url-copy')).toBeVisible();
 
-      await expect(spEntityIdField).toBeVisible();
-      await expect(spEntityIdField).toHaveAttribute('readonly');
+      const spEntityId = banner.getByTestId('saml-sp-entity-id');
 
-      const helpTextEntityId = page.getByText(
-        /auto-generated service provider entity id/i
-      );
+      await expect(spEntityId).toBeVisible();
+      await expect(
+        banner.getByTestId('saml-sp-entity-id-value')
+      ).not.toBeEmpty();
+      await expect(banner.getByTestId('saml-sp-entity-id-copy')).toBeVisible();
 
-      await expect(helpTextEntityId).toBeVisible();
-
-      const acsUrlField = page.locator(
-        '[id="root/authenticationConfiguration/samlConfiguration/sp/acs"]'
-      );
-
-      await expect(acsUrlField).toBeVisible();
-      await expect(acsUrlField).toHaveAttribute('readonly');
-
-      const helpTextAcs = page.getByText(
-        /auto-generated assertion consumer service url/i
-      );
-
-      await expect(helpTextAcs).toBeVisible();
+      // Underlying SP form fields are hidden via UI schema
+      await expect(
+        page.locator(
+          '[id="root/authenticationConfiguration/samlConfiguration/sp/entityId"]'
+        )
+      ).toHaveCount(0);
+      await expect(
+        page.locator(
+          '[id="root/authenticationConfiguration/samlConfiguration/sp/acs"]'
+        )
+      ).toHaveCount(0);
     });
 
-    test('should display advanced config collapse for OIDC provider', async ({
+    test('should display Advanced Fields accordion for OIDC provider', async ({
       page,
     }) => {
       await selectSSOProvider(page, 'google');
 
-      const advancedConfigCollapse = page.locator(
-        '.sso-advanced-properties-collapse'
+      const advancedFieldsToggle = page.getByTestId(
+        'sso-advanced-fields-toggle'
       );
 
-      await expect(advancedConfigCollapse).toBeVisible();
-
-      const advancedConfigHeader = page.getByText(/advanced config/i);
-
-      await expect(advancedConfigHeader).toBeVisible();
+      await expect(advancedFieldsToggle).toBeVisible();
+      await expect(advancedFieldsToggle).toContainText(/advanced fields/i);
     });
 
-    test('should show advanced fields when advanced config is expanded', async ({
+    test('should show advanced fields when Advanced Fields accordion is expanded', async ({
       page,
     }) => {
       await selectSSOProvider(page, 'google');
 
-      const advancedConfigHeader = page.getByText(/advanced config/i);
+      await expandSSOAdvancedFields(page);
 
-      await advancedConfigHeader.click();
-
+      // Sample of advanced-tier OIDC fields that are expected to render in
+      // the Advanced Fields panel — see OIDC_CONFIDENTIAL_SUBSECTION in
+      // SSO.constant.ts.
       const advancedFields = [
         'useNonce',
         'disablePkce',
@@ -465,12 +388,9 @@ test.describe('SSO Configuration Tests', () => {
       ];
 
       for (const fieldName of advancedFields) {
-        const field = page.locator(`[id*="${fieldName}"]`);
-        const fieldCount = await field.count();
+        const field = page.locator(`[id*="${fieldName}"]`).first();
 
-        if (fieldCount > 0) {
-          await expect(field.first()).toBeVisible();
-        }
+        await expect(field).toBeVisible();
       }
     });
 
@@ -479,11 +399,13 @@ test.describe('SSO Configuration Tests', () => {
     }) => {
       await selectSSOProvider(page, 'google');
 
-      const confidentialRadio = page.getByRole('radio', {
-        name: /confidential/i,
-      });
+      // Confidential mode is signaled by secret input presence — clientType
+      // radio is hidden and derived at save time from secret presence.
+      const secretField = page.locator(
+        '[id="root/authenticationConfiguration/oidcConfiguration/secret"]'
+      );
 
-      await expect(confidentialRadio).toBeChecked();
+      await expect(secretField).toBeVisible();
 
       const publicKeyUrlsField = page.locator('[id*="publicKeyUrls"]').first();
 
@@ -500,24 +422,29 @@ test.describe('SSO Configuration Tests', () => {
       await expect(serverUrlField).not.toBeVisible();
     });
 
-    test('should hide preferredJwsAlgorithm and responseType for OIDC providers', async ({
+    test('should hide responseType for OIDC providers and surface preferredJwsAlgorithm only in Advanced Fields', async ({
       page,
     }) => {
       await selectSSOProvider(page, 'google');
 
-      const advancedConfigHeader = page.getByText(/advanced config/i);
+      // responseType is stripped from the OIDC schema entirely
+      // (getProviderSpecificSchema in SSOConfigurationForm.tsx).
+      const responseTypeField = page.locator('[id*="responseType"]');
 
-      await advancedConfigHeader.click();
+      await expect(responseTypeField).toHaveCount(0);
 
+      // preferredJwsAlgorithm lives in the Advanced Fields panel for Google
+      // (advanced tier in OIDC_CONFIDENTIAL_SUBSECTION). It must be hidden
+      // until the panel is expanded, then visible afterwards.
       const preferredJwsAlgorithmField = page.locator(
         '[id*="preferredJwsAlgorithm"]'
       );
 
       await expect(preferredJwsAlgorithmField).not.toBeVisible();
 
-      const responseTypeField = page.locator('[id*="responseType"]');
+      await expandSSOAdvancedFields(page);
 
-      await expect(responseTypeField).not.toBeVisible();
+      await expect(preferredJwsAlgorithmField.first()).toBeVisible();
     });
 
     test('should hide tokenValidationAlgorithm for OIDC providers', async ({
@@ -587,15 +514,15 @@ test.describe('SSO Configuration Tests', () => {
     }) => {
       await selectSSOProvider(page, 'auth0');
 
-      const advancedConfigHeader = page.getByText(/advanced config/i);
-
-      await advancedConfigHeader.click();
+      // clientAuthenticationMethod sits in the Advanced Fields panel —
+      // expand it before asserting visibility.
+      await expandSSOAdvancedFields(page);
 
       const clientAuthMethodField = page.locator(
         '[id*="clientAuthenticationMethod"]'
       );
 
-      await expect(clientAuthMethodField).not.toBeVisible();
+      await expect(clientAuthMethodField).toHaveCount(0);
     });
 
     test('should show clientAuthenticationMethod for Okta provider', async ({
@@ -603,83 +530,85 @@ test.describe('SSO Configuration Tests', () => {
     }) => {
       await selectSSOProvider(page, 'okta');
 
-      const advancedConfigHeader = page.getByText(/advanced config/i);
-
-      await advancedConfigHeader.click();
+      await expandSSOAdvancedFields(page);
 
       const clientAuthMethodField = page.locator(
         '[id*="clientAuthenticationMethod"]'
       );
-      const fieldCount = await clientAuthMethodField.count();
 
-      if (fieldCount > 0) {
-        await expect(clientAuthMethodField.first()).toBeVisible();
-      }
+      await expect(clientAuthMethodField.first()).toBeVisible();
     });
 
     test('should hide tenant field for Auth0 provider', async ({ page }) => {
       await selectSSOProvider(page, 'auth0');
 
-      const advancedConfigHeader = page.getByText(/advanced config/i);
+      await expandSSOAdvancedFields(page);
 
-      await advancedConfigHeader.click();
-
-      const tenantField = page.locator('[id*="/tenant"]');
-
-      await expect(tenantField).not.toBeVisible();
-    });
-
-    test('should show tenant field for Azure provider', async ({ page }) => {
-      await selectSSOProvider(page, 'azure');
-
+      // `tenant` is stripped from the schema for non-SAML/LDAP providers
+      // (getProviderSpecificSchema in SSOConfigurationForm.tsx).
       const tenantField = page.locator(
         '[id="root/authenticationConfiguration/oidcConfiguration/tenant"]'
       );
 
-      await expect(tenantField).toBeVisible();
+      await expect(tenantField).toHaveCount(0);
     });
 
-    test('should collapse advanced config by default', async ({ page }) => {
+    test('should hide tenant field for Azure provider', async ({ page }) => {
+      await selectSSOProvider(page, 'azure');
+
+      await expandSSOAdvancedFields(page);
+
+      // Azure uses `authority` and `discoveryUri` rather than a separate
+      // tenant input — the schema removes `tenant` for all OIDC providers.
+      const tenantField = page.locator(
+        '[id="root/authenticationConfiguration/oidcConfiguration/tenant"]'
+      );
+
+      await expect(tenantField).toHaveCount(0);
+    });
+
+    test('should collapse Advanced Fields by default', async ({ page }) => {
       await selectSSOProvider(page, 'google');
 
-      const advancedConfigPanel = page.locator(
-        '.sso-advanced-properties-collapse .ant-collapse-item'
+      const advancedFieldsToggle = page.getByTestId(
+        'sso-advanced-fields-toggle'
       );
 
-      await expect(advancedConfigPanel).not.toHaveClass(
-        /ant-collapse-item-active/
-      );
+      await expect(advancedFieldsToggle).toBeVisible();
+
+      const advancedFieldsPanel = page.getByTestId('sso-advanced-fields-panel');
+
+      await expect(advancedFieldsPanel).toBeHidden();
     });
 
-    test('should expand and collapse advanced config when clicked', async ({
+    test('should expand and collapse Advanced Fields when clicked', async ({
       page,
     }) => {
       await selectSSOProvider(page, 'google');
 
-      const advancedConfigHeader = page.getByText(/advanced config/i);
-      const advancedConfigPanel = page.locator(
-        '.sso-advanced-properties-collapse .ant-collapse-item'
+      const advancedFieldsToggle = page.getByTestId(
+        'sso-advanced-fields-toggle'
       );
+      const advancedFieldsPanel = page.getByTestId('sso-advanced-fields-panel');
 
-      await expect(advancedConfigPanel).not.toHaveClass(
-        /ant-collapse-item-active/
-      );
+      await expect(advancedFieldsPanel).toBeHidden();
 
-      await advancedConfigHeader.click();
+      await advancedFieldsToggle.click();
 
-      await expect(advancedConfigPanel).toHaveClass(/ant-collapse-item-active/);
+      await expect(advancedFieldsPanel).toBeVisible();
 
-      await advancedConfigHeader.click();
+      await advancedFieldsToggle.click();
 
-      await expect(advancedConfigPanel).not.toHaveClass(
-        /ant-collapse-item-active/
-      );
+      await expect(advancedFieldsPanel).toBeHidden();
     });
 
     test('should support full LDAP role mapping flow: add, fill, open roles dropdown, detect and resolve duplicates, and remove', async ({
       page,
     }) => {
       await selectSSOProvider(page, 'ldap');
+
+      // authRolesMapping lives in LDAP Advanced Fields — expand to access.
+      await expandSSOAdvancedFields(page);
 
       const addMappingButton = page.getByTestId('add-mapping-btn');
       const ldapGroupInputs = page.locator(
@@ -747,6 +676,9 @@ test.describe('SSO Configuration Tests', () => {
       page,
     }) => {
       await selectSSOProvider(page, 'ldap');
+
+      // authReassignRoles is in LDAP Advanced Fields.
+      await expandSSOAdvancedFields(page);
 
       const field = page.getByTestId(
         'sso-configuration-form-array-field-template-authReassignRoles'
@@ -836,7 +768,10 @@ test.describe('SAML Metadata XML Upload', () => {
 
     await test.step('Wait for drop zone and upload valid SAML metadata XML', async () => {
       await expect(page.getByTestId('file-upload-drop-zone')).toBeVisible();
-      const fileInput = page.getByTestId('file-uploader');
+
+      // FileTrigger renders a hidden <input type="file"> as a sibling of the
+      // visible drop-zone (file-uploader testid is on the wrapper div).
+      const fileInput = page.locator('input[type="file"]');
 
       await fileInput.setInputFiles(VALID_SAML_XML);
     });
@@ -876,7 +811,7 @@ test.describe('SAML Metadata XML Upload', () => {
       await page.getByTestId('change-metadata-xml-btn').click();
       await expect(page.getByTestId('file-upload-drop-zone')).toBeVisible();
 
-      const fileInput = page.getByTestId('file-uploader');
+      const fileInput = page.locator('input[type="file"]');
 
       await fileInput.setInputFiles(INVALID_SAML_XML);
     });
