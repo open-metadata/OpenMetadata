@@ -123,7 +123,7 @@ test.describe('Context Center', () => {
     ]);
 
     // Create a quick link via API for dashboard card detail tests
-    const qlRes = await apiContext.post('/api/v1/knowledgeCenter', {
+    const qlRes = await apiContext.post('/api/v1/contextCenter/pages', {
       data: {
         name: QUICK_LINK_NAME,
         displayName: QUICK_LINK_TITLE,
@@ -178,7 +178,7 @@ test.describe('Context Center', () => {
     await articleEntity.delete(apiContext);
     if (quickLinkId) {
       await apiContext.delete(
-        `/api/v1/knowledgeCenter/${quickLinkId}?hardDelete=true&recursive=true`
+        `/api/v1/contextCenter/pages/${quickLinkId}?hardDelete=true&recursive=true`
       );
     }
     if (articleTagClassification?.responseData?.id) {
@@ -312,7 +312,7 @@ test.describe('Context Center', () => {
     }) => {
       await navigateToDashboard(page);
 
-      const createRes = page.waitForResponse('/api/v1/knowledgeCenter');
+      const createRes = page.waitForResponse('/api/v1/contextCenter/pages');
       await page.getByRole('button', { name: /create.*article/i }).click();
       await createRes;
 
@@ -332,11 +332,11 @@ test.describe('Context Center', () => {
           ?.split('/')[0];
         if (fqn) {
           const res = await apiContext.get(
-            `/api/v1/knowledgeCenter/name/${fqn}?fields=id`
+            `/api/v1/contextCenter/pages/name/${fqn}?fields=id`
           );
           const data = await res.json();
           await apiContext.delete(
-            `/api/v1/knowledgeCenter/${data.id}?hardDelete=true&recursive=true`
+            `/api/v1/contextCenter/pages/${data.id}?hardDelete=true&recursive=true`
           );
         }
         await afterAction();
@@ -525,7 +525,7 @@ test.describe('Context Center', () => {
       const articleItem = page.getByTestId('create-article-btn');
       await expect(articleItem).toBeVisible();
 
-      const createRes = page.waitForResponse('/api/v1/knowledgeCenter');
+      const createRes = page.waitForResponse('/api/v1/contextCenter/pages');
       await articleItem.click();
       await createRes;
 
@@ -545,11 +545,11 @@ test.describe('Context Center', () => {
           ?.split('/')[0];
         if (fqn) {
           const res = await apiContext.get(
-            `/api/v1/knowledgeCenter/name/${fqn}?fields=id`
+            `/api/v1/contextCenter/pages/name/${fqn}?fields=id`
           );
           const data = await res.json();
           await apiContext.delete(
-            `/api/v1/knowledgeCenter/${data.id}?hardDelete=true&recursive=true`
+            `/api/v1/contextCenter/pages/${data.id}?hardDelete=true&recursive=true`
           );
         }
         await afterAction();
@@ -572,7 +572,7 @@ test.describe('Context Center', () => {
       await modal.getByTestId('displayName').fill(testQuickLinkTitle);
       await modal.getByTestId('url').fill(QUICK_LINK_URL);
 
-      const createRes = page.waitForResponse('/api/v1/knowledgeCenter');
+      const createRes = page.waitForResponse('/api/v1/contextCenter/pages');
       await modal.getByRole('button', { name: /save/i }).click();
       const created = await createRes;
       const createdData = await created.json();
@@ -585,7 +585,7 @@ test.describe('Context Center', () => {
       if (browser3 && createdData?.id) {
         const { apiContext, afterAction } = await createNewPage(browser3);
         await apiContext.delete(
-          `/api/v1/knowledgeCenter/${createdData.id}?hardDelete=true&recursive=true`
+          `/api/v1/contextCenter/pages/${createdData.id}?hardDelete=true&recursive=true`
         );
         await afterAction();
       }
@@ -744,7 +744,7 @@ test.describe('Context Center', () => {
       await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
       const deleteRes = page.waitForResponse(
-        '/api/v1/knowledgeCenter/*?hardDelete=true&recursive=false'
+        '/api/v1/contextCenter/pages/*?hardDelete=true&recursive=false'
       );
       await page.getByTestId('confirm-button').click();
       const res = await deleteRes;
@@ -764,7 +764,7 @@ test.describe('Context Center', () => {
         return;
       }
       const { apiContext, afterAction } = await createNewPage(browser);
-      const deleteRes = await apiContext.post('/api/v1/knowledgeCenter', {
+      const deleteRes = await apiContext.post('/api/v1/contextCenter/pages', {
         data: {
           name: `cc_delete_test_${uuid()}`,
           displayName: `CC Delete Test ${uuid()}`,
@@ -802,7 +802,7 @@ test.describe('Context Center', () => {
       await page.getByTestId('confirmation-text-input').fill('DELETE');
 
       const apiDeleteRes = page.waitForResponse(
-        /\/api\/v1\/knowledgeCenter\/.+\?hardDelete=true/
+        /\/api\/v1\/contextCenter\/pages\/.+\?hardDelete=true/
       );
       await page.getByTestId('confirm-button').click();
       await apiDeleteRes;

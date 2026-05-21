@@ -22,5 +22,6 @@ export const getThemeConfig = (theme?: UIThemePreference['customTheme']) => {
     successColor: theme?.successColor || DEFAULT_THEME.successColor,
     warningColor: theme?.warningColor || DEFAULT_THEME.warningColor,
     infoColor: theme?.infoColor || DEFAULT_THEME.infoColor,
+    panelBackgroundColor: theme?.panelBackgroundColor,
   };
 };
