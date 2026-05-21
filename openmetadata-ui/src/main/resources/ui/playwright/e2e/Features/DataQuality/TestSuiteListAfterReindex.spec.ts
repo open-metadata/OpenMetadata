@@ -47,9 +47,9 @@ const queryTableSuitesList = async (
   suiteFqn: string
 ) => {
   const res = await apiContext.get(
-    `/api/v1/dataQuality/testSuites/search/list?limit=50&fields=owners%2Csummary&q=${encodeURIComponent(
+    `/api/v1/dataQuality/testSuites/search/list?limit=50&offset=0&q=${encodeURIComponent(
       suiteFqn
-    )}&offset=0&includeEmptyTestSuites=false&testSuiteType=basic&sortField=lastResultTimestamp&sortType=desc`
+    )}&includeEmptyTestSuites=false&testSuiteType=basic`
   );
 
   if (res.status() !== 200) {
@@ -116,7 +116,7 @@ test('Basic test suite stays listed on the table-suites page after a full reinde
       }
     );
 
-    expect(reindexRes.status()).toBeLessThan(400);
+    expect(reindexRes.status()).toBe(200);
 
     // Before the fix, the recreated doc has no `tests` field because the
     // "tests" fetcher never ran, the `{"exists": {"field": "tests"}}` filter
