@@ -44,6 +44,7 @@ export interface OntologyNode {
   group?: string;
   glossaryId?: string;
   entityRef?: EntityReference;
+  searchSource?: Record<string, unknown>;
   owners?: EntityReference[];
   termId?: string;
   originalGlossary?: string;

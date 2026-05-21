@@ -477,7 +477,6 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           entityName={knowledgePage.displayName || t('label.untitled')}
           entityType={EntityType.KNOWLEDGE_CENTER}
           isRecursiveDelete={false}
-          prepareType={false}
           successMessage={t('server.entity-deleted-successfully', {
             entity: t('label.quick-link'),
           })}
