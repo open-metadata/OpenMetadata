@@ -21,9 +21,7 @@ def test_decode_message_avro_skips_re_deserialization_for_decoded_values():
     source = SimpleNamespace(schema_registry_client=object())
     decoded_payload = {"event_id": "1", "status": "ok"}
 
-    with patch(
-        "metadata.ingestion.source.messaging.common_broker_source.AvroDeserializer"
-    ) as mock_deserializer:
+    with patch("metadata.ingestion.source.messaging.common_broker_source.AvroDeserializer") as mock_deserializer:
         result = CommonBrokerSource.decode_message(source, decoded_payload, "ignored-schema", SchemaType.Avro)
 
     mock_deserializer.assert_not_called()
@@ -33,9 +31,7 @@ def test_decode_message_avro_skips_re_deserialization_for_decoded_values():
 def test_decode_message_avro_deserializes_bytes_payload():
     source = SimpleNamespace(schema_registry_client=object())
 
-    with patch(
-        "metadata.ingestion.source.messaging.common_broker_source.AvroDeserializer"
-    ) as mock_deserializer:
+    with patch("metadata.ingestion.source.messaging.common_broker_source.AvroDeserializer") as mock_deserializer:
         mock_deserializer.return_value.return_value = {"event_id": "2"}
         result = CommonBrokerSource.decode_message(source, b"binary-payload", "avro-schema", SchemaType.Avro)
 
