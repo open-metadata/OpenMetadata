@@ -358,6 +358,11 @@ public class MigrationUtil {
   }
 
   private String buildMysqlInsertTaskDomainSql() {
+    // NOT EXISTS deliberately does NOT filter on ex.deleted: tasks are hard-deleted only, so
+    // any (domain, task, HAS) row that exists at all should be respected. Filtering on
+    // ex.deleted = FALSE would let the SELECT yield rows that collide with soft-deleted PKs
+    // (deleted is not part of the PK), making INSERT IGNORE's affected-row count drop below
+    // BATCH_SIZE and break the loop prematurely.
     return "INSERT IGNORE INTO entity_relationship "
         + "  (fromId, toId, fromEntity, toEntity, relation) "
         + "SELECT er_domain.fromId, er_about.toId, 'domain', 'task', "
@@ -383,13 +388,13 @@ public class MigrationUtil {
         + "    AND ex.toId = er_about.toId AND ex.toEntity = 'task' "
         + "    AND ex.fromEntity = 'domain' AND ex.relation = "
         + RELATION_HAS
-        + "    AND ex.deleted = FALSE "
         + "  ) "
         + "LIMIT "
         + BATCH_SIZE;
   }
 
   private String buildPostgresInsertTaskDomainSql() {
+    // See note on buildMysqlInsertTaskDomainSql: NOT EXISTS intentionally omits ex.deleted.
     return "INSERT INTO entity_relationship "
         + "  (fromId, toId, fromEntity, toEntity, relation) "
         + "SELECT er_domain.fromId, er_about.toId, 'domain', 'task', "
@@ -415,7 +420,6 @@ public class MigrationUtil {
         + "    AND ex.toId = er_about.toId AND ex.toEntity = 'task' "
         + "    AND ex.fromEntity = 'domain' AND ex.relation = "
         + RELATION_HAS
-        + "    AND ex.deleted = FALSE "
         + "  ) "
         + "LIMIT "
         + BATCH_SIZE
