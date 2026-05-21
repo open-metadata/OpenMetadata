@@ -300,9 +300,11 @@ const MyDataPage = () => {
         <div className="grid-wrapper" dir="ltr">
           <CustomiseLandingPageHeader
             overlappedContainer
+            announcements={announcements}
             backgroundColor={backgroundColor}
             dataTestId="landing-page-header"
             hideCustomiseButton={!selectedPersona}
+            isAnnouncementLoading={isAnnouncementLoading}
             onHomePage
             onBackgroundColorUpdate={handleBackgroundColorUpdate}
           />
