@@ -55,10 +55,10 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
       // do not handle error
     } finally {
       setLoading(false);
-      // Signal to downstream consumers (plugins, mode-aware code in
-      // collate-ui) that `applications` reflects server state. Set
-      // unconditionally — even on fetch error the list is "as loaded
-      // as it's going to be" and consumers should stop waiting.
+      // Signal to downstream consumers (plugins, mode-aware code) that
+      // `applications` reflects server state. Set unconditionally —
+      // even on fetch error the list is "as loaded as it's going to
+      // be" and consumers should stop waiting.
       setApplicationsLoaded(true);
     }
   }, []);

@@ -23,9 +23,9 @@ export interface LeftSidebarItem {
    * Optional side-effect fired BEFORE the `redirect_url` navigation
    * completes. Use for cross-cutting concerns that need to run on click
    * — for example, app-mode switches that must take effect before the
-   * target route resolves. The callback runs synchronously inside the
-   * `<NavLink>`'s onClick; it MUST NOT call `event.preventDefault()` if
-   * the redirect should still happen.
+   * target route resolves. Runs synchronously inside the `<NavLink>`'s
+   * onClick; the navigation always proceeds because no event is exposed
+   * to the callback.
    */
   onClick?: () => void;
 }
