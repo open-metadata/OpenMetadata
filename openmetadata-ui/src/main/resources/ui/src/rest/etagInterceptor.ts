@@ -191,13 +191,23 @@ export function attachEtagInterceptor(client: AxiosInstance): void {
       // Prefer the live cache entry (re-populating LRU recency) but fall back to the
       // per-request snapshot stashed at request time. The snapshot covers two races:
       // (1) LRU eviction pushed the entry out between request and response, and
-      // (2) a concurrent mutation cleared the entire cache. Either way the cached body
-      // is still on `response.config` and we can hand it back as a 200.
+      // (2) a concurrent mutation (or logout) cleared the entire cache. Either way the
+      // cached body is still on `response.config` and we can hand it back as a 200.
+      const liveEntry = etagCache.get(key);
       const entry =
-        etagCache.get(key) ??
+        liveEntry ??
         (response.config as ConfigWithSnapshot)[ETAG_REQUEST_SNAPSHOT];
       if (entry) {
-        touch(key, entry);
+        // Only touch (re-insert) when the entry came from the live cache. If we're using
+        // the snapshot fallback the cache was intentionally cleared (mutation invalidation
+        // or logout), and re-inserting would resurrect a stale entry — the next GET for
+        // the same URL would hit it, attach If-None-Match, get 304 from a server that may
+        // have changed state in a non-version-bumping way (followers/votes), and serve the
+        // same stale body again. Returning the snapshot one-shot is fine; persisting it
+        // is not.
+        if (liveEntry) {
+          touch(key, entry);
+        }
 
         // Deep-clone the cached body before handing it back. Consumers (UI components,
         // utilities, edit handlers) sometimes mutate the entity object they receive — adding
