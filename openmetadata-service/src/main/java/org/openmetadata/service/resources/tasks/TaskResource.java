@@ -1217,8 +1217,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     // Use TaskResourceContext so isTaskFiler() can read task.createdBy. The default
     // EntityResource.delete builds a generic ResourceContext that loads only owners/tags/domains,
     // which would leave createdBy null and prevent the filer-delete-own-task TaskAuthorPolicy
-    // rule from matching.
-    Task task = repository.get(uriInfo, id, getFields(FIELDS));
+    // rule from matching. Include.ALL so a hardDelete request can fetch a previously soft-deleted
+    // task for the authorization check.
+    Task task = repository.get(uriInfo, id, getFields(FIELDS), Include.ALL, false);
     OperationContext operationContext = new OperationContext(Entity.TASK, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, new TaskResourceContext(task));
     RestUtil.DeleteResponse<Task> response =
