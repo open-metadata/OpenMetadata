@@ -27,7 +27,7 @@ import org.openmetadata.sdk.services.drives.FolderService;
 /**
  * Integration tests for Folder entity operations.
  *
- * <p>Folder is a service-less drive entity at {@code /v1/drive/folders}. It supports owners,
+ * <p>Folder is a service-less Context Center entity at {@code /v1/contextCenter/drive/folders}. It supports owners,
  * tags, and domains, but does not expose version history, followers, custom extensions, or bulk
  * endpoints (see the {@code supports*} flags below). Extends BaseEntityIT so generic CRUD / tag /
  * domain coverage runs automatically.

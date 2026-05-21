@@ -340,7 +340,7 @@ const KPIWidget = ({
                 interval="preserveStartEnd"
                 tick={{ fill: '#888', fontSize: 12 }}
                 tickFormatter={(value: number) =>
-                  customFormatDateTime(value, 'dMMM, yy')
+                  customFormatDateTime(value, 'd MMM, yy')
                 }
                 tickLine={false}
                 tickMargin={10}
