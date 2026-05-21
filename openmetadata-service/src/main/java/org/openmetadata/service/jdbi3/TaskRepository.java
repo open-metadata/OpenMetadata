@@ -777,7 +777,18 @@ public class TaskRepository extends EntityRepository<Task> {
       if (incidentRequests.isEmpty()) {
         throw taskDenial;
       }
-      authorizer.authorizeRequests(securityContext, incidentRequests, AuthorizationLogic.ANY);
+      try {
+        authorizer.authorizeRequests(securityContext, incidentRequests, AuthorizationLogic.ANY);
+      } catch (AuthorizationException fallbackDenied) {
+        // Surface the original task-level denial so the client sees a consistent task permission
+        // error rather than an unrelated underlying-entity permission error. The fallback denial
+        // is logged at debug for diagnostics.
+        LOG.debug(
+            "Incident-fallback denied for task '{}': {}",
+            task.getId(),
+            fallbackDenied.getMessage());
+        throw taskDenial;
+      }
     }
 
     // Approval-style tasks (GlossaryApproval, RequestApproval, DataAccessRequest) intentionally
