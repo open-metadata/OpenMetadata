@@ -207,6 +207,27 @@ def test_combined_lineage_sql_prunes_query_history_by_date():
     assert "ah.QUERY_START_TIME" in cte_section
 
 
+def test_combined_lineage_left_joins_query_history_to_keep_edges_without_text():
+    """
+    ACCESS_HISTORY is the authoritative lineage source; QUERY_HISTORY only
+    enriches with query text. A LEFT JOIN + NULL guard keeps an edge even when
+    no QUERY_HISTORY row matches, while still excluding failed queries when one
+    does. The dbt/OpenMetadata noise filters are dropped — ACCESS_HISTORY only
+    surfaces queries that actually modified objects.
+    """
+    rendered = SNOWFLAKE_ACCESS_HISTORY_LINEAGE.format(
+        account_usage="SNOWFLAKE.ACCOUNT_USAGE",
+        start_time="2025-01-01",
+        end_time="2025-01-31",
+        filter_condition="",
+    )
+    assert "LEFT JOIN SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY" in rendered
+    assert "qh.QUERY_ID IS NULL" in rendered
+    assert "qh.EXECUTION_STATUS = 'SUCCESS'" in rendered
+    assert '"app": "dbt"' not in rendered
+    assert '"app": "OpenMetadata"' not in rendered
+
+
 def test_build_filter_condition_clause_empty_when_unset():
     src = _make_lineage_source()
     src.source_config.filterCondition = None
