@@ -102,11 +102,21 @@ const BotListV1 = ({
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const latestSearchRequest = useRef(0);
+  const botsByUserNameRef = useRef<Map<string, Bot>>(new Map());
 
-  const getBotIncludeFilter = useCallback(
-    () => (showDeleted ? Include.Deleted : Include.NonDeleted),
-    [showDeleted]
-  );
+  const loadBotsByUserNameMap = useCallback(async () => {
+    const { data } = await getBots({
+      limit: BOT_SEARCH_PAGE_SIZE,
+      include: showDeleted ? Include.Deleted : Include.NonDeleted,
+    });
+    const map = new Map<string, Bot>();
+    data.forEach((bot) => {
+      if (bot.name) {
+        map.set(bot.name.toLowerCase(), bot);
+      }
+    });
+    botsByUserNameRef.current = map;
+  }, [showDeleted]);
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () => getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.BOTS),
@@ -124,15 +134,6 @@ const BotListV1 = ({
     };
   }, []);
 
-  const fetchAllBots = useCallback(async () => {
-    const { data } = await getBots({
-      limit: BOT_SEARCH_PAGE_SIZE,
-      include: getBotIncludeFilter(),
-    });
-
-    return data;
-  }, [getBotIncludeFilter]);
-
   const searchBots = async (text: string): Promise<Bot[]> => {
     const term = text.trim();
 
@@ -141,7 +142,6 @@ const BotListV1 = ({
     }
 
     const wildcardPattern = `*${escapeESReservedCharacters(term)}*`;
-    const lowerTerm = term.toLowerCase();
 
     const response = await searchQuery({
       query: '',
@@ -149,7 +149,6 @@ const BotListV1 = ({
       pageSize: BOT_SEARCH_PAGE_SIZE,
       includeDeleted: showDeleted,
       searchIndex: SearchIndex.USER,
-      trackTotalHits: true,
       queryFilter: {
         query: {
           bool: {
@@ -170,33 +169,15 @@ const BotListV1 = ({
       },
     });
     const matchedUsers = formatUsersResponse(response.hits.hits);
-    const usersByBotName = new Map<string, User>(
-      matchedUsers
-        .filter((user): user is User & { name: string } => Boolean(user.name))
-        .map((user) => [user.name.toLowerCase(), user])
-    );
+    const botsByUserName = botsByUserNameRef.current;
 
-    const allBots = await fetchAllBots();
-    const matchedById = new Map<string, Bot>();
+    return matchedUsers.flatMap((user) => {
+      const bot = user.name
+        ? botsByUserName.get(user.name.toLowerCase())
+        : undefined;
 
-    allBots.forEach((bot) => {
-      if (!bot.id || !bot.name) {
-        return;
-      }
-
-      const botKey = bot.name.toLowerCase();
-      const matchedUser = usersByBotName.get(botKey);
-      const matchesBotFields =
-        botKey.includes(lowerTerm) ||
-        bot.displayName?.toLowerCase().includes(lowerTerm) ||
-        bot.description?.toLowerCase().includes(lowerTerm);
-
-      if (matchedUser || matchesBotFields) {
-        matchedById.set(bot.id, enrichBotWithMatchedUser(bot, matchedUser));
-      }
+      return bot ? [enrichBotWithMatchedUser(bot, user)] : [];
     });
-
-    return Array.from(matchedById.values());
   };
 
   const runActiveSearch = async (activeSearchTerm: string) => {
@@ -400,6 +381,11 @@ const BotListV1 = ({
       fetchBots(showDeleted);
     }
   }, [pageSize, showDeleted, pagingCursor]);
+
+  // Build bot-user → bot map once for search resolution
+  useEffect(() => {
+    loadBotsByUserNameMap();
+  }, [loadBotsByUserNameMap]);
 
   const addBotLabel = t('label.add-entity', { entity: t('label.bot') });
 

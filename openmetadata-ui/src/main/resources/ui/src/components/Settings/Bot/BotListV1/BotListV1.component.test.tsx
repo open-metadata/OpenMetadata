@@ -153,15 +153,15 @@ describe('BotListV1', () => {
     await waitFor(() => {
       const searchCall = mockSearchQuery.mock.calls.find((call) => {
         const arg = call[0] as { query?: string; queryFilter?: unknown };
+        const filterStr = JSON.stringify(arg.queryFilter);
 
         return (
           arg.query === '' &&
-          typeof arg.queryFilter === 'object' &&
-          JSON.stringify(arg.queryFilter).includes('*testbot*') &&
-          JSON.stringify(arg.queryFilter).includes('email.keyword') &&
-          JSON.stringify(arg.queryFilter).includes('name.keyword') &&
-          JSON.stringify(arg.queryFilter).includes('displayName.keyword') &&
-          JSON.stringify(arg.queryFilter).includes('fullyQualifiedName.keyword')
+          filterStr.includes('*testbot*') &&
+          filterStr.includes('email.keyword') &&
+          filterStr.includes('name.keyword') &&
+          filterStr.includes('displayName.keyword') &&
+          filterStr.includes('fullyQualifiedName.keyword')
         );
       });
 
@@ -189,29 +189,5 @@ describe('BotListV1', () => {
     });
 
     expect(await screen.findByTestId('bot-link-testbots')).toBeInTheDocument();
-  });
-
-  it('matches bots by client-side field when bot user does not match', async () => {
-    mockSearchQuery.mockResolvedValue({
-      hits: {
-        total: { value: 0 },
-        hits: [],
-      },
-    } as unknown as Awaited<ReturnType<typeof searchQuery>>);
-
-    render(<BotListV1 {...mockProps} />, { wrapper: MemoryRouter });
-
-    const searchInput = await screen.findByTestId('searchbar');
-
-    await act(async () => {
-      fireEvent.change(searchInput, {
-        target: { value: 'AutoClassification' },
-      });
-    });
-
-    // Server returns 0 user hits; client-side bot.displayName match should find it.
-    expect(
-      await screen.findByTestId('bot-link-AutoClassificationBot')
-    ).toBeInTheDocument();
   });
 });
