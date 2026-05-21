@@ -36,55 +36,60 @@ import org.openmetadata.service.jdbi3.TableRepository;
 
 class TaskResourceContextTest {
 
-  private static EntityReference tableOwnerRef;
-  private static EntityReference tableRef;
+  // Use a synthetic entity type so the test does not clobber the real TableRepository
+  // registration in the shared static Entity.ENTITY_REPOSITORY_MAP. Other tests running in the
+  // same JVM continue to see the real Table repository.
+  private static final String TARGET_ENTITY_TYPE = "task-context-test-target";
+
+  private static EntityReference targetOwnerRef;
+  private static EntityReference targetRef;
   private static EntityReference taskAssigneeRef;
   private static EntityReference taskFilerRef;
 
   @BeforeAll
   static void setup() throws Exception {
-    TableRepository tableRepository = mock(TableRepository.class);
-    Mockito.when(tableRepository.getEntityType()).thenReturn(Entity.TABLE);
-    Entity.registerEntity(Table.class, Entity.TABLE, tableRepository);
+    TableRepository targetRepository = mock(TableRepository.class);
+    Mockito.when(targetRepository.getEntityType()).thenReturn(TARGET_ENTITY_TYPE);
+    Entity.registerEntity(Table.class, TARGET_ENTITY_TYPE, targetRepository);
 
-    tableOwnerRef =
+    targetOwnerRef =
         new EntityReference()
             .withId(UUID.randomUUID())
             .withType(Entity.USER)
-            .withName("tableOwner");
+            .withName("targetOwner");
 
-    Table table =
+    Table target =
         new Table()
             .withId(UUID.randomUUID())
-            .withName("tableName")
-            .withFullyQualifiedName("svc.db.schema.tableName")
-            .withOwners(List.of(tableOwnerRef));
-    tableRef =
+            .withName("target")
+            .withFullyQualifiedName("svc.db.schema.target")
+            .withOwners(List.of(targetOwnerRef));
+    targetRef =
         new EntityReference()
-            .withId(table.getId())
-            .withType(Entity.TABLE)
-            .withName(table.getName())
-            .withFullyQualifiedName(table.getFullyQualifiedName());
+            .withId(target.getId())
+            .withType(TARGET_ENTITY_TYPE)
+            .withName(target.getName())
+            .withFullyQualifiedName(target.getFullyQualifiedName());
 
     EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.TABLE, table.getId()), JsonUtils.pojoToJson(table));
+        new ImmutablePair<>(TARGET_ENTITY_TYPE, target.getId()), JsonUtils.pojoToJson(target));
 
     // Repository.getOwners(reference) → returns the entity's owners
-    Mockito.when(tableRepository.getOwners(any(EntityReference.class)))
-        .thenReturn(table.getOwners());
-    Mockito.when(tableRepository.find(any(UUID.class), any()))
+    Mockito.when(targetRepository.getOwners(any(EntityReference.class)))
+        .thenReturn(target.getOwners());
+    Mockito.when(targetRepository.find(any(UUID.class), any()))
         .thenAnswer(
             i ->
                 JsonUtils.readValue(
                     EntityRepository.CACHE_WITH_ID.get(
-                        new ImmutablePair<>(Entity.TABLE, i.getArgument(0))),
+                        new ImmutablePair<>(TARGET_ENTITY_TYPE, i.getArgument(0))),
                     Table.class));
-    Mockito.when(tableRepository.findByName(anyString(), any()))
+    Mockito.when(targetRepository.findByName(anyString(), any()))
         .thenAnswer(
             i ->
                 JsonUtils.readValue(
                     EntityRepository.CACHE_WITH_NAME.get(
-                        new ImmutablePair<>(Entity.TABLE, i.getArgument(0))),
+                        new ImmutablePair<>(TARGET_ENTITY_TYPE, i.getArgument(0))),
                     Table.class));
 
     taskAssigneeRef =
@@ -102,7 +107,7 @@ class TaskResourceContextTest {
         new Task()
             .withId(UUID.randomUUID())
             .withName("test-task")
-            .withAbout(tableRef)
+            .withAbout(targetRef)
             .withCreatedBy(taskFilerRef)
             .withAssignees(List.of(taskAssigneeRef));
 
@@ -111,7 +116,7 @@ class TaskResourceContextTest {
 
     assertNotNull(owners);
     assertEquals(1, owners.size(), "Owners must come from the target entity only");
-    assertEquals(tableOwnerRef.getId(), owners.get(0).getId());
+    assertEquals(targetOwnerRef.getId(), owners.get(0).getId());
     assertTrue(
         owners.stream().noneMatch(o -> o.getId().equals(taskAssigneeRef.getId())),
         "Task assignees must not be exposed as owners");

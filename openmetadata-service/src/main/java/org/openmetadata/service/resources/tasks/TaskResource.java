@@ -128,6 +128,19 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         Entity.TASK, "assignees", MetadataOperation.REASSIGN_TASK);
     ResourceRegistry.mapEntityFieldOperation(
         Entity.TASK, "priority", MetadataOperation.REASSIGN_TASK);
+    // PATCH on status / resolution / approvedBy / approvedAt must require ResolveTask. Without
+    // this, the filer's EditAll allow rule would let them PATCH /status to a terminal value
+    // (Approved, Rejected, …) and bypass the self-approval deny on ResolveTask. The dedicated
+    // /resolve endpoint and the bulk Approve/Reject path remain the only state-transition routes.
+    ResourceRegistry.mapEntityFieldOperation(Entity.TASK, "status", MetadataOperation.RESOLVE_TASK);
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, "resolution", MetadataOperation.RESOLVE_TASK);
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, "approvedBy", MetadataOperation.RESOLVE_TASK);
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, "approvedById", MetadataOperation.RESOLVE_TASK);
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, "approvedAt", MetadataOperation.RESOLVE_TASK);
   }
 
   @Override
