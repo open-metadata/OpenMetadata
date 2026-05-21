@@ -263,7 +263,6 @@ function getColumnLineageCoordinates(
   };
 }
 
-
 function getEntityLineageCoordinates(
   sourceNode: Node,
   targetNode: Node,
@@ -280,14 +279,30 @@ function getEntityLineageCoordinates(
     node.data?.node?.isTempTable
       ? COLUMN_LAYER_TEMP_ENTITY_EDGE_Y_OFFSET
       : COLUMN_LAYER_ENTITY_EDGE_Y_OFFSET;
-  const sourceYOffset = isColumnLayerActive ? getColumnLayerYOffset(sourceNode) : 0;
-  const targetYOffset = isColumnLayerActive ? getColumnLayerYOffset(targetNode) : 0;
+  const sourceYOffset = isColumnLayerActive
+    ? getColumnLayerYOffset(sourceNode)
+    : 0;
+  const targetYOffset = isColumnLayerActive
+    ? getColumnLayerYOffset(targetNode)
+    : 0;
 
   return {
     sourceX: sourceNode.position.x + (sourceNode.width ?? 0),
-    sourceY: sourceNode.position.y + sourceHeight / 2 - sourceYOffset,
+    // sourceY: sourceNode.position.y + sourceHeight / 2 - sourceYOffset,
     targetX: targetNode.position.x - 10,
-    targetY: targetNode.position.y + targetHeight / 2 - targetYOffset,
+    // targetY: targetNode.position.y + targetHeight / 2 - targetYOffset,
+
+    sourceY:
+      sourceNode.position.y +
+      (isColumnLayerActive && sourceNode.data?.node?.isTempTable
+        ? 25
+        : sourceHeight / 2 - sourceYOffset),
+
+    targetY:
+      targetNode.position.y +
+      (isColumnLayerActive && targetNode.data?.node?.isTempTable
+        ? 25
+        : targetHeight / 2 - targetYOffset),
   };
 }
 
@@ -615,7 +630,9 @@ function getCacheKey(
   const tgtCols =
     (targetNode && columnsInCurrentPages?.get(targetNode.id)?.join(',')) ?? '';
 
-  return `${edgeId}|${sourcePos}|${targetPos}|${srcCols}|${tgtCols}|${isColumnLevelLineage ? 'column' : 'entity'}`;
+  return `${edgeId}|${sourcePos}|${targetPos}|${srcCols}|${tgtCols}|${
+    isColumnLevelLineage ? 'column' : 'entity'
+  }`;
 }
 
 export const computePathDataForEdge = (
