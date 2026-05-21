@@ -12,7 +12,7 @@
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
-import { ComponentType, act } from 'react';
+import { act, ComponentType } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { APP_MODE_STORAGE_KEY } from '../../constants/appMode.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -59,9 +59,8 @@ jest.mock('../../pages/SignUp/SignUpPage', () => ({
 jest.mock('../../utils/ApplicationRoutesClassBase', () => ({
   __esModule: true,
   default: {
-    getUnAuthenticatedRouteElements: () => () => (
-      <div data-testid="unauthenticated-router" />
-    ),
+    getUnAuthenticatedRouteElements: () => () =>
+      <div data-testid="unauthenticated-router" />,
   },
 }));
 
@@ -171,6 +170,7 @@ describe('AppRouter — App Mode routing integration', () => {
     await waitFor(() => {
       expect(screen.getByTestId('custom-mode-routes')).toBeInTheDocument();
     });
+
     expect(
       screen.queryByTestId('default-authenticated-routes')
     ).not.toBeInTheDocument();

@@ -117,6 +117,7 @@ describe('writeAppMode', () => {
     writeAppMode('ai');
 
     expect(handler).toHaveBeenCalledTimes(1);
+
     globalThis.window.removeEventListener(APP_MODE_CHANGE_EVENT, handler);
   });
 
@@ -158,6 +159,7 @@ describe('clearAppMode', () => {
     clearAppMode();
 
     expect(handler).toHaveBeenCalledTimes(1);
+
     const event = handler.mock.calls[0][0] as CustomEvent<{ mode: string }>;
 
     expect(event.detail.mode).toBe(DEFAULT_APP_MODE);

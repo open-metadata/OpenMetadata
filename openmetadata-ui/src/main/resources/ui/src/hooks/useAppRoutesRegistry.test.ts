@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ComponentType, act } from 'react';
+import { act, ComponentType } from 'react';
 import { useAppRoutesRegistry } from './useAppRoutesRegistry';
 
 const FakeRoutes: ComponentType = () => null;
