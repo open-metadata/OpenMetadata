@@ -186,10 +186,23 @@ public class MigrationUtil {
   }
 
   private List<String[]> readThreadTaskBatch(int limit) {
+    // Catches three "no domains" states:
+    //   1. key missing               → JSON_EXTRACT / -> returns SQL NULL
+    //   2. "domains": null           → JSON_TYPE = 'NULL' / jsonb_typeof = 'null'
+    //   3. (intentional no-op once $.domains = [] is written by the migration)
+    // Without case 2 the migration silently skips tasks where Jackson serialized
+    // a null domains field — which is the default for any task created before
+    // CreateApprovalTaskImpl was patched to set .withDomains(...).
     String whereClause =
         connectionType == ConnectionType.MYSQL
-            ? "WHERE type = 'Task' AND JSON_EXTRACT(json, '$.domains') IS NULL"
-            : "WHERE type = 'Task' AND json->'domains' IS NULL";
+            ? "WHERE type = 'Task' AND ("
+                + "JSON_EXTRACT(json, '$.domains') IS NULL "
+                + "OR JSON_TYPE(JSON_EXTRACT(json, '$.domains')) = 'NULL'"
+                + ")"
+            : "WHERE type = 'Task' AND ("
+                + "json->'domains' IS NULL "
+                + "OR jsonb_typeof(json->'domains') = 'null'"
+                + ")";
     return handle
         .createQuery(
             "SELECT id, json FROM thread_entity "
