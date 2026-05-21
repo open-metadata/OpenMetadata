@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -37,10 +37,21 @@ public class MigrationUtil {
    * through {@link EntityRepository#get} for every task would re-load the entity and re-walk its
    * inheritance chain. This cache shortens the lookup to a Map probe for the common case.
    *
-   * <p>The migration runs single-threaded on startup, so a plain {@link HashMap} is sufficient; the
-   * cache lives for the lifetime of the JVM but only grows during the v200 step.
+   * <p>Bounded LRU via {@link LinkedHashMap#removeEldestEntry} so a pathological install with
+   * millions of unique target entities cannot OOM the migration step. Cached lists are wrapped
+   * unmodifiable so a downstream caller mutating the returned list cannot corrupt the cache.
+   *
+   * <p>The migration runs single-threaded on startup so no synchronization is required.
    */
-  private static final Map<String, List<EntityReference>> DOMAIN_CACHE = new HashMap<>();
+  private static final int DOMAIN_CACHE_MAX_SIZE = 10_000;
+
+  private static final Map<String, List<EntityReference>> DOMAIN_CACHE =
+      new LinkedHashMap<>(16, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, List<EntityReference>> eldest) {
+          return size() > DOMAIN_CACHE_MAX_SIZE;
+        }
+      };
 
   private MigrationUtil() {}
 
@@ -1133,8 +1144,11 @@ public class MigrationUtil {
         DOMAIN_CACHE.put(cacheKey, Collections.emptyList());
         return Collections.emptyList();
       }
+      // Wrap unmodifiable so a downstream mutation cannot corrupt the shared cache entry.
       List<EntityReference> domains =
-          ei.getDomains() == null ? Collections.emptyList() : ei.getDomains();
+          ei.getDomains() == null
+              ? Collections.emptyList()
+              : Collections.unmodifiableList(ei.getDomains());
       DOMAIN_CACHE.put(cacheKey, domains);
       return domains;
     } catch (Exception e) {
