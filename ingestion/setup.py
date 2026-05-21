@@ -20,7 +20,7 @@ from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==3.1.7",
+    "airflow": "apache-airflow==3.2.1",
     "adlfs": "adlfs>=2023.1.0",
     "aiobotocore": "aiobotocore~=2.26.0",
     "avro": "avro>=1.11.4,<1.12",
@@ -29,7 +29,7 @@ VERSIONS = {
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
     "google-cloud-storage": "google-cloud-storage>=1.43.0",
-    "gcsfs": "gcsfs~=2023.12.1",
+    "gcsfs": "gcsfs~=2026.3",
     "great-expectations": "great-expectations~=0.18.0",
     "great-expectations-1xx": "great-expectations~=1.0",
     "grpc-tools": "grpcio-tools>=1.47.2",
@@ -71,7 +71,7 @@ VERSIONS = {
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "google-cloud-pubsub": "google-cloud-pubsub>=2.0.0",
     "pyathena": "pyathena~=3.25.0",
-    "s3fs": "s3fs~=2023.12.1",
+    "s3fs": "s3fs~=2026.3",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.15.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
     "asammdf": "asammdf~=7.4.5",

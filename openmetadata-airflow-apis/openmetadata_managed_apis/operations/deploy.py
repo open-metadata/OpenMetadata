@@ -17,8 +17,8 @@ from typing import Dict
 import airflow
 from airflow import DAG, settings
 from airflow.models import DagModel
-from flask import escape
 from jinja2 import Template
+from markupsafe import escape
 from openmetadata_managed_apis.api.config import (
     AIRFLOW_DAGS_FOLDER,
     DAG_GENERATED_CONFIGS,

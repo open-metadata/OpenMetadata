@@ -16,7 +16,8 @@ import traceback
 from typing import Callable, Optional
 
 import requests
-from flask import Blueprint, escape
+from flask import Blueprint
+from markupsafe import escape
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.utils.logger import routes_logger
 from requests.exceptions import ConnectionError
