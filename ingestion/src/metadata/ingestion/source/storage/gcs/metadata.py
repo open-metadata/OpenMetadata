@@ -298,7 +298,7 @@ class GcsSource(StorageServiceSource):
         if archive_entity is None:
             logger.warning(f"Archive container {archive_fqn!r} not found after creation; skipping children")
             return
-        archive_ref = EntityReference(id=archive_entity.id.root, type="container")
+        archive_ref = EntityReference(id=archive_entity.id.root, type="container")  # pyright: ignore[reportCallIssue]
 
         client = self.gcs_clients.storage_client.clients[bucket_response.project_id]
         bucket_client = client.bucket(bucket_name)
