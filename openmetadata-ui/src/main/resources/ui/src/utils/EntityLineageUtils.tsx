@@ -1736,58 +1736,9 @@ export const parseLineageData = (
     ? finalEdges.filter((e) => !e.tempLineageTables?.length)
     : finalEdges;
 
-  const testTempNode1: LineageNodeType = {
-    id: 'temp_test_upstream_1',
-    name: 'temp_upstream_source',
-    displayName: 'Temp Upstream Source',
-    fullyQualifiedName: 'temp_upstream_source',
-    type: EntityType.TABLE,
-    entityType: EntityType.TABLE,
-    isTempTable: true,
-    columns: [],
-  };
-  const testTempNode2: LineageNodeType = {
-    id: 'temp_test_downstream_1',
-    name: 'temp_downstream_target',
-    displayName: 'Temp Downstream Target',
-    fullyQualifiedName: 'temp_downstream_target',
-    type: EntityType.TABLE,
-    entityType: EntityType.TABLE,
-    isTempTable: true,
-    columns: [],
-  };
-  const testTempEdges: EdgeDetails[] = entity
-    ? [
-        {
-          fromEntity: {
-            id: testTempNode1.id,
-            type: EntityType.TABLE,
-            fullyQualifiedName: testTempNode1.fullyQualifiedName,
-          },
-          toEntity: {
-            id: entity.id,
-            type: EntityType.TABLE,
-            fullyQualifiedName: entity.fullyQualifiedName,
-          },
-        },
-        {
-          fromEntity: {
-            id: entity.id,
-            type: EntityType.TABLE,
-            fullyQualifiedName: entity.fullyQualifiedName,
-          },
-          toEntity: {
-            id: testTempNode2.id,
-            type: EntityType.TABLE,
-            fullyQualifiedName: testTempNode2.fullyQualifiedName,
-          },
-        },
-      ]
-    : [];
-
   return {
-    nodes: [...finalNodes, ...tempNodes, testTempNode1, testTempNode2],
-    edges: [...baseEdges, ...tempEdges, ...testTempEdges],
+    nodes: [...finalNodes, ...tempNodes],
+    edges: [...baseEdges, ...tempEdges],
     entity,
   };
 };
