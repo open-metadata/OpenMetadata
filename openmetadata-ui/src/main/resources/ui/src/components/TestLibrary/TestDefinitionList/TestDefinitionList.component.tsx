@@ -231,7 +231,9 @@ const TestDefinitionList = () => {
         setPermissionLoading(true);
 
         if (!definitions.length) {
-          setTestDefinitionPermissions({});
+          if (requestId === latestRequestRef.current) {
+            setTestDefinitionPermissions({});
+          }
 
           return;
         }
@@ -265,7 +267,9 @@ const TestDefinitionList = () => {
           setTestDefinitionPermissions(permissionsMap);
         }
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        if (requestId === latestRequestRef.current) {
+          showErrorToast(error as AxiosError);
+        }
       } finally {
         if (requestId === latestRequestRef.current) {
           setPermissionLoading(false);
@@ -315,14 +319,14 @@ const TestDefinitionList = () => {
 
   useEffect(() => {
     handlePageChange(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery]);
+  }, [searchQuery, urlParams.entityType, urlParams.testPlatforms]);
 
   const filteredTestDefinitions = useMemo(() => {
     if (!searchQuery) {
       return [...testDefinitions].sort((a, b) => {
         const nameA = a.displayName || a.name || '';
         const nameB = b.displayName || b.name || '';
+
         return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
       });
     }
@@ -339,20 +343,30 @@ const TestDefinitionList = () => {
     return [...filtered].sort((a, b) => {
       const nameA = a.displayName || a.name || '';
       const nameB = b.displayName || b.name || '';
+
       return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
     });
   }, [testDefinitions, searchQuery]);
 
+  const maxPage = useMemo(() => {
+    return Math.max(1, Math.ceil(filteredTestDefinitions.length / pageSize));
+  }, [filteredTestDefinitions.length, pageSize]);
+
+  useEffect(() => {
+    if (currentPage > maxPage) {
+      handlePageChange(maxPage);
+    }
+  }, [maxPage, currentPage, handlePageChange]);
+
   const slicedData = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
+
     return filteredTestDefinitions.slice(start, start + pageSize);
   }, [filteredTestDefinitions, currentPage, pageSize]);
 
   useEffect(() => {
-    if (slicedData.length > 0) {
-      latestRequestRef.current += 1;
-      fetchTestDefinitionPermissions(slicedData, latestRequestRef.current);
-    }
+    latestRequestRef.current += 1;
+    fetchTestDefinitionPermissions(slicedData, latestRequestRef.current);
   }, [slicedData, fetchTestDefinitionPermissions]);
 
   const handleEnableToggle = async (
