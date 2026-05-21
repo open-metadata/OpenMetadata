@@ -40,6 +40,9 @@ export interface EdgeCoordinates {
   targetY: number;
 }
 
+const COLUMN_LAYER_ENTITY_EDGE_Y_OFFSET = 2;
+const COLUMN_LAYER_TEMP_ENTITY_EDGE_Y_OFFSET = 1;
+
 export function setupCanvas(
   canvas: HTMLCanvasElement,
   width: number,
@@ -132,6 +135,18 @@ export function getNodeHeight(
   return height;
 }
 
+function resolveLineageNodeHeight(
+  node: Node,
+  isColumnLineage: boolean,
+  columnCount = 0
+): number {
+  if (node.data?.node?.isTempTable) {
+    return node.height ?? 0;
+  }
+
+  return getNodeHeight(node, isColumnLineage, columnCount);
+}
+
 interface ColumnLineageData {
   columnIds: string[];
   columnIndex: number;
@@ -221,8 +236,8 @@ function getColumnLineageCoordinates(
 
   // Passing column count as 0 since we don't want to consider columns
   // we are calculating column position separately
-  const sourceNodeHeight = getNodeHeight(sourceNode, false, 0);
-  const targetNodeHeight = getNodeHeight(targetNode, false, 0);
+  const sourceNodeHeight = resolveLineageNodeHeight(sourceNode, false, 0);
+  const targetNodeHeight = resolveLineageNodeHeight(targetNode, false, 0);
 
   const sourceY = calculateColumnPosition(
     sourceData.columnIndex,
@@ -251,16 +266,43 @@ function getColumnLineageCoordinates(
 function getEntityLineageCoordinates(
   sourceNode: Node,
   targetNode: Node,
-  _isColumnLineage: boolean
+  isColumnLineage: boolean
 ): EdgeCoordinates {
-  const sourceHeight = sourceNode.height ?? 0;
-  const targetHeight = targetNode.height ?? 0;
+  const isColumnLayerActive = useLineageStore.getState().isColumnLevelLineage;
+  const sourceHeight = isColumnLayerActive
+    ? getNodeHeight(sourceNode, false, 0)
+    : resolveLineageNodeHeight(sourceNode, isColumnLineage, 0);
+  const targetHeight = isColumnLayerActive
+    ? getNodeHeight(targetNode, false, 0)
+    : resolveLineageNodeHeight(targetNode, isColumnLineage, 0);
+  const getColumnLayerYOffset = (node: Node) =>
+    node.data?.node?.isTempTable
+      ? COLUMN_LAYER_TEMP_ENTITY_EDGE_Y_OFFSET
+      : COLUMN_LAYER_ENTITY_EDGE_Y_OFFSET;
+  const sourceYOffset = isColumnLayerActive
+    ? getColumnLayerYOffset(sourceNode)
+    : 0;
+  const targetYOffset = isColumnLayerActive
+    ? getColumnLayerYOffset(targetNode)
+    : 0;
 
   return {
     sourceX: sourceNode.position.x + (sourceNode.width ?? 0),
-    sourceY: sourceNode.position.y + sourceHeight / 2,
+    // sourceY: sourceNode.position.y + sourceHeight / 2 - sourceYOffset,
     targetX: targetNode.position.x - 10,
-    targetY: targetNode.position.y + targetHeight / 2,
+    // targetY: targetNode.position.y + targetHeight / 2 - targetYOffset,
+
+    sourceY:
+      sourceNode.position.y +
+      (isColumnLayerActive && sourceNode.data?.node?.isTempTable
+        ? 25
+        : sourceHeight / 2 - sourceYOffset),
+
+    targetY:
+      targetNode.position.y +
+      (isColumnLayerActive && targetNode.data?.node?.isTempTable
+        ? 25
+        : targetHeight / 2 - targetYOffset),
   };
 }
 
@@ -574,7 +616,8 @@ function getCacheKey(
   edgeId: string,
   sourceNode?: Node,
   targetNode?: Node,
-  columnsInCurrentPages?: Map<string, string[]>
+  columnsInCurrentPages?: Map<string, string[]>,
+  isColumnLevelLineage?: boolean
 ): string {
   const sourcePos = sourceNode
     ? `${sourceNode.position.x},${sourceNode.position.y},${sourceNode.width},${sourceNode.height}`
@@ -587,7 +630,9 @@ function getCacheKey(
   const tgtCols =
     (targetNode && columnsInCurrentPages?.get(targetNode.id)?.join(',')) ?? '';
 
-  return `${edgeId}|${sourcePos}|${targetPos}|${srcCols}|${tgtCols}`;
+  return `${edgeId}|${sourcePos}|${targetPos}|${srcCols}|${tgtCols}|${
+    isColumnLevelLineage ? 'column' : 'entity'
+  }`;
 }
 
 export const computePathDataForEdge = (
@@ -604,7 +649,8 @@ export const computePathDataForEdge = (
     edge.id,
     sourceNode,
     targetNode,
-    columnsInCurrentPages
+    columnsInCurrentPages,
+    useLineageStore.getState().isColumnLevelLineage
   );
   const cached = pathDataCache.get(cacheKey);
   if (cached) {
