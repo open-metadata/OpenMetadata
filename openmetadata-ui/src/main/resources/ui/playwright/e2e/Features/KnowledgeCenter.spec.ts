@@ -763,7 +763,7 @@ test.describe('Knowledge Center', () => {
     expect(responseData.hits.total.value).toBeGreaterThan(0);
 
     await expect(page.getByTestId('search-dropdown-Data Assets')).toContainText(
-      'Data Assets: page'
+      'Data Assets: (1)'
     );
 
     await expect(
