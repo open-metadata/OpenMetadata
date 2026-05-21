@@ -19,7 +19,15 @@ jest.mock(
   () => jest.fn(() => <div data-testid="error-placeholder" />)
 );
 
+jest.mock(
+  '../../../components/common/ProfilePicture/ProfilePicture',
+  () => jest.fn(() => <div data-testid="profile-picture" />)
+);
+
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <span>{children}</span>
+  )),
   Card: jest.fn(
     ({
       children,
@@ -29,6 +37,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       'data-testid'?: string;
     }) => <div data-testid={testId}>{children}</div>
   ),
+  Dot: jest.fn(() => <span />),
   Dropdown: {
     Root: jest.fn(({ children }: { children: React.ReactNode }) => (
       <div>{children}</div>
@@ -40,9 +49,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     Menu: jest.fn(({ children }: { children: React.ReactNode }) => (
       <div>{children}</div>
     )),
-    Item: jest.fn(({ id, label }: { id: string; label: string }) => (
-      <button data-testid={`dropdown-item-${id}`}>{label}</button>
-    )),
+    Item: jest.fn(
+      ({ id, children }: { id: string; children: React.ReactNode }) => (
+        <button data-testid={`dropdown-item-${id}`}>{children}</button>
+      )
+    ),
   },
   Skeleton: jest.fn(() => <div data-testid="skeleton" />),
   Tooltip: jest.fn(({ children }: { children: React.ReactNode }) => (
@@ -78,7 +89,7 @@ describe('MemoriesView', () => {
   it('renders the memories view container', () => {
     render(<MemoriesView data={mockMemories} isLoading={false} />);
 
-    expect(screen.getByTestId('memories-view')).toBeInTheDocument();
+    expect(screen.getByTestId('memory-row-mem-1')).toBeInTheDocument();
   });
 
   it('renders a row for each memory when data is provided', () => {
@@ -88,11 +99,12 @@ describe('MemoriesView', () => {
     expect(screen.getByTestId('memory-row-mem-2')).toBeInTheDocument();
   });
 
-  it('renders title when provided, falling back to question', () => {
+  it('renders title when provided, falling back to name', () => {
     render(<MemoriesView data={mockMemories} isLoading={false} />);
 
     expect(screen.getByText('My First Memory')).toBeInTheDocument();
-    expect(screen.getByText('What is a pipeline?')).toBeInTheDocument();
+    // mem-2 has no title, falls back to name
+    expect(screen.getByText('pipeline-memory')).toBeInTheDocument();
   });
 
   it('renders the answer text', () => {

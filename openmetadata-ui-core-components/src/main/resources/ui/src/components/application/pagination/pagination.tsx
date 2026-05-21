@@ -1,4 +1,3 @@
-import { ArrowLeft, ArrowRight } from '@untitledui/icons';
 import {
   ButtonGroup,
   ButtonGroupItem,
@@ -6,6 +5,7 @@ import {
 import { Button } from '@/components/base/buttons/button';
 import { useBreakpoint } from '@/hooks/use-breakpoint';
 import { cx } from '@/utils/cx';
+import { ArrowLeft, ArrowRight } from '@untitledui/icons';
 import type { PaginationRootProps } from './pagination-base';
 import { Pagination } from './pagination-base';
 
@@ -69,7 +69,7 @@ const MobilePagination = ({
         color="secondary"
         iconLeading={ArrowLeft}
         size="sm"
-        onClick={() => onPageChange?.(Math.max(0, page - 1))}
+        onClick={() => onPageChange?.(Math.max(1, page - 1))}
       />
 
       <span className="tw:text-sm tw:text-fg-secondary">
@@ -333,7 +333,7 @@ export const PaginationCardMinimal = ({
             color="secondary"
             isDisabled={page === 1}
             size="sm"
-            onClick={() => onPageChange?.(Math.max(0, page - 1))}>
+            onClick={() => onPageChange?.(Math.max(1, page - 1))}>
             Previous
           </Button>
 

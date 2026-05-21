@@ -20,10 +20,10 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Clock, Edit01, Eye, Trash01 } from '@untitledui/icons';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { MemoriesViewProps, MemoryItem } from './MemoriesView.interface';

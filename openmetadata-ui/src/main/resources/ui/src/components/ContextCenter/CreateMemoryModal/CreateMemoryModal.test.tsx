@@ -15,6 +15,8 @@ import CreateMemoryModal from './CreateMemoryModal.component';
 
 jest.mock('../../../rest/contextMemoryAPI', () => ({
   createContextMemory: jest.fn(),
+  updateContextMemory: jest.fn(),
+  deleteContextMemory: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -22,7 +24,55 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
+jest.mock('../../../utils/SearchClassBase', () => ({
+  getEntityIcon: jest.fn(() => null),
+}));
+
+jest.mock('../../../utils/TagClassBase', () => ({
+  getTags: jest.fn(() => Promise.resolve({ data: [], paging: {} })),
+}));
+
+jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  formatDate: jest.fn(() => 'Jan 1, 2026'),
+}));
+
+jest.mock(
+  '../../../components/common/PopOverCard/UserPopOverCard',
+  () =>
+    jest.fn(({ userName }: { userName: string }) => (
+      <span>{userName}</span>
+    ))
+);
+
+jest.mock(
+  '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetSelectList',
+  () => jest.fn(() => <div data-testid="data-asset-select-list" />)
+);
+
+jest.mock(
+  '../../../components/Tag/TagsSelectForm/TagsSelectForm.component',
+  () => jest.fn(() => <div data-testid="tag-select-form" />)
+);
+
+jest.mock('antd', () => ({
+  ConfigProvider: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  )),
+  Form: Object.assign(
+    jest.fn(({ children }: { children: React.ReactNode }) => (
+      <form>{children}</form>
+    )),
+    { Item: jest.fn(({ children }: { children: React.ReactNode }) => <>{children}</>) }
+  ),
+}));
+
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <span>{children}</span>
+  )),
+  BadgeWithButton: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <span>{children}</span>
+  )),
   Button: jest.fn(
     ({
       children,
@@ -32,6 +82,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onClick?: () => void;
     }) => <button onClick={onClick}>{children}</button>
   ),
+  ButtonUtility: jest.fn(({ onClick }: { onClick?: () => void }) => (
+    <button onClick={onClick}>x</button>
+  )),
+  Card: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
   Dialog: Object.assign(
     jest.fn(({ children }: { children: React.ReactNode }) => (
       <div>{children}</div>
@@ -42,6 +98,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       )),
     }
   ),
+  Dot: jest.fn(() => <span />),
   Input: jest.fn(
     ({
       'data-testid': testId,
@@ -50,19 +107,37 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     }: {
       'data-testid'?: string;
       value?: string;
-      onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    }) => <input data-testid={testId} value={value} onChange={onChange} />
+      onChange?: (val: string) => void;
+    }) => (
+      <input
+        data-testid={testId}
+        value={value}
+        onChange={(e) => onChange?.(e.target.value)}
+      />
+    )
   ),
   Modal: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
-  ModalOverlay: jest.fn(({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  )),
+  ModalOverlay: jest.fn(
+    ({
+      children,
+      isOpen,
+    }: {
+      children: React.ReactNode;
+      isOpen?: boolean;
+    }) => (isOpen ? <div>{children}</div> : null)
+  ),
   Select: Object.assign(
-    jest.fn(({ children }: { children: React.ReactNode }) => (
-      <div>{children}</div>
-    )),
+    jest.fn(
+      ({
+        'data-testid': testId,
+        children,
+      }: {
+        'data-testid'?: string;
+        children?: React.ReactNode;
+      }) => <div data-testid={testId}>{children}</div>
+    ),
     {
       Item: jest.fn(({ label }: { label: string }) => <option>{label}</option>),
     }
@@ -75,8 +150,14 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     }: {
       'data-testid'?: string;
       value?: string;
-      onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-    }) => <textarea data-testid={testId} value={value} onChange={onChange} />
+      onChange?: (val: string) => void;
+    }) => (
+      <textarea
+        data-testid={testId}
+        value={value}
+        onChange={(e) => onChange?.(e.target.value)}
+      />
+    )
   ),
   Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
@@ -90,11 +171,10 @@ describe('CreateMemoryModal', () => {
     onCreated: jest.fn(),
   };
 
-  it('renders question and answer inputs', () => {
+  it('renders the content input', () => {
     render(<CreateMemoryModal {...defaultProps} />);
 
-    expect(screen.getByTestId('memory-question-input')).toBeInTheDocument();
-    expect(screen.getByTestId('memory-answer-input')).toBeInTheDocument();
+    expect(screen.getByTestId('memory-content-input')).toBeInTheDocument();
   });
 
   it('renders title and type inputs', () => {
