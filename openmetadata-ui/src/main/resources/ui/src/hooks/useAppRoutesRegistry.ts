@@ -34,10 +34,28 @@ import { create } from 'zustand';
 interface AppRoutesRegistryStore {
   routes: Record<string, ComponentType>;
   registerRoutes: (mode: string, component: ComponentType) => void;
+  /**
+   * Remove a previously-registered mode. Use when the source plugin
+   * becomes unavailable mid-session (e.g., admin uninstalls the app)
+   * so a subsequent `useAppMode()` switch to that mode falls back to
+   * the default `AuthenticatedRoutes` instead of mounting a stale
+   * component tree.
+   */
+  unregisterRoutes: (mode: string) => void;
 }
 
 export const useAppRoutesRegistry = create<AppRoutesRegistryStore>((set) => ({
   routes: {},
   registerRoutes: (mode, component) =>
     set((state) => ({ routes: { ...state.routes, [mode]: component } })),
+  unregisterRoutes: (mode) =>
+    set((state) => {
+      if (!(mode in state.routes)) {
+        return state;
+      }
+      const next = { ...state.routes };
+      delete next[mode];
+
+      return { routes: next };
+    }),
 }));

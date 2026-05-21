@@ -44,6 +44,10 @@ const readMode = (): string => {
 };
 
 const subscribe = (callback: () => void): (() => void) => {
+  if (isUndefined(globalThis.window)) {
+    return () => undefined;
+  }
+
   const onStorage = (event: StorageEvent) => {
     if (event.key === APP_MODE_STORAGE_KEY) {
       callback();
