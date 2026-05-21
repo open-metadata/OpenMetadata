@@ -638,7 +638,6 @@ test.describe('E-Commerce Scenario – Realistic Cardinality Data', () => {
     });
   });
 
-
   test.describe('MANY_TO_ONE – many OrderItems reference one Product', () => {
     test('OrderItem → Product edge carries testGovernedBy relationType', async ({
       page,
@@ -656,7 +655,6 @@ test.describe('E-Commerce Scenario – Realistic Cardinality Data', () => {
       ).toBe(true);
     });
   });
-
 
   test.describe('MANY_TO_MANY – Product belongs to many ProductCategories', () => {
     test('Product ↔ ProductCategory edge is isBidirectional=true (symmetric)', async ({
@@ -708,7 +706,6 @@ test.describe('E-Commerce Scenario – Realistic Cardinality Data', () => {
       ).toBe(true);
     });
   });
-
 
   test('graph contains at least 5 edges covering all four cardinality types', async ({
     page,

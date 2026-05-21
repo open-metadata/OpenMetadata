@@ -892,8 +892,8 @@ export function buildDataModeTermNodeStyle(
 type PathArray = Array<[string, ...number[]]>;
 
 function crowsFootPathFn(w: number, h: number): PathArray {
-  const tip = -w / 2; 
-  const base = w / 2; 
+  const tip = -w / 2;
+  const base = w / 2;
   const spread = h / 2;
 
   return [
