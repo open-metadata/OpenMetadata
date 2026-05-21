@@ -1066,7 +1066,7 @@ export function useOntologyGraph({
         },
       },
       edge: {
-        type: 'cubic-vertical',
+        type: 'line',
         animation: {
           enter: false,
         },

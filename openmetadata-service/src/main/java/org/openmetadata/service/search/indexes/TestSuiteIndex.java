@@ -37,6 +37,7 @@ public record TestSuiteIndex(TestSuite testSuite) implements TaggableIndex {
   public Set<String> getRequiredReindexFields() {
     Set<String> fields = new HashSet<>(TaggableIndex.super.getRequiredReindexFields());
     fields.add(TestSuiteRepository.SUMMARY_FIELD);
+    fields.add("tests");
     return Collections.unmodifiableSet(fields);
   }
 

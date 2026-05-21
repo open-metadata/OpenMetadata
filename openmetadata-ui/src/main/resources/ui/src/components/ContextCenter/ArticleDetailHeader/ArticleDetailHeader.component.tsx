@@ -584,7 +584,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 entityId={knowledgePage?.id}
                 entityName={knowledgePage?.displayName ?? t('label.untitled')}
                 entityType={EntityType.KNOWLEDGE_CENTER}
-                prepareType={false}
                 successMessage={t('server.entity-deleted-successfully', {
                   entity: entityType,
                 })}
