@@ -84,6 +84,14 @@ public class ApplicationHandler {
           && appPrivateConfig.getParameters().getAdditionalProperties() != null) {
         app.setPrivateConfiguration(appPrivateConfig.getParameters().getAdditionalProperties());
       }
+      // Apply the YAML-declared schedule only when the persisted App has none, so an
+      // admin-configured schedule via the UI/API is never clobbered. Without this, the
+      // schedule: block in applications/<AppName>/config.yaml parses into AppPrivateConfig
+      // but is dropped — leaving installed apps with appSchedule=null unscheduled even
+      // when their config.yaml ships a default cron.
+      if (app.getAppSchedule() == null && appPrivateConfig.getSchedule() != null) {
+        app.setAppSchedule(appPrivateConfig.getSchedule());
+      }
     } catch (IOException e) {
       LOG.debug("Config file for app {} not found: ", app.getName(), e);
     } catch (ConfigurationException e) {
