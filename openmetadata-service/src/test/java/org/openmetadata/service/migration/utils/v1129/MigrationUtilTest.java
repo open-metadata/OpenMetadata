@@ -1,6 +1,7 @@
 package org.openmetadata.service.migration.utils.v1129;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Answers.RETURNS_DEEP_STUBS;
 import static org.mockito.ArgumentMatchers.any;
@@ -272,7 +273,7 @@ class MigrationUtilTest {
   }
 
   @Test
-  void taskEntity_postgresSqlUsesOnConflictDoNothing() throws Exception {
+  void taskEntity_postgresSqlUsesBareOnConflictDoNothing() throws Exception {
     Handle handle = mockHandle();
     stubTableExists(handle, "task_entity");
     Update mockUpdate = mock(Update.class, RETURNS_DEEP_STUBS);
@@ -284,8 +285,11 @@ class MigrationUtilTest {
     ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
     verify(handle, times(1)).createUpdate(sqlCaptor.capture());
     String sql = sqlCaptor.getValue();
-    assertTrue(sql.contains("ON CONFLICT"));
-    assertTrue(sql.contains("DO NOTHING"));
+    assertTrue(sql.contains("ON CONFLICT DO NOTHING"));
+    // Must NOT name a conflict target — the entity_relationship PK shape differs
+    // across releases (3 cols on 1.12.x, 4 cols on 2.x). Bare ON CONFLICT applies
+    // to any unique constraint, keeping the migration portable.
+    assertFalse(sql.contains("ON CONFLICT ("));
   }
 
   @Test
