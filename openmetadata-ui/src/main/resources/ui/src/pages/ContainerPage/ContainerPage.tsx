@@ -52,7 +52,6 @@ import { Include } from '../../generated/type/include';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
-import { useDeferredTabData } from '../../hooks/useDeferredTabData';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
@@ -128,8 +127,6 @@ const ContainerPage = () => {
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.CONTAINER, resolvedEntityFqn, handleFeedCount);
 
-  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
-  // (drives only the Activity Feed tab badge) until first tab activation.
   const fetchTaskCounts = useCallback(() => {
     if (resolvedEntityFqn) {
       fetchEntityTaskCountsInto(resolvedEntityFqn, setFeedCount);
@@ -645,6 +642,7 @@ const ContainerPage = () => {
     // Reset so a stale value from the previous container isn't shown.
     setChildrenCount(0);
     fetchTaskCounts();
+    fetchActivityCount();
 
     // Eager-fetch the children total so the tab badge is correct even before
     // the user opens the Children tab. ContainerChildren is lazily mounted, so
@@ -669,10 +667,6 @@ const ContainerPage = () => {
       cancelled = true;
     };
   }, [resolvedEntityFqn]);
-
-  useDeferredTabData(EntityTabs.ACTIVITY_FEED, tab, fetchActivityCount, [
-    resolvedEntityFqn,
-  ]);
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);

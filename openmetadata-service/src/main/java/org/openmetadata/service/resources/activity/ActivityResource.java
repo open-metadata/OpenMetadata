@@ -175,20 +175,27 @@ public class ActivityResource {
           @Max(90)
           @QueryParam("days")
           int days,
-      @Parameter(description = "Maximum number of events to return")
+      @Parameter(
+              description =
+                  "Maximum number of events to return. Pass 0 for a count-only response "
+                      + "(empty data array, accurate paging.total).")
           @DefaultValue("50")
-          @Min(1)
+          @Min(0)
           @Max(200)
           @QueryParam("limit")
           int limit) {
 
     long afterTimestamp = Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
     List<UUID> domainIds = getEffectiveDomainsByFqn(securityContext, domain);
+    int total =
+        activityStreamRepository.countByEntity(entityType, entityId, domainIds, afterTimestamp);
+    if (limit == 0) {
+      return new ResultList<>(List.of(), null, null, total);
+    }
     List<ActivityEvent> events =
         activityStreamRepository.listByEntity(
             entityType, entityId, domainIds, afterTimestamp, limit);
-
-    return new ResultList<>(events, null, null, events.size());
+    return new ResultList<>(events, null, null, total);
   }
 
   @GET
@@ -219,9 +226,13 @@ public class ActivityResource {
           @Max(90)
           @QueryParam("days")
           int days,
-      @Parameter(description = "Maximum number of events to return")
+      @Parameter(
+              description =
+                  "Maximum number of events to return. Pass 0 for a count-only response "
+                      + "(empty data array, accurate paging.total). Frontend tab-badge fetches "
+                      + "use this path so first paint isn't blocked on a 100-row list query.")
           @DefaultValue("50")
-          @Min(1)
+          @Min(0)
           @Max(200)
           @QueryParam("limit")
           int limit) {
@@ -234,11 +245,15 @@ public class ActivityResource {
     UUID entityId = entity.getId();
     List<UUID> domainIds = getEffectiveDomainsByFqn(securityContext, domain);
 
+    int total =
+        activityStreamRepository.countByEntity(entityType, entityId, domainIds, afterTimestamp);
+    if (limit == 0) {
+      return new ResultList<>(List.of(), null, null, total);
+    }
     List<ActivityEvent> events =
         activityStreamRepository.listByEntity(
             entityType, entityId, domainIds, afterTimestamp, limit);
-
-    return new ResultList<>(events, null, null, events.size());
+    return new ResultList<>(events, null, null, total);
   }
 
   @GET

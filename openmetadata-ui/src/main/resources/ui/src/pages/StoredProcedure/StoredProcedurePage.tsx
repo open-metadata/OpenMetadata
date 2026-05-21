@@ -47,7 +47,6 @@ import { Include } from '../../generated/type/include';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
-import { useDeferredTabData } from '../../hooks/useDeferredTabData';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
@@ -169,8 +168,6 @@ const StoredProcedurePage = () => {
     );
   };
 
-  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
-  // (drives only the Activity Feed tab badge) until first tab activation.
   const fetchTaskCounts = useCallback(() => {
     if (decodedStoredProcedureFQN) {
       fetchEntityTaskCountsInto(decodedStoredProcedureFQN, setFeedCount);
@@ -580,12 +577,9 @@ const StoredProcedurePage = () => {
     if (viewBasicPermission) {
       fetchStoredProcedureDetails();
       fetchTaskCounts();
+      fetchActivityCount();
     }
   }, [decodedStoredProcedureFQN, storedProcedurePermissions]);
-
-  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
-    decodedStoredProcedureFQN,
-  ]);
 
   if (isLoading || loading) {
     return <Loader />;

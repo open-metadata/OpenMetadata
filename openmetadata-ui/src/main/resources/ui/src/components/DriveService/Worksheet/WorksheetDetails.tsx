@@ -34,7 +34,6 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { useDeferredTabData } from '../../../hooks/useDeferredTabData';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
 import {
@@ -258,8 +257,6 @@ function WorksheetDetails({
       handleFeedCount
     );
 
-  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
-  // (drives only the Activity Feed tab badge) until first tab activation.
   const fetchTaskCounts = useCallback(() => {
     const fqn = worksheetDetails.fullyQualifiedName ?? '';
     if (fqn) {
@@ -328,12 +325,9 @@ function WorksheetDetails({
   useEffect(() => {
     if (worksheetDetails.fullyQualifiedName) {
       fetchTaskCounts();
+      fetchActivityCount();
     }
   }, [worksheetPermissions, worksheetDetails.fullyQualifiedName]);
-
-  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
-    worksheetDetails.fullyQualifiedName,
-  ]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

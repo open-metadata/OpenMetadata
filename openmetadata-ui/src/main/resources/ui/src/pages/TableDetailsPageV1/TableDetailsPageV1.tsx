@@ -803,6 +803,7 @@ const TableDetailsPageV1: React.FC = () => {
       setTableDetails(undefined);
       fetchTableDetails();
       fetchTaskCounts();
+      fetchActivityCount();
     }
   }, [tableFqn, isTourOpen, isTourPage, viewBasicPermission]);
 
@@ -814,14 +815,6 @@ const TableDetailsPageV1: React.FC = () => {
       getTestCaseFailureCount();
     }
   }, [tableDetails?.fullyQualifiedName]);
-
-  // P2-A: activity events drive only the "Activity Feed (N)" tab badge. Defer the fetch
-  // until the user actually activates that tab; the badge populates from `feedCount.totalCount`
-  // (= conversationCount + totalTasksCount) once the activity count lands. Task counts were
-  // already fetched eagerly above so the header "Open Tasks" button is correct on first paint.
-  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
-    tableFqn,
-  ]);
 
   // P1.2: queryCount only drives the "Queries (N)" tab badge — most users never click that
   // tab, so eagerly fetching it on every page load wasted a server round-trip per view.

@@ -528,16 +528,10 @@ export const getFeedCounts = async (
 };
 
 /**
- * Eager-only task-count fetch for entity-detail pages. {@link getFeedCounts} fires both the
- * task-count and activity-events endpoints in parallel; the activity-events fetch is the heavy
- * one (it pulls up to 100 events just to count them) and only feeds the Activity Feed tab
- * badge — most users never open that tab. The task counts, by contrast, drive the
- * always-visible "Open Tasks" button in the page header on every entity page, so they must be
- * eager.
- *
- * Pair this on mount with {@link fetchEntityActivityCountInto} gated by
- * {@code useDeferredTabData(EntityTabs.ACTIVITY_FEED, ...)} so the activity portion only runs
- * when the user actually clicks Activity Feed. Total count is derived from
+ * Eager task-count fetch for entity-detail pages. Pair on mount with
+ * {@link fetchEntityActivityCountInto} — both are cheap (task counts are aggregate; activity
+ * count uses {@code limit=0} which short-circuits to a server-side {@code COUNT(*)}) so they
+ * can run side-by-side on the same render. Total count is derived from
  * {@code (conversationCount ?? 0) + totalTasksCount} so the merge stays correct whichever
  * fetch arrives first.
  */
@@ -567,10 +561,16 @@ export const fetchEntityTaskCountsInto = async (
 };
 
 /**
- * Deferred-only activity-count fetch. Pulls recent activity events for an entity and updates
- * just the {@code conversationCount} and {@code totalCount} fields of the page's
- * {@link FeedCounts} state. Intended to run on first Activity Feed tab activation rather than
- * on mount — see {@link fetchEntityTaskCountsInto} for rationale.
+ * Eager activity-count fetch. Pulls only the count (no events) for an entity and updates the
+ * {@code conversationCount} and {@code totalCount} fields of the page's {@link FeedCounts}
+ * state. Backed by {@code limit=0} on {@code GET /v1/activity/entity/{type}/name/{fqn}} —
+ * the server short-circuits to a {@code COUNT(*)} and returns an empty {@code data} array
+ * plus an accurate {@code paging.total}. Total payload is a few dozen bytes, so this can stay
+ * eager on mount and the Activity Feed tab badge populates on first paint.
+ *
+ * <p>Historically the badge ran with {@code limit=100} and read {@code data.length}, which
+ * (a) shipped 100 row JSONs just to count them and (b) silently capped the displayed value at
+ * 100. The cheap path is both faster and more accurate.
  */
 export const fetchEntityActivityCountInto = async (
   entityType: string,
@@ -581,11 +581,11 @@ export const fetchEntityActivityCountInto = async (
   try {
     const activityRes = await getEntityActivityByFqn(entityType, entityFqn, {
       days: 30,
-      limit: 100,
+      limit: 0,
       domain,
     });
     setFeedCount((prev) => {
-      const conversationCount = activityRes?.data?.length ?? 0;
+      const conversationCount = activityRes?.paging?.total ?? 0;
 
       return {
         ...prev,

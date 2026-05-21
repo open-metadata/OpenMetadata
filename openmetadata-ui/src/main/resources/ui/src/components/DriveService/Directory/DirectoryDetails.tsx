@@ -35,7 +35,6 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { useDeferredTabData } from '../../../hooks/useDeferredTabData';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
@@ -276,8 +275,6 @@ function DirectoryDetails({
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.DIRECTORY, decodedDirectoryFQN, handleFeedCount);
 
-  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
-  // (drives only the Activity Feed tab badge) until first tab activation.
   const fetchTaskCounts = useCallback(() => {
     if (decodedDirectoryFQN) {
       fetchEntityTaskCountsInto(decodedDirectoryFQN, setFeedCount);
@@ -347,11 +344,8 @@ function DirectoryDetails({
 
   useEffect(() => {
     fetchTaskCounts();
+    fetchActivityCount();
   }, [directoryPermissions, decodedDirectoryFQN]);
-
-  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
-    decodedDirectoryFQN,
-  ]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

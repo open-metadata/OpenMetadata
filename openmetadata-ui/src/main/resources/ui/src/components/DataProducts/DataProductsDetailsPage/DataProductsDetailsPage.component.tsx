@@ -60,7 +60,6 @@ import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useDataAccessRequest } from '../../../hooks/useDataAccessRequest';
-import { useDeferredTabData } from '../../../hooks/useDeferredTabData';
 import { useFqn } from '../../../hooks/useFqn';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -201,8 +200,6 @@ const DataProductsDetailsPage = ({
     );
   };
 
-  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
-  // (drives only the Activity Feed tab badge) until first tab activation.
   const fetchTaskCounts = useCallback(() => {
     const fqn = dataProduct.fullyQualifiedName ?? '';
     if (fqn) {
@@ -686,14 +683,11 @@ const DataProductsDetailsPage = ({
     fetchDataProductPermission();
     fetchDataProductAssets();
     fetchTaskCounts();
+    fetchActivityCount();
     fetchActiveAnnouncement();
     fetchDataProductContract();
     fetchPortCounts();
   }, [dataProductFqn, fetchPortCounts]);
-
-  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
-    dataProductFqn,
-  ]);
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);

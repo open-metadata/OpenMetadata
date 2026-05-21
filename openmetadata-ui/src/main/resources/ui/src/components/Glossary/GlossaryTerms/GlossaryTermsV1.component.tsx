@@ -29,7 +29,6 @@ import {
 import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { useDeferredTabData } from '../../../hooks/useDeferredTabData';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
@@ -131,8 +130,6 @@ const GlossaryTermsV1 = ({
     );
   };
 
-  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
-  // (drives only the Activity Feed tab badge) until first tab activation.
   const fetchTaskCounts = useCallback(() => {
     const fqn = glossaryTerm.fullyQualifiedName ?? '';
     if (fqn) {
@@ -247,15 +244,9 @@ const GlossaryTermsV1 = ({
     }, 500);
     if (!isVersionView) {
       fetchTaskCounts();
+      fetchActivityCount();
     }
   }, [glossaryFqn, isVersionView]);
-
-  useDeferredTabData(
-    EntityTabs.ACTIVITY_FEED,
-    isVersionView ? undefined : activeTab,
-    fetchActivityCount,
-    [glossaryFqn, isVersionView]
-  );
 
   const updatedGlossaryTerm = useMemo(() => {
     const name = isVersionView

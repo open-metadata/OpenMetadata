@@ -92,7 +92,6 @@ import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../generated/system/ui/page';
 import { Style } from '../../generated/type/tagLabel';
 import { useCustomPages } from '../../hooks/useCustomPages';
-import { useDeferredTabData } from '../../hooks/useDeferredTabData';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import { searchQuery } from '../../rest/searchAPI';
@@ -405,8 +404,6 @@ const TagPage = () => {
     }
   };
 
-  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
-  // (drives only the Activity Feed tab badge) until first tab activation.
   const fetchTaskCounts = useCallback(() => {
     if (tagItem?.fullyQualifiedName) {
       fetchEntityTaskCountsInto(tagItem.fullyQualifiedName, setFeedCount);
@@ -733,12 +730,9 @@ const TagPage = () => {
     if (tagItem) {
       fetchCurrentTagPermission();
       fetchTaskCounts();
+      fetchActivityCount();
     }
   }, [tagItem]);
-
-  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
-    tagItem?.fullyQualifiedName,
-  ]);
 
   if (isLoading || isCustomPageLoading) {
     return <Loader />;

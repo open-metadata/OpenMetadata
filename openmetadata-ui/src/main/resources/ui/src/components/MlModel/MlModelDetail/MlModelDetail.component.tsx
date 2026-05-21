@@ -31,7 +31,6 @@ import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { useDeferredTabData } from '../../../hooks/useDeferredTabData';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMlmodel } from '../../../rest/mlModelAPI';
@@ -147,8 +146,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const fetchEntityFeedCount = () =>
     getFeedCounts(EntityType.MLMODEL, decodedMlModelFqn, handleFeedCount);
 
-  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
-  // (drives only the Activity Feed tab badge) until first tab activation.
   const fetchTaskCounts = useCallback(() => {
     if (decodedMlModelFqn) {
       fetchEntityTaskCountsInto(decodedMlModelFqn, setFeedCount);
@@ -168,12 +165,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   useEffect(() => {
     if (mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic) {
       fetchTaskCounts();
+      fetchActivityCount();
     }
   }, [mlModelPermissions, decodedMlModelFqn]);
-
-  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
-    decodedMlModelFqn,
-  ]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {

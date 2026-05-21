@@ -29,7 +29,6 @@ import { TagLabel } from '../../../generated/type/schema';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { useDeferredTabData } from '../../../hooks/useDeferredTabData';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreTopic } from '../../../rest/topicsAPI';
@@ -255,8 +254,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.TOPIC, decodedTopicFQN, handleFeedCount);
 
-  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
-  // (drives only the Activity Feed tab badge) until first tab activation.
   const fetchTaskCounts = useCallback(() => {
     if (decodedTopicFQN) {
       fetchEntityTaskCountsInto(decodedTopicFQN, setFeedCount);
@@ -327,11 +324,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   useEffect(() => {
     fetchTaskCounts();
+    fetchActivityCount();
   }, [topicPermissions, decodedTopicFQN]);
-
-  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
-    decodedTopicFQN,
-  ]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

@@ -59,7 +59,6 @@ import { Include } from '../../generated/type/include';
 import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
-import { useDeferredTabData } from '../../hooks/useDeferredTabData';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
@@ -178,8 +177,6 @@ const DatabaseDetails: FunctionComponent = () => {
     getFeedCounts(EntityType.DATABASE, decodedDatabaseFQN, handleFeedCount);
   };
 
-  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
-  // (drives only the Activity Feed tab badge) until first tab activation.
   const fetchTaskCounts = useCallback(() => {
     if (decodedDatabaseFQN) {
       fetchEntityTaskCountsInto(decodedDatabaseFQN, setFeedCount);
@@ -304,11 +301,8 @@ const DatabaseDetails: FunctionComponent = () => {
 
   useEffect(() => {
     fetchTaskCounts();
+    fetchActivityCount();
   }, [decodedDatabaseFQN]);
-
-  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
-    decodedDatabaseFQN,
-  ]);
 
   useEffect(() => {
     if (withinPageSearch && serviceType) {

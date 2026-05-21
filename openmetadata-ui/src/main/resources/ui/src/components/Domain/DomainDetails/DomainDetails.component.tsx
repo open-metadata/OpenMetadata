@@ -56,7 +56,6 @@ import { PageType } from '../../../generated/system/ui/page';
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { useDeferredTabData } from '../../../hooks/useDeferredTabData';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import {
   AnnouncementEntity,
@@ -361,8 +360,6 @@ const DomainDetails = ({
     );
   };
 
-  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
-  // (drives only the Activity Feed tab badge) until first tab activation.
   const fetchTaskCounts = useCallback(() => {
     const fqn = domain.fullyQualifiedName ?? '';
     if (fqn) {
@@ -937,12 +934,9 @@ const DomainDetails = ({
     fetchDomainAssets();
     fetchDataProducts();
     fetchTaskCounts();
+    fetchActivityCount();
     fetchActiveAnnouncement();
   }, [domain.fullyQualifiedName]);
-
-  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
-    domain.fullyQualifiedName,
-  ]);
 
   useEffect(() => {
     fetchSubDomainsCount();

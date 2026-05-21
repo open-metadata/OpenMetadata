@@ -63,7 +63,6 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
-import { useDeferredTabData } from '../../../hooks/useDeferredTabData';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
   ContentChangeState,
@@ -532,8 +531,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     }
   };
 
-  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
-  // (drives only the Activity Feed tab badge) until first tab activation.
   const fetchTaskCounts = useCallback(() => {
     if (knowledgePage?.fullyQualifiedName) {
       fetchEntityTaskCountsInto(knowledgePage.fullyQualifiedName, setFeedCount);
@@ -683,12 +680,9 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   useEffect(() => {
     if (knowledgePage?.fullyQualifiedName) {
       fetchTaskCounts();
+      fetchActivityCount();
     }
   }, [knowledgePage?.fullyQualifiedName]);
-
-  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
-    knowledgePage?.fullyQualifiedName,
-  ]);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {

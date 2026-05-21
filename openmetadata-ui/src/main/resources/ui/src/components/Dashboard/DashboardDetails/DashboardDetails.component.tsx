@@ -28,7 +28,6 @@ import { PageType } from '../../../generated/system/ui/uiCustomization';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { useDeferredTabData } from '../../../hooks/useDeferredTabData';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDashboard } from '../../../rest/dashboardAPI';
@@ -144,8 +143,6 @@ const DashboardDetails = ({
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.DASHBOARD, decodedDashboardFQN, handleFeedCount);
 
-  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer the activity
-  // events fetch (drives only the Activity Feed tab badge) until first tab activation.
   const fetchTaskCounts = useCallback(() => {
     if (decodedDashboardFQN) {
       fetchEntityTaskCountsInto(decodedDashboardFQN, setFeedCount);
@@ -164,11 +161,8 @@ const DashboardDetails = ({
 
   useEffect(() => {
     fetchTaskCounts();
+    fetchActivityCount();
   }, [decodedDashboardFQN]);
-
-  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
-    decodedDashboardFQN,
-  ]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {

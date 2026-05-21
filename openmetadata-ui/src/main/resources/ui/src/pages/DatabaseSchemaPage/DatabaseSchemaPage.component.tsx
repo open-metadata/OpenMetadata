@@ -61,7 +61,6 @@ import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
-import { useDeferredTabData } from '../../hooks/useDeferredTabData';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -208,8 +207,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     );
   }, [decodedDatabaseSchemaFQN, handleFeedCount]);
 
-  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
-  // (drives only the Activity Feed tab badge) until first tab activation.
   const fetchTaskCounts = useCallback(() => {
     if (decodedDatabaseSchemaFQN) {
       fetchEntityTaskCountsInto(decodedDatabaseSchemaFQN, setFeedCount);
@@ -455,16 +452,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       fetchDatabaseSchemaDetails();
       fetchStoreProcedureCount();
       fetchTaskCounts();
+      fetchActivityCount();
     }
   }, [
     viewDatabaseSchemaPermission,
     fetchDatabaseSchemaDetails,
     fetchStoreProcedureCount,
     fetchTaskCounts,
-  ]);
-
-  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
-    decodedDatabaseSchemaFQN,
+    fetchActivityCount,
   ]);
 
   useEffect(() => {
