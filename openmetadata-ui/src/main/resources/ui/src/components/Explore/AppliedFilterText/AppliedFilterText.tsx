@@ -38,7 +38,9 @@ const AppliedFilterText: FC<AppliedFilterTextProps> = ({
       className="tw:ml-2"
       colGap={2}
       data-testid="advance-search-filter-container">
-      <Typography color="tertiary">{t('label.advanced-search')}</Typography>
+      <Typography className="tw:text-tertiary">
+        {t('label.advanced-search')}
+      </Typography>
       <Box
         align="center"
         className="advanced-filter-text tw:flex-1"
