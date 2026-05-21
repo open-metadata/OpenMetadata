@@ -53,8 +53,8 @@ import {
   getRelationTypeUsageCounts,
   updateGlossaryTermRelationSettings,
 } from '../../rest/glossaryAPI';
-import { deriveCardinality } from '../../utils/Glossary/glossaryTermRelationUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { deriveCardinality } from '../../utils/Glossary/glossaryTermRelationUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const CATEGORY_BADGE_COLORS: Record<
@@ -76,7 +76,6 @@ const CARDINALITY_LIMITS: Record<
   [RelationCardinality.ManyToMany]: { sourceMax: null, targetMax: null },
   [RelationCardinality.Custom]: { sourceMax: null, targetMax: null },
 };
-
 
 const applyCardinalityDefaults = (
   relation: GlossaryTermRelationType

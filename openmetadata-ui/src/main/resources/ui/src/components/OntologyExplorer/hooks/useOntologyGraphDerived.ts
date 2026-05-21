@@ -363,7 +363,7 @@ export function useOntologyGraphDerived({
 
     return computeGraphSearchHighlight(
       baseData.nodes,
-      baseData.edges,
+      baseData.edges as OntologyEdge[],
       filters.searchQuery,
       glossaries,
       relationTypes
@@ -387,6 +387,9 @@ export function useOntologyGraphDerived({
           from: e.from,
           to: e.to,
           relationType: e.relationType,
+          ...(e.inverseRelationType
+            ? { inverseRelationType: e.inverseRelationType }
+            : {}),
           label: e.relationType,
         })),
       };

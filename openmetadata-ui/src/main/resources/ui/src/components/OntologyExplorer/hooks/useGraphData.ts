@@ -437,7 +437,10 @@ export function useGraphDataBuilder({
         from: e.from,
         to: e.to,
         relationType: e.relationType,
-        isBidirectional: false,
+        ...(e.inverseRelationType
+          ? { inverseRelationType: e.inverseRelationType }
+          : {}),
+        isBidirectional: Boolean(e.inverseRelationType),
       }));
     } else {
       nodesForGraph = inputNodes;
