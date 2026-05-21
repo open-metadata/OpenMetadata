@@ -584,12 +584,36 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
     @_run_dispatch.register
     def delete_entity(self, record: DeleteEntity) -> Either[Entity]:
-        self.metadata.delete(
-            entity=type(record.entity),
-            entity_id=record.entity.id,
-            recursive=record.mark_deleted_entities,
-        )
-        return Either(right=record)
+        # record.entity is declared as a bare pydantic BaseModel; the runtime value is a
+        # generated entity that exposes `id` and `fullyQualifiedName`, but basedpyright can't
+        # see those attributes through the BaseModel alias. Pull them via getattr so the type
+        # checker stays quiet without changing the runtime behavior.
+        entity_obj: Any = record.entity
+        entity_id = entity_obj.id
+        fqn = entity_obj.fullyQualifiedName.root
+        recursive = bool(record.mark_deleted_entities)
+        if record.dispatch_async:
+            # Server-side async cascade — returns 202 + jobId immediately so ingestion
+            # doesn't block on large subtrees (issue #4003). The actual work runs on the
+            # server's executor; we surface the jobId in the log for operator correlation.
+            response = self.metadata.delete_async(
+                entity=type(record.entity),
+                entity_id=entity_id,
+                recursive=recursive,
+            )
+            job_id = (response or {}).get("jobId")
+            logger.debug(
+                "Dispatched async delete for %s (jobId=%s)",
+                fqn,
+                job_id,
+            )
+        else:
+            self.metadata.delete(
+                entity=type(record.entity),
+                entity_id=entity_id,
+                recursive=recursive,
+            )
+        return Either(left=None, right=record)
 
     @_run_dispatch.register
     def write_pipeline_status(self, record: OMetaPipelineStatus) -> Either[PipelineStatus]:
