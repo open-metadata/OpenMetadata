@@ -20,7 +20,7 @@ critical regression that the client-side SQL parser is never invoked when
 the flag is on.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -31,6 +31,7 @@ from metadata.generated.schema.type.entityLineage import Source as LineageEdgeSo
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.snowflake.lineage import (
+    ACCESS_HISTORY_CHUNK_DAYS,
     USE_ACCESS_HISTORY_OPTION_KEY,
     SnowflakeLineageSource,
 )
@@ -475,8 +476,8 @@ def test_table_edges_skip_when_either_side_unresolvable():
         assert any("DB.SCHEMA.REVENUE" in msg for msg in debug_messages)
 
 
-def test_access_history_chunks_window_by_day():
-    """A multi-day window must be split into one combined query per day."""
+def test_access_history_chunks_window_into_slices():
+    """A multi-day window is split into one combined query per ACCESS_HISTORY_CHUNK_DAYS slice."""
     upstream_entity = _make_table_entity("11111111-1111-1111-1111-111111111111", "DB", "SCHEMA", "ORDERS")
     downstream_entity = _make_table_entity("22222222-2222-2222-2222-222222222222", "DB", "SCHEMA", "REVENUE")
     metadata = MagicMock()
@@ -501,8 +502,9 @@ def test_access_history_chunks_window_by_day():
             ],
         },
     )
+    chunk = timedelta(days=ACCESS_HISTORY_CHUNK_DAYS)
     src.start = datetime(2025, 1, 1)
-    src.end = datetime(2025, 1, 4)
+    src.end = src.start + chunk * 3
 
     edges = list(src._yield_combined_access_history())
 
@@ -510,9 +512,10 @@ def test_access_history_chunks_window_by_day():
     conn = src.engine.connect.return_value
     executed = [str(call.args[0]) for call in conn.execute.call_args_list]
     assert len(executed) == 3
-    assert any("2025-01-01 00:00:00" in sql and "2025-01-02 00:00:00" in sql for sql in executed)
-    assert any("2025-01-02 00:00:00" in sql and "2025-01-03 00:00:00" in sql for sql in executed)
-    assert any("2025-01-03 00:00:00" in sql and "2025-01-04 00:00:00" in sql for sql in executed)
+    for slice_index in range(3):
+        window_start = src.start + chunk * slice_index
+        window_end = src.start + chunk * (slice_index + 1)
+        assert any(str(window_start) in sql and str(window_end) in sql for sql in executed)
 
 
 def test_access_history_window_failure_does_not_abort_run():
@@ -542,7 +545,7 @@ def test_access_history_window_failure_does_not_abort_run():
         },
     )
     src.start = datetime(2025, 1, 1)
-    src.end = datetime(2025, 1, 3)
+    src.end = src.start + timedelta(days=ACCESS_HISTORY_CHUNK_DAYS) * 2
 
     conn = src.engine.connect.return_value
     healthy_side_effect = conn.execute.side_effect
