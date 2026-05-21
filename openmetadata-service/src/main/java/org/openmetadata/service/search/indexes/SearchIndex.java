@@ -369,9 +369,13 @@ public interface SearchIndex {
     // typically sparse in upstream lineage (most entities have none), so deferring the
     // ArrayList allocation to the first edge keeps the no-lineage path GC-free.
     for (EntityInterface entity : entities) {
-      result.put(entity.getId(), Collections.emptyList());
-      toIds.add(entity.getId().toString());
-      toRefByEntityId.put(entity.getId(), entity.getEntityReference());
+      UUID entityId = entity.getId();
+      if (entityId == null) {
+        continue;
+      }
+      result.put(entityId, Collections.emptyList());
+      toIds.add(entityId.toString());
+      toRefByEntityId.put(entityId, entity.getEntityReference());
     }
     List<CollectionDAO.EntityRelationshipObject> records = fetchUpstreamRelationships(toIds);
     if (records == null) {

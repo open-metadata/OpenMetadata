@@ -246,6 +246,21 @@ class SearchIndexPrefetchTest {
   }
 
   @Test
+  void prefetchSkipsInputEntitiesWithNullId() {
+    Table withId = table("svc.db.s.t1");
+    org.openmetadata.schema.EntityInterface nullIdEntity =
+        org.mockito.Mockito.mock(org.openmetadata.schema.EntityInterface.class);
+    when(relDao.findFromBatch(any(), anyInt(), any(Include.class)))
+        .thenReturn(Collections.emptyList());
+
+    Map<UUID, List<EsLineageData>> result =
+        SearchIndex.prefetchUpstreamLineage(List.of(withId, nullIdEntity));
+
+    assertEquals(1, result.size());
+    assertTrue(result.containsKey(withId.getId()));
+  }
+
+  @Test
   void prefetchSkipsRecordsWithMalformedUuids() {
     Table downstream = table("svc.db.s.d1");
     EntityReference upTable = upstreamRef(TABLE, "svc.db.s.up_table");

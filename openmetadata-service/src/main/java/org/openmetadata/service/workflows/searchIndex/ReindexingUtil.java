@@ -72,8 +72,19 @@ public class ReindexingUtil {
       Map<String, Object> contextData,
       String entityType,
       List<? extends EntityInterface> entities) {
-    Map<UUID, List<EsLineageData>> prefetchedLineage =
-        SearchIndex.prefetchLineageIfSupported(entityType, entities);
+    Map<UUID, List<EsLineageData>> prefetchedLineage = null;
+    try {
+      prefetchedLineage = SearchIndex.prefetchLineageIfSupported(entityType, entities);
+    } catch (Throwable t) {
+      // Best-effort: if the prefetch (or SearchIndex class init) blows up — e.g. in a unit
+      // test that hasn't bootstrapped Entity.searchRepository — the sinks fall through to the
+      // per-entity DB lookup path, which is the original pre-PR behaviour. Catch Throwable
+      // because the failure mode includes NoClassDefFoundError (not an Exception).
+      LOG.warn(
+          "Skipping doc-build context prefetch for type '{}'; doc-build will fall back to per-entity DB lookups",
+          entityType,
+          t);
+    }
     if (prefetchedLineage != null) {
       Map<UUID, DocBuildContext> docBuildContexts = new HashMap<>(prefetchedLineage.size());
       for (Map.Entry<UUID, List<EsLineageData>> entry : prefetchedLineage.entrySet()) {

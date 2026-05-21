@@ -63,6 +63,22 @@ class ReindexingUtilDocBuildContextTest {
   }
 
   @Test
+  void populateDocBuildContextSwallowsThrowableAndLeavesContextUntouched() {
+    Map<String, Object> contextData = new HashMap<>();
+    EntityInterface entity = mock(EntityInterface.class);
+
+    try (MockedStatic<SearchIndex> indexMock = mockStatic(SearchIndex.class)) {
+      indexMock
+          .when(() -> SearchIndex.prefetchLineageIfSupported(eq(TABLE), any()))
+          .thenThrow(new NoClassDefFoundError("simulated class-init failure"));
+
+      ReindexingUtil.populateDocBuildContext(contextData, TABLE, List.of(entity));
+
+      assertFalse(contextData.containsKey(BulkSink.DOC_BUILD_CONTEXT_KEY));
+    }
+  }
+
+  @Test
   void populateDocBuildContextWrapsEachEntityLineageInDocBuildContext() {
     Map<String, Object> contextData = new HashMap<>();
     UUID id1 = UUID.randomUUID();
