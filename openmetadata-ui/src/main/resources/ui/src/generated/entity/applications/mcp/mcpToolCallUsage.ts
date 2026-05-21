@@ -28,7 +28,8 @@ export interface MCPToolCallUsage {
     /**
      * Best-effort name of the calling MCP client (Claude Desktop / Cursor / VS Code / CLI /
      * claude-cli). Extracted from the User-Agent header by AuthEnrichedMcpContextExtractor.
-     * Empty when the client did not identify itself.
+     * Empty when the client did not identify itself. Bounded to 64 chars because the source
+     * header is attacker-controlled.
      */
     clientName?: string;
     /**
