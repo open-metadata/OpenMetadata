@@ -3,7 +3,6 @@ from typing import Any
 from sqlalchemy.engine import Connection, reflection
 from sqlalchemy.engine.interfaces import ReflectedColumn, ReflectedTableComment
 from sqlalchemy.sql import text
-from sqlalchemy_exasol.base import EXADialect
 
 from metadata.ingestion.source.database.exasol.queries import (
     EXASOL_GET_COLUMN_COMMENTS,
@@ -43,10 +42,10 @@ def get_columns(
     """
     columns = get_columns._original(self, connection, table_name, schema, **kw)  # pylint: disable=protected-access
 
-    schema_name = EXADialect._get_schema_for_input(connection, schema)
-    normalized_schema_name = EXADialect.denormalize_name(schema_name)
+    schema_name = connection.dialect._get_schema_for_input(connection, schema)
+    normalized_schema_name = connection.dialect.denormalize_name(schema_name)
 
-    normalized_table_name = EXADialect.denormalize_name(table_name)
+    normalized_table_name = connection.dialect.denormalize_name(table_name)
     result = connection.execute(
         text(EXASOL_GET_COLUMN_COMMENTS),
         {
