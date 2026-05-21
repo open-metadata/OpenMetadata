@@ -4,8 +4,10 @@ import static org.openmetadata.mcp.McpUtils.getToolProperties;
 
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.AuthorizationException;
@@ -32,6 +34,22 @@ public class DefaultToolContext {
       String toolName,
       CatalogSecurityContext securityContext,
       McpSchema.CallToolRequest request) {
+    return callToolWithMetadata(authorizer, limits, toolName, securityContext, request).result;
+  }
+
+  /**
+   * Phase 3 entry point. Returns the tool result alongside the metadata the {@link
+   * org.openmetadata.mcp.usage.McpUsageRecorder} needs (latency + error category). Kept as a
+   * separate method so the legacy single-result signature stays available for external callers
+   * that haven't migrated yet.
+   */
+  public CallToolOutcome callToolWithMetadata(
+      Authorizer authorizer,
+      Limits limits,
+      String toolName,
+      CatalogSecurityContext securityContext,
+      McpSchema.CallToolRequest request) {
+    long startNanos = System.nanoTime();
     LOG.info(
         "Catalog Principal: {} is trying to call the tool: {}",
         securityContext.getUserPrincipal().getName(),
@@ -84,47 +102,116 @@ public class DefaultToolContext {
           result = new CreateMetricTool().execute(authorizer, limits, securityContext, params);
           break;
         default:
-          return McpSchema.CallToolResult.builder()
+          return new CallToolOutcome(
+              McpSchema.CallToolResult.builder()
+                  .content(
+                      List.of(
+                          new McpSchema.TextContent(
+                              JsonUtils.pojoToJson(
+                                  Map.of("error", "Unknown function: " + toolName)))))
+                  .isError(true)
+                  .build(),
+              elapsedMs(startNanos),
+              McpToolCallUsage.ErrorCategory.VALIDATION);
+      }
+
+      return new CallToolOutcome(
+          McpSchema.CallToolResult.builder()
+              .content(List.of(new McpSchema.TextContent(JsonUtils.pojoToJson(result))))
+              .isError(false)
+              .build(),
+          elapsedMs(startNanos),
+          null);
+    } catch (AuthorizationException ex) {
+      LOG.warn("Authorization error: {}", ex.getMessage());
+      return new CallToolOutcome(
+          McpSchema.CallToolResult.builder()
               .content(
                   List.of(
                       new McpSchema.TextContent(
-                          JsonUtils.pojoToJson(Map.of("error", "Unknown function: " + toolName)))))
+                          JsonUtils.pojoToJson(
+                              Map.of(
+                                  "error",
+                                  String.format("Authorization error: %s", ex.getMessage()),
+                                  "statusCode",
+                                  403)))))
               .isError(true)
-              .build();
-      }
-
-      return McpSchema.CallToolResult.builder()
-          .content(List.of(new McpSchema.TextContent(JsonUtils.pojoToJson(result))))
-          .isError(false)
-          .build();
-    } catch (AuthorizationException ex) {
-      LOG.warn("Authorization error: {}", ex.getMessage());
-      return McpSchema.CallToolResult.builder()
-          .content(
-              List.of(
-                  new McpSchema.TextContent(
-                      JsonUtils.pojoToJson(
-                          Map.of(
-                              "error",
-                              String.format("Authorization error: %s", ex.getMessage()),
-                              "statusCode",
-                              403)))))
-          .isError(true)
-          .build();
+              .build(),
+          elapsedMs(startNanos),
+          McpToolCallUsage.ErrorCategory.AUTH);
     } catch (Exception ex) {
       LOG.error("Error executing tool '{}': {}", toolName, ex.getMessage(), ex);
-      return McpSchema.CallToolResult.builder()
-          .content(
-              List.of(
-                  new McpSchema.TextContent(
-                      JsonUtils.pojoToJson(
-                          Map.of(
-                              "error",
-                              String.format("Error executing tool: %s", ex.getMessage()),
-                              "statusCode",
-                              500)))))
-          .isError(true)
-          .build();
+      return new CallToolOutcome(
+          McpSchema.CallToolResult.builder()
+              .content(
+                  List.of(
+                      new McpSchema.TextContent(
+                          JsonUtils.pojoToJson(
+                              Map.of(
+                                  "error",
+                                  String.format("Error executing tool: %s", ex.getMessage()),
+                                  "statusCode",
+                                  500)))))
+              .isError(true)
+              .build(),
+          elapsedMs(startNanos),
+          classifyException(ex));
+    }
+  }
+
+  /**
+   * Maps an arbitrary exception type to one of the {@link McpToolCallUsage.ErrorCategory} values.
+   * Walks the cause chain because the tool wrappers usually rethrow framework errors wrapped in
+   * a {@link RuntimeException}. Defaults to {@link McpToolCallUsage.ErrorCategory#INTERNAL} when
+   * no specific bucket matches.
+   */
+  static McpToolCallUsage.ErrorCategory classifyException(Throwable t) {
+    Throwable cursor = t;
+    while (cursor != null) {
+      String name = cursor.getClass().getSimpleName();
+      String msg = cursor.getMessage() == null ? "" : cursor.getMessage().toLowerCase(Locale.ROOT);
+      if (name.contains("RateLimit") || msg.contains("rate limit")) {
+        return McpToolCallUsage.ErrorCategory.RATE_LIMIT;
+      }
+      if (name.contains("Validation")
+          || name.contains("IllegalArgument")
+          || name.contains("BadRequest")
+          || msg.contains("invalid argument")) {
+        return McpToolCallUsage.ErrorCategory.VALIDATION;
+      }
+      if (name.contains("Timeout") || msg.contains("timeout") || msg.contains("timed out")) {
+        return McpToolCallUsage.ErrorCategory.TIMEOUT;
+      }
+      Throwable next = cursor.getCause();
+      if (next == null || next == cursor) {
+        break;
+      }
+      cursor = next;
+    }
+    return McpToolCallUsage.ErrorCategory.INTERNAL;
+  }
+
+  private static long elapsedMs(long startNanos) {
+    return (System.nanoTime() - startNanos) / 1_000_000L;
+  }
+
+  /**
+   * Phase 3 — tuple returned by {@link #callToolWithMetadata} so the MCP server can record the
+   * call with full diagnostic detail without re-classifying the exception or re-measuring the
+   * latency at its level.
+   */
+  public static final class CallToolOutcome {
+    public final McpSchema.CallToolResult result;
+    public final long latencyMs;
+    public final McpToolCallUsage.ErrorCategory errorCategory;
+
+    public CallToolOutcome(
+        McpSchema.CallToolResult result,
+        long latencyMs,
+        McpToolCallUsage.ErrorCategory errorCategory) {
+      this.result = result;
+      this.latencyMs = latencyMs;
+      this.errorCategory = errorCategory;
     }
   }
 }
