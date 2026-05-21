@@ -109,11 +109,30 @@ class Status(BaseModel):
     def get_filtered_count(self) -> int:
         """True count of filter rejections, including any entries past the
         per-entity-type cap that were counted in `filtered_counts` but not
-        appended to `filtered` to bound memory. Returns the larger of the
-        stored list length and the sum of per-type true counts; this stays
-        correct under both legacy callers (only populate `filtered`) and
-        the helper-driven path (populates `filtered_counts` even past cap)."""
-        return max(len(self.filtered), sum(self.filtered_counts.values()))
+        appended to `filtered` to bound memory.
+
+        Handles three populations:
+          - Helper-driven types (in `filtered_counts`): true count comes
+            from `filtered_counts`, which keeps growing past the per-type
+            cap even when the name is not stored in `filtered`.
+          - Legacy direct `status.filter()` callers: not represented in
+            `filtered_counts`. Count them by walking `filtered` and
+            including only entries whose entity-type prefix isn't already
+            tracked by the helper, so we don't double-count.
+          - No helper usage at all: degenerate case; fall back to
+            `len(filtered)`.
+        """
+        if not self.filtered_counts:
+            return len(self.filtered)
+
+        helper_total = sum(self.filtered_counts.values())
+        tracked_types = set(self.filtered_counts)
+        legacy_count = 0
+        for entry in self.filtered:
+            for reason in entry.values():
+                if not any(reason.startswith(f"{t} ") for t in tracked_types):
+                    legacy_count += 1
+        return helper_total + legacy_count
 
     def record_discovered(self, entity_type: str, count: int) -> None:
         """Record the count of entities discovered from the source before any

@@ -289,6 +289,32 @@ def test_get_filtered_count_empty_status_is_zero(status):
     assert status.get_filtered_count() == 0
 
 
+def test_get_filtered_count_mixed_helper_and_legacy(status, logger):
+    """Helper tracks Database; legacy callers added Schema entries directly.
+    The legacy Schema entries must be counted in addition to the helper's
+    true Database count — not absorbed by the helper's tally."""
+    for i in range(10):
+        log_filtered(logger, status, "Database", f"db_{i}")
+    status.filter("legacy_schema_1", "Schema Filtered Out")
+    status.filter("legacy_schema_2", "Schema Filtered Out")
+
+    # 10 helper Database + 2 legacy Schema = 12
+    assert status.get_filtered_count() == 12
+
+
+def test_get_filtered_count_mixed_with_cap_overflow(status, logger):
+    """Worst case the second-pass reviewer called out: helper hits the cap
+    on one type AND legacy adds entries for a different type. True count
+    must include both the cap-overflow and the legacy entries."""
+    for i in range(MAX_FILTERED_ENTRIES_PER_TYPE + 30):
+        log_filtered(logger, status, "Table", f"t_{i}")
+    status.filter("legacy_schema_1", "Schema Filtered Out")
+    status.filter("legacy_schema_2", "Schema Filtered Out")
+
+    # MAX + 30 helper Table + 2 legacy Schema
+    assert status.get_filtered_count() == MAX_FILTERED_ENTRIES_PER_TYPE + 32
+
+
 def test_log_step_summary_includes_clarifying_note(status, logger, caplog):
     """Kept counts can over-report actual ingestion when downstream
     extraction fails or secondary filters reject items. The report header

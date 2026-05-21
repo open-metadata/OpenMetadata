@@ -616,11 +616,19 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                     self.source_config.projectFilterPattern,
                     project_name,
                 ):
+                    # project_name was reassigned to a list above when the
+                    # connector returned multiple project names; coerce
+                    # to a single string so the stored reason and report
+                    # output stay readable (and _entity_type_from_reason
+                    # can still parse the reason cleanly).
+                    project_label = (
+                        project_name if isinstance(project_name, str) else ", ".join(str(p) for p in project_name)
+                    )
                     log_filtered(
                         logger,
                         self.status,
                         "Project",
-                        project_name,
+                        project_label,
                     )
                     continue
 
