@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 import {
-  BadgeWithDot,
+  Badge,
+  Dot,
   Dropdown,
   Skeleton,
   Tooltip,
   TooltipTrigger,
-  Typography,
+  Typography
 } from '@openmetadata/ui-core-components';
 import { Clock, Edit01, Eye, Trash01 } from '@untitledui/icons';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
@@ -144,7 +145,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
         </div>
       )}
 
-      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1 tw:pr-8">
+      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
         <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap">
           {memory.updatedBy && (
             <Typography size="text-sm" weight="medium">
@@ -196,9 +197,26 @@ const MemoryRow: FC<MemoryRowProps> = ({
         {memory.tags && memory.tags.length > 0 && (
           <div className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap tw:mt-0.5">
             {memory.tags.map((tag) => (
-              <BadgeWithDot color="gray" key={tag.tagFQN} type="color">
-                {tag.tagFQN}
-              </BadgeWithDot>
+               <Badge
+                  className="tw:max-w-90 tw:min-w-0"
+                  key={String(tag.tagFQN ?? '')}
+                  size="md"
+                  type="color">
+                     {tag.style?.color && (
+                      <div className='tw:shrink-0'>
+                        <Dot
+                          size="sm"
+                          style={{ color: tag.style?.color, marginRight: '6px' }}
+                        />
+                        </div>
+                      )}
+                  <Typography
+                    ellipsis
+                    className="tw:text-gray-700"
+                    size="text-xs">
+                    {tag.tagFQN}
+                  </Typography>
+                </Badge>
             ))}
           </div>
         )}

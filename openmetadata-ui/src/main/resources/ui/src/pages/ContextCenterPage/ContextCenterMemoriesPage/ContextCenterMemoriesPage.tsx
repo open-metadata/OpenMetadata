@@ -20,12 +20,15 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, Home02, Plus, SearchLg } from '@untitledui/icons';
+import { ChevronDown, FilterLines, Home02, Plus, SearchLg } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import AlertBar from '../../../components/AlertBar/AlertBar';
+import { useAlertStore } from '../../../hooks/useAlertStore';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import CreateMemoryModal from '../../../components/ContextCenter/CreateMemoryModal/CreateMemoryModal.component';
 import MemoriesView from '../../../components/ContextCenter/MemoriesView/MemoriesView.component';
@@ -42,6 +45,7 @@ import {
 } from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const MEMORIES_PER_PAGE = 10;
@@ -54,16 +58,20 @@ const FILTER_TABS = [
   // { id: 'needs-review', label: 'label.needs-review' },
 ] as const;
 
-const FILTER_BUTTON_CLS =
-  'tw:flex tw:items-center tw:gap-1.5 tw:rounded-lg tw:bg-primary tw:px-3' +
+const FILTER_BUTTON_BASE_CLS =
+  'tw:flex tw:items-center tw:gap-1.5 tw:rounded-lg tw:px-3' +
   ' tw:py-2 tw:text-sm tw:font-medium tw:shadow-xs tw:ring-1 tw:ring-inset' +
-  ' tw:ring-primary tw:cursor-pointer tw:transition tw:duration-100' +
+  ' tw:cursor-pointer tw:transition tw:duration-100' +
   ' tw:ease-linear hover:tw:ring-brand tw:outline-hidden tw:whitespace-nowrap';
+
+const FILTER_BUTTON_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-primary tw:ring-primary`;
+const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-brand-50 tw:ring-brand-100`;
 
 const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const currentUserName = getEntityName(currentUser);
+  const { alert } = useAlertStore();
 
   const [memories, setMemories] = useState<MemoryItem[]>([]);
   const [isMemoriesLoading, setIsMemoriesLoading] = useState(false);
@@ -125,12 +133,19 @@ const ContextCenterMemoriesPage: FC = () => {
   }, [fetchMemories]);
 
   const assetOptions = useMemo(() => {
-    const seen = new Map<string, string>();
+    const seen = new Map<
+      string,
+      { name: string; displayName: string; type: string }
+    >();
     memories.forEach((m) =>
       m.relatedEntities?.forEach((ref) => {
         const fqn = ref.fullyQualifiedName ?? ref.id;
         if (fqn && !seen.has(fqn)) {
-          seen.set(fqn, ref.displayName ?? ref.name ?? fqn);
+          seen.set(fqn, {
+            name: ref.name ?? fqn,
+            displayName: ref.displayName ?? ref.name ?? fqn,
+            type: ref.type ?? '',
+          });
         }
       })
     );
@@ -139,10 +154,17 @@ const ContextCenterMemoriesPage: FC = () => {
       {
         id: '',
         label: t('label.all-entity', { entity: t('label.asset-plural') }),
+        displayName: '',
+        type: '',
       },
       ...Array.from(seen.entries())
-        .sort(([, a], [, b]) => a.localeCompare(b))
-        .map(([fqn, name]) => ({ id: fqn, label: name })),
+        .sort(([, a], [, b]) => a.displayName.localeCompare(b.displayName))
+        .map(([fqn, meta]) => ({
+          id: fqn,
+          label: meta.displayName,
+          displayName: meta.displayName,
+          type: meta.type,
+        })),
     ];
   }, [memories, t]);
 
@@ -310,6 +332,7 @@ const ContextCenterMemoriesPage: FC = () => {
   const headerActions = (
     <div className="tw:flex tw:items-center tw:gap-2">
       <Input
+        className="tw:w-75"
         data-testid="memories-search-input"
         icon={SearchLg}
         placeholder={t('label.search-memories')}
@@ -331,6 +354,7 @@ const ContextCenterMemoriesPage: FC = () => {
     <div
       className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-memories-page">
+      {alert && <AlertBar message={alert.message} type={alert.type} />}
       <ContextCenterHeader
         actionsSlot={headerActions}
         breadcrumbs={[
@@ -430,11 +454,11 @@ const ContextCenterMemoriesPage: FC = () => {
                   className={({ isSelected }) =>
                     isSelected
                       ? 'tw:rounded-md tw:border tw:border-brand-100 tw:bg-brand-50' +
-                        ' tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold' +
-                        ' tw:text-brand-700 tw:cursor-pointer'
+                      ' tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold' +
+                      ' tw:text-brand-700 tw:cursor-pointer'
                       : 'tw:rounded-md tw:border tw:border-gray-300 tw:bg-white' +
-                        ' tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold' +
-                        ' tw:text-quaternary tw:cursor-pointer'
+                      ' tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold' +
+                      ' tw:text-quaternary tw:cursor-pointer'
                   }
                 />
               )}
@@ -443,18 +467,21 @@ const ContextCenterMemoriesPage: FC = () => {
 
           <div className="tw:flex tw:items-center tw:gap-2">
             <Dropdown.Root>
-              <AriaButton className={FILTER_BUTTON_CLS}>
-                <span className="tw:text-gray-700">
+              <AriaButton
+                className={
+                  selectedAsset ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
+                }>
+                <Typography className="tw:text-gray-700" weight='medium'>
                   {assetOptions.find((o) => o.id === selectedAsset)?.label ??
                     t('label.all-entity', { entity: t('label.asset-plural') })}
-                </span>
+                </Typography>
                 <ChevronDown
                   className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
                   size={16}
                   strokeWidth={2.5}
                 />
               </AriaButton>
-              <Dropdown.Popover>
+              <Dropdown.Popover className="tw:w-100">
                 <Dropdown.Menu
                   selectedKeys={selectedAsset ? [selectedAsset] : []}
                   selectionMode="single"
@@ -463,18 +490,62 @@ const ContextCenterMemoriesPage: FC = () => {
                     setCurrentPage(1);
                   }}>
                   {assetOptions.map((opt) => (
-                    <Dropdown.Item id={opt.id} key={opt.id} label={opt.label} />
+                    <Dropdown.Item
+                      id={opt.id}
+                      key={opt.id}
+                      textValue={opt.label}>
+                      {opt.type ? (
+                        <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0">
+                          <div className="tw:shrink-0">
+                            {searchClassBase.getEntityIcon(opt.type, 'tw:w-6 tw:h-6')}
+                          </div>
+                          <div className="tw:flex tw:flex-1 tw:justify-between tw:items-center">
+                            <div className='tw:max-w-55'>
+                              <Typography
+                                ellipsis
+                                className="tw:truncate tw:text-gray-800"
+                                size="text-sm"
+                                weight="medium">
+                                {opt.displayName}
+                              </Typography>
+                              <Typography
+                                ellipsis
+                                className="tw:text-gray-400 tw:truncate"
+                                size="text-xs">
+                                {opt.id}
+                              </Typography>
+
+                            </div>
+                            <Badge
+                              className="tw:shrink-0 tw:uppercase"
+                              color="gray"
+                              size="sm"
+                              type="color">
+                              {opt.type}
+                            </Badge>
+
+                          </div>
+                        </div>
+                      ) : (
+                        <span>{opt.label}</span>
+                      )}
+                    </Dropdown.Item>
                   ))}
                 </Dropdown.Menu>
               </Dropdown.Popover>
             </Dropdown.Root>
 
             <Dropdown.Root>
-              <AriaButton className={FILTER_BUTTON_CLS}>
-                <span className="tw:text-gray-700">
+              <AriaButton
+                className={
+                  selectedAuthor
+                    ? FILTER_BUTTON_ACTIVE_CLS
+                    : FILTER_BUTTON_CLS
+                }>
+                <Typography className="tw:text-gray-700" weight="medium">
                   {authorOptions.find((o) => o.id === selectedAuthor)?.label ??
                     t('label.all-entity', { entity: t('label.author') })}
-                </span>
+                </Typography>
                 <ChevronDown
                   className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
                   size={16}
@@ -492,7 +563,17 @@ const ContextCenterMemoriesPage: FC = () => {
                     setCurrentPage(1);
                   }}>
                   {authorOptions.map((opt) => (
-                    <Dropdown.Item id={opt.id} key={opt.id} label={opt.label} />
+                    <Dropdown.Item
+                      id={opt.id}
+                      key={opt.id}
+                      textValue={opt.label}>
+                      <div className="tw:flex tw:items-center tw:gap-2">
+                        {opt.id && (
+                          <ProfilePicture name={opt.id} size={20} />
+                        )}
+                        <span>{opt.label}</span>
+                      </div>
+                    </Dropdown.Item>
                   ))}
                 </Dropdown.Menu>
               </Dropdown.Popover>
@@ -502,10 +583,11 @@ const ContextCenterMemoriesPage: FC = () => {
           <div className="tw:ml-auto">
             <Dropdown.Root>
               <AriaButton className={FILTER_BUTTON_CLS}>
-                <span className="tw:text-gray-400">{t('label.sort')}:</span>
-                <span className="tw:text-gray-700">
+                <FilterLines size={18}/>
+                <Typography className="tw:text-gray-700" weight="medium">{t('label.sort')}:</Typography>
+                <Typography className="tw:text-gray-700" weight="medium">
                   {SORT_OPTIONS.find((o) => o.id === sortBy)?.label ?? ''}
-                </span>
+                </Typography>
                 <ChevronDown
                   className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
                   size={16}

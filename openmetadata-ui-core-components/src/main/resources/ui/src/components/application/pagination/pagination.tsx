@@ -315,9 +315,19 @@ export const PaginationCardMinimal = ({
           'tw:hidden tw:items-center tw:gap-3 tw:md:flex',
           align === 'center' && 'tw:justify-between'
         )}>
+        <span
+          className={cx(
+            'tw:text-sm tw:font-medium tw:text-fg-secondary',
+            align === 'left' && 'tw:mr-auto',
+            align === 'right' && 'tw:order-last tw:ml-auto'
+          )}>
+          Page {page} of {total}
+        </span>
+
         <div
           className={cx(
-            align === 'center' && 'tw:flex tw:flex-1 tw:justify-start'
+            'tw:flex tw:items-center tw:gap-3',
+            align === 'center' && 'tw:flex tw:flex-1 tw:justify-end'
           )}>
           <Button
             color="secondary"
@@ -326,21 +336,7 @@ export const PaginationCardMinimal = ({
             onClick={() => onPageChange?.(Math.max(0, page - 1))}>
             Previous
           </Button>
-        </div>
 
-        <span
-          className={cx(
-            'tw:text-sm tw:font-medium tw:text-fg-secondary',
-            align === 'right' && 'tw:order-first tw:mr-auto',
-            align === 'left' && 'tw:order-last tw:ml-auto'
-          )}>
-          Page {page} of {total}
-        </span>
-
-        <div
-          className={cx(
-            align === 'center' && 'tw:flex tw:flex-1 tw:justify-end'
-          )}>
           <Button
             color="secondary"
             isDisabled={page === total}
