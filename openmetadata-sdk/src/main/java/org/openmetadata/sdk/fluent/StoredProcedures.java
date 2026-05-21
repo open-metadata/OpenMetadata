@@ -190,6 +190,11 @@ public final class StoredProcedures {
     public StoredProcedureDeleter delete() {
       return new StoredProcedureDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<StoredProcedure> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.storedProcedures(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

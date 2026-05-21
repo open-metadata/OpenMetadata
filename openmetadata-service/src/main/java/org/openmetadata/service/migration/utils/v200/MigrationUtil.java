@@ -4,13 +4,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -25,6 +26,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AnnouncementRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -37,6 +39,28 @@ public class MigrationUtil {
 
   private static final String DATA_CONSUMER_ROLE = "DataConsumer";
   private static final String TASK_AUTHOR_POLICY = "TaskAuthorPolicy";
+
+  /**
+   * Per-migration cache of {@code (entityType, entityId) -> resolved domains}. Many migrated tasks
+   * point at the same target entity (e.g. a few glossary terms each with hundreds of tasks); going
+   * through {@link EntityRepository#get} for every task would re-load the entity and re-walk its
+   * inheritance chain. This cache shortens the lookup to a Map probe for the common case.
+   *
+   * <p>Bounded LRU via {@link LinkedHashMap#removeEldestEntry} so a pathological install with
+   * millions of unique target entities cannot OOM the migration step. Cached lists are wrapped
+   * unmodifiable so a downstream caller mutating the returned list cannot corrupt the cache.
+   *
+   * <p>The migration runs single-threaded on startup so no synchronization is required.
+   */
+  private static final int DOMAIN_CACHE_MAX_SIZE = 10_000;
+
+  private static final Map<String, List<EntityReference>> DOMAIN_CACHE =
+      new LinkedHashMap<>(16, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, List<EntityReference>> eldest) {
+          return size() > DOMAIN_CACHE_MAX_SIZE;
+        }
+      };
 
   private MigrationUtil() {}
 
@@ -355,6 +379,13 @@ public class MigrationUtil {
               createdByUserId,
               aboutJson,
               connectionType);
+          // Re-run domain inheritance for existing rows. The original v200 promotion
+          // used a raw SQL lookup that missed inherited domains (e.g. glossary terms
+          // inheriting from their parent glossary); now that the lookup walks the
+          // entity API, force-migrate must also reconcile domain relationships for
+          // tasks that were already promoted before this fix.
+          List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(handle, aboutJson);
+          insertTaskDomainRelationships(handle, threadId, inheritedDomains);
           skipped++;
           continue;
         }
@@ -1157,76 +1188,49 @@ public class MigrationUtil {
       return Collections.emptyList();
     }
 
-    return queryDomainsForEntity(handle, entityId, entityType);
+    return resolveDomainsViaRepository(entityId, entityType);
   }
 
   /**
-   * Query the entity_relationship table for any DOMAIN --HAS--> entity rows
-   * and join with domain_entity to build EntityReferences.
+   * Resolve an entity's effective domains via {@link EntityRepository#get} so that
+   * <em>inherited</em> domains are included. Glossary terms, columns, and other entities that
+   * inherit their domain from a parent do not have a direct {@code domain --HAS--> entity} row in
+   * {@code entity_relationship}; the inheritance is computed at read time. A raw SQL query on
+   * {@code entity_relationship} would miss those cases entirely.
+   *
+   * <p>Results are cached in {@link #DOMAIN_CACHE} so that the (typical) pattern of many tasks
+   * sharing a small set of target entities resolves each unique entity exactly once. Transient
+   * lookup failures are not cached so a later task on the same entity can retry.
    */
-  private static List<EntityReference> queryDomainsForEntity(
-      Handle handle, String entityId, String entityType) {
+  private static List<EntityReference> resolveDomainsViaRepository(
+      String entityId, String entityType) {
+    String cacheKey = entityType + "::" + entityId;
+    List<EntityReference> cached = DOMAIN_CACHE.get(cacheKey);
+    if (cached != null) {
+      return cached;
+    }
     try {
-      List<Map<String, Object>> rows =
-          handle
-              .createQuery(
-                  "SELECT d.json AS domainJson FROM entity_relationship er "
-                      + "JOIN domain_entity d ON d.id = er.fromId "
-                      + "WHERE er.toId = :entityId "
-                      + "AND er.toEntity = :entityType "
-                      + "AND er.fromEntity = :domainEntity "
-                      + "AND er.relation = :hasRelation")
-              .bind("entityId", entityId)
-              .bind("entityType", entityType)
-              .bind("domainEntity", Entity.DOMAIN)
-              .bind("hasRelation", Relationship.HAS.ordinal())
-              .mapToMap()
-              .list();
-
-      List<EntityReference> domains = new ArrayList<>();
-      for (Map<String, Object> row : rows) {
-        EntityReference domainRef = buildDomainReference(row.get("domainJson"));
-        if (domainRef != null) {
-          domains.add(domainRef);
-        }
+      EntityRepository<?> repo = Entity.getEntityRepository(entityType);
+      if (!repo.isSupportsDomains()) {
+        DOMAIN_CACHE.put(cacheKey, Collections.emptyList());
+        return Collections.emptyList();
       }
+      Object entity =
+          repo.get(null, UUID.fromString(entityId), repo.getFields(Entity.FIELD_DOMAINS));
+      if (!(entity instanceof EntityInterface ei)) {
+        DOMAIN_CACHE.put(cacheKey, Collections.emptyList());
+        return Collections.emptyList();
+      }
+      // Snapshot via List.copyOf so the cache entry is genuinely independent of the
+      // (potentially-mutable) list returned by the repository.
+      List<EntityReference> domains =
+          ei.getDomains() == null ? Collections.emptyList() : List.copyOf(ei.getDomains());
+      DOMAIN_CACHE.put(cacheKey, domains);
       return domains;
     } catch (Exception e) {
       LOG.debug(
           "Could not resolve domains for entity {}/{}: {}", entityType, entityId, e.getMessage());
       return Collections.emptyList();
-    }
-  }
-
-  private static EntityReference buildDomainReference(Object domainJsonObject) {
-    if (domainJsonObject == null) {
-      return null;
-    }
-    try {
-      JsonNode domainJson = JsonUtils.readTree(domainJsonObject.toString());
-      if (!domainJson.has("id")) {
-        return null;
-      }
-      EntityReference ref =
-          new EntityReference()
-              .withId(UUID.fromString(domainJson.get("id").asText()))
-              .withType(Entity.DOMAIN);
-      if (domainJson.has("name") && !domainJson.get("name").isNull()) {
-        ref.setName(domainJson.get("name").asText());
-      }
-      if (domainJson.has("fullyQualifiedName") && !domainJson.get("fullyQualifiedName").isNull()) {
-        ref.setFullyQualifiedName(domainJson.get("fullyQualifiedName").asText());
-      }
-      if (domainJson.has("displayName") && !domainJson.get("displayName").isNull()) {
-        ref.setDisplayName(domainJson.get("displayName").asText());
-      }
-      if (domainJson.has("description") && !domainJson.get("description").isNull()) {
-        ref.setDescription(domainJson.get("description").asText());
-      }
-      return ref;
-    } catch (Exception e) {
-      LOG.debug("Could not parse domain JSON: {}", e.getMessage());
-      return null;
     }
   }
 
