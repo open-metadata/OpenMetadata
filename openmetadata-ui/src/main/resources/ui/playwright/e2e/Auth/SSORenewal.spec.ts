@@ -164,6 +164,9 @@ test.describe('SSO Session Renewal', { tag: ['@sso', '@Platform'] }, () => {
     const page = userPage!;
     await expect(page.getByTestId('dropdown-profile')).toBeVisible();
 
+    await page.getByTestId('app-bar-item-my-data').click();
+    await page.waitForURL('**/my-data');
+
     await waitForAccessTokenExpiry(SHORT_ACCESS_TTL_SECONDS);
 
     const refreshCalls: string[] = [];
