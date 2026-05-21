@@ -24,7 +24,7 @@ export interface MCPToolCallUsage {
     /**
      * Name of the application (McpApplication).
      */
-    appName?:  string;
+    appName?: string;
     /**
      * Best-effort name of the calling MCP client (Claude Desktop / Cursor / VS Code / CLI /
      * claude-cli). Extracted from the User-Agent header by AuthEnrichedMcpContextExtractor.
@@ -36,7 +36,7 @@ export interface MCPToolCallUsage {
      * errorByCategory aggregate on the Billing > MCP page.
      */
     errorCategory?: ErrorCategory;
-    extension: ExtensionType;
+    extension:      ExtensionType;
     /**
      * Wall-clock duration of the tool call in milliseconds. Measured around
      * DefaultToolContext.callTool(). Null when timing was not captured (e.g. legacy rows
@@ -62,16 +62,19 @@ export interface MCPToolCallUsage {
 }
 
 /**
+ * Populated only when success=false. Drives the 'Failed' tile subtext and the
+ * errorByCategory aggregate on the Billing > MCP page.
+ *
  * Coarse bucket for failed tool invocations. Drives the 'Failed' tile subtext and the
  * errorByCategory aggregate on the redesigned Billing > MCP page.
  */
 export enum ErrorCategory {
     Auth = "AUTH",
-    RateLimit = "RATE_LIMIT",
-    Validation = "VALIDATION",
-    Timeout = "TIMEOUT",
     Internal = "INTERNAL",
     Other = "OTHER",
+    RateLimit = "RATE_LIMIT",
+    Timeout = "TIMEOUT",
+    Validation = "VALIDATION",
 }
 
 /**
