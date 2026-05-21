@@ -2161,7 +2161,7 @@ class PowerbiSource(DashboardServiceSource):
         super().yield_dashboard_lineage see this workspace's just-flushed entities.
         """
         ws_id = self.context.get().workspace.id  # pyright: ignore[reportAttributeAccessIssue]
-        yield Either(right=Barrier(reason=f"powerbi_ws:{ws_id}"))
+        yield Either(right=Barrier(reason=f"powerbi_ws:{ws_id}"))  # pyright: ignore[reportCallIssue]
         yield from super().yield_dashboard_lineage(dashboard_details)
 
     def yield_datamodel_dashboard_lineage(

@@ -2348,9 +2348,12 @@ class PowerBIUnitTest(TestCase):
             Either(right=MagicMock(name="lineage-2")),
         ]
 
-        with patch.object(self.powerbi, "context", mock_ctx), patch(
-            "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.yield_dashboard_lineage",
-            return_value=iter(sentinel_super_records),
+        with (
+            patch.object(self.powerbi, "context", mock_ctx),
+            patch(
+                "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.yield_dashboard_lineage",
+                return_value=iter(sentinel_super_records),
+            ),
         ):
             emitted = list(self.powerbi.yield_dashboard_lineage(MagicMock()))
 
@@ -2361,5 +2364,5 @@ class PowerBIUnitTest(TestCase):
         assert ws_id in (first.right.reason or "")
 
         # Subsequent records are exactly what super yielded, in order.
-        for actual, expected in zip(emitted[1:], sentinel_super_records):
+        for actual, expected in zip(emitted[1:], sentinel_super_records, strict=True):
             assert actual is expected

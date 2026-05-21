@@ -478,7 +478,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             self.metadata.patch_lineage_processed_flag(entity=add_lineage.entity, fqn=add_lineage.entity_fqn)
 
     @_run_dispatch.register
-    def write_barrier(self, record: Barrier) -> Either[None]:
+    def write_barrier(self, record: Barrier) -> Either[Entity]:
         """Flush the buffer synchronously so subsequent records in the same
         stream see committed entities."""
         if self.buffer:
@@ -488,7 +488,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 record.reason,
             )
             return self._flush_buffer()
-        return Either(right=None)
+        return Either(right=None)  # pyright: ignore[reportCallIssue]
 
     def _create_role(self, create_role: CreateRoleRequest) -> Optional[Role]:  # noqa: UP045
         """

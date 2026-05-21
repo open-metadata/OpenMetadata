@@ -82,4 +82,3 @@ class TestBarrierDispatcher:
         # Returns Either(right=None) — protocol-conformant
         assert result is not None
         assert result.right is None
-

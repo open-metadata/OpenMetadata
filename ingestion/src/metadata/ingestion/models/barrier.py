@@ -15,9 +15,8 @@ before subsequent records in the same stream are processed.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
 class Barrier:
-    reason: Optional[str] = None
+    reason: str | None = None

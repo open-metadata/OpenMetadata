@@ -582,7 +582,7 @@ class TopologyRunnerMixin(Generic[C]):
         otherwise reach the default handler, which assumes the record has a
         ``.name`` attribute.
         """
-        yield entity_request
+        yield entity_request  # pyright: ignore
 
     def sink_request(self, stage: NodeStage, entity_request: Either[C]) -> Iterable[Either[Entity]]:
         """
