@@ -20,6 +20,7 @@ critical regression that the client-side SQL parser is never invoked when
 the flag is on.
 """
 
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -100,8 +101,8 @@ def _make_lineage_source(
     src.service_connection.connectionOptions.root = dict(connection_options or {})
     src.source_config = MagicMock()
     src.engine = _make_mock_engine(rows_by_sql or {})
-    src.start = "2025-01-01 00:00:00"
-    src.end = "2025-01-02 00:00:00"
+    src.start = datetime(2025, 1, 1)
+    src.end = datetime(2025, 1, 2)
     src._table_cache = {}
     src._use_access_history = False
     return src
@@ -187,6 +188,23 @@ def test_combined_sql_injects_filter_condition_when_provided():
     assert "AND (qh.QUERY_TYPE = 'CREATE_TABLE_AS_SELECT')" in rendered
     cte_section, _, _ = rendered.partition("table_edges AS")
     assert "AND (qh.QUERY_TYPE = 'CREATE_TABLE_AS_SELECT')" in cte_section
+
+
+def test_combined_lineage_sql_prunes_query_history_by_date():
+    """
+    The QUERY_HISTORY side of the join must also be date-bounded so Snowflake can
+    prune its micro-partitions instead of scanning the full table to satisfy the
+    QUERY_ID join.
+    """
+    rendered = SNOWFLAKE_ACCESS_HISTORY_LINEAGE.format(
+        account_usage="SNOWFLAKE.ACCOUNT_USAGE",
+        start_time="2025-01-01",
+        end_time="2025-01-31",
+        filter_condition="",
+    )
+    cte_section, _, _ = rendered.partition("table_edges AS")
+    assert "qh.START_TIME" in cte_section
+    assert "ah.QUERY_START_TIME" in cte_section
 
 
 def test_build_filter_condition_clause_empty_when_unset():
@@ -419,8 +437,100 @@ def test_table_edges_skip_when_either_side_unresolvable():
             ],
         },
     )
+    with patch("metadata.ingestion.source.database.snowflake.lineage.logger") as mock_logger:
+        edges = list(src._yield_combined_access_history())
+        assert edges == []
+        debug_messages = [str(call.args) for call in mock_logger.debug.call_args_list]
+        assert any("table not found in OpenMetadata" in msg for msg in debug_messages)
+        assert any("DB.SCHEMA.ORDERS" in msg for msg in debug_messages)
+        assert any("DB.SCHEMA.REVENUE" in msg for msg in debug_messages)
+
+
+def test_access_history_chunks_window_by_day():
+    """A multi-day window must be split into one combined query per day."""
+    upstream_entity = _make_table_entity("11111111-1111-1111-1111-111111111111", "DB", "SCHEMA", "ORDERS")
+    downstream_entity = _make_table_entity("22222222-2222-2222-2222-222222222222", "DB", "SCHEMA", "REVENUE")
+    metadata = MagicMock()
+    metadata.get_by_name = MagicMock(
+        side_effect=lambda entity, fqn: {
+            "test_service.DB.SCHEMA.ORDERS": upstream_entity,
+            "test_service.DB.SCHEMA.REVENUE": downstream_entity,
+        }.get(fqn)
+    )
+    src = _make_lineage_source(
+        metadata=metadata,
+        rows_by_sql={
+            "ACCESS_HISTORY": [
+                _Row(
+                    upstream_table="DB.SCHEMA.ORDERS",
+                    upstream_domain="Table",
+                    downstream_table="DB.SCHEMA.REVENUE",
+                    downstream_domain="Table",
+                    query_id="abc",
+                    column_pairs=None,
+                ),
+            ],
+        },
+    )
+    src.start = datetime(2025, 1, 1)
+    src.end = datetime(2025, 1, 4)
+
     edges = list(src._yield_combined_access_history())
-    assert edges == []
+
+    assert len(edges) == 3
+    conn = src.engine.connect.return_value
+    executed = [str(call.args[0]) for call in conn.execute.call_args_list]
+    assert len(executed) == 3
+    assert any("2025-01-01 00:00:00" in sql and "2025-01-02 00:00:00" in sql for sql in executed)
+    assert any("2025-01-02 00:00:00" in sql and "2025-01-03 00:00:00" in sql for sql in executed)
+    assert any("2025-01-03 00:00:00" in sql and "2025-01-04 00:00:00" in sql for sql in executed)
+
+
+def test_access_history_window_failure_does_not_abort_run():
+    """A failure on one date window must not stop the remaining windows."""
+    upstream_entity = _make_table_entity("11111111-1111-1111-1111-111111111111", "DB", "SCHEMA", "ORDERS")
+    downstream_entity = _make_table_entity("22222222-2222-2222-2222-222222222222", "DB", "SCHEMA", "REVENUE")
+    metadata = MagicMock()
+    metadata.get_by_name = MagicMock(
+        side_effect=lambda entity, fqn: {
+            "test_service.DB.SCHEMA.ORDERS": upstream_entity,
+            "test_service.DB.SCHEMA.REVENUE": downstream_entity,
+        }.get(fqn)
+    )
+    src = _make_lineage_source(
+        metadata=metadata,
+        rows_by_sql={
+            "ACCESS_HISTORY": [
+                _Row(
+                    upstream_table="DB.SCHEMA.ORDERS",
+                    upstream_domain="Table",
+                    downstream_table="DB.SCHEMA.REVENUE",
+                    downstream_domain="Table",
+                    query_id="abc",
+                    column_pairs=None,
+                ),
+            ],
+        },
+    )
+    src.start = datetime(2025, 1, 1)
+    src.end = datetime(2025, 1, 3)
+
+    conn = src.engine.connect.return_value
+    healthy_side_effect = conn.execute.side_effect
+    call_state = {"count": 0}
+
+    def _flaky_execute(statement):
+        call_state["count"] += 1
+        if call_state["count"] == 1:
+            raise RuntimeError("simulated snowflake timeout")
+        return healthy_side_effect(statement)
+
+    conn.execute.side_effect = _flaky_execute
+
+    edges = list(src._yield_combined_access_history())
+
+    assert call_state["count"] == 2
+    assert len(edges) == 1
 
 
 def test_split_snowflake_fqn_handles_three_part_name():
