@@ -267,6 +267,10 @@ public final class Users {
     public UserDeleter delete() {
       return new UserDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<User> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(client.users(), identifier);
+    }
   }
 
   // ==================== Deleter ====================
