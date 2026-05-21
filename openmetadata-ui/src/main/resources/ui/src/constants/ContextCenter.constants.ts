@@ -13,6 +13,7 @@
 // ─── File type badge ──────────────────────────────────────────────────────────
 
 import { DocFileType } from 'components/ContextCenter/DocumentsView/DocumentsView.interface';
+import { MemoryType } from 'generated/entity/context/contextMemory';
 
 export const FILE_TYPE_STYLES: Record<
   DocFileType,
@@ -27,3 +28,11 @@ export const FILE_TYPE_STYLES: Record<
 };
 
 export const DOCUMENT_MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+export const MEMORY_TYPE_OPTIONS = [
+  { id: MemoryType.FAQ, label: 'FAQ' },
+  { id: MemoryType.Note, label: 'Note' },
+  { id: MemoryType.Preference, label: 'Preference' },
+  { id: MemoryType.Runbook, label: 'Runbook' },
+  { id: MemoryType.UseCase, label: 'Use Case' },
+];

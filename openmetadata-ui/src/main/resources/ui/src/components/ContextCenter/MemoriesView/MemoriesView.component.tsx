@@ -26,19 +26,11 @@ import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/Er
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
-import { MemoriesViewProps, MemoryItem } from './MemoriesView.interface';
-
-interface MemoryActionsProps {
-  canDelete?: boolean;
-  memory: MemoryItem;
-  onDeleteMemory?: (memory: MemoryItem) => void;
-  onEditMemory?: (memory: MemoryItem) => void;
-  onViewMemory?: (memory: MemoryItem) => void;
-}
-
-interface MemoryActionsWithOpenProps extends MemoryActionsProps {
-  onOpenChange: (isOpen: boolean) => void;
-}
+import {
+  MemoriesViewProps,
+  MemoryActionsWithOpenProps,
+  MemoryItem,
+} from './MemoriesView.interface';
 
 const MemoryActions: FC<MemoryActionsWithOpenProps> = ({
   canDelete,

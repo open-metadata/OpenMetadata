@@ -29,6 +29,7 @@ import { Lightbulb03, Plus, Share07, Trash01, X } from '@untitledui/icons';
 import { ConfigProvider } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
+import { MEMORY_TYPE_OPTIONS } from 'constants/ContextCenter.constants';
 import { compare } from 'fast-json-patch';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -55,14 +56,6 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { CreateMemoryModalProps } from './CreateMemoryModal.interface';
 
-const MEMORY_TYPE_OPTIONS = [
-  { id: MemoryType.FAQ, label: 'FAQ' },
-  { id: MemoryType.Note, label: 'Note' },
-  { id: MemoryType.Preference, label: 'Preference' },
-  { id: MemoryType.Runbook, label: 'Runbook' },
-  { id: MemoryType.UseCase, label: 'Use Case' },
-];
-
 const LinkedAssetCard: FC<{
   asset: DataAssetOption;
   onRemove?: (fqn: string) => void;
@@ -82,17 +75,10 @@ const LinkedAssetCard: FC<{
       </div>
       <div className="tw:flex tw:flex-1 tw:justify-between tw:items-center tw:min-w-0">
         <div className="tw:min-w-0 tw:flex-1 tw:pr-2">
-          <Typography
-            ellipsis
-            className="tw:truncate"
-            size="text-sm"
-            weight="medium">
+          <Typography ellipsis size="text-sm" weight="medium">
             {displayName}
           </Typography>
-          <Typography
-            ellipsis
-            className="tw:text-gray-400 tw:truncate"
-            size="text-xs">
+          <Typography ellipsis className="tw:text-gray-400" size="text-xs">
             {asset.reference?.fullyQualifiedName ?? ''}
           </Typography>
         </div>
@@ -119,16 +105,23 @@ const LinkedAssetCard: FC<{
   );
 };
 
-const LinkedAssetsReadOnly: FC<{ assets: DataAssetOption[] }> = ({
-  assets,
-}) => {
+const EmptyLinkedAssets: FC = () => {
   const { t } = useTranslation();
-  if (assets.length === 0) {
-    return (
+
+  return (
+    <div className="tw:p-3 tw:border-dashed tw:border tw:rounded-lg tw:border-gray-300 tw:flex tw:justify-center tw:items-center">
       <Typography className="tw:text-gray-400" size="text-sm">
         {t('label.not-linked-to-any-data-asset')}
       </Typography>
-    );
+    </div>
+  );
+};
+
+const LinkedAssetsReadOnly: FC<{ assets: DataAssetOption[] }> = ({
+  assets,
+}) => {
+  if (assets.length === 0) {
+    return <EmptyLinkedAssets />;
   }
 
   return (
@@ -190,7 +183,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
         label: ref.displayName ?? ref.name ?? '',
         value: ref.fullyQualifiedName ?? ref.id,
         displayName: ref.displayName ?? ref.name ?? '',
-        reference: ref as DataAssetOption['reference'],
+        reference: ref,
       }));
       setLinkedAssets(assetOptions);
     } else {
@@ -231,6 +224,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
         source: TagSource.Classification,
         labelType: LabelType.Manual,
         state: State.Confirmed,
+        style: tag.data.style,
       }));
       setSelectedTags(newTags);
       setShowTagForm(false);
@@ -364,11 +358,11 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                 }>
                 {/* Sticky header */}
                 <div className="tw:flex tw:items-center tw:gap-3 tw:pt-5 tw:pb-4 tw:shrink-0">
-                  <div className="tw:flex tw:items-center tw:justify-center tw:w-10 tw:h-10 tw:rounded-lg tw:bg-blue-50 tw:shrink-0">
+                  <div className="tw:flex tw:items-center tw:justify-center tw:w-10 tw:h-10 tw:rounded-lg tw:bg-blue-50 tw:border tw:border-indigo-100 tw:shrink-0">
                     <Lightbulb03
+                      className="tw:text-brand-700"
                       size={20}
                       strokeWidth={1.5}
-                      style={{ color: 'var(--color-primary)' }}
                     />
                   </div>
                   <div className="tw:flex tw:flex-col tw:gap-0.5 tw:flex-1">
@@ -483,7 +477,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       <LinkedAssetsReadOnly assets={linkedAssets} />
                     ) : (
                       <>
-                        {linkedAssets.length > 0 && (
+                        {linkedAssets.length === 0 ? (
+                          <EmptyLinkedAssets />
+                        ) : (
                           <div className="tw:flex tw:flex-col tw:gap-2">
                             {linkedAssets.map((asset) => {
                               const assetKey =

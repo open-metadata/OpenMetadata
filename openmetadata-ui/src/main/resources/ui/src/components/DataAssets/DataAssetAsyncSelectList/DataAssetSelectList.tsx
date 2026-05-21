@@ -51,6 +51,7 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
 }) => {
   const { t } = useTranslation();
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const isFetchingMore = useRef(false);
   const [isOpen, setIsOpen] = useState(false);
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [currentPage, setCurrentPage] = useState(1);
@@ -149,6 +150,16 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
     [loadOptions, debounceTimeout]
   );
 
+  useEffect(() => {
+    if (!isOpen) {
+      debouncedLoad.cancel();
+    }
+
+    return () => {
+      debouncedLoad.cancel();
+    };
+  }, [debouncedLoad, isOpen]);
+
   const selectedFqns = useMemo(
     () => new Set(selected.map((o) => String(o.value ?? ''))),
     [selected]
@@ -179,7 +190,12 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
     async (e: React.UIEvent<HTMLElement>) => {
       const el = e.currentTarget;
       const nearBottom = el.scrollTop + el.offsetHeight >= el.scrollHeight - 20;
-      if (nearBottom && options.length < (paging.total ?? 0)) {
+      if (
+        nearBottom &&
+        options.length < (paging.total ?? 0) &&
+        !isFetchingMore.current
+      ) {
+        isFetchingMore.current = true;
         try {
           const res = await fetchOptions(searchText, currentPage + 1);
           setOptions((prev) => [...prev, ...res.data]);
@@ -187,6 +203,8 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
           setCurrentPage((prev) => prev + 1);
         } catch (error) {
           showErrorToast(error as AxiosError);
+        } finally {
+          isFetchingMore.current = false;
         }
       }
     },

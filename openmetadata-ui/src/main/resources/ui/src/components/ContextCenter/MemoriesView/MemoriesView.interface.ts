@@ -50,3 +50,15 @@ export interface MemoriesViewProps {
   onEditMemory?: (memory: MemoryItem) => void;
   onViewMemory?: (memory: MemoryItem) => void;
 }
+
+export interface MemoryActionsProps {
+  canDelete?: boolean;
+  memory: MemoryItem;
+  onDeleteMemory?: (memory: MemoryItem) => void;
+  onEditMemory?: (memory: MemoryItem) => void;
+  onViewMemory?: (memory: MemoryItem) => void;
+}
+
+export interface MemoryActionsWithOpenProps extends MemoryActionsProps {
+  onOpenChange: (isOpen: boolean) => void;
+}

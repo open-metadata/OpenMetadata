@@ -2585,7 +2585,7 @@
     "context-center-dashboard-subtitle": "ナレッジベースとドキュメントライブラリの概要",
     "context-center-documents-subtitle": "アップロードされたドキュメントを管理および整理",
     "context-center-integrations-subtitle": "外部統合を接続および管理",
-    "context-center-memories-subtitle": "AI が保持するコンテキストメモリの表示と管理",
+    "context-center-memories-subtitle": "AskCollateとのチャット中にチームが取得した事実、定義、および設定",
     "contract-detail-plural-description": "データアセットに対する期待値を定めた契約。",
     "contract-execution-history-description": "すべての契約実行結果を時系列で表示",
     "contract-security-consume-description": "データの想定される消費者",
