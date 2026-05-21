@@ -43,6 +43,65 @@ class ObjectStorageConfigurationTest {
   }
 
   @Test
+  void minioProviderIsRejectedAsUnsupportedProvider() {
+    ObjectStorageConfiguration config = baseConfig("minio");
+
+    Set<ConstraintViolation<ObjectStorageConfiguration>> violations = validate(config);
+
+    assertEquals(1, violations.size());
+    assertEquals(
+        "Object storage provider must be one of: s3, azure, inmemory, in-memory, noop",
+        message(violations));
+  }
+
+  @Test
+  void providerValidationNormalizesWhitespaceAndCase() {
+    ObjectStorageConfiguration config = baseConfig(" S3 ");
+    config.setS3Configuration(s3Config());
+
+    assertTrue(validate(config).isEmpty());
+  }
+
+  @Test
+  void azureProviderRequiresAzureConfiguration() {
+    ObjectStorageConfiguration config = baseConfig("azure");
+
+    Set<ConstraintViolation<ObjectStorageConfiguration>> violations = validate(config);
+
+    assertEquals(1, violations.size());
+    assertEquals(
+        "Azure configuration requires containerName and blobEndpoint", message(violations));
+  }
+
+  @Test
+  void azureProviderRequiresContainerName() {
+    ObjectStorageConfiguration config = baseConfig("azure");
+    AzureConfiguration azureConfiguration =
+        azureConfigWithoutCredentials("https://account.blob.core.windows.net");
+    azureConfiguration.setContainerName("");
+    config.setAzureConfiguration(azureConfiguration);
+
+    Set<ConstraintViolation<ObjectStorageConfiguration>> violations = validate(config);
+
+    assertEquals(1, violations.size());
+    assertEquals(
+        "Azure configuration requires containerName and blobEndpoint", message(violations));
+  }
+
+  @Test
+  void s3ProviderRequiresS3Configuration() {
+    ObjectStorageConfiguration config = baseConfig("s3");
+
+    Set<ConstraintViolation<ObjectStorageConfiguration>> violations = validate(config);
+
+    assertEquals(1, violations.size());
+    assertEquals(
+        "S3 configuration requires bucketName, region, and either useIamRole=true or both"
+            + " accessKey and secretKey",
+        message(violations));
+  }
+
+  @Test
   void disabledObjectStorageSkipsProviderSpecificValidation() {
     ObjectStorageConfiguration config = new ObjectStorageConfiguration();
     config.setEnabled(false);
