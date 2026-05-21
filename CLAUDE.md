@@ -2,6 +2,26 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## General Rules
+
+- Always confirm the correct file path and repository/submodule before making edits. If the user specifies a path, use that exact path — do not assume a different location.
+
+## Git Workflow
+
+- Do not push commits or create PRs without explicit user approval. Always ask before running `git push`.
+
+## Debugging Strategy
+
+- When a first fix attempt fails or is rejected, do not iterate on the same approach. Step back, re-read the error output carefully, and consider a fundamentally different root cause before proposing a second fix.
+
+## TypeScript & Dependencies
+
+- This project uses TypeScript with strict types. Do not add non-existent `@types` packages. Verify package existence before adding dependencies. Use `lodash-es` not `lodash` for ES module imports.
+
+## Playwright / E2E Testing
+
+- When fixing Playwright tests, always verify the actual DOM structure and selectors in the test environment before proposing fixes. Do not guess at selectors — use the test's trace or error output to identify the exact element hierarchy.
+
 ## About OpenMetadata
 
 OpenMetadata is a unified metadata platform for data discovery, data observability, and data governance. This is a multi-module project with Java backend services, React frontend, Python ingestion framework, and comprehensive Docker infrastructure.
