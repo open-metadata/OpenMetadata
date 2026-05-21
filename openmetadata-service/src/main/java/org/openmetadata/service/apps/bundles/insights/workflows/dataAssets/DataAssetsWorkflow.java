@@ -342,6 +342,23 @@ public class DataAssetsWorkflow {
       drainAndFlush(opsQueue);
     } finally {
       updateWorkflowStats(source.getName(), source.getStats());
+      mergeEnricherStepStats();
+    }
+  }
+
+  /**
+   * Surface per-step enrichment stats (e.g. {@code [Enricher] team}, {@code [Enricher]
+   * descriptionSources}) alongside the per-entity-type source stats. The enricher is shared across
+   * all entity types processed in this workflow run, so its counters are cumulative across sources
+   * — calling this in each source's finally block keeps the workflow's view of the stats current.
+   */
+  private void mergeEnricherStepStats() {
+    if (entityEnricher == null) {
+      return;
+    }
+    Map<String, StepStats> perStep = entityEnricher.getEntityStats();
+    for (Map.Entry<String, StepStats> entry : perStep.entrySet()) {
+      workflowStats.updateWorkflowStepStats("[Enricher] " + entry.getKey(), entry.getValue());
     }
   }
 

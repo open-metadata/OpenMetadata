@@ -604,10 +604,12 @@ public class WebAnalyticEventResource
     if (webAnalyticEventDataInput.getEventType().equals(WebAnalyticEventType.PAGE_VIEW)) {
       // Validate Json as Page View Data
       PageViewData pageViewData = JsonUtils.convertValue(inputData, PageViewData.class);
+      stripNullCharacters(pageViewData);
       webAnalyticEventDataInput.setEventData(pageViewData);
     } else if (webAnalyticEventDataInput.getEventType().equals(WebAnalyticEventType.CUSTOM_EVENT)) {
       // Validate Json as type Custom Event
       CustomEvent customEventData = JsonUtils.convertValue(inputData, CustomEvent.class);
+      stripNullCharacters(customEventData);
       if (customEventData.getEventType().equals(CustomEvent.CustomEventTypes.CLICK)) {
         if (containsHtml(customEventData.getEventValue())) {
           throw new IllegalArgumentException("Invalid event value for custom event.");
@@ -628,5 +630,31 @@ public class WebAnalyticEventResource
       return false;
     }
     return HTML_PATTERN.matcher(input).matches();
+  }
+
+  private static void stripNullCharacters(PageViewData data) {
+    data.setFullUrl(removeNullCharacters(data.getFullUrl()));
+    data.setUrl(removeNullCharacters(data.getUrl()));
+    data.setHostname(removeNullCharacters(data.getHostname()));
+    data.setLanguage(removeNullCharacters(data.getLanguage()));
+    data.setScreenSize(removeNullCharacters(data.getScreenSize()));
+    data.setReferrer(removeNullCharacters(data.getReferrer()));
+  }
+
+  private static void stripNullCharacters(CustomEvent event) {
+    event.setFullUrl(removeNullCharacters(event.getFullUrl()));
+    event.setUrl(removeNullCharacters(event.getUrl()));
+    event.setHostname(removeNullCharacters(event.getHostname()));
+    event.setEventValue(removeNullCharacters(event.getEventValue()));
+  }
+
+  // PostgreSQL jsonb rejects strings containing the NUL character (\u0000). Strip it from
+  // user-supplied analytics fields so click events that capture page text (e.g. error messages
+  // surfaced from the database) do not fail the insert.
+  static String removeNullCharacters(String input) {
+    if (input == null || input.indexOf('\u0000') < 0) {
+      return input;
+    }
+    return input.replace("\u0000", "");
   }
 }
