@@ -491,7 +491,7 @@ public class AlertsRuleEvaluatorResourceIT {
 
   @Test
   void test_isBot_returnsFalseWhenActorUserDeleted(TestNamespace ns) {
-    String userName = ns.prefix("isbot-actor");
+    String userName = ns.uniqueShortId();
     CreateUser createUser =
         new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org");
     User createdUser = SdkClients.adminClient().users().create(createUser);
