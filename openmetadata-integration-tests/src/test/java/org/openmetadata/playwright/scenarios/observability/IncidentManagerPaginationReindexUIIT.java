@@ -27,7 +27,7 @@ import org.openmetadata.sdk.fluent.TestCases;
 
 /**
  * Java port of {@code IncidentManager.spec.ts → "Incident Manager pagination"} (2
- * tests: next/prev/page-indicator and page-size dropdown). Seeds 18 testCases with
+ * tests: next/prev/page-indicator and page-size dropdown). Seeds 20 testCases with
  * Failed results so the list paginates (default 15/page).
  */
 @ExtendWith({UiSessionExtension.class, TestNamespaceExtension.class})

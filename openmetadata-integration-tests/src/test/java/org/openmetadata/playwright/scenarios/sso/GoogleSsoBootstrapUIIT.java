@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.it.server.ContainerizedServer;
 import org.openmetadata.it.server.sso.ClientType;
 import org.openmetadata.it.server.sso.GoogleProfile;
+import org.openmetadata.it.server.sso.MockOidcServer;
 
 /**
  * End-to-end wiring check for SSO mode: launches OM with the Google confidential-client
@@ -29,7 +30,8 @@ class GoogleSsoBootstrapUIIT {
 
   private static final HttpClient HTTP =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
-  private static final String EXPECTED_AUTHORITY = "http://om-mock-idp:1080/google";
+  private static final String EXPECTED_AUTHORITY =
+      "http://" + MockOidcServer.NETWORK_ALIAS + ":" + MockOidcServer.PORT + "/google";
 
   @Test
   void omBootsWithGoogleConfidentialClientPointingAtMockIdp() throws Exception {

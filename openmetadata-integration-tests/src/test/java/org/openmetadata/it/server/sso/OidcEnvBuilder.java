@@ -37,12 +37,17 @@ final class OidcEnvBuilder {
     final String callback = "http://localhost:" + omHostPort + "/callback";
     final String serverUrl = "http://localhost:" + omHostPort;
 
+    // OM still mints/validates its own internal & bot JWTs in SSO mode, so its own JWKS
+    // endpoint must remain in the list alongside the mock IdP's — dropping it (as a bare
+    // "[<idpJwks>]" would) breaks validation of OM-issued tokens. Matches the existing SSO
+    // CI config which lists both.
+    final String omJwks = serverUrl + "/api/v1/system/config/jwks";
     final Map<String, String> env = new HashMap<>();
     env.put("AUTHENTICATION_PROVIDER", providerKey);
     env.put("AUTHENTICATION_AUTHORITY", issuer);
     env.put("AUTHENTICATION_CLIENT_ID", clientId);
     env.put("AUTHENTICATION_CALLBACK_URL", callback);
-    env.put("AUTHENTICATION_PUBLIC_KEYS", "[" + jwks + "]");
+    env.put("AUTHENTICATION_PUBLIC_KEYS", "[" + omJwks + "," + jwks + "]");
     env.put("AUTHENTICATION_CLIENT_TYPE", clientTypeValue(clientType));
     env.put("AUTHENTICATION_RESPONSE_TYPE", responseTypeValue(clientType));
     if (customProviderName != null && !customProviderName.isBlank()) {

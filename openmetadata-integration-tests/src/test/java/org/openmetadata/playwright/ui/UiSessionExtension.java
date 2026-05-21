@@ -27,9 +27,10 @@ import org.slf4j.LoggerFactory;
  * Orchestrates per-test {@link UiSession} lifecycle.
  *
  * <p>For each {@code @Test}: opens a fresh {@link BrowserContext} on the JVM-wide
- * {@link SessionBrowser}, applies an {@link AuthStrategy} (admin JWT by default), and
- * starts a {@link TraceRecorder}. Trace is saved on failure, discarded on success. The
- * context is closed after the test runs, so each test sees a clean cookie/storage state.
+ * {@link SessionBrowser}, injects auth via {@code AuthSession.backend().injectIntoBrowser(...)}
+ * (admin JWT by default), and starts a {@link TraceRecorder}. Trace is saved on failure,
+ * discarded on success/skip. The context is closed after the test runs, so each test sees a
+ * clean cookie/storage state.
  *
  * <p>Tests opt in via {@code @ExtendWith(UiSessionExtension.class)} and receive a
  * {@link UiSession} parameter on their test methods.
@@ -94,11 +95,18 @@ public final class UiSessionExtension
 
   private static void finishRecording(
       final ExtensionContext extensionContext, final TraceRecorder recorder) {
-    if (extensionContext.getExecutionException().isPresent()) {
+    if (isRealFailure(extensionContext.getExecutionException().orElse(null))) {
       recorder.stopAndSave(traceStem(extensionContext));
     } else {
       recorder.stopAndDiscard();
     }
+  }
+
+  // A failed assumption (TestAbortedException) is a skip, not a failure — don't waste a
+  // trace on it. Anything else present is a genuine failure worth capturing.
+  private static boolean isRealFailure(final Throwable executionException) {
+    return executionException != null
+        && !(executionException instanceof org.opentest4j.TestAbortedException);
   }
 
   private static String traceStem(final ExtensionContext extensionContext) {

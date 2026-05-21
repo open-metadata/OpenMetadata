@@ -41,8 +41,20 @@ public final class UiSession {
     return server;
   }
 
-  /** Resolves a UI path against the server. {@code path} should start with {@code /}. */
+  /**
+   * Resolves a UI path against the server's UI root. {@link ServerHandle#baseUrl()} ends in
+   * {@code /api} (the REST base), so we strip that to land on the UI root before appending
+   * the path — relying on {@link java.net.URI#resolve} here is fragile (a relative path or a
+   * trailing-slash base would resolve under {@code /api/...} and 404).
+   */
   public String uiUrl(final String path) {
-    return server.baseUrl().resolve(path).toString();
+    String base = server.baseUrl().toString();
+    if (base.endsWith("/")) {
+      base = base.substring(0, base.length() - 1);
+    }
+    if (base.endsWith("/api")) {
+      base = base.substring(0, base.length() - "/api".length());
+    }
+    return base + (path.startsWith("/") ? path : "/" + path);
   }
 }

@@ -139,11 +139,11 @@ public final class ReindexHelpers {
    */
   public static AppRunRecord stopAppAndWait(
       final ServerHandle server, final String appName, final Duration timeout) {
-    final long stopRequestedAt = System.currentTimeMillis();
     server
         .sdk()
         .getHttpClient()
         .execute(HttpMethod.POST, "/v1/apps/stop/" + appName, null, Void.class);
+    // sinceMillis=0: we want the run we just stopped to reach terminal, not a fresh run.
     return waitForRunAfter(server, appName, 0L, timeout);
   }
 

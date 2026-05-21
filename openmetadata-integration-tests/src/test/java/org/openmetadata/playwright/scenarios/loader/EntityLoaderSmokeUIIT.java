@@ -2,7 +2,6 @@ package org.openmetadata.playwright.scenarios.loader;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -79,7 +78,8 @@ class EntityLoaderSmokeUIIT {
     assertThat(summary.countOf(EntityKind.PIPELINE)).isEqualTo(PIPELINES);
     assertThat(summary.totalEntities()).isEqualTo(TABLES + TOPICS + DASHBOARDS + PIPELINES);
     assertThat(summary.totalColumns()).isEqualTo(TABLES * COLUMNS_PER_TABLE);
-    assertThat(summary.totalDuration()).isLessThan(Duration.ofMinutes(2));
+    // Don't assert on wall-clock — it flakes on shared/loaded runners. Log it instead.
+    LOG.info("4-kind cohort load duration: {}", summary.totalDuration());
   }
 
   /**
@@ -114,7 +114,8 @@ class EntityLoaderSmokeUIIT {
 
     final int expectedTotal = expected.values().stream().mapToInt(Integer::intValue).sum();
     assertThat(summary.totalEntities()).isEqualTo(expectedTotal);
-    assertThat(summary.totalDuration()).isLessThan(Duration.ofMinutes(5));
+    // Don't assert on wall-clock — it flakes on shared/loaded runners. Log it instead.
+    LOG.info("All-kinds smoke load duration: {}", summary.totalDuration());
   }
 
   private static Map<EntityKind, Integer> buildExpectedCounts() {

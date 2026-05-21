@@ -109,7 +109,9 @@ public final class CpuSampler {
     if (sorted.length == 0) {
       return 0.0;
     }
-    final int idx = (int) Math.min(sorted.length - 1L, Math.floor(p * sorted.length));
+    // Index off (length - 1), not length: floor(p * length) returns the max for many small
+    // n (e.g. n=20, p=0.95 -> idx 19), overstating p95 and making headroom asserts flaky.
+    final int idx = (int) Math.min(sorted.length - 1L, Math.round(p * (sorted.length - 1)));
     return sorted[idx];
   }
 

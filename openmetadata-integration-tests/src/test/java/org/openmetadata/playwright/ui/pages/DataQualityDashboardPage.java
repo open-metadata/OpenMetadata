@@ -45,11 +45,9 @@ public final class DataQualityDashboardPage extends PageObject {
     if (card.count() == 0) {
       return false;
     }
-    try {
-      card.click(new Locator.ClickOptions().setTimeout(5_000));
-    } catch (final Exception e) {
-      return false;
-    }
+    // Only genuine absence (count == 0) is a skip. A click/navigation failure on a card
+    // that IS present is a real regression and must surface, not be swallowed as "absent".
+    card.click(new Locator.ClickOptions().setTimeout(5_000));
     page.waitForURL(
         Pattern.compile("/data-quality/test-cases.*dataQualityDimension=" + urlValue),
         new Page.WaitForURLOptions().setTimeout(20_000));

@@ -1,5 +1,7 @@
 package org.openmetadata.it.util;
 
+import java.time.Duration;
+import java.time.Instant;
 import org.openmetadata.it.auth.AuthBackend;
 import org.openmetadata.it.auth.AuthBackends;
 import org.openmetadata.it.auth.AuthSession;
@@ -46,24 +48,46 @@ public final class UiTestServer {
     LOG.info("UI test auth backend: {}", backend.name());
     if (hasExternalConfig()) {
       cached = bootExternal(backend);
+      pointSdkClientsAt(cached);
+      initializeExternalAuth(backend);
     } else {
       cached = bootContainerized(backend);
+      pointSdkClientsAt(cached);
+      initializeContainerizedAuth(backend);
     }
-    pointSdkClientsAt(cached);
+    Runtime.getRuntime()
+        .addShutdownHook(new Thread(UiTestServer::tearDown, "UiTestServer-cleanup"));
+    return cached;
+  }
+
+  /**
+   * External mode: honour the operator-provided {@code OM_ADMIN_TOKEN} verbatim. Minting a
+   * token here via {@code backend.acquireToken} would sign it with the test harness's key
+   * (BasicJwtBackend), which the external server won't trust. No {@link TokenRefresher} —
+   * the external token's lifecycle belongs to whoever issued it.
+   */
+  private static void initializeExternalAuth(final AuthBackend backend) {
+    final String token = lookup("OM_ADMIN_TOKEN");
+    SdkClients.overrideAdminToken(token);
+    AuthSession.initialize(backend, externalTokenSet(token));
+  }
+
+  private static void initializeContainerizedAuth(final AuthBackend backend) {
     final TokenSet initial = backend.acquireToken(cached, idp());
     AuthSession.initialize(backend, initial);
     SdkClients.overrideAdminToken(initial.accessToken());
     // Rebuild the cached ServerHandle now that we have a real token. Without this,
     // server.sdk() returns the placeholder client built with the empty token, and any
-    // caller that goes through it (e.g. ReindexHelpers.triggerApp) gets 401. External
-    // mode skips this — ExternalServer.fromEnv() already wired the real OM_ADMIN_TOKEN.
+    // caller that goes through it (e.g. ReindexHelpers.triggerApp) gets 401.
     if (ownedContainer != null) {
       cached = ownedContainer.handle(initial.accessToken());
     }
     refresher = TokenRefresher.start(backend, cached, idp());
-    Runtime.getRuntime()
-        .addShutdownHook(new Thread(UiTestServer::tearDown, "UiTestServer-cleanup"));
-    return cached;
+  }
+
+  private static TokenSet externalTokenSet(final String token) {
+    // Static operator token: mark a far-future expiry so nothing treats it as refreshable.
+    return new TokenSet(token, null, null, Instant.now().plus(Duration.ofDays(3650)));
   }
 
   private static ServerHandle bootExternal(final AuthBackend backend) {
