@@ -65,7 +65,7 @@ class SearchIndexPrefetchTest {
         .thenAnswer(invocation -> Collections.emptyList());
     // The lineage-support probe is memoized per JVM; clear it so each test sees the mock the
     // test itself configures rather than a value cached by an earlier test in the same JVM.
-    SearchIndex.LINEAGE_PREFETCH_SUPPORT_CACHE.clear();
+    SearchIndex.LINEAGE_PREFETCH_SUPPORT_CACHE.invalidateAll();
   }
 
   @Test
@@ -334,6 +334,22 @@ class SearchIndexPrefetchTest {
         .thenThrow(new IllegalStateException("boom"));
 
     assertNull(SearchIndex.prefetchLineageIfSupported(TABLE, List.of(downstream)));
+  }
+
+  @Test
+  void supportProbeDoesNotCacheFailuresSoTransientErrorsAreRetried() {
+    Table downstream = table("svc.db.s.d1");
+    entityStaticMock
+        .when(() -> Entity.buildSearchIndex(TABLE, null))
+        .thenThrow(new IllegalStateException("transient"))
+        .thenReturn(new BareLineageIndex());
+    when(relDao.findFromBatch(any(), anyInt(), any(Include.class)))
+        .thenReturn(Collections.emptyList());
+
+    // First call: probe throws -> returns null (treated as unsupported), cache stays empty.
+    assertNull(SearchIndex.prefetchLineageIfSupported(TABLE, List.of(downstream)));
+    // Second call: probe succeeds -> map is populated, proving the failure wasn't cached.
+    assertNotNull(SearchIndex.prefetchLineageIfSupported(TABLE, List.of(downstream)));
   }
 
   @Test

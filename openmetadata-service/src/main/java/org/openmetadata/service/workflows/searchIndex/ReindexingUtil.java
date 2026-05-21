@@ -75,11 +75,12 @@ public class ReindexingUtil {
     Map<UUID, List<EsLineageData>> prefetchedLineage = null;
     try {
       prefetchedLineage = SearchIndex.prefetchLineageIfSupported(entityType, entities);
-    } catch (Throwable t) {
+    } catch (Exception | LinkageError t) {
       // Best-effort: if the prefetch (or SearchIndex class init) blows up — e.g. in a unit
       // test that hasn't bootstrapped Entity.searchRepository — the sinks fall through to the
-      // per-entity DB lookup path, which is the original pre-PR behaviour. Catch Throwable
-      // because the failure mode includes NoClassDefFoundError (not an Exception).
+      // per-entity DB lookup path, which is the original pre-PR behaviour. LinkageError covers
+      // NoClassDefFoundError (not an Exception); fatal errors like OutOfMemoryError /
+      // StackOverflowError still propagate.
       LOG.warn(
           "Skipping doc-build context prefetch for type '{}'; doc-build will fall back to per-entity DB lookups",
           entityType,

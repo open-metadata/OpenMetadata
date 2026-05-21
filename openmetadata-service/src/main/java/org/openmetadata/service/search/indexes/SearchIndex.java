@@ -308,33 +308,42 @@ public interface SearchIndex {
 
   /**
    * Per-JVM cache of "does {@code entityType}'s index implement {@link LineageIndex}?" so the
-   * type-level marker probe runs at most once per type. Entity types are a small closed set
-   * (~50), so an unbounded {@link java.util.concurrent.ConcurrentHashMap} is fine here.
+   * type-level marker probe runs at most once per type. Bounded per the project's caching policy
+   * (CLAUDE.md): entity types are a closed set (~50), so 256 is far above the working set and
+   * still satisfies "no unbounded caches".
    */
-  java.util.concurrent.ConcurrentHashMap<String, Boolean> LINEAGE_PREFETCH_SUPPORT_CACHE =
-      new java.util.concurrent.ConcurrentHashMap<>();
+  com.google.common.cache.Cache<String, Boolean> LINEAGE_PREFETCH_SUPPORT_CACHE =
+      com.google.common.cache.CacheBuilder.newBuilder().maximumSize(256).build();
 
   /**
    * Type-level marker check: builds the index for {@code entityType} with a {@code null} entity
    * (the same null-entity probe pattern used by {@code SearchIndexFactory#getReindexFieldsFor})
    * and returns true if the resulting index implements {@link LineageIndex}. Avoids constructing
-   * a throwaway index over a real entity instance just to read a marker interface. Result is
-   * memoized in {@link #LINEAGE_PREFETCH_SUPPORT_CACHE} so the probe runs at most once per JVM
-   * per entity type.
+   * a throwaway index over a real entity instance just to read a marker interface.
+   *
+   * <p>Only successful probes are memoized into {@link #LINEAGE_PREFETCH_SUPPORT_CACHE}; if the
+   * probe fails (e.g. transient class-init issue during startup, mocked Entity in tests) we
+   * return {@code false} without caching so a subsequent call retries.
    */
   private static boolean supportsLineagePrefetch(String entityType) {
-    return LINEAGE_PREFETCH_SUPPORT_CACHE.computeIfAbsent(
-        entityType, SearchIndex::probeLineagePrefetchSupport);
+    Boolean cached = LINEAGE_PREFETCH_SUPPORT_CACHE.getIfPresent(entityType);
+    if (cached == null) {
+      cached = probeLineagePrefetchSupport(entityType);
+      if (cached != null) {
+        LINEAGE_PREFETCH_SUPPORT_CACHE.put(entityType, cached);
+      }
+    }
+    return Boolean.TRUE.equals(cached);
   }
 
-  private static boolean probeLineagePrefetchSupport(String entityType) {
-    boolean supported = false;
+  private static Boolean probeLineagePrefetchSupport(String entityType) {
+    Boolean supported = null;
     try {
       SearchIndex probe = Entity.buildSearchIndex(entityType, null);
       supported = probe instanceof LineageIndex;
-    } catch (Exception e) {
+    } catch (Exception | LinkageError e) {
       LOG.warn(
-          "Could not determine LineageIndex support for type '{}'; skipping lineage prefetch",
+          "Could not determine LineageIndex support for type '{}'; will retry on next call",
           entityType,
           e);
     }
@@ -377,12 +386,16 @@ public interface SearchIndex {
       toIds.add(entityId.toString());
       toRefByEntityId.put(entityId, entity.getEntityReference());
     }
-    List<CollectionDAO.EntityRelationshipObject> records = fetchUpstreamRelationships(toIds);
-    if (records == null) {
-      result.clear();
-    } else if (!records.isEmpty()) {
-      Map<UUID, EntityReference> upstreamRefById = resolveUpstreamReferences(records);
-      mergeRecordsIntoResult(records, upstreamRefById, toRefByEntityId, result);
+    // Skip the batch DB call when every input entity had a null id; `WHERE toId IN ()` is
+    // invalid SQL on most engines and the call would log noise for no benefit.
+    if (!toIds.isEmpty()) {
+      List<CollectionDAO.EntityRelationshipObject> records = fetchUpstreamRelationships(toIds);
+      if (records == null) {
+        result.clear();
+      } else if (!records.isEmpty()) {
+        Map<UUID, EntityReference> upstreamRefById = resolveUpstreamReferences(records);
+        mergeRecordsIntoResult(records, upstreamRefById, toRefByEntityId, result);
+      }
     }
   }
 
