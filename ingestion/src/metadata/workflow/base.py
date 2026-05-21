@@ -41,6 +41,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.tests.testSuite import ServiceType
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion import diagnostics
 from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -170,6 +171,12 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         # it can hung the workflow
         self.timer.stop()
 
+        # Stop diagnostics threads if they were installed. Emits the
+        # `diag.time_budget` summary line through the diag logger before
+        # the threads exit, which gets captured by the streamable
+        # handler's synchronous shutdown in `execute()`'s outer finally.
+        diagnostics.shutdown()
+
         # Reset progress and metrics tracking singletons
         ProgressTrackerState().reset()
         OperationMetricsState().reset()
@@ -257,8 +264,17 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """
         pipeline_state = PipelineState.success
         self.timer.trigger()
+        diagnostics.install(self)
+        # `self.config` is typed Union[Any, Dict]; getattr keeps the static
+        # checker happy without changing behavior (the Dict branch never
+        # carries this attribute at runtime).
+        pipeline_fqn = getattr(self.config, "ingestionPipelineFQN", None)
         try:
-            self.execute_internal()
+            with (
+                diagnostics.operation("workflow.execute", fqn=pipeline_fqn),
+                diagnostics.dump_on_memory_error(),
+            ):
+                self.execute_internal()
 
             if self.workflow_config.successThreshold <= self.calculate_success() < 100:
                 pipeline_state = PipelineState.partialSuccess

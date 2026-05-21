@@ -47,7 +47,7 @@ export const deletePage = async (
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const deleteResponse = page.waitForResponse(
-    `/api/v1/knowledgeCenter/*?hardDelete=true&recursive=${!isQuickLink}`
+    `/api/v1/contextCenter/pages/*?hardDelete=true&recursive=${!isQuickLink}`
   );
 
   // Register before clicking so we don't miss the response the app fires
@@ -55,7 +55,9 @@ export const deletePage = async (
   const hierarchyResponse = entityFqn
     ? page.waitForResponse(
         (response) =>
-          response.url().includes('/api/v1/knowledgeCenter/search/hierarchy') &&
+          response
+            .url()
+            .includes('/api/v1/contextCenter/pages/search/hierarchy') &&
           response.request().method() === 'GET'
       )
     : null;
@@ -76,7 +78,7 @@ export const deletePage = async (
 export const addTitle = async (page: Page, title: string) => {
   const updateTitleResponse = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/knowledgeCenter/') &&
+      response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'PATCH'
   );
 
@@ -92,7 +94,7 @@ export const updateBody = async (page: Page, body: string) => {
   await page.fill('.om-block-editor', body);
   const updateBodyResponse = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/knowledgeCenter/') &&
+      response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'PATCH'
   );
   const res = await updateBodyResponse;
@@ -107,7 +109,7 @@ export const updateTags = async (
 ) => {
   const updateKnowledgePage = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/knowledgeCenter/') &&
+      response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'PATCH'
   );
   await page.click('[data-testid="tags-container"] [data-testid="add-tag"]');
@@ -143,7 +145,7 @@ export const updateDataAsset = async (
 ) => {
   const updateKnowledgePage = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/knowledgeCenter/') &&
+      response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'PATCH'
   );
   await page
@@ -488,7 +490,7 @@ export const toggleKnowledgePageBookmark = async (
   const bookmarkResponse = page.waitForResponse((response) => {
     const url = response.url();
     return (
-      url.includes('/api/v1/knowledgeCenter') && url.includes('/followers')
+      url.includes('/api/v1/contextCenter/pages') && url.includes('/followers')
     );
   });
 
@@ -513,7 +515,9 @@ export const createNewKnowledgePageArticle = async (
   page: Page,
   articleTitle: string
 ) => {
-  const createKnowledgePage = page.waitForResponse('/api/v1/knowledgeCenter');
+  const createKnowledgePage = page.waitForResponse(
+    '/api/v1/contextCenter/pages'
+  );
 
   await sidebarClick(page, SidebarItem.ARTICLE);
   await page
@@ -885,7 +889,9 @@ export const navigateToArticle = async (page: Page, articleFqn: string) => {
   // Wait for GET API response when navigating to the article
   const getArticleResponse = page.waitForResponse(
     (response) =>
-      response.url().includes(`/api/v1/knowledgeCenter/name/${articleFqn}`) &&
+      response
+        .url()
+        .includes(`/api/v1/contextCenter/pages/name/${articleFqn}`) &&
       response.status() === 200
   );
 
@@ -901,7 +907,7 @@ export const navigateToKnowledgeCenter = async (page: Page) => {
 
   const knowledgeCenterResponse = page.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/knowledgeCenter') ||
+      response.url().includes('/api/v1/contextCenter/pages') ||
       response.url().includes('/knowledge-center')
   );
 
