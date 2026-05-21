@@ -79,6 +79,7 @@ class SearchAvailableDuringReindexUIIT {
   @Test
   void searchStaysAvailableAndDuplicateFreeWhileRecreateReindexRuns(
       final UiSession ui, final TestNamespace ns) {
+    logResolvedConfig();
     EntityLoadSummary seeded = ingestCohort(ns);
     final ServerHandle server = ui.server();
 
@@ -124,6 +125,25 @@ class SearchAvailableDuringReindexUIIT {
         .atMost(POST_REINDEX_REFRESH_GRACE.plusSeconds(1))
         .until(() -> true);
     assertEventualConsistency(server, baselineIds);
+  }
+
+  private static void logResolvedConfig() {
+    LOG.info(
+        "Resolved config: tables={} cols={} workers={} (override with"
+            + " -Djpw.searchAvailable.tables/.cols/.workers)",
+        TABLES,
+        COLUMNS_PER_TABLE,
+        PARALLEL_INGEST_WORKERS);
+    final boolean foreignProps =
+        System.getProperties().keySet().stream()
+            .map(Object::toString)
+            .anyMatch(key -> key.startsWith("jpw.searchAvailableAllKinds."));
+    if (foreignProps) {
+      LOG.warn(
+          "Detected -Djpw.searchAvailableAllKinds.* properties, but this test reads"
+              + " jpw.searchAvailable.* — those overrides are IGNORED here. Run"
+              + " SearchAvailableAllKindsDuringReindexUIIT for the all-kinds scale knobs.");
+    }
   }
 
   private static EntityLoadSummary ingestCohort(final TestNamespace ns) {

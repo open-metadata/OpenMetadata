@@ -181,11 +181,7 @@ class SearchAvailableAllKindsDuringReindexUIIT {
   @Test
   void searchStaysAvailableAcrossAllKindsWhileRecreateReindexRuns(
       final UiSession ui, final TestNamespace ns) {
-    LOG.info(
-        "Scale={} → per-kind counts {} (total={})",
-        SCALE,
-        PER_KIND_COUNT,
-        PER_KIND_COUNT.values().stream().mapToInt(Integer::intValue).sum());
+    logResolvedConfig();
     final EntityLoadSummary seeded = ingestCohort(ns);
     final ServerHandle server = ui.server();
 
@@ -237,6 +233,29 @@ class SearchAvailableAllKindsDuringReindexUIIT {
     baselineByKind.forEach(
         (kind, baselineIds) ->
             assertEventualConsistency(server, kind, ALIAS_BY_KIND.get(kind), baselineIds));
+  }
+
+  private static void logResolvedConfig() {
+    LOG.info(
+        "Resolved config: scale={} workers={} total={} per-kind={} (override with"
+            + " -Djpw.searchAvailableAllKinds.scale/.workers or per-kind .<kind>)",
+        SCALE,
+        PARALLEL_INGEST_WORKERS,
+        PER_KIND_COUNT.values().stream().mapToInt(Integer::intValue).sum(),
+        PER_KIND_COUNT);
+    final boolean foreignProps =
+        System.getProperties().keySet().stream()
+            .map(Object::toString)
+            .anyMatch(
+                key ->
+                    key.startsWith("jpw.searchAvailable.")
+                        && !key.startsWith("jpw.searchAvailableAllKinds."));
+    if (foreignProps) {
+      LOG.warn(
+          "Detected -Djpw.searchAvailable.* properties, but this test reads"
+              + " jpw.searchAvailableAllKinds.* — those overrides are IGNORED here. Run"
+              + " SearchAvailableDuringReindexUIIT for the single-table knobs.");
+    }
   }
 
   private static EntityLoadSummary ingestCohort(final TestNamespace ns) {
