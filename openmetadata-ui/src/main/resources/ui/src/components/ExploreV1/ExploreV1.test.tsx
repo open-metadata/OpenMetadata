@@ -36,14 +36,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
     iconLeading,
     iconTrailing,
     onClick,
+    onPress,
     ...rest
   }: {
     children?: import('react').ReactNode;
     iconLeading?: import('react').ReactNode;
     iconTrailing?: import('react').ReactNode;
     onClick?: () => void;
+    onPress?: () => void;
   } & Record<string, unknown>) => (
-    <button type="button" onClick={onClick} {...rest}>
+    <button type="button" onClick={onPress ?? onClick} {...rest}>
       {iconLeading}
       {children}
       {iconTrailing}
@@ -92,17 +94,20 @@ jest.mock('@openmetadata/ui-core-components', () => {
     title?: import('react').ReactNode;
   } & Record<string, unknown>) => <span {...rest}>{title}</span>;
 
+  const Box = ({
+    children,
+    ...rest
+  }: {
+    children?: import('react').ReactNode;
+  } & Record<string, unknown>) => <div {...rest}>{children}</div>;
+
   const Dropdown = {
     Root: ({
       children,
       ...props
     }: {
       children?: import('react').ReactNode;
-    } & Record<string, unknown>) => (
-      <div data-testid="dropdown" {...props}>
-        {children}
-      </div>
-    ),
+    } & Record<string, unknown>) => <div {...props}>{children}</div>,
     Popover: ({ children }: { children?: import('react').ReactNode }) => (
       <div>{children}</div>
     ),
@@ -118,15 +123,18 @@ jest.mock('@openmetadata/ui-core-components', () => {
     ),
     Item: ({
       children,
+      label,
       onClick,
       onPress,
       ...props
     }: {
       children?: import('react').ReactNode;
+      label?: string;
       onClick?: () => void;
+      onPress?: () => void;
     } & Record<string, unknown>) => (
       <div role="menuitem" onClick={onPress ?? onClick} {...props}>
-        {children}
+        {label ?? children}
       </div>
     ),
   };
@@ -149,7 +157,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     />
   );
 
-  return { Alert, Button, Card, Divider, Dropdown, Toggle, Typography };
+  return { Alert, Box, Button, Card, Divider, Dropdown, Toggle, Typography };
 });
 
 jest.mock('@untitledui/icons', () => ({
@@ -462,7 +470,12 @@ describe('ExploreV1', () => {
 
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
-    fireEvent.click(screen.getByTestId('export-search-results-button'));
+    const toolsButton = screen.getByText('label.tool-plural');
+    fireEvent.click(toolsButton);
+
+    const exportMenuItem = screen.getByText('label.export');
+    fireEvent.click(exportMenuItem);
+
     const modal = await screen.findByTestId('export-scope-modal');
 
     const exportButton = within(modal).getByRole('button', {
@@ -488,7 +501,12 @@ describe('ExploreV1', () => {
 
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
-    fireEvent.click(screen.getByTestId('export-search-results-button'));
+    const toolsButton = screen.getByText('label.tool-plural');
+    fireEvent.click(toolsButton);
+
+    const exportMenuItem = screen.getByText('label.export');
+    fireEvent.click(exportMenuItem);
+
     const modal = await screen.findByTestId('export-scope-modal');
     const exportButton = within(modal).getByRole('button', {
       name: 'label.export',
@@ -511,7 +529,12 @@ describe('ExploreV1', () => {
 
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
-    fireEvent.click(screen.getByTestId('export-search-results-button'));
+    const toolsButton = screen.getByText('label.tool-plural');
+    fireEvent.click(toolsButton);
+
+    const exportMenuItem = screen.getByText('label.export');
+    fireEvent.click(exportMenuItem);
+
     const modal = await screen.findByTestId('export-scope-modal');
     const exportButton = within(modal).getByRole('button', {
       name: 'label.export',

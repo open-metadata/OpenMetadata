@@ -16,10 +16,10 @@ import {
   Box,
   Button,
   Card as CoreCard,
-  Typography as CoreTypography,
   Divider,
   Dropdown,
   Toggle,
+  Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
@@ -521,6 +521,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
           </Col>
           <Col className="d-flex items-center justify-end gap-3" flex={410}>
             <Button
+              aria-label="Sort order"
               className="tw:p-0"
               color="tertiary"
               data-testid="sort-order-button"
@@ -532,7 +533,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 )
               }
               size="sm"
-              aria-label="Sort order"
               onPress={() =>
                 onChangeSortOder(
                   isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
