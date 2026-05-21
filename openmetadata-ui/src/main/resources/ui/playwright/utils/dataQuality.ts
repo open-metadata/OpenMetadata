@@ -481,9 +481,7 @@ export async function waitForIncidentToBeIndexed(
         );
         const body = await res.json();
 
-        return (
-          body.data ?? []
-        ).some(
+        return (body.data ?? []).some(
           (i: {
             testCaseReference?: { fullyQualifiedName?: string };
             testCaseResolutionStatusType?: string;
