@@ -24,7 +24,8 @@ class ObjectStorageConfigurationTest {
   @Test
   void azureProviderUsesDefaultAzureCredentialAndDoesNotRequireLegacyCredentials() {
     ObjectStorageConfiguration config = baseConfig("azure");
-    config.setAzureConfiguration(azureConfigWithoutCredentials("https://account.blob.core.windows.net"));
+    config.setAzureConfiguration(
+        azureConfigWithoutCredentials("https://account.blob.core.windows.net"));
 
     assertTrue(validate(config).isEmpty());
   }
@@ -37,7 +38,8 @@ class ObjectStorageConfigurationTest {
     Set<ConstraintViolation<ObjectStorageConfiguration>> violations = validate(config);
 
     assertEquals(1, violations.size());
-    assertEquals("Azure configuration requires containerName and blobEndpoint", message(violations));
+    assertEquals(
+        "Azure configuration requires containerName and blobEndpoint", message(violations));
   }
 
   @Test
