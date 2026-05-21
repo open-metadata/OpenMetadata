@@ -63,6 +63,7 @@ import './bot-list-v1.less';
 import { BotListV1Props } from './BotListV1.interfaces';
 
 const BOT_SEARCH_PAGE_SIZE = 100;
+const MAX_BOT_SEARCH_LENGTH = 128;
 
 const getBotUserFromUser = (
   botUser: User,
@@ -103,6 +104,7 @@ const BotListV1 = ({
   const [searchTerm, setSearchTerm] = useState<string>('');
   const latestSearchRequest = useRef(0);
   const botsByUserNameRef = useRef<Map<string, Bot>>(new Map());
+  const botMapLoadPromiseRef = useRef<Promise<void> | null>(null);
 
   const loadBotsByUserNameMap = useCallback(async () => {
     const { data } = await getBots({
@@ -117,6 +119,24 @@ const BotListV1 = ({
     });
     botsByUserNameRef.current = map;
   }, [showDeleted]);
+
+  const ensureBotMapLoaded = useCallback(() => {
+    if (!botMapLoadPromiseRef.current) {
+      botMapLoadPromiseRef.current = loadBotsByUserNameMap().catch((error) => {
+        botMapLoadPromiseRef.current = null;
+        showErrorToast((error as AxiosError).message);
+      });
+    }
+
+    return botMapLoadPromiseRef.current;
+  }, [loadBotsByUserNameMap]);
+
+  const reloadBotMap = useCallback(() => {
+    botMapLoadPromiseRef.current = null;
+    botsByUserNameRef.current = new Map();
+
+    return ensureBotMapLoaded();
+  }, [ensureBotMapLoaded]);
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () => getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.BOTS),
@@ -169,6 +189,7 @@ const BotListV1 = ({
       },
     });
     const matchedUsers = formatUsersResponse(response.hits.hits);
+    await ensureBotMapLoaded();
     const botsByUserName = botsByUserNameRef.current;
 
     return matchedUsers.flatMap((user) => {
@@ -331,12 +352,14 @@ const BotListV1 = ({
    */
   const handleDeleteAction = useCallback(async () => {
     await getResourceLimit('bot', true, true);
+    await reloadBotMap();
     fetchBots(showDeleted);
-  }, [selectedUser]);
+  }, [selectedUser, reloadBotMap]);
 
   const handleSearch = async (text: string) => {
-    setSearchTerm(text);
-    const normalizedSearchTerm = text.trim();
+    const cappedText = text.slice(0, MAX_BOT_SEARCH_LENGTH);
+    setSearchTerm(cappedText);
+    const normalizedSearchTerm = cappedText.trim();
 
     if (!normalizedSearchTerm) {
       latestSearchRequest.current += 1;
@@ -382,10 +405,13 @@ const BotListV1 = ({
     }
   }, [pageSize, showDeleted, pagingCursor]);
 
-  // Build bot-user → bot map once for search resolution
+  // Build bot-user → bot map once for search resolution.
+  // Re-runs when showDeleted toggles (loadBotsByUserNameMap dep changes).
   useEffect(() => {
-    loadBotsByUserNameMap();
-  }, [loadBotsByUserNameMap]);
+    botMapLoadPromiseRef.current = null;
+    botsByUserNameRef.current = new Map();
+    ensureBotMapLoaded();
+  }, [ensureBotMapLoaded]);
 
   const addBotLabel = t('label.add-entity', { entity: t('label.bot') });
 
