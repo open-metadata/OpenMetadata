@@ -153,7 +153,7 @@ base_requirements = {
     "importlib-metadata>=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
     "jsonpatch<2.0, >=1.24",
-    "kubernetes>=21.0.0",  # Kubernetes client for secrets manager
+    "kubernetes>=21.0.0,<36",  # 36.0.0 regressed in-cluster auth (https://github.com/kubernetes-client/python/issues/2582)
     "memory-profiler",
     "mypy_extensions>=0.4.3",
     VERSIONS["pydantic"],
