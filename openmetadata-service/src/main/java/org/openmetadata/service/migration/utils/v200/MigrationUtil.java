@@ -232,7 +232,7 @@ public class MigrationUtil {
 
         // Inherit domains from the target entity so domain-scoped task queries
         // return migrated suggestions correctly.
-        List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(handle, taskJson);
+        List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(taskJson);
         setDomainsInTaskJson(taskJson, inheritedDomains);
 
         // Build payload
@@ -283,7 +283,7 @@ public class MigrationUtil {
         taskJson.set("tags", JsonUtils.getObjectNode().arrayNode());
 
         insertTask(handle, suggestionId, taskJson.toString(), fqnHash, connectionType);
-        insertTaskDomainRelationships(handle, suggestionId, inheritedDomains);
+        insertTaskDomainRelationships(handle, suggestionId, inheritedDomains, connectionType);
         insertTaskLinkRelationships(
             handle, suggestionId, null, null, null, createdByUserId, taskJson, connectionType);
         migrated++;
@@ -384,8 +384,8 @@ public class MigrationUtil {
           // inheriting from their parent glossary); now that the lookup walks the
           // entity API, force-migrate must also reconcile domain relationships for
           // tasks that were already promoted before this fix.
-          List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(handle, aboutJson);
-          insertTaskDomainRelationships(handle, threadId, inheritedDomains);
+          List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(aboutJson);
+          insertTaskDomainRelationships(handle, threadId, inheritedDomains, connectionType);
           skipped++;
           continue;
         }
@@ -414,7 +414,7 @@ public class MigrationUtil {
 
         // Inherit domains from the target entity so domain-scoped task queries
         // return migrated tasks correctly.
-        List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(handle, taskJson);
+        List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(taskJson);
         setDomainsInTaskJson(taskJson, inheritedDomains);
 
         // Build payload
@@ -473,7 +473,7 @@ public class MigrationUtil {
         }
 
         insertTask(handle, threadId, taskJson.toString(), fqnHash, connectionType);
-        insertTaskDomainRelationships(handle, threadId, inheritedDomains);
+        insertTaskDomainRelationships(handle, threadId, inheritedDomains, connectionType);
         insertTaskLinkRelationships(
             handle,
             threadId,
@@ -1170,11 +1170,11 @@ public class MigrationUtil {
 
   /**
    * Resolve the domains of the target entity referenced by the task's `about` field.
-   * Equivalent to {@code TaskRepository.inheritDomainsFromTargetEntity()} but using raw SQL,
-   * since migrations run before the EntityRepository layer is fully initialized for new tasks.
+   * Equivalent to {@code TaskRepository.inheritDomainsFromTargetEntity()} but uses the
+   * {@link EntityRepository} layer so inherited domains (e.g. a glossary term inheriting from
+   * its parent glossary) are included.
    */
-  private static List<EntityReference> resolveDomainsForTaskAbout(
-      Handle handle, ObjectNode taskJson) {
+  private static List<EntityReference> resolveDomainsForTaskAbout(ObjectNode taskJson) {
     JsonNode about = taskJson.get("about");
     if (about == null || !about.has("type")) {
       return Collections.emptyList();
@@ -1342,26 +1342,25 @@ public class MigrationUtil {
 
   /**
    * Insert DOMAIN --HAS--> task rows so {@code TaskRepository.getDomains()} returns
-   * the inherited domains when the task is read.
+   * the inherited domains when the task is read. Idempotent via {@link #insertEntityRelationship}
+   * (ON CONFLICT DO NOTHING / ON DUPLICATE KEY UPDATE) — re-runs no longer rely on a catch-all
+   * exception handler to swallow duplicate-key violations, so genuine failures propagate.
    */
   private static void insertTaskDomainRelationships(
-      Handle handle, String taskId, List<EntityReference> domains) {
+      Handle handle, String taskId, List<EntityReference> domains, ConnectionType connectionType) {
     if (domains == null || domains.isEmpty()) {
       return;
     }
     for (EntityReference domain : domains) {
       try {
-        handle
-            .createUpdate(
-                "INSERT INTO entity_relationship "
-                    + "(fromId, toId, fromEntity, toEntity, relation) "
-                    + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)")
-            .bind("fromId", domain.getId().toString())
-            .bind("toId", taskId)
-            .bind("fromEntity", Entity.DOMAIN)
-            .bind("toEntity", Entity.TASK)
-            .bind("relation", Relationship.HAS.ordinal())
-            .execute();
+        insertEntityRelationship(
+            handle,
+            domain.getId().toString(),
+            Entity.DOMAIN,
+            taskId,
+            Entity.TASK,
+            Relationship.HAS,
+            connectionType);
       } catch (Exception e) {
         LOG.debug(
             "Could not insert domain relationship for task {} -> domain {}: {}",
