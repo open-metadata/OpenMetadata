@@ -412,7 +412,14 @@ const ExploreV1: React.FC<ExploreProps> = ({
     }
 
     return <ExploreTree onFieldValueSelect={handleQuickFiltersChange} />;
-  }, [searchQueryParam, tabItems, handleQuickFiltersChange]);
+  }, [
+    searchQueryParam,
+    tabItems,
+    handleQuickFiltersChange,
+    activeTabKey,
+    loading,
+    onChangeSearchIndex,
+  ]);
 
   useEffect(() => {
     const escapeKeyHandler = (e: KeyboardEvent) => {
