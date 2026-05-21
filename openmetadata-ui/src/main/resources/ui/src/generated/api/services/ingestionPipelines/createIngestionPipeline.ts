@@ -6360,6 +6360,7 @@ export enum ConnectionType {
     Mysql = "Mysql",
     Postgres = "Postgres",
     RESTAPI = "RestAPI",
+    S3 = "S3",
     SQLite = "SQLite",
 }
 
