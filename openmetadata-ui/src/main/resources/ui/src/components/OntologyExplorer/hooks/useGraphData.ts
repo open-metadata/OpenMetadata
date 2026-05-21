@@ -12,7 +12,10 @@
  */
 import { ComboData, EdgeData, NodeData } from '@antv/g6';
 import { useCallback, useMemo } from 'react';
-import { GlossaryTermRelationType, RelationCardinality } from '../../../rest/settingConfigAPI';
+import {
+  GlossaryTermRelationType,
+  RelationCardinality,
+} from '../../../rest/settingConfigAPI';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   DATA_MODE_ASSET_CIRCLE_SIZE,
@@ -723,8 +726,6 @@ export function useGraphDataBuilder({
           toType !== 'dataAsset' &&
           toType !== 'metric';
 
-        const edgeType = 'line';
-
         return group.map((singleEdge, i) => {
           const edgeId = `edge-${singleEdge.from}-${singleEdge.to}-${singleEdge.relationType}`;
           const isPrimary = i === 0;
@@ -828,7 +829,6 @@ export function useGraphDataBuilder({
               isCrossTeam,
               isEdgeDimmed,
             },
-            type: edgeType,
             style: isPrimary
               ? {
                   stroke: edgeColor,
@@ -969,11 +969,27 @@ export function useGraphDataBuilder({
     return map;
   }, [explorationMode, inputNodes, mergedEdgesList]);
 
+  const cardinalityLabelMap = useMemo(() => {
+    const result: Record<
+      string,
+      { startLabelText: string; endLabelText: string }
+    > = {};
+    cardinalityMap.forEach((_, relationType) => {
+      const labels = getCardinalityEndLabels(relationType, cardinalityMap);
+      if (labels) {
+        result[relationType] = labels;
+      }
+    });
+
+    return result;
+  }, [cardinalityMap]);
+
   return {
     graphData,
     mergedEdgesList,
     neighborSet,
     computeNodeColor,
     assetToTermMap,
+    cardinalityLabelMap,
   };
 }
