@@ -456,7 +456,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         <Select.Item
                           id={opt.id}
                           key={opt.id}
-                          label={opt.label}
+                          label={t(opt.labelKey)}
                         />
                       ))}
                     </Select>

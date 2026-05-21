@@ -30,9 +30,9 @@ export const FILE_TYPE_STYLES: Record<
 export const DOCUMENT_MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 export const MEMORY_TYPE_OPTIONS = [
-  { id: MemoryType.FAQ, label: 'FAQ' },
-  { id: MemoryType.Note, label: 'Note' },
-  { id: MemoryType.Preference, label: 'Preference' },
-  { id: MemoryType.Runbook, label: 'Runbook' },
-  { id: MemoryType.UseCase, label: 'Use Case' },
+  { id: MemoryType.FAQ, labelKey: 'label.faq' },
+  { id: MemoryType.Note, labelKey: 'label.note' },
+  { id: MemoryType.Preference, labelKey: 'label.preference' },
+  { id: MemoryType.Runbook, labelKey: 'label.runbook' },
+  { id: MemoryType.UseCase, labelKey: 'label.use-case' },
 ];
