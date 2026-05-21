@@ -292,7 +292,8 @@ class SnowflakeLineageSource(
         window_end) window and yield parsed rows. Uses `stream_results=True`
         so the snowflake-sqlalchemy cursor streams rather than buffering.
         A failure on one window is logged and swallowed so the remaining
-        windows still run.
+        windows still run; a single malformed row is skipped so the rest of
+        the window still yields.
         """
         sql_statement = SNOWFLAKE_ACCESS_HISTORY_LINEAGE.format(
             account_usage=self.service_connection.accountUsageSchema,
@@ -308,7 +309,9 @@ class SnowflakeLineageSource(
                     logger.debug("Executing ACCESS_HISTORY lineage query for %s - %s", window_start, window_end)
                     rows = conn.execution_options(stream_results=True, max_row_buffer=1000).execute(text(sql_statement))
                     for raw_row in rows:
-                        yield AccessHistoryRow(**self._row_to_lower_dict(raw_row))
+                        parsed = self._parse_access_history_row(raw_row)
+                        if parsed is not None:
+                            yield parsed
         except Exception as exc:
             logger.warning(
                 "Failed to extract lineage from ACCESS_HISTORY for window %s - %s: %s",
@@ -317,6 +320,19 @@ class SnowflakeLineageSource(
                 exc,
             )
             logger.debug(traceback.format_exc())
+
+    def _parse_access_history_row(self, raw_row: Any) -> Optional[AccessHistoryRow]:  # noqa: UP045
+        """
+        Parse one cursor row into an `AccessHistoryRow`. A single malformed row
+        is logged and skipped (returns None) so it doesn't abort the rest of
+        the window's results.
+        """
+        try:
+            return AccessHistoryRow(**self._row_to_lower_dict(raw_row))
+        except Exception as exc:
+            logger.warning("Skipping malformed ACCESS_HISTORY row: %s", exc)
+            logger.debug(traceback.format_exc())
+            return None
 
     def _build_access_history_edge(self, row: AccessHistoryRow) -> Optional[AddLineageRequest]:  # noqa: UP045
         """
