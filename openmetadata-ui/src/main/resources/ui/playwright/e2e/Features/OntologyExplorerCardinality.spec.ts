@@ -115,10 +115,6 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
   test.afterAll(async ({ browser }) => {
     const { page, apiContext } = await createApiContext(browser);
 
-    for (const name of Object.values(CUSTOM_RELATION_NAMES)) {
-      await removeRelationType(apiContext, name);
-    }
-
     await deleteEntities(
       apiContext,
       termA,
@@ -128,6 +124,11 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
       termE,
       glossary
     );
+
+    for (const name of Object.values(CUSTOM_RELATION_NAMES)) {
+      await removeRelationType(apiContext, name);
+    }
+
     await disposeApiContext(page, apiContext);
   });
 
@@ -195,12 +196,15 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
       });
     });
 
-    test('built-in relation type without cardinality should not appear in cardinality map', async ({
+    test('built-in relation type shows M:M cardinality in the cardinality map', async ({
       page,
     }) => {
       const cardinalityMap = await readCardinalityMap(page);
 
-      expect(cardinalityMap['relatedTo']).toBeUndefined();
+      expect(cardinalityMap['relatedTo']).toEqual({
+        startLabelText: 'M',
+        endLabelText: 'M',
+      });
     });
   });
 

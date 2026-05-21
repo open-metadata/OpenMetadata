@@ -53,6 +53,7 @@ import {
   getRelationTypeUsageCounts,
   updateGlossaryTermRelationSettings,
 } from '../../rest/glossaryAPI';
+import { deriveCardinality } from '../../utils/Glossary/glossaryTermRelationUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
@@ -76,30 +77,6 @@ const CARDINALITY_LIMITS: Record<
   [RelationCardinality.Custom]: { sourceMax: null, targetMax: null },
 };
 
-const deriveCardinality = (
-  sourceMax?: number | null,
-  targetMax?: number | null
-): RelationCardinality => {
-  if (sourceMax === null || sourceMax === undefined) {
-    if (targetMax === null || targetMax === undefined) {
-      return RelationCardinality.ManyToMany;
-    }
-    if (targetMax === 1) {
-      return RelationCardinality.ManyToOne;
-    }
-  }
-
-  if (sourceMax === 1) {
-    if (targetMax === 1) {
-      return RelationCardinality.OneToOne;
-    }
-    if (targetMax === null || targetMax === undefined) {
-      return RelationCardinality.OneToMany;
-    }
-  }
-
-  return RelationCardinality.Custom;
-};
 
 const applyCardinalityDefaults = (
   relation: GlossaryTermRelationType
@@ -381,7 +358,7 @@ function GlossaryTermRelationSettingsPage() {
         });
         setSettings({ relationTypes: updatedRelationTypes });
         showSuccessToast(
-          t('server.delete-entity-success', {
+          t('server.entity-deleted-success', {
             entity: t('label.relation-type'),
           })
         );

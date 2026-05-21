@@ -68,7 +68,6 @@ test.describe('Ontology Explorer — E2E', () => {
 
   test.afterAll(async ({ browser }) => {
     const { page, apiContext } = await createApiContext(browser);
-    await removeRelationType(apiContext, CUSTOM_OWNS_RELATION);
     await deleteEntities(
       apiContext,
       termProduct,
@@ -76,6 +75,7 @@ test.describe('Ontology Explorer — E2E', () => {
       termBrand,
       catalog
     );
+    await removeRelationType(apiContext, CUSTOM_OWNS_RELATION);
     await disposeApiContext(page, apiContext);
   });
 
@@ -87,12 +87,12 @@ test.describe('Ontology Explorer — E2E', () => {
     await waitForGraphLoaded(page);
   });
 
-  test('stats show 3 terms and 4 relations', async ({ page }) => {
+  test('stats show 3 terms and 6 relations', async ({ page }) => {
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
       '3 Terms'
     );
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
-      '4 Relations'
+      '6 Relations'
     );
   });
 
@@ -140,13 +140,16 @@ test.describe('Ontology Explorer — E2E', () => {
     });
   });
 
-  test('built-in relations do not appear in the cardinality map', async ({
+  test('built-in relations show M:M cardinality in the cardinality map', async ({
     page,
   }) => {
     const map = await readCardinalityMap(page);
 
-    expect(map['relatedTo']).toBeUndefined();
-    expect(map['partOf']).toBeUndefined();
+    expect(map['relatedTo']).toEqual({
+      startLabelText: 'M',
+      endLabelText: 'M',
+    });
+    expect(map['partOf']).toEqual({ startLabelText: 'M', endLabelText: 'M' });
   });
 
   test('clicking a node opens the entity summary panel', async ({ page }) => {
@@ -207,7 +210,7 @@ test.describe('Ontology Explorer — E2E', () => {
     await waitForGraphLoaded(page);
 
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
-      '4 Relations'
+      '6 Relations'
     );
   });
 

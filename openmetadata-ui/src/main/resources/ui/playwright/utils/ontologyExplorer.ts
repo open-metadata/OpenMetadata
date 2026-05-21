@@ -134,20 +134,30 @@ export async function addTermRelation(
   toTerm: GlossaryTerm,
   relationType: string
 ) {
+  const termRes = await apiContext.get(
+    `/api/v1/glossaryTerms/${fromTerm.responseData.id}?fields=relatedTerms`
+  );
+  const termData = await termRes.json();
+  const existingRelations: Array<Record<string, unknown>> =
+    termData.relatedTerms ?? [];
+
   await fromTerm.patch(apiContext, [
     {
       op: 'add',
-      path: '/relatedTerms/0',
-      value: {
-        relationType,
-        term: {
-          id: toTerm.responseData.id,
-          type: 'glossaryTerm',
-          name: toTerm.responseData.name,
-          displayName: toTerm.responseData.displayName,
-          fullyQualifiedName: toTerm.responseData.fullyQualifiedName,
+      path: '/relatedTerms',
+      value: [
+        ...existingRelations,
+        {
+          relationType,
+          term: {
+            id: toTerm.responseData.id,
+            type: 'glossaryTerm',
+            name: toTerm.responseData.name,
+            displayName: toTerm.responseData.displayName,
+            fullyQualifiedName: toTerm.responseData.fullyQualifiedName,
+          },
         },
-      },
+      ],
     },
   ]);
 }
@@ -251,7 +261,7 @@ export async function addRelationTypeWithCardinality(
           {
             name: relationType.name,
             displayName: relationType.displayName,
-            category: 'Semantic',
+            category: 'associative',
             cardinality: relationType.cardinality,
             ...(relationType.sourceMax === undefined
               ? {}
@@ -274,6 +284,43 @@ export async function addRelationTypeWithCardinality(
   }
 }
 
+async function clearRelationTypeUsages(
+  apiContext: APIRequestContext,
+  relationTypeName: string
+): Promise<void> {
+  let after: string | undefined;
+  const pageSize = 100;
+
+  do {
+    const url =
+      `/api/v1/glossaryTerms?limit=${pageSize}&fields=relatedTerms` +
+      (after ? `&after=${after}` : '');
+    const res = await apiContext.get(url);
+    if (!res.ok()) {
+      break;
+    }
+    const body = await res.json();
+    const terms: Array<{
+      id: string;
+      relatedTerms?: Array<{ relationType: string }>;
+    }> = body.data ?? [];
+
+    for (const term of terms) {
+      const filtered = (term.relatedTerms ?? []).filter(
+        (r) => r.relationType !== relationTypeName
+      );
+      if (filtered.length !== (term.relatedTerms ?? []).length) {
+        await apiContext.patch(`/api/v1/glossaryTerms/${term.id}`, {
+          data: [{ op: 'add', path: '/relatedTerms', value: filtered }],
+          headers: { 'Content-Type': 'application/json-patch+json' },
+        });
+      }
+    }
+
+    after = body.paging?.after;
+  } while (after);
+}
+
 export async function removeRelationType(
   apiContext: APIRequestContext,
   relationTypeName: string
@@ -289,6 +336,8 @@ export async function removeRelationType(
     return;
   }
 
+  await clearRelationTypeUsages(apiContext, relationTypeName);
+
   const res = await apiContext.put('/api/v1/system/settings', {
     data: {
       config_type: 'glossaryTermRelationSettings',
@@ -299,8 +348,9 @@ export async function removeRelationType(
   });
 
   if (!res.ok()) {
+    const body = await res.text();
     throw new Error(
-      `removeRelationType: failed to remove "${relationTypeName}" — HTTP ${res.status()}`
+      `removeRelationType: failed to remove "${relationTypeName}" — HTTP ${res.status()}: ${body}`
     );
   }
 }

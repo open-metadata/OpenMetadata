@@ -12,11 +12,10 @@
  */
 import { ComboData, EdgeData, NodeData } from '@antv/g6';
 import { useCallback, useMemo } from 'react';
-import {
-  GlossaryTermRelationType,
-  RelationCardinality,
-} from '../../../rest/settingConfigAPI';
+import { RelationCardinality } from '../../../generated/configuration/glossaryTermRelationSettings';
+import { GlossaryTermRelationType } from '../../../rest/settingConfigAPI';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { deriveCardinality } from '../../../utils/Glossary/glossaryTermRelationUtils';
 import {
   DATA_MODE_ASSET_CIRCLE_SIZE,
   DATA_MODE_ASSET_EDGE_STROKE_COLOR,
@@ -73,15 +72,15 @@ function getCardinalityEndLabels(
     return null;
   }
   switch (info.cardinality) {
-    case 'ONE_TO_ONE':
+    case RelationCardinality.OneToOne:
       return { startLabelText: '1', endLabelText: '1' };
-    case 'ONE_TO_MANY':
+    case RelationCardinality.OneToMany:
       return { startLabelText: '1', endLabelText: 'M' };
-    case 'MANY_TO_ONE':
+    case RelationCardinality.ManyToOne:
       return { startLabelText: 'M', endLabelText: '1' };
-    case 'MANY_TO_MANY':
+    case RelationCardinality.ManyToMany:
       return { startLabelText: 'M', endLabelText: 'M' };
-    case 'CUSTOM':
+    case RelationCardinality.Custom:
       return {
         startLabelText: info.sourceMax === 1 ? '1' : 'M',
         endLabelText: info.targetMax === 1 ? '1' : 'M',
@@ -244,13 +243,13 @@ export function useGraphDataBuilder({
   const cardinalityMap = useMemo<Map<string, CardinalityInfo>>(() => {
     const map = new Map<string, CardinalityInfo>();
     relationTypes?.forEach((rt) => {
-      if (rt.cardinality) {
-        map.set(rt.name, {
-          cardinality: rt.cardinality,
-          sourceMax: rt.sourceMax,
-          targetMax: rt.targetMax,
-        });
-      }
+      const cardinality =
+        rt.cardinality ?? deriveCardinality(rt.sourceMax, rt.targetMax);
+      map.set(rt.name, {
+        cardinality,
+        sourceMax: rt.sourceMax,
+        targetMax: rt.targetMax,
+      });
     });
 
     return map;
