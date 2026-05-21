@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Edge, Node } from 'reactflow';
+import type { Edge, Node } from 'reactflow';
 import { StartEvent } from '../../../generated/governance/workflows/elements/nodes/startEvent/startEvent';
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { MutableRefObject, RefObject, useCallback } from 'react';
-import { Edge } from 'reactflow';
+import type { Edge } from 'reactflow';
 import { CanvasButton } from '../utils/CanvasButtonUtils';
 
 interface UseCanvasMouseEventsProps {

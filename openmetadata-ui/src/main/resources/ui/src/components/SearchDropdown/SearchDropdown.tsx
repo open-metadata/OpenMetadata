@@ -40,12 +40,12 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDown } from '../../assets/svg/drop-down.svg';
 import { NULL_OPTION_KEY } from '../../constants/AdvancedSearch.constants';
+import searchClassBase from '../../utils/SearchClassBase';
 import {
   generateSearchDropdownLabel,
   getSearchDropdownLabels,
   getSelectedOptionLabelString,
-} from '../../utils/AdvancedSearchUtils';
-import searchClassBase from '../../utils/SearchClassBase';
+} from '../../utils/SearchDropdownUtils';
 import Loader from '../common/Loader/Loader';
 import './search-dropdown.less';
 import {

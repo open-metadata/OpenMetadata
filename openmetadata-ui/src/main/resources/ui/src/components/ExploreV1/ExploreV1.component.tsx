@@ -58,7 +58,6 @@ import {
   exportSearchResultsCsvStream,
   searchQuery,
 } from '../../rest/searchAPI';
-import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { parseExportErrorMessage } from '../../utils/APIUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
@@ -67,6 +66,7 @@ import {
   getSelectedValuesFromQuickFilter,
 } from '../../utils/ExploreUtils';
 import searchClassBase from '../../utils/SearchClassBase';
+import { getDropDownItems } from '../../utils/SearchDropdownUtils';
 import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';

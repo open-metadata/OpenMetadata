@@ -21,13 +21,13 @@ import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
-import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchUtils';
 import {
   getCombinedQueryFilterObject,
   getQuickFilterWithDeletedFlag,
 } from '../../utils/ExplorePage/ExplorePageUtils';
 import { getAggregationOptions } from '../../utils/ExploreUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
+import { getOptionsFromAggregationBucket } from '../../utils/SearchDropdownUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';

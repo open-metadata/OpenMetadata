@@ -48,7 +48,6 @@ import { EntityReference } from '../../../generated/type/entityReference';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
-import { getSelectedOptionLabelString } from '../../../utils/AdvancedSearchUtils';
 import {
   formatDate,
   getCurrentMillis,
@@ -58,6 +57,7 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
+import { getSelectedOptionLabelString } from '../../../utils/SearchDropdownUtils';
 import DataAssetsCoveragePieChartWidget from '../ChartWidgets/DataAssetsCoveragePieChartWidget/DataAssetsCoveragePieChartWidget.component';
 import EntityHealthStatusPieChartWidget from '../ChartWidgets/EntityHealthStatusPieChartWidget/EntityHealthStatusPieChartWidget.component';
 import IncidentTimeChartWidget from '../ChartWidgets/IncidentTimeChartWidget/IncidentTimeChartWidget.component';

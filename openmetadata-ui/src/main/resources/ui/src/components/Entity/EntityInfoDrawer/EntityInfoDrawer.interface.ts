@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Edge, Node } from 'reactflow';
+import type { Edge, Node } from 'reactflow';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 

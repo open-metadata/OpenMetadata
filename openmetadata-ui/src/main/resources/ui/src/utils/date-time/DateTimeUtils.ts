@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import cronstrue from 'cronstrue';
 import { capitalize, isNaN, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
 import {
@@ -21,7 +20,6 @@ import {
   YEAR_SECONDS,
 } from '../../constants/Date.constants';
 import { DATE_TIME_SHORT_UNITS } from '../../enums/common.enum';
-import { getCurrentLocaleForConstrue } from '../i18next/i18nextUtil';
 import i18next from '../i18next/LocalUtil';
 
 export const DATE_TIME_12_HOUR_FORMAT = 'MMM dd, yyyy, hh:mm a'; // e.g. Jan 01, 12:00 AM
@@ -512,28 +510,4 @@ export const getSevenDaysStartGMTArrayInMillis = () => {
   }
 
   return sevenDaysStartGMTArrayInMillis;
-};
-
-export const getScheduleDescriptionTexts = (scheduleInterval: string) => {
-  try {
-    const scheduleDescription = cronstrue.toString(scheduleInterval, {
-      use24HourTimeFormat: false,
-      verbose: true,
-      locale: getCurrentLocaleForConstrue(), // To get localized string
-    });
-
-    const firstSentenceEndIndex = scheduleDescription.indexOf(',');
-
-    const descriptionFirstPart = scheduleDescription
-      .slice(0, firstSentenceEndIndex)
-      .trim();
-
-    const descriptionSecondPart = capitalize(
-      scheduleDescription.slice(firstSentenceEndIndex + 1).trim()
-    );
-
-    return { descriptionFirstPart, descriptionSecondPart };
-  } catch {
-    return { descriptionFirstPart: '', descriptionSecondPart: '' };
-  }
 };

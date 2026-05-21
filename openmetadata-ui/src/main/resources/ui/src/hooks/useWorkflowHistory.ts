@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { Edge, Node } from 'reactflow';
+import type { Edge, Node } from 'reactflow';
 
 interface WorkflowState {
   nodes: Node[];

@@ -23,7 +23,7 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getScheduleDescriptionTexts } from './date-time/DateTimeUtils';
+import { getScheduleDescriptionTexts } from './date-time/CronDescriptionUtils';
 import { getEntityName, highlightSearchText } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import { stringToHTML } from './StringsUtils';

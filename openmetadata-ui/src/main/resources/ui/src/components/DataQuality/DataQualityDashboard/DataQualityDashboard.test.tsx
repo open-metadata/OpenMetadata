@@ -163,7 +163,7 @@ jest.mock('../../../components/SearchDropdown/SearchDropdown', () =>
       </div>
     ))
 );
-jest.mock('../../../utils/AdvancedSearchUtils', () => {
+jest.mock('../../../utils/SearchDropdownUtils', () => {
   return {
     getSelectedOptionLabelString: jest
       .fn()

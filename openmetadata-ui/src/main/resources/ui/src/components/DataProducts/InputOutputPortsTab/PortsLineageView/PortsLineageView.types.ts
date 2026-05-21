@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { NodeProps } from 'reactflow';
+import type { NodeProps } from 'reactflow';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 

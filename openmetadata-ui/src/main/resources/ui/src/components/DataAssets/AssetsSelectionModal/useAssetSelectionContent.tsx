@@ -68,7 +68,6 @@ import {
 } from '../../../rest/glossaryAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { addAssetsToTags, getTagByFqn } from '../../../rest/tagAPI';
-import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { getDomainDryRunImpacts } from '../../../utils/Domain/DomainDryRunUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
@@ -77,6 +76,7 @@ import {
   getQuickFilterQuery,
 } from '../../../utils/ExploreUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
+import { getAssetsPageQuickFilters } from '../../../utils/SearchDropdownUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Banner from '../../common/Banner/Banner';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';

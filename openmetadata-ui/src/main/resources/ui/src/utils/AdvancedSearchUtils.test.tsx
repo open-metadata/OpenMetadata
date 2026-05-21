@@ -30,16 +30,11 @@ import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import {
-  getAssetsPageQuickFilters,
   getChartsOptions,
   getColumnsOptions,
   getEmptyJsonTree,
   getEmptyJsonTreeForQueryBuilder,
-  getOptionsFromAggregationBucket,
   getSchemaFieldOptions,
-  getSearchDropdownLabels,
-  getSearchLabel,
-  getSelectedOptionLabelString,
   getServiceOptions,
   getTasksOptions,
   processCustomPropertyField,
@@ -65,6 +60,13 @@ import {
   mockOptionsArray,
   mockShortOptionsArray,
 } from './mocks/AdvancedSearchUtils.mock';
+import {
+  getAssetsPageQuickFilters,
+  getOptionsFromAggregationBucket,
+  getSearchDropdownLabels,
+  getSearchLabel,
+  getSelectedOptionLabelString,
+} from './SearchDropdownUtils';
 
 jest.mock('./AdvancedSearchClassBase', () => ({
   __esModule: true,

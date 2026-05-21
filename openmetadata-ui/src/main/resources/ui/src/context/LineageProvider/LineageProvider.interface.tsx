@@ -12,7 +12,7 @@
  */
 import { LoadingState } from 'Models';
 import { Dispatch, DragEvent, ReactNode, SetStateAction } from 'react';
-import {
+import type {
   Connection,
   Edge,
   EdgeChange,

@@ -16,7 +16,7 @@ import { isEmpty, isUndefined, lowerCase, startCase } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import { Node } from 'reactflow';
+import type { Node } from 'reactflow';
 import { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';

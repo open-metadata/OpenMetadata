@@ -12,11 +12,10 @@
  */
 import { InfoCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { LazyLog } from '@melloware/react-logviewer';
 import { Button, Collapse, Divider, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AttentionIcon } from '../../../../assets/svg/attention.svg';
 import { ReactComponent as FailIcon } from '../../../../assets/svg/fail-badge.svg';
@@ -27,6 +26,10 @@ import { TestConnectionStep } from '../../../../generated/entity/services/connec
 import { useClipboard } from '../../../../hooks/useClipBoard';
 import { requiredField } from '../../../../utils/CommonUtils';
 import './connection-step-card.less';
+
+const LazyLog = lazy(() =>
+  import('@melloware/react-logviewer').then((m) => ({ default: m.LazyLog }))
+);
 
 const { Panel } = Collapse;
 
@@ -166,14 +169,16 @@ const ConnectionStepCard = ({
                   }
                   header={t('label.show-log-plural')}
                   key="show-log">
-                  <LazyLog
-                    caseInsensitive
-                    enableSearch
-                    selectableLines
-                    extraLines={1} // 1 is to be add so that linux users can see last line of the log
-                    height={300}
-                    text={logs}
-                  />
+                  <Suspense fallback={null}>
+                    <LazyLog
+                      caseInsensitive
+                      enableSearch
+                      selectableLines
+                      extraLines={1}
+                      height={300}
+                      text={logs}
+                    />
+                  </Suspense>
                 </Panel>
               </Collapse>
             </>

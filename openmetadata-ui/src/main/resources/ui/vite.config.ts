@@ -193,6 +193,7 @@ export default defineConfig(({ mode }) => {
             return `assets/[name]-[hash][extname]`;
           },
           manualChunks: (id) => {
+            // Vendor chunks
             if (id.includes('node_modules')) {
               if (id.includes('antd')) {
                 return 'vendor-antd';
@@ -203,6 +204,51 @@ export default defineConfig(({ mode }) => {
               if (id.includes('@untitledui/icons')) {
                 return 'vendor-untitled-icons';
               }
+              if (id.includes('recharts')) {
+                return 'vendor-recharts';
+              }
+              if (id.includes('@react-awesome-query-builder')) {
+                return 'vendor-query-builder';
+              }
+              if (id.includes('reactflow') || id.includes('@xyflow')) {
+                return 'vendor-reactflow';
+              }
+              if (id.includes('@antv/g6') || id.includes('@antv/g')) {
+                return 'vendor-g6';
+              }
+              if (id.includes('elkjs') || id.includes('@dagrejs/dagre')) {
+                return 'vendor-graph-layout';
+              }
+              if (id.includes('@tiptap')) {
+                return 'vendor-tiptap';
+              }
+              if (id.includes('/codemirror/') || id.includes('@codemirror/')) {
+                return 'vendor-codemirror';
+              }
+              if (id.includes('quill')) {
+                return 'vendor-quill';
+              }
+              if (id.includes('@rjsf/')) {
+                return 'vendor-rjsf';
+              }
+              if (id.includes('@mui/x-') || id.includes('@mui/lab')) {
+                return 'vendor-mui-x';
+              }
+              if (id.includes('@mui/') || id.includes('@emotion/')) {
+                return 'vendor-mui';
+              }
+              if (id.includes('antlr4')) {
+                return 'vendor-antlr';
+              }
+              if (id.includes('showdown') || id.includes('turndown')) {
+                return 'vendor-markdown';
+              }
+            }
+
+            // Connection schema JSONs (~6.4MB raw) — pure data,
+            // only needed on service configuration pages
+            if (id.includes('/jsons/connectionSchemas/')) {
+              return 'app-connection-schemas';
             }
           },
         },

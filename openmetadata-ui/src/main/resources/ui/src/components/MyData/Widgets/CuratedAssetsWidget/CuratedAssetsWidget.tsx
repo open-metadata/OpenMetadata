@@ -58,7 +58,10 @@ import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import CertificationTag from '../../../common/CertificationTag/CertificationTag';
-import { useAdvanceSearch } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
+import {
+  AdvanceSearchProvider,
+  useAdvanceSearch,
+} from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
@@ -70,7 +73,7 @@ import {
   CURATED_ASSETS_SORT_BY_OPTIONS,
 } from './CuratedAssetsWidget.constants';
 
-const CuratedAssetsWidget = ({
+const CuratedAssetsWidgetInner = ({
   isEditView,
   handleRemoveWidget,
   widgetKey,
@@ -504,5 +507,11 @@ const CuratedAssetsWidget = ({
     </>
   );
 };
+
+const CuratedAssetsWidget = (props: WidgetCommonProps) => (
+  <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
+    <CuratedAssetsWidgetInner {...props} />
+  </AdvanceSearchProvider>
+);
 
 export default CuratedAssetsWidget;

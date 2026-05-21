@@ -74,7 +74,6 @@ import {
 } from '../../../../rest/glossaryAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
-import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
 import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
 import { getDomainDryRunImpacts } from '../../../../utils/Domain/DomainDryRunUtils';
 import {
@@ -87,6 +86,7 @@ import {
   getQuickFilterQuery,
 } from '../../../../utils/ExploreUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
+import { getAssetsPageQuickFilters } from '../../../../utils/SearchDropdownUtils';
 import { getTermQuery } from '../../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,

@@ -14,7 +14,7 @@
 import { Button, Card, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
 import { ActivityEventType } from '../../../../generated/entity/activity/activityEvent';
@@ -32,9 +32,12 @@ import ActivityOwnersFeed from '../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/
 import OwnersFeed from '../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/OwnersFeed';
 import ActivityTagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/ActivityTagsFeed';
 import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
-import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
 import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
+
+const ActivityFeedEditor = lazy(
+  () => import('../../ActivityFeedEditor/ActivityFeedEditor')
+);
 
 const FeedCardBodyNew = ({
   isPost = false,
@@ -158,34 +161,36 @@ const FeedCardBodyNew = ({
   const feedBodyRender = useMemo(() => {
     if (isEditPost) {
       return (
-        <ActivityFeedEditor
-          focused
-          className="mb-8"
-          defaultValue={getDefaultValue(message)}
-          editAction={
-            <div className="d-flex justify-end gap-2 m-r-xss">
-              <Button
-                className="border border-primary text-primary rounded-4"
-                data-testid="cancel-button"
-                size="small"
-                onClick={onEditCancel}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                className="rounded-4"
-                data-testid="save-button"
-                disabled={!message.length}
-                size="small"
-                type="primary"
-                onClick={handleSave}>
-                {t('label.save')}
-              </Button>
-            </div>
-          }
-          editorClass="is_edit_post"
-          onSave={handleSave}
-          onTextChange={(message) => setPostMessage(message)}
-        />
+        <Suspense fallback={null}>
+          <ActivityFeedEditor
+            focused
+            className="mb-8"
+            defaultValue={getDefaultValue(message)}
+            editAction={
+              <div className="d-flex justify-end gap-2 m-r-xss">
+                <Button
+                  className="border border-primary text-primary rounded-4"
+                  data-testid="cancel-button"
+                  size="small"
+                  onClick={onEditCancel}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  className="rounded-4"
+                  data-testid="save-button"
+                  disabled={!message.length}
+                  size="small"
+                  type="primary"
+                  onClick={handleSave}>
+                  {t('label.save')}
+                </Button>
+              </div>
+            }
+            editorClass="is_edit_post"
+            onSave={handleSave}
+            onTextChange={(message) => setPostMessage(message)}
+          />
+        </Suspense>
       );
     }
 

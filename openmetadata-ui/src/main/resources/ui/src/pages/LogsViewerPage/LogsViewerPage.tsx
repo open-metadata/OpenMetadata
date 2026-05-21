@@ -67,10 +67,8 @@ import {
   getIngestionPipelineLogById,
 } from '../../rest/ingestionPipelineAPI';
 import { ExtraInfoLabel } from '../../utils/DataAssetsHeader.utils';
-import {
-  getEpochMillisForPastDays,
-  getScheduleDescriptionTexts,
-} from '../../utils/date-time/DateTimeUtils';
+import { getScheduleDescriptionTexts } from '../../utils/date-time/CronDescriptionUtils';
+import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
   downloadAppLogs,

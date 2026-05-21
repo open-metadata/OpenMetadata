@@ -12,7 +12,7 @@
  */
 
 import React from 'react';
-import {
+import type {
   Connection,
   Edge,
   Node,

@@ -245,7 +245,7 @@ jest.mock('react-i18next', () => ({
   Trans: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-jest.mock('../../utils/AdvancedSearchUtils', () => ({
+jest.mock('../../utils/SearchDropdownUtils', () => ({
   getDropDownItems: jest.fn().mockReturnValue([]),
 }));
 

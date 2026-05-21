@@ -16,11 +16,12 @@ import { Button, Input, Space, Tooltip } from 'antd';
 import { TextAreaRef } from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
 import 'katex/dist/katex.min.css';
-import { FC, useRef, useState } from 'react';
+import { FC, lazy, Suspense, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Latex from 'react-latex-next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import './math-equation.less';
+
+const Latex = lazy(() => import('react-latex-next'));
 
 export const MathEquationComponent: FC<NodeViewProps> = ({
   node,
@@ -75,7 +76,9 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
             </Space>
           </div>
         ) : (
-          <Latex>{equation}</Latex>
+          <Suspense fallback={null}>
+            <Latex>{equation}</Latex>
+          </Suspense>
         )}
         {/* Show edit button only when the editor is editable */}
         {!isEditing && editor.isEditable && (

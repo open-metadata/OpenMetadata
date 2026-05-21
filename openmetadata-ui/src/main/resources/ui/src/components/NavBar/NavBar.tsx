@@ -26,7 +26,15 @@ import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { startCase, upperCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
@@ -83,10 +91,13 @@ import DomainSelectableList from '../common/DomainSelectableList/DomainSelectabl
 import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { CSVExportWebsocketResponse } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { GlobalSearchBar } from '../GlobalSearchBar/GlobalSearchBar';
-import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
 import popupAlertsCardsClassBase from './PopupAlertClassBase';
+
+const NotificationBox = lazy(
+  () => import('../NotificationBox/NotificationBox.component')
+);
 
 const cookieStorage = new CookieStorage();
 
@@ -549,16 +560,18 @@ const NavBar = () => {
               destroyPopupOnHide
               className="cursor-pointer"
               dropdownRender={() => (
-                <NotificationBox
-                  activeTab={activeTab}
-                  hasMentionNotification={hasMentionNotification}
-                  hasTaskNotification={hasTaskNotification}
-                  onMarkMentionsNotificationRead={
-                    handleMentionsNotificationRead
-                  }
-                  onMarkTaskNotificationRead={handleTaskNotificationRead}
-                  onTabChange={handleActiveTab}
-                />
+                <Suspense>
+                  <NotificationBox
+                    activeTab={activeTab}
+                    hasMentionNotification={hasMentionNotification}
+                    hasTaskNotification={hasTaskNotification}
+                    onMarkMentionsNotificationRead={
+                      handleMentionsNotificationRead
+                    }
+                    onMarkTaskNotificationRead={handleTaskNotificationRead}
+                    onTabChange={handleActiveTab}
+                  />
+                </Suspense>
               )}
               overlayStyle={{
                 width: '425px',

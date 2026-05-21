@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { uniq } from 'lodash';
-import { Edge, Node } from 'reactflow';
+import type { Edge, Node } from 'reactflow';
 import { create } from 'zustand';
 import { LineageConfig } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';

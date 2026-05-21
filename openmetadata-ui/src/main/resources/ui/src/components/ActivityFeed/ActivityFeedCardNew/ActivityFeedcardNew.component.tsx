@@ -14,7 +14,7 @@ import { Card, Col, Input, Skeleton, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined, orderBy } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ASSET_CARD_STYLES } from '../../../constants/Feeds.constants';
@@ -44,10 +44,12 @@ import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import FeedCardBodyNew from '../ActivityFeedCard/FeedCardBody/FeedCardBodyNew';
 import ActivityEventFooter from '../ActivityFeedCardV2/FeedCardFooter/ActivityEventFooter';
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
-import ActivityFeedEditorNew from '../ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import '../ActivityFeedTab/activity-feed-tab.less';
 import CommentCard from './CommentCard.component';
+const ActivityFeedEditorNew = lazy(
+  () => import('../ActivityFeedEditor/ActivityFeedEditorNew')
+);
 
 interface ActivityFeedCardNewProps {
   feed?: Thread;
@@ -532,17 +534,19 @@ const ActivityFeedCardNew = ({
             </Typography.Text>
           )}
           {showFeedEditor ? (
-            <ActivityFeedEditorNew
-              className={classNames(
-                'm-t-md feed-editor activity-feed-editor-container-new',
-                {
-                  'm-b-md':
-                    (showActivityFeedEditor && feed?.posts?.length === 0) ||
-                    isOpenInDrawer,
-                }
-              )}
-              onSave={onSave}
-            />
+            <Suspense fallback={null}>
+              <ActivityFeedEditorNew
+                className={classNames(
+                  'm-t-md feed-editor activity-feed-editor-container-new',
+                  {
+                    'm-b-md':
+                      (showActivityFeedEditor && feed?.posts?.length === 0) ||
+                      isOpenInDrawer,
+                  }
+                )}
+                onSave={onSave}
+              />
+            </Suspense>
           ) : (
             <div className="d-flex gap-2">
               <div>

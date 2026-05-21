@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import i18next from 'i18next';
-import { Edge, Node } from 'reactflow';
+import type { Edge, Node } from 'reactflow';
 import {
   ScheduleConfig,
   WorkflowType,
