@@ -212,13 +212,14 @@ def test_combined_lineage_sql_prunes_query_history_by_date():
     assert "ah.QUERY_START_TIME" in cte_section
 
 
-def test_combined_lineage_left_joins_query_history_to_keep_edges_without_text():
+def test_combined_lineage_left_joins_query_history_for_text_only():
     """
     ACCESS_HISTORY is the authoritative lineage source; QUERY_HISTORY only
-    enriches with query text. A LEFT JOIN + NULL guard keeps an edge even when
-    no QUERY_HISTORY row matches, while still excluding failed queries when one
-    does. The dbt/OpenMetadata noise filters are dropped — ACCESS_HISTORY only
-    surfaces queries that actually modified objects.
+    enriches with query text. Every qh predicate (time prune + success) lives in
+    the LEFT JOIN ON clause, so an absent/failed/boundary qh row yields null text
+    but never drops the edge — no post-join WHERE guard needed. The
+    dbt/OpenMetadata noise filters are dropped — ACCESS_HISTORY only surfaces
+    queries that actually modified objects.
     """
     rendered = SNOWFLAKE_ACCESS_HISTORY_LINEAGE.format(
         account_usage="SNOWFLAKE.ACCOUNT_USAGE",
@@ -227,8 +228,10 @@ def test_combined_lineage_left_joins_query_history_to_keep_edges_without_text():
         filter_condition="",
     )
     assert "LEFT JOIN SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY" in rendered
-    assert "qh.QUERY_ID IS NULL" in rendered
-    assert "qh.EXECUTION_STATUS = 'SUCCESS'" in rendered
+    on_clause, _, where_clause = rendered.partition("table_edges AS")[0].partition("WHERE ah.QUERY_START_TIME")
+    assert "qh.EXECUTION_STATUS = 'SUCCESS'" in on_clause
+    assert "qh.EXECUTION_STATUS" not in where_clause
+    assert "qh.QUERY_ID IS NULL" not in rendered
     assert '"app": "dbt"' not in rendered
     assert '"app": "OpenMetadata"' not in rendered
 
