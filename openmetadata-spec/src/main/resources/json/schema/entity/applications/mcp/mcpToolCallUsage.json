@@ -59,8 +59,9 @@
       "$ref": "#/definitions/errorCategory"
     },
     "clientName": {
-      "description": "Best-effort name of the calling MCP client (Claude Desktop / Cursor / VS Code / CLI / claude-cli). Extracted from the User-Agent header by AuthEnrichedMcpContextExtractor. Empty when the client did not identify itself.",
-      "type": "string"
+      "description": "Best-effort name of the calling MCP client (Claude Desktop / Cursor / VS Code / CLI / claude-cli). Extracted from the User-Agent header by AuthEnrichedMcpContextExtractor. Empty when the client did not identify itself. Bounded to 64 chars because the source header is attacker-controlled.",
+      "type": "string",
+      "maxLength": 64
     }
   },
   "additionalProperties": false,

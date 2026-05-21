@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit-level coverage for the User-Agent → client name heuristic. The headers we recognise here
+ * Unit-level coverage for the User-Agent -> client name heuristic. The headers we recognise here
  * are the ones the Billing > MCP page renders explicitly; an unknown UA still produces a sensible
  * label so a new client surfaces in the per-user breakdown without an extractor change.
  */
@@ -51,6 +51,22 @@ class AuthEnrichedMcpContextExtractorTest {
   }
 
   @Test
+  void vsCodeWithClaudeExtensionDoesNotMisclassifyAsCli() {
+    assertThat(
+            AuthEnrichedMcpContextExtractor.resolveClientName(
+                "Visual Studio Code/1.92.0 claude-ext/1.0"))
+        .isEqualTo("VS Code");
+    assertThat(AuthEnrichedMcpContextExtractor.resolveClientName("vscode-claude-ext/0.1"))
+        .isEqualTo("VS Code");
+  }
+
+  @Test
+  void claudeCodeIsRecognisedAsCli() {
+    assertThat(AuthEnrichedMcpContextExtractor.resolveClientName("claude-code/0.9.1"))
+        .isEqualTo("Claude CLI");
+  }
+
+  @Test
   void unknownAgentFallsBackToCapitalisedProductToken() {
     assertThat(AuthEnrichedMcpContextExtractor.resolveClientName("zed/0.150")).isEqualTo("Zed");
     assertThat(AuthEnrichedMcpContextExtractor.resolveClientName("someTool/2.0 extra/info"))
@@ -62,5 +78,22 @@ class AuthEnrichedMcpContextExtractorTest {
     assertThat(AuthEnrichedMcpContextExtractor.resolveClientName(null)).isNull();
     assertThat(AuthEnrichedMcpContextExtractor.resolveClientName("")).isNull();
     assertThat(AuthEnrichedMcpContextExtractor.resolveClientName("   ")).isNull();
+  }
+
+  @Test
+  void oversizedFallbackTokenIsCappedToMaxLength() {
+    String huge = "x".repeat(500) + "/1.0";
+
+    String resolved = AuthEnrichedMcpContextExtractor.resolveClientName(huge);
+
+    assertThat(resolved).isNotNull();
+    assertThat(resolved.length()).isLessThanOrEqualTo(64);
+  }
+
+  @Test
+  void controlCharactersAreStrippedFromResolvedClient() {
+    String userAgent = "MyTool\u0001\u0007/1.0";
+
+    assertThat(AuthEnrichedMcpContextExtractor.resolveClientName(userAgent)).isEqualTo("MyTool");
   }
 }

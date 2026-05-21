@@ -250,12 +250,12 @@ public class McpServer implements McpServerProvider {
             outcome =
                 toolContext.callToolWithMetadata(
                     authorizer, limits, tool.name(), securityContext, req);
-            return outcome.result;
+            return outcome.result();
           } finally {
-            boolean success = outcome != null && !Boolean.TRUE.equals(outcome.result.isError());
-            Long latencyMs = outcome != null ? outcome.latencyMs : null;
+            boolean success = outcome != null && !Boolean.TRUE.equals(outcome.result().isError());
+            Long latencyMs = outcome != null ? outcome.latencyMs() : null;
             org.openmetadata.schema.entity.app.mcp.McpToolCallUsage.ErrorCategory category =
-                outcome != null ? outcome.errorCategory : null;
+                outcome != null ? outcome.errorCategory() : null;
             McpUsageRecorder.record(
                 tool.name(), userName, success, latencyMs, category, clientName);
             ImpersonationContext.clear();

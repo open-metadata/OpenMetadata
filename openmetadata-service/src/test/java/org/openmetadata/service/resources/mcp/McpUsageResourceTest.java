@@ -298,6 +298,39 @@ class McpUsageResourceTest {
   }
 
   @Test
+  void historySkipsRowsWithNullTimestamp() {
+    long today = McpUsageResource.startOfDay(Instant.now().toEpochMilli());
+    McpToolCallUsage rowWithoutTs =
+        new McpToolCallUsage()
+            .withAppId(UUID.randomUUID())
+            .withAppName(McpAppConstants.MCP_APP_NAME)
+            .withExtension(AppExtension.ExtensionType.LIMITS)
+            .withToolName("search_metadata")
+            .withUserName("alice")
+            .withSuccess(true);
+    stubRows(rowWithoutTs, row("search_metadata", "alice", true, today + 1000));
+
+    Response response =
+        resource.getHistory(adminContext, today, today + Duration.ofDays(1).toMillis());
+
+    Map<String, Map<String, Long>> body = (Map<String, Map<String, Long>>) response.getEntity();
+    assertThat(body.get(McpUsageResource.isoDate(today)))
+        .containsEntry("ok", 1L)
+        .containsEntry("fail", 0L);
+  }
+
+  @Test
+  void latencySampleBoundsMemoryViaReservoirSampling() {
+    McpUsageResource.LatencySample sample = new McpUsageResource.LatencySample();
+    int feed = McpUsageResource.MAX_LATENCY_SAMPLES * 5;
+    for (int i = 0; i < feed; i++) {
+      sample.add(i);
+    }
+
+    assertThat(sample.values()).hasSize(McpUsageResource.MAX_LATENCY_SAMPLES);
+  }
+
+  @Test
   void mcpAppNotInitializedReturnsZeroCounts() {
     appContextStatic.close();
     ApplicationContext emptyContext = mock(ApplicationContext.class);

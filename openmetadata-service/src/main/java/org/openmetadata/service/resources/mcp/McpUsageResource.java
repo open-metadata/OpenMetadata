@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import org.openmetadata.schema.entity.app.App;
@@ -75,6 +76,13 @@ public class McpUsageResource {
   static final String BOT_SUFFIX_KEBAB = "-bot";
   static final long DEFAULT_WINDOW_DAYS = 30L;
   private static final int PAGE_SIZE = 1000;
+
+  /**
+   * Upper bound on latency samples retained per aggregation bucket (summary and per-tool). Above
+   * this size we switch to reservoir sampling so percentile estimates stay statistically valid
+   * without inflating heap usage when a single tool gets millions of calls in the window.
+   */
+  static final int MAX_LATENCY_SAMPLES = 10_000;
 
   private final Authorizer authorizer;
   private final AppRepository appRepository;
@@ -123,8 +131,9 @@ public class McpUsageResource {
       operationId = "getMcpUsageHistory",
       summary = "Daily MCP usage counts",
       description =
-          "Returns a map of UTC start-of-day (epoch millis) to call count. Empty days are filled"
-              + " with 0 so the series is continuous. Admin access required.")
+          "Returns a map keyed by ISO date string (YYYY-MM-DD, UTC) to an object with 'ok' and"
+              + " 'fail' counters. Empty days are seeded with zeros so the series is continuous."
+              + " Admin access required.")
   public Response getHistory(
       @Context SecurityContext securityContext,
       @QueryParam("startTs") Long startTs,
@@ -212,7 +221,7 @@ public class McpUsageResource {
     AtomicLong total = new AtomicLong();
     AtomicLong success = new AtomicLong();
     Set<String> users = new LinkedHashSet<>();
-    List<Long> latencies = new ArrayList<>();
+    LatencySample latencies = new LatencySample();
     Map<String, Long> errorByCategory = new LinkedHashMap<>();
     forEachRow(
         from,
@@ -238,9 +247,10 @@ public class McpUsageResource {
     body.put("uniqueUsers", users.size());
     body.put("startTs", from);
     body.put("endTs", to);
-    if (!latencies.isEmpty()) {
-      body.put("avgLatencyMs", average(latencies));
-      body.put("p95LatencyMs", percentile(latencies, 95));
+    List<Long> latencyValues = latencies.values();
+    if (!latencyValues.isEmpty()) {
+      body.put("avgLatencyMs", average(latencyValues));
+      body.put("p95LatencyMs", percentile(latencyValues, 95));
     }
     if (!errorByCategory.isEmpty()) {
       body.put("errorByCategory", errorByCategory);
@@ -263,7 +273,8 @@ public class McpUsageResource {
    * Daily ok/fail tallies. Returns a TreeMap keyed by ISO date string (YYYY-MM-DD) — the
    * redesigned MCP page reads this shape directly to render a stacked bar chart of successful
    * vs. failed requests. Days with no traffic are seeded with zeros so the chart renders a
-   * continuous series.
+   * continuous series. Rows with a null timestamp are skipped — the schema doesn't require it
+   * so legacy or partial rows would otherwise NPE the {@link #isoDate} call.
    */
   private Map<String, Map<String, Long>> buildDailyHistory(long from, long to) {
     Map<String, Map<String, Long>> daily = new TreeMap<>();
@@ -272,7 +283,11 @@ public class McpUsageResource {
         from,
         to,
         usage -> {
-          String day = isoDate(usage.getTimestamp());
+          Long ts = usage.getTimestamp();
+          if (ts == null) {
+            return;
+          }
+          String day = isoDate(ts);
           Map<String, Long> bucket =
               daily.computeIfAbsent(
                   day,
@@ -294,7 +309,7 @@ public class McpUsageResource {
   private Map<String, Map<String, Object>> buildToolBreakdown(long from, long to) {
     Map<String, Long> calls = new LinkedHashMap<>();
     Map<String, Long> errors = new HashMap<>();
-    Map<String, List<Long>> latencies = new HashMap<>();
+    Map<String, LatencySample> latencies = new HashMap<>();
     forEachRow(
         from,
         to,
@@ -308,7 +323,7 @@ public class McpUsageResource {
             errors.merge(tool, 1L, Long::sum);
           }
           if (usage.getLatencyMs() != null && usage.getLatencyMs() >= 0) {
-            latencies.computeIfAbsent(tool, k -> new ArrayList<>()).add(usage.getLatencyMs());
+            latencies.computeIfAbsent(tool, k -> new LatencySample()).add(usage.getLatencyMs());
           }
         });
     Map<String, Map<String, Object>> result = new LinkedHashMap<>();
@@ -319,10 +334,11 @@ public class McpUsageResource {
               Map<String, Object> row = new LinkedHashMap<>();
               row.put("calls", e.getValue());
               row.put("errors", errors.getOrDefault(e.getKey(), 0L));
-              List<Long> toolLatencies = latencies.get(e.getKey());
+              LatencySample toolLatencies = latencies.get(e.getKey());
               if (toolLatencies != null && !toolLatencies.isEmpty()) {
-                row.put("latencyP50", percentile(toolLatencies, 50));
-                row.put("latencyP95", percentile(toolLatencies, 95));
+                List<Long> values = toolLatencies.values();
+                row.put("latencyP50", percentile(values, 50));
+                row.put("latencyP95", percentile(values, 95));
               }
               result.put(e.getKey(), row);
             });
@@ -499,8 +515,8 @@ public class McpUsageResource {
 
   /**
    * Nearest-rank percentile over an unsorted list. Sort is local so the caller doesn't have to
-   * pre-order; samples list is typically &lt;= 1000 entries per tool, so the O(n log n) cost is
-   * dominated by the surrounding aggregation pass.
+   * pre-order; samples list is bounded by {@link #MAX_LATENCY_SAMPLES} entries, so the O(n log n)
+   * cost is dominated by the surrounding aggregation pass.
    */
   static long percentile(List<Long> samples, int p) {
     if (samples.isEmpty()) {
@@ -511,5 +527,37 @@ public class McpUsageResource {
     int idx =
         Math.min(sorted.size() - 1, Math.max(0, (int) Math.ceil((p / 100.0) * sorted.size()) - 1));
     return sorted.get(idx);
+  }
+
+  /**
+   * Bounded latency accumulator that switches to reservoir sampling once it sees more than
+   * {@link #MAX_LATENCY_SAMPLES} entries. Caps heap usage at ~80KB per bucket while keeping
+   * percentile estimates statistically valid even for tools that handle millions of calls in the
+   * aggregation window. Not thread-safe; one instance is owned per aggregation bucket and only
+   * touched on the request thread.
+   */
+  static final class LatencySample {
+    private final List<Long> samples = new ArrayList<>();
+    private long seen = 0L;
+
+    void add(long value) {
+      seen++;
+      if (samples.size() < MAX_LATENCY_SAMPLES) {
+        samples.add(value);
+      } else {
+        long idx = ThreadLocalRandom.current().nextLong(seen);
+        if (idx < MAX_LATENCY_SAMPLES) {
+          samples.set((int) idx, value);
+        }
+      }
+    }
+
+    boolean isEmpty() {
+      return samples.isEmpty();
+    }
+
+    List<Long> values() {
+      return samples;
+    }
   }
 }

@@ -34,7 +34,7 @@ public class DefaultToolContext {
       String toolName,
       CatalogSecurityContext securityContext,
       McpSchema.CallToolRequest request) {
-    return callToolWithMetadata(authorizer, limits, toolName, securityContext, request).result;
+    return callToolWithMetadata(authorizer, limits, toolName, securityContext, request).result();
   }
 
   /**
@@ -166,29 +166,40 @@ public class DefaultToolContext {
    * no specific bucket matches.
    */
   static McpToolCallUsage.ErrorCategory classifyException(Throwable t) {
+    McpToolCallUsage.ErrorCategory result = McpToolCallUsage.ErrorCategory.INTERNAL;
     Throwable cursor = t;
-    while (cursor != null) {
-      String name = cursor.getClass().getSimpleName();
-      String msg = cursor.getMessage() == null ? "" : cursor.getMessage().toLowerCase(Locale.ROOT);
-      if (name.contains("RateLimit") || msg.contains("rate limit")) {
-        return McpToolCallUsage.ErrorCategory.RATE_LIMIT;
+    while (cursor != null && result == McpToolCallUsage.ErrorCategory.INTERNAL) {
+      McpToolCallUsage.ErrorCategory match = matchCategory(cursor);
+      if (match != null) {
+        result = match;
+      } else {
+        Throwable next = cursor.getCause();
+        cursor = (next == null || next == cursor) ? null : next;
       }
-      if (name.contains("Validation")
-          || name.contains("IllegalArgument")
-          || name.contains("BadRequest")
-          || msg.contains("invalid argument")) {
-        return McpToolCallUsage.ErrorCategory.VALIDATION;
-      }
-      if (name.contains("Timeout") || msg.contains("timeout") || msg.contains("timed out")) {
-        return McpToolCallUsage.ErrorCategory.TIMEOUT;
-      }
-      Throwable next = cursor.getCause();
-      if (next == null || next == cursor) {
-        break;
-      }
-      cursor = next;
     }
-    return McpToolCallUsage.ErrorCategory.INTERNAL;
+    return result;
+  }
+
+  /**
+   * Returns the category that matches the supplied throwable's name or message, or {@code null}
+   * when no specific bucket applies. Kept separate from {@link #classifyException} so the
+   * cause-chain walk reads as a single linear loop.
+   */
+  private static McpToolCallUsage.ErrorCategory matchCategory(Throwable cursor) {
+    String name = cursor.getClass().getSimpleName();
+    String msg = cursor.getMessage() == null ? "" : cursor.getMessage().toLowerCase(Locale.ROOT);
+    McpToolCallUsage.ErrorCategory result = null;
+    if (name.contains("RateLimit") || msg.contains("rate limit")) {
+      result = McpToolCallUsage.ErrorCategory.RATE_LIMIT;
+    } else if (name.contains("Validation")
+        || name.contains("IllegalArgument")
+        || name.contains("BadRequest")
+        || msg.contains("invalid argument")) {
+      result = McpToolCallUsage.ErrorCategory.VALIDATION;
+    } else if (name.contains("Timeout") || msg.contains("timeout") || msg.contains("timed out")) {
+      result = McpToolCallUsage.ErrorCategory.TIMEOUT;
+    }
+    return result;
   }
 
   private static long elapsedMs(long startNanos) {
@@ -200,18 +211,8 @@ public class DefaultToolContext {
    * call with full diagnostic detail without re-classifying the exception or re-measuring the
    * latency at its level.
    */
-  public static final class CallToolOutcome {
-    public final McpSchema.CallToolResult result;
-    public final long latencyMs;
-    public final McpToolCallUsage.ErrorCategory errorCategory;
-
-    public CallToolOutcome(
-        McpSchema.CallToolResult result,
-        long latencyMs,
-        McpToolCallUsage.ErrorCategory errorCategory) {
-      this.result = result;
-      this.latencyMs = latencyMs;
-      this.errorCategory = errorCategory;
-    }
-  }
+  public record CallToolOutcome(
+      McpSchema.CallToolResult result,
+      long latencyMs,
+      McpToolCallUsage.ErrorCategory errorCategory) {}
 }
