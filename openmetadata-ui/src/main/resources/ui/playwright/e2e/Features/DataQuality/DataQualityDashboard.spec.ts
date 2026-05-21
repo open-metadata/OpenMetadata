@@ -360,6 +360,7 @@ test.describe(
         uniquenessFailTs
       );
 
+      const resolveTs = getCurrentMillis();
       await apiContext.post(
         '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
         {
@@ -368,6 +369,13 @@ test.describe(
             testCaseResolutionStatusType: 'Resolved',
           },
         }
+      );
+
+      await waitForIncidentToBeIndexed(
+        apiContext,
+        uniquenessTestCaseFqn,
+        resolveTs,
+        'Resolved'
       );
 
       await afterAction();
