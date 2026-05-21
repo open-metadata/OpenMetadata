@@ -10,6 +10,7 @@
       "react",
       "react-dom",
       "lodash",
+      "lodash-es",
       "luxon",
       "js-yaml",
       "codemirror",

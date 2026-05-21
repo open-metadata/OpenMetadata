@@ -95,16 +95,16 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
   const descriptionText = getTextFromHtmlString(entity.description);
   const tooltipContent = (
     <div className="tw:p-2 tw:space-y-1">
-      <Typography as="p" weight="semibold">
+      <Typography as="p" className="tw:text-white" weight="semibold">
         {entity.fullyQualifiedName}
       </Typography>
       {relationType && (
-        <Typography as="p" size="text-xs">
+        <Typography as="p" className="tw:text-white" size="text-xs">
           {getRelationDisplayName(relationType)}
         </Typography>
       )}
       {descriptionText && (
-        <Typography as="p" size="text-xs">
+        <Typography as="p" className="tw:text-white" size="text-xs">
           {descriptionText}
         </Typography>
       )}
@@ -112,7 +112,7 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
   );
 
   return (
-    <Tooltip placement="bottom left" title={tooltipContent}>
+    <Tooltip arrow placement="bottom left" title={tooltipContent}>
       <TooltipTrigger
         className={
           versionStatus?.added

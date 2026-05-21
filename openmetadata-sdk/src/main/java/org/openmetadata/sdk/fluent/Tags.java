@@ -177,6 +177,10 @@ public final class Tags {
     public TagDeleter delete() {
       return new TagDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Tag> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(client.tags(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

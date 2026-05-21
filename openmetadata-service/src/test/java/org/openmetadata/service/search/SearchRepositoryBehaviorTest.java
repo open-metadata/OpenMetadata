@@ -297,6 +297,9 @@ class SearchRepositoryBehaviorTest {
               Entity.FIELD_DATA_PRODUCTS,
               PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST,
               null));
+      descriptors.add(
+          new PropagationDescriptor(
+              "certification", PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
     } else if (Entity.GLOSSARY_TERM.equals(entityType)) {
       descriptors.add(
           new PropagationDescriptor(
@@ -895,6 +898,99 @@ class SearchRepositoryBehaviorTest {
         .updateChildren(
             eq(SearchClient.DATA_ASSET_SEARCH_ALIAS), keyCaptor.capture(), any(Pair.class));
     assertEquals("Certification.Gold", keyCaptor.getValue().getRight());
+  }
+
+  @Test
+  void propagateCertificationTagsCascadesToTableChildrenOnAdd() throws IOException {
+    Table table = mock(Table.class);
+    UUID entityId = UUID.randomUUID();
+    when(table.getId()).thenReturn(entityId);
+    when(table.getEntityReference())
+        .thenReturn(new EntityReference().withId(entityId).withType(Entity.TABLE));
+    AssetCertification cert =
+        new AssetCertification()
+            .withTagLabel(
+                new TagLabel()
+                    .withName("Gold")
+                    .withDescription("Certified")
+                    .withTagFQN("Certification.Gold"));
+    when(table.getCertification()).thenReturn(cert);
+
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange().withName("certification").withOldValue("{}").withNewValue("{}")),
+            List.of());
+
+    repository.propagateCertificationTags(Entity.TABLE, table, changeDescription);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Pair<String, String>> matchCaptor = ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(
+            eq(List.of("cluster_tableColumn")), matchCaptor.capture(), updatesCaptor.capture());
+    assertEquals("table.id", matchCaptor.getValue().getLeft());
+    assertEquals(entityId.toString(), matchCaptor.getValue().getRight());
+    assertEquals(SearchClient.CASCADE_CERTIFICATION_SCRIPT, updatesCaptor.getValue().getLeft());
+    assertSame(cert, updatesCaptor.getValue().getRight().get("certification"));
+  }
+
+  @Test
+  void propagateCertificationTagsCascadesNullToTableChildrenOnRemove() throws IOException {
+    Table table = mock(Table.class);
+    UUID entityId = UUID.randomUUID();
+    when(table.getId()).thenReturn(entityId);
+    when(table.getEntityReference())
+        .thenReturn(new EntityReference().withId(entityId).withType(Entity.TABLE));
+    when(table.getCertification()).thenReturn(null);
+
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(),
+            List.of(new FieldChange().withName("certification").withOldValue("{}")));
+
+    repository.propagateCertificationTags(Entity.TABLE, table, changeDescription);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(
+            eq(List.of("cluster_tableColumn")), any(Pair.class), updatesCaptor.capture());
+    assertEquals(SearchClient.CASCADE_CERTIFICATION_SCRIPT, updatesCaptor.getValue().getLeft());
+    assertNull(updatesCaptor.getValue().getRight().get("certification"));
+  }
+
+  @Test
+  void propagateCertificationTagsDoesNotCascadeForNonTableEntities() throws IOException {
+    // Pipelines carry a native certification but DQ dashboard cascade is
+    // scoped to Table — children of Pipeline aren't part of the test_case
+    // family. Verify we don't blast an updateByQuery against unrelated
+    // child indices.
+    Pipeline pipeline = mock(Pipeline.class);
+    UUID entityId = UUID.randomUUID();
+    when(pipeline.getId()).thenReturn(entityId);
+    when(pipeline.getEntityReference())
+        .thenReturn(new EntityReference().withId(entityId).withType(Entity.PIPELINE));
+    when(pipeline.getCertification())
+        .thenReturn(
+            new AssetCertification().withTagLabel(new TagLabel().withTagFQN("Certification.Gold")));
+
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange().withName("certification").withOldValue("{}").withNewValue("{}")),
+            List.of());
+
+    repository.propagateCertificationTags(Entity.PIPELINE, pipeline, changeDescription);
+
+    verify(searchClient, never()).updateChildren(any(List.class), any(Pair.class), any(Pair.class));
   }
 
   @Test
@@ -1713,6 +1809,52 @@ class SearchRepositoryBehaviorTest {
                 List.of()),
             Entity.TAG,
             tag));
+  }
+
+  @Test
+  void requiresPropagationReturnsTrueForTableCertificationUpdate() throws Exception {
+    // Regression for issue #28229: a cert-only PATCH on a Table must open the propagation gate
+    // so cascadeCertificationToChildren can push the new cert onto every denormalized child doc
+    // (test_case, test_case_result, test_case_resolution_status, test_suite, column).
+    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    assertTrue(
+        invokeRequiresPropagation(
+            changeDescription(
+                List.of(),
+                List.of(
+                    new FieldChange()
+                        .withName("certification")
+                        .withOldValue("{}")
+                        .withNewValue("{}")),
+                List.of()),
+            Entity.TABLE,
+            table));
+  }
+
+  @Test
+  void requiresPropagationReturnsTrueForTableCertificationAdded() throws Exception {
+    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    assertTrue(
+        invokeRequiresPropagation(
+            changeDescription(
+                List.of(new FieldChange().withName("certification").withNewValue("{}")),
+                List.of(),
+                List.of()),
+            Entity.TABLE,
+            table));
+  }
+
+  @Test
+  void requiresPropagationReturnsTrueForTableCertificationRemoved() throws Exception {
+    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    assertTrue(
+        invokeRequiresPropagation(
+            changeDescription(
+                List.of(),
+                List.of(),
+                List.of(new FieldChange().withName("certification").withOldValue("{}"))),
+            Entity.TABLE,
+            table));
   }
 
   @Test

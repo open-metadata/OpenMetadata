@@ -20,11 +20,12 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Metric } from '../../../generated/entity/data/metric';
+import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
 import {
   getGlossariesList,
   getGlossaryTerms,
   getGlossaryTermsAssetCounts,
-  getGlossaryTermsById,
+  getGlossaryTermsByIds,
 } from '../../../rest/glossaryAPI';
 import { getMetrics } from '../../../rest/metricsAPI';
 import {
@@ -241,6 +242,57 @@ function collectMissingRelatedTermIds(
   }
 
   return missingIds;
+}
+
+// Hydrates cross-glossary related terms referenced by the input array, in
+// place. Walks term.relatedTerms transitively up to MAX_RESOLUTION_DEPTH
+// levels, batching by Id (BATCH_SIZE matches the backend MAX_BATCH_BY_IDS).
+//
+// Failure semantics: if a single batch fails (network/5xx), its Ids are
+// remembered in a skip set so subsequent depth passes don't retry them,
+// but the rest of the loop still runs — best-effort hydration matches the
+// old per-Id Promise.allSettled behavior on the client.
+async function resolveRelatedTerms(terms: GlossaryTerm[]): Promise<void> {
+  // BATCH_SIZE matches the backend MAX_BATCH_BY_IDS (100), which is sized
+  // to keep the comma-encoded ids list well below Jetty's 8 KB
+  // request-header limit.
+  const BATCH_SIZE = 100;
+  const MAX_RESOLUTION_DEPTH = 5;
+  const loadedIds = new Set(terms.map((term) => term.id ?? ''));
+  const skippedIds = new Set<string>();
+
+  for (let depth = 0; depth < MAX_RESOLUTION_DEPTH; depth++) {
+    const allMissing = collectMissingRelatedTermIds(terms, loadedIds);
+    const missingIds = Array.from(allMissing).filter(
+      (id) => !skippedIds.has(id)
+    );
+    if (missingIds.length === 0) {
+      return;
+    }
+
+    for (let i = 0; i < missingIds.length; i += BATCH_SIZE) {
+      const batch = missingIds.slice(i, i + BATCH_SIZE);
+      try {
+        const fetched = await getGlossaryTermsByIds(batch, {
+          fields: [
+            TabSpecificField.RELATED_TERMS,
+            TabSpecificField.CHILDREN,
+            TabSpecificField.PARENT,
+            TabSpecificField.OWNERS,
+          ],
+        });
+        fetched.forEach((term) => {
+          terms.push(term);
+          loadedIds.add(term.id ?? '');
+        });
+      } catch {
+        // This batch is dead for the rest of the run. Remember the Ids so
+        // collectMissingRelatedTermIds doesn't hand them back next depth
+        // pass, but let the other batches in this pass still execute.
+        batch.forEach((id) => skippedIds.add(id));
+      }
+    }
+  }
 }
 
 export function useOntologyExplorer({
@@ -504,6 +556,7 @@ export function useOntologyExplorer({
             fullyQualifiedName: entityRef.fullyQualifiedName,
             description: entityRef.description,
             entityRef,
+            searchSource: hit._source as Record<string, unknown>,
           });
           newEdges.push({
             from: entityRef.id,
@@ -649,38 +702,7 @@ export function useOntologyExplorer({
       );
 
       if (!isDataMode) {
-        const CONCURRENCY = 8;
-        const MAX_RESOLUTION_DEPTH = 5;
-        const loadedIds = new Set(accumulated.map((term) => term.id ?? ''));
-        let missingIds = collectMissingRelatedTermIds(accumulated, loadedIds);
-        let depth = 0;
-
-        while (missingIds.size > 0 && depth < MAX_RESOLUTION_DEPTH) {
-          const missingIdList = Array.from(missingIds);
-          for (let i = 0; i < missingIdList.length; i += CONCURRENCY) {
-            const batch = missingIdList.slice(i, i + CONCURRENCY);
-            const fetched = await Promise.allSettled(
-              batch.map((id) =>
-                getGlossaryTermsById(id, {
-                  fields: [
-                    TabSpecificField.RELATED_TERMS,
-                    TabSpecificField.CHILDREN,
-                    TabSpecificField.PARENT,
-                    TabSpecificField.OWNERS,
-                  ],
-                })
-              )
-            );
-            fetched.forEach((r) => {
-              if (r.status === 'fulfilled') {
-                accumulated.push(r.value);
-                loadedIds.add(r.value.id ?? '');
-              }
-            });
-          }
-          missingIds = collectMissingRelatedTermIds(accumulated, loadedIds);
-          depth++;
-        }
+        await resolveRelatedTerms(accumulated);
       }
 
       return accumulated;
@@ -814,37 +836,7 @@ export function useOntologyExplorer({
       }
 
       if (glossaryIdParam) {
-        const MAX_RESOLUTION_DEPTH = 5;
-        const fetchedIds = new Set(allTerms.map((term) => term.id ?? ''));
-        let missingIds = collectMissingRelatedTermIds(allTerms, fetchedIds);
-        let depth = 0;
-
-        while (missingIds.size > 0 && depth < MAX_RESOLUTION_DEPTH) {
-          const missingIdList = Array.from(missingIds);
-          for (let i = 0; i < missingIdList.length; i += CONCURRENCY) {
-            const batch = missingIdList.slice(i, i + CONCURRENCY);
-            const fetched = await Promise.allSettled(
-              batch.map((id) =>
-                getGlossaryTermsById(id, {
-                  fields: [
-                    TabSpecificField.RELATED_TERMS,
-                    TabSpecificField.CHILDREN,
-                    TabSpecificField.PARENT,
-                    TabSpecificField.OWNERS,
-                  ],
-                })
-              )
-            );
-            fetched.forEach((r) => {
-              if (r.status === 'fulfilled') {
-                allTerms.push(r.value);
-                fetchedIds.add(r.value.id ?? '');
-              }
-            });
-          }
-          missingIds = collectMissingRelatedTermIds(allTerms, fetchedIds);
-          depth++;
-        }
+        await resolveRelatedTerms(allTerms);
       }
 
       return buildGraphFromAllTermsCb(allTerms, glossariesToFetch);
@@ -1294,6 +1286,7 @@ export function useOntologyExplorer({
 
   const handleRefresh = useCallback(() => {
     if (explorationMode === 'data') {
+      setExpandedTermIds(new Set());
       if (scope === 'global') {
         setDataModeRefreshKey((k) => k + 1);
       } else {
@@ -1307,11 +1300,14 @@ export function useOntologyExplorer({
       fetchAllGlossaryData();
     } else if (scope === 'glossary' && glossaryId) {
       fetchAllGlossaryData(glossaryId);
+    } else if (scope === 'term') {
+      fetchAllGlossaryData(termGlossaryId);
     }
   }, [
     explorationMode,
     scope,
     glossaryId,
+    termGlossaryId,
     fetchAllGlossaryData,
     loadAssetsForDataMode,
   ]);
@@ -1476,6 +1472,42 @@ export function useOntologyExplorer({
     setSelectedNode(null);
   }, []);
 
+  const handleNodeDataUpdate = useCallback(
+    (nodeId: string, updatedData: EntityData) => {
+      const applyToNode = (node: OntologyNode): OntologyNode => {
+        if (node.id !== nodeId) {
+          return node;
+        }
+        const newLabel =
+          updatedData.displayName || updatedData.name || node.label;
+
+        return {
+          ...node,
+          label: newLabel,
+          originalLabel: newLabel,
+          ...('description' in updatedData && {
+            description: updatedData.description,
+          }),
+          searchSource: {
+            ...node.searchSource,
+            ...(updatedData as unknown as Record<string, unknown>),
+          },
+        };
+      };
+
+      setAssetGraphData((prev) =>
+        prev ? { ...prev, nodes: prev.nodes.map(applyToNode) } : prev
+      );
+
+      setGraphData((prev) =>
+        prev ? { ...prev, nodes: prev.nodes.map(applyToNode) } : prev
+      );
+
+      setSelectedNode((prev) => (prev ? applyToNode(prev) : prev));
+    },
+    []
+  );
+
   return {
     graphRef,
     loading,
@@ -1520,5 +1552,6 @@ export function useOntologyExplorer({
     handleGraphNodeClick,
     handleGraphNodeDoubleClick,
     handleGraphPaneClick,
+    handleNodeDataUpdate,
   };
 }
