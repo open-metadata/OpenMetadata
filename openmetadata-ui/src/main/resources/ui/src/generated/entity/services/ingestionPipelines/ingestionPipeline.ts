@@ -720,8 +720,6 @@ export enum OpenmetadataType {
  *
  * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
  * validation, 'validate' to verify against a CA certificate.
- *
- * SSL/TLS verification mode when fetching dbt artifacts over HTTPS.
  */
 export enum VerifySSL {
     Ignore = "ignore",
