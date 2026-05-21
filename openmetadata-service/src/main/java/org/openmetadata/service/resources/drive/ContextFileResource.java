@@ -65,13 +65,15 @@ import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
-@Tag(name = "Drive Files", description = "APIs for managing files in the Context Center Drive.")
-@Path("/v1/drive/files")
+@Tag(
+    name = "Context Center Drive Files",
+    description = "APIs for managing files in the Context Center Drive.")
+@Path("/v1/contextCenter/drive/files")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "driveFiles")
+@Collection(name = "contextCenterDriveFiles")
 public class ContextFileResource extends EntityResource<ContextFile, ContextFileRepository> {
-  public static final String COLLECTION_PATH = "v1/drive/files/";
+  public static final String COLLECTION_PATH = "v1/contextCenter/drive/files/";
   public static final String FIELDS = "owners,tags,folder,domains,followers,votes";
   private final ContextFileMapper mapper = new ContextFileMapper();
   private final ContextFileExtractionService extractionService;
