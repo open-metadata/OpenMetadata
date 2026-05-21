@@ -51,6 +51,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 @Slf4j
 @Repository
@@ -154,16 +155,34 @@ public class UsageRepository {
       return;
     }
     try {
-      search.updateEntity(Entity.getEntityReferenceById(entityType, entityId, Include.ALL));
+      reindexWithRequiredFields(
+          search, Entity.getEntityReferenceById(entityType, entityId, Include.ALL));
       if (Entity.TABLE.equalsIgnoreCase(entityType)) {
-        Table table = Entity.getEntity(Entity.TABLE, entityId, "", Include.ALL);
-        search.updateEntity(table.getDatabaseSchema());
-        search.updateEntity(table.getDatabase());
+        // Table usage rolls up to its schema + database — refresh those docs too.
+        Table table =
+            Entity.getEntity(Entity.TABLE, entityId, searchFields(Entity.TABLE), Include.ALL);
+        reindexWithRequiredFields(search, table.getDatabaseSchema());
+        reindexWithRequiredFields(search, table.getDatabase());
       }
     } catch (Exception e) {
       // A search-index hiccup must not fail the usage write, which is already committed.
       LOG.warn("Failed to update search index with usage for {} {}", entityType, entityId, e);
     }
+  }
+
+  private void reindexWithRequiredFields(SearchRepository search, EntityReference ref) {
+    if (ref == null) {
+      return;
+    }
+    // Fetch only the target index's required reindex fields — never updateEntity()'s "*":
+    // on a database/schema "*" hydrates every child table (tens of thousands on large
+    // catalogs) and blows up memory. Mirrors the reindex pipeline's field selection.
+    EntityInterface entity = Entity.getEntity(ref, searchFields(ref.getType()), Include.ALL);
+    search.updateEntityIndex(entity);
+  }
+
+  private static String searchFields(String entityType) {
+    return String.join(",", ReindexingUtil.getSearchIndexFields(entityType));
   }
 
   private RestUtil.PutResponse<?> tableEntityUsage(
