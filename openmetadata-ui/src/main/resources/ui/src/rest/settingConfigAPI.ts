@@ -28,6 +28,14 @@ export type RelationCardinality =
   | 'MANY_TO_MANY'
   | 'CUSTOM';
 
+export const RelationCardinality = {
+  ONE_TO_ONE: 'ONE_TO_ONE' as RelationCardinality,
+  ONE_TO_MANY: 'ONE_TO_MANY' as RelationCardinality,
+  MANY_TO_ONE: 'MANY_TO_ONE' as RelationCardinality,
+  MANY_TO_MANY: 'MANY_TO_MANY' as RelationCardinality,
+  CUSTOM: 'CUSTOM' as RelationCardinality,
+} as const;
+
 export interface GlossaryTermRelationType {
   name: string;
   displayName: string;

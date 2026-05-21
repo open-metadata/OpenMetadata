@@ -922,38 +922,38 @@ export function getCardinalityArrows(
   lineWidth: number,
   isSymmetric = false
 ): Record<string, unknown> {
-  if (!cardinality || cardinality === 'CUSTOM') {
+  if (!cardinality || cardinality === RelationCardinality.CUSTOM) {
     return { startArrow: isSymmetric, endArrow: true };
   }
 
+  const asymmetric =
+    cardinality === RelationCardinality.ONE_TO_MANY ||
+    cardinality === RelationCardinality.MANY_TO_ONE;
   const resolvedCardinality: RelationCardinality =
-    isSymmetric &&
-    (cardinality === 'ONE_TO_MANY' || cardinality === 'MANY_TO_ONE')
-      ? 'MANY_TO_MANY'
-      : cardinality;
+    isSymmetric && asymmetric ? RelationCardinality.MANY_TO_MANY : cardinality;
 
   const sourceType: 'one' | 'many' =
-    resolvedCardinality === 'MANY_TO_ONE' ||
-    resolvedCardinality === 'MANY_TO_MANY'
+    resolvedCardinality === RelationCardinality.MANY_TO_ONE ||
+    resolvedCardinality === RelationCardinality.MANY_TO_MANY
       ? 'many'
       : 'one';
   const targetType: 'one' | 'many' =
-    resolvedCardinality === 'ONE_TO_MANY' ||
-    resolvedCardinality === 'MANY_TO_MANY'
+    resolvedCardinality === RelationCardinality.ONE_TO_MANY ||
+    resolvedCardinality === RelationCardinality.MANY_TO_MANY
       ? 'many'
       : 'one';
 
-  const pathFn = (type: 'one' | 'many') =>
+  const arrowShape = (type: 'one' | 'many') =>
     type === 'many' ? crowsFootPathFn : oneBarPathFn;
 
   return {
     startArrow: true,
-    startArrowType: pathFn(sourceType),
+    startArrowType: arrowShape(sourceType),
     startArrowFill: 'none',
     startArrowStroke: color,
     startArrowLineWidth: lineWidth,
     endArrow: true,
-    endArrowType: pathFn(targetType),
+    endArrowType: arrowShape(targetType),
     endArrowFill: 'none',
     endArrowStroke: color,
     endArrowLineWidth: lineWidth,

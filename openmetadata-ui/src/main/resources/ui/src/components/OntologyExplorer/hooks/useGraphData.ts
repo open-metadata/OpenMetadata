@@ -835,7 +835,11 @@ export function useGraphDataBuilder({
           };
 
           const edgeLineWidth = isHighlighted || isClickedEdge ? 2.5 : 1.5;
-          const showCardinalityArrows = isTermTermEdge;
+          const hasCardinality = Boolean(
+            cardinalityMap[singleEdge.relationType]
+          );
+          const showCardinalityArrows =
+            isTermTermEdge && (explorationMode !== 'data' || hasCardinality);
           const isSymmetricEdge =
             singleEdge.isBidirectional && !singleEdge.inverseRelationType;
           const arrowStyle = showCardinalityArrows
@@ -845,7 +849,10 @@ export function useGraphDataBuilder({
                 edgeLineWidth,
                 isSymmetricEdge
               )
-            : { startArrow: false, endArrow: false };
+            : {
+                startArrow: false,
+                endArrow: explorationMode !== 'data',
+              };
 
           return {
             id: edgeId,
