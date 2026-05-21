@@ -73,11 +73,11 @@ try:
     from airflow.providers.standard.operators.bash import BashOperator
 except ImportError:
     from airflow.operators.bash import BashOperator
+from flask import Flask
+
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from flask import Flask
-
 from openmetadata_managed_apis.operations.delete import delete_dag_id
 from openmetadata_managed_apis.operations.deploy import DagDeployer
 from openmetadata_managed_apis.operations.kill_all import kill_all
