@@ -25,9 +25,9 @@
     },
     {
       "name": "TaskAuthorPolicy-ApproverResolveTask",
-      "description": "Allow task assignees and reviewers to resolve (approve/reject), comment on, and close the task.",
+      "description": "Allow task assignees and reviewers to resolve (approve/reject) and close the task. Adding comments goes through the dedicated /v1/tasks/{id}/comments endpoint, so EditAll is intentionally not granted here — keeping the allow list narrow prevents assignees from gaining Delete, ReassignTask, or other operations via subsumption.",
       "resources": ["task"],
-      "operations": ["ResolveTask", "EditAll", "CloseTask"],
+      "operations": ["ResolveTask", "CloseTask"],
       "effect": "allow",
       "condition": "isTaskAssignee() || isTaskReviewer()"
     }

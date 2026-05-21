@@ -77,6 +77,7 @@ import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -96,6 +97,7 @@ import org.openmetadata.service.security.policyevaluator.TaskResourceContext;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Path("/v1/tasks")
@@ -122,9 +124,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     // Without this, any holder of EditAll on the task resource (filer, assignees, reviewers via
     // TaskAuthorPolicy) could reassign or change priority through a JSON Patch, bypassing the
     // entity-owner-only guard enforced in bulk operations.
-    org.openmetadata.service.ResourceRegistry.mapEntityFieldOperation(
+    ResourceRegistry.mapEntityFieldOperation(
         Entity.TASK, "assignees", MetadataOperation.REASSIGN_TASK);
-    org.openmetadata.service.ResourceRegistry.mapEntityFieldOperation(
+    ResourceRegistry.mapEntityFieldOperation(
         Entity.TASK, "priority", MetadataOperation.REASSIGN_TASK);
   }
 
@@ -1219,8 +1221,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Task task = repository.get(uriInfo, id, getFields(FIELDS));
     OperationContext operationContext = new OperationContext(Entity.TASK, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, new TaskResourceContext(task));
-    org.openmetadata.service.util.RestUtil.DeleteResponse<Task> response =
+    RestUtil.DeleteResponse<Task> response =
         repository.delete(securityContext.getUserPrincipal().getName(), id, false, hardDelete);
+    if (hardDelete) {
+      limits.invalidateCache(entityType);
+    }
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
