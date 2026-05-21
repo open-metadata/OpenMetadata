@@ -42,6 +42,8 @@ export interface EdgeCoordinates {
 
 const COLUMN_LAYER_ENTITY_EDGE_Y_OFFSET = 2;
 const COLUMN_LAYER_TEMP_ENTITY_EDGE_Y_OFFSET = 1;
+// Half-height of the temp-table header card; used to center the edge arrow on the card
+const TEMP_TABLE_COLUMN_LAYER_Y_CENTER = 25;
 
 export function setupCanvas(
   canvas: HTMLCanvasElement,
@@ -288,20 +290,18 @@ function getEntityLineageCoordinates(
 
   return {
     sourceX: sourceNode.position.x + (sourceNode.width ?? 0),
-    // sourceY: sourceNode.position.y + sourceHeight / 2 - sourceYOffset,
     targetX: targetNode.position.x - 10,
-    // targetY: targetNode.position.y + targetHeight / 2 - targetYOffset,
 
     sourceY:
       sourceNode.position.y +
       (isColumnLayerActive && sourceNode.data?.node?.isTempTable
-        ? 25
+        ? TEMP_TABLE_COLUMN_LAYER_Y_CENTER
         : sourceHeight / 2 - sourceYOffset),
 
     targetY:
       targetNode.position.y +
       (isColumnLayerActive && targetNode.data?.node?.isTempTable
-        ? 25
+        ? TEMP_TABLE_COLUMN_LAYER_Y_CENTER
         : targetHeight / 2 - targetYOffset),
   };
 }
