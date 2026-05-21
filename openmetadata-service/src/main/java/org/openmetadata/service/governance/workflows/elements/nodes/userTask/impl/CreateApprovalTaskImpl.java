@@ -6,6 +6,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RU
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -159,7 +160,7 @@ public class CreateApprovalTaskImpl implements TaskListener {
               .withTask(taskDetails)
               .withDomains(
                   entity.getDomains() == null
-                      ? null
+                      ? Collections.emptyList()
                       : entity.getDomains().stream().map(EntityReference::getId).toList())
               .withUpdatedBy(entity.getUpdatedBy())
               .withUpdatedAt(System.currentTimeMillis());
