@@ -150,6 +150,7 @@ base_requirements = {
     "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
+    "idna>=3.15",  # CVE-2026-45409 idna.encode() bypass of CVE-2024-3651 fix
     "jsonpatch<2.0, >=1.24",
     "kubernetes>=21.0.0,<36",  # 36.0.0 regressed in-cluster auth (https://github.com/kubernetes-client/python/issues/2582)
     "lxml>=6.1.0",  # CVE-2026-41066 iterparse/ETCompatXMLParser XXE
@@ -197,10 +198,8 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         "apache-airflow-providers-opensearch>=1.9.1",  # CVE-2026-43826 credential leak
         "apache-airflow-providers-elasticsearch>=6.5.3",  # CVE-2026-41018 credential leak
         "tornado>=6.5.5",  # CVE-2026-31958 DoS + CVE-2026-35536 cookie injection
-        "Werkzeug>=3.0.3",  # CVE-2024-34069 debugger RCE
-        # CVE-2025-62727 (starlette O(n^2) DoS) patched in 0.49.1, but airflow-core
-        # 3.1.7 pins fastapi<0.118 which caps starlette<0.49. Bump to airflow 3.2+
-        # to lift the cap, then add `starlette>=0.49.1` here.
+        "Werkzeug>=3.0.6",  # CVE-2024-34069 debugger RCE
+        "starlette>=0.49.1",  # CVE-2025-62727 O(n^2) DoS; Airflow 3.2.1 lifts the fastapi<0.118 cap
         "python-multipart>=0.0.27",  # CVE-2026-42561 unbounded headers DoS
     },  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
