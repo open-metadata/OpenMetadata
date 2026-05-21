@@ -565,6 +565,40 @@ def test_access_history_window_failure_does_not_abort_run():
     assert len(edges) == 1
 
 
+def test_access_history_skips_malformed_row_and_keeps_rest():
+    """A single unparseable row must be skipped without dropping the rest of the window."""
+    upstream_entity = _make_table_entity("11111111-1111-1111-1111-111111111111", "DB", "SCHEMA", "ORDERS")
+    downstream_entity = _make_table_entity("22222222-2222-2222-2222-222222222222", "DB", "SCHEMA", "REVENUE")
+    metadata = MagicMock()
+    metadata.get_by_name = MagicMock(
+        side_effect=lambda entity, fqn: {
+            "test_service.DB.SCHEMA.ORDERS": upstream_entity,
+            "test_service.DB.SCHEMA.REVENUE": downstream_entity,
+        }.get(fqn)
+    )
+    src = _make_lineage_source(
+        metadata=metadata,
+        rows_by_sql={
+            "ACCESS_HISTORY": [
+                _Row({1: "boom"}),  # non-string key fails lower-casing → row skipped
+                _Row(
+                    upstream_table="DB.SCHEMA.ORDERS",
+                    upstream_domain="Table",
+                    downstream_table="DB.SCHEMA.REVENUE",
+                    downstream_domain="Table",
+                    query_id="abc",
+                    column_pairs=None,
+                ),
+            ],
+        },
+    )
+
+    edges = list(src._yield_combined_access_history())
+
+    assert len(edges) == 1
+    assert str(edges[0].right.edge.toEntity.id.root) == "22222222-2222-2222-2222-222222222222"
+
+
 def test_split_snowflake_fqn_handles_three_part_name():
     assert SnowflakeLineageSource._split_snowflake_fqn("DB.SCHEMA.TABLE") == ("DB", "SCHEMA", "TABLE")
 
