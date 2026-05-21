@@ -35,15 +35,15 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
   let adminUser: UserClass;
   let otherUser: UserClass;
   let table: TableClass;
-  let taskId: string | undefined;
+  const taskIds: string[] = [];
 
   test.afterAll(
     'Delete task, table, admin user and other user',
     async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       try {
-        if (taskId) {
-          await apiContext.delete(`/api/v1/feed/${taskId}`);
+        for (const id of taskIds) {
+          await apiContext.delete(`/api/v1/feed/${id}`);
         }
         await table.delete(apiContext);
         await adminUser.delete(apiContext);
@@ -113,7 +113,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
           },
         });
         const created = await response.json();
-        taskId = created.id;
+        taskIds.push(created.id);
       } finally {
         await afterAction();
       }
@@ -220,7 +220,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
             },
           });
           const created = await response.json();
-          taskId = created.id;
+          taskIds.push(created.id);
         } finally {
           await afterAction();
         }
