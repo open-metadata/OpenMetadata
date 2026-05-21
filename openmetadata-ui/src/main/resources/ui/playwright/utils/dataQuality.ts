@@ -462,11 +462,14 @@ export async function applyDashboardTagFilter(
  * within the [failTs-60s, failTs+120s] window.
  * Call this immediately after `addTestCaseResult` to guarantee the incident
  * document is indexed before any UI assertions.
+ * Pass `expectedStatus` to also wait until the incident reaches that resolution
+ * status (e.g. "Resolved") — useful after posting a status transition.
  */
 export async function waitForIncidentToBeIndexed(
   apiContext: APIRequestContext,
   testCaseFqn: string,
-  failTs: number
+  failTs: number,
+  expectedStatus?: string
 ): Promise<void> {
   await expect
     .poll(
@@ -478,9 +481,21 @@ export async function waitForIncidentToBeIndexed(
         );
         const body = await res.json();
 
-        return (body.data ?? []).some(
-          (i: { testCaseReference?: { fullyQualifiedName?: string } }) =>
-            i.testCaseReference?.fullyQualifiedName === testCaseFqn
+        return (
+          body.data ?? []
+        ).some(
+          (i: {
+            testCaseReference?: { fullyQualifiedName?: string };
+            testCaseResolutionStatusType?: string;
+          }) => {
+            if (i.testCaseReference?.fullyQualifiedName !== testCaseFqn) {
+              return false;
+            }
+
+            return expectedStatus
+              ? i.testCaseResolutionStatusType === expectedStatus
+              : true;
+          }
         );
       },
       { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
