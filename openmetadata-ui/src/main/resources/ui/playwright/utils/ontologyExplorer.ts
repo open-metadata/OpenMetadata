@@ -195,7 +195,10 @@ export async function clickDataModeAssetBadge(
   await page.mouse.click(termPos.x + offset, termPos.y - offset);
 }
 
-export type CardinalityLabels = { startLabelText: string; endLabelText: string };
+export type CardinalityLabels = {
+  startLabelText: string;
+  endLabelText: string;
+};
 
 export async function readCardinalityMap(
   page: Page
@@ -228,46 +231,46 @@ export async function addRelationTypeWithCardinality(
     targetMax?: number | null;
   }
 ): Promise<void> {
-  const newEntry = {
-    name: relationType.name,
-    displayName: relationType.displayName,
-    category: 'Semantic',
-    cardinality: relationType.cardinality,
-    ...(relationType.sourceMax === undefined
-      ? {}
-      : { sourceMax: relationType.sourceMax }),
-    ...(relationType.targetMax === undefined
-      ? {}
-      : { targetMax: relationType.targetMax }),
-  };
+  const settingsRes = await apiContext.get(
+    '/api/v1/system/settings/glossaryTermRelationSettings'
+  );
+  const settings = await settingsRes.json();
+  const existing: Array<{ name: string }> =
+    settings.config_value?.relationTypes ?? [];
 
-  // Retry loop guards against parallel CI workers racing on the same GET+PUT.
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const settingsRes = await apiContext.get(
-      '/api/v1/system/settings/glossaryTermRelationSettings'
-    );
-    const settings = await settingsRes.json();
-    const existing: Array<{ name: string }> =
-      settings.config_value?.relationTypes ?? [];
+  if (existing.some((rt) => rt.name === relationType.name)) {
+    return;
+  }
 
-    // Skip if already added by a concurrent worker.
-    if (existing.some((rt) => rt.name === relationType.name)) {
-      return;
-    }
-
-    const res = await apiContext.put('/api/v1/system/settings', {
-      data: {
-        config_type: 'glossaryTermRelationSettings',
-        config_value: { relationTypes: [...existing, newEntry] },
+  const res = await apiContext.put('/api/v1/system/settings', {
+    data: {
+      config_type: 'glossaryTermRelationSettings',
+      config_value: {
+        relationTypes: [
+          ...existing,
+          {
+            name: relationType.name,
+            displayName: relationType.displayName,
+            category: 'Semantic',
+            cardinality: relationType.cardinality,
+            ...(relationType.sourceMax === undefined
+              ? {}
+              : { sourceMax: relationType.sourceMax }),
+            ...(relationType.targetMax === undefined
+              ? {}
+              : { targetMax: relationType.targetMax }),
+          },
+        ],
       },
-    });
+    },
+  });
 
-    if (res.ok()) {
-      return;
-    }
-
-    // Brief back-off before retrying on conflict.
-    await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
+  if (!res.ok()) {
+    throw new Error(
+      `addRelationTypeWithCardinality: failed to add "${
+        relationType.name
+      }" — HTTP ${res.status()}`
+    );
   }
 }
 
@@ -275,33 +278,30 @@ export async function removeRelationType(
   apiContext: APIRequestContext,
   relationTypeName: string
 ): Promise<void> {
-  // Retry loop guards against parallel CI workers racing on the same GET+PUT.
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const settingsRes = await apiContext.get(
-      '/api/v1/system/settings/glossaryTermRelationSettings'
-    );
-    const settings = await settingsRes.json();
-    const existing: Array<{ name: string }> =
-      settings.config_value?.relationTypes ?? [];
+  const settingsRes = await apiContext.get(
+    '/api/v1/system/settings/glossaryTermRelationSettings'
+  );
+  const settings = await settingsRes.json();
+  const existing: Array<{ name: string }> =
+    settings.config_value?.relationTypes ?? [];
 
-    if (!existing.some((rt) => rt.name === relationTypeName)) {
-      return;
-    }
+  if (!existing.some((rt) => rt.name === relationTypeName)) {
+    return;
+  }
 
-    const res = await apiContext.put('/api/v1/system/settings', {
-      data: {
-        config_type: 'glossaryTermRelationSettings',
-        config_value: {
-          relationTypes: existing.filter((rt) => rt.name !== relationTypeName),
-        },
+  const res = await apiContext.put('/api/v1/system/settings', {
+    data: {
+      config_type: 'glossaryTermRelationSettings',
+      config_value: {
+        relationTypes: existing.filter((rt) => rt.name !== relationTypeName),
       },
-    });
+    },
+  });
 
-    if (res.ok()) {
-      return;
-    }
-
-    await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
+  if (!res.ok()) {
+    throw new Error(
+      `removeRelationType: failed to remove "${relationTypeName}" — HTTP ${res.status()}`
+    );
   }
 }
 

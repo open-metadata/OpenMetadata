@@ -119,7 +119,15 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
       await removeRelationType(apiContext, name);
     }
 
-    await deleteEntities(apiContext, termA, termB, termC, termD, termE, glossary);
+    await deleteEntities(
+      apiContext,
+      termA,
+      termB,
+      termC,
+      termD,
+      termE,
+      glossary
+    );
     await disposeApiContext(page, apiContext);
   });
 
