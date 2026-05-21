@@ -16,6 +16,7 @@ import traceback
 from copy import deepcopy
 from typing import Any, Iterable, Optional, Tuple, Union  # noqa: UP035
 
+from databricks.sqlalchemy.base import DatabricksDialect
 from pydantic import EmailStr
 from pydantic_core import PydanticCustomError
 from sqlalchemy import exc, text, types, util
@@ -24,7 +25,6 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql.sqltypes import String
 
-from databricks.sqlalchemy.base import DatabricksDialect
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table, TableType
@@ -89,7 +89,10 @@ logger = ingestion_logger()
 
 DATABRICKS_TAG = "DATABRICKS TAG"
 DATABRICKS_TAG_CLASSIFICATION = "DATABRICKS TAG CLASSIFICATION"
-DEFAULT_TAG_VALUE = "NONE"
+DATABRICKS_VALUELESS_CLASSIFICATION = "DATABRICKS_TAGS"
+DATABRICKS_VALUELESS_CLASSIFICATION_DESCRIPTION = (
+    "Databricks tags ingested as key-only (no associated value)."
+)
 
 
 class STRUCT(String):
@@ -159,13 +162,17 @@ def _fetch_nested_descriptions_via_describe_json(
         return {}
     try:
         result = connection.execute(
-            text(f"DESCRIBE TABLE EXTENDED `{db_name}`.`{schema}`.`{table_name}` AS JSON")
+            text(
+                f"DESCRIBE TABLE EXTENDED `{db_name}`.`{schema}`.`{table_name}` AS JSON"
+            )
         ).fetchone()
         if not result or not result[0]:
             return {}
         payload = json.loads(result[0])
     except Exception as err:  # pylint: disable=broad-except
-        logger.debug(f"DESCRIBE AS JSON unavailable or unparseable for {db_name}.{schema}.{table_name}: {err}")
+        logger.debug(
+            f"DESCRIBE AS JSON unavailable or unparseable for {db_name}.{schema}.{table_name}: {err}"
+        )
         return {}
 
     return _build_column_descriptions_map(payload)
@@ -374,10 +381,14 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                     )
                     if supports_nested_descriptions:
                         if nested_descriptions_by_column is None:
-                            nested_descriptions_by_column = _fetch_nested_descriptions_via_describe_json(
-                                connection, kw.get("db_name"), schema, table_name
+                            nested_descriptions_by_column = (
+                                _fetch_nested_descriptions_via_describe_json(
+                                    connection, kw.get("db_name"), schema, table_name
+                                )
                             )
-                        nested_descriptions = nested_descriptions_by_column.get(col_name)
+                        nested_descriptions = nested_descriptions_by_column.get(
+                            col_name
+                        )
                         if nested_descriptions:
                             col_info["nested_descriptions"] = nested_descriptions
                 except (DatabaseError, KeyError) as err:
@@ -792,12 +803,31 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         self.column_tags.clear()
 
     def _add_to_tag_cache(
-        self, tag_dict: dict, key: Union[str, Tuple], value: Tuple[str, str]
+        self, tag_dict: dict, key: Union[str, Tuple], value: Tuple[str, str | None]
     ):
         if tag_dict.get(key):
             tag_dict.get(key).append(value)
         else:
             tag_dict[key] = [value]
+
+    @staticmethod
+    def _ometa_tag_call_args(tag_name: str, tag_value: str | None) -> dict:
+        """Map a Databricks (tag_name, tag_value) pair onto OM's
+        classification/tag pair, falling back to DATABRICKS_VALUELESS_CLASSIFICATION
+        when tag_value is empty or whitespace-only."""
+        if tag_value and str(tag_value).strip():
+            return {
+                "tags": [tag_value],
+                "classification_name": tag_name,
+                "tag_description": DATABRICKS_TAG,
+                "classification_description": DATABRICKS_TAG_CLASSIFICATION,
+            }
+        return {
+            "tags": [tag_name],
+            "classification_name": DATABRICKS_VALUELESS_CLASSIFICATION,
+            "tag_description": DATABRICKS_VALUELESS_CLASSIFICATION_DESCRIPTION,
+            "classification_description": DATABRICKS_VALUELESS_CLASSIFICATION_DESCRIPTION,
+        }
 
     def populate_tags_cache(self, database_name: str) -> None:
         """
@@ -815,8 +845,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 self._add_to_tag_cache(
                     self.catalog_tags,
                     tag.catalog_name,
-                    # tag value is an optional field, if tag value is not available use default tag value
-                    (tag.tag_name, tag.tag_value or DEFAULT_TAG_VALUE),
+                    (tag.tag_name, tag.tag_value),
                 )
         except Exception as exc:
             logger.debug(f"Failed to fetch catalog tags due to - {exc}")
@@ -829,8 +858,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 self._add_to_tag_cache(
                     self.schema_tags,
                     (tag.catalog_name, tag.schema_name),
-                    # tag value is an optional field, if tag value is not available use default tag value
-                    (tag.tag_name, tag.tag_value or DEFAULT_TAG_VALUE),
+                    (tag.tag_name, tag.tag_value),
                 )
         except Exception as exc:
             logger.debug(f"Failed to fetch schema tags due to - {exc}")
@@ -843,8 +871,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 self._add_to_tag_cache(
                     self.table_tags,
                     (tag.catalog_name, tag.schema_name, tag.table_name),
-                    # tag value is an optional field, if tag value is not available use default tag value
-                    (tag.tag_name, tag.tag_value or DEFAULT_TAG_VALUE),
+                    (tag.tag_name, tag.tag_value),
                 )
         except Exception as exc:
             logger.debug(f"Failed to fetch table tags due to - {exc}")
@@ -859,17 +886,11 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     self._add_to_tag_cache(
                         self.column_tags.get(tag_table_id),
                         tag.column_name,
-                        # tag value is an optional field, if tag value is not available use default tag value
-                        (tag.tag_name, tag.tag_value or DEFAULT_TAG_VALUE),
+                        (tag.tag_name, tag.tag_value),
                     )
                 else:
                     self.column_tags[tag_table_id] = {
-                        tag.column_name: [
-                            (
-                                tag.tag_name,
-                                tag.tag_value or DEFAULT_TAG_VALUE,
-                            )
-                        ]
+                        tag.column_name: [(tag.tag_name, tag.tag_value)]
                     }
         except Exception as exc:
             logger.debug(f"Failed to fetch column tags due to - {exc}")
@@ -927,6 +948,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         try:
             catalog_tags = self.catalog_tags.get(database_name, [])
             for tag_name, tag_value in catalog_tags:
+                if not tag_name:
+                    continue
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=fqn.build(
                         self.metadata,
@@ -934,10 +957,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                         service_name=self.context.get().database_service,
                         database_name=database_name,
                     ),
-                    tags=[tag_value],
-                    classification_name=tag_name,
-                    tag_description=DATABRICKS_TAG,
-                    classification_description=DATABRICKS_TAG_CLASSIFICATION,
+                    **self._ometa_tag_call_args(tag_name, tag_value),
                     metadata=self.metadata,
                     system_tags=True,
                 )
@@ -962,6 +982,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 (self.context.get().database, schema_name), []
             )
             for tag_name, tag_value in schema_tags:
+                if not tag_name:
+                    continue
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=fqn.build(
                         self.metadata,
@@ -970,10 +992,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                         database_name=self.context.get().database,
                         schema_name=schema_name,
                     ),
-                    tags=[tag_value],
-                    classification_name=tag_name,
-                    tag_description=DATABRICKS_TAG,
-                    classification_description=DATABRICKS_TAG_CLASSIFICATION,
+                    **self._ometa_tag_call_args(tag_name, tag_value),
                     metadata=self.metadata,
                     system_tags=True,
                 )
@@ -1001,6 +1020,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 [],
             )
             for tag_name, tag_value in table_tags:
+                if not tag_name:
+                    continue
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=fqn.build(
                         self.metadata,
@@ -1010,10 +1031,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                         schema_name=self.context.get().database_schema,
                         table_name=table_name,
                     ),
-                    tags=[tag_value],
-                    classification_name=tag_name,
-                    tag_description=DATABRICKS_TAG,
-                    classification_description=DATABRICKS_TAG_CLASSIFICATION,
+                    **self._ometa_tag_call_args(tag_name, tag_value),
                     metadata=self.metadata,
                     system_tags=True,
                 )
@@ -1028,6 +1046,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             )
             for column_name, tags in column_tags.items():
                 for tag_name, tag_value in tags or []:
+                    if not tag_name:
+                        continue
                     yield from get_ometa_tag_and_classification(
                         tag_fqn=fqn.build(
                             self.metadata,
@@ -1038,10 +1058,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                             table_name=table_name,
                             column_name=column_name,
                         ),
-                        tags=[tag_value],
-                        classification_name=tag_name,
-                        tag_description=DATABRICKS_TAG,
-                        classification_description=DATABRICKS_TAG_CLASSIFICATION,
+                        **self._ometa_tag_call_args(tag_name, tag_value),
                         metadata=self.metadata,
                         system_tags=True,
                     )
