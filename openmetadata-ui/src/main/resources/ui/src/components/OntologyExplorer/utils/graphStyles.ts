@@ -14,6 +14,8 @@ import { Group, Image as GImage, Rect as GRect, Text as GText } from '@antv/g';
 import {
   Circle,
   ExtensionCategory,
+  Line,
+  LineStyleProps,
   RectCombo,
   RectComboStyleProps,
   register,
@@ -100,6 +102,86 @@ import {
   measureTextWidth,
   truncateToFit,
 } from './textMeasure';
+
+export const CARDINALITY_AWARE_LINE_EDGE_TYPE = 'cardinality-aware-line';
+
+const CARDINALITY_LINE_FONT_SIZE = 10;
+const CARDINALITY_LINE_FILL = '#8C93AE';
+const CARDINALITY_LINE_ALONG_PX = 24;
+const CARDINALITY_LINE_PERP_PX = 11;
+
+class CardinalityAwareLine extends Line {
+  override render(
+    attributes: Required<LineStyleProps>,
+    container: Group
+  ): void {
+    super.render(attributes, container);
+    this.drawCardinalityLabel(attributes, container, 'start');
+    this.drawCardinalityLabel(attributes, container, 'end');
+  }
+
+  private drawCardinalityLabel(
+    attributes: Required<LineStyleProps>,
+    container: Group,
+    end: 'start' | 'end'
+  ): void {
+    const attrs = attributes as Record<string, unknown>;
+    const key = end === 'start' ? 'startLabelText' : 'endLabelText';
+    const text = typeof attrs[key] === 'string' ? (attrs[key] as string) : '';
+    if (!text) {
+      this.upsert(`cardinality-${end}`, GText, false, container);
+
+      return;
+    }
+
+    const endpoints = this.getEndpoints(attributes);
+    const [sx, sy] = endpoints[0];
+    const [ex, ey] = endpoints[1];
+    const edgeDx = ex - sx;
+    const edgeDy = ey - sy;
+    const len = Math.sqrt(edgeDx * edgeDx + edgeDy * edgeDy);
+
+    let labelX: number;
+    let labelY: number;
+
+    if (len < 1) {
+      labelX = end === 'start' ? sx : ex;
+      labelY = end === 'start' ? sy : ey;
+    } else {
+      const ux = edgeDx / len;
+      const uy = edgeDy / len;
+      const along = Math.min(CARDINALITY_LINE_ALONG_PX, len * 0.3);
+      const px = -uy;
+      const py = ux;
+
+      if (end === 'start') {
+        labelX = sx + ux * along + px * CARDINALITY_LINE_PERP_PX;
+        labelY = sy + uy * along + py * CARDINALITY_LINE_PERP_PX;
+      } else {
+        labelX = ex - ux * along + px * CARDINALITY_LINE_PERP_PX;
+        labelY = ey - uy * along + py * CARDINALITY_LINE_PERP_PX;
+      }
+    }
+
+    this.upsert(
+      `cardinality-${end}`,
+      GText,
+      {
+        x: labelX,
+        y: labelY,
+        text,
+        fontSize: CARDINALITY_LINE_FONT_SIZE,
+        fill: CARDINALITY_LINE_FILL,
+        fontWeight: 700,
+        textBaseline: 'middle',
+        textAlign: 'center',
+        zIndex: 10,
+      },
+      container
+    );
+  }
+}
+register(ExtensionCategory.EDGE, CARDINALITY_AWARE_LINE_EDGE_TYPE, CardinalityAwareLine);
 
 const cssColorCache = new Map<string, string>();
 const COMBO_LABEL_CHAR_WIDTH = 7;

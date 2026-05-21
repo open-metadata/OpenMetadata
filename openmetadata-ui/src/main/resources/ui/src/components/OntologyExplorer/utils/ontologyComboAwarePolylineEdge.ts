@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Group, Text as GText } from '@antv/g';
 import {
   ExtensionCategory,
   idOf,
@@ -19,6 +20,11 @@ import {
   type Node,
   type PolylineStyleProps,
 } from '@antv/g6';
+
+const CARDINALITY_LABEL_FONT_SIZE = 10;
+const CARDINALITY_LABEL_FILL = '#8C93AE';
+const CARDINALITY_ALONG_PX = 24;
+const CARDINALITY_PERP_PX = 11;
 
 const COMBO_HIERARCHY = 'combo' as const;
 
@@ -37,6 +43,76 @@ type ElementLike = {
  * obstacles (built-in {@link Polyline} only avoids other nodes).
  */
 export class OntologyComboAwarePolyline extends Polyline {
+  override render(
+    attributes: ParsedPolylineStyle,
+    container: Group
+  ): void {
+    super.render(attributes, container);
+    this.drawCardinalityLabel(attributes, container, 'start');
+    this.drawCardinalityLabel(attributes, container, 'end');
+  }
+
+  private drawCardinalityLabel(
+    attributes: ParsedPolylineStyle,
+    container: Group,
+    end: 'start' | 'end'
+  ): void {
+    const attrs = attributes as Record<string, unknown>;
+    const key = end === 'start' ? 'startLabelText' : 'endLabelText';
+    const text = typeof attrs[key] === 'string' ? (attrs[key] as string) : '';
+    if (!text) {
+      this.upsert(`cardinality-${end}`, GText, false, container);
+
+      return;
+    }
+
+    const endpoints = this.getEndpoints(attributes);
+    const [sx, sy] = endpoints[0];
+    const [ex, ey] = endpoints[1];
+    const edgeDx = ex - sx;
+    const edgeDy = ey - sy;
+    const len = Math.sqrt(edgeDx * edgeDx + edgeDy * edgeDy);
+
+    let labelX: number;
+    let labelY: number;
+
+    if (len < 1) {
+      labelX = end === 'start' ? sx : ex;
+      labelY = end === 'start' ? sy : ey;
+    } else {
+      const ux = edgeDx / len;
+      const uy = edgeDy / len;
+      const along = Math.min(CARDINALITY_ALONG_PX, len * 0.3);
+      const px = -uy;
+      const py = ux;
+
+      if (end === 'start') {
+        labelX = sx + ux * along + px * CARDINALITY_PERP_PX;
+        labelY = sy + uy * along + py * CARDINALITY_PERP_PX;
+      } else {
+        labelX = ex - ux * along + px * CARDINALITY_PERP_PX;
+        labelY = ey - uy * along + py * CARDINALITY_PERP_PX;
+      }
+    }
+
+    this.upsert(
+      `cardinality-${end}`,
+      GText,
+      {
+        x: labelX,
+        y: labelY,
+        text,
+        fontSize: CARDINALITY_LABEL_FONT_SIZE,
+        fill: CARDINALITY_LABEL_FILL,
+        fontWeight: 700,
+        textBaseline: 'middle',
+        textAlign: 'center',
+        zIndex: 10,
+      },
+      container
+    );
+  }
+
   private buildRoutingObstacleNodes(
     sourceNode: { id: string },
     targetNode: { id: string },
