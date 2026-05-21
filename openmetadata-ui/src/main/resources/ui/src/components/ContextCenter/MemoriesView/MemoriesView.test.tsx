@@ -19,9 +19,8 @@ jest.mock(
   () => jest.fn(() => <div data-testid="error-placeholder" />)
 );
 
-jest.mock(
-  '../../../components/common/ProfilePicture/ProfilePicture',
-  () => jest.fn(() => <div data-testid="profile-picture" />)
+jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () =>
+  jest.fn(() => <div data-testid="profile-picture" />)
 );
 
 jest.mock('@openmetadata/ui-core-components', () => ({

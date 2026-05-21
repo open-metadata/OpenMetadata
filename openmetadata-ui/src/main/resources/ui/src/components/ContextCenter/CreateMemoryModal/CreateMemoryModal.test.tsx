@@ -36,12 +36,8 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   formatDate: jest.fn(() => 'Jan 1, 2026'),
 }));
 
-jest.mock(
-  '../../../components/common/PopOverCard/UserPopOverCard',
-  () =>
-    jest.fn(({ userName }: { userName: string }) => (
-      <span>{userName}</span>
-    ))
+jest.mock('../../../components/common/PopOverCard/UserPopOverCard', () =>
+  jest.fn(({ userName }: { userName: string }) => <span>{userName}</span>)
 );
 
 jest.mock(
@@ -62,7 +58,11 @@ jest.mock('antd', () => ({
     jest.fn(({ children }: { children: React.ReactNode }) => (
       <form>{children}</form>
     )),
-    { Item: jest.fn(({ children }: { children: React.ReactNode }) => <>{children}</>) }
+    {
+      Item: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <>{children}</>
+      )),
+    }
   ),
 }));
 
@@ -120,13 +120,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     <div>{children}</div>
   )),
   ModalOverlay: jest.fn(
-    ({
-      children,
-      isOpen,
-    }: {
-      children: React.ReactNode;
-      isOpen?: boolean;
-    }) => (isOpen ? <div>{children}</div> : null)
+    ({ children, isOpen }: { children: React.ReactNode; isOpen?: boolean }) =>
+      isOpen ? <div>{children}</div> : null
   ),
   Select: Object.assign(
     jest.fn(
