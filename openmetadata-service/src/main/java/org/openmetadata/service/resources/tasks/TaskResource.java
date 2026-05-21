@@ -92,6 +92,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.security.policyevaluator.TaskResourceContext;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -1211,7 +1212,17 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           boolean hardDelete,
       @Parameter(description = "Task Id", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    // Use TaskResourceContext so isTaskFiler() can read task.createdBy. The default
+    // EntityResource.delete builds a generic ResourceContext that loads only owners/tags/domains,
+    // which would leave createdBy null and prevent the filer-delete-own-task TaskAuthorPolicy
+    // rule from matching.
+    Task task = repository.get(uriInfo, id, getFields(FIELDS));
+    OperationContext operationContext = new OperationContext(Entity.TASK, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, new TaskResourceContext(task));
+    org.openmetadata.service.util.RestUtil.DeleteResponse<Task> response =
+        repository.delete(securityContext.getUserPrincipal().getName(), id, false, hardDelete);
+    addHref(uriInfo, response.entity());
+    return response.toResponse();
   }
 
   // ========================= Suggestion Endpoints =========================

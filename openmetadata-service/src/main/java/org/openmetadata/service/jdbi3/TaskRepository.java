@@ -780,9 +780,22 @@ public class TaskRepository extends EntityRepository<Task> {
       authorizer.authorizeRequests(securityContext, incidentRequests, AuthorizationLogic.ANY);
     }
 
-    if (!closeTask) {
+    // Approval-style tasks (GlossaryApproval, RequestApproval, DataAccessRequest) intentionally
+    // skip the underlying entity permission check. The approval itself IS the authorization to
+    // change the target entity state — reviewers do not also need EditAll on it. Without this
+    // short-circuit, workflow-managed approval tasks fail for reviewers because the task form
+    // schemas declare permission: EDIT_ALL, which TaskFormExecutionResolver surfaces via
+    // getOperationForTask.
+    if (!closeTask && !isApprovalTask(task)) {
       validateUnderlyingEntityPermission(authorizer, securityContext, task);
     }
+  }
+
+  private boolean isApprovalTask(Task task) {
+    TaskEntityType taskType = task.getType();
+    return taskType == TaskEntityType.GlossaryApproval
+        || taskType == TaskEntityType.RequestApproval
+        || taskType == TaskEntityType.DataAccessRequest;
   }
 
   private boolean isUserTaskFiler(Task task, SecurityContext securityContext) {
@@ -907,10 +920,6 @@ public class TaskRepository extends EntityRepository<Task> {
       return getOperationForSuggestion(task);
     }
 
-    // Approval tasks (Glossary/Request approval, Data Access Request) and incident tasks
-    // intentionally return null: the approval itself is the authorization and we must not
-    // require the approver to additionally hold EditAll on the target entity. The task-level
-    // policy check in checkPermissionsForResolveTask covers who is allowed to approve.
     return switch (taskType) {
       case DescriptionUpdate -> MetadataOperation.EDIT_DESCRIPTION;
       case TagUpdate -> MetadataOperation.EDIT_TAGS;
