@@ -45,7 +45,6 @@ public final class ColumnUtil {
         .withScale(column.getScale())
         .withOrdinalPosition(column.getOrdinalPosition())
         .withJsonSchema(column.getJsonSchema())
-        .withExtension(column.getExtension())
         .withChildren(children);
   }
 
