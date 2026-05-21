@@ -370,7 +370,11 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         schema_name = self.context.get().database_schema
         if self.source_config.includeTables:
             try:
-                table_iter = list(self.query_table_names_and_types(schema_name))
+                # Default impl returns a list; only materialize if a subclass
+                # returns a generator. Avoids an O(n) shallow copy on the
+                # common path for large schemas.
+                table_result = self.query_table_names_and_types(schema_name)
+                table_iter = table_result if isinstance(table_result, list) else list(table_result)
             except Exception as err:
                 logger.warning(f"Fetching table list failed for schema {schema_name} due to - {err}")
                 logger.debug(traceback.format_exc())
@@ -415,7 +419,8 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
 
         if self.source_config.includeViews:
             try:
-                view_iter = list(self.query_view_names_and_types(schema_name))
+                view_result = self.query_view_names_and_types(schema_name)
+                view_iter = view_result if isinstance(view_result, list) else list(view_result)
             except Exception as err:
                 logger.warning(f"Fetching view list failed for schema {schema_name} due to - {err}")
                 logger.debug(traceback.format_exc())

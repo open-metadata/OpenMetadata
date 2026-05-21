@@ -575,13 +575,17 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Method to iterate through dashboard lists filter dashboards & yield dashboard details
         """
-        dashboards = list(self.get_dashboards_list())
-        log_discovered(
-            logger,
-            self.status,
-            "Dashboard",
-            (self.get_dashboard_name(d) for d in dashboards),
-        )
+        # `or []` matches the Optional[List[Any]] contract used by Pipeline /
+        # Messaging sources — `list(None)` would raise TypeError if a
+        # concrete connector returned None for an empty workspace. Avoid
+        # the extra shallow copy when the source already gave us a list.
+        dashboards_result = self.get_dashboards_list() or []
+        dashboards = dashboards_result if isinstance(dashboards_result, list) else list(dashboards_result)
+        # Materialize names once and pass the list to log_discovered so it
+        # can take the zero-allocation Sized path instead of re-listing a
+        # generator over the (potentially large) dashboard objects.
+        dashboard_names = [self.get_dashboard_name(d) for d in dashboards]
+        log_discovered(logger, self.status, "Dashboard", dashboard_names)
         for dashboard in dashboards:
             dashboard_name = self.get_dashboard_name(dashboard)
             if filter_by_dashboard(

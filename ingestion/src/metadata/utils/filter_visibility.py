@@ -41,6 +41,7 @@ S3 objects) while preserving correctness of counts.
 """
 
 import logging
+from collections.abc import Sized
 from typing import Iterable  # noqa: UP035
 
 from metadata.ingestion.api.status import Status
@@ -63,21 +64,34 @@ def log_discovered(
     end-of-step report; the full visible list would explode logs on large
     catalogs without adding actionable information.
 
+    Memory: avoids materializing `names` when DEBUG isn't enabled. If the
+    caller already passes a Sized collection (list / tuple), we use len()
+    directly — zero extra allocation. For generators we either stream-count
+    (when DEBUG is off) or materialize once (when DEBUG is on, so we can
+    emit the full list).
+
     Exceptions are swallowed: observability must never break ingestion."""
     try:
-        name_list = list(names)
-        count = len(name_list)
+        debug_on = logger.isEnabledFor(logging.DEBUG)
+        if isinstance(names, Sized):
+            count = len(names)
+        elif debug_on:
+            names = list(names)
+            count = len(names)
+        else:
+            count = sum(1 for _ in names)
         status.record_discovered(entity_type, count)
         logger.info(
             "Discovered %d %s(s) visible to the ingestion user",
             count,
             entity_type.lower(),
         )
-        logger.debug(
-            "%s(s) visible to the ingestion user: %s",
-            entity_type,
-            name_list,
-        )
+        if debug_on:
+            logger.debug(
+                "%s(s) visible to the ingestion user: %s",
+                entity_type,
+                names,
+            )
     except Exception:
         logger.warning(
             "log_discovered failed for entity_type=%r; continuing ingestion",
@@ -163,6 +177,10 @@ def log_step_summary(
             border,
             f" {REPORT_HEADER_PREFIX}: {source_name}",
             border,
+            " Note: 'Passed filter patterns' = discovered - filter rejections.",
+            " It does not subtract source-side extraction failures or",
+            " secondary filters (e.g., projectFilterPattern on dashboards).",
+            " For the final ingested count, see Status.records / OpenMetadata.",
         ]
         for entity_type in entity_types:
             lines.extend(_format_entity_section(status, entity_type, by_type.get(entity_type, [])))
@@ -208,7 +226,7 @@ def _format_entity_section(
         )
     if discovered is not None:
         kept = discovered - true_count
-        section.append(f"  Will be published to OpenMetadata: {kept}")
+        section.append(f"  Passed filter patterns: {kept}")
 
     return section
 
@@ -235,12 +253,14 @@ def _pattern_field(entity_type: str) -> str:
 
 
 def _entity_type_from_reason(reason: str) -> str | None:
-    """Inverse of the reason string built in log_filtered. Looks for the
-    ' Filtered Out' marker so it works for both legacy reasons
-    ('Database Filtered Out') and the enriched form
-    ('Database Filtered Out: did not pass databaseFilterPattern...')."""
-    marker = f" {_REASON_SUFFIX}"
-    idx = reason.find(marker)
+    """Inverse of the reason string built in log_filtered. Case-insensitive
+    match on ' Filtered Out' so it catches both the enriched form
+    ('Database Filtered Out: did not pass databaseFilterPattern...') and
+    historical variants (e.g., 'Database Filtered out' with lowercase
+    'out' that show up in older BigQuery code paths). The slice preserves
+    the original entity-type casing so the report still reads correctly."""
+    marker_lower = f" {_REASON_SUFFIX}".lower()
+    idx = reason.lower().find(marker_lower)
     if idx > 0:
         return reason[:idx]
     return None

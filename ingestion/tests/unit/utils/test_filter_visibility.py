@@ -80,6 +80,59 @@ def test_log_discovered_accepts_generator(status, logger):
     assert status.discovered_counts == {"Topic": 2}
 
 
+def test_log_discovered_skips_materialization_when_debug_disabled(status, logger):
+    """For large catalogs the names iterable can be expensive to materialize.
+    When DEBUG isn't enabled we have no use for the names — only the count
+    matters — so the helper must stream-count instead of calling list()."""
+    materialize_count = {"calls": 0}
+
+    def tracking_gen():
+        for i in range(5):
+            materialize_count["calls"] += 1
+            yield f"n{i}"
+
+    # logger fixture is at WARNING by default — DEBUG is OFF
+    log_discovered(logger, status, "Topic", tracking_gen())
+
+    # Generator was consumed exactly once for the count (5 yields), but no
+    # list() copy was made on top of that
+    assert materialize_count["calls"] == 5
+    assert status.discovered_counts == {"Topic": 5}
+
+
+def test_log_discovered_uses_len_directly_for_sized_collections(status, logger):
+    """A list/tuple already knows its length — no need to iterate at all
+    when DEBUG is disabled."""
+
+    class SizedNoIter:
+        """A Sized that raises if iterated — proves len() path is used."""
+
+        def __len__(self):
+            return 42
+
+        def __iter__(self):
+            raise AssertionError("must not iterate when only len() is needed")
+
+    log_discovered(logger, status, "Table", SizedNoIter())  # type: ignore[arg-type]
+
+    assert status.discovered_counts == {"Table": 42}
+
+
+def test_log_discovered_materializes_when_debug_enabled(status, logger, caplog):
+    """When the operator turned DEBUG on, they explicitly want the names —
+    so the helper materializes to emit the full list."""
+
+    def gen():
+        yield from ["n1", "n2"]
+
+    with caplog.at_level(logging.DEBUG, logger=logger.name):
+        log_discovered(logger, status, "Topic", gen())
+
+    debug_msgs = [r.message for r in caplog.records if r.levelno == logging.DEBUG]
+    assert any("n1" in m and "n2" in m for m in debug_msgs)
+    assert status.discovered_counts == {"Topic": 2}
+
+
 def test_log_filtered_stores_rich_reason_on_status(status, logger):
     log_filtered(
         logger,
@@ -132,14 +185,14 @@ def test_log_step_summary_emits_consolidated_report(status, logger, caplog):
     assert "Database (databaseFilterPattern):" in summary
     assert "Visible to ingestion user: 4" in summary
     assert "Filtered out (1):" in summary
-    assert "Will be published to OpenMetadata: 3" in summary
+    assert "Passed filter patterns: 3" in summary
     assert "a" in summary and "did not pass databaseFilterPattern" in summary
     assert "matched against 'svc.a'" in summary
 
     assert "Schema (schemaFilterPattern):" in summary
     assert "Visible to ingestion user: 3" in summary
     assert "Filtered out (2):" in summary
-    assert "Will be published to OpenMetadata: 1" in summary
+    assert "Passed filter patterns: 1" in summary
 
 
 def test_log_step_summary_handles_filtered_without_discovered(status, logger, caplog):
@@ -173,7 +226,7 @@ def test_log_step_summary_skips_unrelated_filter_reasons(status, logger, caplog)
     summary = "\n".join(r.message for r in caplog.records)
     assert "Visible to ingestion user: 2" in summary
     assert "Filtered out (0):" in summary
-    assert "Will be published to OpenMetadata: 2" in summary
+    assert "Passed filter patterns: 2" in summary
     assert "some other reason" not in summary
 
 
@@ -191,7 +244,40 @@ def test_log_step_summary_recognizes_legacy_reason_strings(status, logger, caplo
     summary = "\n".join(r.message for r in caplog.records)
     assert "Database (databaseFilterPattern):" in summary
     assert "Filtered out (1):" in summary
-    assert "Will be published to OpenMetadata: 1" in summary
+    assert "Passed filter patterns: 1" in summary
+
+
+def test_log_step_summary_matches_legacy_lowercase_out_variant(status, logger, caplog):
+    """Pre-existing BigQuery code path historically used 'Database Filtered out'
+    (lowercase 'out'). Our marker match must be case-insensitive so those
+    entries still get counted in the right section of the report."""
+    log_discovered(logger, status, "Database", ["a", "b", "c"])
+    status.filter("a", "Database Filtered out")  # lowercase 'out' from older code
+
+    caplog.clear()
+    with caplog.at_level(logging.INFO, logger=logger.name):
+        log_step_summary(logger, status, "legacy_lowercase")
+
+    summary = "\n".join(r.message for r in caplog.records)
+    assert "Database (databaseFilterPattern):" in summary
+    assert "Filtered out (1):" in summary
+    assert "Passed filter patterns: 2" in summary
+
+
+def test_log_step_summary_includes_clarifying_note(status, logger, caplog):
+    """Kept counts can over-report actual ingestion when downstream
+    extraction fails or secondary filters reject items. The report header
+    must say so explicitly so users don't try to reconcile numbers."""
+    log_discovered(logger, status, "Dashboard", ["d1"])
+    log_filtered(logger, status, "Dashboard", "d1")
+
+    caplog.clear()
+    with caplog.at_level(logging.INFO, logger=logger.name):
+        log_step_summary(logger, status, "doc_note")
+
+    summary = "\n".join(r.message for r in caplog.records)
+    assert "Note:" in summary
+    assert "does not subtract source-side extraction failures" in summary
 
 
 # ---------------------------------------------------------------------------
@@ -229,7 +315,7 @@ def test_log_step_summary_annotates_truncation_when_cap_exceeded(status, logger,
         f"... and {expected_overflow} more (full list truncated at cap of {MAX_FILTERED_ENTRIES_PER_TYPE})" in summary
     )
     # Kept math must use the TRUE count, not the stored count, or it would be wrong by 200
-    assert "Will be published to OpenMetadata: 0" in summary
+    assert "Passed filter patterns: 0" in summary
 
 
 def test_log_filtered_per_type_cap_is_independent(status, logger):
@@ -364,7 +450,7 @@ def test_end_to_end_helper_lifecycle_produces_correct_report(logger, caplog):
     assert "Table (tableFilterPattern):" in summary
     assert "Visible to ingestion user: 45" in summary
     assert "Filtered out (0):" in summary
-    assert "Will be published to OpenMetadata: 45" in summary
+    assert "Passed filter patterns: 45" in summary
 
 
 def test_end_to_end_close_lifecycle_with_broken_summary_does_not_raise(logger):
