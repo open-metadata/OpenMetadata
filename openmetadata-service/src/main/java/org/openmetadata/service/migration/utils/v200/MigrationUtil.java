@@ -3,13 +3,13 @@ package org.openmetadata.service.migration.utils.v200;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -21,6 +21,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AnnouncementRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
@@ -278,6 +279,13 @@ public class MigrationUtil {
               createdByUserId,
               aboutJson,
               connectionType);
+          // Re-run domain inheritance for existing rows. The original v200 promotion
+          // used a raw SQL lookup that missed inherited domains (e.g. glossary terms
+          // inheriting from their parent glossary); now that the lookup walks the
+          // entity API, force-migrate must also reconcile domain relationships for
+          // tasks that were already promoted before this fix.
+          List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(handle, aboutJson);
+          insertTaskDomainRelationships(handle, threadId, inheritedDomains);
           skipped++;
           continue;
         }
@@ -1080,76 +1088,34 @@ public class MigrationUtil {
       return Collections.emptyList();
     }
 
-    return queryDomainsForEntity(handle, entityId, entityType);
+    return resolveDomainsViaRepository(entityId, entityType);
   }
 
   /**
-   * Query the entity_relationship table for any DOMAIN --HAS--> entity rows
-   * and join with domain_entity to build EntityReferences.
+   * Resolve an entity's effective domains via {@link EntityRepository#get} so that
+   * <em>inherited</em> domains are included. Glossary terms, columns, and other entities that
+   * inherit their domain from a parent do not have a direct {@code domain --HAS--> entity} row in
+   * {@code entity_relationship}; the inheritance is computed at read time. A raw SQL query on
+   * {@code entity_relationship} would miss those cases entirely.
    */
-  private static List<EntityReference> queryDomainsForEntity(
-      Handle handle, String entityId, String entityType) {
+  private static List<EntityReference> resolveDomainsViaRepository(
+      String entityId, String entityType) {
     try {
-      List<Map<String, Object>> rows =
-          handle
-              .createQuery(
-                  "SELECT d.json AS domainJson FROM entity_relationship er "
-                      + "JOIN domain_entity d ON d.id = er.fromId "
-                      + "WHERE er.toId = :entityId "
-                      + "AND er.toEntity = :entityType "
-                      + "AND er.fromEntity = :domainEntity "
-                      + "AND er.relation = :hasRelation")
-              .bind("entityId", entityId)
-              .bind("entityType", entityType)
-              .bind("domainEntity", Entity.DOMAIN)
-              .bind("hasRelation", Relationship.HAS.ordinal())
-              .mapToMap()
-              .list();
-
-      List<EntityReference> domains = new ArrayList<>();
-      for (Map<String, Object> row : rows) {
-        EntityReference domainRef = buildDomainReference(row.get("domainJson"));
-        if (domainRef != null) {
-          domains.add(domainRef);
-        }
+      EntityRepository<?> repo = Entity.getEntityRepository(entityType);
+      if (!repo.isSupportsDomains()) {
+        return Collections.emptyList();
       }
-      return domains;
+      Object entity =
+          repo.get(null, UUID.fromString(entityId), repo.getFields(Entity.FIELD_DOMAINS));
+      if (!(entity instanceof EntityInterface ei)) {
+        return Collections.emptyList();
+      }
+      List<EntityReference> domains = ei.getDomains();
+      return domains == null ? Collections.emptyList() : domains;
     } catch (Exception e) {
       LOG.debug(
           "Could not resolve domains for entity {}/{}: {}", entityType, entityId, e.getMessage());
       return Collections.emptyList();
-    }
-  }
-
-  private static EntityReference buildDomainReference(Object domainJsonObject) {
-    if (domainJsonObject == null) {
-      return null;
-    }
-    try {
-      JsonNode domainJson = JsonUtils.readTree(domainJsonObject.toString());
-      if (!domainJson.has("id")) {
-        return null;
-      }
-      EntityReference ref =
-          new EntityReference()
-              .withId(UUID.fromString(domainJson.get("id").asText()))
-              .withType(Entity.DOMAIN);
-      if (domainJson.has("name") && !domainJson.get("name").isNull()) {
-        ref.setName(domainJson.get("name").asText());
-      }
-      if (domainJson.has("fullyQualifiedName") && !domainJson.get("fullyQualifiedName").isNull()) {
-        ref.setFullyQualifiedName(domainJson.get("fullyQualifiedName").asText());
-      }
-      if (domainJson.has("displayName") && !domainJson.get("displayName").isNull()) {
-        ref.setDisplayName(domainJson.get("displayName").asText());
-      }
-      if (domainJson.has("description") && !domainJson.get("description").isNull()) {
-        ref.setDescription(domainJson.get("description").asText());
-      }
-      return ref;
-    } catch (Exception e) {
-      LOG.debug("Could not parse domain JSON: {}", e.getMessage());
-      return null;
     }
   }
 
