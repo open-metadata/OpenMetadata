@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { LINEAGE_CHILD_ITEMS_PER_PAGE } from 'constants/Lineage.constants';
 import React from 'react';
-import { LINEAGE_CHILD_ITEMS_PER_PAGE } from '../../../../constants/constants';
 import { Column } from '../../../../generated/entity/data/table';
 import { TestSummary } from '../../../../generated/tests/testCase';
 import VirtualColumnList, {
