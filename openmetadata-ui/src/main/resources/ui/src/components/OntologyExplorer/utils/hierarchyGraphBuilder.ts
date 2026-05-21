@@ -83,7 +83,7 @@ function buildRelationMapsForHierarchy(
       inverseMap[rt.name] = rt.inverseRelation;
       inverseMap[rt.inverseRelation] = rt.name;
     }
-    if (isHierarchicalCategory(rt.category) && rt.inverseRelation) {
+    if (isHierarchicalCategory(rt.category)) {
       parentSideTypes.add(rt.name);
     }
   });

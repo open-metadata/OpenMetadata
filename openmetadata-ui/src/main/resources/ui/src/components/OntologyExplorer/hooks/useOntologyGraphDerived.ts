@@ -363,7 +363,7 @@ export function useOntologyGraphDerived({
 
     return computeGraphSearchHighlight(
       baseData.nodes,
-      baseData.edges as OntologyEdge[],
+      baseData.edges,
       filters.searchQuery,
       glossaries,
       relationTypes
