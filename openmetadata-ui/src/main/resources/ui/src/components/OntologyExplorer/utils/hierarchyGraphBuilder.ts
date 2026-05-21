@@ -251,7 +251,7 @@ export function buildHierarchyGraphs({
       }
       const wasFlipped = !parentSideTypes.has(edge.relationType);
       const parentRelationType = wasFlipped
-        ? (inverseMap[edge.relationType] ?? edge.relationType)
+        ? inverseMap[edge.relationType] ?? edge.relationType
         : edge.relationType;
       const pairKey = `${sourceId}-${targetId}-${parentRelationType}`;
       if (keptEdgesMap.has(pairKey) || edgeKeys.has(pairKey)) {
@@ -263,7 +263,9 @@ export function buildHierarchyGraphs({
         from: sourceId,
         to: targetId,
         relationType: parentRelationType,
-        ...(childRelationType ? { inverseRelationType: childRelationType } : {}),
+        ...(childRelationType
+          ? { inverseRelationType: childRelationType }
+          : {}),
         color:
           relationColors[parentRelationType] ??
           relationColors[edge.relationType],

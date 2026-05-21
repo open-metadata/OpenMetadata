@@ -408,7 +408,7 @@ register(ExtensionCategory.NODE, 'data-mode-asset', DataModeAssetNode);
 
 export function formatRelationLabel(relationType: string): string {
   return relationType
-    .replace(/([A-Z])/g, ' $1')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
     .trim()
     .toUpperCase();
 }
