@@ -1144,11 +1144,10 @@ public class MigrationUtil {
         DOMAIN_CACHE.put(cacheKey, Collections.emptyList());
         return Collections.emptyList();
       }
-      // Wrap unmodifiable so a downstream mutation cannot corrupt the shared cache entry.
+      // Snapshot via List.copyOf so the cache entry is genuinely independent of the
+      // (potentially-mutable) list returned by the repository.
       List<EntityReference> domains =
-          ei.getDomains() == null
-              ? Collections.emptyList()
-              : Collections.unmodifiableList(ei.getDomains());
+          ei.getDomains() == null ? Collections.emptyList() : List.copyOf(ei.getDomains());
       DOMAIN_CACHE.put(cacheKey, domains);
       return domains;
     } catch (Exception e) {
