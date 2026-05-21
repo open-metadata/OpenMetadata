@@ -783,7 +783,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted table",
-      description = "Restore a soft deleted table.",
+      description =
+          "Restore a soft deleted table. Pass async=true to run the restore in the background"
+              + " and receive a 202 Accepted response with a job id.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -791,13 +793,27 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Table.class)))
+                    schema = @Schema(implementation = Table.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Async restore started. Track completion via the jobId.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.service.util.RestoreEntityResponse.class)))
       })
   public Response restoreTable(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Run the restore asynchronously. (Default = `false`)")
+          @QueryParam("async")
+          @DefaultValue("false")
+          boolean async,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return restoreEntity(uriInfo, securityContext, restore.getId(), async);
   }
 
   @PUT
