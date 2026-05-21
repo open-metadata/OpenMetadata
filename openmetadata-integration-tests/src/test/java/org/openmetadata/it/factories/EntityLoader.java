@@ -46,11 +46,8 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
-import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
-import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -99,6 +96,14 @@ public final class EntityLoader {
 
   private static final Logger LOG = LoggerFactory.getLogger(EntityLoader.class);
   private static final long FUTURE_TIMEOUT_SECONDS = 600;
+
+  // Children that hang off a single parent (glossary terms → glossary, tags →
+  // classification, api endpoints → collection, data products → domain) serialize on the
+  // parent's relationship row lock during create. Funnelling thousands through one parent
+  // collapses our parallelism to ~1 under lock contention (worse with more workers).
+  // perf-test.sh avoids this by spreading children across many parents — we do the same,
+  // capping each parent at this many children.
+  private static final int CHILDREN_PER_PARENT = 500;
   // RFC 5321 caps email local-part at 64 chars; Hibernate Validator's @Email enforces it.
   // Don't pack the namespace prefix into the local part — UUID hex is enough and short.
   private static final String EMAIL_DOMAIN = "@test.openmetadata.org";
@@ -573,8 +578,8 @@ public final class EntityLoader {
       final TestNamespace ns,
       final ExecutorService executor,
       final EntityLoadSummary.Builder summary) {
-    final String parentCollectionFqn = ensureParentApiCollection(ns).getFullyQualifiedName();
     final int count = spec.countOf(EntityKind.API_ENDPOINT);
+    final List<String> collectionFqns = createApiCollectionParents(ns, parentCountFor(count));
     final String namePrefix = ns.prefix("api_endpoint") + "_";
 
     submitBatch(
@@ -587,7 +592,7 @@ public final class EntityLoader {
                 .create(
                     new CreateAPIEndpoint()
                         .withName(namePrefix + index)
-                        .withApiCollection(parentCollectionFqn)
+                        .withApiCollection(collectionFqns.get(index % collectionFqns.size()))
                         .withEndpointURL(URI.create("https://loader.test/api/ep/" + index))
                         .withRequestMethod(APIRequestMethod.GET)));
     summary.recordCreated(EntityKind.API_ENDPOINT, count);
@@ -678,8 +683,8 @@ public final class EntityLoader {
       final TestNamespace ns,
       final ExecutorService executor,
       final EntityLoadSummary.Builder summary) {
-    final Glossary parent = ensureParentGlossary(ns);
     final int count = spec.countOf(EntityKind.GLOSSARY_TERM);
+    final List<String> glossaryFqns = createGlossaryParents(ns, parentCountFor(count));
     final String namePrefix = ns.prefix("term") + "_";
 
     submitBatch(
@@ -692,7 +697,7 @@ public final class EntityLoader {
                 .create(
                     new CreateGlossaryTerm()
                         .withName(namePrefix + index)
-                        .withGlossary(parent.getFullyQualifiedName())
+                        .withGlossary(glossaryFqns.get(index % glossaryFqns.size()))
                         .withDescription("Loader term " + index)));
     summary.recordCreated(EntityKind.GLOSSARY_TERM, count);
   }
@@ -724,8 +729,8 @@ public final class EntityLoader {
       final TestNamespace ns,
       final ExecutorService executor,
       final EntityLoadSummary.Builder summary) {
-    final Classification parent = ensureParentClassification(ns);
     final int count = spec.countOf(EntityKind.TAG);
+    final List<String> classificationNames = createClassificationParents(ns, parentCountFor(count));
     final String namePrefix = ns.prefix("tag") + "_";
 
     submitBatch(
@@ -738,7 +743,8 @@ public final class EntityLoader {
                 .create(
                     new CreateTag()
                         .withName(namePrefix + index)
-                        .withClassification(parent.getName())
+                        .withClassification(
+                            classificationNames.get(index % classificationNames.size()))
                         .withDescription("Loader tag " + index)));
     summary.recordCreated(EntityKind.TAG, count);
   }
@@ -818,8 +824,8 @@ public final class EntityLoader {
       final TestNamespace ns,
       final ExecutorService executor,
       final EntityLoadSummary.Builder summary) {
-    final Domain parent = ensureParentDomain(ns);
     final int count = spec.countOf(EntityKind.DATA_PRODUCT);
+    final List<String> domainFqns = createDomainParents(ns, parentCountFor(count));
     final String namePrefix = ns.prefix("data_product") + "_";
 
     submitBatch(
@@ -832,7 +838,7 @@ public final class EntityLoader {
                 .create(
                     new CreateDataProduct()
                         .withName(namePrefix + index)
-                        .withDomains(List.of(parent.getFullyQualifiedName()))
+                        .withDomains(List.of(domainFqns.get(index % domainFqns.size())))
                         .withDescription("Loader data product " + index)));
     summary.recordCreated(EntityKind.DATA_PRODUCT, count);
   }
@@ -866,35 +872,48 @@ public final class EntityLoader {
       final ExecutorService executor,
       final EntityLoadSummary.Builder summary,
       final LoaderContext ctx) {
-    // OM auto-creates a test_suite whose name is <table.fqn>.testSuite. With the default
-    // long ns.prefix-based table FQN that comes out > 256 chars and trips a MySQL
-    // truncation on test_suite.name. ShortStackFactory builds a service→db→schema→table
-    // chain with short names just for this purpose.
-    final Table table = ShortStackFactory.table(ns);
-    final String entityLink = "<#E::table::" + table.getFullyQualifiedName() + ">";
     final int count = spec.countOf(EntityKind.TEST_CASE);
     final String namePrefix = ns.prefix("test_case") + "_";
 
-    // Test cases are serialized rather than parallelised: OM's TestCaseRepository takes
-    // an internal lock around the per-table test-suite auto-create + attachment path and
-    // returns 409 ("Entity already exists") when concurrent test_case creates against
-    // the same table race that lock. Sequential is fast enough for smoke scale and the
-    // scale paths don't rely on this loader for test_case bulk anyway.
-    for (int i = 0; i < count; i++) {
-      ctx.recordTestCase(
-          SdkClients.adminClient()
-              .testCases()
-              .create(
-                  new CreateTestCase()
-                      .withName(namePrefix + i)
-                      .withEntityLink(entityLink)
-                      .withTestDefinition("tableRowCountToEqual")
-                      .withParameterValues(
-                          List.of(
-                              new TestCaseParameterValue()
-                                  .withName("value")
-                                  .withValue(Integer.toString(i))))));
+    // OM's TestCaseRepository locks per-table around the test-suite auto-create + attach
+    // path and 409s when concurrent creates hit the SAME table. So we shard: one table
+    // per worker (each table built by ShortStackFactory to keep the derived
+    // <table.fqn>.testSuite name under MySQL's 256-char limit), each shard creates its
+    // slice of test cases sequentially, and the shards run in parallel. No two threads
+    // ever touch the same table, so the lock never contends.
+    final int shards = Math.max(1, Math.min(spec.parallelWorkers(), count));
+    final List<String> shardTableLinks = new ArrayList<>(shards);
+    for (int s = 0; s < shards; s++) {
+      shardTableLinks.add(
+          "<#E::table::" + ShortStackFactory.table(ns).getFullyQualifiedName() + ">");
     }
+
+    final List<Future<Void>> futures = new ArrayList<>(shards);
+    for (int s = 0; s < shards; s++) {
+      final int shard = s;
+      futures.add(
+          executor.submit(
+              () -> {
+                final String entityLink = shardTableLinks.get(shard);
+                for (int i = shard; i < count; i += shards) {
+                  ctx.recordTestCase(
+                      SdkClients.adminClient()
+                          .testCases()
+                          .create(
+                              new CreateTestCase()
+                                  .withName(namePrefix + i)
+                                  .withEntityLink(entityLink)
+                                  .withTestDefinition("tableRowCountToEqual")
+                                  .withParameterValues(
+                                      List.of(
+                                          new TestCaseParameterValue()
+                                              .withName("value")
+                                              .withValue(Integer.toString(i))))));
+                }
+                return null;
+              }));
+    }
+    awaitAll(futures, EntityKind.TEST_CASE);
     summary.recordCreated(EntityKind.TEST_CASE, count);
   }
 
@@ -1006,58 +1025,72 @@ public final class EntityLoader {
     return DashboardServiceTestFactory.createMetabase(ns);
   }
 
-  private static org.openmetadata.schema.entity.data.APICollection ensureParentApiCollection(
-      final TestNamespace ns) {
+  /** Number of parents to spread {@code childCount} children across, capped per parent. */
+  private static int parentCountFor(final int childCount) {
+    return Math.max(1, (childCount + CHILDREN_PER_PARENT - 1) / CHILDREN_PER_PARENT);
+  }
+
+  private static List<String> createApiCollectionParents(final TestNamespace ns, final int n) {
     final ApiService service = APIServiceTestFactory.createRest(ns);
-    final CreateAPICollection request =
-        new CreateAPICollection()
-            .withName(ns.prefix("api_collection_parent"))
-            .withService(service.getFullyQualifiedName())
-            .withEndpointURL(URI.create("https://loader.test/api/parent"));
-    return SdkClients.adminClient().apiCollections().create(request);
-  }
-
-  private static Glossary ensureParentGlossary(final TestNamespace ns) {
-    return SdkClients.adminClient()
-        .glossaries()
-        .create(
-            new CreateGlossary()
-                .withName(ns.prefix("glossary_parent"))
-                .withDescription("Loader parent glossary"));
-  }
-
-  private static Classification ensureParentClassification(final TestNamespace ns) {
-    return SdkClients.adminClient()
-        .classifications()
-        .create(
-            new CreateClassification()
-                .withName(ns.prefix("classification_parent"))
-                .withDescription("Loader parent classification"));
-  }
-
-  private static Domain ensureParentDomain(final TestNamespace ns) {
-    return SdkClients.adminClient()
-        .domains()
-        .create(
-            new CreateDomain()
-                .withName(ns.prefix("domain_parent"))
-                .withDomainType(DomainType.AGGREGATE)
-                .withDescription("Loader parent domain"));
-  }
-
-  private static Table ensureQueryTable(final TestNamespace ns) {
-    return TableTestFactory.createSimple(ns, ensureTablesSchema(ns).getFullyQualifiedName());
-  }
-
-  private static List<Table> ensureLineageNodes(final TestNamespace ns, final int requiredCount) {
-    final String schemaFqn = ensureTablesSchema(ns).getFullyQualifiedName();
-    final List<Table> nodes = new ArrayList<>(requiredCount);
-    for (int i = 0; i < requiredCount; i++) {
-      nodes.add(
-          TableTestFactory.createSimpleWithName(
-              ns.prefix("lineage_node_" + i + "_" + UUID.randomUUID()), ns, schemaFqn));
+    final List<String> fqns = new ArrayList<>(n);
+    for (int i = 0; i < n; i++) {
+      fqns.add(
+          SdkClients.adminClient()
+              .apiCollections()
+              .create(
+                  new CreateAPICollection()
+                      .withName(ns.prefix("api_collection_parent_" + i))
+                      .withService(service.getFullyQualifiedName())
+                      .withEndpointURL(URI.create("https://loader.test/api/parent/" + i)))
+              .getFullyQualifiedName());
     }
-    return nodes;
+    return fqns;
+  }
+
+  private static List<String> createGlossaryParents(final TestNamespace ns, final int n) {
+    final List<String> fqns = new ArrayList<>(n);
+    for (int i = 0; i < n; i++) {
+      fqns.add(
+          SdkClients.adminClient()
+              .glossaries()
+              .create(
+                  new CreateGlossary()
+                      .withName(ns.prefix("glossary_parent_" + i))
+                      .withDescription("Loader parent glossary " + i))
+              .getFullyQualifiedName());
+    }
+    return fqns;
+  }
+
+  private static List<String> createClassificationParents(final TestNamespace ns, final int n) {
+    final List<String> names = new ArrayList<>(n);
+    for (int i = 0; i < n; i++) {
+      names.add(
+          SdkClients.adminClient()
+              .classifications()
+              .create(
+                  new CreateClassification()
+                      .withName(ns.prefix("classification_parent_" + i))
+                      .withDescription("Loader parent classification " + i))
+              .getName());
+    }
+    return names;
+  }
+
+  private static List<String> createDomainParents(final TestNamespace ns, final int n) {
+    final List<String> fqns = new ArrayList<>(n);
+    for (int i = 0; i < n; i++) {
+      fqns.add(
+          SdkClients.adminClient()
+              .domains()
+              .create(
+                  new CreateDomain()
+                      .withName(ns.prefix("domain_parent_" + i))
+                      .withDomainType(DomainType.AGGREGATE)
+                      .withDescription("Loader parent domain " + i))
+              .getFullyQualifiedName());
+    }
+    return fqns;
   }
 
   // ---------------- Shared utilities ----------------
