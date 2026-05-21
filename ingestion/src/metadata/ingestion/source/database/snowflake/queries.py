@@ -545,14 +545,13 @@ SNOWFLAKE_ACCESS_HISTORY_LINEAGE = textwrap.dedent(
             ah.OBJECTS_MODIFIED,
             qh.QUERY_TEXT
         FROM {account_usage}.ACCESS_HISTORY ah
-        JOIN {account_usage}.QUERY_HISTORY qh
+        LEFT JOIN {account_usage}.QUERY_HISTORY qh
             ON ah.QUERY_ID = qh.QUERY_ID
+            AND qh.START_TIME
+                BETWEEN to_timestamp_ltz('{start_time}') AND to_timestamp_ltz('{end_time}')
+            AND qh.EXECUTION_STATUS = 'SUCCESS'
         WHERE ah.QUERY_START_TIME
             BETWEEN to_timestamp_ltz('{start_time}') AND to_timestamp_ltz('{end_time}')
-            AND qh.EXECUTION_STATUS = 'SUCCESS'
-            AND qh.QUERY_TEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-            AND qh.QUERY_TEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
-            {filter_condition}
     ),
     table_edges AS (
         SELECT
@@ -611,6 +610,7 @@ SNOWFLAKE_ACCESS_HISTORY_LINEAGE = textwrap.dedent(
     LEFT JOIN column_edges_grouped ce
         ON te.UPSTREAM_TABLE = ce.UPSTREAM_TABLE
         AND te.DOWNSTREAM_TABLE = ce.DOWNSTREAM_TABLE
+    {filter_condition}
     """
 )
 

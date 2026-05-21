@@ -20,16 +20,22 @@ critical regression that the client-side SQL parser is never invoked when
 the flag is on.
 """
 
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
-from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName, Uuid
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Uuid,
+)
 from metadata.generated.schema.type.entityLineage import Source as LineageEdgeSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.snowflake.lineage import (
+    ACCESS_HISTORY_CHUNK_DAYS,
     USE_ACCESS_HISTORY_OPTION_KEY,
     SnowflakeLineageSource,
 )
@@ -44,7 +50,9 @@ from metadata.ingestion.source.database.snowflake.queries import (
 # ---------------------------------------------------------------------------
 
 
-def _make_table_entity(table_uuid: str, db: str, schema: str, table: str, columns=None) -> Table:
+def _make_table_entity(
+    table_uuid: str, db: str, schema: str, table: str, columns=None
+) -> Table:
     """Build a minimal Table entity for column-lineage resolution tests."""
     table_fqn = f"test_service.{db}.{schema}.{table}"
     cols = [
@@ -100,8 +108,8 @@ def _make_lineage_source(
     src.service_connection.connectionOptions.root = dict(connection_options or {})
     src.source_config = MagicMock()
     src.engine = _make_mock_engine(rows_by_sql or {})
-    src.start = "2025-01-01 00:00:00"
-    src.end = "2025-01-02 00:00:00"
+    src.start = datetime(2025, 1, 1)
+    src.end = datetime(2025, 1, 2)
     src._table_cache = {}
     src._use_access_history = False
     return src
@@ -175,18 +183,66 @@ def test_combined_lineage_sql_streams_one_row_per_edge():
     assert "ARRAY_SLICE" not in rendered
 
 
-def test_combined_sql_injects_filter_condition_when_provided():
-    """User's sourceConfig.filterCondition must be injected into the source CTE."""
+def test_combined_sql_injects_filter_condition_at_final_select():
+    """
+    sourceConfig.filterCondition scopes the final edge result by table FQN
+    (database/schema), so it must land on the outer SELECT — after the source
+    CTE, not inside it.
+    """
+    predicate = "WHERE (DOWNSTREAM_TABLE LIKE 'MYDB.%')"
     rendered = SNOWFLAKE_ACCESS_HISTORY_LINEAGE.format(
         account_usage="SNOWFLAKE.ACCOUNT_USAGE",
         start_time="2025-01-01",
         end_time="2025-01-31",
-        filter_condition="AND (qh.QUERY_TYPE = 'CREATE_TABLE_AS_SELECT')",
+        filter_condition=predicate,
     )
-    # Predicate lands inside the access_history_filtered CTE before flatten/aggregation
-    assert "AND (qh.QUERY_TYPE = 'CREATE_TABLE_AS_SELECT')" in rendered
+    cte_section = rendered.partition("table_edges AS")[0]
+    assert "DOWNSTREAM_TABLE LIKE 'MYDB.%'" not in cte_section
+    after_final_from = rendered.partition("FROM table_edges te")[2]
+    assert predicate in after_final_from
+
+
+def test_combined_lineage_sql_prunes_query_history_by_date():
+    """
+    The QUERY_HISTORY side of the join must also be date-bounded so Snowflake can
+    prune its micro-partitions instead of scanning the full table to satisfy the
+    QUERY_ID join.
+    """
+    rendered = SNOWFLAKE_ACCESS_HISTORY_LINEAGE.format(
+        account_usage="SNOWFLAKE.ACCOUNT_USAGE",
+        start_time="2025-01-01",
+        end_time="2025-01-31",
+        filter_condition="",
+    )
     cte_section, _, _ = rendered.partition("table_edges AS")
-    assert "AND (qh.QUERY_TYPE = 'CREATE_TABLE_AS_SELECT')" in cte_section
+    assert "qh.START_TIME" in cte_section
+    assert "ah.QUERY_START_TIME" in cte_section
+
+
+def test_combined_lineage_left_joins_query_history_for_text_only():
+    """
+    ACCESS_HISTORY is the authoritative lineage source; QUERY_HISTORY only
+    enriches with query text. Every qh predicate (time prune + success) lives in
+    the LEFT JOIN ON clause, so an absent/failed/boundary qh row yields null text
+    but never drops the edge — no post-join WHERE guard needed. The
+    dbt/OpenMetadata noise filters are dropped — ACCESS_HISTORY only surfaces
+    queries that actually modified objects.
+    """
+    rendered = SNOWFLAKE_ACCESS_HISTORY_LINEAGE.format(
+        account_usage="SNOWFLAKE.ACCOUNT_USAGE",
+        start_time="2025-01-01",
+        end_time="2025-01-31",
+        filter_condition="",
+    )
+    assert "LEFT JOIN SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY" in rendered
+    on_clause, _, where_clause = rendered.partition("table_edges AS")[0].partition(
+        "WHERE ah.QUERY_START_TIME"
+    )
+    assert "qh.EXECUTION_STATUS = 'SUCCESS'" in on_clause
+    assert "qh.EXECUTION_STATUS" not in where_clause
+    assert "qh.QUERY_ID IS NULL" not in rendered
+    assert '"app": "dbt"' not in rendered
+    assert '"app": "OpenMetadata"' not in rendered
 
 
 def test_build_filter_condition_clause_empty_when_unset():
@@ -197,8 +253,10 @@ def test_build_filter_condition_clause_empty_when_unset():
 
 def test_build_filter_condition_clause_wraps_user_predicate():
     src = _make_lineage_source()
-    src.source_config.filterCondition = "qh.USER_NAME = 'etl_user'"
-    assert src._build_filter_condition_clause() == "AND (qh.USER_NAME = 'etl_user')"
+    src.source_config.filterCondition = "DOWNSTREAM_TABLE LIKE 'MYDB.%'"
+    assert (
+        src._build_filter_condition_clause() == "WHERE (DOWNSTREAM_TABLE LIKE 'MYDB.%')"
+    )
 
 
 def test_copy_history_sql_filters_loaded_status():
@@ -213,7 +271,9 @@ def test_copy_history_sql_filters_loaded_status():
 
 
 def test_probe_sql_is_lightweight():
-    rendered = SNOWFLAKE_ACCESS_HISTORY_PROBE.format(account_usage="SNOWFLAKE.ACCOUNT_USAGE")
+    rendered = SNOWFLAKE_ACCESS_HISTORY_PROBE.format(
+        account_usage="SNOWFLAKE.ACCOUNT_USAGE"
+    )
     assert "ACCESS_HISTORY" in rendered
     assert "LIMIT 1" in rendered
 
@@ -269,7 +329,9 @@ def test_pop_runs_before_super_init():
     captured = {}
 
     def fake_super_init(self, cfg, meta, get_engine=True):
-        captured["options_at_super_init"] = dict(cfg.serviceConnection.root.config.connectionOptions.root)
+        captured["options_at_super_init"] = dict(
+            cfg.serviceConnection.root.config.connectionOptions.root
+        )
         self.service_connection = MagicMock()
         self.engine = None
 
@@ -325,8 +387,12 @@ def test_probe_failure_falls_back_to_legacy():
 
 
 def test_table_edges_resolve_and_emit_lineage_requests():
-    upstream_entity = _make_table_entity("11111111-1111-1111-1111-111111111111", "DB", "SCHEMA", "ORDERS")
-    downstream_entity = _make_table_entity("22222222-2222-2222-2222-222222222222", "DB", "SCHEMA", "REVENUE")
+    upstream_entity = _make_table_entity(
+        "11111111-1111-1111-1111-111111111111", "DB", "SCHEMA", "ORDERS"
+    )
+    downstream_entity = _make_table_entity(
+        "22222222-2222-2222-2222-222222222222", "DB", "SCHEMA", "REVENUE"
+    )
     metadata = MagicMock()
 
     def _get_by_name(entity, fqn):
@@ -358,7 +424,9 @@ def test_table_edges_resolve_and_emit_lineage_requests():
     assert len(edges) == 1
     request = edges[0].right
     assert isinstance(request, AddLineageRequest)
-    assert str(request.edge.fromEntity.id.root) == "11111111-1111-1111-1111-111111111111"
+    assert (
+        str(request.edge.fromEntity.id.root) == "11111111-1111-1111-1111-111111111111"
+    )
     assert str(request.edge.toEntity.id.root) == "22222222-2222-2222-2222-222222222222"
     assert request.edge.lineageDetails.source == LineageEdgeSource.QueryLineage
     assert request.edge.lineageDetails.columnsLineage is None
@@ -368,8 +436,12 @@ def test_table_edges_resolve_and_emit_lineage_requests():
 
 def test_sql_query_text_attaches_when_present_in_row():
     """The representative QUERY_TEXT from QUERY_HISTORY should land on LineageDetails.sqlQuery."""
-    upstream_entity = _make_table_entity("11111111-1111-1111-1111-111111111111", "DB", "SCHEMA", "ORDERS")
-    downstream_entity = _make_table_entity("22222222-2222-2222-2222-222222222222", "DB", "SCHEMA", "REVENUE")
+    upstream_entity = _make_table_entity(
+        "11111111-1111-1111-1111-111111111111", "DB", "SCHEMA", "ORDERS"
+    )
+    downstream_entity = _make_table_entity(
+        "22222222-2222-2222-2222-222222222222", "DB", "SCHEMA", "REVENUE"
+    )
     metadata = MagicMock()
     metadata.get_by_name = MagicMock(
         side_effect=lambda entity, fqn: {
@@ -419,12 +491,163 @@ def test_table_edges_skip_when_either_side_unresolvable():
             ],
         },
     )
+    with patch(
+        "metadata.ingestion.source.database.snowflake.lineage.logger"
+    ) as mock_logger:
+        edges = list(src._yield_combined_access_history())
+        assert edges == []
+        debug_messages = [str(call.args) for call in mock_logger.debug.call_args_list]
+        assert any("table not found in OpenMetadata" in msg for msg in debug_messages)
+        assert any("DB.SCHEMA.ORDERS" in msg for msg in debug_messages)
+        assert any("DB.SCHEMA.REVENUE" in msg for msg in debug_messages)
+
+
+def test_access_history_chunks_window_into_slices():
+    """A multi-day window is split into one combined query per ACCESS_HISTORY_CHUNK_DAYS slice."""
+    upstream_entity = _make_table_entity(
+        "11111111-1111-1111-1111-111111111111", "DB", "SCHEMA", "ORDERS"
+    )
+    downstream_entity = _make_table_entity(
+        "22222222-2222-2222-2222-222222222222", "DB", "SCHEMA", "REVENUE"
+    )
+    metadata = MagicMock()
+    metadata.get_by_name = MagicMock(
+        side_effect=lambda entity, fqn: {
+            "test_service.DB.SCHEMA.ORDERS": upstream_entity,
+            "test_service.DB.SCHEMA.REVENUE": downstream_entity,
+        }.get(fqn)
+    )
+    src = _make_lineage_source(
+        metadata=metadata,
+        rows_by_sql={
+            "ACCESS_HISTORY": [
+                _Row(
+                    upstream_table="DB.SCHEMA.ORDERS",
+                    upstream_domain="Table",
+                    downstream_table="DB.SCHEMA.REVENUE",
+                    downstream_domain="Table",
+                    query_id="abc",
+                    column_pairs=None,
+                ),
+            ],
+        },
+    )
+    chunk = timedelta(days=ACCESS_HISTORY_CHUNK_DAYS)
+    src.start = datetime(2025, 1, 1)
+    src.end = src.start + chunk * 3
+
     edges = list(src._yield_combined_access_history())
-    assert edges == []
+
+    assert len(edges) == 3
+    conn = src.engine.connect.return_value
+    executed = [str(call.args[0]) for call in conn.execute.call_args_list]
+    assert len(executed) == 3
+    for slice_index in range(3):
+        window_start = src.start + chunk * slice_index
+        window_end = src.start + chunk * (slice_index + 1)
+        assert any(
+            str(window_start) in sql and str(window_end) in sql for sql in executed
+        )
+
+
+def test_access_history_window_failure_does_not_abort_run():
+    """A failure on one date window must not stop the remaining windows."""
+    upstream_entity = _make_table_entity(
+        "11111111-1111-1111-1111-111111111111", "DB", "SCHEMA", "ORDERS"
+    )
+    downstream_entity = _make_table_entity(
+        "22222222-2222-2222-2222-222222222222", "DB", "SCHEMA", "REVENUE"
+    )
+    metadata = MagicMock()
+    metadata.get_by_name = MagicMock(
+        side_effect=lambda entity, fqn: {
+            "test_service.DB.SCHEMA.ORDERS": upstream_entity,
+            "test_service.DB.SCHEMA.REVENUE": downstream_entity,
+        }.get(fqn)
+    )
+    src = _make_lineage_source(
+        metadata=metadata,
+        rows_by_sql={
+            "ACCESS_HISTORY": [
+                _Row(
+                    upstream_table="DB.SCHEMA.ORDERS",
+                    upstream_domain="Table",
+                    downstream_table="DB.SCHEMA.REVENUE",
+                    downstream_domain="Table",
+                    query_id="abc",
+                    column_pairs=None,
+                ),
+            ],
+        },
+    )
+    src.start = datetime(2025, 1, 1)
+    src.end = src.start + timedelta(days=ACCESS_HISTORY_CHUNK_DAYS) * 2
+
+    conn = src.engine.connect.return_value
+    healthy_side_effect = conn.execute.side_effect
+    call_state = {"count": 0}
+
+    def _flaky_execute(statement):
+        call_state["count"] += 1
+        if call_state["count"] == 1:
+            raise RuntimeError("simulated snowflake timeout")
+        return healthy_side_effect(statement)
+
+    conn.execute.side_effect = _flaky_execute
+
+    edges = list(src._yield_combined_access_history())
+
+    assert call_state["count"] == 2
+    assert len(edges) == 1
+
+
+def test_access_history_skips_malformed_row_and_keeps_rest():
+    """A single unparseable row must be skipped without dropping the rest of the window."""
+    upstream_entity = _make_table_entity(
+        "11111111-1111-1111-1111-111111111111", "DB", "SCHEMA", "ORDERS"
+    )
+    downstream_entity = _make_table_entity(
+        "22222222-2222-2222-2222-222222222222", "DB", "SCHEMA", "REVENUE"
+    )
+    metadata = MagicMock()
+    metadata.get_by_name = MagicMock(
+        side_effect=lambda entity, fqn: {
+            "test_service.DB.SCHEMA.ORDERS": upstream_entity,
+            "test_service.DB.SCHEMA.REVENUE": downstream_entity,
+        }.get(fqn)
+    )
+    src = _make_lineage_source(
+        metadata=metadata,
+        rows_by_sql={
+            "ACCESS_HISTORY": [
+                _Row({1: "boom"}),  # non-string key fails lower-casing → row skipped
+                _Row(
+                    upstream_table="DB.SCHEMA.ORDERS",
+                    upstream_domain="Table",
+                    downstream_table="DB.SCHEMA.REVENUE",
+                    downstream_domain="Table",
+                    query_id="abc",
+                    column_pairs=None,
+                ),
+            ],
+        },
+    )
+
+    edges = list(src._yield_combined_access_history())
+
+    assert len(edges) == 1
+    assert (
+        str(edges[0].right.edge.toEntity.id.root)
+        == "22222222-2222-2222-2222-222222222222"
+    )
 
 
 def test_split_snowflake_fqn_handles_three_part_name():
-    assert SnowflakeLineageSource._split_snowflake_fqn("DB.SCHEMA.TABLE") == ("DB", "SCHEMA", "TABLE")
+    assert SnowflakeLineageSource._split_snowflake_fqn("DB.SCHEMA.TABLE") == (
+        "DB",
+        "SCHEMA",
+        "TABLE",
+    )
 
 
 def test_split_snowflake_fqn_rejects_malformed():
@@ -448,7 +671,9 @@ def test_split_snowflake_fqn_strips_quoted_identifiers():
 
 
 def test_split_snowflake_fqn_handles_embedded_dots_in_quoted_parts():
-    assert SnowflakeLineageSource._split_snowflake_fqn('"My.DB"."My.Schema"."My.Table"') == (
+    assert SnowflakeLineageSource._split_snowflake_fqn(
+        '"My.DB"."My.Schema"."My.Table"'
+    ) == (
         "My.DB",
         "My.Schema",
         "My.Table",
@@ -466,7 +691,9 @@ def test_split_snowflake_fqn_unescapes_doubled_quotes():
 def test_split_snowflake_fqn_logs_debug_for_skips():
     from unittest.mock import patch
 
-    with patch("metadata.ingestion.source.database.snowflake.lineage.logger") as mock_logger:
+    with patch(
+        "metadata.ingestion.source.database.snowflake.lineage.logger"
+    ) as mock_logger:
         assert SnowflakeLineageSource._split_snowflake_fqn("DB.SCHEMA") is None
         debug_messages = [call.args[0] for call in mock_logger.debug.call_args_list]
         assert any("unexpected part count" in msg for msg in debug_messages)
@@ -480,10 +707,18 @@ def test_split_snowflake_fqn_logs_debug_for_skips():
 def test_column_lineage_attaches_to_table_edge():
     """Column pairs arrive pre-aggregated in the row's VARIANT column."""
     upstream_entity = _make_table_entity(
-        "11111111-1111-1111-1111-111111111111", "DB", "SCHEMA", "ORDERS", columns=["AMOUNT", "ID"]
+        "11111111-1111-1111-1111-111111111111",
+        "DB",
+        "SCHEMA",
+        "ORDERS",
+        columns=["AMOUNT", "ID"],
     )
     downstream_entity = _make_table_entity(
-        "22222222-2222-2222-2222-222222222222", "DB", "SCHEMA", "REVENUE", columns=["TOTAL_AMOUNT", "ID"]
+        "22222222-2222-2222-2222-222222222222",
+        "DB",
+        "SCHEMA",
+        "REVENUE",
+        columns=["TOTAL_AMOUNT", "ID"],
     )
     metadata = MagicMock()
 
@@ -519,16 +754,26 @@ def test_column_lineage_attaches_to_table_edge():
     cl = details.columnsLineage[0]
     # ColumnLineage shape matches today's parser output (sql_lineage.py:614).
     assert str(cl.toColumn.root) == "test_service.DB.SCHEMA.REVENUE.TOTAL_AMOUNT"
-    assert [str(c.root) for c in cl.fromColumns] == ["test_service.DB.SCHEMA.ORDERS.AMOUNT"]
+    assert [str(c.root) for c in cl.fromColumns] == [
+        "test_service.DB.SCHEMA.ORDERS.AMOUNT"
+    ]
 
 
 def test_column_lineage_attaches_multiple_column_pairs():
     """Multiple column pairs from the same edge should all attach."""
     upstream_entity = _make_table_entity(
-        "11111111-1111-1111-1111-111111111111", "DB", "SCHEMA", "ORDERS", columns=["AMOUNT", "ID"]
+        "11111111-1111-1111-1111-111111111111",
+        "DB",
+        "SCHEMA",
+        "ORDERS",
+        columns=["AMOUNT", "ID"],
     )
     downstream_entity = _make_table_entity(
-        "22222222-2222-2222-2222-222222222222", "DB", "SCHEMA", "REVENUE", columns=["TOTAL_AMOUNT", "ID"]
+        "22222222-2222-2222-2222-222222222222",
+        "DB",
+        "SCHEMA",
+        "REVENUE",
+        columns=["TOTAL_AMOUNT", "ID"],
     )
     metadata = MagicMock()
     metadata.get_by_name = MagicMock(
@@ -568,12 +813,16 @@ def test_column_lineage_attaches_multiple_column_pairs():
 
 
 def test_parse_column_pairs_accepts_python_list():
-    assert SnowflakeLineageSource._parse_column_pairs([{"d": "x", "u": "y"}]) == [("x", "y")]
+    assert SnowflakeLineageSource._parse_column_pairs([{"d": "x", "u": "y"}]) == [
+        ("x", "y")
+    ]
 
 
 def test_parse_column_pairs_accepts_json_string():
     """snowflake-sqlalchemy can return VARIANTs as JSON strings depending on cursor config."""
-    assert SnowflakeLineageSource._parse_column_pairs('[{"d": "x", "u": "y"}]') == [("x", "y")]
+    assert SnowflakeLineageSource._parse_column_pairs('[{"d": "x", "u": "y"}]') == [
+        ("x", "y")
+    ]
 
 
 def test_parse_column_pairs_handles_none_and_empty():
@@ -596,8 +845,12 @@ def test_parse_column_pairs_handles_malformed():
 
 
 def test_copy_edge_emitted_when_container_resolves():
-    downstream_entity = _make_table_entity("33333333-3333-3333-3333-333333333333", "DB", "SCHEMA", "STAGE_TBL")
-    container_entity = _make_container_entity("44444444-4444-4444-4444-444444444444", "s3://my-bucket/path/")
+    downstream_entity = _make_table_entity(
+        "33333333-3333-3333-3333-333333333333", "DB", "SCHEMA", "STAGE_TBL"
+    )
+    container_entity = _make_container_entity(
+        "44444444-4444-4444-4444-444444444444", "s3://my-bucket/path/"
+    )
     metadata = MagicMock()
     metadata.get_by_name = MagicMock(return_value=downstream_entity)
     metadata.es_search_container_by_path = MagicMock(return_value=[container_entity])
@@ -621,12 +874,16 @@ def test_copy_edge_emitted_when_container_resolves():
     assert len(edges) == 1
     request = edges[0].right
     assert request.edge.fromEntity.type == "container"
-    assert str(request.edge.fromEntity.id.root) == "44444444-4444-4444-4444-444444444444"
+    assert (
+        str(request.edge.fromEntity.id.root) == "44444444-4444-4444-4444-444444444444"
+    )
     assert str(request.edge.toEntity.id.root) == "33333333-3333-3333-3333-333333333333"
 
 
 def test_copy_edge_skipped_when_container_not_ingested():
-    downstream_entity = _make_table_entity("33333333-3333-3333-3333-333333333333", "DB", "SCHEMA", "STAGE_TBL")
+    downstream_entity = _make_table_entity(
+        "33333333-3333-3333-3333-333333333333", "DB", "SCHEMA", "STAGE_TBL"
+    )
     metadata = MagicMock()
     metadata.get_by_name = MagicMock(return_value=downstream_entity)
     metadata.es_search_container_by_path = MagicMock(return_value=[])
@@ -684,7 +941,12 @@ def test_copy_edge_skips_internal_stage_silently():
 def test_is_external_stage_classifier():
     assert SnowflakeLineageSource._is_external_stage("s3://bucket/path/") is True
     assert SnowflakeLineageSource._is_external_stage("S3://bucket/path/") is True
-    assert SnowflakeLineageSource._is_external_stage("azure://account.blob.core.windows.net/c/path/") is True
+    assert (
+        SnowflakeLineageSource._is_external_stage(
+            "azure://account.blob.core.windows.net/c/path/"
+        )
+        is True
+    )
     assert SnowflakeLineageSource._is_external_stage("gcs://bucket/path/") is True
     assert SnowflakeLineageSource._is_external_stage("@~/path") is False
     assert SnowflakeLineageSource._is_external_stage("@%mytable/") is False
@@ -713,7 +975,9 @@ def test_access_history_path_does_not_call_legacy_parser():
 
     with patch(
         "metadata.ingestion.lineage.sql_lineage.get_lineage_by_query",
-        side_effect=AssertionError("legacy parser must not be called on the ACCESS_HISTORY path"),
+        side_effect=AssertionError(
+            "legacy parser must not be called on the ACCESS_HISTORY path"
+        ),
     ):
         # Consume the generator; we don't care about output, only that no exception fires.
         list(src.yield_query_lineage())
@@ -724,6 +988,8 @@ def test_access_history_flag_off_falls_through_to_super():
     src = _make_lineage_source(rows_by_sql={})
     src._use_access_history = False
 
-    with patch.object(LineageSource, "yield_query_lineage", return_value=iter([])) as mocked:
+    with patch.object(
+        LineageSource, "yield_query_lineage", return_value=iter([])
+    ) as mocked:
         list(src.yield_query_lineage())
         mocked.assert_called_once()
