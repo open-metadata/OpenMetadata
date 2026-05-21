@@ -48,6 +48,7 @@ import {
   buildDefaultRectNodeStyle,
   formatRelationLabel,
   getCanvasColor,
+  getCardinalityArrows,
   getEdgeRelationLabelStyle,
 } from '../utils/graphStyles';
 import {
@@ -141,7 +142,7 @@ export function mergeEdges(
           from: edge.from,
           to: edge.to,
           relationType: edge.relationType,
-          isBidirectional: false,
+          isBidirectional: isSymmetric,
         });
 
         continue;
@@ -200,6 +201,22 @@ export function useGraphDataBuilder({
         : rt.color ?? RELATION_META[rt.name]?.color;
       if (effectiveColor) {
         map[rt.name] = effectiveColor;
+      }
+    });
+
+    return map;
+  }, [relationTypes]);
+
+  const cardinalityMap = useMemo<
+    Record<string, NonNullable<GlossaryTermRelationType['cardinality']>>
+  >(() => {
+    const map: Record<
+      string,
+      NonNullable<GlossaryTermRelationType['cardinality']>
+    > = {};
+    relationTypes?.forEach((rt) => {
+      if (rt.cardinality) {
+        map[rt.name] = rt.cardinality;
       }
     });
 
@@ -642,8 +659,34 @@ export function useGraphDataBuilder({
       }
     });
 
-    const g6Edges: EdgeData[] = Array.from(directedGroupMap.values()).flatMap(
-      (group) => {
+    const nodeToSortedPairs = new Map<string, string[]>();
+    [...directedGroupMap.keys()].sort().forEach((pairKey) => {
+      const [a, b] = pairKey.split('::');
+      const listA = nodeToSortedPairs.get(a) ?? [];
+      listA.push(pairKey);
+      nodeToSortedPairs.set(a, listA);
+      const listB = nodeToSortedPairs.get(b) ?? [];
+      listB.push(pairKey);
+      nodeToSortedPairs.set(b, listB);
+    });
+    const EDGE_CURVE_STEP_PX = 35;
+    const pairCurveOffset = new Map<string, number>();
+    nodeToSortedPairs.forEach((pairKeys) => {
+      if (pairKeys.length <= 1) {
+        return;
+      }
+      pairKeys.forEach((pairKey, idx) => {
+        const step = idx - (pairKeys.length - 1) / 2;
+        const candidate = step * EDGE_CURVE_STEP_PX;
+        const existing = pairCurveOffset.get(pairKey) ?? 0;
+        if (Math.abs(candidate) > Math.abs(existing)) {
+          pairCurveOffset.set(pairKey, candidate);
+        }
+      });
+    });
+
+    const g6Edges: EdgeData[] = Array.from(directedGroupMap.entries()).flatMap(
+      ([pairKey, group]) => {
         const rep = group[0];
         const n = group.length;
 
@@ -688,8 +731,15 @@ export function useGraphDataBuilder({
         const useComboAwarePolyline =
           isTermTermInDataMode || isCrossGlossaryTermEdge;
 
+        const [sortedA] = pairKey.split('::');
+        const rawCurveOffset = pairCurveOffset.get(pairKey) ?? 0;
+        const curveOffset =
+          rep.from === sortedA ? rawCurveOffset : -rawCurveOffset;
+
         const edgeType = useComboAwarePolyline
           ? ONTOLOGY_COMBO_AWARE_POLYLINE_EDGE_TYPE
+          : curveOffset !== 0
+          ? 'quadratic'
           : 'line';
 
         return group.map((singleEdge, i) => {
@@ -784,6 +834,19 @@ export function useGraphDataBuilder({
             }),
           };
 
+          const edgeLineWidth = isHighlighted || isClickedEdge ? 2.5 : 1.5;
+          const showCardinalityArrows = isTermTermEdge;
+          const isSymmetricEdge =
+            singleEdge.isBidirectional && !singleEdge.inverseRelationType;
+          const arrowStyle = showCardinalityArrows
+            ? getCardinalityArrows(
+                cardinalityMap[singleEdge.relationType],
+                edgeColor,
+                edgeLineWidth,
+                isSymmetricEdge
+              )
+            : { startArrow: false, endArrow: false };
+
           return {
             id: edgeId,
             source: singleEdge.from,
@@ -800,15 +863,19 @@ export function useGraphDataBuilder({
             style: isPrimary
               ? {
                   stroke: edgeColor,
-                  lineWidth: isHighlighted || isClickedEdge ? 2.5 : 1.5,
-                  endArrow: explorationMode !== 'data',
+                  lineWidth: edgeLineWidth,
+                  ...arrowStyle,
+                  ...(curveOffset !== 0 &&
+                    !useComboAwarePolyline && { curveOffset }),
                   ...commonStyle,
                 }
               : {
-                  // Line invisible; label group retains opacity:1 so badge shows.
                   stroke: 'transparent',
                   lineWidth: 0,
+                  startArrow: false,
                   endArrow: false,
+                  ...(curveOffset !== 0 &&
+                    !useComboAwarePolyline && { curveOffset }),
                   ...commonStyle,
                 },
           };
@@ -901,6 +968,7 @@ export function useGraphDataBuilder({
     hierarchyCombos,
     graphSearchHighlight,
     glossaries,
+    cardinalityMap,
   ]);
 
   const assetToTermMap = useMemo(() => {

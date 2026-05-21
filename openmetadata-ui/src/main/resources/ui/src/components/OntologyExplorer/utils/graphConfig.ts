@@ -39,10 +39,12 @@ export const HULL_GAP = 56;
 export const MIN_NODE_SPACING = 12;
 export const MIN_LINK_DISTANCE = 60;
 
-export const DAGRE_RANK_SEP = 40;
-export const DAGRE_NODE_SEP = 20;
+export const DAGRE_RANK_SEP = 100;
+export const DAGRE_NODE_SEP = 30;
 export const HIERARCHY_DAGRE_NODE_SEP = 150;
 export const HIERARCHY_DAGRE_RANK_SEP = 150;
+export const MODEL_DAGRE_RANK_SEP = 100;
+export const MODEL_DAGRE_NODE_SEP = 40;
 
 export const MIN_NODE_WIDTH = 72;
 export const BADGE_MIN_NODE_WIDTH = 100;
@@ -178,7 +180,10 @@ export function getLayoutConfig(
       sortByCombo: hasCombos,
       nodeSize: baseNodeSize,
       enableWorker: nodeCount > 250,
-      ...(hasCombos && { ranksep: MODEL_ANTV_DAGRE_RANKSEP_WITH_COMBOS }),
+      ranksep: hasCombos
+        ? MODEL_ANTV_DAGRE_RANKSEP_WITH_COMBOS
+        : MODEL_DAGRE_RANK_SEP,
+      nodesep: MODEL_DAGRE_NODE_SEP,
     };
   }
 

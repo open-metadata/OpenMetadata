@@ -24,6 +24,17 @@ export async function applyGlossaryFilter(page: Page, glossaryId: string) {
   await page.getByTestId('update-btn').click();
 }
 
+export async function applyMultipleGlossaryFilters(
+  page: Page,
+  ...glossaryIds: string[]
+) {
+  await page.getByTestId('search-dropdown-Glossary').click();
+  for (const id of glossaryIds) {
+    await page.getByTestId(id).click();
+  }
+  await page.getByTestId('update-btn').click();
+}
+
 export async function navigateToOntologyExplorer(page: Page) {
   await redirectToHomePage(page);
   const glossaryResponse = page.waitForResponse('/api/v1/glossaries*');
@@ -77,7 +88,76 @@ export interface RenderedEdge {
   from: string;
   to: string;
   relationType: string;
+  isBidirectional: boolean;
   inverseRelationType?: string;
+}
+
+export interface RelationTypeDef {
+  name: string;
+  displayName: string;
+  description?: string;
+  inverseRelation?: string;
+  cardinality?: 'ONE_TO_ONE' | 'ONE_TO_MANY' | 'MANY_TO_ONE' | 'MANY_TO_MANY';
+  isSymmetric?: boolean;
+  color?: string;
+  category: 'associative' | 'hierarchical' | 'equivalence';
+  isSystemDefined?: boolean;
+}
+
+export async function getRelationTypeSettings(
+  apiContext: APIRequestContext
+): Promise<RelationTypeDef[]> {
+  const res = await apiContext.get(
+    '/api/v1/system/settings/glossaryTermRelationSettings'
+  );
+  const body = await res.json();
+
+  return (body?.config_value?.relationTypes ?? []) as RelationTypeDef[];
+}
+
+export async function addCustomRelationTypes(
+  apiContext: APIRequestContext,
+  types: RelationTypeDef[]
+): Promise<RelationTypeDef[]> {
+  const existing = await getRelationTypeSettings(apiContext);
+  const merged = [
+    ...existing.filter((e) => !types.some((t) => t.name === e.name)),
+    ...types,
+  ];
+  await apiContext.put('/api/v1/system/settings', {
+    data: {
+      config_type: 'glossaryTermRelationSettings',
+      config_value: { relationTypes: merged },
+    },
+  });
+
+  return existing;
+}
+
+export async function restoreRelationTypeSettings(
+  apiContext: APIRequestContext,
+  original: RelationTypeDef[]
+): Promise<void> {
+  await apiContext.put('/api/v1/system/settings', {
+    data: {
+      config_type: 'glossaryTermRelationSettings',
+      config_value: { relationTypes: original },
+    },
+  });
+}
+
+export async function addTermRelationDirect(
+  apiContext: APIRequestContext,
+  fromTermId: string,
+  toTerm: { id: string; name: string; fullyQualifiedName: string },
+  relationType: string
+): Promise<void> {
+  await apiContext.post(`/api/v1/glossaryTerms/${fromTermId}/relations`, {
+    data: {
+      relationType,
+      term: { ...toTerm, type: 'glossaryTerm' },
+    },
+  });
 }
 
 export async function readGraphEdges(page: Page): Promise<RenderedEdge[]> {
@@ -128,6 +208,28 @@ export async function deleteEntities(
   }
 }
 
+export async function tagTableWithGlossaryTerm(
+  apiContext: APIRequestContext,
+  tableId: string,
+  termFQN: string
+): Promise<void> {
+  await apiContext.patch(`/api/v1/tables/${tableId}`, {
+    data: [
+      {
+        op: 'add',
+        path: '/tags/0',
+        value: {
+          tagFQN: termFQN,
+          labelType: 'Manual',
+          state: 'Confirmed',
+          source: 'Glossary',
+        },
+      },
+    ],
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+}
+
 export async function addTermRelation(
   apiContext: APIRequestContext,
   fromTerm: GlossaryTerm,
@@ -166,6 +268,15 @@ export async function applyRelationTypeFilter(page: Page, typeName: string) {
   await page.getByTestId('search-dropdown-Relationship Type').click();
   await page.getByTestId('drop-down-menu').getByText(typeName).click();
   await page.getByTestId('update-btn').click();
+  await waitForGraphLoaded(page);
+}
+
+export async function selectViewMode(
+  page: Page,
+  mode: 'overview' | 'hierarchy' | 'crossGlossary'
+): Promise<void> {
+  await page.getByTestId('view-mode-select').click();
+  await page.locator(`[data-key="${mode}"]`).click();
   await waitForGraphLoaded(page);
 }
 

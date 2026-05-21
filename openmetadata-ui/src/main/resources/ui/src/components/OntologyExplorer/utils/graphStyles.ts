@@ -18,6 +18,7 @@ import {
   RectComboStyleProps,
   register,
 } from '@antv/g6';
+import { RelationCardinality } from '../../../rest/settingConfigAPI';
 import {
   COLOR_META_BY_HEX,
   COMBO_FILL_DEFAULT,
@@ -885,6 +886,77 @@ export function buildDataModeTermNodeStyle(
     shadowColor: DATA_MODE_TERM_NODE_SHADOW_COLOR,
     shadowOffsetY: DATA_MODE_TERM_NODE_SHADOW_OFFSET_Y,
     ...(pos && { x: pos.x, y: pos.y }),
+  };
+}
+
+type PathArray = Array<[string, ...number[]]>;
+
+function crowsFootPathFn(w: number, h: number): PathArray {
+  const tip = -w / 2; 
+  const base = w / 2; 
+  const spread = h / 2;
+
+  return [
+    ['M', tip, -spread],
+    ['L', base, 0],
+    ['M', tip, 0],
+    ['L', base, 0],
+    ['M', tip, spread],
+    ['L', base, 0],
+  ];
+}
+
+function oneBarPathFn(w: number, h: number): PathArray {
+  const barX = -w / 2;
+  const spread = h / 2;
+
+  return [
+    ['M', barX, -spread],
+    ['L', barX, spread],
+  ];
+}
+
+export function getCardinalityArrows(
+  cardinality: RelationCardinality | undefined,
+  color: string,
+  lineWidth: number,
+  isSymmetric = false
+): Record<string, unknown> {
+  if (!cardinality || cardinality === 'CUSTOM') {
+    return { startArrow: isSymmetric, endArrow: true };
+  }
+
+  const resolvedCardinality: RelationCardinality =
+    isSymmetric &&
+    (cardinality === 'ONE_TO_MANY' || cardinality === 'MANY_TO_ONE')
+      ? 'MANY_TO_MANY'
+      : cardinality;
+
+  const sourceType: 'one' | 'many' =
+    resolvedCardinality === 'MANY_TO_ONE' ||
+    resolvedCardinality === 'MANY_TO_MANY'
+      ? 'many'
+      : 'one';
+  const targetType: 'one' | 'many' =
+    resolvedCardinality === 'ONE_TO_MANY' ||
+    resolvedCardinality === 'MANY_TO_MANY'
+      ? 'many'
+      : 'one';
+
+  const pathFn = (type: 'one' | 'many') =>
+    type === 'many' ? crowsFootPathFn : oneBarPathFn;
+
+  return {
+    startArrow: true,
+    startArrowType: pathFn(sourceType),
+    startArrowFill: 'none',
+    startArrowStroke: color,
+    startArrowLineWidth: lineWidth,
+    endArrow: true,
+    endArrowType: pathFn(targetType),
+    endArrowFill: 'none',
+    endArrowStroke: color,
+    endArrowLineWidth: lineWidth,
   };
 }
 

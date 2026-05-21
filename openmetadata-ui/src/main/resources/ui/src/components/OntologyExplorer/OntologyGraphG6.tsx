@@ -59,6 +59,7 @@ function writeEdges(
     from: string;
     to: string;
     relationType: string;
+    isBidirectional: boolean;
     inverseRelationType?: string;
   }>
 ) {
@@ -68,6 +69,7 @@ function writeEdges(
         from: e.from,
         to: e.to,
         relationType: e.relationType,
+        isBidirectional: e.isBidirectional,
         ...(e.inverseRelationType
           ? { inverseRelationType: e.inverseRelationType }
           : {}),
