@@ -335,7 +335,7 @@ class S3Source(StorageServiceSource):
         if archive_entity is None:
             logger.warning(f"Archive container {archive_fqn!r} not found after creation; skipping children")
             return
-        archive_ref = EntityReference.model_construct(id=archive_entity.id.root, type="container")
+        archive_ref = EntityReference.model_construct(id=archive_entity.id, type="container")
 
         blob = S3BlobAdapter(self.s3_client, bucket_name, archive_path)
         structure_format = metadata_entry.structureFormat or ""

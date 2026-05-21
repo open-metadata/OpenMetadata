@@ -23,6 +23,7 @@ from io import BytesIO
 from typing import Protocol
 
 import pandas as pd
+import pyarrow.parquet as pq
 
 from metadata.readers.dataframe.avro import AvroDataFrameReader
 from metadata.readers.dataframe.reader_factory import SupportedTypes
@@ -48,7 +49,8 @@ _LOCAL_FILE_SIGNATURE = b"PK\x03\x04"  # Local file header (precedes actual file
 _ZIP64_SENTINEL = 0xFFFF_FFFF
 
 # Maximum bytes to scan from the end of a ZIP to locate the EOCD record.
-# 65535 is the max ZIP comment length + 22 bytes for the fixed EOCD structure.
+# 65535 is the max ZIP comment length + 22 bytes for the fixed EOCD structure = 65557.
+# One extra byte of margin to avoid an off-by-one when the EOCD sits at the scan boundary.
 _EOCD_MAX_SCAN = 65558
 
 # Encoding used to decode filenames from ZIP Central Directory entries.
@@ -99,7 +101,7 @@ class S3BlobAdapter:
 
     def read_range(self, offset: int, length: int) -> bytes:
         range_header = f"bytes={offset}-{offset + length - 1}"
-        return self._client.get_object(Bucket=self._bucket, Key=self._key, Range=range_header)["Body"].read()
+        return self._client.get_object(Bucket=self._bucket, Key=self._key, Range=range_header)["Body"].read(length)
 
     def read_all(self) -> bytes:
         return self._client.get_object(Bucket=self._bucket, Key=self._key)["Body"].read()
@@ -123,15 +125,24 @@ class GCSBlobAdapter:
         return self._blob.download_as_bytes()
 
 
+def _read_parquet_schema_only(data: BytesIO) -> pd.DataFrame:
+    data.seek(0)
+    pf = pq.ParquetFile(data)
+    try:
+        return next(pf.iter_batches(batch_size=1)).to_pandas()
+    except StopIteration:
+        return pq.read_schema(data).empty_table().to_pandas()
+
+
 _DF_READERS: dict[SupportedTypes, Callable[[BytesIO], object]] = {
     SupportedTypes.CSV: partial(pd.read_csv, nrows=100),
     SupportedTypes.CSVGZ: partial(pd.read_csv, compression="gzip", nrows=100),
     SupportedTypes.TSV: partial(pd.read_csv, sep="\t", nrows=100),
-    SupportedTypes.PARQUET: pd.read_parquet,
-    SupportedTypes.PARQUET_PQ: pd.read_parquet,
-    SupportedTypes.PARQUET_PQT: pd.read_parquet,
-    SupportedTypes.PARQUET_PARQ: pd.read_parquet,
-    SupportedTypes.PARQUET_SNAPPY: pd.read_parquet,
+    SupportedTypes.PARQUET: _read_parquet_schema_only,
+    SupportedTypes.PARQUET_PQ: _read_parquet_schema_only,
+    SupportedTypes.PARQUET_PQT: _read_parquet_schema_only,
+    SupportedTypes.PARQUET_PARQ: _read_parquet_schema_only,
+    SupportedTypes.PARQUET_SNAPPY: _read_parquet_schema_only,
     SupportedTypes.JSON: partial(pd.read_json, lines=False),
     SupportedTypes.JSONGZ: partial(pd.read_json, lines=False),
     SupportedTypes.JSONZIP: partial(pd.read_json, lines=False),
@@ -360,13 +371,13 @@ class ZipReader(ArchiveReader):
     """ZIP reader that tries range requests first and falls back to a full download."""
 
     def __init__(self, blob: RangeReadableBlob) -> None:
+        blob_size = blob.get_size()
+        if blob_size > MAX_ARCHIVE_SIZE_BYTES:
+            raise ValueError(f"ZIP size {blob_size} exceeds limit {MAX_ARCHIVE_SIZE_BYTES}")
         try:
             self._reader: ArchiveReader = ZipRangeReader(blob)
         except Exception as exc:
             logger.warning(f"ZipRangeReader failed ({exc}), falling back to full download")
-            blob_size = blob.get_size()
-            if blob_size > MAX_ARCHIVE_SIZE_BYTES:
-                raise ValueError(f"ZIP size {blob_size} exceeds limit {MAX_ARCHIVE_SIZE_BYTES}") from exc
             data = blob.read_all()
             self._reader = ZipArchiveReader(data)
 
@@ -390,8 +401,7 @@ class TarArchiveReader(ArchiveReader):
         for tar_member in self._tar_file.getmembers():
             if not tar_member.isfile():
                 continue
-            parts = tar_member.name.replace("\\", "/").split("/")
-            if tar_member.name.startswith("/") or ".." in parts:
+            if not _is_safe_archive_path(tar_member.name):
                 logger.warning(f"Skipping suspicious path {tar_member.name!r}")
                 continue
             if tar_member.size > _MAX_INNER_FILE_BYTES:
@@ -414,56 +424,44 @@ class TarArchiveReader(ArchiveReader):
 
 
 class SevenZipArchiveReader(ArchiveReader):
-    """7z reader — py7zr requires full extraction to disk first; files are then read one at a time."""
+    """7z reader — validates paths and extracts once in __init__; entries() is a plain folder walk."""
 
     def __init__(self, data: bytes) -> None:
-        import py7zr  # noqa: PLC0415
-
-        self._raw_data = data
-        try:
-            # Validate the archive is readable before storing — fail fast with a clean error.
-            py7zr.SevenZipFile(BytesIO(data), mode="r").close()
-        except Exception as exc:
-            raise ValueError("Corrupted 7Z") from exc
-
-    def entries(self) -> Iterator[ArchiveEntry]:
         import tempfile  # noqa: PLC0415
         from pathlib import Path  # noqa: PLC0415
 
         import py7zr  # noqa: PLC0415
 
-        # Validate all entry names from the archive index (header-only read, no decompression)
-        # before any data hits disk. Raises immediately on suspicious paths.
-        with py7zr.SevenZipFile(BytesIO(self._raw_data), mode="r") as szf:
-            for info in szf.list():
-                if info.is_directory:
-                    continue
-                parts = info.filename.replace("\\", "/").split("/")
-                if info.filename.startswith("/") or ".." in parts:
-                    raise ValueError(f"Suspicious path in archive: {info.filename!r}")
+        self._tmpdir = tempfile.TemporaryDirectory()
+        try:
+            self._tmp_path = Path(self._tmpdir.name)
+            with py7zr.SevenZipFile(BytesIO(data), mode="r") as szf:
+                _validate_7z_entry_paths(szf)
+                szf.extractall(path=self._tmp_path)
+        except py7zr.Bad7zFile as exc:
+            self._tmpdir.cleanup()
+            raise ValueError("Corrupted 7Z") from exc
+        except Exception:
+            self._tmpdir.cleanup()
+            raise
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmp_path = Path(tmpdir)
-            # py7zr has no streaming API — all files must be extracted to disk first.
-            with py7zr.SevenZipFile(BytesIO(self._raw_data), mode="r") as seven_zip_file:
-                seven_zip_file.extractall(path=tmpdir)
-            for file_path in tmp_path.rglob("*"):
-                if not file_path.is_file():
+    def entries(self) -> Iterator[ArchiveEntry]:
+        for file_path in self._tmp_path.rglob("*"):
+            if not file_path.is_file():
+                continue
+            relative_name = str(file_path.relative_to(self._tmp_path))
+            try:
+                file_path.chmod(0o644)
+                size = file_path.stat().st_size
+                if size > _MAX_INNER_FILE_BYTES:
+                    logger.warning(f"Skipping {relative_name!r}: size {size} exceeds limit")
                     continue
-                relative_name = str(file_path.relative_to(tmp_path))
-                try:
-                    # py7zr may extract files with restrictive permissions — ensure we can read them.
-                    file_path.chmod(0o644)
-                    size = file_path.stat().st_size
-                    if size > _MAX_INNER_FILE_BYTES:
-                        logger.warning(f"Skipping {relative_name!r}: size {size} exceeds limit")
-                        continue
-                    yield ArchiveEntry(name=relative_name, data=BytesIO(file_path.read_bytes()), size=size)
-                except Exception as exc:
-                    logger.warning(f"Skipping archive entry {relative_name!r}: {exc}")
+                yield ArchiveEntry(name=relative_name, data=BytesIO(file_path.read_bytes()), size=size)
+            except Exception as exc:
+                logger.warning(f"Skipping archive entry {relative_name!r}: {exc}")
 
     def close(self) -> None:
-        pass  # nothing to close; each entries() call opens/closes its own handle
+        self._tmpdir.cleanup()
 
 
 class RarArchiveReader(ArchiveReader):
@@ -503,6 +501,14 @@ def _is_safe_archive_path(name: str) -> bool:
     """Return False for paths that could cause traversal or metadata pollution."""
     parts = name.replace("\\", "/").split("/")
     return not name.startswith("/") and ".." not in parts
+
+
+def _validate_7z_entry_paths(szf) -> None:  # type: ignore[no-untyped-def]
+    for info in szf.list():
+        if info.is_directory:
+            continue
+        if not _is_safe_archive_path(info.filename):
+            raise ValueError(f"Suspicious path in archive: {info.filename!r}")
 
 
 def get_archive_reader(structure_format: str, data: bytes) -> ArchiveReader:

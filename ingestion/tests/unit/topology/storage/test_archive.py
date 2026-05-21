@@ -49,6 +49,7 @@ _CSV_CONTENT = b"id,name,value\n1,Alice,100\n2,Bob,200\n"
 _CSV2_CONTENT = b"id,name,value\n3,Carol,300\n4,Dave,400\n"
 _JSON_CONTENT = b'[{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]'
 _JSONL_CONTENT = b'{"id": 1, "name": "Alice"}\n{"id": 2, "name": "Bob"}\n'
+_TSV_CONTENT = b"id\tname\tvalue\n1\tAlice\t100\n2\tBob\t200\n"
 
 
 class _MockBlob:
@@ -95,6 +96,44 @@ def _make_seven_z(files: dict) -> bytes:
         for name, content in files.items():
             data = content if isinstance(content, bytes) else content.encode()
             szf.writestr(data, name)
+    return buf.getvalue()
+
+
+def _make_parquet(data: dict) -> bytes:
+    import pandas as pd
+
+    buf = BytesIO()
+    pd.DataFrame(data).to_parquet(buf, index=False)
+    return buf.getvalue()
+
+
+def _make_complex_parquet() -> bytes:
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    meta = pa.StructArray.from_arrays(
+        [pa.array(["hello"]), pa.array([1], type=pa.int32())],
+        names=["k", "v"],
+    )
+    table = pa.table(
+        {
+            "id": pa.array([1], type=pa.int64()),
+            "meta": meta,
+            "tags": pa.array([["a", "b"]], type=pa.list_(pa.string())),
+        }
+    )
+    buf = BytesIO()
+    pq.write_table(table, buf)
+    return buf.getvalue()
+
+
+def _make_empty_parquet() -> bytes:
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    schema = pa.schema([("id", pa.int64()), ("name", pa.string())])
+    buf = BytesIO()
+    pq.write_table(schema.empty_table(), buf)
     return buf.getvalue()
 
 
@@ -681,37 +720,17 @@ class TestZipReader:
     def test_falls_back_when_range_reader_raises(self):
         zip_bytes = _make_zip({"data.csv": _CSV_CONTENT})
 
-        class _FailFirstGetSize(_MockBlob):
-            def __init__(self, data):
-                super().__init__(data)
-                self._calls = 0
+        class _FailRangeBlob(_MockBlob):
+            def read_range(self, *_) -> bytes:
+                raise OSError("range not supported")
 
-            def get_size(self) -> int:
-                self._calls += 1
-                if self._calls == 1:
-                    raise RuntimeError("range not supported")
-                return super().get_size()
-
-        blob = _FailFirstGetSize(zip_bytes)
+        blob = _FailRangeBlob(zip_bytes)
         with ZipReader(blob) as reader:
             entries = list(reader.entries())
         assert len(entries) == 1
 
     def test_fallback_oversized_raises(self):
-        zip_bytes = _make_zip({"data.csv": _CSV_CONTENT})
-
-        class _FailThenBig(_MockBlob):
-            def __init__(self, data):
-                super().__init__(data)
-                self._calls = 0
-
-            def get_size(self) -> int:
-                self._calls += 1
-                if self._calls == 1:
-                    raise RuntimeError("range not supported")
-                return MAX_ARCHIVE_SIZE_BYTES + 1
-
-        blob = _FailThenBig(zip_bytes)
+        blob = _MockBlob(b"", size_override=MAX_ARCHIVE_SIZE_BYTES + 1)
         with pytest.raises(ValueError, match="exceeds limit"):
             ZipReader(blob)
 
@@ -775,7 +794,6 @@ class TestSevenZipArchiveReader:
         from metadata.readers.archive import SevenZipArchiveReader
 
         seven_z_bytes = _make_seven_z({"normal.csv": _CSV_CONTENT})
-        reader = SevenZipArchiveReader(seven_z_bytes)
 
         mock_info = MagicMock()
         mock_info.is_directory = False
@@ -787,7 +805,7 @@ class TestSevenZipArchiveReader:
         mock_szf.list.return_value = [mock_info]
 
         with patch("py7zr.SevenZipFile", return_value=mock_szf), pytest.raises(ValueError, match="Suspicious path"):
-            list(reader.entries())
+            SevenZipArchiveReader(seven_z_bytes)
 
     def test_large_file_in_7z_is_skipped(self):
         if importlib.util.find_spec("py7zr") is None:
@@ -1096,6 +1114,33 @@ class TestInferColumnsFromArchiveEntry:
         assert "a" in col_names
         assert "b" in col_names
 
+    def test_tsv_returns_columns(self):
+        entry = ArchiveEntry(name="data.tsv", data=BytesIO(_TSV_CONTENT), size=len(_TSV_CONTENT))
+        cols = infer_columns_from_archive_entry(entry, SupportedTypes.TSV)
+        assert len(cols) > 0
+        col_names = [c.name.root for c in cols]
+        assert "id" in col_names
+        assert "name" in col_names
+
+    def test_parquet_complex_types_returns_struct_and_array(self):
+        from metadata.generated.schema.entity.data.table import DataType
+
+        parquet_bytes = _make_complex_parquet()
+        entry = ArchiveEntry(name="data.parquet", data=BytesIO(parquet_bytes), size=len(parquet_bytes))
+        cols = infer_columns_from_archive_entry(entry, SupportedTypes.PARQUET)
+        col_map = {c.name.root: c.dataType for c in cols}
+        assert col_map["id"] == DataType.INT
+        assert col_map["meta"] == DataType.STRUCT
+        assert col_map["tags"] == DataType.ARRAY
+
+    def test_parquet_empty_file_returns_columns_from_schema(self):
+        parquet_bytes = _make_empty_parquet()
+        entry = ArchiveEntry(name="data.parquet", data=BytesIO(parquet_bytes), size=len(parquet_bytes))
+        cols = infer_columns_from_archive_entry(entry, SupportedTypes.PARQUET)
+        col_names = [c.name.root for c in cols]
+        assert "id" in col_names
+        assert "name" in col_names
+
 
 # ---------------------------------------------------------------------------
 # TestGetFirstSchemaEntry
@@ -1139,6 +1184,25 @@ class TestGetFirstSchemaEntry:
             result = get_first_schema_entry(reader)
         assert result is not None
         assert result[0].name == "data.csv"
+
+    def test_json_inside_zip(self):
+        zip_bytes = _make_zip({"data.json": _JSON_CONTENT})
+        with ZipArchiveReader(zip_bytes) as reader:
+            result = get_first_schema_entry(reader)
+        assert result is not None
+        entry, fmt = result
+        assert fmt == SupportedTypes.JSON
+        assert entry.name == "data.json"
+
+    def test_parquet_inside_zip(self):
+        parquet_bytes = _make_parquet({"a": [1, 2], "b": ["x", "y"]})
+        zip_bytes = _make_zip({"data.parquet": parquet_bytes})
+        with ZipArchiveReader(zip_bytes) as reader:
+            result = get_first_schema_entry(reader)
+        assert result is not None
+        entry, fmt = result
+        assert fmt == SupportedTypes.PARQUET
+        assert entry.name == "data.parquet"
 
 
 # ---------------------------------------------------------------------------
@@ -1232,3 +1296,77 @@ class TestIterArchiveEntriesWithSchema:
 
         assert call_count["n"] == 2
         assert len(results) == 2
+
+    def test_parquet_inside_zip_columns_inferred(self):
+        parquet_bytes = _make_parquet({"a": [1, 2], "b": ["x", "y"]})
+        zip_bytes = _make_zip({"data.parquet": parquet_bytes})
+        with ZipArchiveReader(zip_bytes) as reader:
+            results = list(iter_archive_entries_with_schema(reader))
+        assert len(results) == 1
+        _entry, columns, entry_format = results[0]
+        assert entry_format == SupportedTypes.PARQUET
+        assert len(columns) > 0
+        col_names = [c.name.root for c in columns]
+        assert "a" in col_names
+        assert "b" in col_names
+
+
+class TestParquetInArchiveFormats:
+    def test_parquet_inside_tar(self):
+        parquet_bytes = _make_parquet({"x": [1, 2], "y": ["a", "b"]})
+        tar_bytes = _make_tar({"data.parquet": parquet_bytes})
+        with TarArchiveReader(tar_bytes) as reader:
+            result = get_first_schema_entry(reader)
+        assert result is not None
+        entry, fmt = result
+        assert fmt == SupportedTypes.PARQUET
+        cols = infer_columns_from_archive_entry(entry, fmt)
+        col_names = [c.name.root for c in cols]
+        assert "x" in col_names
+        assert "y" in col_names
+
+    def test_parquet_inside_7z(self):
+        if importlib.util.find_spec("py7zr") is None:
+            pytest.skip("py7zr not installed")
+        from metadata.readers.archive import SevenZipArchiveReader
+
+        parquet_bytes = _make_parquet({"x": [1, 2], "y": ["a", "b"]})
+        seven_z_bytes = _make_seven_z({"data.parquet": parquet_bytes})
+        with SevenZipArchiveReader(seven_z_bytes) as reader:
+            result = get_first_schema_entry(reader)
+        assert result is not None
+        entry, fmt = result
+        assert fmt == SupportedTypes.PARQUET
+        cols = infer_columns_from_archive_entry(entry, fmt)
+        col_names = [c.name.root for c in cols]
+        assert "x" in col_names
+        assert "y" in col_names
+
+    def test_parquet_inside_rar(self):
+        if importlib.util.find_spec("rarfile") is None:
+            pytest.skip("rarfile not installed")
+        from metadata.readers.archive import RarArchiveReader
+
+        parquet_bytes = _make_parquet({"x": [1, 2], "y": ["a", "b"]})
+        mock_file_handle = MagicMock()
+        mock_file_handle.read.return_value = parquet_bytes
+        mock_cm = MagicMock()
+        mock_cm.__enter__ = lambda _: mock_file_handle
+        mock_cm.__exit__ = MagicMock(return_value=False)
+        mock_entry_info = MagicMock()
+        mock_entry_info.is_dir.return_value = False
+        mock_entry_info.file_size = len(parquet_bytes)
+        mock_entry_info.filename = "data.parquet"
+        mock_rar = MagicMock()
+        mock_rar.infolist.return_value = [mock_entry_info]
+        mock_rar.open.return_value = mock_cm
+        with patch("rarfile.RarFile", return_value=mock_rar):
+            reader = RarArchiveReader(b"fake_rar")
+            result = get_first_schema_entry(reader)
+        assert result is not None
+        entry, fmt = result
+        assert fmt == SupportedTypes.PARQUET
+        cols = infer_columns_from_archive_entry(entry, fmt)
+        col_names = [c.name.root for c in cols]
+        assert "x" in col_names
+        assert "y" in col_names
