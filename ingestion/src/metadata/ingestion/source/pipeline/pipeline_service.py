@@ -58,6 +58,11 @@ from metadata.ingestion.source.connections import get_connection, test_connectio
 from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
 from metadata.ingestion.source.pipeline.openlineage.utils import FQNNotFoundException
 from metadata.utils import fqn
+from metadata.utils.filter_visibility import (
+    log_discovered,
+    log_filtered,
+    log_step_summary,
+)
 from metadata.utils.filters import filter_by_pipeline
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
@@ -345,6 +350,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def close(self):
         """Method to implement any required logic after the ingestion process is completed"""
+        log_step_summary(logger, self.status, self.config.serviceName)
         self.metadata.compute_percentile(Pipeline, self.today)
 
     def get_services(self) -> Iterable[WorkflowSource]:
@@ -354,15 +360,24 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         yield Either(right=self.metadata.get_create_service_from_source(entity=PipelineService, config=config))
 
     def get_pipeline(self) -> Any:
-        for pipeline_detail in self.get_pipelines_list():
+        pipelines = list(self.get_pipelines_list() or [])
+        log_discovered(
+            logger,
+            self.status,
+            "Pipeline",
+            (self.get_pipeline_name(p) for p in pipelines),
+        )
+        for pipeline_detail in pipelines:
             pipeline_name = self.get_pipeline_name(pipeline_detail)
             if filter_by_pipeline(
                 self.source_config.pipelineFilterPattern,
                 pipeline_name,
             ):
-                self.status.filter(
+                log_filtered(
+                    logger,
+                    self.status,
+                    "Pipeline",
                     pipeline_name,
-                    "Pipeline Filtered Out",
                 )
                 continue
             yield pipeline_detail

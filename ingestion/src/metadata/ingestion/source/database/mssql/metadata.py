@@ -61,6 +61,7 @@ from metadata.ingestion.source.database.mssql.utils import (
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
+from metadata.utils.filter_visibility import log_discovered, log_filtered
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqa_utils import update_mssql_ischema_names
@@ -198,7 +199,9 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
-            for new_database in self.get_database_names_raw():
+            database_names = list(self.get_database_names_raw())
+            log_discovered(logger, self.status, "Database", database_names)
+            for new_database in database_names:
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
@@ -206,11 +209,19 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     database_name=new_database,
                 )
 
+                filter_name = database_fqn if self.source_config.useFqnForFiltering else new_database
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    (database_fqn if self.source_config.useFqnForFiltering else new_database),
+                    filter_name,
                 ):
-                    self.status.filter(database_fqn, "Database Filtered Out")
+                    log_filtered(
+                        logger,
+                        self.status,
+                        "Database",
+                        database_fqn,
+                        matched_against=filter_name,
+                        use_fqn_for_filtering=self.source_config.useFqnForFiltering,
+                    )
                     continue
 
                 try:

@@ -108,6 +108,7 @@ from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.execution_time_tracker import calculate_execution_time
+from metadata.utils.filter_visibility import log_discovered, log_filtered
 from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
@@ -663,7 +664,10 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         ]
 
     def _get_filtered_schema_names(self, return_fqn: bool = False, add_to_status: bool = True) -> Iterable[str]:
-        for schema_name in self.get_raw_database_schema_names():
+        raw_names = list(self.get_raw_database_schema_names())
+        if add_to_status:
+            log_discovered(logger, self.status, "Schema", raw_names)
+        for schema_name in raw_names:
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
@@ -671,12 +675,20 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 database_name=self.context.get().database,
                 schema_name=schema_name,
             )
+            filter_name = schema_fqn if self.source_config.useFqnForFiltering else schema_name
             if filter_by_schema(
                 self.source_config.schemaFilterPattern,
-                schema_fqn if self.source_config.useFqnForFiltering else schema_name,
+                filter_name,
             ):
                 if add_to_status:
-                    self.status.filter(schema_fqn, "Schema Filtered Out")
+                    log_filtered(
+                        logger,
+                        self.status,
+                        "Schema",
+                        schema_fqn,
+                        matched_against=filter_name,
+                        use_fqn_for_filtering=self.source_config.useFqnForFiltering,
+                    )
                 continue
 
             if self.incremental.enabled:
@@ -826,6 +838,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         yield from self.project_ids
 
     def get_database_names(self) -> Iterable[str]:
+        log_discovered(logger, self.status, "Database", self.project_ids)
         for project_id in self.project_ids:
             database_fqn = fqn.build(
                 self.metadata,
@@ -833,11 +846,19 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 service_name=self.context.get().database_service,
                 database_name=project_id,
             )
+            filter_name = database_fqn if self.source_config.useFqnForFiltering else project_id
             if filter_by_database(
                 self.source_config.databaseFilterPattern,
-                database_fqn if self.source_config.useFqnForFiltering else project_id,
+                filter_name,
             ):
-                self.status.filter(database_fqn, "Database Filtered out")
+                log_filtered(
+                    logger,
+                    self.status,
+                    "Database",
+                    database_fqn,
+                    matched_against=filter_name,
+                    use_fqn_for_filtering=self.source_config.useFqnForFiltering,
+                )
             else:
                 try:
                     self.set_inspector(database_name=project_id)

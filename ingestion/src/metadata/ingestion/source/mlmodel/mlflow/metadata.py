@@ -45,6 +45,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
+from metadata.utils.filter_visibility import log_discovered, log_filtered
 from metadata.utils.filters import filter_by_mlmodel
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
@@ -74,12 +75,11 @@ class MlflowSource(MlModelServiceSource):
         """
         List and filters models from the registry
         """
-        for model in cast(RegisteredModel, self.client.search_registered_models()):  # noqa: TC006
+        models = list(cast(RegisteredModel, self.client.search_registered_models()))  # noqa: TC006
+        log_discovered(logger, self.status, "MlModel", (m.name for m in models))
+        for model in models:
             if filter_by_mlmodel(self.source_config.mlModelFilterPattern, mlmodel_name=model.name):
-                self.status.filter(
-                    model.name,
-                    "MlModel name pattern not allowed",
-                )
+                log_filtered(logger, self.status, "MlModel", model.name)
                 continue
 
             # Get the latest version

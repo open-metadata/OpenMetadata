@@ -128,6 +128,7 @@ from metadata.ingestion.source.database.snowflake.utils import (
     normalize_names,
 )
 from metadata.utils import fqn
+from metadata.utils.filter_visibility import log_discovered, log_filtered
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
@@ -386,11 +387,6 @@ class SnowflakeSource(
     def get_database_names_raw(self) -> Iterable[str]:
         results = self.connection.execute(text(SNOWFLAKE_GET_DATABASES)).fetchall()
         database_names = [list(res)[1] for res in results]
-        logger.info(
-            "SHOW DATABASES returned %d database(s) visible to the ingestion role",
-            len(database_names),
-        )
-        logger.debug("Databases visible to the ingestion role: %s", database_names)
         yield from database_names
 
     def get_database_names(self) -> Iterable[str]:
@@ -406,7 +402,9 @@ class SnowflakeSource(
             self.set_database_tags_map(configured_db)
             yield configured_db
         else:
-            for new_database in self.get_database_names_raw():
+            database_names = list(self.get_database_names_raw())
+            log_discovered(logger, self.status, "Database", database_names)
+            for new_database in database_names:
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
@@ -421,14 +419,14 @@ class SnowflakeSource(
                     self.source_config.databaseFilterPattern,
                     filter_name,
                 ):
-                    logger.info(
-                        "Filtering out database '%s': did not pass databaseFilterPattern "
-                        "(matched against '%s', useFqnForFiltering=%s)",
-                        new_database,
-                        filter_name,
-                        self.source_config.useFqnForFiltering,
+                    log_filtered(
+                        logger,
+                        self.status,
+                        "Database",
+                        database_fqn,
+                        matched_against=filter_name,
+                        use_fqn_for_filtering=self.source_config.useFqnForFiltering,
                     )
-                    self.status.filter(database_fqn, "Database Filtered Out")
                     continue
 
                 try:

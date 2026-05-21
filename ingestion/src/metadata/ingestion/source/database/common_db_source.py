@@ -73,6 +73,11 @@ from metadata.utils.execution_time_tracker import (
     calculate_execution_time,
     calculate_execution_time_generator,
 )
+from metadata.utils.filter_visibility import (
+    log_discovered,
+    log_filtered,
+    log_step_summary,
+)
 from metadata.utils.filters import filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
@@ -365,11 +370,17 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         schema_name = self.context.get().database_schema
         if self.source_config.includeTables:
             try:
-                table_iter = self.query_table_names_and_types(schema_name)
+                table_iter = list(self.query_table_names_and_types(schema_name))
             except Exception as err:
                 logger.warning(f"Fetching table list failed for schema {schema_name} due to - {err}")
                 logger.debug(traceback.format_exc())
                 table_iter = []
+            log_discovered(
+                logger,
+                self.status,
+                "Table",
+                (item.name for item in table_iter),
+            )
             for table_and_type in table_iter:
                 try:
                     table_name = self.standardize_table_name(schema_name, table_and_type.name)
@@ -382,13 +393,18 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                         table_name=table_name,
                         skip_es_search=True,
                     )
+                    filter_name = table_fqn if self.source_config.useFqnForFiltering else table_name
                     if filter_by_table(
                         self.source_config.tableFilterPattern,
-                        (table_fqn if self.source_config.useFqnForFiltering else table_name),
+                        filter_name,
                     ):
-                        self.status.filter(
+                        log_filtered(
+                            logger,
+                            self.status,
+                            "Table",
                             table_fqn,
-                            "Table Filtered Out",
+                            matched_against=filter_name,
+                            use_fqn_for_filtering=self.source_config.useFqnForFiltering,
                         )
                         continue
                 except Exception as err:
@@ -399,11 +415,17 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
 
         if self.source_config.includeViews:
             try:
-                view_iter = self.query_view_names_and_types(schema_name)
+                view_iter = list(self.query_view_names_and_types(schema_name))
             except Exception as err:
                 logger.warning(f"Fetching view list failed for schema {schema_name} due to - {err}")
                 logger.debug(traceback.format_exc())
                 view_iter = []
+            log_discovered(
+                logger,
+                self.status,
+                "Table",
+                (item.name for item in view_iter),
+            )
             for view_and_type in view_iter:
                 try:
                     view_name = self.standardize_table_name(schema_name, view_and_type.name)
@@ -416,13 +438,18 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                         table_name=view_name,
                     )
 
+                    filter_name = view_fqn if self.source_config.useFqnForFiltering else view_name
                     if filter_by_table(
                         self.source_config.tableFilterPattern,
-                        (view_fqn if self.source_config.useFqnForFiltering else view_name),
+                        filter_name,
                     ):
-                        self.status.filter(
+                        log_filtered(
+                            logger,
+                            self.status,
+                            "Table",
                             view_fqn,
-                            "Table Filtered Out",
+                            matched_against=filter_name,
+                            use_fqn_for_filtering=self.source_config.useFqnForFiltering,
                         )
                         continue
                 except Exception as err:
@@ -746,6 +773,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         return self._inspector_map[thread_id]
 
     def close(self):
+        log_step_summary(logger, self.status, self.config.serviceName)
         self._release_engine()
         if hasattr(self, "ssl_manager") and self.ssl_manager:
             self.ssl_manager = cast(SSLManager, self.ssl_manager)  # noqa: TC006

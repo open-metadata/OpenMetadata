@@ -82,6 +82,7 @@ from metadata.ingestion.source.database.postgres.utils import (
     get_view_definition,
 )
 from metadata.utils import fqn
+from metadata.utils.filter_visibility import log_discovered, log_filtered
 from metadata.utils.filters import filter_by_database
 from metadata.utils.importer import import_side_effects
 from metadata.utils.logger import ingestion_logger
@@ -180,7 +181,9 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
             self.set_schema_description_map()
             yield configured_db
         else:
-            for new_database in self.get_database_names_raw():
+            database_names = list(self.get_database_names_raw())
+            log_discovered(logger, self.status, "Database", database_names)
+            for new_database in database_names:
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
@@ -188,11 +191,19 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                     database_name=new_database,
                 )
 
+                filter_name = database_fqn if self.source_config.useFqnForFiltering else new_database
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    (database_fqn if self.source_config.useFqnForFiltering else new_database),
+                    filter_name,
                 ):
-                    self.status.filter(database_fqn, "Database Filtered Out")
+                    log_filtered(
+                        logger,
+                        self.status,
+                        "Database",
+                        database_fqn,
+                        matched_against=filter_name,
+                        use_fqn_for_filtering=self.source_config.useFqnForFiltering,
+                    )
                     continue
 
                 try:

@@ -51,6 +51,7 @@ from metadata.ingestion.models.topology import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, test_connection_common
 from metadata.utils import fqn
+from metadata.utils.filter_visibility import log_step_summary
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 
@@ -174,6 +175,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def close(self):
         """By default, nothing to close"""
+        log_step_summary(logger, self.status, self.config.serviceName)
 
     def test_connection(self) -> None:
         test_connection_common(self.metadata, self.connection_obj, self.service_connection)

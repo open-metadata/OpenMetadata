@@ -73,6 +73,11 @@ from metadata.ingestion.models.topology import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, test_connection_common
 from metadata.utils import fqn
+from metadata.utils.filter_visibility import (
+    log_discovered,
+    log_filtered,
+    log_step_summary,
+)
 from metadata.utils.filters import filter_by_dashboard, filter_by_project
 from metadata.utils.logger import ingestion_logger
 
@@ -418,6 +423,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             return
 
     def close(self):
+        log_step_summary(logger, self.status, self.config.serviceName)
         self.metadata.close()
 
     def get_services(self) -> Iterable[WorkflowSource]:
@@ -566,15 +572,24 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Method to iterate through dashboard lists filter dashboards & yield dashboard details
         """
-        for dashboard in self.get_dashboards_list():
+        dashboards = list(self.get_dashboards_list())
+        log_discovered(
+            logger,
+            self.status,
+            "Dashboard",
+            (self.get_dashboard_name(d) for d in dashboards),
+        )
+        for dashboard in dashboards:
             dashboard_name = self.get_dashboard_name(dashboard)
             if filter_by_dashboard(
                 self.source_config.dashboardFilterPattern,
                 dashboard_name,
             ):
-                self.status.filter(
+                log_filtered(
+                    logger,
+                    self.status,
+                    "Dashboard",
                     dashboard_name,
-                    "Dashboard Filtered Out",
                 )
                 continue
 
@@ -594,9 +609,11 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                     self.source_config.projectFilterPattern,
                     project_name,
                 ):
-                    self.status.filter(
+                    log_filtered(
+                        logger,
+                        self.status,
+                        "Project",
                         project_name,
-                        "Project / Workspace Filtered Out",
                     )
                     continue
 

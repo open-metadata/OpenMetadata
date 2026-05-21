@@ -49,6 +49,11 @@ from metadata.ingestion.models.topology import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, test_connection_common
 from metadata.utils import fqn
+from metadata.utils.filter_visibility import (
+    log_discovered,
+    log_filtered,
+    log_step_summary,
+)
 from metadata.utils.filters import filter_by_topic
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
@@ -206,15 +211,24 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     def get_topic(self) -> Any:
-        for topic_details in self.get_topic_list():
+        topics = list(self.get_topic_list() or [])
+        log_discovered(
+            logger,
+            self.status,
+            "Topic",
+            (self.get_topic_name(t) for t in topics),
+        )
+        for topic_details in topics:
             topic_name = self.get_topic_name(topic_details)
             if filter_by_topic(
                 self.source_config.topicFilterPattern,
                 topic_name,
             ):
-                self.status.filter(
+                log_filtered(
+                    logger,
+                    self.status,
+                    "Topic",
                     topic_name,
-                    "Topic Filtered Out",
                 )
                 continue
             yield topic_details
@@ -257,3 +271,4 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def close(self):
         """By default, nothing to close"""
+        log_step_summary(logger, self.status, self.config.serviceName)

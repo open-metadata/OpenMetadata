@@ -64,6 +64,7 @@ from metadata.utils.datalake.datalake_utils import (
     DataFrameColumnParser,
     fetch_dataframe_first_chunk,
 )
+from metadata.utils.filter_visibility import log_filtered, log_step_summary
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.path_pattern import (
@@ -302,6 +303,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def close(self):
         """By default, nothing needs to be closed"""
+        log_step_summary(logger, self.status, self.config.serviceName)
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
@@ -666,11 +668,13 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
 
             # 2. Pipeline-level containerFilterPattern against the dataPath.
             if pattern and filter_by_container(pattern, path):
-                logger.info(
-                    f"Skipping manifest entry '{path}' in bucket '{bucket_name}' — filtered by containerFilterPattern."
-                )
                 if hasattr(self, "status") and hasattr(self.status, "filter"):
-                    self.status.filter(path, "containerFilterPattern excluded")
+                    log_filtered(logger, self.status, "Container", path)
+                else:
+                    logger.info(
+                        f"Skipping manifest entry '{path}' in bucket '{bucket_name}' "
+                        f"— filtered by containerFilterPattern."
+                    )
                 continue
 
             filtered.append(entry)

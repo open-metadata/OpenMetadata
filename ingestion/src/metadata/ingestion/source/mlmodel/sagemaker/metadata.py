@@ -46,6 +46,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
+from metadata.utils.filter_visibility import log_discovered, log_filtered
 from metadata.utils.filters import filter_by_mlmodel
 from metadata.utils.logger import ingestion_logger
 
@@ -134,16 +135,14 @@ class SagemakerSource(MlModelServiceSource):
         else:
             logger.debug(f"No registered models found under sagemaker unified studio")  # noqa: F541
 
+        log_discovered(logger, self.status, "MlModel", (m["ModelName"] for m in models))
         for model in models:
             try:
                 if filter_by_mlmodel(
                     self.source_config.mlModelFilterPattern,
                     mlmodel_name=model["ModelName"],
                 ):
-                    self.status.filter(
-                        model["ModelName"],
-                        "MlModel name pattern not allowed",
-                    )
+                    log_filtered(logger, self.status, "MlModel", model["ModelName"])
                     continue
                 yield SageMakerModel(
                     name=model["ModelName"],

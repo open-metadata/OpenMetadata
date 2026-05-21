@@ -71,6 +71,7 @@ from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.utils import fqn
 from metadata.utils.execution_time_tracker import calculate_execution_time
+from metadata.utils.filter_visibility import log_discovered, log_filtered
 from metadata.utils.filters import filter_by_schema, filter_by_stored_procedure
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.owner_utils import get_owner_from_config
@@ -545,27 +546,44 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
     def _get_filtered_database_names(self, return_fqn: bool = False, add_to_status: bool = True) -> Iterable[str]:
         """
-        Get filtered database names based on the database filter pattern
+        Get filtered database names based on the database filter pattern.
+
+        Note: this is a maintenance-pass helper (called from
+        mark_databases_as_deleted), not the main ingestion path. Discovery
+        logging lives in each connector's get_database_names() to avoid
+        double-counting; this method only emits filter-rejection logs when
+        add_to_status=True.
         """
-        database_names_iterable = getattr(self, "get_database_names_raw", self.get_database_names)()
-        for database_name in database_names_iterable:
+        raw_names = list(getattr(self, "get_database_names_raw", self.get_database_names)())
+        for database_name in raw_names:
             database_fqn = fqn.build(
                 self.metadata,
                 entity_type=Database,
                 service_name=self.context.get().database_service,
                 database_name=database_name,
             )
+            filter_name = database_fqn if self.source_config.useFqnForFiltering else database_name
             if filter_by_schema(
                 self.source_config.databaseFilterPattern,
-                (database_fqn if self.source_config.useFqnForFiltering else database_name),
+                filter_name,
             ):
                 if add_to_status:
-                    self.status.filter(database_fqn, "Database Filtered Out")
+                    log_filtered(
+                        logger,
+                        self.status,
+                        "Database",
+                        database_fqn,
+                        matched_against=filter_name,
+                        use_fqn_for_filtering=self.source_config.useFqnForFiltering,
+                    )
                 continue
             yield database_fqn if return_fqn else database_name
 
     def _get_filtered_schema_names(self, return_fqn: bool = False, add_to_status: bool = True) -> Iterable[str]:
-        for schema_name in self.get_raw_database_schema_names():
+        raw_names = list(self.get_raw_database_schema_names())
+        if add_to_status:
+            log_discovered(logger, self.status, "Schema", raw_names)
+        for schema_name in raw_names:
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
@@ -573,12 +591,20 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                 database_name=self.context.get().database,
                 schema_name=schema_name,
             )
+            filter_name = schema_fqn if self.source_config.useFqnForFiltering else schema_name
             if filter_by_schema(
                 self.source_config.schemaFilterPattern,
-                schema_fqn if self.source_config.useFqnForFiltering else schema_name,
+                filter_name,
             ):
                 if add_to_status:
-                    self.status.filter(schema_fqn, "Schema Filtered Out")
+                    log_filtered(
+                        logger,
+                        self.status,
+                        "Schema",
+                        schema_fqn,
+                        matched_against=filter_name,
+                        use_fqn_for_filtering=self.source_config.useFqnForFiltering,
+                    )
                 continue
             yield schema_fqn if return_fqn else schema_name
 

@@ -60,6 +60,7 @@ class Status(BaseModel):
     warnings: Annotated[List[Any], Field(default_factory=list)]  # noqa: UP006
     filtered: Annotated[List[Dict[str, str]], Field(default_factory=list)]  # noqa: UP006
     failures: Annotated[List[TruncatedStackTraceError], Field(default_factory=list)]  # noqa: UP006
+    discovered_counts: Annotated[Dict[str, int], Field(default_factory=dict)]  # noqa: UP006
 
     def scanned(self, record: Any) -> None:
         """
@@ -100,6 +101,12 @@ class Status(BaseModel):
 
     def filter(self, key: str, reason: str) -> None:
         self.filtered.append({key: reason})
+
+    def record_discovered(self, entity_type: str, count: int) -> None:
+        """Record the count of entities discovered from the source before any
+        filter pattern is applied. Used by log_step_summary to report the
+        discovered vs. filtered vs. kept breakdown."""
+        self.discovered_counts[entity_type] = self.discovered_counts.get(entity_type, 0) + count
 
     def as_string(self) -> str:
         parts = []
