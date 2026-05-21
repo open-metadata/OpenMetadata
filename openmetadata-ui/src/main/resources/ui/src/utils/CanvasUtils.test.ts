@@ -12,6 +12,7 @@
  */
 import { Edge, Node, Viewport } from 'reactflow';
 import { EntityType } from '../enums/entity.enum';
+import { useLineageStore } from '../hooks/useLineageStore';
 import {
   BoundingBox,
   boundsIntersect,
@@ -84,6 +85,10 @@ const createMockEdge = (
 });
 
 describe('CanvasUtils', () => {
+  afterEach(() => {
+    useLineageStore.setState({ isColumnLevelLineage: false });
+  });
+
   describe('setupCanvas', () => {
     it('sets up canvas with correct dimensions', () => {
       const canvas = createMockCanvas();
@@ -219,12 +224,12 @@ describe('CanvasUtils', () => {
 
         const result = getEdgeCoordinates(edge, sourceNode, targetNode);
 
-        // Y uses node.height (100) from createMockNode, so midpoint = 50
+        // Non-temp entity nodes use the computed node height, not the measured DOM height.
         expect(result).toEqual({
           sourceX: 400,
-          sourceY: 50,
+          sourceY: 33,
           targetX: 490,
-          targetY: 50,
+          targetY: 33,
         });
       });
 
@@ -239,9 +244,9 @@ describe('CanvasUtils', () => {
 
         expect(result).not.toBeNull();
         expect(result?.sourceX).toBe(500);
-        expect(result?.sourceY).toBe(250); // 200 + 100/2
+        expect(result?.sourceY).toBe(233); // 200 + 66/2 from computed height
         expect(result?.targetX).toBe(590);
-        expect(result?.targetY).toBe(350); // 300 + 100/2
+        expect(result?.targetY).toBe(333); // 300 + 66/2 from computed height
       });
     });
 
@@ -422,23 +427,62 @@ describe('CanvasUtils', () => {
 
         expect(result).not.toBeNull();
         expect(result?.sourceY).toBe(40); // 0 + 80/2 (measured height), not 33 (getNodeHeight formula)
-        expect(result?.targetY).toBe(50); // 0 + 100/2
+        expect(result?.targetY).toBe(33); // 0 + 66/2 from computed height for non-temp target
       });
 
-      it('centers edge at actual midpoint when measured height differs from computed height', () => {
+      it('uses measured node.height for temp node column-level edge', () => {
+        const edge = createMockEdge('edge1', 'temp_staging', 'node2', true);
+        edge.sourceHandle = 'col1';
+        edge.targetHandle = 'col1';
+
+        const tempNode = createTempNode('temp_staging', 80);
+        const targetNode = createMockNode('node2', 1);
+        targetNode.data.node.flattenColumns = [{}];
+        targetNode.position = { x: 500, y: 0 };
+
+        const columnsInCurrentPages = new Map([
+          ['temp_staging', ['col1']],
+          ['node2', ['col1']],
+        ]);
+
+        const result = getEdgeCoordinates(
+          edge,
+          tempNode,
+          targetNode,
+          columnsInCurrentPages
+        );
+
+        expect(result).not.toBeNull();
+        expect(result?.sourceY).toBeCloseTo(124.425, 3);
+      });
+
+      it('uses measured node.height for temp target entity-level edge', () => {
         const edge = createMockEdge('edge1', 'node1', 'node2', false);
         const sourceNode = createMockNode('node1');
-        sourceNode.height = 150;
         sourceNode.position = { x: 0, y: 100 };
-        const targetNode = createMockNode('node2');
-        targetNode.height = 200;
+        const targetNode = createTempNode('node2', 200);
         targetNode.position = { x: 500, y: 100 };
 
         const result = getEdgeCoordinates(edge, sourceNode, targetNode);
 
         expect(result).not.toBeNull();
-        expect(result?.sourceY).toBe(175); // 100 + 150/2
-        expect(result?.targetY).toBe(200); // 100 + 200/2
+        expect(result?.sourceY).toBe(133); // 100 + 66/2 from computed height for non-temp source
+        expect(result?.targetY).toBe(200); // 100 + 200/2 from measured height for temp target
+      });
+
+      it('uses header-card height for temp nodes when column layer is active', () => {
+        useLineageStore.setState({ isColumnLevelLineage: true });
+
+        const edge = createMockEdge('edge1', 'temp_staging', 'node2', false);
+        const tempNode = createTempNode('temp_staging', 80);
+        const targetNode = createMockNode('node2');
+        targetNode.position = { x: 500, y: 0 };
+
+        const result = getEdgeCoordinates(edge, tempNode, targetNode);
+
+        expect(result).not.toBeNull();
+        expect(result?.sourceY).toBe(31);
+        expect(result?.targetY).toBe(31);
       });
     });
   });
