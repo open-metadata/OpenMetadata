@@ -1239,6 +1239,7 @@
     "lineage-source": "Bron van herkomst",
     "lineage-view-option-plural": "Opties voor herkomstweergave",
     "link": "Koppeling",
+    "link-an-entity": "Link an Asset",
     "link-entity": "Link {{entity}}",
     "linked-data-asset-plural": "Linked Data Assets",
     "list": "Lijst",

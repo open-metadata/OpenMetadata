@@ -1239,6 +1239,7 @@
     "lineage-source": "Источник происхождения",
     "lineage-view-option-plural": "Параметры просмотра происхождения",
     "link": "Ссылка",
+    "link-an-entity": "Link an Asset",
     "link-entity": "Link {{entity}}",
     "linked-data-asset-plural": "Linked Data Assets",
     "list": "Список",

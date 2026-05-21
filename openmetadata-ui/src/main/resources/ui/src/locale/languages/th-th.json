@@ -1239,6 +1239,7 @@
     "lineage-source": "แหล่งที่มาของลำดับชั้น",
     "lineage-view-option-plural": "ตัวเลือกมุมมองลำดับชั้น",
     "link": "ลิงก์",
+    "link-an-entity": "Link an Asset",
     "link-entity": "Link {{entity}}",
     "linked-data-asset-plural": "Linked Data Assets",
     "list": "รายการ",

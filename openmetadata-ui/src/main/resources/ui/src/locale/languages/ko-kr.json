@@ -1239,6 +1239,7 @@
     "lineage-source": "계보 출처",
     "lineage-view-option-plural": "계보 보기 옵션",
     "link": "링크",
+    "link-an-entity": "Link an Asset",
     "link-entity": "Link {{entity}}",
     "linked-data-asset-plural": "Linked Data Assets",
     "list": "목록",

@@ -23,7 +23,7 @@ import {
   ModalOverlay,
   Select,
   TextArea,
-  Typography
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Lightbulb03, Plus, Share07, Trash01, X } from '@untitledui/icons';
 import { ConfigProvider } from 'antd';
@@ -49,9 +49,7 @@ import {
   deleteContextMemory,
   updateContextMemory,
 } from '../../../rest/contextMemoryAPI';
-import {
-  formatDate
-} from '../../../utils/date-time/DateTimeUtils';
+import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -70,28 +68,41 @@ const LinkedAssetCard: FC<{
   onRemove?: (fqn: string) => void;
 }> = ({ asset, onRemove }) => {
   const displayName =
-    asset.displayName ||
-    (typeof asset.label === 'string' ? asset.label : '');
+    asset.displayName || (typeof asset.label === 'string' ? asset.label : '');
 
   const fqn = asset.reference?.fullyQualifiedName ?? String(asset.value ?? '');
 
   return (
     <Card className="tw:flex tw:items-center tw:gap-3 tw:p-3">
       <div className="tw:shrink-0">
-        {searchClassBase.getEntityIcon(asset.reference?.type ?? '', 'tw:w-8 tw:h-8')}
+        {searchClassBase.getEntityIcon(
+          asset.reference?.type ?? '',
+          'tw:w-8 tw:h-8'
+        )}
       </div>
       <div className="tw:flex tw:flex-1 tw:justify-between tw:items-center tw:min-w-0">
         <div className="tw:min-w-0 tw:flex-1 tw:pr-2">
-          <Typography ellipsis className="tw:truncate" size="text-sm" weight="medium">
+          <Typography
+            ellipsis
+            className="tw:truncate"
+            size="text-sm"
+            weight="medium">
             {displayName}
           </Typography>
-          <Typography ellipsis className="tw:text-gray-400 tw:truncate" size="text-xs">
+          <Typography
+            ellipsis
+            className="tw:text-gray-400 tw:truncate"
+            size="text-xs">
             {asset.reference?.fullyQualifiedName ?? ''}
           </Typography>
         </div>
         <div className="tw:flex tw:items-center tw:gap-2 tw:shrink-0">
           {asset.reference?.type && (
-            <Badge className='tw:uppercase' color="gray" size="sm" type="modern">
+            <Badge
+              className="tw:uppercase"
+              color="gray"
+              size="sm"
+              type="modern">
               {asset.reference.type}
             </Badge>
           )}
@@ -99,7 +110,8 @@ const LinkedAssetCard: FC<{
             <ButtonUtility
               color="tertiary"
               icon={<X size={18} strokeWidth={2} />}
-              onClick={() => onRemove(fqn)} />
+              onClick={() => onRemove(fqn)}
+            />
           )}
         </div>
       </div>
@@ -335,7 +347,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     }
   };
 
-
   return (
     <ModalOverlay
       isOpen={isOpen}
@@ -344,7 +355,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       <Modal>
         <Dialog showCloseButton title="" width={600} onClose={handleClose}>
           <Dialog.Content className="tw:p-0">
-            <div className="tw:flex tw:flex-col tw:max-h-[80vh]" ref={modalContainerRef}>
+            <div
+              className="tw:flex tw:flex-col tw:max-h-[80vh]"
+              ref={modalContainerRef}>
               <ConfigProvider
                 getPopupContainer={() =>
                   modalContainerRef.current ?? document.body
@@ -369,7 +382,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         </Typography>
                         <UserPopOverCard
                           showUserName
-                          className='tw:text-gray-900'
+                          className="tw:text-gray-900"
                           profileWidth={16}
                           userName={memoryToEdit.updatedBy}
                         />
@@ -461,7 +474,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       className="tw:text-gray-600"
                       size="text-xs"
                       weight="semibold">
-                      {`${t('label.linked-data-asset-plural')} (${linkedAssets.length})`}
+                      {`${t('label.linked-data-asset-plural')} (${
+                        linkedAssets.length
+                      })`}
                     </Typography>
 
                     {viewOnly ? (
@@ -512,7 +527,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                     </Typography>
                     <Card className="tw:flex tw:flex-col tw:divide-y tw:divide-gray-100 tw:mt-2">
                       <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
-                        <div className='tw:basis-[30%]'>
+                        <div className="tw:basis-[30%]">
                           <Typography
                             className="tw:text-gray-500 tw:w-28 tw:shrink-0"
                             size="text-sm">
@@ -539,7 +554,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       {/* Tags row */}
                       <div className="tw:flex tw:flex-col tw:gap-2 tw:px-4 tw:py-3">
                         <div className="tw:flex tw:items-center tw:gap-3">
-                          <div className='tw:basis-[30%]'>
+                          <div className="tw:basis-[30%]">
                             <Typography
                               className="tw:text-gray-500 tw:w-28 tw:shrink-0"
                               size="text-sm">
@@ -555,10 +570,13 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                                   size="sm"
                                   type="modern">
                                   {tag.style?.color && (
-                                    <div className='tw:shrink-0'>
+                                    <div className="tw:shrink-0">
                                       <Dot
                                         size="sm"
-                                        style={{ color: tag.style?.color, marginRight: '6px' }}
+                                        style={{
+                                          color: tag.style?.color,
+                                          marginRight: '6px',
+                                        }}
                                       />
                                     </div>
                                   )}
@@ -572,27 +590,29 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                               ) : (
                                 <BadgeWithButton
                                   color="gray"
-                                  
                                   key={tag.tagFQN}
                                   type="modern"
                                   onButtonClick={() =>
                                     handleRemoveTag(tag.tagFQN)
                                   }>
-                                  <div className='tw:max-w-40 tw:flex tw:items-center'>
+                                  <div className="tw:max-w-40 tw:flex tw:items-center">
                                     {tag.style?.color && (
-                                      <div className='tw:shrink-0'>
+                                      <div className="tw:shrink-0">
                                         <Dot
                                           size="sm"
-                                          style={{ color: tag.style?.color, marginRight: '6px' }}
+                                          style={{
+                                            color: tag.style?.color,
+                                            marginRight: '6px',
+                                          }}
                                         />
                                       </div>
                                     )}
                                     <Typography
-                                    ellipsis
-                                    className="tw:text-gray-700"
-                                    size="text-xs">
-                                    {tag.tagFQN}
-                                  </Typography>
+                                      ellipsis
+                                      className="tw:text-gray-700"
+                                      size="text-xs">
+                                      {tag.tagFQN}
+                                    </Typography>
                                   </div>
                                 </BadgeWithButton>
                               )
@@ -627,7 +647,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
 
                       {Boolean(memoryToEdit?.updatedAt) && (
                         <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
-                          <div className='tw:basis-[30%]'>
+                          <div className="tw:basis-[30%]">
                             <Typography
                               className="tw:text-gray-500 tw:w-28 tw:shrink-0"
                               size="text-sm">
@@ -643,7 +663,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       )}
                       {memoryToEdit?.usageCount !== undefined && (
                         <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
-                          <div className='tw:basis-[30%]'>
+                          <div className="tw:basis-[30%]">
                             <Typography
                               className="tw:text-gray-500 tw:w-28 tw:shrink-0"
                               size="text-sm">
@@ -661,7 +681,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       )}
                     </Card>
                   </div>
-
                 </div>
 
                 {/* Sticky footer */}

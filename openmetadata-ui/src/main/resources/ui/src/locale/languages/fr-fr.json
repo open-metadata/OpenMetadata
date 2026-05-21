@@ -1239,6 +1239,7 @@
     "lineage-source": "Source du Lignage",
     "lineage-view-option-plural": "Options de Vue de Lignage",
     "link": "Lien",
+    "link-an-entity": "Link an Asset",
     "link-entity": "Link {{entity}}",
     "linked-data-asset-plural": "Linked Data Assets",
     "list": "Liste",

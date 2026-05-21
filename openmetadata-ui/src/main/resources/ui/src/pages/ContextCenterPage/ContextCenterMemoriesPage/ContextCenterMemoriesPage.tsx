@@ -20,13 +20,18 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, FilterLines, Home02, Plus, SearchLg } from '@untitledui/icons';
+import {
+  ChevronDown,
+  FilterLines,
+  Home02,
+  Plus,
+  SearchLg,
+} from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
-import AlertBar from '../../../components/AlertBar/AlertBar';
-import { useAlertStore } from '../../../hooks/useAlertStore';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import AlertBar from '../../../components/AlertBar/AlertBar';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
@@ -38,6 +43,7 @@ import {
   MemorySortBy,
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
 import { MemoryStatus } from '../../../generated/entity/context/contextMemory';
+import { useAlertStore } from '../../../hooks/useAlertStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   deleteContextMemory,
@@ -454,11 +460,11 @@ const ContextCenterMemoriesPage: FC = () => {
                   className={({ isSelected }) =>
                     isSelected
                       ? 'tw:rounded-md tw:border tw:border-brand-100 tw:bg-brand-50' +
-                      ' tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold' +
-                      ' tw:text-brand-700 tw:cursor-pointer'
+                        ' tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold' +
+                        ' tw:text-brand-700 tw:cursor-pointer'
                       : 'tw:rounded-md tw:border tw:border-gray-300 tw:bg-white' +
-                      ' tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold' +
-                      ' tw:text-quaternary tw:cursor-pointer'
+                        ' tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold' +
+                        ' tw:text-quaternary tw:cursor-pointer'
                   }
                 />
               )}
@@ -471,7 +477,7 @@ const ContextCenterMemoriesPage: FC = () => {
                 className={
                   selectedAsset ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
                 }>
-                <Typography className="tw:text-gray-700" weight='medium'>
+                <Typography className="tw:text-gray-700" weight="medium">
                   {assetOptions.find((o) => o.id === selectedAsset)?.label ??
                     t('label.all-entity', { entity: t('label.asset-plural') })}
                 </Typography>
@@ -497,10 +503,13 @@ const ContextCenterMemoriesPage: FC = () => {
                       {opt.type ? (
                         <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0">
                           <div className="tw:shrink-0">
-                            {searchClassBase.getEntityIcon(opt.type, 'tw:w-6 tw:h-6')}
+                            {searchClassBase.getEntityIcon(
+                              opt.type,
+                              'tw:w-6 tw:h-6'
+                            )}
                           </div>
                           <div className="tw:flex tw:flex-1 tw:justify-between tw:items-center">
-                            <div className='tw:max-w-55'>
+                            <div className="tw:max-w-55">
                               <Typography
                                 ellipsis
                                 className="tw:truncate tw:text-gray-800"
@@ -514,7 +523,6 @@ const ContextCenterMemoriesPage: FC = () => {
                                 size="text-xs">
                                 {opt.id}
                               </Typography>
-
                             </div>
                             <Badge
                               className="tw:shrink-0 tw:uppercase"
@@ -523,7 +531,6 @@ const ContextCenterMemoriesPage: FC = () => {
                               type="color">
                               {opt.type}
                             </Badge>
-
                           </div>
                         </div>
                       ) : (
@@ -538,9 +545,7 @@ const ContextCenterMemoriesPage: FC = () => {
             <Dropdown.Root>
               <AriaButton
                 className={
-                  selectedAuthor
-                    ? FILTER_BUTTON_ACTIVE_CLS
-                    : FILTER_BUTTON_CLS
+                  selectedAuthor ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
                 }>
                 <Typography className="tw:text-gray-700" weight="medium">
                   {authorOptions.find((o) => o.id === selectedAuthor)?.label ??
@@ -568,9 +573,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       key={opt.id}
                       textValue={opt.label}>
                       <div className="tw:flex tw:items-center tw:gap-2">
-                        {opt.id && (
-                          <ProfilePicture name={opt.id} size={20} />
-                        )}
+                        {opt.id && <ProfilePicture name={opt.id} size={20} />}
                         <span>{opt.label}</span>
                       </div>
                     </Dropdown.Item>
@@ -583,8 +586,10 @@ const ContextCenterMemoriesPage: FC = () => {
           <div className="tw:ml-auto">
             <Dropdown.Root>
               <AriaButton className={FILTER_BUTTON_CLS}>
-                <FilterLines size={18}/>
-                <Typography className="tw:text-gray-700" weight="medium">{t('label.sort')}:</Typography>
+                <FilterLines size={18} />
+                <Typography className="tw:text-gray-700" weight="medium">
+                  {t('label.sort')}:
+                </Typography>
                 <Typography className="tw:text-gray-700" weight="medium">
                   {SORT_OPTIONS.find((o) => o.id === sortBy)?.label ?? ''}
                 </Typography>

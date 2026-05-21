@@ -19,14 +19,7 @@ import {
 import { Check, Plus, SearchLg } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import {
-  FC,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -185,8 +178,7 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
   const handleScroll = useCallback(
     async (e: React.UIEvent<HTMLElement>) => {
       const el = e.currentTarget;
-      const nearBottom =
-        el.scrollTop + el.offsetHeight >= el.scrollHeight - 20;
+      const nearBottom = el.scrollTop + el.offsetHeight >= el.scrollHeight - 20;
       if (nearBottom && options.length < (paging.total ?? 0)) {
         try {
           const res = await fetchOptions(searchText, currentPage + 1);
@@ -270,7 +262,10 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
                       key={fqn}
                       type="button"
                       onClick={() => handleToggle(opt)}>
-                        {searchClassBase.getEntityIcon(reference.type ?? '', 'tw:h-8 tw:w-8')}
+                      {searchClassBase.getEntityIcon(
+                        reference.type ?? '',
+                        'tw:h-8 tw:w-8'
+                      )}
 
                       <div className="tw:flex tw:flex-1 tw:justify-between tw:items-center">
                         <div className="tw:max-w-75">
@@ -288,15 +283,15 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
                             {reference.fullyQualifiedName ?? ''}
                           </Typography>
                         </div>
-                         {reference.type && (
-                            <Badge
-                              className="tw:shrink-0 tw:uppercase"
-                              color="gray"
-                              size="sm"
-                              type="color">
-                              {reference.type}
-                            </Badge>
-                          )}
+                        {reference.type && (
+                          <Badge
+                            className="tw:shrink-0 tw:uppercase"
+                            color="gray"
+                            size="sm"
+                            type="color">
+                            {reference.type}
+                          </Badge>
+                        )}
                       </div>
                       {isSelected && (
                         <Check

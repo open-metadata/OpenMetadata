@@ -1239,6 +1239,7 @@
     "lineage-source": "Veri Soyu Kaynağı",
     "lineage-view-option-plural": "Veri Soyu Görünüm Seçenekleri",
     "link": "Bağlantı",
+    "link-an-entity": "Link an Asset",
     "link-entity": "Link {{entity}}",
     "linked-data-asset-plural": "Linked Data Assets",
     "list": "Liste",
