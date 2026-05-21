@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { isUndefined } from 'lodash';
 import { useSyncExternalStore } from 'react';
 import {
   APP_MODE_CHANGE_EVENT,
   APP_MODE_STORAGE_KEY,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
-import { isUndefined } from 'lodash';
 
 /**
  * AppMode is a generic identifier for the active app shell. The default
