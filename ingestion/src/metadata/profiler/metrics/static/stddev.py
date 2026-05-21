@@ -109,6 +109,15 @@ def _(element, compiler, **kw):  # pylint: disable=unused-argument
     return "NULL"
 
 
+@compiles(StdDevFn, Dialects.YDB)
+def _(element, compiler, **kw):
+    """STDDEV_POP for YDB. YQL refuses ``STDDEV_POP(Decimal)`` — wrap the
+    argument in ``CAST(... AS Double)`` (no-op for already-Double columns).
+    """
+    proc = compiler.process(element.clauses, **kw)
+    return "STDDEV_POP(CAST(%s AS Double))" % proc  # noqa: UP031
+
+
 class StdDev(StaticMetric):
     """
     STD Metric

@@ -47,6 +47,7 @@ import org.openmetadata.schema.services.connections.database.StarRocksConnection
 import org.openmetadata.schema.services.connections.database.TimescaleConnection;
 import org.openmetadata.schema.services.connections.database.TrinoConnection;
 import org.openmetadata.schema.services.connections.database.UnityCatalogConnection;
+import org.openmetadata.schema.services.connections.database.YDBConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
@@ -125,7 +126,8 @@ public final class ClassConverterFactory {
             Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter()),
             Map.entry(SSISConnection.class, new SsisConnectionClassConverter()),
             Map.entry(WherescapeConnection.class, new WherescapeConnectionClassConverter()),
-            Map.entry(TimescaleConnection.class, new TimescaleConnectionClassConverter()));
+            Map.entry(TimescaleConnection.class, new TimescaleConnectionClassConverter()),
+            Map.entry(YDBConnection.class, new YDBConnectionClassConverter()));
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {

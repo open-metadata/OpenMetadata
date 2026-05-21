@@ -311,6 +311,8 @@ export interface ServiceConnection {
  *
  * QuestDB Connection Config
  *
+ * YDB Database Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -678,6 +680,9 @@ export interface ConfigObject {
      *
      * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
      *
+     * Host and port of the YDB endpoint, e.g. localhost:2136 or
+     * ydb.serverless.yandexcloud.net:2135
+     *
      * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
@@ -1038,6 +1043,8 @@ export interface ConfigObject {
      *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      *
+     * Authentication mode for YDB.
+     *
      * Types of methods used to authenticate to the alation instance
      *
      * Authentication type to connect to Apache Ranger.
@@ -1344,6 +1351,8 @@ export interface ConfigObject {
      * Database of the data source. This is the name of your Fabric Warehouse or Lakehouse. This
      * is optional parameter, if you would like to restrict the metadata reading to a single
      * database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.
+     *
+     * YDB database path, e.g. /local or /ru-central1/b1g.../etn...
      */
     database?: string;
     /**
@@ -1840,6 +1849,10 @@ export interface ConfigObject {
      * IOMETE data plane name.
      */
     dataPlane?: string;
+    /**
+     * PEM-encoded CA certificate for TLS (grpcs). Leave empty for insecure grpc.
+     */
+    caCertificate?: string;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -2628,6 +2641,18 @@ export enum AuthProvider {
  * Authentication configuration for self-hosted Dremio Software using username and password.
  * Dremio Software is deployed on-premises or in your own cloud infrastructure.
  *
+ * Authentication mode for YDB.
+ *
+ * No credentials — anonymous access (local/dev YDB).
+ *
+ * Username and password credentials for YDB.
+ *
+ * IAM access token credentials for YDB.
+ *
+ * Yandex Cloud IAM service account JSON key contents.
+ *
+ * Credentials from instance metadata — for Yandex Cloud VMs.
+ *
  * ThoughtSpot authentication configuration
  *
  * Types of methods used to authenticate to the alation instance
@@ -2775,6 +2800,10 @@ export interface AuthenticationType {
      * http://localhost:9047 or https://dremio.example.com:9047).
      */
     hostPort?: string;
+    /**
+     * Contents of the Yandex Cloud service account JSON key file.
+     */
+    serviceAccountJson?: string;
     /**
      * Access Token for the API
      */
@@ -4810,6 +4839,7 @@ export enum ConfigScheme {
     Teradatasql = "teradatasql",
     Trino = "trino",
     VerticaVerticaPython = "vertica+vertica_python",
+    YqlYdb = "yql+ydb",
 }
 
 /**
@@ -5258,6 +5288,7 @@ export enum ConfigType {
     VertexAI = "VertexAI",
     Vertica = "Vertica",
     Wherescape = "Wherescape",
+    Ydb = "YDB",
 }
 
 /**

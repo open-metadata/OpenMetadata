@@ -1,0 +1,134 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/ydbConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "YDBConnection",
+  "description": "YDB Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.YDBConnection",
+  "definitions": {
+    "YDBType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["YDB"],
+      "default": "YDB"
+    },
+    "YDBScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["yql+ydb"],
+      "default": "yql+ydb"
+    },
+    "YDBProtocol": {
+      "description": "Transport protocol for YDB connection.",
+      "type": "string",
+      "enum": ["grpc", "grpcs"],
+      "default": "grpc"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/YDBType",
+      "default": "YDB"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/YDBScheme",
+      "default": "yql+ydb"
+    },
+    "protocol": {
+      "title": "Protocol",
+      "description": "Transport protocol for YDB connection.",
+      "$ref": "#/definitions/YDBProtocol",
+      "default": "grpc"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the YDB endpoint, e.g. localhost:2136 or ydb.serverless.yandexcloud.net:2135",
+      "type": "string",
+      "exposedInUI": true
+    },
+    "database": {
+      "title": "Database",
+      "description": "YDB database path, e.g. /local or /ru-central1/b1g.../etn...",
+      "type": "string",
+      "exposedInUI": true
+    },
+    "authType": {
+      "title": "Authentication Type",
+      "description": "Authentication mode for YDB.",
+      "oneOf": [
+        {
+          "$ref": "ydb/noCredentials.json"
+        },
+        {
+          "$ref": "ydb/staticCredentials.json"
+        },
+        {
+          "$ref": "ydb/tokenCredentials.json"
+        },
+        {
+          "$ref": "ydb/serviceAccountCredentials.json"
+        },
+        {
+          "$ref": "ydb/metadataCredentials.json"
+        }
+      ]
+    },
+    "caCertificate": {
+      "title": "CA Certificate",
+      "description": "PEM-encoded CA certificate for TLS (grpcs). Leave empty for insecure grpc.",
+      "type": "string",
+      "format": "password"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsDBTExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
+    },
+    "supportsViewLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsViewLineageExtraction"
+    }
+  },
+  "required": ["hostPort", "database"],
+  "additionalProperties": false
+}

@@ -162,6 +162,10 @@ const databaseSchemaLoaders: Partial<
     import(
       '../jsons/connectionSchemas/connections/database/trinoConnection.json'
     ),
+  [DatabaseServiceType.Ydb]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/database/ydbConnection.json'
+    ),
   [DatabaseServiceType.Vertica]: () =>
     import(
       '../jsons/connectionSchemas/connections/database/verticaConnection.json'
