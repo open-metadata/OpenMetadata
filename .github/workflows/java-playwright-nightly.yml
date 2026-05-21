@@ -26,7 +26,7 @@
 #     with OM_TEST_IMAGE pointing at the pre-loaded tag so ContainerizedServer skips
 #     its own build.
 
-name: UI Integration Tests (Nightly)
+name: JavaUIIT Integration Tests (Nightly)
 
 on:
   workflow_dispatch:
