@@ -34,6 +34,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.SearchIndex;
@@ -119,12 +120,21 @@ class ElasticSearchBulkSinkBehaviorTest {
           sink,
           "addEntity",
           new Class<?>[] {
-            EntityInterface.class, String.class, boolean.class, StageStatsTracker.class
+            EntityInterface.class,
+            String.class,
+            boolean.class,
+            ReindexContext.class,
+            StageStatsTracker.class,
+            boolean.class,
+            Map.class
           },
           entity,
           "table_index",
           false,
-          tracker);
+          null,
+          tracker,
+          false,
+          Map.of());
 
       verify(processor)
           .add(any(), eq(entityId.toString()), eq(ENTITY_TYPE), eq(tracker), anyLong());
@@ -159,12 +169,21 @@ class ElasticSearchBulkSinkBehaviorTest {
           sink,
           "addEntity",
           new Class<?>[] {
-            EntityInterface.class, String.class, boolean.class, StageStatsTracker.class
+            EntityInterface.class,
+            String.class,
+            boolean.class,
+            ReindexContext.class,
+            StageStatsTracker.class,
+            boolean.class,
+            Map.class
           },
           entity,
           "table_index",
           true,
-          tracker);
+          null,
+          tracker,
+          false,
+          Map.of());
 
       verify(processorConstruction.constructed().getFirst()).setFailureCallback(failureCallback);
       verify(tracker).recordProcess(StatsResult.FAILED);
@@ -285,6 +304,86 @@ class ElasticSearchBulkSinkBehaviorTest {
       assertFalse(sink.flushAndAwait(7));
       assertTrue(Thread.currentThread().isInterrupted());
       Thread.interrupted();
+    }
+  }
+
+  @Test
+  void isVectorEmbeddingEnabledForEntityReturnsFalseWhenIndexMappingMissing() {
+    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
+            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<org.openmetadata.service.search.vector.ElasticSearchVectorService>
+            vectorServiceMock =
+                mockStatic(
+                    org.openmetadata.service.search.vector.ElasticSearchVectorService.class)) {
+      vectorServiceMock
+          .when(org.openmetadata.service.search.vector.ElasticSearchVectorService::getInstance)
+          .thenReturn(
+              mock(org.openmetadata.service.search.vector.ElasticSearchVectorService.class));
+      when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+
+      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
+
+      // table is vector-indexable AND has mapping → enabled
+      assertTrue(sink.isVectorEmbeddingEnabledForEntity("table"));
+
+      // mapping unloaded → disabled, even when everything else says yes
+      when(searchRepository.getIndexMapping("table")).thenReturn(null);
+      assertFalse(sink.isVectorEmbeddingEnabledForEntity("table"));
+    }
+  }
+
+  @Test
+  void fetchExistingFingerprintsRoutesToStagedIndexDuringRecreate() throws Exception {
+    org.openmetadata.service.search.vector.ElasticSearchVectorService vectorService =
+        mock(org.openmetadata.service.search.vector.ElasticSearchVectorService.class);
+    when(vectorService.getExistingFingerprintsBatch(any(), any())).thenReturn(Map.of());
+
+    EntityInterface entity = mock(EntityInterface.class);
+    when(entity.getId()).thenReturn(UUID.randomUUID());
+    org.openmetadata.schema.type.EntityReference ref =
+        new org.openmetadata.schema.type.EntityReference().withType("table");
+    when(entity.getEntityReference()).thenReturn(ref);
+
+    org.openmetadata.service.search.ReindexContext reindexContext =
+        mock(org.openmetadata.service.search.ReindexContext.class);
+    when(reindexContext.getStagedIndex("table"))
+        .thenReturn(java.util.Optional.of("table_search_index_rebuild_123"));
+
+    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
+            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<org.openmetadata.service.search.vector.ElasticSearchVectorService>
+            vectorServiceMock =
+                mockStatic(
+                    org.openmetadata.service.search.vector.ElasticSearchVectorService.class)) {
+      vectorServiceMock
+          .when(org.openmetadata.service.search.vector.ElasticSearchVectorService::getInstance)
+          .thenReturn(vectorService);
+
+      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
+      Method method =
+          ElasticSearchBulkSink.class.getDeclaredMethod(
+              "fetchExistingFingerprints",
+              List.class,
+              String.class,
+              org.openmetadata.service.search.ReindexContext.class);
+      method.setAccessible(true);
+
+      // With staged index → fingerprints fetched against staged index
+      method.invoke(sink, List.of(entity), "table_search_index", reindexContext);
+      verify(vectorService)
+          .getExistingFingerprintsBatch(eq("table_search_index_rebuild_123"), any());
+
+      // No reindex context → fall back to canonical index
+      method.invoke(sink, List.of(entity), "table_search_index", null);
+      verify(vectorService).getExistingFingerprintsBatch(eq("table_search_index"), any());
+
+      // ReindexContext present but no staged index → fall back to canonical index
+      org.openmetadata.service.search.ReindexContext emptyContext =
+          mock(org.openmetadata.service.search.ReindexContext.class);
+      when(emptyContext.getStagedIndex("table")).thenReturn(java.util.Optional.empty());
+      method.invoke(sink, List.of(entity), "table_search_index", emptyContext);
+      verify(vectorService, org.mockito.Mockito.times(2))
+          .getExistingFingerprintsBatch(eq("table_search_index"), any());
     }
   }
 

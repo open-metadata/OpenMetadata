@@ -328,6 +328,21 @@ class ElasticSearchIndexManagerTest {
   }
 
   @Test
+  void testUpdateIndex_ExtractsMappingsFromFullIndexJson() throws IOException {
+    // putMapping only accepts the mappings sub-object, not a full index JSON with settings/aliases
+    String fullIndexJson =
+        "{\"settings\":{\"number_of_shards\":1},"
+            + "\"mappings\":{\"properties\":{\"field1\":{\"type\":\"text\"}}},"
+            + "\"aliases\":{}}";
+    when(indexMapping.getIndexName(CLUSTER_ALIAS)).thenReturn(TEST_INDEX);
+    when(indicesClient.putMapping(any(PutMappingRequest.class))).thenReturn(putMappingResponse);
+
+    assertDoesNotThrow(() -> indexManager.updateIndex(indexMapping, fullIndexJson));
+
+    verify(indicesClient).putMapping(any(PutMappingRequest.class));
+  }
+
+  @Test
   void testCreateIndex_ClientNotAvailable() {
     ElasticSearchIndexManager managerWithNullClient =
         new ElasticSearchIndexManager(null, CLUSTER_ALIAS);

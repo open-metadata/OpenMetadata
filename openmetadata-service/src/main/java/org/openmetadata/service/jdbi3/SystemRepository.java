@@ -49,7 +49,6 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServic
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.Google;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
@@ -568,14 +567,6 @@ public class SystemRepository {
     StepValidation embeddingsValidation = new StepValidation();
     String description = "Embeddings are used to allow Semantic Search";
     SearchRepository searchRepository = Entity.getSearchRepository();
-
-    if (searchRepository.getSearchType() == ElasticSearchConfiguration.SearchType.ELASTICSEARCH) {
-      return embeddingsValidation
-          .withDescription(description)
-          .withMessage(
-              "Elasticsearch is not supported for Semantic Search embeddings. Please use OpenSearch.")
-          .withPassed(false);
-    }
 
     String configMessage = getEmbeddingConfigurationMessage(applicationConfig);
 

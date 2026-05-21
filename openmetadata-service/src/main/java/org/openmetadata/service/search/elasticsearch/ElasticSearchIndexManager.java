@@ -1,5 +1,7 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
@@ -35,6 +37,7 @@ import org.openmetadata.service.search.IndexManagementClient;
  */
 @Slf4j
 public class ElasticSearchIndexManager implements IndexManagementClient {
+  private static final ObjectMapper MAPPER = new ObjectMapper();
   private final ElasticsearchClient client;
   private final String clusterAlias;
   private final boolean isClientAvailable;
@@ -87,12 +90,17 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
 
+      String transformedContent =
+          (indexMappingContent != null && !indexMappingContent.isEmpty())
+              ? EsUtils.enrichIndexMappingForElasticsearch(indexMappingContent)
+              : indexMappingContent;
+      String mappingsJson = extractMappingsJson(transformedContent);
       PutMappingRequest request =
           PutMappingRequest.of(
               builder -> {
                 builder.index(indexName);
-                if (indexMappingContent != null) {
-                  builder.withJson(new StringReader(indexMappingContent));
+                if (mappingsJson != null) {
+                  builder.withJson(new StringReader(mappingsJson));
                 }
                 return builder;
               });
@@ -145,14 +153,36 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
     }
   }
 
+  private String extractMappingsJson(String indexMappingContent) {
+    if (indexMappingContent == null) {
+      return null;
+    }
+    try {
+      JsonNode root = MAPPER.readTree(indexMappingContent);
+      JsonNode mappings = root.get("mappings");
+      if (mappings != null) {
+        return MAPPER.writeValueAsString(mappings);
+      }
+      return indexMappingContent;
+    } catch (IOException e) {
+      LOG.warn(
+          "Failed to extract mappings from index content, using full content: {}", e.getMessage());
+      return indexMappingContent;
+    }
+  }
+
   private void createIndexInternal(String indexName, String indexMappingContent)
       throws IOException {
+    String enrichedContent =
+        (indexMappingContent != null && !indexMappingContent.isEmpty())
+            ? EsUtils.enrichIndexMappingForElasticsearch(indexMappingContent)
+            : indexMappingContent;
     CreateIndexRequest request =
         CreateIndexRequest.of(
             builder -> {
               builder.index(indexName);
-              if (indexMappingContent != null) {
-                builder.withJson(new StringReader(indexMappingContent));
+              if (enrichedContent != null) {
+                builder.withJson(new StringReader(enrichedContent));
               }
               return builder;
             });

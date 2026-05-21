@@ -524,4 +524,102 @@ public class EsUtils {
       }
     }
   }
+
+  /**
+   * Enriches an Elasticsearch index mapping with vector search support. When the mapping contains
+   * a {@code fingerprint} field (the signal that this index stores embedded entity docs), injects a
+   * {@code dense_vector} embedding field and records {@code _meta} with the model ID and dimension.
+   *
+   * <p>The embedding dimension is resolved from the active {@link
+   * org.openmetadata.service.search.vector.client.EmbeddingClient}. If embeddings are disabled or
+   * the client is unavailable the mapping is returned unchanged.
+   *
+   * <p><b>Failure modes:</b>
+   *
+   * <ul>
+   *   <li>{@link IllegalArgumentException} — {@code indexMappingContent} is null or empty.
+   *   <li>{@link IllegalStateException} — the existing mapping declares an embedding dimension
+   *       (via {@code _meta.embedding_dimension} or {@code properties.embedding.dims}) that
+   *       differs from what the active embedding client reports. {@code dense_vector.dims} is
+   *       immutable on an existing Elasticsearch index, so callers must drop and reindex the
+   *       affected index (e.g., by running the SearchIndexing application) before enrichment
+   *       can succeed.
+   * </ul>
+   */
+  public static String enrichIndexMappingForElasticsearch(String indexMappingContent) {
+    if (nullOrEmpty(indexMappingContent)) {
+      throw new IllegalArgumentException("Empty Index Mapping Content.");
+    }
+    JsonNode rootNode = JsonUtils.readTree(indexMappingContent);
+    addDenseVectorSettings(rootNode);
+    return rootNode.toString();
+  }
+
+  static void addDenseVectorSettings(JsonNode rootNode) {
+    JsonNode properties = rootNode.path("mappings").path("properties");
+    if (properties.isMissingNode() || !properties.has("fingerprint")) {
+      return;
+    }
+
+    org.openmetadata.service.search.SearchRepository searchRepository =
+        org.openmetadata.service.Entity.getSearchRepository();
+    if (searchRepository == null
+        || !searchRepository.isVectorEmbeddingEnabled()
+        || searchRepository.getEmbeddingClient() == null) {
+      return;
+    }
+
+    int dimension = searchRepository.getEmbeddingClient().getDimension();
+
+    // dense_vector.dims is immutable on an existing ES index. If the client now reports
+    // a different dimension than what the index was built with, silently rewriting dims
+    // would either be rejected by ES (putMapping) or produce a mapping that disagrees
+    // with stored vectors. Hard-fail so the operator runs an explicit reindex.
+    // Check both _meta.embedding_dimension and properties.embedding.dims — either may
+    // be present on an existing index/template.
+    JsonNode existingMeta = rootNode.path("mappings").path("_meta");
+    if (!existingMeta.isMissingNode() && existingMeta.has("embedding_dimension")) {
+      assertDimensionMatches(existingMeta.get("embedding_dimension").asInt(), dimension);
+    }
+    JsonNode existingEmbedding = properties.path("embedding");
+    if (!existingEmbedding.isMissingNode() && existingEmbedding.has("dims")) {
+      assertDimensionMatches(existingEmbedding.get("dims").asInt(), dimension);
+    }
+
+    com.fasterxml.jackson.databind.node.ObjectNode embeddingNode = mapper.createObjectNode();
+    embeddingNode.put("type", "dense_vector");
+    embeddingNode.put("dims", dimension);
+    embeddingNode.put("index", true);
+    embeddingNode.put("similarity", "cosine");
+    ((com.fasterxml.jackson.databind.node.ObjectNode) properties).set("embedding", embeddingNode);
+
+    JsonNode mappings = rootNode.path("mappings");
+    if (!mappings.isMissingNode() && mappings.isObject()) {
+      // Preserve any existing _meta fields; only upsert embedding_model / embedding_dimension.
+      com.fasterxml.jackson.databind.node.ObjectNode mappingsNode =
+          (com.fasterxml.jackson.databind.node.ObjectNode) mappings;
+      JsonNode existingMetaNode = mappingsNode.get("_meta");
+      com.fasterxml.jackson.databind.node.ObjectNode metaNode;
+      if (existingMetaNode instanceof com.fasterxml.jackson.databind.node.ObjectNode existing) {
+        metaNode = existing;
+      } else {
+        metaNode = mappingsNode.putObject("_meta");
+      }
+      metaNode
+          .put("embedding_model", searchRepository.getEmbeddingClient().getModelId())
+          .put("embedding_dimension", dimension);
+    }
+  }
+
+  private static void assertDimensionMatches(int existing, int client) {
+    if (existing != client) {
+      throw new IllegalStateException(
+          String.format(
+              "Embedding dimension mismatch: existing=%d, embedding client=%d. "
+                  + "dense_vector.dims is immutable on an existing Elasticsearch index. "
+                  + "Run a reindex (drop + recreate via SearchIndexing app) to align "
+                  + "the index with the new embedding model.",
+              existing, client));
+    }
+  }
 }

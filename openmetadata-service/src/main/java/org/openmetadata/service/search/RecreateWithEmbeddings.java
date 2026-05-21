@@ -9,8 +9,7 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
 
   @Override
   public ReindexContext reCreateIndexes(Set<String> entities) {
-    SearchRepository searchRepository = Entity.getSearchRepository();
-    searchRepository.initializeVectorSearchService();
+    Entity.getSearchRepository().initializeVectorSearchService();
     return super.reCreateIndexes(entities);
   }
 
@@ -18,13 +17,10 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
   public void finalizeReindex(EntityReindexContext context, boolean reindexSuccess) {
     super.finalizeReindex(context, reindexSuccess);
 
-    if (reindexSuccess) {
-      SearchRepository searchRepository = Entity.getSearchRepository();
-      if (searchRepository.isVectorEmbeddingEnabled()) {
-        LOG.info(
-            "Reindex finalized for entity type '{}' with vector embeddings enabled",
-            context.getEntityType());
-      }
+    if (reindexSuccess && Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
+      LOG.info(
+          "Reindex finalized for entity type '{}' with vector embeddings enabled",
+          context.getEntityType());
     }
   }
 }

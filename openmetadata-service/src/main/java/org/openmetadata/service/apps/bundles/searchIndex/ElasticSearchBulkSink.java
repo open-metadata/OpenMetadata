@@ -15,6 +15,7 @@ import jakarta.json.stream.JsonGenerator;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +54,9 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
+import org.openmetadata.service.search.vector.ElasticSearchVectorService;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
+import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 
 /**
  * Elasticsearch implementation using new Java API client with custom bulk handler
@@ -126,6 +130,10 @@ public class ElasticSearchBulkSink implements BulkSink {
   private final AtomicLong columnBuildFailed = new AtomicLong(0);
   private final ConcurrentLinkedDeque<CompletableFuture<Void>> pendingColumnFutures =
       new ConcurrentLinkedDeque<>();
+
+  // Vector embedding stats (incremented inline during addEntity)
+  private final AtomicLong vectorSuccess = new AtomicLong(0);
+  private final AtomicLong vectorFailed = new AtomicLong(0);
 
   public ElasticSearchBulkSink(
       SearchRepository searchRepository,
@@ -246,13 +254,29 @@ public class ElasticSearchBulkSink implements BulkSink {
       } else {
         List<EntityInterface> entityInterfaces = (List<EntityInterface>) entities;
 
-        // Add entities to search index in parallel
+        boolean embeddingsEnabled = isVectorEmbeddingEnabledForEntity(entityType);
+
+        Map<String, String> existingFingerprints = Collections.emptyMap();
+        if (embeddingsEnabled && !recreateIndex) {
+          existingFingerprints =
+              fetchExistingFingerprints(entityInterfaces, indexName, reindexContext);
+        }
+
+        Map<String, String> finalFingerprints = existingFingerprints;
         List<CompletableFuture<Void>> futures =
             entityInterfaces.stream()
                 .map(
                     entity ->
                         CompletableFuture.runAsync(
-                            () -> addEntity(entity, indexName, recreateIndex, tracker),
+                            () ->
+                                addEntity(
+                                    entity,
+                                    indexName,
+                                    recreateIndex,
+                                    reindexContext,
+                                    tracker,
+                                    embeddingsEnabled,
+                                    finalFingerprints),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
@@ -307,11 +331,22 @@ public class ElasticSearchBulkSink implements BulkSink {
   private static final int BULK_OPERATION_METADATA_OVERHEAD = 150;
 
   private void addEntity(
-      EntityInterface entity, String indexName, boolean recreateIndex, StageStatsTracker tracker) {
+      EntityInterface entity,
+      String indexName,
+      boolean recreateIndex,
+      ReindexContext reindexContext,
+      StageStatsTracker tracker,
+      boolean embeddingsEnabled,
+      Map<String, String> existingFingerprints) {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
       String json = JsonUtils.pojoToJson(searchIndexDoc);
+
+      if (embeddingsEnabled) {
+        json = enrichWithEmbedding(entity, json, recreateIndex, existingFingerprints, tracker);
+      }
+
       String docId = entity.getId().toString();
       long rawDocSize = (long) json.getBytes(StandardCharsets.UTF_8).length;
       long estimatedSize = rawDocSize + BULK_OPERATION_METADATA_OVERHEAD;
@@ -754,6 +789,94 @@ public class ElasticSearchBulkSink implements BulkSink {
   public void updateConcurrentRequests(int concurrentRequests) {
     this.maxConcurrentRequests = concurrentRequests;
     LOG.info("Concurrent requests updated to: {}", concurrentRequests);
+  }
+
+  boolean isVectorEmbeddingEnabledForEntity(String entityType) {
+    return searchRepository.isVectorEmbeddingEnabled()
+        && ElasticSearchVectorService.getInstance() != null
+        && AvailableEntityTypes.isVectorIndexable(entityType)
+        && searchRepository.getIndexMapping(entityType) != null;
+  }
+
+  @SuppressWarnings("unchecked")
+  private String enrichWithEmbedding(
+      EntityInterface entity,
+      String json,
+      boolean recreateIndex,
+      Map<String, String> existingFingerprints,
+      StageStatsTracker tracker) {
+    try {
+      ElasticSearchVectorService vectorService = ElasticSearchVectorService.getInstance();
+      if (vectorService == null) {
+        return json;
+      }
+
+      if (!recreateIndex) {
+        String currentFp = VectorDocBuilder.computeFingerprintForEntity(entity);
+        String existingFp = existingFingerprints.get(entity.getId().toString());
+        if (existingFp != null && existingFp.equals(currentFp)) {
+          vectorSuccess.incrementAndGet();
+          if (tracker != null) {
+            tracker.recordVector(StatsResult.SUCCESS);
+          }
+          return json;
+        }
+      }
+
+      Map<String, Object> embeddingFields = vectorService.generateEmbeddingFields(entity);
+      Map<String, Object> docMap = OBJECT_MAPPER.readValue(json, Map.class);
+      docMap.putAll(embeddingFields);
+
+      vectorSuccess.incrementAndGet();
+      if (tracker != null) {
+        tracker.recordVector(StatsResult.SUCCESS);
+      }
+      return OBJECT_MAPPER.writeValueAsString(docMap);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to generate embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
+      vectorFailed.incrementAndGet();
+      if (tracker != null) {
+        tracker.recordVector(StatsResult.FAILED);
+      }
+      return json;
+    }
+  }
+
+  private Map<String, String> fetchExistingFingerprints(
+      List<EntityInterface> entities, String indexName, ReindexContext reindexContext) {
+    try {
+      ElasticSearchVectorService vectorService = ElasticSearchVectorService.getInstance();
+      if (vectorService == null) {
+        return Collections.emptyMap();
+      }
+
+      String entityType = entities.getFirst().getEntityReference().getType();
+      String targetIndex = indexName;
+      if (reindexContext != null) {
+        String stagedIndex = reindexContext.getStagedIndex(entityType).orElse(null);
+        if (stagedIndex != null) {
+          targetIndex = stagedIndex;
+        }
+      }
+
+      List<String> entityIds = new ArrayList<>(entities.size());
+      for (EntityInterface entity : entities) {
+        entityIds.add(entity.getId().toString());
+      }
+      return vectorService.getExistingFingerprintsBatch(targetIndex, entityIds);
+    } catch (Exception e) {
+      LOG.warn("Failed to fetch existing fingerprints: {}", e.getMessage());
+      return Collections.emptyMap();
+    }
+  }
+
+  @Override
+  public StepStats getVectorStats() {
+    return new StepStats()
+        .withTotalRecords((int) (vectorSuccess.get() + vectorFailed.get()))
+        .withSuccessRecords((int) vectorSuccess.get())
+        .withFailedRecords((int) vectorFailed.get());
   }
 
   public static class CustomBulkProcessor {

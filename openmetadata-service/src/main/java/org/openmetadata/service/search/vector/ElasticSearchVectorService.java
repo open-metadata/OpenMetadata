@@ -2,7 +2,13 @@ package org.openmetadata.service.search.vector;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
+import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
+import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Response;
+import es.co.elastic.clients.transport.rest5_client.low_level.ResponseException;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -10,49 +16,71 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
-import os.org.opensearch.client.opensearch.OpenSearchClient;
-import os.org.opensearch.client.opensearch.generic.Body;
-import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
-import os.org.opensearch.client.opensearch.generic.Requests;
 
 @Slf4j
-public class OpenSearchVectorService implements VectorIndexService {
+public class ElasticSearchVectorService implements VectorIndexService {
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final int OVER_FETCH_MULTIPLIER = 2;
-  public static final String HYBRID_PIPELINE_NAME = "hybrid-rrf";
 
-  private static volatile OpenSearchVectorService instance;
+  private static volatile ElasticSearchVectorService instance;
 
-  private final OpenSearchClient client;
+  private final ElasticsearchClient client;
+  private final Rest5Client restClient;
   @Getter private final EmbeddingClient embeddingClient;
+  private final int knnNumCandidatesMultiplier;
 
-  public OpenSearchVectorService(OpenSearchClient client, EmbeddingClient embeddingClient) {
+  public ElasticSearchVectorService(
+      ElasticsearchClient client, EmbeddingClient embeddingClient, int knnNumCandidatesMultiplier) {
     this.client = client;
+    this.restClient = extractRestClient(client);
     this.embeddingClient = embeddingClient;
+    this.knnNumCandidatesMultiplier =
+        knnNumCandidatesMultiplier > 0
+            ? knnNumCandidatesMultiplier
+            : VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER;
   }
 
-  public static synchronized void init(OpenSearchClient client, EmbeddingClient embeddingClient) {
+  public ElasticSearchVectorService(ElasticsearchClient client, EmbeddingClient embeddingClient) {
+    this(client, embeddingClient, VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER);
+  }
+
+  private static Rest5Client extractRestClient(ElasticsearchClient client) {
+    if (!(client._transport() instanceof Rest5ClientTransport rest5)) {
+      throw new IllegalArgumentException(
+          "ElasticSearchVectorService requires Rest5ClientTransport, got: "
+              + client._transport().getClass().getName());
+    }
+    return rest5.restClient();
+  }
+
+  public static synchronized void init(
+      ElasticsearchClient client, EmbeddingClient embeddingClient, int knnNumCandidatesMultiplier) {
     if (instance != null) {
-      LOG.warn("OpenSearchVectorService already initialized, reinitializing");
+      LOG.warn("ElasticSearchVectorService already initialized, reinitializing");
       EntityLifecycleEventDispatcher.getInstance().unregisterHandler("VectorEmbeddingHandler");
     }
-    OpenSearchVectorService svc = new OpenSearchVectorService(client, embeddingClient);
+    ElasticSearchVectorService svc =
+        new ElasticSearchVectorService(client, embeddingClient, knnNumCandidatesMultiplier);
     svc.registerVectorEmbeddingHandler();
     instance = svc;
     LOG.info(
-        "OpenSearchVectorService initialized with model={}, dimension={}",
+        "ElasticSearchVectorService initialized with model={}, dimension={}",
         embeddingClient.getModelId(),
         embeddingClient.getDimension());
   }
 
-  public static OpenSearchVectorService getInstance() {
+  public static synchronized void init(
+      ElasticsearchClient client, EmbeddingClient embeddingClient) {
+    init(client, embeddingClient, VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER);
+  }
+
+  public static ElasticSearchVectorService getInstance() {
     return instance;
   }
 
@@ -63,115 +91,6 @@ public class OpenSearchVectorService implements VectorIndexService {
       LOG.info("Registered VectorEmbeddingHandler for entity lifecycle events");
     } catch (Exception e) {
       LOG.error("Failed to register VectorEmbeddingHandler", e);
-    }
-  }
-
-  public void close() {
-    // No-op by design. The opensearch-java client stored here was constructed
-    // elsewhere and its transport is shared with OpenSearchClient and every
-    // other manager. Closing the transport from here permanently shuts down
-    // the HC5 IOReactor for the whole application, which was a root cause of
-    // production "I/O reactor has been shut down" errors.
-  }
-
-  public void ensureHybridSearchPipeline(double keywordWeight, double semanticWeight) {
-    var weights = MAPPER.createArrayNode().add(keywordWeight).add(semanticWeight);
-    var combination =
-        MAPPER
-            .createObjectNode()
-            .put("technique", "rrf")
-            .put("rank_constant", 30)
-            .set("parameters", MAPPER.createObjectNode().set("weights", weights));
-    var scoreRanker =
-        MAPPER
-            .createObjectNode()
-            .set(
-                "score-ranker-processor",
-                MAPPER.createObjectNode().set("combination", combination));
-    var collapse =
-        MAPPER
-            .createObjectNode()
-            .set("collapse", MAPPER.createObjectNode().put("field", "parentId"));
-
-    var pipeline = MAPPER.createObjectNode();
-    pipeline.set("phase_results_processors", MAPPER.createArrayNode().add(scoreRanker));
-    pipeline.set("response_processors", MAPPER.createArrayNode().add(collapse));
-
-    executeGenericRequest("PUT", "/_search/pipeline/" + HYBRID_PIPELINE_NAME, pipeline.toString());
-    LOG.info(
-        "Hybrid search pipeline '{}' created/updated with weights keyword={}, semantic={}",
-        HYBRID_PIPELINE_NAME,
-        keywordWeight,
-        semanticWeight);
-  }
-
-  public Optional<String> checkHybridSearchPipeline() {
-    try {
-      OpenSearchGenericClient genericClient = client.generic();
-      var request =
-          Requests.builder()
-              .endpoint("/_search/pipeline/" + HYBRID_PIPELINE_NAME)
-              .method("GET")
-              .build();
-      try (var response = genericClient.execute(request)) {
-        int status = response.getStatus();
-        if (status < 400) {
-          return Optional.empty();
-        }
-        if (status == 404) {
-          return Optional.of(
-              "Hybrid search pipeline '"
-                  + HYBRID_PIPELINE_NAME
-                  + "' not found. Run a reindex to create it.");
-        }
-        String detail =
-            response
-                .getBody()
-                .map(
-                    b -> {
-                      try {
-                        String body = new String(b.bodyAsBytes(), StandardCharsets.UTF_8);
-                        return body.length() > 200 ? body.substring(0, 200) : body;
-                      } catch (Exception ignored) {
-                        return "";
-                      }
-                    })
-                .orElse("");
-        return Optional.of(
-            "Unexpected status "
-                + status
-                + " when checking hybrid search pipeline '"
-                + HYBRID_PIPELINE_NAME
-                + "'."
-                + (detail.isEmpty() ? "" : " Response: " + detail));
-      }
-    } catch (Exception e) {
-      LOG.error("Failed to check hybrid search pipeline '{}'", HYBRID_PIPELINE_NAME, e);
-      return Optional.of("Failed to check hybrid search pipeline: " + e.toString());
-    }
-  }
-
-  @Override
-  public Map<String, Object> generateEmbeddingFields(EntityInterface entity) {
-    return VectorDocBuilder.buildEmbeddingFields(entity, embeddingClient);
-  }
-
-  @Override
-  public void updateEntityEmbedding(EntityInterface entity, String entityIndexName) {
-    try {
-      String entityId = entity.getId().toString();
-      String existingFingerprint = getExistingFingerprint(entityIndexName, entityId);
-      String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
-
-      if (currentFingerprint.equals(existingFingerprint)) {
-        LOG.debug("Skipping entity {} - fingerprint unchanged", entityId);
-        return;
-      }
-
-      Map<String, Object> embeddingFields = generateEmbeddingFields(entity);
-      partialUpdateEntity(entityIndexName, entityId, embeddingFields);
-    } catch (Exception e) {
-      LOG.error("Failed to update embedding for entity {}: {}", entity.getId(), e.getMessage(), e);
     }
   }
 
@@ -191,19 +110,19 @@ public class OpenSearchVectorService implements VectorIndexService {
       int rawOffset = 0;
       long totalHits = -1L;
       boolean exhausted = false;
-      int requestedParents = from + size + 1; // Fetch one extra parent so hasMore is accurate.
+      int requestedParents = from + size + 1;
       int overFetchSize = Math.max(requestedParents * OVER_FETCH_MULTIPLIER, OVER_FETCH_MULTIPLIER);
       if (threshold <= 0.0) {
         overFetchSize = Math.min(overFetchSize, k);
       }
 
-      String aliasName = getIndexAlias();
+      String indexName = getIndexAlias();
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
-            VectorSearchQueryBuilder.build(
-                queryVector, overFetchSize, rawOffset, k, filters, threshold);
+            VectorSearchQueryBuilder.buildNativeESQuery(
+                queryVector, overFetchSize, rawOffset, k, filters, knnNumCandidatesMultiplier);
         String responseBody =
-            executeGenericRequest("POST", "/" + aliasName + "/_search", queryJson);
+            executeGenericRequest("POST", "/" + indexName + "/_search", queryJson);
 
         JsonNode root = MAPPER.readTree(responseBody);
         JsonNode hitsNode = root.path("hits").path("hits");
@@ -252,17 +171,15 @@ public class OpenSearchVectorService implements VectorIndexService {
     for (JsonNode hit : hitsNode) {
       pageHitCount++;
       double score = hit.path("_score").asDouble(0.0);
-      // When threshold > 0, OpenSearch already applies min_score at the KNN query level.
-      // This post-filter acts as a safety net for the no-threshold case (k-based retrieval),
-      // where low-scoring neighbors may still be returned to fill the k count.
       if (score < threshold) {
         continue;
       }
-
       Map<String, Object> hitMap = MAPPER.convertValue(hit.path("_source"), Map.class);
       hitMap.put("_score", score);
-
       String parentId = (String) hitMap.getOrDefault("parentId", hit.path("_id").asText());
+      // Persist the fallback into the result map so consumers (e.g. SemanticSearchTool
+      // via copyIfPresent) always see a populated parentId, not just the grouping key.
+      hitMap.put("parentId", parentId);
       byParent.computeIfAbsent(parentId, ignored -> new ArrayList<>()).add(hitMap);
     }
     return pageHitCount;
@@ -277,6 +194,84 @@ public class OpenSearchVectorService implements VectorIndexService {
       return totalNode.path("value").asLong(-1L);
     }
     return -1L;
+  }
+
+  @Override
+  public String executeGenericRequest(String method, String endpoint, String body) {
+    try {
+      Request request = new Request(method, endpoint);
+      if (body != null) {
+        request.setJsonEntity(body);
+      }
+      // Rest5Client.performRequest only throws ResponseException on 5xx (its internal
+      // isCorrectServerResponse is `code < 500`). 4xx responses are returned normally,
+      // so we still need a manual status-code check below for client errors.
+      Response response = restClient.performRequest(request);
+      int statusCode = response.getStatusCode();
+      String responseBody = readEntityBody(response.getEntity());
+      if (statusCode >= 400) {
+        // 4xx path: Rest5Client returns these normally, so we surface the status
+        // and body in the exception message — symmetric to the OS path.
+        LOG.error("Generic request failed: {} {} status={}", method, endpoint, statusCode);
+        throw new RuntimeException(
+            "Elasticsearch request failed with status " + statusCode + ": " + responseBody);
+      }
+      return responseBody;
+    } catch (ResponseException e) {
+      // 5xx path: format symmetrically with the OS generic-client error message.
+      int statusCode = e.getResponse().getStatusCode();
+      String errorBody = readEntityBody(e.getResponse().getEntity());
+      LOG.error("Generic request failed: {} {}", method, endpoint, e);
+      throw new RuntimeException(
+          "Elasticsearch request failed with status " + statusCode + ": " + errorBody, e);
+    } catch (RuntimeException e) {
+      // Already a RuntimeException with a meaningful message (e.g. our 4xx-status
+      // surface). Don't double-wrap and lose the message.
+      throw e;
+    } catch (Exception e) {
+      LOG.error("Generic request failed: {} {}", method, endpoint, e);
+      throw new RuntimeException("Elasticsearch generic request failed", e);
+    }
+  }
+
+  /**
+   * Read an HttpEntity body as UTF-8, tolerating a null or unreadable entity. Some ES
+   * endpoints return no body on 4xx; dereferencing entity.getContent() unconditionally
+   * would NPE and mask the real HTTP status.
+   */
+  private static String readEntityBody(org.apache.hc.core5.http.HttpEntity entity) {
+    if (entity == null) {
+      return "";
+    }
+    try (InputStream is = entity.getContent()) {
+      return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+    } catch (Exception ignored) {
+      return "";
+    }
+  }
+
+  @Override
+  public Map<String, Object> generateEmbeddingFields(EntityInterface entity) {
+    return VectorDocBuilder.buildEmbeddingFields(entity, embeddingClient);
+  }
+
+  @Override
+  public void updateEntityEmbedding(EntityInterface entity, String entityIndexName) {
+    try {
+      String entityId = entity.getId().toString();
+      String existingFingerprint = getExistingFingerprint(entityIndexName, entityId);
+      String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
+
+      if (currentFingerprint.equals(existingFingerprint)) {
+        LOG.debug("Skipping entity {} - fingerprint unchanged", entityId);
+        return;
+      }
+
+      Map<String, Object> embeddingFields = generateEmbeddingFields(entity);
+      partialUpdateEntity(entityIndexName, entityId, embeddingFields);
+    } catch (Exception e) {
+      LOG.error("Failed to update embedding for entity {}: {}", entity.getId(), e.getMessage(), e);
+    }
   }
 
   @Override
@@ -360,32 +355,13 @@ public class OpenSearchVectorService implements VectorIndexService {
     }
   }
 
-  @Override
-  public String executeGenericRequest(String method, String endpoint, String body) {
+  public void close() {
     try {
-      OpenSearchGenericClient genericClient = client.generic();
-      var request = Requests.builder().endpoint(endpoint).method(method).json(body).build();
-      try (var response = genericClient.execute(request)) {
-        if (response.getStatus() >= 400) {
-          String errorBody = response.getBody().map(Body::bodyAsString).orElse("no body");
-          throw new IOException(
-              "OpenSearch request failed with status " + response.getStatus() + ": " + errorBody);
-        }
-        return response
-            .getBody()
-            .map(
-                b -> {
-                  try {
-                    return new String(b.bodyAsBytes(), StandardCharsets.UTF_8);
-                  } catch (Exception e) {
-                    return "{}";
-                  }
-                })
-            .orElse("{}");
+      if (client != null && client._transport() != null) {
+        client._transport().close();
       }
     } catch (Exception e) {
-      LOG.error("Generic request failed: {} {}", method, endpoint, e);
-      throw new RuntimeException("OpenSearch generic request failed", e);
+      LOG.warn("Error closing Elasticsearch transport: {}", e.getMessage());
     }
   }
 }
