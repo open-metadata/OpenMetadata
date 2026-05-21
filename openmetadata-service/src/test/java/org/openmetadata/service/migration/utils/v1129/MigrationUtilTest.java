@@ -95,7 +95,7 @@ class MigrationUtilTest {
   }
 
   @Test
-  void threadEntity_mysqlWhereClauseUsesJsonExtract() throws Exception {
+  void threadEntity_mysqlWhereClauseMatchesMissingAndJsonNull() throws Exception {
     Handle handle = mockHandle();
     stubTableExists(handle, "thread_entity");
     stubBatch(handle, Collections.emptyList());
@@ -104,14 +104,21 @@ class MigrationUtilTest {
 
     ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
     verify(handle, atLeastOnce()).createQuery(sqlCaptor.capture());
-    // stubBatch setup also triggers createQuery; filter to find the real migration SQL
+    // Both cases must be checked: key missing (SQL NULL) AND JSON null
+    // (JSON_TYPE returns 'NULL' for JSON null, not SQL NULL).
     assertTrue(
         sqlCaptor.getAllValues().stream()
             .anyMatch(s -> s != null && s.contains("JSON_EXTRACT(json, '$.domains') IS NULL")));
+    assertTrue(
+        sqlCaptor.getAllValues().stream()
+            .anyMatch(
+                s ->
+                    s != null
+                        && s.contains("JSON_TYPE(JSON_EXTRACT(json, '$.domains')) = 'NULL'")));
   }
 
   @Test
-  void threadEntity_postgresWhereClauseUsesJsonArrowOperator() throws Exception {
+  void threadEntity_postgresWhereClauseMatchesMissingAndJsonNull() throws Exception {
     Handle handle = mockHandle();
     stubTableExists(handle, "thread_entity");
     stubBatch(handle, Collections.emptyList());
@@ -123,6 +130,9 @@ class MigrationUtilTest {
     assertTrue(
         sqlCaptor.getAllValues().stream()
             .anyMatch(s -> s != null && s.contains("json->'domains' IS NULL")));
+    assertTrue(
+        sqlCaptor.getAllValues().stream()
+            .anyMatch(s -> s != null && s.contains("jsonb_typeof(json->'domains') = 'null'")));
   }
 
   @Test
