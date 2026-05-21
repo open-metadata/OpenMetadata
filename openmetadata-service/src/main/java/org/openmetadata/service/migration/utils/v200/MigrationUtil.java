@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -29,6 +30,17 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class MigrationUtil {
+
+  /**
+   * Per-migration cache of {@code (entityType, entityId) -> resolved domains}. Many migrated tasks
+   * point at the same target entity (e.g. a few glossary terms each with hundreds of tasks); going
+   * through {@link EntityRepository#get} for every task would re-load the entity and re-walk its
+   * inheritance chain. This cache shortens the lookup to a Map probe for the common case.
+   *
+   * <p>The migration runs single-threaded on startup, so a plain {@link HashMap} is sufficient; the
+   * cache lives for the lifetime of the JVM but only grows during the v200 step.
+   */
+  private static final Map<String, List<EntityReference>> DOMAIN_CACHE = new HashMap<>();
 
   private MigrationUtil() {}
 
@@ -1097,21 +1109,34 @@ public class MigrationUtil {
    * inherit their domain from a parent do not have a direct {@code domain --HAS--> entity} row in
    * {@code entity_relationship}; the inheritance is computed at read time. A raw SQL query on
    * {@code entity_relationship} would miss those cases entirely.
+   *
+   * <p>Results are cached in {@link #DOMAIN_CACHE} so that the (typical) pattern of many tasks
+   * sharing a small set of target entities resolves each unique entity exactly once. Transient
+   * lookup failures are not cached so a later task on the same entity can retry.
    */
   private static List<EntityReference> resolveDomainsViaRepository(
       String entityId, String entityType) {
+    String cacheKey = entityType + "::" + entityId;
+    List<EntityReference> cached = DOMAIN_CACHE.get(cacheKey);
+    if (cached != null) {
+      return cached;
+    }
     try {
       EntityRepository<?> repo = Entity.getEntityRepository(entityType);
       if (!repo.isSupportsDomains()) {
+        DOMAIN_CACHE.put(cacheKey, Collections.emptyList());
         return Collections.emptyList();
       }
       Object entity =
           repo.get(null, UUID.fromString(entityId), repo.getFields(Entity.FIELD_DOMAINS));
       if (!(entity instanceof EntityInterface ei)) {
+        DOMAIN_CACHE.put(cacheKey, Collections.emptyList());
         return Collections.emptyList();
       }
-      List<EntityReference> domains = ei.getDomains();
-      return domains == null ? Collections.emptyList() : domains;
+      List<EntityReference> domains =
+          ei.getDomains() == null ? Collections.emptyList() : ei.getDomains();
+      DOMAIN_CACHE.put(cacheKey, domains);
+      return domains;
     } catch (Exception e) {
       LOG.debug(
           "Could not resolve domains for entity {}/{}: {}", entityType, entityId, e.getMessage());
