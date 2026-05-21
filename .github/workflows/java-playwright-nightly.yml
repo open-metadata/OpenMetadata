@@ -18,15 +18,13 @@
 # Re-add `schedule: - cron: '0 2 * * *'` once the suite is green on main.
 #
 # Topology:
-#   build-image         — builds openmetadata-dist tarball + bakes the local
-#                          openmetadata-server:jpw-snapshot image with BuildKit
-#                          GHA layer cache, saves it to a workflow artifact, and
-#                          primes the Maven cache for downstream jobs.
-#   ui-it-nightly (x2)  — matrix over [opensearch, elasticsearch]. Both download
-#                          the pre-built image artifact + restore the Maven
-#                          cache, then run `mvn verify -P ui-it` with
-#                          OM_TEST_IMAGE pointing at the pre-loaded tag so
-#                          ContainerizedServer skips its own build.
+#   - build-image: builds the openmetadata-dist tarball and bakes the local
+#     openmetadata-server:jpw-snapshot image (BuildKit + GHA layer cache), saves it
+#     to a workflow artifact, and primes the Maven cache for downstream jobs.
+#   - ui-it-nightly (x2): matrix over [opensearch, elasticsearch]. Both download the
+#     pre-built image artifact, restore the Maven cache, then run `mvn verify -P ui-it`
+#     with OM_TEST_IMAGE pointing at the pre-loaded tag so ContainerizedServer skips
+#     its own build.
 
 name: UI Integration Tests (Nightly)
 
@@ -38,6 +36,31 @@ on:
         required: false
         type: boolean
         default: false
+      simpleReindexTables:
+        description: 'SimpleReindexTriggerUIIT table cohort size'
+        required: false
+        type: string
+        default: '5000'
+      simpleReindexTopics:
+        description: 'SimpleReindexTriggerUIIT topic cohort size'
+        required: false
+        type: string
+        default: '1500'
+      simpleReindexDashboards:
+        description: 'SimpleReindexTriggerUIIT dashboard cohort size'
+        required: false
+        type: string
+        default: '1500'
+      simpleReindexPipelines:
+        description: 'SimpleReindexTriggerUIIT pipeline cohort size'
+        required: false
+        type: string
+        default: '2000'
+      searchAvailableTables:
+        description: 'SearchAvailableDuringReindexUIIT table cohort size'
+        required: false
+        type: string
+        default: '5000'
 
 permissions:
   contents: read
@@ -230,9 +253,12 @@ jobs:
         run: |
           # Nightly bumps the per-test cohort sizes up to the historical stress numbers.
           # PR runs use the smaller defaults baked into each test so `mvn verify` is fast.
-          STRESS_PROPS="-Djpw.simpleReindex.tables=5000 -Djpw.simpleReindex.topics=1500 \
-            -Djpw.simpleReindex.dashboards=1500 -Djpw.simpleReindex.pipelines=2000 \
-            -Djpw.searchAvailable.tables=5000"
+          # Sizes are workflow_dispatch inputs (defaults below) so they're tunable per run.
+          STRESS_PROPS="-Djpw.simpleReindex.tables=${{ github.event.inputs.simpleReindexTables || '5000' }} \
+            -Djpw.simpleReindex.topics=${{ github.event.inputs.simpleReindexTopics || '1500' }} \
+            -Djpw.simpleReindex.dashboards=${{ github.event.inputs.simpleReindexDashboards || '1500' }} \
+            -Djpw.simpleReindex.pipelines=${{ github.event.inputs.simpleReindexPipelines || '2000' }} \
+            -Djpw.searchAvailable.tables=${{ github.event.inputs.searchAvailableTables || '5000' }}"
           # Opt-in for SSO bootstrap UIITs (second OM lifecycle); default off.
           if [ "${{ github.event.inputs.includeSsoBootstrap }}" = "true" ]; then
             SSO_PROPS="-Dui.it.excludedGroups="
