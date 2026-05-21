@@ -315,9 +315,14 @@ class MigrationUtilTest {
     ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
     verify(handle, times(1)).createUpdate(sqlCaptor.capture());
     String sql = sqlCaptor.getValue();
+    // er_about and er_domain are filtered on deleted=FALSE so the backfill won't propagate
+    // soft-deleted relationships forward.
     assertTrue(sql.contains("er_about.deleted = FALSE"));
     assertTrue(sql.contains("er_domain.deleted = FALSE"));
-    assertTrue(sql.contains("ex.deleted = FALSE"));
+    // ex (the NOT EXISTS check) must NOT filter on deleted: tasks are hard-deleted only, and
+    // filtering would let INSERT IGNORE collide on the PK with soft-deleted rows and drop the
+    // affected-row count below BATCH_SIZE, breaking the loop early.
+    assertFalse(sql.contains("ex.deleted = FALSE"));
   }
 
   @Test
@@ -335,6 +340,6 @@ class MigrationUtilTest {
     String sql = sqlCaptor.getValue();
     assertTrue(sql.contains("er_about.deleted = FALSE"));
     assertTrue(sql.contains("er_domain.deleted = FALSE"));
-    assertTrue(sql.contains("ex.deleted = FALSE"));
+    assertFalse(sql.contains("ex.deleted = FALSE"));
   }
 }
