@@ -147,15 +147,17 @@ class SnowflakeLineageSource(
 
     def _build_filter_condition_clause(self) -> str:
         """
-        Render `sourceConfig.filterCondition` as an extra `AND (...)` predicate
-        scoped to the access_history_filtered CTE. Unqualified column names
-        resolve against `qh` (QUERY_HISTORY) — e.g. `query_type = 'COPY'`,
-        `user_name = 'etl_user'`, `query_text ILIKE '%my_pipeline%'`.
+        Render `sourceConfig.filterCondition` as a trailing `WHERE (...)` on the
+        final edge result, so it scopes lineage by the edge's tables rather than
+        by QUERY_HISTORY. Unqualified column names resolve against the edge
+        columns `UPSTREAM_TABLE` / `DOWNSTREAM_TABLE` (Snowflake `DB.SCHEMA.TABLE`
+        FQNs) — e.g. `DOWNSTREAM_TABLE LIKE 'MYDB.%'`,
+        `UPSTREAM_TABLE ILIKE 'MYDB.MYSCHEMA.%'`.
         """
         condition = getattr(self.source_config, "filterCondition", None)
         if not condition:
             return ""
-        return f"AND ({condition})"
+        return f"WHERE ({condition})"
 
     def get_stored_procedure_sql_statement(self) -> str:
         """

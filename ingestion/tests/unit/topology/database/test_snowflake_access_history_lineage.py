@@ -176,18 +176,23 @@ def test_combined_lineage_sql_streams_one_row_per_edge():
     assert "ARRAY_SLICE" not in rendered
 
 
-def test_combined_sql_injects_filter_condition_when_provided():
-    """User's sourceConfig.filterCondition must be injected into the source CTE."""
+def test_combined_sql_injects_filter_condition_at_final_select():
+    """
+    sourceConfig.filterCondition scopes the final edge result by table FQN
+    (database/schema), so it must land on the outer SELECT — after the source
+    CTE, not inside it.
+    """
+    predicate = "WHERE (DOWNSTREAM_TABLE LIKE 'MYDB.%')"
     rendered = SNOWFLAKE_ACCESS_HISTORY_LINEAGE.format(
         account_usage="SNOWFLAKE.ACCOUNT_USAGE",
         start_time="2025-01-01",
         end_time="2025-01-31",
-        filter_condition="AND (qh.QUERY_TYPE = 'CREATE_TABLE_AS_SELECT')",
+        filter_condition=predicate,
     )
-    # Predicate lands inside the access_history_filtered CTE before flatten/aggregation
-    assert "AND (qh.QUERY_TYPE = 'CREATE_TABLE_AS_SELECT')" in rendered
-    cte_section, _, _ = rendered.partition("table_edges AS")
-    assert "AND (qh.QUERY_TYPE = 'CREATE_TABLE_AS_SELECT')" in cte_section
+    cte_section = rendered.partition("table_edges AS")[0]
+    assert "DOWNSTREAM_TABLE LIKE 'MYDB.%'" not in cte_section
+    after_final_from = rendered.partition("FROM table_edges te")[2]
+    assert predicate in after_final_from
 
 
 def test_combined_lineage_sql_prunes_query_history_by_date():
@@ -236,8 +241,8 @@ def test_build_filter_condition_clause_empty_when_unset():
 
 def test_build_filter_condition_clause_wraps_user_predicate():
     src = _make_lineage_source()
-    src.source_config.filterCondition = "qh.USER_NAME = 'etl_user'"
-    assert src._build_filter_condition_clause() == "AND (qh.USER_NAME = 'etl_user')"
+    src.source_config.filterCondition = "DOWNSTREAM_TABLE LIKE 'MYDB.%'"
+    assert src._build_filter_condition_clause() == "WHERE (DOWNSTREAM_TABLE LIKE 'MYDB.%')"
 
 
 def test_copy_history_sql_filters_loaded_status():
