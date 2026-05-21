@@ -60,6 +60,7 @@ import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useDataAccessRequest } from '../../../hooks/useDataAccessRequest';
+import { useDeferredTabData } from '../../../hooks/useDeferredTabData';
 import { useFqn } from '../../../hooks/useFqn';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -72,6 +73,8 @@ import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataProductPortsView } from '../../../rest/dataProductAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
   getEntityDeleteMessage,
   getFeedCounts,
   hasEditAccess,
@@ -197,6 +200,22 @@ const DataProductsDetailsPage = ({
       handleFeedCount
     );
   };
+
+  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
+  // (drives only the Activity Feed tab badge) until first tab activation.
+  const fetchTaskCounts = useCallback(() => {
+    const fqn = dataProduct.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityTaskCountsInto(fqn, setFeedCount);
+    }
+  }, [dataProduct.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    const fqn = dataProduct.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityActivityCountInto(EntityType.DATA_PRODUCT, fqn, setFeedCount);
+    }
+  }, [dataProduct.fullyQualifiedName]);
 
   const openAssetDrawer = useCallback(() => {
     setIsAssetDrawerOpen(true);
@@ -666,11 +685,15 @@ const DataProductsDetailsPage = ({
   useEffect(() => {
     fetchDataProductPermission();
     fetchDataProductAssets();
-    getEntityFeedCount();
+    fetchTaskCounts();
     fetchActiveAnnouncement();
     fetchDataProductContract();
     fetchPortCounts();
   }, [dataProductFqn, fetchPortCounts]);
+
+  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
+    dataProductFqn,
+  ]);
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);

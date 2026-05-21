@@ -28,9 +28,14 @@ import { PageType } from '../../../generated/system/ui/uiCustomization';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useDeferredTabData } from '../../../hooks/useDeferredTabData';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restorePipeline } from '../../../rest/pipelineAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -118,6 +123,24 @@ const PipelineDetails = ({
 
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.PIPELINE, pipelineFQN, handleFeedCount);
+
+  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer the activity
+  // events fetch (drives only the Activity Feed tab badge) until first tab activation.
+  const fetchTaskCounts = useCallback(() => {
+    if (pipelineFQN) {
+      fetchEntityTaskCountsInto(pipelineFQN, setFeedCount);
+    }
+  }, [pipelineFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (pipelineFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.PIPELINE,
+        pipelineFQN,
+        setFeedCount
+      );
+    }
+  }, [pipelineFQN]);
 
   const fetchResourcePermission = useCallback(async () => {
     try {
@@ -286,8 +309,12 @@ const PipelineDetails = ({
   );
 
   useEffect(() => {
-    getEntityFeedCount();
-  }, []);
+    fetchTaskCounts();
+  }, [pipelineFQN]);
+
+  useDeferredTabData(EntityTabs.ACTIVITY_FEED, tab, fetchActivityCount, [
+    pipelineFQN,
+  ]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

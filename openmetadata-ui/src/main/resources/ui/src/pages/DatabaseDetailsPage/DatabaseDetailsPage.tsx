@@ -59,6 +59,7 @@ import { Include } from '../../generated/type/include';
 import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import { useDeferredTabData } from '../../hooks/useDeferredTabData';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
@@ -70,7 +71,12 @@ import {
   restoreDatabase,
   updateDatabaseVotes,
 } from '../../rest/databaseAPI';
-import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getEntityMissingError,
+  getFeedCounts,
+} from '../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -171,6 +177,24 @@ const DatabaseDetails: FunctionComponent = () => {
   const getEntityFeedCount = () => {
     getFeedCounts(EntityType.DATABASE, decodedDatabaseFQN, handleFeedCount);
   };
+
+  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
+  // (drives only the Activity Feed tab badge) until first tab activation.
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedDatabaseFQN) {
+      fetchEntityTaskCountsInto(decodedDatabaseFQN, setFeedCount);
+    }
+  }, [decodedDatabaseFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedDatabaseFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.DATABASE,
+        decodedDatabaseFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedDatabaseFQN]);
 
   const fetchDatabaseSchemaCount = useCallback(async () => {
     if (isEmpty(decodedDatabaseFQN)) {
@@ -279,8 +303,12 @@ const DatabaseDetails: FunctionComponent = () => {
   );
 
   useEffect(() => {
-    getEntityFeedCount();
-  }, []);
+    fetchTaskCounts();
+  }, [decodedDatabaseFQN]);
+
+  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
+    decodedDatabaseFQN,
+  ]);
 
   useEffect(() => {
     if (withinPageSearch && serviceType) {

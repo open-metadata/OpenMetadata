@@ -54,6 +54,7 @@ import { Operation as PermissionOperation } from '../../generated/entity/policie
 import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import { useDeferredTabData } from '../../hooks/useDeferredTabData';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -65,7 +66,12 @@ import {
 } from '../../rest/apiCollectionsAPI';
 import { getApiEndPoints } from '../../rest/apiEndpointsAPI';
 import apiCollectionClassBase from '../../utils/APICollection/APICollectionClassBase';
-import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getEntityMissingError,
+  getFeedCounts,
+} from '../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -162,6 +168,24 @@ const APICollectionPage: FunctionComponent = () => {
       handleFeedCount
     );
   }, [handleFeedCount, decodedAPICollectionFQN]);
+
+  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
+  // (drives only the Activity Feed tab badge) until first tab activation.
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedAPICollectionFQN) {
+      fetchEntityTaskCountsInto(decodedAPICollectionFQN, setFeedCount);
+    }
+  }, [decodedAPICollectionFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedAPICollectionFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.API_COLLECTION,
+        decodedAPICollectionFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedAPICollectionFQN]);
 
   const fetchAPICollectionDetails = useCallback(async () => {
     try {
@@ -361,12 +385,12 @@ const APICollectionPage: FunctionComponent = () => {
   useEffect(() => {
     if (viewAPICollectionPermission) {
       fetchAPICollectionDetails();
-      getEntityFeedCount();
+      fetchTaskCounts();
     }
-  }, [
-    viewAPICollectionPermission,
-    fetchAPICollectionDetails,
-    getEntityFeedCount,
+  }, [viewAPICollectionPermission, fetchAPICollectionDetails, fetchTaskCounts]);
+
+  useDeferredTabData(EntityTabs.ACTIVITY_FEED, tab, fetchActivityCount, [
+    decodedAPICollectionFQN,
   ]);
 
   useEffect(() => {

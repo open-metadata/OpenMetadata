@@ -29,11 +29,16 @@ import {
 import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useDeferredTabData } from '../../../hooks/useDeferredTabData';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -125,6 +130,22 @@ const GlossaryTermsV1 = ({
       handleFeedCount
     );
   };
+
+  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
+  // (drives only the Activity Feed tab badge) until first tab activation.
+  const fetchTaskCounts = useCallback(() => {
+    const fqn = glossaryTerm.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityTaskCountsInto(fqn, setFeedCount);
+    }
+  }, [glossaryTerm.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    const fqn = glossaryTerm.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityActivityCountInto(EntityType.GLOSSARY_TERM, fqn, setFeedCount);
+    }
+  }, [glossaryTerm.fullyQualifiedName]);
 
   const fetchGlossaryTermAssets = async () => {
     if (glossaryTerm) {
@@ -225,9 +246,16 @@ const GlossaryTermsV1 = ({
       fetchGlossaryTermAssets();
     }, 500);
     if (!isVersionView) {
-      getEntityFeedCount();
+      fetchTaskCounts();
     }
   }, [glossaryFqn, isVersionView]);
+
+  useDeferredTabData(
+    EntityTabs.ACTIVITY_FEED,
+    isVersionView ? undefined : activeTab,
+    fetchActivityCount,
+    [glossaryFqn, isVersionView]
+  );
 
   const updatedGlossaryTerm = useMemo(() => {
     const name = isVersionView

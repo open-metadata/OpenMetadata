@@ -61,6 +61,7 @@ import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import { useDeferredTabData } from '../../hooks/useDeferredTabData';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -74,7 +75,12 @@ import {
 } from '../../rest/databaseAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { getTableList } from '../../rest/tableAPI';
-import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getEntityMissingError,
+  getFeedCounts,
+} from '../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -201,6 +207,24 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       handleFeedCount
     );
   }, [decodedDatabaseSchemaFQN, handleFeedCount]);
+
+  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
+  // (drives only the Activity Feed tab badge) until first tab activation.
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedDatabaseSchemaFQN) {
+      fetchEntityTaskCountsInto(decodedDatabaseSchemaFQN, setFeedCount);
+    }
+  }, [decodedDatabaseSchemaFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedDatabaseSchemaFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.DATABASE_SCHEMA,
+        decodedDatabaseSchemaFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedDatabaseSchemaFQN]);
 
   const fetchDatabaseSchemaDetails = useCallback(async () => {
     try {
@@ -430,13 +454,17 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     if (viewDatabaseSchemaPermission) {
       fetchDatabaseSchemaDetails();
       fetchStoreProcedureCount();
-      getEntityFeedCount();
+      fetchTaskCounts();
     }
   }, [
     viewDatabaseSchemaPermission,
     fetchDatabaseSchemaDetails,
     fetchStoreProcedureCount,
-    getEntityFeedCount,
+    fetchTaskCounts,
+  ]);
+
+  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
+    decodedDatabaseSchemaFQN,
   ]);
 
   useEffect(() => {

@@ -24,10 +24,15 @@ import { DashboardDataModel } from '../../../../generated/entity/data/dashboardD
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomPages } from '../../../../hooks/useCustomPages';
+import { useDeferredTabData } from '../../../../hooks/useDeferredTabData';
 import { useFqn } from '../../../../hooks/useFqn';
 import { FeedCounts } from '../../../../interface/feed.interface';
 import { restoreDataModel } from '../../../../rest/dataModelsAPI';
-import { getFeedCounts } from '../../../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -99,9 +104,31 @@ const DataModelDetails = ({
     );
   };
 
-  useEffect(() => {
-    decodedDataModelFQN && getEntityFeedCount();
+  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
+  // (drives only the Activity Feed tab badge) until first tab activation.
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedDataModelFQN) {
+      fetchEntityTaskCountsInto(decodedDataModelFQN, setFeedCount);
+    }
   }, [decodedDataModelFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedDataModelFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.DASHBOARD_DATA_MODEL,
+        decodedDataModelFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedDataModelFQN]);
+
+  useEffect(() => {
+    decodedDataModelFQN && fetchTaskCounts();
+  }, [decodedDataModelFQN]);
+
+  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
+    decodedDataModelFQN,
+  ]);
 
   const handleUpdateDisplayName = async (data: EntityName) => {
     if (isUndefined(dataModelData)) {

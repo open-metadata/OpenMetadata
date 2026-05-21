@@ -92,11 +92,17 @@ import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../generated/system/ui/page';
 import { Style } from '../../generated/type/tagLabel';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import { useDeferredTabData } from '../../hooks/useDeferredTabData';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { deleteTag, getTagByFqn, patchTag } from '../../rest/tagAPI';
-import { getEntityDeleteMessage, getFeedCounts } from '../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getEntityDeleteMessage,
+  getFeedCounts,
+} from '../../utils/CommonUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { renderIcon } from '../../utils/IconUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -398,6 +404,24 @@ const TagPage = () => {
       );
     }
   };
+
+  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
+  // (drives only the Activity Feed tab badge) until first tab activation.
+  const fetchTaskCounts = useCallback(() => {
+    if (tagItem?.fullyQualifiedName) {
+      fetchEntityTaskCountsInto(tagItem.fullyQualifiedName, setFeedCount);
+    }
+  }, [tagItem?.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (tagItem?.fullyQualifiedName) {
+      fetchEntityActivityCountInto(
+        EntityType.TAG,
+        tagItem.fullyQualifiedName,
+        setFeedCount
+      );
+    }
+  }, [tagItem?.fullyQualifiedName]);
 
   const handleAssetSave = useCallback(() => {
     fetchClassificationTagAssets();
@@ -708,9 +732,13 @@ const TagPage = () => {
   useEffect(() => {
     if (tagItem) {
       fetchCurrentTagPermission();
-      fetchFeedCount();
+      fetchTaskCounts();
     }
   }, [tagItem]);
+
+  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
+    tagItem?.fullyQualifiedName,
+  ]);
 
   if (isLoading || isCustomPageLoading) {
     return <Loader />;

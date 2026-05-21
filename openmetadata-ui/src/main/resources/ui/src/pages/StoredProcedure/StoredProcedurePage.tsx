@@ -47,6 +47,7 @@ import { Include } from '../../generated/type/include';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import { useDeferredTabData } from '../../hooks/useDeferredTabData';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
@@ -57,7 +58,12 @@ import {
   restoreStoredProcedures,
   updateStoredProcedureVotes,
 } from '../../rest/storedProceduresAPI';
-import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
+import {
+  addToRecentViewed,
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -162,6 +168,24 @@ const StoredProcedurePage = () => {
       handleFeedCount
     );
   };
+
+  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
+  // (drives only the Activity Feed tab badge) until first tab activation.
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedStoredProcedureFQN) {
+      fetchEntityTaskCountsInto(decodedStoredProcedureFQN, setFeedCount);
+    }
+  }, [decodedStoredProcedureFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedStoredProcedureFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.STORED_PROCEDURE,
+        decodedStoredProcedureFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedStoredProcedureFQN]);
 
   const fetchStoredProcedureDetails = async () => {
     setIsLoading(true);
@@ -555,9 +579,13 @@ const StoredProcedurePage = () => {
   useEffect(() => {
     if (viewBasicPermission) {
       fetchStoredProcedureDetails();
-      getEntityFeedCount();
+      fetchTaskCounts();
     }
   }, [decodedStoredProcedureFQN, storedProcedurePermissions]);
+
+  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
+    decodedStoredProcedureFQN,
+  ]);
 
   if (isLoading || loading) {
     return <Loader />;

@@ -25,11 +25,16 @@ import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useDeferredTabData } from '../../../hooks/useDeferredTabData';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreApiEndPoint } from '../../../rest/apiEndpointsAPI';
 import apiEndpointClassBase from '../../../utils/APIEndpoints/APIEndpointClassBase';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -179,6 +184,24 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       handleFeedCount
     );
 
+  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
+  // (drives only the Activity Feed tab badge) until first tab activation.
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedApiEndpointFqn) {
+      fetchEntityTaskCountsInto(decodedApiEndpointFqn, setFeedCount);
+    }
+  }, [decodedApiEndpointFqn]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedApiEndpointFqn) {
+      fetchEntityActivityCountInto(
+        EntityType.API_ENDPOINT,
+        decodedApiEndpointFqn,
+        setFeedCount
+      );
+    }
+  }, [decodedApiEndpointFqn]);
+
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     [navigate]
@@ -209,8 +232,12 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   );
 
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
   }, [apiEndpointPermissions, decodedApiEndpointFqn]);
+
+  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
+    decodedApiEndpointFqn,
+  ]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

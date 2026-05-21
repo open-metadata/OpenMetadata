@@ -34,9 +34,14 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useDeferredTabData } from '../../../hooks/useDeferredTabData';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -253,6 +258,22 @@ function WorksheetDetails({
       handleFeedCount
     );
 
+  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
+  // (drives only the Activity Feed tab badge) until first tab activation.
+  const fetchTaskCounts = useCallback(() => {
+    const fqn = worksheetDetails.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityTaskCountsInto(fqn, setFeedCount);
+    }
+  }, [worksheetDetails.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    const fqn = worksheetDetails.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityActivityCountInto(EntityType.WORKSHEET, fqn, setFeedCount);
+    }
+  }, [worksheetDetails.fullyQualifiedName]);
+
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
@@ -306,9 +327,13 @@ function WorksheetDetails({
 
   useEffect(() => {
     if (worksheetDetails.fullyQualifiedName) {
-      getEntityFeedCount();
+      fetchTaskCounts();
     }
   }, [worksheetPermissions, worksheetDetails.fullyQualifiedName]);
+
+  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
+    worksheetDetails.fullyQualifiedName,
+  ]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

@@ -57,7 +57,10 @@ import {
   getTestCaseVersionList,
   updateTestCaseById,
 } from '../../../rest/testAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
@@ -315,6 +318,16 @@ const IncidentManagerDetailPage = ({
     getFeedCounts(EntityType.TEST_CASE, testCaseFQN, handleFeedCount);
   }, [testCaseFQN]);
 
+  // P2-A: only `feedCount.openTaskCount` is consumed by this page (drives the tabs' open-task
+  // badge in `tabDetails` useMemo). The activity-events fetch that {@link getFeedCounts}
+  // bundles in is wasted here, so we skip it entirely — there's no Activity Feed tab on
+  // incidents (TestCasePageTabs).
+  const fetchTaskCounts = useCallback(() => {
+    if (testCaseFQN) {
+      fetchEntityTaskCountsInto(testCaseFQN, setFeedCount);
+    }
+  }, [testCaseFQN]);
+
   const handleCancelDimension = useCallback(
     () => setIsDimensionEdit(false),
     []
@@ -373,7 +386,7 @@ const IncidentManagerDetailPage = ({
   useEffect(() => {
     if (hasViewPermission && testCaseFQN) {
       fetchTestCaseData();
-      getEntityFeedCount();
+      fetchTaskCounts();
     } else {
       setIsLoading(false);
     }

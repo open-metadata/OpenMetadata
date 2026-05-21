@@ -44,6 +44,7 @@ import { PageType } from '../../generated/system/ui/page';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import { useDeferredTabData } from '../../hooks/useDeferredTabData';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
@@ -54,7 +55,12 @@ import {
   restoreSearchIndex,
   updateSearchIndexVotes,
 } from '../../rest/SearchIndexAPI';
-import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
+import {
+  addToRecentViewed,
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -235,6 +241,24 @@ function SearchIndexDetailsPage() {
       decodedSearchIndexFQN,
       handleFeedCount
     );
+
+  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
+  // (drives only the Activity Feed tab badge) until first tab activation.
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedSearchIndexFQN) {
+      fetchEntityTaskCountsInto(decodedSearchIndexFQN, setFeedCount);
+    }
+  }, [decodedSearchIndexFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedSearchIndexFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.SEARCH_INDEX,
+        decodedSearchIndexFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedSearchIndexFQN]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -536,9 +560,13 @@ function SearchIndexDetailsPage() {
   useEffect(() => {
     if (viewPermission) {
       fetchSearchIndexDetails();
-      getEntityFeedCount();
+      fetchTaskCounts();
     }
   }, [decodedSearchIndexFQN, viewPermission]);
+
+  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
+    decodedSearchIndexFQN,
+  ]);
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);

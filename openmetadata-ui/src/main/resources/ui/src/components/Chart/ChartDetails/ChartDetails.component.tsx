@@ -27,11 +27,16 @@ import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useDeferredTabData } from '../../../hooks/useDeferredTabData';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreChart } from '../../../rest/chartsAPI';
 import chartDetailsClassBase from '../../../utils/ChartDetailsClassBase';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -127,9 +132,31 @@ const ChartDetails = ({
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.CHART, decodedChartFQN, handleFeedCount);
 
-  useEffect(() => {
-    getEntityFeedCount();
+  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
+  // (drives only the Activity Feed tab badge) until first tab activation.
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedChartFQN) {
+      fetchEntityTaskCountsInto(decodedChartFQN, setFeedCount);
+    }
   }, [decodedChartFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedChartFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.CHART,
+        decodedChartFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedChartFQN]);
+
+  useEffect(() => {
+    fetchTaskCounts();
+  }, [decodedChartFQN]);
+
+  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
+    decodedChartFQN,
+  ]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {

@@ -33,7 +33,7 @@ import {
   RecentlySearchedData,
   RecentlyViewedData,
 } from 'Models';
-import { ReactNode } from 'react';
+import { Dispatch, ReactNode, SetStateAction } from 'react';
 import Loader from '../components/common/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { BASE_COLORS } from '../constants/DataInsight.constants';
@@ -521,6 +521,77 @@ export const getFeedCounts = async (
       closedTaskCount,
       totalCount: activityCount + totalTasksCount,
       mentionCount: 0,
+    });
+  } catch (err) {
+    showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
+  }
+};
+
+/**
+ * Eager-only task-count fetch for entity-detail pages. {@link getFeedCounts} fires both the
+ * task-count and activity-events endpoints in parallel; the activity-events fetch is the heavy
+ * one (it pulls up to 100 events just to count them) and only feeds the Activity Feed tab
+ * badge — most users never open that tab. The task counts, by contrast, drive the
+ * always-visible "Open Tasks" button in the page header on every entity page, so they must be
+ * eager.
+ *
+ * Pair this on mount with {@link fetchEntityActivityCountInto} gated by
+ * {@code useDeferredTabData(EntityTabs.ACTIVITY_FEED, ...)} so the activity portion only runs
+ * when the user actually clicks Activity Feed. Total count is derived from
+ * {@code (conversationCount ?? 0) + totalTasksCount} so the merge stays correct whichever
+ * fetch arrives first.
+ */
+export const fetchEntityTaskCountsInto = async (
+  entityFqn: string,
+  setFeedCount: Dispatch<SetStateAction<FeedCounts>>,
+  domain?: string
+) => {
+  try {
+    const taskCounts = await getTaskCounts({ aboutEntity: entityFqn, domain });
+    setFeedCount((prev) => {
+      const openTaskCount = taskCounts.open ?? 0;
+      const closedTaskCount = taskCounts.completed ?? 0;
+      const totalTasksCount = taskCounts.total ?? 0;
+
+      return {
+        ...prev,
+        openTaskCount,
+        closedTaskCount,
+        totalTasksCount,
+        totalCount: (prev.conversationCount ?? 0) + totalTasksCount,
+      };
+    });
+  } catch (err) {
+    showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
+  }
+};
+
+/**
+ * Deferred-only activity-count fetch. Pulls recent activity events for an entity and updates
+ * just the {@code conversationCount} and {@code totalCount} fields of the page's
+ * {@link FeedCounts} state. Intended to run on first Activity Feed tab activation rather than
+ * on mount — see {@link fetchEntityTaskCountsInto} for rationale.
+ */
+export const fetchEntityActivityCountInto = async (
+  entityType: string,
+  entityFqn: string,
+  setFeedCount: Dispatch<SetStateAction<FeedCounts>>,
+  domain?: string
+) => {
+  try {
+    const activityRes = await getEntityActivityByFqn(entityType, entityFqn, {
+      days: 30,
+      limit: 100,
+      domain,
+    });
+    setFeedCount((prev) => {
+      const conversationCount = activityRes?.data?.length ?? 0;
+
+      return {
+        ...prev,
+        conversationCount,
+        totalCount: conversationCount + (prev.totalTasksCount ?? 0),
+      };
     });
   } catch (err) {
     showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));

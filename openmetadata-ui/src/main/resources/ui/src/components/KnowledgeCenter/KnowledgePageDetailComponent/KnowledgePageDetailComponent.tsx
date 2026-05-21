@@ -63,6 +63,7 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useDeferredTabData } from '../../../hooks/useDeferredTabData';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
   ContentChangeState,
@@ -78,7 +79,11 @@ import {
   unFollowKnowledgePage,
   updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import i18n from '../../../utils/i18next/LocalUtil';
 import {
@@ -527,6 +532,24 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     }
   };
 
+  // P2-A: keep task counts eager (drive header "Open Tasks" button); defer activity events
+  // (drives only the Activity Feed tab badge) until first tab activation.
+  const fetchTaskCounts = useCallback(() => {
+    if (knowledgePage?.fullyQualifiedName) {
+      fetchEntityTaskCountsInto(knowledgePage.fullyQualifiedName, setFeedCount);
+    }
+  }, [knowledgePage?.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (knowledgePage?.fullyQualifiedName) {
+      fetchEntityActivityCountInto(
+        EntityType.KNOWLEDGE_PAGE,
+        knowledgePage.fullyQualifiedName,
+        setFeedCount
+      );
+    }
+  }, [knowledgePage?.fullyQualifiedName]);
+
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       navigate(contextCenterClassBase.getArticlePath(fqn, activeKey));
@@ -659,9 +682,13 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   useEffect(() => {
     if (knowledgePage?.fullyQualifiedName) {
-      getEntityFeedCount();
+      fetchTaskCounts();
     }
   }, [knowledgePage?.fullyQualifiedName]);
+
+  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
+    knowledgePage?.fullyQualifiedName,
+  ]);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {

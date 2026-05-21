@@ -72,7 +72,12 @@ import {
   updateTablesVotes,
 } from '../../rest/tableAPI';
 import { Suggestion, SuggestionType } from '../../types/taskSuggestion';
-import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
+import {
+  addToRecentViewed,
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -377,6 +382,21 @@ const TableDetailsPageV1: React.FC = () => {
   const getEntityFeedCount = () => {
     getFeedCounts(EntityType.TABLE, tableFqn, handleFeedCount);
   };
+
+  // P2-A: task counts drive the always-visible "Open Tasks" button in the page header chrome,
+  // so they must stay eager on mount. The heavier activity-events fetch (up to 100 events just
+  // to compute a count) only feeds the Activity Feed tab badge and is deferred below.
+  const fetchTaskCounts = useCallback(() => {
+    if (tableFqn) {
+      fetchEntityTaskCountsInto(tableFqn, setFeedCount);
+    }
+  }, [tableFqn]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (tableFqn) {
+      fetchEntityActivityCountInto(EntityType.TABLE, tableFqn, setFeedCount);
+    }
+  }, [tableFqn]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -782,7 +802,7 @@ const TableDetailsPageV1: React.FC = () => {
     } else if (viewBasicPermission) {
       setTableDetails(undefined);
       fetchTableDetails();
-      getEntityFeedCount();
+      fetchTaskCounts();
     }
   }, [tableFqn, isTourOpen, isTourPage, viewBasicPermission]);
 
@@ -794,6 +814,14 @@ const TableDetailsPageV1: React.FC = () => {
       getTestCaseFailureCount();
     }
   }, [tableDetails?.fullyQualifiedName]);
+
+  // P2-A: activity events drive only the "Activity Feed (N)" tab badge. Defer the fetch
+  // until the user actually activates that tab; the badge populates from `feedCount.totalCount`
+  // (= conversationCount + totalTasksCount) once the activity count lands. Task counts were
+  // already fetched eagerly above so the header "Open Tasks" button is correct on first paint.
+  useDeferredTabData(EntityTabs.ACTIVITY_FEED, activeTab, fetchActivityCount, [
+    tableFqn,
+  ]);
 
   // P1.2: queryCount only drives the "Queries (N)" tab badge — most users never click that
   // tab, so eagerly fetching it on every page load wasted a server round-trip per view.
