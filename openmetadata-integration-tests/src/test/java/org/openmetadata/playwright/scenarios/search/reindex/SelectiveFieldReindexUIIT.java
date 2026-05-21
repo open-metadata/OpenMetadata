@@ -2,10 +2,10 @@ package org.openmetadata.playwright.scenarios.search.reindex;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.microsoft.playwright.APIResponse;
 import com.microsoft.playwright.assertions.LocatorAssertions;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
-import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
@@ -269,22 +269,17 @@ class SelectiveFieldReindexUIIT {
     pollUiAssertion(
         description,
         () -> {
-          final String url =
-              ui.uiUrl(
-                  "/api/v1/search/query?q="
-                      + fixtures.tableName
-                      + "&index=table_search_index&from=0&size=1");
-          final APIResponse response = ui.context().request().get(url);
-          if (response.status() != 200) {
-            throw new AssertionError(
-                "Search query returned status " + response.status() + " for " + url);
-          }
-          final JsonNode body;
-          try {
-            body = JSON_MAPPER.readTree(response.body());
-          } catch (final IOException e) {
-            throw new AssertionError("Failed to parse search response body", e);
-          }
+          // Query the search API through the authenticated SDK HTTP client, not the
+          // browser's APIRequestContext: auth is injected into localStorage (read by the
+          // SPA), and ui.context().request() doesn't run page JS so it sends no Bearer
+          // header -> 401. The _source shape is identical regardless of caller.
+          final String path =
+              "/v1/search/query?q="
+                  + URLEncoder.encode(fixtures.tableName, StandardCharsets.UTF_8)
+                  + "&index=table_search_index&from=0&size=1";
+          final Object raw =
+              ui.server().sdk().getHttpClient().execute(HttpMethod.GET, path, null, Object.class);
+          final JsonNode body = JSON_MAPPER.valueToTree(raw);
           final JsonNode count = body.at("/hits/hits/0/_source/usageSummary/weeklyStats/count");
           if (count.isMissingNode() || count.isNull() || count.asLong() <= 0) {
             throw new AssertionError(

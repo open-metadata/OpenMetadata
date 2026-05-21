@@ -176,6 +176,9 @@ class SearchAvailableAllKindsDuringReindexUIIT {
   // ES refresh interval is 1s; give a 3s grace before post-reindex assertions so we
   // don't flake on a yet-to-refresh segment.
   private static final Duration POST_REINDEX_REFRESH_GRACE = Duration.ofSeconds(3);
+  // Ride out transient 503 "all shards failed" right after an alias swap onto a freshly-
+  // created index whose shards are still initialising. A sustained outage still fails.
+  private static final Duration SHARD_LAG_BUDGET = Duration.ofSeconds(15);
   private static final String VERSION_PATH = "/v1/system/version";
 
   @Test
@@ -369,7 +372,9 @@ class SearchAvailableAllKindsDuringReindexUIIT {
   private static void assertMidFlightProbe(
       final ServerHandle server, final EntityKind kind, final String alias, final int sweep) {
     final Instant probedAt = Instant.now();
-    final SearchProbe probe = SearchQueryHelper.probeIndex(server, alias, PROBE_PAGE_SIZE);
+    final SearchProbe probe =
+        SearchQueryHelper.probeIndexToleratingShardLag(
+            server, alias, PROBE_PAGE_SIZE, SHARD_LAG_BUDGET);
 
     assertThat(probe.total())
         .as(

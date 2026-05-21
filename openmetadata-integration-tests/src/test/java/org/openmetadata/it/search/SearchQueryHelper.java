@@ -1,11 +1,13 @@
 package org.openmetadata.it.search;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.it.server.ServerHandle;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 
@@ -43,6 +45,38 @@ public final class SearchQueryHelper {
             urlEncode(query), urlEncode(indexAlias), size);
     final Map<String, Object> response = http.execute(HttpMethod.GET, path, null, Map.class);
     return parse(response);
+  }
+
+  /**
+   * Like {@link #probeIndex} but rides out transient post-swap unavailability. Right after
+   * a recreate-mode reindex swaps an alias onto a freshly-created index, that index's shards
+   * may still be initialising, so OpenSearch answers {@code 503 "all shards failed"} (empty
+   * {@code failed_shards}) for a beat. That's shard-allocation lag, not a search blackout —
+   * retry within {@code budget} before surfacing it. A genuine sustained outage still
+   * propagates once the budget is exhausted.
+   */
+  public static SearchProbe probeIndexToleratingShardLag(
+      final ServerHandle server, final String indexAlias, final int size, final Duration budget) {
+    final long deadlineNanos = System.nanoTime() + budget.toNanos();
+    while (true) {
+      try {
+        return probeIndex(server, indexAlias, size);
+      } catch (final OpenMetadataException e) {
+        if (e.getStatusCode() < 500 || System.nanoTime() >= deadlineNanos) {
+          throw e;
+        }
+        sleepBriefly();
+      }
+    }
+  }
+
+  private static void sleepBriefly() {
+    try {
+      Thread.sleep(500);
+    } catch (final InterruptedException ie) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted while waiting out transient search 503", ie);
+    }
   }
 
   private static String urlEncode(final String value) {

@@ -75,6 +75,10 @@ class SearchAvailableDuringReindexUIIT {
   // ES refresh interval is 1s; give ourselves a 3s grace before asserting eventual
   // consistency on the post-reindex probe so we don't flake on a yet-to-refresh segment.
   private static final Duration POST_REINDEX_REFRESH_GRACE = Duration.ofSeconds(3);
+  // Budget for riding out transient 503 "all shards failed" right after an alias swap onto
+  // a freshly-created index whose shards are still initialising (allocation lag, not a
+  // blackout). A genuine sustained outage still fails once this is exhausted.
+  private static final Duration SHARD_LAG_BUDGET = Duration.ofSeconds(15);
 
   @Test
   void searchStaysAvailableAndDuplicateFreeWhileRecreateReindexRuns(
@@ -189,7 +193,9 @@ class SearchAvailableDuringReindexUIIT {
    */
   private static void assertMidFlightProbe(final ServerHandle server, final int probeIndex) {
     Instant probedAt = Instant.now();
-    SearchProbe probe = SearchQueryHelper.probeIndex(server, TABLE_INDEX_ALIAS, PROBE_PAGE_SIZE);
+    SearchProbe probe =
+        SearchQueryHelper.probeIndexToleratingShardLag(
+            server, TABLE_INDEX_ALIAS, PROBE_PAGE_SIZE, SHARD_LAG_BUDGET);
 
     assertThat(probe.total())
         .as(
