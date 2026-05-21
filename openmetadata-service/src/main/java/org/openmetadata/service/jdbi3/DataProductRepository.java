@@ -251,27 +251,35 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return result;
   }
 
-  public BulkOperationResult bulkAddInputPorts(String dataProductName, BulkAssets request) {
-    return bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, true);
+  public BulkOperationResult bulkAddInputPorts(
+      String dataProductName, BulkAssets request, String updatedBy) {
+    return bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, true, updatedBy);
   }
 
-  public BulkOperationResult bulkRemoveInputPorts(String dataProductName, BulkAssets request) {
-    return bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, false);
+  public BulkOperationResult bulkRemoveInputPorts(
+      String dataProductName, BulkAssets request, String updatedBy) {
+    return bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, false, updatedBy);
   }
 
-  public BulkOperationResult bulkAddOutputPorts(String dataProductName, BulkAssets request) {
-    return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, true);
+  public BulkOperationResult bulkAddOutputPorts(
+      String dataProductName, BulkAssets request, String updatedBy) {
+    return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, true, updatedBy);
   }
 
-  public BulkOperationResult bulkRemoveOutputPorts(String dataProductName, BulkAssets request) {
-    return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, false);
+  public BulkOperationResult bulkRemoveOutputPorts(
+      String dataProductName, BulkAssets request, String updatedBy) {
+    return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, false, updatedBy);
   }
 
   @Transaction
   private BulkOperationResult bulkPortsOperation(
-      String dataProductNameOrId, BulkAssets request, Relationship relationship, boolean isAdd) {
+      String dataProductNameOrId,
+      BulkAssets request,
+      Relationship relationship,
+      boolean isAdd,
+      String updatedBy) {
     DataProduct dataProduct = resolveDataProduct(dataProductNameOrId);
-    return executeBulkPortsOperation(dataProduct, request, relationship, isAdd);
+    return executeBulkPortsOperation(dataProduct, request, relationship, isAdd, updatedBy);
   }
 
   private DataProduct resolveDataProduct(String nameOrId) {
@@ -284,7 +292,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   private BulkOperationResult executeBulkPortsOperation(
-      DataProduct dataProduct, BulkAssets request, Relationship relationship, boolean isAdd) {
+      DataProduct dataProduct,
+      BulkAssets request,
+      Relationship relationship,
+      boolean isAdd,
+      String updatedBy) {
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
     List<BulkResponse> success = new ArrayList<>();
@@ -382,8 +394,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         change.getFieldsDeleted().get(0).setName(fieldName);
       }
       ChangeEvent changeEvent =
-          getChangeEvent(dataProduct, change, DATA_PRODUCT, dataProduct.getVersion());
+          getChangeEvent(dataProduct, change, DATA_PRODUCT, dataProduct.getVersion(), updatedBy);
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+      DataProduct entityToUpdate = get(null, dataProduct.getId(), getFields("*"));
+      entityToUpdate.setChangeDescription(change);
+      entityToUpdate.setUpdatedBy(updatedBy);
+      storeEntity(entityToUpdate, true);
+      invalidate(entityToUpdate);
     }
 
     return result;
