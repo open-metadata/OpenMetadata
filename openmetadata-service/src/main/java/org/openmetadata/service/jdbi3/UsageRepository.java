@@ -116,34 +116,26 @@ public class UsageRepository {
     String fields = "usageSummary";
     // If table usage was reported, add the usage count to schema and database
     String type = entityType.toLowerCase();
-    RestUtil.PutResponse<?> response;
-    switch (type) {
-      case TABLE:
-        response = tableEntityUsage(method, fields, entityId, entityType, usage);
-        break;
-      case PIPELINE:
-        response = pipelineEntityUsage(method, fields, entityId, entityType, usage);
-        break;
-      case DASHBOARD:
-        response = dashboardEntityUsage(method, fields, entityId, entityType, usage);
-        break;
-      case CHART:
-        response = chartEntityUsage(method, fields, entityId, entityType, usage);
-        break;
-      case MLMODEL:
-        response = mlModelEntityUsage(method, fields, entityId, entityType, usage);
-        break;
-      default:
-        LOG.error("Invalid Usage Entity Type");
-        throw new UnhandledServerException(
-            CatalogExceptionMessage.entityTypeNotSupported(entityType));
-    }
+    RestUtil.PutResponse<?> response =
+        switch (type) {
+          case TABLE -> tableEntityUsage(method, fields, entityId, entityType, usage);
+          case PIPELINE -> pipelineEntityUsage(method, fields, entityId, entityType, usage);
+          case DASHBOARD -> dashboardEntityUsage(method, fields, entityId, entityType, usage);
+          case CHART -> chartEntityUsage(method, fields, entityId, entityType, usage);
+          case MLMODEL -> mlModelEntityUsage(method, fields, entityId, entityType, usage);
+          default -> {
+            LOG.error("Invalid Usage Entity Type");
+            throw new UnhandledServerException(
+                CatalogExceptionMessage.entityTypeNotSupported(entityType));
+          }
+        };
     // Usage is written via direct DAO calls, bypassing EntityRepository.update — so the
     // entity-lifecycle search handler never fires and the search doc keeps a stale (or
-    // absent) usageSummary until the next full reindex. Push the refreshed usageSummary
-    // into the search index here so live queries (e.g. Explore "Sort by Weekly Usage")
-    // reflect reported usage immediately. Table usage rolls up to its schema + database,
-    // so refresh those docs too.
+    // absent) usageSummary until the next full reindex. Refresh the reported entity's
+    // search doc so live queries (e.g. Explore "Sort by Weekly Usage") reflect usage
+    // immediately. We deliberately do NOT cascade to the rolled-up schema/database here:
+    // usage reporting can be high-volume, the table doc is the surface that matters, and
+    // schema/database usageSummary reconciles on the next reindex.
     updateUsageInSearch(entityType, entityId);
     return response;
   }
@@ -154,15 +146,9 @@ public class UsageRepository {
       return;
     }
     try {
-      // updateEntity fetches only the index's required reindex fields (not "*"), so this is
-      // bounded even for the rolled-up schema/database. Table usage rolls up to its schema +
-      // database, so refresh those docs too.
+      // updateEntity reloads with only the index's required reindex fields (not "*"), so
+      // this is a single bounded reload + index — cheap enough to run inline per report.
       search.updateEntity(Entity.getEntityReferenceById(entityType, entityId, Include.ALL));
-      if (Entity.TABLE.equalsIgnoreCase(entityType)) {
-        Table table = Entity.getEntity(Entity.TABLE, entityId, "", Include.ALL);
-        search.updateEntity(table.getDatabaseSchema());
-        search.updateEntity(table.getDatabase());
-      }
     } catch (Exception e) {
       // A search-index hiccup must not fail the usage write, which is already committed.
       LOG.warn("Failed to update search index with usage for {} {}", entityType, entityId, e);
