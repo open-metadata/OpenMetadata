@@ -26,6 +26,7 @@ on:
       - "yarn.lock"
       - "Makefile"
       - "bootstrap/**"
+      - "conf/**"
 
 permissions:
   contents: read

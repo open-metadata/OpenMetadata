@@ -32,6 +32,7 @@ on:
       - "yarn.lock"
       - "Makefile"
       - "bootstrap/**"
+      - "conf/**"
   pull_request_target:
     types: [opened, synchronize, labeled, ready_for_review]
     paths:
@@ -39,6 +40,7 @@ on:
       - "openmetadata-spec/src/main/resources/json/schema/**"
       - "openmetadata-integration-tests/**"
       - "openmetadata-mcp/**"
+      - "conf/**"
 
 permissions:
   contents: read

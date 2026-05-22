@@ -13,21 +13,6 @@ public class AzureConfiguration {
   @NotBlank(message = "Container name must be provided")
   private String containerName;
 
-  @JsonProperty("connectionString")
-  private String connectionString;
-
-  @JsonProperty("useManagedIdentity")
-  private boolean useManagedIdentity = false;
-
-  @JsonProperty("clientId")
-  private String clientId;
-
-  @JsonProperty("tenantId")
-  private String tenantId;
-
-  @JsonProperty("clientSecret")
-  private String clientSecret;
-
   @JsonProperty("cdnUrl")
   private String cdnUrl;
 
