@@ -615,7 +615,7 @@
     "indexName": "context_memory_search_index",
     "indexMappingFile": "/elasticsearch/%s/context_memory_search_index.json",
     "alias": "contextMemory",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "dataAssetEmbeddings"],
     "childAliases": []
   }
 }
