@@ -1,319 +1,295 @@
-# CDN deployment guide for OpenMetadata
+# Shipping Collate / OpenMetadata releases through CloudFront
 
-OpenMetadata is shipped one cluster per customer — your customer gets their own VPC, their own
-load balancer, their own database, their own OpenMetadata pod. This guide is about how to make
-the **first paint** of the OpenMetadata UI feel instant in that deployment model, with or
-without a CDN in front.
+Each customer gets a Collate deployment at their own host —
+`acme.getcolate.io`, `widgets.getcolate.io`, `globex.getcolate.io` — and each customer can
+be on a different release. This is the AWS-only design for serving the UI bundle from
+CloudFront in that model, and the coordination story when a request lands at one of those
+hosts.
 
-## Why a CDN at all when you're already single-tenant?
+## What we want
 
-A CDN doesn't fix multi-tenancy problems — those are solved by the per-customer cluster
-architecture. The CDN solves a different problem: **distance between the browser and the
-origin**.
+- **One CloudFront distribution** for every customer (not one per customer).
+- **One S3 bucket** for every release. Releases are immutable; promotion is a separate
+  step from upload.
+- **Per-customer version pinning** that updates atomically — no DNS change, no CloudFront
+  redeploy.
+- **Customer's own ALB** continues to serve `/api/*`; CloudFront only handles the UI bundle.
 
-For a customer whose users are spread across regions (US East, EU West, APAC), every asset
-request crosses an ocean to hit the ALB. A 1.2 MB JS bundle behind 150 ms of round-trip
-latency takes ~7 round-trips of TCP slow-start to fill the pipe — call it 1.5 s before the
-first byte actually arrives at the browser.
+## What we explicitly do NOT want
 
-A CDN puts a Brotli-compressed copy of every hashed asset at every edge POP near your users.
-First paint goes from "Atlanta browser hits us-east-1 ALB" to "Atlanta browser hits Atlanta
-CloudFront POP." That's the 1.5 s recovered, every time.
+- A new external data store to maintain (DynamoDB, an extra RDS, a separate Redis). The
+  customer-version mapping is small (a few hundred entries, two tiny strings each) and
+  changes rarely (a few writes per week, even at peak). Standing up a data store for that
+  buys nothing and adds backup, monitoring, IAM, and cost surface.
+- Per-customer CloudFront distributions. They give clean isolation but at N customers we
+  have N distributions to manage, N caches that share no edge state across customers, and
+  hit the AWS 200-distributions-per-account cap by default. The savings from edge cache
+  sharing (a thousand customers on v1.12.0 hit the same cached chunk) are the entire
+  reason the shared model is worth using.
+- A lookup that requires Lambda@Edge. The cold start and per-request cost is real
+  ($1+/M, plus 30-60 ms when cold) and we don't need the SDK access Lambda@Edge gives.
 
-For a customer whose users are all in one region, near the ALB, the CDN is a smaller win —
-maybe 50–150 ms. Still worthwhile, but you'd choose differently between options.
+## The architecture
 
-## What's already in the cluster
-
-Before reaching for any CDN, OpenMetadata's Jetty already does most of the right things at the
-origin (see the perf commits on the `harshach/perceived-latency-p1` branch):
-
-1. **Pre-compressed Brotli + gzip** served from disk. Vite emits `.br` and `.gz` siblings at
-   build time; `OpenMetadataAssetServlet` picks the best one per `Accept-Encoding` at zero CPU
-   cost.
-2. **`Cache-Control: public, max-age=31536000, immutable`** on hashed `/assets/*` paths.
-   The browser never re-asks the server for these once it has them — even reloads serve from
-   disk cache.
-3. **`Cache-Control: no-cache, must-revalidate` + strong `ETag`** on the SPA HTML shell. The
-   browser revalidates each load but the response is a 304 of ~150 bytes when nothing changed.
-4. **`<link rel="modulepreload">`** for the entry chunk's sync deps. The browser starts
-   fetching `vendor-antd` while it's still parsing the HTML.
-5. **Inline CSS-only loading shell**. The user sees the OpenMetadata layout (sidebar, content
-   skeleton, shimmer) the instant the HTML parser hits `</body>` — not 1–2 s later when
-   React mounts.
-6. **Service Worker (`app-worker.js`)** caches hashed `/assets/*` for the rare case where the
-   browser's HTTP cache gets evicted.
-
-All of those benefits ship with the cluster — no CDN required. If your customer is local to
-the cluster's region, you may not need any of what follows.
-
-## Deployment options, in order of complexity
-
-### Option 1 — No CDN, edge caching at the cluster's nginx ingress
-
-Best for: **single-region customers, lowest-cost option, air-gapped deployments**.
-
-If you're running on Kubernetes with `ingress-nginx`, add a snippet that caches `/assets/*` at
-the ingress layer. The asset bytes never have to travel from the OpenMetadata pod to the
-ingress more than once.
-
-```yaml
-# Helm values for openmetadata via ingress-nginx
-ingress:
-  enabled: true
-  annotations:
-    # Cache hashed assets for 1 hour at the ingress (in addition to the immutable
-    # Cache-Control the origin emits to the browser).
-    nginx.ingress.kubernetes.io/server-snippet: |
-      location ~ ^/assets/.+-[A-Za-z0-9_-]{8,}\.[a-z0-9]+$ {
-        proxy_pass http://upstream_balancer;
-        proxy_cache static_cache;
-        proxy_cache_valid 200 1h;
-        proxy_cache_use_stale error timeout updating;
-        add_header X-Cache-Status $upstream_cache_status;
-      }
+```
+                                ┌──────────────────────────────────────┐
+acme.getcolate.io     ───┐      │  CloudFront distribution             │
+widgets.getcolate.io  ───┼─────►│  d1234abc.cloudfront.net              │
+globex.getcolate.io   ───┘      │                                      │
+                                │  ┌─ behavior: /* ──────────────────┐ │
+                                │  │  origin: S3                      │ │     ┌─────────────────────────────┐
+                                │  │  viewer-request: host_router.js  │─┼────►│  S3: collate-cdn            │
+                                │  │   rewrites /foo →                │ │     │   release/v1.11.2/index.html │
+                                │  │   /release/<version>/foo         │ │     │   release/v1.12.0/index.html │
+                                │  └──────────────────────────────────┘ │     │   release/v1.13.0-beta/...   │
+                                │                                      │     └─────────────────────────────┘
+                                │  ┌─ behavior: /api/* ──────────────┐ │
+                                │  │  bypass: same host's per-       │ │     ┌─────────────────────────────┐
+                                │  │  customer ALB (Option A below)  │─┼────►│  Each customer's own ALB     │
+                                │  └──────────────────────────────────┘ │     └─────────────────────────────┘
+                                └──────────────────────────────────────┘
 ```
 
-The `proxy_cache` zone has to exist; configure it once at the ingress level:
+The CloudFront Function holds the customer→version routing table **as JavaScript object
+literal**. Source of truth is the Function's source code in our git repo. Promotion is
+a Function code update.
 
-```yaml
-# ingress-nginx controller chart values
-controller:
-  config:
-    http-snippet: |
-      proxy_cache_path /tmp/nginx-cache levels=1:2 keys_zone=static_cache:50m
-                       max_size=1g inactive=24h use_temp_path=off;
-```
+## The Function (no external lookup)
 
-**Trade-off:** still has the cross-region latency problem if your users are far from the
-cluster. nginx ingress only helps with the origin-pod ⇆ ingress hop, not the browser-to-region
-distance.
+```js
+// host_router.js — CloudFront Function v2.0 (no Lambda@Edge, no KVS, no DynamoDB)
+//
+// Source of truth for which release each customer is pinned to. Edit, commit, deploy.
+// CI propagates a change to every edge POP in ~60 s.
 
-### Option 2 — CloudFront in front, per-customer distribution
+const CUSTOMER_VERSIONS = {
+  acme:    'v1.12.0',
+  widgets: 'v1.11.2',
+  globex:  'v1.13.0-beta',
+  // … N customers
+};
 
-Best for: **multi-region users, AWS-hosted customers, premium tier where bandwidth is paid
-through CloudFront's lower egress rates**.
+// Hosts that don't match a customer slug (apex, www., staging) fall back to the latest
+// stable release. Bump this in lockstep with every GA release so new customers that
+// haven't been added to CUSTOMER_VERSIONS yet still get a current build.
+const DEFAULT_VERSION = 'v1.12.0';
 
-Each customer's installation provisions one CloudFront distribution. Origin is the ALB you
-already have. DNS layer: `{customer}.openmetadata.{your-domain}` → CloudFront.
+function handler(event) {
+    const request = event.request;
 
-```hcl
-# Terraform module: per-customer-cloudfront
-variable "customer_slug" {}
-variable "alb_dns_name" {}
-variable "acm_cert_arn" {}     # cert covering {customer_slug}.openmetadata.example.com
-variable "alias_domain" {}     # e.g. acme.openmetadata.example.com
-
-resource "aws_cloudfront_distribution" "this" {
-  enabled         = true
-  is_ipv6_enabled = true
-  http_version    = "http2and3"   # offer HTTP/3 to clients
-  aliases         = [var.alias_domain]
-  price_class     = "PriceClass_100"   # NA + EU; flip up for global users
-
-  origin {
-    domain_name = var.alb_dns_name
-    origin_id   = "alb"
-
-    custom_origin_config {
-      http_port              = 80
-      https_port             = 443
-      origin_protocol_policy = "https-only"
-      origin_ssl_protocols   = ["TLSv1.2"]
-      # ALB -> CloudFront is always HTTP/1.1.
-      origin_keepalive_timeout = 60
-      origin_read_timeout      = 60
-    }
-  }
-
-  # Hashed assets: cache at the edge for a year, content-addressed so the body can't
-  # change under a given URL.
-  ordered_cache_behavior {
-    path_pattern           = "/assets/*"
-    target_origin_id       = "alb"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD"]
-    cached_methods         = ["GET", "HEAD"]
-    compress               = true
-    cache_policy_id        = data.aws_cloudfront_cache_policy.assets.id
-  }
-
-  # API: never cache. CloudFront sits in the path for TLS termination and HTTP/3 only.
-  ordered_cache_behavior {
-    path_pattern           = "/api/*"
-    target_origin_id       = "alb"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
-    cached_methods         = ["GET", "HEAD"]
-    compress               = true
-    cache_policy_id        = data.aws_cloudfront_cache_policy.api_no_cache.id
-    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer.id
-  }
-
-  # Everything else (the SPA HTML shell at /, the SPA routes like /table/foo): cache for a
-  # few seconds at the edge so concurrent users in one region share a single origin hit, but
-  # don't cache longer — the origin ETag/no-cache layer needs to do its job.
-  default_cache_behavior {
-    target_origin_id       = "alb"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD"]
-    cached_methods         = ["GET", "HEAD"]
-    compress               = true
-    cache_policy_id        = data.aws_cloudfront_cache_policy.html_short_ttl.id
-    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer.id
-  }
-
-  viewer_certificate {
-    acm_certificate_arn = var.acm_cert_arn
-    ssl_support_method  = "sni-only"
-    minimum_protocol_version = "TLSv1.2_2021"
-  }
-
-  restrictions {
-    geo_restriction { restriction_type = "none" }
-  }
-
-  # Origin Shield in the region nearest the ALB. Adds an L2 cache between the edge POPs and
-  # the origin so cache-miss traffic from a thousand edges still hits ALB just once.
-  origin_shield {
-    enabled              = true
-    origin_shield_region = "us-east-1"   # wherever the ALB lives
-  }
-}
-
-# Re-usable cache policies (define once at the AWS account level, reference in every
-# customer's distribution).
-data "aws_cloudfront_cache_policy" "assets"           { name = "om-assets-1y-immutable" }
-data "aws_cloudfront_cache_policy" "html_short_ttl"   { name = "om-html-30s" }
-data "aws_cloudfront_cache_policy" "api_no_cache"     { name = "om-no-cache" }
-data "aws_cloudfront_origin_request_policy" "all_viewer" { name = "Managed-AllViewer" }
-```
-
-**Provisioning cost:** ~10–20 minutes per distribution after `terraform apply` (CloudFront's
-own propagation). Worth automating: each new customer-onboarding flow ends with this module
-applying, then your DNS layer points their subdomain at the new distribution.
-
-**Operational cost:** CloudFront billing is per-request and per-GB-egress. For a typical
-OpenMetadata customer (a few hundred internal users), this lands well within the free tier.
-A large customer might see $5–$20/month per distribution at most.
-
-**Trade-off:** N customers = N distributions to manage. AWS hard-caps you at 200
-distributions per account by default; bump it via support ticket if you onboard more.
-
-### Option 3 — Per-customer CloudFront, single hosted zone, wildcard cert
-
-A variant of Option 2 that keeps the management overhead bounded as you scale:
-
-- One wildcard cert: `*.openmetadata.{your-domain}` in ACM.
-- One Route53 hosted zone: `openmetadata.{your-domain}`.
-- Each customer's distribution still gets its own resource — but the surrounding DNS/cert
-  story is shared.
-
-The Terraform module from Option 2 stays mostly the same; the cert ARN and alias come from
-the wildcard and the customer slug respectively.
-
-### Option 4 — Caddy as the cluster-local reverse proxy (no CloudFront)
-
-Best for: **on-prem customers, customers who don't want AWS infrastructure beyond k8s, or
-shipping a "batteries-included" install that doesn't lean on cloud-vendor CDN services**.
-
-Caddy can act as both the TLS terminator and the edge cache. Configure it in front of Jetty
-inside the same cluster:
-
-```caddyfile
-{customer}.openmetadata.example.com {
-    tls /etc/caddy/cert.pem /etc/caddy/key.pem
-
-    # Hashed assets: cache aggressively. Even though the origin emits
-    # Cache-Control: immutable, Caddy's own cache keeps a server-side copy so multiple
-    # users in the same site share one origin fetch after a deploy.
-    @hashed_assets path_regexp ^/assets/.+-[A-Za-z0-9_-]{8,}\.[a-z0-9]+$
-    handle @hashed_assets {
-        cache {
-            stale 1d
-            ttl 24h
-        }
-        reverse_proxy openmetadata-server:8585
+    // /api/* lives on a separate behavior with the customer's own ALB as origin.
+    // The Function should never see these requests under the current behavior config,
+    // but guard anyway.
+    if (request.uri.startsWith('/api/')) {
+        return request;
     }
 
-    # Everything else passes through; the origin's own cache policy applies.
-    reverse_proxy openmetadata-server:8585
+    const host = (request.headers.host && request.headers.host.value) || '';
+    // Convention: customer slug is the first label of the host.
+    // acme.getcolate.io -> 'acme'
+    const slug = host.split('.')[0];
+    const version = CUSTOMER_VERSIONS[slug] || DEFAULT_VERSION;
+
+    // /assets/foo.js -> /release/v1.12.0/assets/foo.js
+    request.uri = '/release/' + version + request.uri;
+    return request;
 }
 ```
 
-Caddy auto-issues TLS certs via Let's Encrypt or accepts uploaded ones. The `cache` directive
-needs the `caddy-cache` plugin compiled in (or use Caddy 2.7+ which ships caching support
-natively).
+Function v2.0 has a 10 KB code limit. At ~30 bytes per entry that's ~300 customers
+comfortably; well beyond that the design needs revisiting — but if you ever reach 300+
+customers on this product, the operational economics of standing up KVS or DynamoDB
+will have shifted significantly anyway.
 
-**Trade-off:** still single-region. Caddy doesn't sit at edge POPs. But for any cluster-local
-deployment this is the simplest path and removes the cloud-vendor dependency for the CDN
-layer.
+## Promotion flow
 
-### Option 5 — Cloudflare in front (cross-cloud customers)
+1. Edit `CUSTOMER_VERSIONS` in the Function source.
+2. Commit, push, open PR. The PR diff IS the promotion record — reviewable, auditable,
+   git-blame'd.
+3. CI runs on merge: pushes the new Function code via `aws cloudfront update-function`
+   and `publish-function`.
+4. ~60 s of edge propagation. Every POP picks up the new code.
 
-Best for: **customers running OpenMetadata on GCP, Azure, on-prem, or anywhere except AWS,
-who still want a global edge**.
+A typical promotion PR looks like one line changed:
 
-Cloudflare's free tier covers small deployments. The flow is:
+```diff
+ const CUSTOMER_VERSIONS = {
+-  acme:    'v1.12.0',
++  acme:    'v1.12.1',
+   widgets: 'v1.11.2',
+   globex:  'v1.13.0-beta',
+ };
+```
 
-1. Customer's DNS for `{customer}.openmetadata.{their-domain}` proxies through Cloudflare.
-2. Cloudflare hits the customer's ingress (a public LB IP, ALB, GCP LB, etc.) as the origin.
-3. Page Rules / Cache Rules set TTLs by path the same way as CloudFront:
-   - `/assets/*` → Cache Everything, Edge TTL 1 month, Origin Cache-Control respected.
-   - `/api/*` → Bypass Cache.
-   - `/` → Standard caching, ~30 s edge TTL.
-4. Enable HTTP/3 in the Cloudflare site settings.
+That's the entire surface area of a promotion. No DynamoDB write. No KVS API call. No
+extra IAM role. No backup story. Just a code change reviewed like any other.
 
-No code or config changes needed in OpenMetadata for this option — the origin headers we
-already emit drive Cloudflare's cache layer correctly.
+Rollback is symmetric: revert the commit. Canary is "promote one slug first, watch error
+metrics, then PR the next batch." Roll-forward on a regression is the same revert.
 
-## Choosing between options
+### Release upload (independent of promotion)
 
-| Customer profile | Recommended path |
-|---|---|
-| Single-region users (e.g. all in EU), on AWS | Option 1 (ingress-nginx cache) — Option 2 if budget allows |
-| Multi-region users, on AWS | Option 2 or Option 3 (per-customer CloudFront) |
-| Customer on GCP / Azure / multi-cloud | Option 5 (Cloudflare) |
-| Customer on-prem / air-gapped | Option 4 (Caddy or nginx, no external CDN) |
-| Single small customer being bootstrapped quickly | Option 1, then upgrade if their users complain about latency |
+The bundle bytes go to S3 separately, on every release tag, regardless of which customer
+ends up using them:
 
-## Measuring whether it's working
+```bash
+VERSION="v1.12.0"
+aws s3 sync openmetadata-ui/src/main/resources/ui/dist/assets/ \
+    s3://collate-cdn/release/${VERSION}/assets/ \
+    --cache-control "public, max-age=31536000, immutable"
 
-After deploying any of these options, the first-paint number to watch in Chrome DevTools is
-**Time to First Byte (TTFB) for `/`** and **download time for the largest `/assets/*` chunk**.
+aws s3 cp openmetadata-ui/src/main/resources/ui/dist/index.html \
+    s3://collate-cdn/release/${VERSION}/index.html \
+    --cache-control "no-cache, must-revalidate" \
+    --content-type "text/html; charset=utf-8"
+```
 
-Two specific tests:
+After this, the release exists in S3 but no customer is using it. Promotion (the PR
+above) is what flips customers to it. The decoupling matters: you can sit on a release
+in S3 for a week, watching it on staging, before promoting any customer to it.
 
-1. **Cold first paint**, incognito tab: open DevTools → Network → disable cache → reload.
-   Look at the entry JS chunk. Without CDN, this download is bandwidth-limited (~500 ms on a
-   100 Mbps connection for a 1 MB chunk on the origin pulled from the ALB region). With a CDN
-   in the customer's region: <200 ms.
+## Why the Function code is a fine routing table
 
-2. **Reload after a session**: don't disable cache. Reload `/my-data`. Look at the
-   `/api/v1/system/version` and `/assets/index-X.js` rows.
-   - `/api/v1/system/version`: should always be a 200, no cache layer touches it.
-   - `/assets/index-X.js`: should be `(disk cache)` in the Size column — the immutable
-     `Cache-Control` header is doing its job. If it's `(memory cache)` or a fresh 200, the
-     browser cache is being evicted under memory pressure (rare) and the Service Worker
-     layer becomes the next line of defence.
+Honest comparison of the three approaches:
 
-For CloudFront in particular, the `X-Cache: Hit from cloudfront` response header tells you
-whether the edge served the request or whether it went all the way to ALB.
+| | Function-embedded (this design) | CloudFront KeyValueStore | DynamoDB + Lambda@Edge |
+|---|---|---|---|
+| New AWS service to monitor / back up | none | KVS | DynamoDB + Lambda |
+| Read latency at edge | ~0 (in-function) | ~1 ms | ~10 ms (warm Lambda) |
+| Cold start | none | none | 30-60 ms |
+| Per-request cost | $0.10/M Function | $0.10/M Function + $0.04/M KVS | $0.10/M + $1+/M Lambda + DynamoDB reads |
+| Promotion surface | git PR | API call (`put-key`) | API call (`update-item`) |
+| Audit trail | git history | CloudWatch + KVS audit logs | CloudWatch + DDB streams |
+| Capacity ceiling | ~300 customers (10 KB code limit) | millions | millions |
+| Concurrent promotion safety | git merge serializes | `IfMatch` ETag | conditional writes |
+| Operational ownership | "this is in the repo" | "who paged on this last quarter?" | "who paged on this last quarter?" |
 
-## Things to avoid
+For a product that ships per-customer clusters and reaches dozens-to-low-hundreds of
+customers, "the routing table is a file in the repo" wins on every operational axis that
+matters. It only loses on capacity ceiling, and the day that becomes a problem we already
+have a clear migration target (KVS) without changing anything else in the design.
 
-- **Don't put CloudFront in `Cache-Everything` mode for the SPA HTML.** The Jetty origin
-  emits `Cache-Control: no-cache` on the shell for a reason: a fresh deploy lands and the
-  shell now references hashed asset filenames that didn't exist before. If CloudFront has the
-  old shell cached at the edge, users get the old shell pointing at chunks that 404. Use the
-  short-TTL cache policy from the Terraform example above.
+## API routing — two options, pick one
 
-- **Don't cache `/api/*` at any CDN.** Even GET-only endpoints have authz baked into the
-  response: cached responses leak across users. The React Query cache on the client side
-  handles request deduplication.
+The Function above only handles UI bundle requests. `/api/*` still has to reach the
+customer's own ALB.
 
-- **Don't enable a CDN for the OpenMetadata Helm chart's default install.** Each customer's
-  deployment topology is different — making CDN provisioning part of the chart adds a hard
-  dependency on AWS credentials, ACM certs, and Route53 zones that not every customer wants
-  Helm to touch. Keep it as a separate Terraform module / GitOps step that runs after the
-  cluster is up.
+### Option A — Separate API host (recommended)
+
+```
+acme.getcolate.io      → CNAME → CloudFront distribution (this design)
+api-acme.getcolate.io  → CNAME → acme's ALB
+```
+
+SPA's API base URL is derived from the page host at runtime: `https://api-{slug}.getcolate.io/api`.
+
+Pros: CloudFront does one thing well (static delivery). No Lambda@Edge anywhere. Failure
+modes are easy to reason about. Cons: SPA has a cookie/CORS story that knows about two
+hosts; we already handle this for various integrations.
+
+### Option B — Same host, Lambda@Edge for `/api/*`
+
+CloudFront's `/api/*` behavior runs a Lambda@Edge on origin-request that reads the host
+header and rewrites the origin to the right ALB.
+
+Pros: single host per customer. Cons: now we DO have Lambda@Edge (which we explicitly
+chose to avoid for routing), and the operational cost is per-customer-API-request, not
+just per-promotion. We strongly prefer Option A.
+
+## S3 bucket layout
+
+```
+collate-cdn/
+└── release/
+    ├── v1.11.5/
+    │   ├── index.html                         no-cache, must-revalidate
+    │   ├── assets/index-Z3O_FBkA.js           immutable
+    │   ├── assets/index-Z3O_FBkA.js.br        immutable
+    │   ├── assets/index-Z3O_FBkA.js.gz        immutable
+    │   ├── assets/vendor-antd-BgrjOjhB.js     immutable
+    │   └── ...
+    ├── v1.12.0/        ← acme + widgets currently here
+    │   └── ...
+    └── v1.13.0-beta/   ← globex currently here (canary)
+        └── ...
+```
+
+Releases are immutable once uploaded. The promotion step never modifies S3 contents —
+only the Function code that maps `slug → /release/<v>/`.
+
+Disk cost is small: a typical OM bundle is ~12 MB on disk after content-hash dedup,
+Brotli+gzip siblings add ~25%, call it 15 MB per release. 100 releases × 15 MB =
+1.5 GB. S3 standard rates put that at a few cents per month — keep many releases live
+for instant rollback and don't bother with aggressive lifecycle pruning.
+
+## CloudFront cache behaviors
+
+| Path pattern (after Function rewrite) | Edge TTL | Notes |
+|---|---|---|
+| `/release/<v>/assets/*` | 1 year | Content-addressed; bytes can't change |
+| `/release/<v>/index.html`, `/release/<v>/` | 30 s | Concurrent users in one region share one origin hit; ETag layer takes over after 30 s |
+| `/api/*` | bypass | Separate behavior to customer ALB (Option A: not via CloudFront at all) |
+
+30 s on the shell is the sweet spot: long enough to dedupe a thousand concurrent reloads
+to one origin fetch, short enough that a promotion lands at all customers within ~90 s
+end-to-end (60 s Function propagation + 30 s residual edge cache).
+
+## Per-customer branding (without per-customer bundles)
+
+If a customer needs a different logo or accent colour, the right move is to keep one
+universal bundle and overlay branding assets at request time:
+
+- Universal default: `/release/v1.12.0/images/logo.png` in S3.
+- Per-customer override (optional, only when needed): the Function checks for
+  `s3://collate-cdn/customer-overrides/<slug>/logo.png` first and rewrites if it exists.
+
+Branding stays out of the build artifact, which means one bundle still serves every
+customer and the cache-sharing argument holds.
+
+## Verification after promotion
+
+Two synthetic checks worth running automatically after a promotion PR merges:
+
+```bash
+SLUG=acme
+EXPECTED_VERSION=v1.12.0
+
+# 1. CloudFront serves the right release for this slug
+RESPONSE=$(curl -s "https://${SLUG}.getcolate.io/?nocache=$(uuidgen)")
+echo "$RESPONSE" | grep -oE 'index-[A-Za-z0-9_-]+\.js' | sort -u
+# Should match the hash from the v1.12.0 build manifest
+
+# 2. The HTML shell is being served fresh from the right S3 prefix
+curl -sI "https://${SLUG}.getcolate.io/" \
+  | grep -i 'x-amz-cf-pop\|via\|x-cache'
+# Should show an edge POP near the test runner, and either "Miss from cloudfront"
+# (first request after promotion) or "Hit from cloudfront" (within the 30 s edge TTL)
+```
+
+CI runs this on every promotion PR after the Function deploys, and fails loud if the
+served bundle doesn't match the version we just pinned.
+
+## What's not in this design
+
+- **Per-customer API origin selection inside CloudFront**. Option A keeps `/api/*` off
+  the CloudFront path entirely. If a customer ever needs single-host behavior, that's
+  the moment to revisit Option B and accept Lambda@Edge.
+- **Multi-region S3 origin failover**. Single bucket in one region; CloudFront's edge
+  caching handles regional reach. If you want CRR + origin groups, add them; the cost
+  is straightforward but rarely justified for a UI bundle.
+- **WAF / Shield Advanced**. Add separately if your security posture requires them.
+
+## What this design is good for and what would push it elsewhere
+
+- **Good for**: dozens to low-hundreds of customers, infrequent promotion (a few per
+  week), engineering ownership over the routing table.
+- **Push toward KVS** when: customer count grows past a few hundred (function size
+  pressure) OR promotions happen via a non-engineering UI (a customer-success dashboard
+  that flips slugs without a git PR).
+- **Push toward Lambda@Edge** when: routing decisions stop being a slug→version map and
+  start needing per-request information not available in the host header (e.g. A/B
+  testing by user ID, geo-routing, header-derived feature flags).
+
+When those days come, the migration path from this design is small — the Function code
+becomes a `kvs.get(slug)` instead of a hash lookup, and the rest of the architecture
+(S3 layout, distribution behaviors, ALB routing) is identical.
