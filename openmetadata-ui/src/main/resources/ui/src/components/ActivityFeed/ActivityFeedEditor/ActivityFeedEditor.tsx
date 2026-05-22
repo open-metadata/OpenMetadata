@@ -16,9 +16,9 @@ import { noop } from 'lodash';
 import {
   forwardRef,
   HTMLAttributes,
+  lazy,
   LegacyRef,
   Suspense,
-  lazy,
   useImperativeHandle,
   useRef,
   useState,
