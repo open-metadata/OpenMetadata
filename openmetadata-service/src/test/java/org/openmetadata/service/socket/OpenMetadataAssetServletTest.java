@@ -8,11 +8,15 @@ import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
 import org.openmetadata.service.config.OMWebConfiguration;
+import org.openmetadata.service.resources.system.IndexResource;
 
 public class OpenMetadataAssetServletTest {
 
@@ -243,6 +247,83 @@ public class OpenMetadataAssetServletTest {
     servlet.doGet(request, response);
 
     verify(response).setHeader("Cache-Control", "no-cache, must-revalidate");
+  }
+
+  @Test
+  public void testRootPathEmits304WhenIfNoneMatchMatches() throws Exception {
+    // When the client sends If-None-Match equal to the current shell's ETag AND no per-request
+    // CSP nonce is in play, the server short-circuits with 304 and writes no body. This is the
+    // dominant code path on a tab reload — saves the ~5 KB HTML download every time.
+    String path = "/";
+    String etag = "\"abcDEF123456\"";
+    when(request.getRequestURI()).thenReturn(path);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getAttribute("cspNonce")).thenReturn(null);
+    when(request.getHeader("If-None-Match")).thenReturn(etag);
+
+    try (MockedStatic<IndexResource> indexResource =
+        org.mockito.Mockito.mockStatic(IndexResource.class)) {
+      indexResource.when(() -> IndexResource.getIndexEtag("/")).thenReturn(etag);
+      servlet.doGet(request, response);
+    }
+
+    verify(response).setHeader("ETag", etag);
+    verify(response).setStatus(HttpServletResponse.SC_NOT_MODIFIED);
+    // Body must NOT be written when answering 304 — that's what makes the response cheap.
+    verify(response, never()).getWriter();
+  }
+
+  @Test
+  public void testRootPathEmits200AndBodyWhenIfNoneMatchDiffers() throws Exception {
+    String path = "/";
+    String currentEtag = "\"currentETag\"";
+    String staleEtag = "\"staleClientETag\"";
+    StringWriter bodyCapture = new StringWriter();
+    when(request.getRequestURI()).thenReturn(path);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getAttribute("cspNonce")).thenReturn(null);
+    when(request.getHeader("If-None-Match")).thenReturn(staleEtag);
+    when(response.getWriter()).thenReturn(new PrintWriter(bodyCapture));
+
+    try (MockedStatic<IndexResource> indexResource =
+        org.mockito.Mockito.mockStatic(IndexResource.class)) {
+      indexResource.when(() -> IndexResource.getIndexEtag("/")).thenReturn(currentEtag);
+      indexResource
+          .when(() -> IndexResource.getIndexFile("/", null))
+          .thenReturn("<html>fresh</html>");
+      servlet.doGet(request, response);
+    }
+
+    verify(response).setHeader("ETag", currentEtag);
+    verify(response, never()).setStatus(HttpServletResponse.SC_NOT_MODIFIED);
+    assertTrue(bodyCapture.toString().contains("<html>fresh</html>"));
+  }
+
+  @Test
+  public void testRootPathSkipsEtagWhenCspNonceIsPresent() throws Exception {
+    // With a per-request CSP nonce in the body, a cached body would carry a stale nonce that
+    // the next request's CSP header would reject. The servlet must not emit an ETag or attempt
+    // a 304 in that case — always send the freshly-rendered body.
+    String path = "/";
+    String nonce = "request-nonce-abc";
+    StringWriter bodyCapture = new StringWriter();
+    when(request.getRequestURI()).thenReturn(path);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getAttribute("cspNonce")).thenReturn(nonce);
+    when(request.getHeader("If-None-Match")).thenReturn("\"anything\"");
+    when(response.getWriter()).thenReturn(new PrintWriter(bodyCapture));
+
+    try (MockedStatic<IndexResource> indexResource =
+        org.mockito.Mockito.mockStatic(IndexResource.class)) {
+      indexResource
+          .when(() -> IndexResource.getIndexFile("/", nonce))
+          .thenReturn("<html>nonce=" + nonce + "</html>");
+      servlet.doGet(request, response);
+    }
+
+    verify(response, never()).setHeader(eq("ETag"), anyString());
+    verify(response, never()).setStatus(HttpServletResponse.SC_NOT_MODIFIED);
+    assertTrue(bodyCapture.toString().contains(nonce));
   }
 
   @Test

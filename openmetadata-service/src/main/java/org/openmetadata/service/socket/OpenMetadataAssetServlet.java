@@ -85,8 +85,7 @@ public class OpenMetadataAssetServlet extends AssetServlet {
 
     if (requestUri.endsWith("/")) {
       final String cspNonce = (String) req.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE);
-      resp.setContentType("text/html");
-      resp.getWriter().write(IndexResource.getIndexFile(this.basePath, cspNonce));
+      writeIndexHtml(req, resp, cspNonce);
       return;
     }
 
@@ -132,12 +131,38 @@ public class OpenMetadataAssetServlet extends AssetServlet {
       if (isSpaRoute(requestUri)) {
         final String cspNonce = (String) req.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE);
         resp.setStatus(200);
-        resp.setContentType("text/html");
-        resp.getWriter().write(IndexResource.getIndexFile(this.basePath, cspNonce));
+        writeIndexHtml(req, resp, cspNonce);
       } else {
         resp.sendError(404);
       }
     }
+  }
+
+  /**
+   * Write the SPA shell, honouring {@code If-None-Match} with a 304 when possible.
+   *
+   * <p>The cspNonce is per-request (each load gets a fresh value the page's inline scripts use
+   * to clear the CSP); we therefore only 304 when there's no nonce in play, so a cached body
+   * carrying a stale nonce can't be served against a CSP header that lists a fresh one.
+   *
+   * <p>The ETag itself describes the stable shell (post-basePath substitution, pre-nonce). It
+   * changes when the running JAR's bundled {@code index.html} or {@code basePath} change — i.e.
+   * on every deploy — and stays constant within a process otherwise.
+   */
+  private void writeIndexHtml(HttpServletRequest req, HttpServletResponse resp, String cspNonce)
+      throws IOException {
+    String etag = IndexResource.getIndexEtag(this.basePath);
+    boolean hasPerRequestNonce = cspNonce != null && !cspNonce.isEmpty();
+    if (!hasPerRequestNonce) {
+      resp.setHeader("ETag", etag);
+      String ifNoneMatch = req.getHeader("If-None-Match");
+      if (etag.equals(ifNoneMatch)) {
+        resp.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
+        return;
+      }
+    }
+    resp.setContentType("text/html");
+    resp.getWriter().write(IndexResource.getIndexFile(this.basePath, cspNonce));
   }
 
   /**
