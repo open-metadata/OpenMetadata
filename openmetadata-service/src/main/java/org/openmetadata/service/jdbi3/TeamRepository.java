@@ -110,6 +110,7 @@ import org.openmetadata.service.util.RestUtil;
 public class TeamRepository extends EntityRepository<Team> {
   static final String PARENTS_FIELD = "parents";
   static final String USERS_FIELD = "users";
+  private static final String OWNS_ENTITY_TYPE_PARAM = "ownsEntityType";
   static final String TEAM_UPDATE_FIELDS =
       "profile,users,defaultRoles,defaultPersona,parents,children,policies,teamType,email,domains";
   static final String TEAM_PATCH_FIELDS =
@@ -356,16 +357,25 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private void fetchAndSetOwns(List<Team> teams, Fields fields) {
+    fetchAndSetOwns(teams, fields, null);
+  }
+
+  private void fetchAndSetOwns(List<Team> teams, Fields fields, ListFilter filter) {
     if (!fields.contains("owns") || teams == null || teams.isEmpty()) {
       return;
     }
 
     List<String> teamIds = teams.stream().map(Team::getId).map(UUID::toString).distinct().toList();
+    String ownsEntityType = filter == null ? null : filter.getQueryParam(OWNS_ENTITY_TYPE_PARAM);
 
     List<CollectionDAO.EntityRelationshipObject> ownsRecords =
-        daoCollection
-            .relationshipDAO()
-            .findToBatchAllTypes(teamIds, Relationship.OWNS.ordinal(), Include.ALL);
+        nullOrEmpty(ownsEntityType)
+            ? daoCollection
+                .relationshipDAO()
+                .findToBatchAllTypes(teamIds, Relationship.OWNS.ordinal(), Include.ALL)
+            : daoCollection
+                .relationshipDAO()
+                .findToBatch(teamIds, Relationship.OWNS.ordinal(), ownsEntityType, Include.ALL);
 
     Map<UUID, List<EntityReference>> teamToOwns = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : ownsRecords) {
@@ -384,6 +394,22 @@ public class TeamRepository extends EntityRepository<Team> {
       List<EntityReference> ownsRefs = teamToOwns.get(team.getId());
       team.setOwns(ownsRefs != null ? ownsRefs : new ArrayList<>());
     }
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<Team> teams, ListFilter filter) {
+    if (fields.contains("owns")
+        && filter != null
+        && !nullOrEmpty(filter.getQueryParam(OWNS_ENTITY_TYPE_PARAM))) {
+      fetchAndSetFieldsExcept(teams, fields, Set.of("owns"));
+      fetchAndSetOwns(teams, fields, filter);
+      setInheritedFields(teams, fields);
+      for (Team team : teams) {
+        clearFieldsInternal(team, fields);
+      }
+      return;
+    }
+    super.setFieldsInBulk(fields, teams);
   }
 
   private List<EntityReference> getDomains(UUID teamId) {

@@ -292,6 +292,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("isBot")
           Boolean isBot,
       @Parameter(
+              description =
+                  "When fields contains owns, only include owned entities of this entity type.",
+              schema = @Schema(type = "string", example = "pipeline"))
+          @QueryParam("ownsEntityType")
+          String ownsEntityType,
+      @Parameter(
+              description =
+                  "When fields contains owns, only include entities directly owned by the user.",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("directOwnsOnly")
+          Boolean directOwnsOnly,
+      @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
@@ -303,6 +315,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     if (isBot != null) {
       filter.addQueryParam("isBot", String.valueOf(isBot));
+    }
+    if (ownsEntityType != null) {
+      filter.addQueryParam("ownsEntityType", ownsEntityType);
+    }
+    if (directOwnsOnly != null) {
+      filter.addQueryParam("directOwnsOnly", String.valueOf(directOwnsOnly));
     }
     ResultList<User> users =
         listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);

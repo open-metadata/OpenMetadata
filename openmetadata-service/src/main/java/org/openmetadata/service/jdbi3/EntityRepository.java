@@ -2150,7 +2150,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       T entity = JsonUtils.readValue(json, entityClass);
       entities.add(entity);
     }
-    setFieldsInBulk(fields, entities);
+    setFieldsInBulk(fields, entities, filter);
     return entities;
   }
 
@@ -2181,6 +2181,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * <p>
    * Example implementation can be found in {@link GlossaryTermRepository#setFieldsInBulk}.
    */
+  public void setFieldsInBulk(Fields fields, List<T> entities, ListFilter filter) {
+    setFieldsInBulk(fields, entities);
+  }
+
   public void setFieldsInBulk(Fields fields, List<T> entities) {
     if (entities == null || entities.isEmpty()) {
       return;
@@ -9939,6 +9943,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       entry.getValue().accept(entities, fields);
     }
+  }
+
+  protected void fetchAndSetFieldsExcept(
+      List<T> entities, Fields fields, Set<String> excludedFields) {
+    fieldFetchers.forEach(
+        (fieldName, fetcher) -> {
+          if (!excludedFields.contains(fieldName)) {
+            fetcher.accept(entities, fields);
+          }
+        });
   }
 
   private Set<String> fetchAndSetRelationshipFieldsInBulk(List<T> entities, Fields fields) {
