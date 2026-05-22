@@ -12,10 +12,10 @@
  */
 import { render } from '@testing-library/react';
 import { AxiosError } from 'axios';
-import { ROUTES } from 'constants/constants';
-import { Asset } from 'generated/attachments/asset';
-import { PageType } from 'interface/knowledge-center.interface';
-import { downloadAsset } from 'rest/assetAPI';
+import { ROUTES } from '../constants/constants';
+import { Asset } from '../generated/attachments/asset';
+import { PageType } from '../interface/knowledge-center.interface';
+import { downloadAsset } from '../rest/assetAPI';
 import {
   assetToDocumentItem,
   extensionToFileType,

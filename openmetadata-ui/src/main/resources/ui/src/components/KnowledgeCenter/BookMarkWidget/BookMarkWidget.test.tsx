@@ -15,10 +15,10 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import { User } from 'generated/entity/teams/user';
-import { useApplicationStore } from 'hooks/useApplicationStore';
 import { MemoryRouter } from 'react-router-dom';
-import { getUserById } from 'rest/userAPI';
+import { User } from '../../../generated/entity/teams/user';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getUserById } from '../../../rest/userAPI';
 import BookMarkWidget from './BookMarkWidget';
 
 const mockUserData: User = {
