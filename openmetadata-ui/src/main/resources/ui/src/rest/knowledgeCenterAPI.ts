@@ -150,6 +150,12 @@ export const unFollowKnowledgePage = async (
   return response.data;
 };
 
+export const deleteKnowledgePage = async (id: string) => {
+  const response = await APIClient.delete(`/contextCenter/pages/${id}?hardDelete=false&recursive=false`);
+
+  return response.data;
+};
+
 export const getKnowledgePageVersionsList = async (id: string) => {
   const url = `contextCenter/pages/${id}/versions`;
   const response = await APIClient.get<EntityHistory>(url);

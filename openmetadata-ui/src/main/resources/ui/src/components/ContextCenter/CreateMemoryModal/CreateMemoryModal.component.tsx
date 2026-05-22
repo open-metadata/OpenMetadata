@@ -70,7 +70,7 @@ const LinkedAssetCard: FC<{
       <div className="tw:shrink-0">
         {searchClassBase.getEntityIcon(
           asset.reference?.type ?? '',
-          'tw:w-8 tw:h-8'
+          'tw:w-8 tw:h-8 tw:text-gray-500'
         )}
       </div>
       <div className="tw:flex tw:flex-1 tw:justify-between tw:items-center tw:min-w-0">
@@ -153,7 +153,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   if (isEditMode) {
     modalTitle = t('label.edit-entity', { entity: t('label.memory') });
   } else if (viewOnly) {
-    modalTitle = t('label.details');
+    modalTitle = memoryToEdit?.title;
   }
 
   const submitLabel = isEditMode

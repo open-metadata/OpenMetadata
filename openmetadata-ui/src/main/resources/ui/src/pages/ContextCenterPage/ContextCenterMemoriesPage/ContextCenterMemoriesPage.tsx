@@ -260,8 +260,21 @@ const ContextCenterMemoriesPage: FC = () => {
     return filteredMemories.slice(start, start + MEMORIES_PER_PAGE);
   }, [filteredMemories, currentPage]);
 
+  const hasActiveFilters = Boolean(selectedAsset || selectedAuthor);
+
+  const handleClearFilters = useCallback(() => {
+    setSelectedAsset('');
+    setSelectedAuthor('');
+    setActiveFilter('all');
+    setCurrentPage(1);
+  }, []);
+
   const handleFilterChange = useCallback((key: MemoryFilterTab) => {
     setActiveFilter(key);
+    if (key === 'all') {
+      setSelectedAsset('');
+      setSelectedAuthor('');
+    }
     setCurrentPage(1);
   }, []);
 
@@ -427,7 +440,7 @@ const ContextCenterMemoriesPage: FC = () => {
       <Card className="tw:flex tw:flex-col tw:flex-1 tw:overflow-hidden">
         <div className="tw:px-6 tw:py-5">
           <div className="tw:flex tw:items-center tw:gap-2">
-            <Typography size="text-lg" weight="semibold">
+            <Typography size="text-md" weight="medium">
               {t('label.memory-plural')}
             </Typography>
             <Badge color="brand" type="pill-color">
@@ -492,7 +505,12 @@ const ContextCenterMemoriesPage: FC = () => {
                   selectedKeys={selectedAsset ? [selectedAsset] : []}
                   selectionMode="single"
                   onAction={(key) => {
-                    setSelectedAsset(key === selectedAsset ? '' : String(key));
+                    const next = String(key);
+                    const value = next === selectedAsset ? '' : next;
+                    setSelectedAsset(value);
+                    if (activeFilter === 'all') {
+                      setActiveFilter('');
+                    }
                     setCurrentPage(1);
                   }}>
                   {assetOptions.map((opt) => (
@@ -505,7 +523,7 @@ const ContextCenterMemoriesPage: FC = () => {
                           <div className="tw:shrink-0">
                             {searchClassBase.getEntityIcon(
                               opt.type,
-                              'tw:w-6 tw:h-6'
+                              'tw:w-6 tw:h-6 tw:text-gray-500'
                             )}
                           </div>
                           <div className="tw:flex tw:flex-1 tw:justify-between tw:items-center">
@@ -562,9 +580,12 @@ const ContextCenterMemoriesPage: FC = () => {
                   selectedKeys={selectedAuthor ? [selectedAuthor] : []}
                   selectionMode="single"
                   onAction={(key) => {
-                    setSelectedAuthor(
-                      key === selectedAuthor ? '' : String(key)
-                    );
+                    const next = String(key);
+                    const value = next === selectedAuthor ? '' : next;
+                    setSelectedAuthor(value);
+                    if (activeFilter === 'all') {
+                      setActiveFilter('');
+                    }
                     setCurrentPage(1);
                   }}>
                   {authorOptions.map((opt) => (
@@ -583,7 +604,12 @@ const ContextCenterMemoriesPage: FC = () => {
             </Dropdown.Root>
           </div>
 
-          <div className="tw:ml-auto">
+          <div className="tw:ml-auto tw:flex tw:items-center tw:gap-4">
+            {hasActiveFilters && (
+              <Button color="link-color" size="sm" onClick={handleClearFilters}>
+                {t('label.clear-entity', { entity: t('label.all') })}
+              </Button>
+            )}
             <Dropdown.Root>
               <AriaButton className={FILTER_BUTTON_CLS}>
                 <FilterLines size={18} />
@@ -599,7 +625,7 @@ const ContextCenterMemoriesPage: FC = () => {
                   strokeWidth={2.5}
                 />
               </AriaButton>
-              <Dropdown.Popover>
+              <Dropdown.Popover className="tw:w-56">
                 <Dropdown.Menu
                   selectedKeys={[sortBy]}
                   selectionMode="single"

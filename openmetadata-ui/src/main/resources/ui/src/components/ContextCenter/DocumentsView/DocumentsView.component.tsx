@@ -20,7 +20,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Download01, Share07, Trash01 } from '@untitledui/icons';
+import { Download01, Share06, Trash01 } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -69,7 +69,7 @@ const FileActions: FC<FileActionsProps> = ({
           <Dropdown.DotsButton className="tw:flex tw:p-1 tw:rotate-z-90" />
         </TooltipTrigger>
       </Tooltip>
-      <Dropdown.Popover>
+      <Dropdown.Popover className="tw:w-32">
         <Dropdown.Menu
           onAction={(key) => {
             if (key === 'share') {
@@ -80,17 +80,31 @@ const FileActions: FC<FileActionsProps> = ({
           }}>
           <Dropdown.Item
             data-testid="share-btn"
-            icon={Share07}
+            icon={Share06}
             id="share"
             label={t('label.share-file')}
           />
           {canDelete && (
             <Dropdown.Item
+
               data-testid="delete-btn"
-              icon={Trash01}
               id="delete"
-              label={t('label.delete')}
-            />
+            >
+              <div className="tw:flex tw:items-center tw:gap-2">
+                <Trash01
+                  aria-hidden="true"
+                  className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
+                />
+                <Typography
+                  ellipsis
+                  className="tw:grow tw:text-error-600"
+                  size="text-sm"
+                  weight="medium">
+                  {t('label.delete')}
+                </Typography>
+              </div>
+            </Dropdown.Item>
+
           )}
         </Dropdown.Menu>
       </Dropdown.Popover>

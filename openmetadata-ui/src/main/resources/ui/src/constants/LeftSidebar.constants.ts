@@ -226,7 +226,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         key: ROUTES.CONTEXT_CENTER_ARTICLES,
         title: 'label.article-plural',
         redirect_url: ROUTES.CONTEXT_CENTER_ARTICLES,
-        icon: File06,
+        icon: createIconWithStroke(File06 as UntitledIconType, 1.2),
         dataTestId: `app-bar-item-${SidebarItem.ARTICLES}`,
       },
       {
@@ -240,7 +240,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         key: ROUTES.CONTEXT_CENTER_MEMORIES,
         title: 'label.memory-plural',
         redirect_url: ROUTES.CONTEXT_CENTER_MEMORIES,
-        icon: Lightbulb03,
+        icon: createIconWithStroke(Lightbulb03 as UntitledIconType, 1.2),
         dataTestId: `app-bar-item-${SidebarItem.MEMORIES}`,
       },
       // TODO: In progress

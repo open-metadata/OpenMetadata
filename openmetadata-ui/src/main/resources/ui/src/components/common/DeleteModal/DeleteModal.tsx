@@ -36,8 +36,9 @@ export const DeleteModal = ({
 
   return (
     <ModalOverlay
-      isDismissable={!isDeleting}
+      isDismissable={!isDeleting} 
       isOpen={open}
+      style={{ zIndex: 999 }}
       onOpenChange={(isOpen) => !isOpen && !isDeleting && onCancel()}>
       <Modal>
         <Dialog width={400} onClose={onCancel}>
