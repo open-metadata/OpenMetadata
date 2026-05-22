@@ -342,14 +342,17 @@ public class SearchMetadataTool implements McpTool {
 
     try {
       String serialized = JsonUtils.pojoToJson(result);
-      LOG.info(
+      LOG.debug(
           "[MCP] search_metadata response size: {} chars for query '{}'",
           serialized.length(),
           query);
       if (serialized.length() > MAX_RESPONSE_CHARS) {
         int targetCount =
             Math.min(
-                Math.max(1, cleanedResults.size() * MAX_RESPONSE_CHARS / serialized.length()),
+                Math.max(
+                    1,
+                    (int)
+                        (cleanedResults.size() * (MAX_RESPONSE_CHARS * 0.8) / serialized.length())),
                 cleanedResults.size());
         List<Map<String, Object>> trimmed = new ArrayList<>(cleanedResults.subList(0, targetCount));
         LOG.warn(
