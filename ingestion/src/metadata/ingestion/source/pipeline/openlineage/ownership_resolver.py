@@ -80,44 +80,8 @@ class OpenLineageOwnerResolver:
         seen: Set[Tuple[str, str]] = set()  # noqa: UP006
 
         for owner in owners:
-            if not isinstance(owner, dict):
-                continue
-
-            raw_owner_name = owner.get("name")
-            if not isinstance(raw_owner_name, str) or not raw_owner_name:
-                continue
-
-            owner_type, separator, owner_name = raw_owner_name.partition(":")
-            if separator:
-                owner_type = owner_type.lower()
-            else:
-                owner_type = None
-                owner_name = raw_owner_name
-
-            owner_key = owner_name.strip().lower()
-            if not owner_key:
-                continue
-
-            owner_ref = None
-            if owner_type == OWNER_TEAM_ENTITY:
-                owner_ref = self._team_owner_ref_by_name.get(owner_key)
-            elif owner_type == OWNER_USER_ENTITY:
-                owner_ref = self._user_owner_ref_by_name.get(owner_key)
-            else:
-                team_ref = self._team_owner_ref_by_name.get(owner_key)
-                user_ref = self._user_owner_ref_by_name.get(owner_key)
-                if team_ref and user_ref:
-                    logger.warning(
-                        f"OpenLineage owner [{raw_owner_name}] matched both a team "
-                        "and a user. Using the team for pipeline ownership."
-                    )
-                owner_ref = team_ref or user_ref
-
+            owner_ref = self._get_owner_ref(owner)
             if not owner_ref:
-                logger.warning(
-                    f"Unable to resolve OpenLineage owner [{raw_owner_name}] "
-                    "for pipeline ownership."
-                )
                 continue
 
             ref_key = (owner_ref.type, str(owner_ref.id))
@@ -142,6 +106,49 @@ class OpenLineageOwnerResolver:
 
         self._owner_refs_by_pipeline_fqn[pipeline_fqn] = merged_owners
         return EntityReferenceList(root=merged_owners)
+
+    def _get_owner_ref(self, owner: Any) -> Optional[EntityReference]:  # noqa: UP045
+        """
+        Resolve a single OpenLineage ownership owner object to an OpenMetadata owner reference.
+
+        Qualified names such as ``team:data-platform`` and ``user:jdoe`` are resolved against the
+        matching entity cache. Unqualified names are resolved as Group team first, then user.
+        """
+        if not isinstance(owner, dict):
+            return None
+
+        raw_owner_name = owner.get("name")
+        if not isinstance(raw_owner_name, str) or not raw_owner_name:
+            return None
+
+        owner_type, separator, owner_name = raw_owner_name.partition(":")
+        if separator:
+            owner_type = owner_type.lower()
+        else:
+            owner_type = None
+            owner_name = raw_owner_name
+
+        owner_key = owner_name.strip().lower()
+        if not owner_key:
+            return None
+
+        if owner_type == OWNER_TEAM_ENTITY:
+            owner_ref = self._team_owner_ref_by_name.get(owner_key)
+        elif owner_type == OWNER_USER_ENTITY:
+            owner_ref = self._user_owner_ref_by_name.get(owner_key)
+        else:
+            team_ref = self._team_owner_ref_by_name.get(owner_key)
+            user_ref = self._user_owner_ref_by_name.get(owner_key)
+            if team_ref and user_ref:
+                logger.warning(
+                    f"OpenLineage owner [{raw_owner_name}] matched both a team "
+                    "and a user. Using the team for pipeline ownership."
+                )
+            owner_ref = team_ref or user_ref
+
+        if not owner_ref:
+            logger.warning(f"Unable to resolve OpenLineage owner [{raw_owner_name}] for pipeline ownership.")
+        return owner_ref
 
     def _ensure_pipeline_owner_cache(self) -> None:
         """
@@ -183,9 +190,7 @@ class OpenLineageOwnerResolver:
                         pipeline_fqn_value = owned_pipeline.fullyQualifiedName or owned_pipeline.name
                         if owned_pipeline.type == OWNER_PIPELINE_ENTITY and pipeline_fqn_value:
                             pipeline_fqn = model_str(pipeline_fqn_value)
-                            pipeline_owner_refs = owner_refs_by_pipeline_fqn.setdefault(
-                                pipeline_fqn, []
-                            )
+                            pipeline_owner_refs = owner_refs_by_pipeline_fqn.setdefault(pipeline_fqn, [])
                             if not any(
                                 owner.type == team_ref.type and str(owner.id) == str(team_ref.id)
                                 for owner in pipeline_owner_refs
@@ -220,9 +225,7 @@ class OpenLineageOwnerResolver:
                         pipeline_fqn_value = owned_pipeline.fullyQualifiedName or owned_pipeline.name
                         if owned_pipeline.type == OWNER_PIPELINE_ENTITY and pipeline_fqn_value:
                             pipeline_fqn = model_str(pipeline_fqn_value)
-                            pipeline_owner_refs = owner_refs_by_pipeline_fqn.setdefault(
-                                pipeline_fqn, []
-                            )
+                            pipeline_owner_refs = owner_refs_by_pipeline_fqn.setdefault(pipeline_fqn, [])
                             if not any(
                                 owner.type == user_ref.type and str(owner.id) == str(user_ref.id)
                                 for owner in pipeline_owner_refs

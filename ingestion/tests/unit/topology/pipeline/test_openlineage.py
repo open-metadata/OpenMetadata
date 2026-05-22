@@ -579,11 +579,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         ol_event = copy.deepcopy(EXPECTED_OL_EVENT)
         ol_event.job = {
             **ol_event.job,
-            "facets": {
-                "ownership": {
-                    "owners": [{"name": "team:data-platform", "type": "OWNER"}]
-                }
-            },
+            "facets": {"ownership": {"owners": [{"name": "team:data-platform", "type": "OWNER"}]}},
         }
         owners = EntityReferenceList(
             root=[
@@ -599,11 +595,14 @@ class OpenLineageUnitTest(unittest.TestCase):
         owner_resolver.get_pipeline_job_owners.return_value = owners
         self.open_lineage_source._owner_resolver = owner_resolver
 
-        with patch.object(
-            self.open_lineage_source,
-            "_resolve_pipeline_service",
-            return_value=MOCK_PIPELINE_SERVICE.name.root,
-        ), patch.object(self.open_lineage_source, "register_record"):
+        with (
+            patch.object(
+                self.open_lineage_source,
+                "_resolve_pipeline_service",
+                return_value=MOCK_PIPELINE_SERVICE.name.root,
+            ),
+            patch.object(self.open_lineage_source, "register_record"),
+        ):
             results = list(self.open_lineage_source.yield_pipeline(ol_event))
 
         self.assertEqual(len(results), 1)
@@ -626,11 +625,10 @@ class OpenLineageUnitTest(unittest.TestCase):
     def test_prepare_passes_include_owners_to_owner_resolver(self):
         self.open_lineage_source.source_config.includeOwners = False
 
-        with patch.object(
-            self.open_lineage_source, "_build_db_service_type_map", return_value={}
-        ), patch(
-            "metadata.ingestion.source.pipeline.openlineage.metadata.OpenLineageOwnerResolver"
-        ) as resolver_cls:
+        with (
+            patch.object(self.open_lineage_source, "_build_db_service_type_map", return_value={}),
+            patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenLineageOwnerResolver") as resolver_cls,
+        ):
             self.open_lineage_source.prepare()
 
         resolver_cls.assert_called_once_with(

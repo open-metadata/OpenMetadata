@@ -13,7 +13,11 @@ from metadata.ingestion.source.pipeline.openlineage.ownership_resolver import (
 )
 
 
-def build_user(name: str, display_name: str = None, owns=None) -> User:
+def build_user(
+    name: str,
+    display_name: str | None = None,
+    owns: list[EntityReference] | None = None,
+) -> User:
     return User(
         id=uuid4(),
         name=name,
@@ -25,9 +29,9 @@ def build_user(name: str, display_name: str = None, owns=None) -> User:
 
 def build_team(
     name: str,
-    display_name: str = None,
+    display_name: str | None = None,
     team_type: TeamType = TeamType.Group,
-    owns=None,
+    owns: list[EntityReference] | None = None,
 ) -> Team:
     return Team(
         id=uuid4(),
@@ -65,13 +69,7 @@ def build_resolver(
 
 
 def build_job(owner_names):
-    return {
-        "facets": {
-            "ownership": {
-                "owners": [{"name": owner_name} for owner_name in owner_names]
-            }
-        }
-    }
+    return {"facets": {"ownership": {"owners": [{"name": owner_name} for owner_name in owner_names]}}}
 
 
 def test_resolves_qualified_user_and_team_owner_names():
@@ -79,9 +77,7 @@ def test_resolves_qualified_user_and_team_owner_names():
     team = build_team("data-platform", "Data Platform")
     resolver, _ = build_resolver(users=[user], teams=[team])
 
-    owners = resolver.get_pipeline_job_owners(
-        build_job(["user:jdoe", "team:data-platform"])
-    )
+    owners = resolver.get_pipeline_job_owners(build_job(["user:jdoe", "team:data-platform"]))
 
     assert owners is not None
     assert [(owner.type, owner.name) for owner in owners.root] == [
@@ -95,9 +91,7 @@ def test_unqualified_owner_prefers_group_team_over_user():
     team = build_team("analytics")
     resolver, _ = build_resolver(users=[user], teams=[team])
 
-    with patch(
-        "metadata.ingestion.source.pipeline.openlineage.ownership_resolver.logger.warning"
-    ) as warning:
+    with patch("metadata.ingestion.source.pipeline.openlineage.ownership_resolver.logger.warning") as warning:
         owners = resolver.get_pipeline_job_owners(build_job(["analytics"]))
 
     assert owners is not None
@@ -105,8 +99,7 @@ def test_unqualified_owner_prefers_group_team_over_user():
     assert owners.root[0].type == "team"
     assert owners.root[0].name == "analytics"
     warning.assert_called_once_with(
-        "OpenLineage owner [analytics] matched both a team and a user. "
-        "Using the team for pipeline ownership."
+        "OpenLineage owner [analytics] matched both a team and a user. Using the team for pipeline ownership."
     )
 
 
@@ -114,15 +107,11 @@ def test_only_caches_group_teams():
     department = build_team("finance", team_type=TeamType.Department)
     resolver, _ = build_resolver(teams=[department])
 
-    with patch(
-        "metadata.ingestion.source.pipeline.openlineage.ownership_resolver.logger.warning"
-    ) as warning:
+    with patch("metadata.ingestion.source.pipeline.openlineage.ownership_resolver.logger.warning") as warning:
         owners = resolver.get_pipeline_job_owners(build_job(["team:finance"]))
 
     assert owners is None
-    warning.assert_called_once_with(
-        "Unable to resolve OpenLineage owner [team:finance] for pipeline ownership."
-    )
+    warning.assert_called_once_with("Unable to resolve OpenLineage owner [team:finance] for pipeline ownership.")
 
 
 def test_does_not_build_cache_without_ownership_facet():
@@ -141,9 +130,7 @@ def test_does_not_build_cache_when_include_owners_is_disabled():
         include_owners=False,
     )
 
-    owners = resolver.get_pipeline_job_owners(
-        build_job(["user:jdoe", "team:data-platform"])
-    )
+    owners = resolver.get_pipeline_job_owners(build_job(["user:jdoe", "team:data-platform"]))
 
     assert owners is None
     metadata.list_all_entities.assert_not_called()
@@ -227,7 +214,7 @@ def test_append_mode_merges_existing_pipeline_owners_and_updates_cache():
         ("team", "data-platform"),
         ("user", "jdoe"),
     ]
-    assert [
-        (owner.type, owner.name)
-        for owner in resolver._owner_refs_by_pipeline_fqn["airflow.daily_orders"]
-    ] == [("team", "data-platform"), ("user", "jdoe")]
+    assert [(owner.type, owner.name) for owner in resolver._owner_refs_by_pipeline_fqn["airflow.daily_orders"]] == [
+        ("team", "data-platform"),
+        ("user", "jdoe"),
+    ]
