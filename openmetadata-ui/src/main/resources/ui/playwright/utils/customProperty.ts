@@ -886,7 +886,19 @@ export const deleteCreatedProperty = async (
   // Ensure the save button is visible before clicking
   await expect(page.locator('[data-testid="save-button"]')).toBeVisible();
 
+  const patchResponse = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/metadata/types/') &&
+      res.request().method() === 'PATCH' &&
+      res.status() === 200
+  );
+
   await page.locator('[data-testid="save-button"]').click();
+  await patchResponse;
+
+  // ConfirmationModal is destroyOnClose: assert the body text unmounts so
+  // the modal mask is gone before the next sidebar click in callers' loops.
+  await expect(page.locator('[data-testid="body-text"]')).not.toBeAttached();
 };
 
 export const verifyCustomPropertyInAdvancedSearch = async (
