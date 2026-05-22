@@ -27,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Set;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.service.config.OMWebConfiguration;
@@ -39,6 +40,24 @@ public class OpenMetadataAssetServlet extends AssetServlet {
       Set.of(
           "js", "css", "map", "json", "txt", "html", "ico", "png", "jpg", "jpeg", "svg", "gif",
           "webp", "woff", "woff2", "ttf", "eot", "otf", "pdf", "md");
+
+  // Matches Vite's content-hash filename pattern, e.g. `index-Z3O_FBkA.js`,
+  // `MyComponent.component-a1b2c3d4.css`. The hash chunk is base64url and at
+  // least 8 chars — long enough to make accidental collisions vanishingly
+  // unlikely. Anything matching is safe to mark {@code immutable} because the
+  // filename changes whenever the content does.
+  private static final Pattern HASHED_ASSET =
+      Pattern.compile(".*-[A-Za-z0-9_-]{8,}\\.[a-z0-9]+(\\.br|\\.gz)?$");
+
+  private static final String IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
+
+  // The HTML shell points at hash-named JS chunks, so it MUST be re-fetched
+  // (or revalidated) on every load — otherwise a fresh deploy lands but the
+  // browser keeps the stale shell that references chunks that no longer
+  // exist. {@code no-cache} forces revalidation on every load; together
+  // with the ETag emitted by {@link IndexResource} the request settles as
+  // a 304 with ~150 bytes when nothing changed.
+  private static final String REVALIDATE_CACHE = "no-cache, must-revalidate";
 
   private final OMWebConfiguration webConfiguration;
   private final String basePath;
@@ -60,6 +79,7 @@ public class OpenMetadataAssetServlet extends AssetServlet {
   protected void doGet(HttpServletRequest req, HttpServletResponse resp)
       throws ServletException, IOException {
     setSecurityHeader(webConfiguration, resp);
+    applyCacheControl(req, resp);
 
     String requestUri = req.getRequestURI();
 
@@ -118,6 +138,48 @@ public class OpenMetadataAssetServlet extends AssetServlet {
         resp.sendError(404);
       }
     }
+  }
+
+  /**
+   * Pick a {@code Cache-Control} policy by path shape.
+   *
+   * <ul>
+   *   <li><b>Hashed assets under {@code /assets/}</b> — names are content-addressed by Vite
+   *       (e.g. {@code index-Z3O_FBkA.js}). The filename changes whenever the body changes, so
+   *       the browser can cache forever and not even ask the server again. Emit
+   *       {@code public, max-age=31536000, immutable}.
+   *   <li><b>SPA HTML / fallback routes</b> — the shell that references the hashed asset names.
+   *       Must NOT be long-cached, else a fresh deploy lands and clients keep a stale shell
+   *       pointing at chunks that no longer exist. Emit {@code no-cache, must-revalidate} so
+   *       the browser revalidates every load; {@link IndexResource} attaches an ETag so the
+   *       revalidate settles as a tiny 304 when nothing changed.
+   *   <li><b>Unhashed static files</b> (e.g. {@code favicon.ico}, {@code manifest.json}) — fall
+   *       through with no explicit Cache-Control so the browser's heuristic kicks in. Adding a
+   *       short {@code max-age} here is possible but low-ROI; revisit if logs show high
+   *       refetch rates.
+   * </ul>
+   */
+  private void applyCacheControl(HttpServletRequest req, HttpServletResponse resp) {
+    String requestUri = req.getRequestURI();
+    String pathToCheck = stripBasePath(requestUri);
+    if (pathToCheck.startsWith("/assets/") && HASHED_ASSET.matcher(pathToCheck).matches()) {
+      resp.setHeader("Cache-Control", IMMUTABLE_CACHE);
+      return;
+    }
+    if (requestUri.endsWith("/") || requestUri.endsWith(".html") || isSpaRoute(requestUri)) {
+      resp.setHeader("Cache-Control", REVALIDATE_CACHE);
+    }
+  }
+
+  private String stripBasePath(String requestUri) {
+    String normalizedBasePath =
+        basePath.endsWith("/") ? basePath.substring(0, basePath.length() - 1) : basePath;
+    if (!"/".equals(normalizedBasePath)
+        && !normalizedBasePath.isEmpty()
+        && requestUri.startsWith(normalizedBasePath)) {
+      return requestUri.substring(normalizedBasePath.length());
+    }
+    return requestUri;
   }
 
   /**
