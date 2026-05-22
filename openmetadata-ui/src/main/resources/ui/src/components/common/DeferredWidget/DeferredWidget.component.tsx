@@ -116,11 +116,16 @@ export const DeferredWidget = ({
   //     the callback. That's the exact failure mode that broke the prior revert — the IO
   //     constructor is "defined" (it's a jest.fn) but no entries ever arrive. Detect by
   //     `process.env.NODE_ENV === 'test'`, which Jest sets automatically.
+  //   - Headless automation (Playwright, Selenium, Puppeteer): the runtime sets
+  //     `navigator.webdriver=true`. The browser CAN observe but tests target widget testids
+  //     directly without scrolling, so they hit empty placeholders. Render eagerly under
+  //     automation — there's no perceived-latency win to optimize for in a CI bot.
   // Cheap one-time check.
   const ioUnsupported = useRef(
     typeof window === 'undefined' ||
       typeof window.IntersectionObserver === 'undefined' ||
-      process.env.NODE_ENV === 'test'
+      process.env.NODE_ENV === 'test' ||
+      (typeof navigator !== 'undefined' && navigator.webdriver === true)
   );
 
   const { ref, inView } = useInView({
