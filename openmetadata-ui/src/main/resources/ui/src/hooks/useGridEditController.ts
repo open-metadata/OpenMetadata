@@ -13,7 +13,7 @@
 
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Column } from 'react-data-grid';
+import type { Column } from 'react-data-grid';
 
 export type Range = {
   startRow: number;
