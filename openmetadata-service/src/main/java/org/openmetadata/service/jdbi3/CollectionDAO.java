@@ -9742,27 +9742,28 @@ public interface CollectionDAO {
           getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), timestamp);
     }
 
+    // profiler_data_time_series has no id column (unique key is
+    // entityFQNHash + extension + operation + timestamp), so we limit by
+    // row count using single-table DELETE+LIMIT on MySQL and ctid IN (...) on Postgres.
+    // This bounds the rows deleted per batch, matching the other orphan-cleanup queries.
     @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM profiler_data_time_series "
-                + "WHERE entityFQNHash IN ("
-                + "  SELECT entityFQNHash FROM ("
-                + "    SELECT DISTINCT pdts.entityFQNHash "
-                + "    FROM profiler_data_time_series pdts "
-                + "    LEFT JOIN table_entity te ON pdts.entityFQNHash = te.fqnHash "
-                + "    WHERE te.fqnHash IS NULL "
-                + "    LIMIT :limit"
-                + "  ) sub"
-                + ")",
+                + "WHERE NOT EXISTS ("
+                + "  SELECT 1 FROM table_entity te "
+                + "  WHERE te.fqnHash = profiler_data_time_series.entityFQNHash"
+                + ") "
+                + "LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM profiler_data_time_series "
-                + "WHERE entityFQNHash IN ("
-                + "  SELECT DISTINCT pdts.entityFQNHash "
-                + "  FROM profiler_data_time_series pdts "
-                + "  LEFT JOIN table_entity te ON pdts.entityFQNHash = te.fqnHash "
-                + "  WHERE te.fqnHash IS NULL "
+                + "WHERE ctid IN ("
+                + "  SELECT pdts.ctid FROM profiler_data_time_series pdts "
+                + "  WHERE NOT EXISTS ("
+                + "    SELECT 1 FROM table_entity te "
+                + "    WHERE te.fqnHash = pdts.entityFQNHash"
+                + "  ) "
                 + "  LIMIT :limit"
                 + ")",
         connectionType = POSTGRES)
@@ -10033,6 +10034,9 @@ public interface CollectionDAO {
       return listCount(getTimeSeriesTableName(), filter.getQueryParams(), condition);
     }
 
+    // relation = 9 corresponds to Relationship.PARENT_OF (the enum ordinal is stable;
+    // see Relationship.java where new values must be appended). The annotation can't
+    // reference the enum at compile time, so we inline the ordinal here.
     @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM test_case_resolution_status_time_series "
@@ -10040,7 +10044,7 @@ public interface CollectionDAO {
                 + "  SELECT id FROM ("
                 + "    SELECT ts.id FROM test_case_resolution_status_time_series ts "
                 + "    LEFT JOIN entity_relationship er "
-                + "      ON er.toId = ts.id AND er.relation = 9 "
+                + "      ON er.toId = ts.id AND er.relation = 9 " // 9 = Relationship.PARENT_OF
                 + "        AND er.fromEntity = 'testCase' "
                 + "        AND er.toEntity = 'testCaseResolutionStatus' "
                 + "    WHERE er.toId IS NULL "
@@ -10054,7 +10058,7 @@ public interface CollectionDAO {
                 + "WHERE id IN ("
                 + "  SELECT ts.id FROM test_case_resolution_status_time_series ts "
                 + "  LEFT JOIN entity_relationship er "
-                + "    ON er.toId = ts.id AND er.relation = 9 "
+                + "    ON er.toId = ts.id AND er.relation = 9 " // 9 = Relationship.PARENT_OF
                 + "      AND er.fromEntity = 'testCase' "
                 + "      AND er.toEntity = 'testCaseResolutionStatus' "
                 + "  WHERE er.toId IS NULL "
