@@ -44,11 +44,28 @@ class DefaultToolContextTest {
   }
 
   @Test
-  void classifyAuthorizationException() {
-    McpToolCallUsage.ErrorCategory category =
-        DefaultToolContext.classifyException(new AuthorizationException("forbidden"));
+  void classifyAuthorizationExceptionAsAuth() {
+    assertThat(DefaultToolContext.classifyException(new AuthorizationException("forbidden")))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.AUTH);
+  }
 
-    assertThat(category).isEqualTo(McpToolCallUsage.ErrorCategory.INTERNAL);
+  @Test
+  void classifyWrappedAuthorizationExceptionAsAuth() {
+    RuntimeException wrapped =
+        new RuntimeException("tool failed", new AuthorizationException("forbidden"));
+
+    assertThat(DefaultToolContext.classifyException(wrapped))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.AUTH);
+  }
+
+  @Test
+  void classifyAuthMessagePatternsAsAuth() {
+    assertThat(DefaultToolContext.classifyException(new RuntimeException("Permission denied")))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.AUTH);
+    assertThat(DefaultToolContext.classifyException(new RuntimeException("Unauthorized access")))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.AUTH);
+    assertThat(DefaultToolContext.classifyException(new RuntimeException("Access denied for user")))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.AUTH);
   }
 
   @Test

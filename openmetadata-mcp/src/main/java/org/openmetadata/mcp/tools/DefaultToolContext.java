@@ -6,6 +6,7 @@ import io.modelcontextprotocol.spec.McpSchema;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -181,25 +182,67 @@ public class DefaultToolContext {
   }
 
   /**
+   * Pairing of an exception (name, message) predicate with the bucket it should produce. Kept
+   * as a static table so adding a new category (or extending an existing one with a new keyword)
+   * is a one-line change rather than another {@code else if} branch.
+   */
+  private record CategoryMatcher(
+      Predicate<ExceptionMeta> matches, McpToolCallUsage.ErrorCategory category) {}
+
+  /** Lower-cased name + message pair so each matcher inspects both without re-parsing. */
+  private record ExceptionMeta(String name, String message) {}
+
+  /**
+   * Ordered category table. Check order matters: more specific patterns sit before broader ones so
+   * a {@code RateLimitException} doesn't get caught by the generic message-substring rules below
+   * it. {@code AUTH} sits above {@code VALIDATION} because some auth exceptions ({@code
+   * AuthorizationException}) extend {@code IllegalArgumentException}-style hierarchies and would
+   * otherwise be mis-bucketed.
+   */
+  private static final List<CategoryMatcher> CATEGORY_MATCHERS =
+      List.of(
+          new CategoryMatcher(
+              meta -> meta.name().contains("RateLimit") || meta.message().contains("rate limit"),
+              McpToolCallUsage.ErrorCategory.RATE_LIMIT),
+          new CategoryMatcher(
+              meta ->
+                  meta.name().contains("Authorization")
+                      || meta.name().contains("Forbidden")
+                      || meta.name().contains("Unauthorized")
+                      || meta.message().contains("forbidden")
+                      || meta.message().contains("unauthorized")
+                      || meta.message().contains("access denied")
+                      || meta.message().contains("permission denied"),
+              McpToolCallUsage.ErrorCategory.AUTH),
+          new CategoryMatcher(
+              meta ->
+                  meta.name().contains("Validation")
+                      || meta.name().contains("IllegalArgument")
+                      || meta.name().contains("BadRequest")
+                      || meta.message().contains("invalid argument"),
+              McpToolCallUsage.ErrorCategory.VALIDATION),
+          new CategoryMatcher(
+              meta ->
+                  meta.name().contains("Timeout")
+                      || meta.message().contains("timeout")
+                      || meta.message().contains("timed out"),
+              McpToolCallUsage.ErrorCategory.TIMEOUT));
+
+  /**
    * Returns the category that matches the supplied throwable's name or message, or {@code null}
    * when no specific bucket applies. Kept separate from {@link #classifyException} so the
    * cause-chain walk reads as a single linear loop.
    */
   private static McpToolCallUsage.ErrorCategory matchCategory(Throwable cursor) {
-    String name = cursor.getClass().getSimpleName();
-    String msg = cursor.getMessage() == null ? "" : cursor.getMessage().toLowerCase(Locale.ROOT);
-    McpToolCallUsage.ErrorCategory result = null;
-    if (name.contains("RateLimit") || msg.contains("rate limit")) {
-      result = McpToolCallUsage.ErrorCategory.RATE_LIMIT;
-    } else if (name.contains("Validation")
-        || name.contains("IllegalArgument")
-        || name.contains("BadRequest")
-        || msg.contains("invalid argument")) {
-      result = McpToolCallUsage.ErrorCategory.VALIDATION;
-    } else if (name.contains("Timeout") || msg.contains("timeout") || msg.contains("timed out")) {
-      result = McpToolCallUsage.ErrorCategory.TIMEOUT;
-    }
-    return result;
+    ExceptionMeta meta =
+        new ExceptionMeta(
+            cursor.getClass().getSimpleName(),
+            cursor.getMessage() == null ? "" : cursor.getMessage().toLowerCase(Locale.ROOT));
+    return CATEGORY_MATCHERS.stream()
+        .filter(matcher -> matcher.matches().test(meta))
+        .map(CategoryMatcher::category)
+        .findFirst()
+        .orElse(null);
   }
 
   private static long elapsedMs(long startNanos) {
