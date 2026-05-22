@@ -679,9 +679,18 @@ const TableDetailsPageV1: React.FC = () => {
     [tabs[0], activeTab]
   );
 
-  const handleTableSync = useCallback((updatedTable: Table) => {
-    setTableDetails(updatedTable);
-  }, []);
+  // {@code setTableDetails} is a closure over {@code tableCacheKey}, which itself depends on
+  // {@code tableFields} (and therefore on the permission-derived USAGE_SUMMARY/TESTSUITE
+  // extras). If permissions resolve after first render the cache key shifts; a stale closure
+  // here would keep writing to the OLD slot while {@code useQuery} reads the NEW slot, so
+  // entity-sync updates would silently no-op on screen. Including {@code setTableDetails} in
+  // the deps re-binds the handler to the current slot.
+  const handleTableSync = useCallback(
+    (updatedTable: Table) => {
+      setTableDetails(updatedTable);
+    },
+    [setTableDetails]
+  );
 
   const onTierUpdate = useCallback(
     async (newTier?: Tag) => {
@@ -845,14 +854,17 @@ const TableDetailsPageV1: React.FC = () => {
     []
   );
 
-  const updateTableDetailsState = useCallback((data: DataAssetWithDomains) => {
-    const updatedData = data as Table;
+  const updateTableDetailsState = useCallback(
+    (data: DataAssetWithDomains) => {
+      const updatedData = data as Table;
 
-    setTableDetails((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
-    }));
-  }, []);
+      setTableDetails((data) => ({
+        ...(updatedData ?? data),
+        version: updatedData.version,
+      }));
+    },
+    [setTableDetails]
+  );
 
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {
@@ -894,7 +906,7 @@ const TableDetailsPageV1: React.FC = () => {
         }
       });
     },
-    []
+    [setTableDetails]
   );
 
   useEffect(() => {
