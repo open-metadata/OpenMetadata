@@ -16,22 +16,16 @@ import { noop } from 'lodash';
 import {
   forwardRef,
   HTMLAttributes,
-  lazy,
   LegacyRef,
-  Suspense,
   useImperativeHandle,
   useRef,
   useState,
 } from 'react';
 import { getBackendFormat, HTMLToMarkdown } from '../../../utils/FeedUtils';
 import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
+import { FeedEditor } from '../FeedEditor/FeedEditor';
 import { KeyHelp } from './KeyHelp';
 import { SendButton } from './SendButton';
-
-// See ActivityFeedEditor.tsx for the rationale on lazy-loading FeedEditor.
-const FeedEditor = lazy(() =>
-  import('../FeedEditor/FeedEditor').then((m) => ({ default: m.FeedEditor }))
-);
 
 interface ActivityFeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   placeHolder?: string;
@@ -94,17 +88,15 @@ const ActivityFeedEditor = forwardRef<EditorContentRef, ActivityFeedEditorProp>(
         className={classNames('relative', className)}
         data-testid="activity-feed-editor-new"
         onClick={(e) => e.stopPropagation()}>
-        <Suspense fallback={<div className="rich-text-editor-skeleton" />}>
-          <FeedEditor
-            defaultValue={defaultValue}
-            editorClass={editorClass}
-            focused={focused}
-            placeHolder={placeHolder}
-            ref={editorRef as LegacyRef<EditorContentRef>}
-            onChangeHandler={onChangeHandler}
-            onSave={onSaveHandler}
-          />
-        </Suspense>
+        <FeedEditor
+          defaultValue={defaultValue}
+          editorClass={editorClass}
+          focused={focused}
+          placeHolder={placeHolder}
+          ref={editorRef as LegacyRef<EditorContentRef>}
+          onChangeHandler={onChangeHandler}
+          onSave={onSaveHandler}
+        />
         {editAction ?? (
           <>
             <SendButton

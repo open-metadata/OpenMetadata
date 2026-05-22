@@ -16,27 +16,16 @@ import { noop } from 'lodash';
 import {
   forwardRef,
   HTMLAttributes,
-  lazy,
   LegacyRef,
-  Suspense,
   useImperativeHandle,
   useRef,
   useState,
 } from 'react';
 import { getBackendFormat, HTMLToMarkdown } from '../../../utils/FeedUtils';
 import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
+import { FeedEditor } from '../FeedEditor/FeedEditor';
 import { KeyHelp } from './KeyHelp';
 import { SendButton } from './SendButton';
-
-// Lazy-load FeedEditor → pulls Quill + quill-mention + quill-emoji into a chunk that
-// only loads when a feed editor actually mounts. Without this, vendor-quill (~90 KB
-// brotli) sits in the modulepreload list of every page because the editor's static
-// import path reaches the entry chunk. The visible-on-mount UX is unchanged: feeds
-// render their text content normally; the editor surface appears with a tiny suspense
-// blink the first time the user clicks "comment" / opens a thread.
-const FeedEditor = lazy(() =>
-  import('../FeedEditor/FeedEditor').then((m) => ({ default: m.FeedEditor }))
-);
 
 interface ActivityFeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   placeHolder?: string;
@@ -98,17 +87,15 @@ const ActivityFeedEditor = forwardRef<EditorContentRef, ActivityFeedEditorProp>(
       <div
         className={classNames('relative', className)}
         onClick={(e) => e.stopPropagation()}>
-        <Suspense fallback={<div className="rich-text-editor-skeleton" />}>
-          <FeedEditor
-            defaultValue={defaultValue}
-            editorClass={editorClass}
-            focused={focused}
-            placeHolder={placeHolder}
-            ref={editorRef as LegacyRef<EditorContentRef>}
-            onChangeHandler={onChangeHandler}
-            onSave={onSaveHandler}
-          />
-        </Suspense>
+        <FeedEditor
+          defaultValue={defaultValue}
+          editorClass={editorClass}
+          focused={focused}
+          placeHolder={placeHolder}
+          ref={editorRef as LegacyRef<EditorContentRef>}
+          onChangeHandler={onChangeHandler}
+          onSave={onSaveHandler}
+        />
         {editAction ?? (
           <>
             <SendButton

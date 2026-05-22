@@ -181,6 +181,8 @@ jest.mock('../../rest/storageAPI');
 
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
   getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
   getFeedCounts: jest.fn().mockReturnValue(0),
   sortTagsCaseInsensitive: jest.fn().mockImplementation((tags) => tags),

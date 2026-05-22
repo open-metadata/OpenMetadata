@@ -1000,8 +1000,15 @@ const TableDetailsPageV1: React.FC = () => {
   // Still loading the entity itself — useQuery is mid-flight or hasn't started (e.g. the
   // FQN just changed and the new cache slot is empty). Distinct from the permission gate
   // above so we keep the loader spinning instead of flashing the missing-entity placeholder.
-  if (tableLoading || !tableDetails) {
+  if (tableLoading) {
     return <Loader />;
+  }
+
+  // Fetch completed but no entity body — typically a 404 (invalid FQN) or a network error
+  // that {@code tableError} surfaced. Show the missing-entity placeholder instead of
+  // looping on the loader (the original page used a separate gate for this).
+  if (!tableDetails) {
+    return <ErrorPlaceHolder className="m-0" />;
   }
 
   return (
