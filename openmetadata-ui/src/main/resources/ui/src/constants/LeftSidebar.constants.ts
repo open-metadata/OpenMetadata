@@ -243,14 +243,6 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         icon: createIconWithStroke(Lightbulb03 as UntitledIconType, 1.2),
         dataTestId: `app-bar-item-${SidebarItem.MEMORIES}`,
       },
-      // TODO: In progress
-      // {
-      //   key: ROUTES.CONTEXT_CENTER_INTEGRATIONS,
-      //   title: 'label.integration-plural',
-      //   redirect_url: ROUTES.CONTEXT_CENTER_INTEGRATIONS,
-      //   icon: IntegrationIcon,
-      //   dataTestId: `app-bar-item-context-center-integrations`,
-      // },
       {
         key: ROUTES.CONTEXT_CENTER_ARCHIVE,
         title: 'label.archive',

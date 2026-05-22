@@ -93,9 +93,7 @@ const DocumentFolderView = ({
       );
       setFolderToDelete(undefined);
     } catch (err) {
-      const axiosErr = err as AxiosError<{ message?: string }>;
-      const message = axiosErr?.response?.data?.message ?? '';
-      showErrorToast(message);
+      showErrorToast(err as AxiosError);
     } finally {
       setFolderToDelete(undefined);
       setIsDeletingFolder(false);

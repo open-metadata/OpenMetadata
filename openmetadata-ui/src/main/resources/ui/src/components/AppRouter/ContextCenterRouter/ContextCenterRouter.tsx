@@ -60,18 +60,6 @@ const KnowledgeCenterFilterPage = withSuspenseFallback(
       )
   )
 );
-{
-  /* TODO: In progress */
-}
-
-// const ContextCenterIntegrationsPage = withSuspenseFallback(
-//   React.lazy(
-//     () =>
-//       import(
-//         '../../../pages/ContextCenterPage/ContextCenterIntegrationsPage/ContextCenterIntegrationsPage'
-//       )
-//   )
-// );
 
 const ContextCenterArchivePage = withSuspenseFallback(
   React.lazy(
@@ -124,14 +112,6 @@ const ContextCenterRouter = () => {
         element={<KnowledgeCenterFilterPage />}
         path={ROUTES.CONTEXT_CENTER_FILTER.replace(ROUTES.CONTEXT_CENTER, '')}
       />
-      {/* TODO: In progress */}
-      {/* <Route
-        element={<ContextCenterIntegrationsPage />}
-        path={ROUTES.CONTEXT_CENTER_INTEGRATIONS.replace(
-          ROUTES.CONTEXT_CENTER,
-          ''
-        )}
-      />*/}
       <Route
         element={<ContextCenterArchivePage />}
         path={ROUTES.CONTEXT_CENTER_ARCHIVE.replace(ROUTES.CONTEXT_CENTER, '')}

@@ -15,7 +15,6 @@ import {
   Button,
   Card,
   Dropdown,
-  Input,
   PaginationCardMinimal,
   Tabs,
   Typography,
@@ -25,7 +24,6 @@ import {
   FilterLines,
   Home02,
   Plus,
-  SearchLg,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -283,6 +281,7 @@ const ContextCenterMemoriesPage: FC = () => {
     setCurrentPage(1);
   }, []);
 
+
   const handleDeleteMemory = useCallback((memory: MemoryItem) => {
     setMemoryToDelete(memory);
   }, []);
@@ -349,24 +348,14 @@ const ContextCenterMemoriesPage: FC = () => {
   );
 
   const headerActions = (
-    <div className="tw:flex tw:items-center tw:gap-2">
-      <Input
-        className="tw:w-75"
-        data-testid="memories-search-input"
-        icon={SearchLg}
-        placeholder={t('label.search-memories')}
-        value={searchValue}
-        onChange={handleSearchChange}
-      />
-      <Button
-        color="primary"
-        data-testid="add-memory-btn"
-        iconLeading={Plus}
-        size="sm"
-        onClick={() => setIsCreateModalOpen(true)}>
-        {t('label.add-entity', { entity: t('label.memory') })}
-      </Button>
-    </div>
+    <Button
+      color="primary"
+      data-testid="add-memory-btn"
+      iconLeading={Plus}
+      size="sm"
+      onClick={() => setIsCreateModalOpen(true)}>
+      {t('label.add-entity', { entity: t('label.memory') })}
+    </Button>
   );
 
   return (
@@ -393,8 +382,11 @@ const ContextCenterMemoriesPage: FC = () => {
             url: '',
           },
         ]}
+        searchPlaceholder={t('label.search-memories')}
+        searchQuery={searchValue}
         subtitle={t('message.context-center-memories-subtitle')}
         title={t('label.memory-plural')}
+        onSearch={handleSearchChange}
       />
 
       {/* Stats cards */}

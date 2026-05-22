@@ -100,7 +100,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
               <Input
                 data-testid="search-input"
                 icon={SearchMd}
-                inputClassName="tw:w-64"
+                inputClassName="tw:w-75"
                 placeholder={searchPlaceholder}
                 value={searchQuery ?? ''}
                 onChange={onSearch}

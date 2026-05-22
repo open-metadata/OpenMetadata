@@ -17,7 +17,8 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Home02 } from '@untitledui/icons';
+import { File06, Home02 } from '@untitledui/icons';
+import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -224,8 +225,24 @@ const ContextCenterArchivePage: FC = () => {
               items={[
                 { id: 'all', label: t('label.all') },
                 { id: 'mine', label: t('label.created-by-me') },
-                { id: 'article', label: t('label.article-plural') },
-                { id: 'document', label: t('label.document-plural') },
+                {
+                  id: 'article',
+                  label: (
+                    <span className="tw:flex tw:items-center tw:gap-1.5">
+                      <File06 size={14} />
+                      {t('label.article-plural')}
+                    </span>
+                  ),
+                },
+                {
+                  id: 'document',
+                  label: (
+                    <span className="tw:flex tw:items-center tw:gap-1.5">
+                      <FolderIcon height={14} width={14} />
+                      {t('label.document-plural')}
+                    </span>
+                  ),
+                },
               ]}
               type="button-brand">
               {(tab) => (

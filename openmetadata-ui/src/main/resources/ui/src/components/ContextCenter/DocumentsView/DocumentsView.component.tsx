@@ -157,9 +157,9 @@ const FileActions: FC<FileActionsProps> = ({
                     onAction={() => handleMoveToFolder(folder.id)}>
                     {() => (
                       <div className="tw:flex tw:items-center tw:gap-2 tw:rounded-md tw:px-2.5 tw:py-2 tw:transition tw:duration-100 tw:ease-linear tw:group-hover:bg-primary_hover">
-                        <span className="tw:grow tw:truncate tw:text-sm tw:font-semibold tw:text-secondary">
+                        <Typography className="tw:grow tw:truncate tw:text-sm tw:text-secondary" weight='semibold'>
                           {folder.name}
-                        </span>
+                        </Typography>
                       </div>
                     )}
                   </AriaMenuItem>
