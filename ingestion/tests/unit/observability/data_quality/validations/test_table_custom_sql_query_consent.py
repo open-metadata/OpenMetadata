@@ -25,7 +25,6 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.type.entityReference import EntityReference
 
-
 TEST_CASE_NAME = "test_custom_sql_query_consent"
 ENTITY_LINK = "<#E::table::service.db.users>"
 
