@@ -191,14 +191,32 @@ const BotListV1 = ({
     const matchedUsers = formatUsersResponse(response.hits.hits);
     await ensureBotMapLoaded();
     const botsByUserName = botsByUserNameRef.current;
+    const usersByBotName = new Map<string, User>(
+      matchedUsers
+        .filter((user): user is User & { name: string } => Boolean(user.name))
+        .map((user) => [user.name.toLowerCase(), user])
+    );
 
-    return matchedUsers.flatMap((user) => {
-      const bot = user.name
-        ? botsByUserName.get(user.name.toLowerCase())
-        : undefined;
+    const lowerTerm = term.toLowerCase();
+    const matchedById = new Map<string, Bot>();
 
-      return bot ? [enrichBotWithMatchedUser(bot, user)] : [];
+    botsByUserName.forEach((bot, key) => {
+      if (!bot.id) {
+        return;
+      }
+
+      const user = usersByBotName.get(key);
+      const matchesBot =
+        key.includes(lowerTerm) ||
+        bot.displayName?.toLowerCase().includes(lowerTerm) ||
+        bot.description?.toLowerCase().includes(lowerTerm);
+
+      if (user || matchesBot) {
+        matchedById.set(bot.id, enrichBotWithMatchedUser(bot, user));
+      }
     });
+
+    return Array.from(matchedById.values());
   };
 
   const runActiveSearch = async (activeSearchTerm: string) => {

@@ -51,6 +51,8 @@ test.describe(
         await updateBotDetails(page);
       });
 
+      await redirectToBotPage(page);
+
       const searchInput = page.getByTestId('searchbar');
       const createdBotLink = page.getByTestId(
         `bot-link-${BOT_DETAILS.updatedBotName}`
