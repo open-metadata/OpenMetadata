@@ -170,6 +170,7 @@ export const ROUTES = {
   CONTEXT_CENTER_ARTICLE_VERSION: `/context-center/articles/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   CONTEXT_CENTER_DOCUMENTS: '/context-center/documents',
   CONTEXT_CENTER_FILTER: '/context-center/filter',
+  CONTEXT_CENTER_MEMORIES: '/context-center/memories',
   CONTEXT_CENTER_INTEGRATIONS: '/context-center/integrations',
   CONTEXT_CENTER_ARCHIVE: '/context-center/archive',
   SETTINGS_WITH_CATEGORY: `/settings/${PLACEHOLDER_SETTING_CATEGORY}`,
