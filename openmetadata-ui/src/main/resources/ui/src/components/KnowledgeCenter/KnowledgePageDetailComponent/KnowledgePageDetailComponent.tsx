@@ -24,7 +24,7 @@ import {
   useState,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { TagClassBase } from 'utils/TagClassBase';
+import tagClassBase from 'utils/TagClassBase';
 import { useActivityFeedProvider } from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -698,10 +698,10 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   );
 
   useEffect(() => {
-    TagClassBase.filterClassification = [];
+    tagClassBase.setFilterClassification([]);
 
     return () => {
-      TagClassBase.filterClassification = [KNOWLEDGE_CENTER_CLASSIFICATION];
+      tagClassBase.setFilterClassification([KNOWLEDGE_CENTER_CLASSIFICATION]);
     };
   }, []);
 

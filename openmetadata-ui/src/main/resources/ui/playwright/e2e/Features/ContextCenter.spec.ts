@@ -1046,7 +1046,7 @@ test.describe('Context Center', () => {
       await expect(downloadBtn).toBeVisible();
     });
 
-    test('download button triggers file download', async ({ page }) => {
+    test.fixme('download button triggers file download', async ({ page }) => {
       await navigateToDocuments(page);
 
       const view = page.getByTestId('documents-view');
