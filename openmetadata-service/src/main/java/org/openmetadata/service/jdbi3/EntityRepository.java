@@ -4531,6 +4531,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase("createStoreEntity")) {
       storeEntity(entity, false);
       storeExtension(entity);
+      storeColumnExtensions(entity.getId(), getColumnsForExtensionPersistence(entity));
     }
     try (var ignored = phase("createStoreRelationships")) {
       storeRelationshipsInternal(entity);
@@ -4982,6 +4983,36 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
     storeCustomProperties(entityIds, fieldFQNs, jsons);
+  }
+
+  /** Columns whose extensions are persisted on initial create. Default: empty. */
+  protected List<Column> getColumnsForExtensionPersistence(T entity) {
+    return Collections.emptyList();
+  }
+
+  /** Upserts one column's extension. Shared by create and update paths. */
+  protected final void storeColumnExtension(UUID entityId, Column column) {
+    if (entityId == null
+        || column == null
+        || column.getExtension() == null
+        || column.getFullyQualifiedName() == null) {
+      return;
+    }
+    String extensionKey = FullyQualifiedName.buildHash(column.getFullyQualifiedName());
+    daoCollection
+        .entityExtensionDAO()
+        .insert(
+            entityId, extensionKey, "columnExtension", JsonUtils.pojoToJson(column.getExtension()));
+  }
+
+  /** Recursively persists extensions on all columns (and nested children). */
+  protected final void storeColumnExtensions(UUID entityId, List<Column> columns) {
+    if (entityId == null || columns == null || columns.isEmpty()) {
+      return;
+    }
+    for (Column column : EntityUtil.getFlattenedEntityField(columns)) {
+      storeColumnExtension(entityId, column);
+    }
   }
 
   public final void removeExtension(EntityInterface entity) {
@@ -9408,6 +9439,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         BiPredicate<Column, Column> columnMatch) {
       origColumns = listOrEmpty(origColumns);
       updatedColumns = listOrEmpty(updatedColumns);
+      UUID entityId = updated.getId();
       List<Column> deletedColumns = new ArrayList<>();
       List<Column> addedColumns = new ArrayList<>();
       HashMap<String, String> originalUpdatedColumnFqns = new HashMap<>();
@@ -9434,7 +9466,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           deleted -> {
             daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName());
             String extensionKey = FullyQualifiedName.buildHash(deleted.getFullyQualifiedName());
-            daoCollection.entityExtensionDAO().delete(updated.getId(), extensionKey);
+            daoCollection.entityExtensionDAO().delete(entityId, extensionKey);
           });
 
       // Add tags related to newly added columns
@@ -9445,6 +9477,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 .toList(),
             added.getFullyQualifiedName());
       }
+      // Added columns are skipped by the existing-column loop below.
+      storeColumnExtensions(entityId, addedColumns);
 
       // Carry forward the user generated metadata from existing columns to new columns
       for (Column updated : updatedColumns) {
@@ -9473,7 +9507,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
             stored.getTags(),
             updated.getTags());
         updateColumnConstraint(columnPrefix, stored, updated);
-        updateColumnExtension(stored, updated);
+        if (!Objects.equals(stored.getExtension(), updated.getExtension())) {
+          storeColumnExtension(entityId, updated);
+        }
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
           updateColumns(columnPrefix, stored.getChildren(), updated.getChildren(), columnMatch);
@@ -9521,19 +9557,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
           EntityUtil.getFieldName(fieldPrefix, "constraint"),
           origColumn.getConstraint(),
           updatedColumn.getConstraint());
-    }
-
-    private void updateColumnExtension(Column origColumn, Column updatedColumn) {
-      if (updatedColumn.getExtension() != null) {
-        String extensionKey = FullyQualifiedName.buildHash(updatedColumn.getFullyQualifiedName());
-        daoCollection
-            .entityExtensionDAO()
-            .insert(
-                updated.getId(),
-                extensionKey,
-                "columnExtension",
-                JsonUtils.pojoToJson(updatedColumn.getExtension()));
-      }
     }
 
     protected void updateColumnDataLength(
