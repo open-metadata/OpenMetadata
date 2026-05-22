@@ -43,9 +43,9 @@ import { Operation as PermissionOperation } from '../../generated/entity/policie
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
-  TOPIC_DEFAULT_FIELDS,
   topicQueryFn,
   topicQueryKey,
+  TOPIC_DEFAULT_FIELDS,
 } from '../../rest/queries/topicQuery';
 import {
   addFollower,
@@ -323,7 +323,6 @@ const TopicDetailsPage: FunctionComponent = () => {
     [setTopicDetails]
   );
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (topicFQN) {
       fetchResourcePermission(topicFQN);

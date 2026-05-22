@@ -32,7 +32,10 @@ import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import { TableColumnSearchSource } from '../../../interface/search.interface';
+import { prefetchDashboard } from '../../../rest/queries/dashboardQuery';
+import { prefetchPipeline } from '../../../rest/queries/pipelineQuery';
 import { prefetchTable } from '../../../rest/queries/tableQuery';
+import { prefetchTopic } from '../../../rest/queries/topicQuery';
 import {
   getEntityName,
   highlightEntityNameAndDescription,
@@ -88,14 +91,35 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         : _source;
     }, [_source, highlight]);
 
-    // Hover/focus on a Table card warms the React Query cache so the click that follows hits
-    // an already-populated slot. Dispatched on entityType because only the Table detail page
-    // currently reads from a shared {@code ['table', fqn, fields]} slot; other entity types
-    // are no-ops until their pages migrate to useQuery. {@code prefetchQuery} is idempotent
-    // within the configured {@code staleTime}, so repeated hovers don't re-fire the request.
+    // Hover/focus on an entity card warms the React Query cache so the click that follows
+    // hits an already-populated slot. Dispatched on entityType because each detail page reads
+    // a slot keyed on its own {@code ['<type>', fqn, fields]} convention; entity types that
+    // haven't migrated to useQuery yet fall through as no-ops. {@code prefetchQuery} is
+    // idempotent within the configured {@code staleTime}, so repeated hovers don't re-fire.
     const handlePrefetch = useCallback(() => {
-      if (source.entityType === EntityType.TABLE && source.fullyQualifiedName) {
-        prefetchTable(queryClient, source.fullyQualifiedName);
+      const fqn = source.fullyQualifiedName;
+      if (!fqn) {
+        return;
+      }
+      switch (source.entityType) {
+        case EntityType.TABLE:
+          prefetchTable(queryClient, fqn);
+
+          break;
+        case EntityType.DASHBOARD:
+          prefetchDashboard(queryClient, fqn);
+
+          break;
+        case EntityType.PIPELINE:
+          prefetchPipeline(queryClient, fqn);
+
+          break;
+        case EntityType.TOPIC:
+          prefetchTopic(queryClient, fqn);
+
+          break;
+        default:
+          break;
       }
     }, [queryClient, source.entityType, source.fullyQualifiedName]);
 

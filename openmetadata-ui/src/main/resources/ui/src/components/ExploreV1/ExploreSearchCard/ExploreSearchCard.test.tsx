@@ -19,9 +19,24 @@ import ExploreSearchCard from './ExploreSearchCard';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
 
 const mockPrefetchTable = jest.fn();
+const mockPrefetchDashboard = jest.fn();
+const mockPrefetchPipeline = jest.fn();
+const mockPrefetchTopic = jest.fn();
 
 jest.mock('../../../rest/queries/tableQuery', () => ({
   prefetchTable: (...args: unknown[]) => mockPrefetchTable(...args),
+}));
+
+jest.mock('../../../rest/queries/dashboardQuery', () => ({
+  prefetchDashboard: (...args: unknown[]) => mockPrefetchDashboard(...args),
+}));
+
+jest.mock('../../../rest/queries/pipelineQuery', () => ({
+  prefetchPipeline: (...args: unknown[]) => mockPrefetchPipeline(...args),
+}));
+
+jest.mock('../../../rest/queries/topicQuery', () => ({
+  prefetchTopic: (...args: unknown[]) => mockPrefetchTopic(...args),
 }));
 
 jest.mock('../../../utils/RouterUtils', () => ({
@@ -368,30 +383,54 @@ describe('ExploreSearchCard - Highlight functionality', () => {
 describe('ExploreSearchCard - Prefetch on hover', () => {
   beforeEach(() => {
     mockPrefetchTable.mockClear();
+    mockPrefetchDashboard.mockClear();
+    mockPrefetchPipeline.mockClear();
+    mockPrefetchTopic.mockClear();
   });
 
-  it('prefetches table details when hovering a Table card', () => {
-    renderWithQueryClient(
-      <MemoryRouter>
-        <ExploreSearchCard
-          {...defaultProps}
-          source={{
-            ...baseSource,
-            entityType: 'table',
-            fullyQualifiedName: 'svc.db.schema.users',
-          }}
-        />
-      </MemoryRouter>
-    );
+  it.each<{ entityType: string; mockFn: jest.Mock; fqn: string }>([
+    {
+      entityType: 'table',
+      mockFn: mockPrefetchTable,
+      fqn: 'svc.db.schema.users',
+    },
+    {
+      entityType: 'dashboard',
+      mockFn: mockPrefetchDashboard,
+      fqn: 'svc.dash.daily-active',
+    },
+    {
+      entityType: 'pipeline',
+      mockFn: mockPrefetchPipeline,
+      fqn: 'svc.pipe.etl',
+    },
+    {
+      entityType: 'topic',
+      mockFn: mockPrefetchTopic,
+      fqn: 'svc.topic.events',
+    },
+  ])(
+    'prefetches details when hovering a $entityType card',
+    ({ entityType, mockFn, fqn }) => {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <ExploreSearchCard
+            {...defaultProps}
+            source={{
+              ...baseSource,
+              entityType,
+              fullyQualifiedName: fqn,
+            }}
+          />
+        </MemoryRouter>
+      );
 
-    fireEvent.mouseEnter(screen.getByTestId('entity-link'));
+      fireEvent.mouseEnter(screen.getByTestId('entity-link'));
 
-    expect(mockPrefetchTable).toHaveBeenCalledTimes(1);
-    expect(mockPrefetchTable).toHaveBeenCalledWith(
-      expect.anything(),
-      'svc.db.schema.users'
-    );
-  });
+      expect(mockFn).toHaveBeenCalledTimes(1);
+      expect(mockFn).toHaveBeenCalledWith(expect.anything(), fqn);
+    }
+  );
 
   it('also prefetches on keyboard focus for accessibility', () => {
     renderWithQueryClient(
@@ -412,15 +451,15 @@ describe('ExploreSearchCard - Prefetch on hover', () => {
     expect(mockPrefetchTable).toHaveBeenCalledTimes(1);
   });
 
-  it('does not prefetch when entityType is not a Table', () => {
+  it('does not prefetch when entityType has no useQuery integration yet', () => {
     renderWithQueryClient(
       <MemoryRouter>
         <ExploreSearchCard
           {...defaultProps}
           source={{
             ...baseSource,
-            entityType: 'dashboard',
-            fullyQualifiedName: 'svc.dash.daily-active',
+            entityType: 'mlmodel',
+            fullyQualifiedName: 'svc.ml.churn-v1',
           }}
         />
       </MemoryRouter>
@@ -429,5 +468,8 @@ describe('ExploreSearchCard - Prefetch on hover', () => {
     fireEvent.mouseEnter(screen.getByTestId('entity-link'));
 
     expect(mockPrefetchTable).not.toHaveBeenCalled();
+    expect(mockPrefetchDashboard).not.toHaveBeenCalled();
+    expect(mockPrefetchPipeline).not.toHaveBeenCalled();
+    expect(mockPrefetchTopic).not.toHaveBeenCalled();
   });
 });
