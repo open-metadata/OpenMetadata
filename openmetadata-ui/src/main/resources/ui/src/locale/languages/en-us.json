@@ -2594,7 +2594,6 @@
     "connection-test-successful": "Connection test was successful.",
     "connection-test-warning": "Test connection partially successful: Some steps had failures, we will only ingest partial metadata.",
     "consumer-aligned-domain-type-description": "Domains that are user-facing where the end product of a combination of data from various domains are available for business users or data citizens for data-driven decision-making.",
-    "context-center-archive-subtitle": "Archived articles and documents. Restore or permanently delete items.",
     "context-center-archive-subtitle": "View archived articles and documents",
     "context-center-dashboard-subtitle": "Overview of your knowledge base and document library",
     "context-center-documents-subtitle": "Manage and organize your uploaded documents",

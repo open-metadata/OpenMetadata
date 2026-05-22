@@ -135,7 +135,7 @@ const ContextCenterRouter = () => {
       <Route
         element={<ContextCenterArchivePage />}
         path={ROUTES.CONTEXT_CENTER_ARCHIVE.replace(ROUTES.CONTEXT_CENTER, '')}
-      /> 
+      />
     </Routes>
   );
 };
