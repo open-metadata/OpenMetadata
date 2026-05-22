@@ -36,7 +36,6 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addFollower,
-  getDashboardByFqn,
   patchDashboardDetails,
   removeFollower,
   updateDashboardVotes,
@@ -119,14 +118,12 @@ const DashboardDetailsPage = () => {
   });
 
   const isError = useMemo(
-    () =>
-      (dashboardError as AxiosError | undefined)?.response?.status === 404,
+    () => (dashboardError as AxiosError | undefined)?.response?.status === 404,
     [dashboardError]
   );
 
   useEffect(() => {
-    const status = (dashboardError as AxiosError | undefined)?.response
-      ?.status;
+    const status = (dashboardError as AxiosError | undefined)?.response?.status;
     if (status === ClientErrors.FORBIDDEN) {
       navigate(ROUTES.FORBIDDEN, { replace: true });
     } else if (status && status !== 404) {
@@ -176,8 +173,7 @@ const DashboardDetailsPage = () => {
 
   const { id: dashboardId, version, charts } = dashboardDetails ?? {};
   const isFollowing = useMemo(
-    () =>
-      dashboardDetails?.followers?.some(({ id }) => id === USERId) ?? false,
+    () => dashboardDetails?.followers?.some(({ id }) => id === USERId) ?? false,
     [dashboardDetails?.followers, USERId]
   );
   const entityName = useMemo(
@@ -370,7 +366,6 @@ const DashboardDetailsPage = () => {
     [setDashboardDetails]
   );
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchResourcePermission(dashboardFQN);
   }, [dashboardFQN]);
