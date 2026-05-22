@@ -36,7 +36,6 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addFollower,
-  getPipelineByFqn,
   patchPipelineDetails,
   removeFollower,
   updatePipelinesVotes,
@@ -163,10 +162,7 @@ const PipelineDetailsPage = () => {
         | undefined
         | ((prev: Pipeline | undefined) => Pipeline | undefined)
     ) => {
-      queryClient.setQueryData<Pipeline | undefined>(
-        pipelineCacheKey,
-        updater
-      );
+      queryClient.setQueryData<Pipeline | undefined>(pipelineCacheKey, updater);
     },
     [queryClient, pipelineCacheKey]
   );
@@ -420,7 +416,6 @@ const PipelineDetailsPage = () => {
     [setPipelineDetails]
   );
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchResourcePermission(decodedPipelineFQN);
   }, [decodedPipelineFQN]);
