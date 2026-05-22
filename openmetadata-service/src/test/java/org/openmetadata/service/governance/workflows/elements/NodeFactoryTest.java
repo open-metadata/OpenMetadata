@@ -64,27 +64,14 @@ class NodeFactoryTest {
 
   @Test
   void testPolicyAgentTaskThrowsWhenRegistryReturnsEmpty() {
-    // Simulate no Collate handler registered: replace with a registry that produces empty.
-    // We can't clear the singleton, so we verify the orElseThrow contract by replacing
-    // the registered extension with one that mimics an absent registration.
     NodeFactoryRegistry registry = NodeFactoryRegistry.getInstance();
-
-    // Temporarily point POLICY_AGENT_TASK to a handler that throws to exercise
-    // the IllegalStateException contract of NodeFactory.createNode().
-    registry.register(
-        NodeSubType.POLICY_AGENT_TASK,
-        (def, cfg, name) -> {
-          throw new IllegalStateException(
-              "policyAgentTask is a Collate-only feature — handler not registered");
-        });
-
+    registry.deregister(NodeSubType.POLICY_AGENT_TASK);
     try {
       PolicyAgentTaskDefinition def = new PolicyAgentTaskDefinition().withName("agent");
       assertThrows(
           IllegalStateException.class,
           () -> NodeFactory.createNode(def, CFG, "DataAccessRequestTaskWorkflow"));
     } finally {
-      // Restore the stub so subsequent tests in this class are unaffected.
       registry.register(NodeSubType.POLICY_AGENT_TASK, (d, c, n) -> STUB);
     }
   }
