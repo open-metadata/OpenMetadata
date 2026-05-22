@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.vector.utils;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -53,7 +54,7 @@ public final class TextChunkManager {
     }
     try {
       MessageDigest md = MessageDigest.getInstance("MD5");
-      byte[] hash = md.digest(text.getBytes());
+      byte[] hash = md.digest(text.getBytes(StandardCharsets.UTF_8));
       return HexFormat.of().formatHex(hash);
     } catch (NoSuchAlgorithmException e) {
       LOG.error("MD5 algorithm not available", e);

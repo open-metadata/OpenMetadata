@@ -14,6 +14,7 @@ Python API REST wrapper and helpers
 
 import time
 import traceback
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Union  # noqa: UP035
 
@@ -21,7 +22,10 @@ import requests
 from requests.exceptions import HTTPError, JSONDecodeError
 
 from metadata.config.common import ConfigModel
+from metadata.ingestion import diagnostics
+from metadata.ingestion.diagnostics.http_introspect import get_global_tracker
 from metadata.ingestion.ometa.credentials import URL, get_api_version
+from metadata.ingestion.ometa.http_adapter import mount_resilient_adapter
 from metadata.ingestion.ometa.ttl_cache import TTLCache
 from metadata.ingestion.ometa.utils import sanitize_user_agent
 from metadata.utils.execution_time_tracker import calculate_execution_time
@@ -40,6 +44,16 @@ class LimitsException(Exception):  # noqa: N818
     """
     API Client Feature Limit exception
     """
+
+
+class RestTransportError(Exception):
+    """Request failed at the transport layer (connection / timeout / retry exhaustion)."""
+
+    def __init__(self, method: str, url: object, cause: BaseException) -> None:
+        super().__init__(f"Transport failure on {method} {url}: {cause}")
+        self.method = method
+        self.url = url
+        self.cause = cause
 
 
 class APIError(Exception):
@@ -139,6 +153,7 @@ class REST:
         self._base_url: URL = URL(self.config.base_url)
         self._api_version = get_api_version(self.config.api_version)
         self._session = requests.Session()
+        mount_resilient_adapter(self._session)
         user_agent = sanitize_user_agent(self.config.user_agent)
         if user_agent:
             self._session.headers["User-Agent"] = user_agent
@@ -236,32 +251,41 @@ class REST:
         if effective_timeout:
             opts["timeout"] = effective_timeout
 
+        # Per-call `retries` override takes precedence over the client
+        # config. `_retry` / `_retry_wait` are Optional in ClientConfig;
+        # narrow to plain ints here so the loop body type-checks cleanly.
+        total_retries: int
         if retries is not None:
             total_retries = retries if retries > 0 else 0
         else:
             total_retries = self._retry if self._retry and self._retry > 0 else 0
-        retry = total_retries
-        while retry >= 0:
-            try:
-                return self._one_request(method, url, opts, retry)
-            except LimitsException as exc:
-                logger.error(f"Feature limit exceeded for {url}")
-                self._limits_reached.add(path)
-                raise exc  # noqa: TRY201
-            except RetryException:
-                retry_wait = self._retry_wait * (total_retries - retry + 1)
-                logger.warning(
-                    "sleep %s seconds and retrying %s %s more time(s)...",
-                    retry_wait,
-                    url,
-                    retry,
-                )
-                time.sleep(retry_wait)
-                retry -= 1
-                if retry == 0:
-                    logger.error(f"No more retries left for {url}")
-                    traceback.format_exc()
-        return None
+        retry: int = total_retries
+        retry_wait_base: int = self._retry_wait or 0
+        http_tracker = get_global_tracker()
+        http_cm = http_tracker.request(method, url) if http_tracker is not None else nullcontext()
+        op_cm = diagnostics.operation("ometa.http", method=method, url=str(url))
+        with http_cm, op_cm:
+            while retry >= 0:
+                try:
+                    return self._one_request(method, url, opts, retry)
+                except LimitsException as exc:
+                    logger.error(f"Feature limit exceeded for {url}")
+                    self._limits_reached.add(path)
+                    raise exc  # noqa: TRY201
+                except RetryException:
+                    retry_wait = retry_wait_base * (total_retries - retry + 1)
+                    logger.warning(
+                        "sleep %s seconds and retrying %s %s more time(s)...",
+                        retry_wait,
+                        url,
+                        retry,
+                    )
+                    time.sleep(retry_wait)
+                    retry -= 1
+                    if retry == 0:
+                        logger.error(f"No more retries left for {url}")
+                        traceback.format_exc()
+            return None
 
     def _one_request(self, method: str, url: URL, opts: dict, retry: int):
         """
@@ -303,14 +327,14 @@ class REST:
                     raise APIError(error, http_error) from http_error
             else:
                 raise
-        except requests.ConnectionError as conn:
-            # Trying to solve https://github.com/psf/requests/issues/4664
-            try:
-                return self._session.request(method, url, **opts).json()
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected error while retrying after a connection error - {exc}")
-                raise conn  # noqa: B904
+        except (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.Timeout,
+            requests.exceptions.RetryError,
+            requests.exceptions.ChunkedEncodingError,
+        ) as exc:
+            logger.warning("Transport failure calling [%s] with method [%s]: %s", url, method, exc)
+            raise RestTransportError(method, url, exc) from exc
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected error calling [{url}] with method [{method}]: {exc}")

@@ -137,10 +137,15 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
         Test connection. This can be executed either as part
         of a metadata workflow or during an Automation Workflow
         """
+        if self.service_connection.useSlowLogs:
+            test_query_template = MYSQL_TEST_GET_QUERIES_SLOW_LOGS
+            default_query_history_table = "mysql.slow_log"
+        else:
+            test_query_template = MYSQL_TEST_GET_QUERIES
+            default_query_history_table = "mysql.general_log"
+        query_history_table = self.service_connection.queryHistoryTable or default_query_history_table
         queries = {
-            "GetQueries": MYSQL_TEST_GET_QUERIES
-            if not self.service_connection.useSlowLogs
-            else MYSQL_TEST_GET_QUERIES_SLOW_LOGS,
+            "GetQueries": test_query_template.format(query_history_table=query_history_table),
         }
         return test_connection_db_schema_sources(
             metadata=metadata,

@@ -200,7 +200,7 @@ test('should persist quick filter on global search', async ({ page }) => {
 
   // expect the quick filter to be persisted
   await expect(
-    page.getByRole('button', { name: 'Owners : No Owners' })
+    page.getByRole('button', { name: 'Owners : (1)' })
   ).toBeVisible();
 
   await page.getByTestId('searchBox').click();
@@ -208,7 +208,7 @@ test('should persist quick filter on global search', async ({ page }) => {
 
   // expect the quick filter to be persisted
   await expect(
-    page.getByRole('button', { name: 'Owners : No Owners' })
+    page.getByRole('button', { name: 'Owners : (1)' })
   ).toBeVisible();
 });
 
@@ -235,8 +235,11 @@ test('Filter by column entity type shows only column results', async ({
   await columnCheckbox.check();
   await page.getByTestId('update-btn').click();
 
-  const quickFilter = page.getByTestId('search-dropdown-Data Assets');
-  await expect(quickFilter).toContainText('tablecolumn');
+  await page.getByTestId('search-dropdown-Data Assets').click();
+  await expect(page.getByTestId('tablecolumn-checkbox')).toBeChecked();
+  await expect(page.getByTestId('search-dropdown-Data Assets')).toContainText(
+    '(1)'
+  );
 });
 
 test.describe('Tier filter - aggregation-based options', () => {

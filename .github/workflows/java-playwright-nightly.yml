@@ -1,0 +1,161 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Full run of the UI integration suite (*UIIT.java) — lives inside
+# openmetadata-integration-tests under the `ui-it` Maven profile. Runs the
+# external-mode matrix (ES + OS). Tracks EPIC #3731 / tickets #3767, #3792.
+#
+# The schedule trigger is intentionally disabled while the suite stabilises;
+# run on demand via workflow_dispatch (pick the branch to test as the ref).
+# Re-add `schedule: - cron: '0 2 * * *'` once the suite is green on main.
+
+name: UI Integration Tests (Nightly)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  ui-it-nightly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        searchEngine: [opensearch, elasticsearch]
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Cron always runs against main. workflow_dispatch honours the ref the
+          # workflow was dispatched against so feature branches can validate the
+          # nightly matrix before merge (EPIC #3731 / PR #28008).
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || 'main' }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Add /etc/hosts entry for mock OIDC server
+        # The SSO test infrastructure (MockOidcServer) needs `om-mock-idp` to resolve to
+        # loopback on the host so the same URL works inside the Docker network and from
+        # the host-side Playwright browser, keeping the issued tokens' `iss` claim
+        # consistent across actors.
+        run: echo "127.0.0.1 om-mock-idp" | sudo tee -a /etc/hosts
+
+      - name: Build dependencies for integration-tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -DskipTests clean install -pl :openmetadata-integration-tests -am
+
+      - name: Install Playwright browsers
+        run: |
+          mvn -pl :openmetadata-integration-tests dependency:build-classpath -Dmdep.outputFile=/tmp/cp.txt -q
+          java -cp "$(cat /tmp/cp.txt)" com.microsoft.playwright.CLI install --with-deps chromium
+
+      - name: Free build artifacts
+        run: |
+          rm -rf openmetadata-service/target/lib openmetadata-service/target/classes
+          rm -rf openmetadata-spec/target openmetadata-sdk/target common/target
+          rm -rf openmetadata-shaded-deps/*/target
+          df -h /
+
+      - name: Run UI integration tests (${{ matrix.searchEngine }})
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # UiSessionExtension reads PW_VIDEO and records every test's BrowserContext
+          # to target/playwright-videos when true. Kept off locally; on in CI for triage.
+          PW_VIDEO: 'true'
+        run: |
+          if [ "${{ matrix.searchEngine }}" = "elasticsearch" ]; then
+            mvn verify -P ui-it -pl :openmetadata-integration-tests \
+              -DsearchType=elasticsearch \
+              -DsearchImage=docker.elastic.co/elasticsearch/elasticsearch:9.3.0
+          else
+            mvn verify -P ui-it -pl :openmetadata-integration-tests
+          fi
+
+      - name: Upload Playwright traces
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces-${{ matrix.searchEngine }}-${{ github.run_id }}
+          path: openmetadata-integration-tests/target/playwright-traces
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload Playwright videos
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-videos-${{ matrix.searchEngine }}-${{ github.run_id }}
+          path: openmetadata-integration-tests/target/playwright-videos
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload Failsafe Reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: failsafe-reports-${{ matrix.searchEngine }}-${{ github.run_id }}
+          path: openmetadata-integration-tests/target/failsafe-reports
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Publish Test Report
+        id: report
+        if: ${{ always() }}
+        uses: scacap/action-surefire-report@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_test_failures: true
+          report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
+
+      - name: Slack notification
+        if: ${{ always() }}
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "text": "${{ job.status == 'success' && ':white_check_mark:' || ':fire:' }} Java Playwright Nightly (${{ matrix.searchEngine }}): ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

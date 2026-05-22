@@ -290,6 +290,11 @@ public final class McpServers {
     public McpServerDeleter delete() {
       return new McpServerDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<McpServer> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.mcpServers(), identifier);
+    }
   }
 
   // ==================== Deleter ====================
