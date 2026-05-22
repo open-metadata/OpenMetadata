@@ -425,3 +425,96 @@ class TestYdbSamplerBuildTableOrm:
         tbl = MagicMock()
         tbl.columns = []
         assert sampler.build_table_orm(tbl, MagicMock(), MagicMock()) is None
+
+
+# ---------------------------------------------------------------------------
+# YdbSampler.get_sample_query — must emit subqueries, never CTEs.
+#
+# YQL in some YDB releases rejects ``WITH ... AS (...) SELECT ...`` at the
+# top level. ``FROM (SELECT ...) AS x`` is accepted everywhere and produces
+# the same downstream shape, so the sampler swaps every ``.cte(...)`` call
+# in the base implementation for ``.subquery(...)``.
+# ---------------------------------------------------------------------------
+
+
+class TestYdbSamplerGetSampleQuery:
+    def _make_sampler_with_orm(self, randomized: bool = False):
+        """Build a YdbSampler bound to a real SQLite session + a real ORM class.
+
+        We don't execute anything — only compile — so SQLite is enough to
+        produce a valid SQLAlchemy statement object that can be inspected.
+        """
+        from sqlalchemy import Column, Integer, MetaData
+        from sqlalchemy import Table as SaTable
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import declarative_base, sessionmaker
+
+        from metadata.sampler.models import SampleConfig
+        from metadata.sampler.sqlalchemy.ydb.sampler import YdbSampler
+
+        engine = create_engine("sqlite://")
+        Base = declarative_base()
+
+        class Foo(Base):
+            __tablename__ = "schema/foo"
+            __table_args__ = {"quote": True}
+            id = Column(Integer, primary_key=True)
+            value = Column(Integer)
+
+        SaTable("dummy", MetaData())  # touch SA so Table import is exercised
+
+        sampler = YdbSampler.__new__(YdbSampler)
+        sampler._table = Foo  # backs the raw_dataset property
+        sampler.partition_details = None
+        sampler.sample_config = SampleConfig(randomizedSample=randomized)
+        sampler.session_factory = sessionmaker(bind=engine)
+        return sampler
+
+    def _compile(self, sq) -> str:
+        return str(sq.compile(compile_kwargs={"literal_binds": True}))
+
+    def test_percentage_path_returns_subquery_not_cte(self):
+        from sqlalchemy.sql.selectable import CTE, Subquery
+
+        from metadata.generated.schema.type.basic import ProfileSampleType
+        from metadata.generated.schema.type.staticSamplingConfig import (
+            StaticSamplingConfig,
+        )
+
+        sampler = self._make_sampler_with_orm()
+        static = StaticSamplingConfig(
+            profileSample=50, profileSampleType=ProfileSampleType.PERCENTAGE
+        )
+        result = sampler.get_sample_query(static)
+        assert isinstance(result, Subquery)
+        assert not isinstance(result, CTE)
+        # CTE rendering prepends WITH; subquery is inlined as FROM (SELECT ...).
+        sql = self._compile(result)
+        assert "WITH" not in sql.upper().split("\n")[0]
+        assert "FROM (SELECT" in sql.replace("\n", " ")
+
+    def test_rows_path_returns_subquery_not_cte(self):
+        from sqlalchemy.sql.selectable import CTE, Subquery
+
+        from metadata.generated.schema.type.basic import ProfileSampleType
+        from metadata.generated.schema.type.staticSamplingConfig import (
+            StaticSamplingConfig,
+        )
+
+        sampler = self._make_sampler_with_orm()
+        static = StaticSamplingConfig(
+            profileSample=100, profileSampleType=ProfileSampleType.ROWS
+        )
+        result = sampler.get_sample_query(static)
+        assert isinstance(result, Subquery)
+        assert not isinstance(result, CTE)
+
+    def test_none_sampling_still_returns_subquery(self):
+        """``static=None`` is the path the UI auto-pipeline hits when no
+        explicit profileSample is set — must also avoid CTE."""
+        from sqlalchemy.sql.selectable import CTE, Subquery
+
+        sampler = self._make_sampler_with_orm()
+        result = sampler.get_sample_query(None)
+        assert isinstance(result, Subquery)
+        assert not isinstance(result, CTE)

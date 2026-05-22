@@ -25,9 +25,12 @@ from typing import Optional  # noqa: UP035
 from pydantic import BaseModel
 from sqlalchemy import MetaData
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.orm import Query
 
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.ydb.utils import full_name
 from metadata.profiler.metrics.static.mean import AvgFn
@@ -36,8 +39,10 @@ from metadata.profiler.orm.converter.base import (
     Base,
     build_orm_col,
 )
+from metadata.profiler.orm.functions.modulo import ModuloFn
+from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.orm.registry import Dialects
-from metadata.sampler.sqlalchemy.sampler import SQASampler
+from metadata.sampler.sqlalchemy.sampler import RANDOM_LABEL, SQASampler
 
 
 @compiles(AvgFn, Dialects.YDB)
@@ -53,6 +58,58 @@ def _ydb_avg(element, compiler, **kw):
 
 class YdbSampler(SQASampler):
     """SQA sampler that builds ORM classes with YDB-native path identifiers."""
+
+    def get_sample_query(
+        self, static: StaticSamplingConfig | None, *, column=None
+    ) -> Query:
+        """Mirror of :py:meth:`SQASampler.get_sample_query` but emit subqueries
+        instead of CTEs.
+
+        YQL in some YDB releases rejects ``WITH ... AS (...) SELECT ...`` as a
+        top-level statement (``mismatched input 'WITH'``). Subqueries
+        (``FROM (SELECT ...) AS x``) are accepted everywhere and produce the
+        same shape downstream — ``inspect(ds).c`` / ``select_from(ds)`` work
+        identically for CTE and Subquery.
+        """
+        selectable = self.set_tablesample(static, self.raw_dataset.__table__)  # type: ignore
+        with self.session_factory() as client:
+            if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
+                rnd = self._base_sample_query(
+                    selectable,
+                    column,
+                    (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
+                ).subquery(f"{self.get_sampler_table_name()}_rnd")
+                session_query = client.query(rnd)
+                session_query = session_query.where(
+                    rnd.c.random <= static.profileSample
+                )
+                if (
+                    static.profileSample == 100
+                    and self.sample_config.randomizedSample is True
+                ):
+                    session_query = session_query.order_by(rnd.c.random)
+                return session_query.subquery(
+                    f"{self.get_sampler_table_name()}_sample"
+                )
+
+            table_query = client.query(self.raw_dataset)
+            if self.partition_details:
+                table_query = self.get_partitioned_query(table_query)
+            session_query = self._base_sample_query(
+                selectable,
+                column,
+                (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)
+                if self.sample_config.randomizedSample is True
+                else None,
+            )
+            query = (
+                session_query.order_by(RANDOM_LABEL)
+                if self.sample_config.randomizedSample is True
+                else session_query
+            )
+            return query.limit(static.profileSample if static else None).subquery(
+                f"{self.get_sampler_table_name()}_rnd"
+            )
 
     def build_table_orm(
         self,
