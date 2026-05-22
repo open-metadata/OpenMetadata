@@ -12,12 +12,12 @@ EXASOL_SQL_STATEMENT = textwrap.dedent(
     FROM EXA_DBA_AUDIT_SQL s
     JOIN EXA_DBA_AUDIT_SESSIONS se
     ON s.SESSION_ID = se.SESSION_ID
-    WHERE s.sql_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%' 
+    WHERE s.sql_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
     AND s.sql_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
     AND start_time between TO_TIMESTAMP('{start_time}') and TO_TIMESTAMP('{end_time}')
     {filters}
     LIMIT {result_limit}
-    """  # noqa: W291
+    """
 )
 
 EXASOL_TEST_GET_QUERIES = textwrap.dedent(
@@ -57,5 +57,24 @@ EXASOL_GET_COLUMN_COMMENTS = textwrap.dedent(
     FROM EXA_ALL_COLUMNS
     WHERE column_schema = :schema
       AND column_table = :table_name
+"""
+)
+
+EXASOL_SYSTEM_METRICS_QUERY = textwrap.dedent(
+    """
+    SELECT
+      '{database_name}' AS "database",
+      '{schema}' AS "schema",
+      '{table}' AS "table",
+      s.start_time AS "starttime",
+      s.row_count AS "rows"
+    FROM EXA_DBA_AUDIT_SQL s
+    WHERE s.command_name IN ({operations})
+      AND s.row_count > 0
+      AND s.start_time BETWEEN TO_TIMESTAMP('{start_time}') AND TO_TIMESTAMP('{end_time}')
+      AND UPPER(s.sql_text) LIKE UPPER('%{schema}.{table}%')
+      AND s.sql_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+      AND s.sql_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+    LIMIT {result_limit}
 """
 )
