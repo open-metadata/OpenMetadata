@@ -5709,8 +5709,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     dispatchToContainedChildren(
         entities,
         "bulkRestoreFindChildren",
-        (childRepo, childIds) -> childRepo.bulkRestoreSubtree(childIds, updatedBy),
-        null);
+        (childRepo, childIds) -> childRepo.bulkRestoreSubtree(childIds, updatedBy));
 
     List<T> deletedEntities =
         entities.stream().filter(e -> Boolean.TRUE.equals(e.getDeleted())).toList();
@@ -5765,18 +5764,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * bulk soft-delete and bulk hard-delete; the only thing that varies is the terminal call on the
    * child repo.
    *
-   * <p>{@code timeSeriesDispatcher} handles time-series children (e.g.,
-   * {@code TestCase --PARENT_OF--> testCaseResolutionStatus}) that aren't registered in
-   * {@code ENTITY_REPOSITORY_MAP} and would otherwise crash the regular dispatcher with
-   * {@code EntityRepositoryNotFound}. Restore and soft-delete pass {@code null} because
-   * time-series rows are immutable and have no deleted state to flip; hard-delete passes a
-   * dispatcher that purges the time-series row directly.
+   * <p>Time-series children (e.g., {@code TestCase --PARENT_OF--> testCaseResolutionStatus},
+   * {@code AIApplication --CONTAINS--> agentExecution}, {@code McpServer --CONTAINS-->
+   * mcpExecution}) are intentionally not walked here. Restore and soft-delete have nothing to
+   * do — time-series rows are immutable and carry no {@code deleted} state. Hard-delete also
+   * skips: the tables can hold millions of rows per parent under active ingestion (agent /
+   * MCP executions, profile + queryCost time-series), and a synchronous bulk DELETE would
+   * lock those tables for the duration of the parent cascade and stall the delete request.
+   * Orphan rows whose parent ref no longer resolves degrade safely via
+   * {@code getFromEntityRef} returning {@code null} + the per-repo
+   * {@code shouldSkipSearchResultOnInheritedFieldError} guard. The {@code DataRetention} app
+   * is responsible for sweeping these orphans on its regular cadence (see TODO #28367 for
+   * the orphan time-series cleanup follow-up).
    */
   private void dispatchToContainedChildren(
-      List<T> parents,
-      String phaseName,
-      BiConsumer<EntityRepository<?>, List<UUID>> dispatcher,
-      BiConsumer<EntityTimeSeriesRepository<?>, List<UUID>> timeSeriesDispatcher) {
+      List<T> parents, String phaseName, BiConsumer<EntityRepository<?>, List<UUID>> dispatcher) {
     List<String> parentIds = new ArrayList<>(parents.size());
     for (T parent : parents) {
       parentIds.add(parent.getId().toString());
@@ -5801,15 +5803,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (var entry : idsByChildType.entrySet()) {
       String childType = entry.getKey();
       List<UUID> childIds = entry.getValue();
-      if (Entity.isTimeSeriesEntity(childType)) {
-        if (timeSeriesDispatcher != null) {
-          EntityTimeSeriesRepository<?> tsRepo = Entity.getEntityTimeSeriesRepository(childType);
-          timeSeriesDispatcher.accept(tsRepo, childIds);
-        }
-        continue;
+      if (!Entity.isTimeSeriesEntity(childType)) {
+        EntityRepository<?> repo = Entity.getEntityRepository(childType);
+        dispatcher.accept(repo, childIds);
       }
-      EntityRepository<?> repo = Entity.getEntityRepository(childType);
-      dispatcher.accept(repo, childIds);
     }
   }
 
@@ -5867,8 +5864,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     dispatchToContainedChildren(
         allEntities,
         "bulkSoftDeleteFindChildren",
-        (childRepo, childIds) -> childRepo.bulkSoftDeleteSubtree(childIds, updatedBy),
-        null);
+        (childRepo, childIds) -> childRepo.bulkSoftDeleteSubtree(childIds, updatedBy));
     applyBulkSoftDelete(entities, updatedBy);
     // Always run per-entity hooks even when nothing at THIS level needed flipping —
     // descendants restored independently before the cascade still need to be re-deleted
@@ -5980,12 +5976,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     dispatchToContainedChildren(
         entities,
         "bulkHardDeleteFindChildren",
-        (childRepo, childIds) -> childRepo.bulkHardDeleteSubtree(childIds, updatedBy),
-        (tsRepo, childIds) -> {
-          for (UUID childId : childIds) {
-            tsRepo.deleteById(childId, true);
-          }
-        });
+        (childRepo, childIds) -> childRepo.bulkHardDeleteSubtree(childIds, updatedBy));
     bulkEntitySpecificCleanup(entities);
     // Run BEFORE bulkCleanupReferences: hooks like DashboardRepository.cascadeChartCleanup
     // walk HAS relationships to discover linked entities, and bulkCleanupReferences wipes
