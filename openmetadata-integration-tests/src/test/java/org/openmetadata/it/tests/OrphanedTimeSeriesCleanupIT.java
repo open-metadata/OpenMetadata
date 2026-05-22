@@ -97,10 +97,10 @@ public class OrphanedTimeSeriesCleanupIT {
   }
 
   @Test
-  void agentExecutionOrphanRowsAreDeletedValidRowsAreKept(TestNamespace ns) {
+  void agentExecutionOrphans(TestNamespace ns) {
     AIApplication app =
         AIApplications.create()
-            .name(ns.prefix("agentExecCleanup"))
+            .name("agentExecOrph_" + ns.uniqueShortId())
             .withApplicationType(ApplicationType.Chatbot)
             .withDescription("Parent app for orphan cleanup test")
             .execute();
@@ -121,10 +121,10 @@ public class OrphanedTimeSeriesCleanupIT {
   }
 
   @Test
-  void mcpExecutionOrphanRowsAreDeletedValidRowsAreKept(TestNamespace ns) throws Exception {
+  void mcpExecutionOrphans(TestNamespace ns) throws Exception {
     CreateMcpServer createServer =
         new CreateMcpServer()
-            .withName(ns.prefix("mcp-orphan"))
+            .withName("mcpOrph-" + ns.uniqueShortId())
             .withService(MCP_SERVICE_NAME)
             .withServerType(McpServerType.DataAccess)
             .withTransportType(McpTransportType.Stdio)
@@ -152,11 +152,10 @@ public class OrphanedTimeSeriesCleanupIT {
   }
 
   @Test
-  void testCaseResolutionStatusOrphanRowsAreDeletedValidRowsAreKept(TestNamespace ns)
-      throws Exception {
+  void testCaseResolutionStatusOrphans(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(ns, "tcrsOrphan");
-    TestCase testCase = createTestCase(table, ns.prefix("tcrsOrphanCase"));
+    Table table = createTable(ns, "tcrs");
+    TestCase testCase = createTestCase(table, "tcrsCase_" + ns.uniqueShortId());
 
     CreateTestCaseResolutionStatus createStatus =
         new CreateTestCaseResolutionStatus()
@@ -182,10 +181,10 @@ public class OrphanedTimeSeriesCleanupIT {
   }
 
   @Test
-  void profilerDataOrphanRowsAreDeletedValidRowsAreKept(TestNamespace ns) throws Exception {
-    Table table = createTable(ns, "profileOrphan");
+  void profilerDataOrphans(TestNamespace ns) throws Exception {
+    Table table = createTable(ns, "prof");
     String validFqn = table.getFullyQualifiedName();
-    String orphanFqn = ns.prefix("orphanTable.profile") + "." + UUID.randomUUID();
+    String orphanFqn = "orphanTbl_" + ns.uniqueShortId() + ".profile";
 
     String validJson =
         String.format("{\"timestamp\":%d,\"rowCount\":42}", System.currentTimeMillis());
@@ -213,10 +212,10 @@ public class OrphanedTimeSeriesCleanupIT {
   }
 
   @Test
-  void queryCostOrphanRowsAreDeletedValidRowsAreKept(TestNamespace ns) throws Exception {
-    Query query = createQuery(ns, "queryCostOrphan");
+  void queryCostOrphans(TestNamespace ns) throws Exception {
+    Query query = createQuery(ns, "qc");
     String validFqn = query.getFullyQualifiedName();
-    String orphanFqn = ns.prefix("orphanQueryCost") + "." + UUID.randomUUID();
+    String orphanFqn = "orphanQc_" + ns.uniqueShortId();
 
     String validJson =
         String.format(
@@ -260,7 +259,9 @@ public class OrphanedTimeSeriesCleanupIT {
             "{\"id\":\"%s\",\"serverId\":\"%s\",\"timestamp\":%d,\"status\":\"Success\","
                 + "\"server\":{\"id\":\"%s\",\"type\":\"mcpServer\"}}",
             id, serverId, System.currentTimeMillis(), serverId);
-    Entity.getCollectionDAO().mcpExecutionDAO().insertWithoutExtension(null, "", "", json);
+    Entity.getCollectionDAO()
+        .mcpExecutionDAO()
+        .insertWithoutExtension("mcp_execution_entity", "", "", json);
   }
 
   private void insertResolutionStatus(UUID id, UUID stateId, TestCase testCase) {
@@ -282,26 +283,26 @@ public class OrphanedTimeSeriesCleanupIT {
 
   private Table createTable(TestNamespace ns, String prefix) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    long stamp = System.currentTimeMillis();
+    String id = ns.uniqueShortId();
     Database database =
         client
             .databases()
             .create(
                 new CreateDatabase()
-                    .withName(ns.prefix(prefix + "DB" + stamp))
+                    .withName(prefix + "Db_" + id)
                     .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName()));
     DatabaseSchema schema =
         client
             .databaseSchemas()
             .create(
                 new CreateDatabaseSchema()
-                    .withName(ns.prefix(prefix + "Sch" + stamp))
+                    .withName(prefix + "Sc_" + id)
                     .withDatabase(database.getFullyQualifiedName()));
     return client
         .tables()
         .create(
             new CreateTable()
-                .withName(ns.prefix(prefix + "Tbl" + stamp))
+                .withName(prefix + "Tb_" + id)
                 .withDatabaseSchema(schema.getFullyQualifiedName())
                 .withColumns(
                     List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
@@ -331,7 +332,7 @@ public class OrphanedTimeSeriesCleanupIT {
         .queries()
         .create(
             new CreateQuery()
-                .withName(ns.prefix(prefix + "Q" + System.currentTimeMillis()))
+                .withName(prefix + "Q_" + ns.uniqueShortId())
                 .withQuery("SELECT 1")
                 .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName())
                 .withQueryUsedIn(List.of(table.getEntityReference())));
