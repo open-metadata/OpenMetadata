@@ -58,6 +58,10 @@ class ContextCenterClassBase {
     return ROUTES.CONTEXT_CENTER_DOCUMENTS;
   }
 
+  public getMemoriesListPath(): string {
+    return ROUTES.CONTEXT_CENTER_MEMORIES;
+  }
+
   public getArticlePath(
     pageName: string,
     tab?: string,

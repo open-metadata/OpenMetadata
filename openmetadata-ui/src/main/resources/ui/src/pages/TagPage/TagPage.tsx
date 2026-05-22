@@ -23,7 +23,7 @@ import {
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, isEmpty, startsWith } from 'lodash';
+import { cloneDeep, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -213,10 +213,20 @@ const TagPage = () => {
     [editTagsPermission, editEntitiesTagPermission.entitiesHavingPermission]
   );
 
-  const isCertificationClassification = useMemo(
-    () => startsWith(tagFqn, 'Certification.'),
-    [tagFqn]
-  );
+  const classificationName = tagItem?.classification?.name;
+  const isCertificationClassification = classificationName === 'Certification';
+
+  // Tier and Certification are first-class entity fields (entity.tier,
+  // entity.certification), not entries in entity.tags[]. When this page
+  // embeds the DQ dashboard, route the tag's FQN through the dashboard's
+  // matching filter key — otherwise the dashboard queries `tags.tagFQN`,
+  // which never matches assets carrying these system tags.
+  const dqFilterKey: 'tier' | 'certification' | 'tags' =
+    classificationName === 'Tier'
+      ? 'tier'
+      : classificationName === 'Certification'
+      ? 'certification'
+      : 'tags';
 
   const showDisableOption = useMemo(
     () => tagPermissions.EditAll && !tagItem?.deleted,
@@ -634,10 +644,12 @@ const TagPage = () => {
             <DataQualityDashboard
               isGovernanceView
               className="data-quality-governance-tab-wrapper"
-              hiddenFilters={['tags']}
+              hiddenFilters={
+                dqFilterKey === 'tags' ? ['tags'] : ['tags', dqFilterKey]
+              }
               initialFilters={
                 tagItem.fullyQualifiedName
-                  ? { tags: [tagItem.fullyQualifiedName] }
+                  ? { [dqFilterKey]: [tagItem.fullyQualifiedName] }
                   : undefined
               }
             />
@@ -658,6 +670,7 @@ const TagPage = () => {
     feedCount,
     previewAsset,
     isCertificationClassification,
+    dqFilterKey,
     haveAssetEditPermission,
     handleAssetSave,
     handleAssetClick,

@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
-"""Render Snyk JSON reports as Markdown. Usage: python3 scripts/snyk_summary.py [dir] > REPORT.md"""
-import json, os, glob, sys
+"""Render Snyk JSON reports as Markdown.
+
+Usage:
+  python3 scripts/snyk_summary.py [dir] \\
+      [--counts-file PATH] [--slack-file PATH] [--top N]
+"""
+import argparse
+import glob
+import json
+import os
+import sys
 
 SEV_ICON = {"critical": "🚨", "high": "🔴", "medium": "🟠", "low": "🟡"}
 SEV_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3}
@@ -30,10 +39,10 @@ def iter_projects(data):
         yield data
 
 
-def render_deps(name, data):
-    print(f"\n### 📦 {name}\n")
-    total_vulns = 0
+def collect_deps(data):
+    """Aggregate vulnerabilities by (package, version). Return (libs_dict, total_findings)."""
     libs = {}
+    total = 0
     for proj in iter_projects(data):
         if not isinstance(proj, dict):
             continue
@@ -52,25 +61,12 @@ def render_deps(name, data):
                 entry["fixedIn"].add(fx)
             entry["ids"].add(v.get("id", ""))
             entry["paths"] += 1
-            total_vulns += 1
-    if not libs:
-        print("✅ No vulnerabilities.\n")
-        return
-    print(f"> **{len(libs)} vulnerable librar{'y' if len(libs)==1 else 'ies'} · {total_vulns} finding{'s' if total_vulns!=1 else ''}**\n")
-    print("| Sev | Package | Version | CVE / ID | Title | Fix in | Paths |")
-    print("|---|---|---|---|---|---|---|")
-    for (pkg, ver), info in sorted(libs.items(), key=lambda kv: sev_key(kv[1]["sev"])):
-        sev = info["sev"]
-        ids = sorted(info["cves"]) or sorted(i for i in info["ids"] if i)[:1]
-        ids_str = ", ".join(f"[{c}](https://nvd.nist.gov/vuln/detail/{c})" if c.startswith("CVE") else c for c in ids) or "—"
-        title = sorted(info["titles"])[0][:80] if info["titles"] else ""
-        fix = ", ".join(sorted(info["fixedIn"])[:2]) or "—"
-        print(f"| {SEV_ICON.get(sev,'⚪')} {sev} | `{esc(pkg)}` | {esc(ver)} | {esc(ids_str)} | {esc(title)} | {esc(fix)} | {info['paths']} |")
-    print()
+            total += 1
+    return libs, total
 
 
-def render_code(name, data):
-    print(f"\n### 🔎 {name} (Code)\n")
+def collect_code(data):
+    """Aggregate Snyk Code SARIF results. Return (by_rule_dict, rules_desc_dict, total)."""
     runs = data.get("runs", []) if isinstance(data, dict) else []
     findings = {}
     rules = {}
@@ -85,43 +81,160 @@ def render_code(name, data):
                 uri = phys.get("artifactLocation", {}).get("uri", "?")
                 line = phys.get("region", {}).get("startLine", "?")
                 findings.setdefault((rid, uri, level), []).append(line)
-    if not findings:
-        print("✅ No code findings.\n")
-        return
     by_rule = {}
     for (rid, uri, level), lines in findings.items():
         by_rule.setdefault(rid, []).append((uri, level, lines))
     total = sum(len(v) for v in by_rule.values())
-    print(f"> **{total} location{'s' if total!=1 else ''} across {len(by_rule)} rule{'s' if len(by_rule)!=1 else ''}**\n")
+    return by_rule, rules, total
+
+
+def render_deps_md(name, libs, total):
+    out = [f"\n### 📦 {name}\n"]
+    if not libs:
+        out.append("✅ No vulnerabilities.\n")
+        return "\n".join(out)
+    out.append(f"> **{len(libs)} vulnerable librar{'y' if len(libs)==1 else 'ies'} · {total} finding{'s' if total!=1 else ''}**\n")
+    out.append("| Sev | Package | Version | CVE / ID | Title | Fix in | Paths |")
+    out.append("|---|---|---|---|---|---|---|")
+    for (pkg, ver), info in sorted(libs.items(), key=lambda kv: sev_key(kv[1]["sev"])):
+        sev = info["sev"]
+        ids = sorted(info["cves"]) or sorted(i for i in info["ids"] if i)[:1]
+        ids_str = ", ".join(f"[{c}](https://nvd.nist.gov/vuln/detail/{c})" if c.startswith("CVE") else c for c in ids) or "—"
+        title = sorted(info["titles"])[0][:80] if info["titles"] else ""
+        fix = ", ".join(sorted(info["fixedIn"])[:2]) or "—"
+        out.append(f"| {SEV_ICON.get(sev,'⚪')} {sev} | `{esc(pkg)}` | {esc(ver)} | {esc(ids_str)} | {esc(title)} | {esc(fix)} | {info['paths']} |")
+    out.append("")
+    return "\n".join(out)
+
+
+def render_code_md(name, by_rule, rules, total):
+    out = [f"\n### 🔎 {name} (Code)\n"]
+    if not by_rule:
+        out.append("✅ No code findings.\n")
+        return "\n".join(out)
+    out.append(f"> **{total} location{'s' if total!=1 else ''} across {len(by_rule)} rule{'s' if len(by_rule)!=1 else ''}**\n")
     for rid, items in sorted(by_rule.items()):
         desc = rules.get(rid, rid)
-        print(f"<details><summary><b>{esc(rid)}</b> — {esc(desc)} ({len(items)})</summary>\n")
-        print("| Level | File | Lines |")
-        print("|---|---|---|")
+        out.append(f"<details><summary><b>{esc(rid)}</b> — {esc(desc)} ({len(items)})</summary>\n")
+        out.append("| Level | File | Lines |")
+        out.append("|---|---|---|")
         for uri, level, lines in sorted(items):
             ln = ", ".join(str(x) for x in sorted(set(lines))[:10])
             icon = "🔴" if level == "error" else "🟠"
-            print(f"| {icon} {level} | `{esc(uri)}` | {esc(ln)} |")
-        print("\n</details>\n")
+            out.append(f"| {icon} {level} | `{esc(uri)}` | {esc(ln)} |")
+        out.append("\n</details>\n")
+    return "\n".join(out)
+
+
+def render_deps_slack(name, libs, total, top):
+    if not libs:
+        return f"📦 *{name}*: ✅ clean"
+    head = f"📦 *{name}*: {len(libs)} libs · {total} findings"
+    rows = []
+    ordered = sorted(libs.items(), key=lambda kv: sev_key(kv[1]["sev"]))
+    for (pkg, ver), info in ordered[:top]:
+        icon = SEV_ICON.get(info["sev"], "⚪")
+        title = (sorted(info["titles"])[0] if info["titles"] else "")[:60]
+        fix = sorted(info["fixedIn"])[0] if info["fixedIn"] else "no fix"
+        rows.append(f"  {icon} `{pkg}` {ver} — {title} (fix: {fix})")
+    extra = len(libs) - top
+    if extra > 0:
+        rows.append(f"  … +{extra} more")
+    return head + "\n" + "\n".join(rows)
+
+
+def render_code_slack(name, by_rule, rules, total, top):
+    if not by_rule:
+        return f"🔎 *{name}*: ✅ clean"
+    head = f"🔎 *{name}*: {total} findings · {len(by_rule)} rules"
+    ordered = sorted(by_rule.items(), key=lambda kv: -len(kv[1]))
+    rows = [f"  • `{rid}` ({len(items)})" for rid, items in ordered[:top]]
+    extra = len(by_rule) - top
+    if extra > 0:
+        rows.append(f"  … +{extra} more")
+    return head + "\n" + "\n".join(rows)
+
+
+def count_severities(libs, by_rule):
+    """Snyk Code SARIF uses level (error/warning/note); treat error=high, warning=medium, note=low.
+    Dep libs already have explicit severity."""
+    counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    for info in libs.values():
+        sev = (info["sev"] or "low").lower()
+        if sev in counts:
+            counts[sev] += info["paths"]
+    for rid, items in by_rule.items():
+        for uri, level, lines in items:
+            mapped = {"error": "high", "warning": "medium", "note": "low"}.get(level, "medium")
+            # Count one per (rule, file, level) group to match `total` in collect_code.
+            counts[mapped] += 1
+    return counts
 
 
 def main():
-    src = sys.argv[1] if len(sys.argv) > 1 else "security-report"
-    print("## 🛡️ Snyk Security Scan\n")
-    files = sorted(glob.glob(os.path.join(src, "*.json")))
+    ap = argparse.ArgumentParser()
+    ap.add_argument("src", nargs="?", default="security-report")
+    ap.add_argument("--counts-file")
+    ap.add_argument("--slack-file")
+    ap.add_argument("--top", type=int, default=5)
+    args = ap.parse_args()
+
+    md_parts = ["## 🛡️ Snyk Security Scan\n"]
+    slack_parts = ["*🛡️ Snyk Security Scan*"]
+    totals = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+
+    files = sorted(glob.glob(os.path.join(args.src, "*.json")))
+    # exclude our own output files if present
+    files = [f for f in files if not os.path.basename(f).startswith("_")]
+
     if not files:
-        print(f"> No JSON reports found in `{src}/`.")
+        md_parts.append(f"> No JSON reports found in `{args.src}/`.")
+        sys.stdout.write("\n".join(md_parts) + "\n")
+        if args.counts_file:
+            with open(args.counts_file, "w") as f:
+                json.dump({**totals, "total": 0}, f)
+        if args.slack_file:
+            with open(args.slack_file, "w") as f:
+                f.write("*🛡️ Snyk Security Scan*\n> No JSON reports found.")
         return
+
     for path in files:
         name = os.path.basename(path).replace(".json", "")
         data, err = load(path)
         if err is not None:
-            print(f"\n### ⚠️ {name}\nFailed to parse: {err}\n")
+            md_parts.append(f"\n### ⚠️ {name}\nFailed to parse: {err}\n")
+            slack_parts.append(f"⚠️ *{name}*: parse error — {err}")
             continue
         if isinstance(data, dict) and "runs" in data:
-            render_code(name, data)
+            by_rule, rules, total = collect_code(data)
+            md_parts.append(render_code_md(name, by_rule, rules, total))
+            slack_parts.append(render_code_slack(name, by_rule, rules, total, args.top))
+            sub = count_severities({}, by_rule)
         else:
-            render_deps(name, data)
+            libs, total = collect_deps(data)
+            md_parts.append(render_deps_md(name, libs, total))
+            slack_parts.append(render_deps_slack(name, libs, total, args.top))
+            sub = count_severities(libs, {})
+        for k in totals:
+            totals[k] += sub[k]
+
+    sys.stdout.write("\n".join(md_parts) + "\n")
+
+    if args.counts_file:
+        with open(args.counts_file, "w") as f:
+            json.dump({**totals, "total": sum(totals.values())}, f)
+
+    if args.slack_file:
+        header = (
+            f"*🛡️ Snyk Security Scan* — 🚨 {totals['critical']} · 🔴 {totals['high']} · "
+            f"🟠 {totals['medium']} · 🟡 {totals['low']}"
+        )
+        body = "\n\n".join([header] + slack_parts[1:])
+        # Slack hard limit 4000 chars per text field; truncate safely.
+        if len(body) > 3800:
+            body = body[:3750] + "\n…truncated. See Job Summary for full report."
+        with open(args.slack_file, "w") as f:
+            f.write(body)
 
 
 if __name__ == "__main__":
