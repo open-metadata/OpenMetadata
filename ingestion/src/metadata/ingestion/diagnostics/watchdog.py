@@ -34,8 +34,8 @@ from metadata.ingestion.diagnostics.registry import OperationRegistry, format_op
 from metadata.ingestion.diagnostics.signals import emit_full_dump
 
 
-class WatchdogThread(threading.Thread):
-    """Background thread that auto-warns and auto-dumps on hangs."""
+class Watchdog:
+    """Auto-warns and auto-dumps on hangs; a Monitor drives tick() on an interval."""
 
     def __init__(
         self,
@@ -45,13 +45,11 @@ class WatchdogThread(threading.Thread):
         workflow: Any,
         config: DiagnosticsConfig = DiagnosticsConfig(),
     ) -> None:
-        super().__init__(name="diag-watchdog", daemon=True)
         self._registry = registry
         self._http_tracker = http_tracker
         self._memory_tracker = memory_tracker
         self._workflow = workflow
         self._config = config
-        self._stop_event = threading.Event()
         # (thread_id, op_name) -> monotonic timestamp of last action
         self._last_warned: dict[tuple[int, str], float] = {}
         self._last_dumped: dict[tuple[int, str], float] = {}
@@ -64,17 +62,7 @@ class WatchdogThread(threading.Thread):
         self._last_events_high: int | None = None
         self._last_events_oom: int | None = None
 
-    def stop(self) -> None:
-        self._stop_event.set()
-
-    def run(self) -> None:
-        while not self._stop_event.wait(self._config.watchdog_tick_seconds):
-            try:
-                self._tick()
-            except Exception as exc:
-                emit_log(logging.ERROR, f"{DIAG_LOG_PREFIX}.watchdog.error err={exc!r}")
-
-    def _tick(self) -> None:
+    def tick(self) -> None:
         alive_idents = {t.ident for t in threading.enumerate() if t.ident is not None}
         self._registry.gc_dead_threads(alive_idents)
         name_by_ident = {t.ident: t.name for t in threading.enumerate() if t.ident}

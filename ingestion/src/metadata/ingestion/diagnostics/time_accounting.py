@@ -58,8 +58,6 @@ import time
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
-from metadata.ingestion.diagnostics.config import DiagnosticsConfig
-
 if TYPE_CHECKING:
     from metadata.ingestion.diagnostics.registry import OperationRegistry
 
@@ -85,19 +83,15 @@ def _categorize(op_name: str) -> str:
     return "other"
 
 
-class TimeAccountingSampler(threading.Thread):
-    """Daemon thread that samples the registry and accumulates per-category time."""
+class TimeAccountingSampler:
+    """Samples the registry and accumulates per-category wall-clock time.
 
-    def __init__(
-        self,
-        registry: OperationRegistry,
-        config: DiagnosticsConfig = DiagnosticsConfig(),
-    ) -> None:
-        super().__init__(name="diag-time-accounting", daemon=True)
+    A plain object (not a thread): a Monitor drives `tick()` on an interval.
+    `sample()` is also called directly by tests with deterministic deltas.
+    """
+
+    def __init__(self, registry: OperationRegistry) -> None:
         self._registry = registry
-        self._config = config
-        self._interval = config.time_accounting_interval_seconds
-        self._stop_event = threading.Event()
         self._lock = threading.Lock()
         self._totals: dict[str, float] = defaultdict(float)
         self._op_times: dict[str, float] = defaultdict(float)
@@ -105,21 +99,13 @@ class TimeAccountingSampler(threading.Thread):
         self._idle_walltime: float = 0.0
         self._sample_count: int = 0
         self._started_at = time.monotonic()
+        self._last_tick = time.monotonic()
 
-    def stop(self) -> None:
-        self._stop_event.set()
-
-    def run(self) -> None:
-        last_tick = time.monotonic()
-        while not self._stop_event.wait(self._interval):
-            now = time.monotonic()
-            delta = now - last_tick
-            last_tick = now
-            try:
-                self.sample(delta)
-            except Exception:
-                # Diagnostics must never break the workflow it monitors.
-                continue
+    def tick(self) -> None:
+        now = time.monotonic()
+        delta = now - self._last_tick
+        self._last_tick = now
+        self.sample(delta)
 
     def sample(self, delta: float) -> None:
         """Record one sample worth `delta` seconds.

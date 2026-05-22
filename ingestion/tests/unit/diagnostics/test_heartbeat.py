@@ -17,7 +17,7 @@ stderr.
 
 import logging
 
-from metadata.ingestion.diagnostics.heartbeat import HeartbeatThread
+from metadata.ingestion.diagnostics.heartbeat import Heartbeat
 from metadata.ingestion.diagnostics.http_introspect import HttpTracker
 from metadata.ingestion.diagnostics.memory import MemoryTracker
 from metadata.ingestion.diagnostics.registry import OperationRegistry
@@ -49,12 +49,12 @@ class _FakeWorkflow:
 
 def _emit_once(heartbeat, caplog) -> str:
     with caplog.at_level(logging.INFO, logger="metadata.Diagnostics"):
-        heartbeat._emit()
+        heartbeat.tick()
     return "\n".join(record.getMessage() for record in caplog.records)
 
 
 def test_heartbeat_emits_required_fields(caplog):
-    heartbeat = HeartbeatThread(
+    heartbeat = Heartbeat(
         registry=OperationRegistry(),
         http_tracker=HttpTracker(),
         memory_tracker=MemoryTracker(),
@@ -71,7 +71,7 @@ def test_heartbeat_renders_step_progress(caplog):
         _FakeStep("Source", _FakeStatus(record_count=42, failures=["e1"])),
         _FakeStep("Sink", _FakeStatus(record_count=40, failures=[])),
     ]
-    heartbeat = HeartbeatThread(
+    heartbeat = Heartbeat(
         registry=OperationRegistry(),
         http_tracker=HttpTracker(),
         memory_tracker=MemoryTracker(),
@@ -84,7 +84,7 @@ def test_heartbeat_renders_step_progress(caplog):
 def test_heartbeat_renders_main_thread_operation(caplog):
     registry = OperationRegistry()
     registry.push("source.iter", {"entity": "x"})
-    heartbeat = HeartbeatThread(
+    heartbeat = Heartbeat(
         registry=registry,
         http_tracker=HttpTracker(),
         memory_tracker=MemoryTracker(),
@@ -101,7 +101,7 @@ def test_heartbeat_handles_broken_step_status_gracefully(caplog):
         def get_status(self):
             raise RuntimeError("boom")
 
-    heartbeat = HeartbeatThread(
+    heartbeat = Heartbeat(
         registry=OperationRegistry(),
         http_tracker=HttpTracker(),
         memory_tracker=MemoryTracker(),
@@ -112,14 +112,14 @@ def test_heartbeat_handles_broken_step_status_gracefully(caplog):
 
 
 def test_heartbeat_emits_at_info_level(caplog):
-    heartbeat = HeartbeatThread(
+    heartbeat = Heartbeat(
         registry=OperationRegistry(),
         http_tracker=HttpTracker(),
         memory_tracker=MemoryTracker(),
         workflow=None,
     )
     with caplog.at_level(logging.INFO, logger="metadata.Diagnostics"):
-        heartbeat._emit()
+        heartbeat.tick()
     levels = {r.levelname for r in caplog.records if r.message.startswith("diag.heartbeat")}
     assert levels == {"INFO"}
 
@@ -127,14 +127,14 @@ def test_heartbeat_emits_at_info_level(caplog):
 # Backwards-compat: a sanity test that heartbeats DO NOT write to stderr directly
 # (everything must go through the logger so it ships).
 def test_heartbeat_does_not_write_directly_to_stderr(caplog, capsys):
-    heartbeat = HeartbeatThread(
+    heartbeat = Heartbeat(
         registry=OperationRegistry(),
         http_tracker=HttpTracker(),
         memory_tracker=MemoryTracker(),
         workflow=None,
     )
     with caplog.at_level(logging.INFO, logger="metadata.Diagnostics"):
-        heartbeat._emit()
+        heartbeat.tick()
     captured = capsys.readouterr()
     # The default basicConfig StreamHandler may have written the formatted
     # log record to stderr — that's fine, the logger is responsible. What

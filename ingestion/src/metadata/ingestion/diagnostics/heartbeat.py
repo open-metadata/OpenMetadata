@@ -28,7 +28,6 @@ import threading
 from typing import Any
 
 from metadata.ingestion.diagnostics import DIAG_LOG_PREFIX, emit_log
-from metadata.ingestion.diagnostics.config import DiagnosticsConfig
 from metadata.ingestion.diagnostics.memory import (
     MemoryTracker,
     format_bytes,
@@ -38,8 +37,8 @@ from metadata.ingestion.diagnostics.registry import OperationRegistry
 from metadata.ingestion.diagnostics.stage_progress import format_for_heartbeat
 
 
-class HeartbeatThread(threading.Thread):
-    """Background thread emitting one line per `HEARTBEAT_INTERVAL_SECONDS`."""
+class Heartbeat:
+    """Emits one structured progress line per tick; a Monitor drives tick() on an interval."""
 
     def __init__(
         self,
@@ -47,28 +46,14 @@ class HeartbeatThread(threading.Thread):
         http_tracker: Any,
         memory_tracker: MemoryTracker,
         workflow: Any,
-        config: DiagnosticsConfig = DiagnosticsConfig(),
     ) -> None:
-        super().__init__(name="diag-heartbeat", daemon=True)
         self._registry = registry
         self._http_tracker = http_tracker
         self._memory_tracker = memory_tracker
         self._workflow = workflow
-        self._config = config
-        self._stop_event = threading.Event()
         self._ticks = 0
 
-    def stop(self) -> None:
-        self._stop_event.set()
-
-    def run(self) -> None:
-        while not self._stop_event.wait(self._config.heartbeat_interval_seconds):
-            try:
-                self._emit()
-            except Exception as exc:
-                emit_log(logging.ERROR, f"{DIAG_LOG_PREFIX}.heartbeat.error err={exc!r}")
-
-    def _emit(self) -> None:
+    def tick(self) -> None:
         self._ticks += 1
         sample = self._memory_tracker.sample()
         delta_30s = self._memory_tracker.rss_delta_bytes_since(30.0)

@@ -21,16 +21,14 @@ import time as _time
 from metadata.ingestion.diagnostics.http_introspect import HttpTracker
 from metadata.ingestion.diagnostics.memory import MemoryTracker
 from metadata.ingestion.diagnostics.registry import OperationRegistry
-from metadata.ingestion.diagnostics.watchdog import WatchdogThread
+from metadata.ingestion.diagnostics.watchdog import Watchdog
 
 
 def _make_watchdog():
     registry = OperationRegistry()
     http_tracker = HttpTracker()
     memory_tracker = MemoryTracker()
-    watchdog = WatchdogThread(
-        registry=registry, http_tracker=http_tracker, memory_tracker=memory_tracker, workflow=None
-    )
+    watchdog = Watchdog(registry=registry, http_tracker=http_tracker, memory_tracker=memory_tracker, workflow=None)
     return watchdog, registry
 
 
@@ -43,7 +41,7 @@ def test_no_warn_for_short_operation(caplog):
     registry.push("op.fast", {})
 
     with caplog.at_level(logging.WARNING, logger="metadata.Diagnostics"):
-        watchdog._tick()
+        watchdog.tick()
     out = _all_messages(caplog)
     assert "diag.warn.stuck" not in out
 
@@ -56,7 +54,7 @@ def test_warn_fires_after_stuck_threshold(caplog):
     registry._stacks[tid] = [("snowflake.query", {"sql": "SELECT *"}, started, 1)]
 
     with caplog.at_level(logging.WARNING, logger="metadata.Diagnostics"):
-        watchdog._tick()
+        watchdog.tick()
     out = _all_messages(caplog)
     assert "diag.warn.stuck" in out
     assert "snowflake.query" in out
@@ -71,7 +69,7 @@ def test_auto_dump_fires_after_hang_threshold(caplog):
     registry._stacks[tid] = [("source.iter", {"entity": "table42"}, started, 1)]
 
     with caplog.at_level(logging.WARNING, logger="metadata.Diagnostics"):
-        watchdog._tick()
+        watchdog.tick()
     out = _all_messages(caplog)
     assert "diag.watchdog.auto_dump" in out
     assert "diag.dump.begin" in out
@@ -86,9 +84,9 @@ def test_redump_throttle_prevents_flood(caplog):
     registry._stacks[tid] = [("op.hung", {}, started, 1)]
 
     with caplog.at_level(logging.WARNING, logger="metadata.Diagnostics"):
-        watchdog._tick()
+        watchdog.tick()
         first_count = sum("diag.watchdog.auto_dump" in r.getMessage() for r in caplog.records)
-        watchdog._tick()
+        watchdog.tick()
         second_count = sum("diag.watchdog.auto_dump" in r.getMessage() for r in caplog.records)
     assert first_count == 1
     assert second_count == 1

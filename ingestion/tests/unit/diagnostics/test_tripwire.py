@@ -24,7 +24,7 @@ from metadata.ingestion.diagnostics.config import DiagnosticsConfig
 from metadata.ingestion.diagnostics.http_introspect import HttpTracker
 from metadata.ingestion.diagnostics.memory import MemorySample, MemoryTracker
 from metadata.ingestion.diagnostics.registry import OperationRegistry
-from metadata.ingestion.diagnostics.watchdog import WatchdogThread
+from metadata.ingestion.diagnostics.watchdog import Watchdog
 
 
 class _FixedSampleTracker(MemoryTracker):
@@ -47,7 +47,7 @@ class _FixedSampleTracker(MemoryTracker):
 
 
 def _watchdog_with(samples):
-    return WatchdogThread(
+    return Watchdog(
         registry=OperationRegistry(),
         http_tracker=HttpTracker(),
         memory_tracker=_FixedSampleTracker(samples),
@@ -72,7 +72,7 @@ def test_psi_below_threshold_does_not_trip(caplog):
         ]
     )
     with caplog.at_level(logging.WARNING, logger="metadata.Diagnostics"):
-        wd._tick()
+        wd.tick()
     assert not any("memory_pressure" in r.getMessage() for r in caplog.records)
 
 
@@ -90,7 +90,7 @@ def test_psi_above_threshold_trips_dump(caplog):
         ]
     )
     with caplog.at_level(logging.WARNING, logger="metadata.Diagnostics"):
-        wd._tick()
+        wd.tick()
     out = "\n".join(r.getMessage() for r in caplog.records)
     assert "diag.warn.memory_pressure" in out
     assert "memory-pressure-psi:avg10=42.5" in out
@@ -123,9 +123,9 @@ def test_events_high_increment_trips_dump(caplog):
         ]
     )
     with caplog.at_level(logging.WARNING, logger="metadata.Diagnostics"):
-        wd._tick()  # baseline, no trip
+        wd.tick()  # baseline, no trip
         caplog.clear()
-        wd._tick()  # delta of +7 → trip
+        wd.tick()  # delta of +7 → trip
     out = "\n".join(r.getMessage() for r in caplog.records)
     assert "memory-pressure-cgroup-high:delta=7" in out
 
@@ -152,8 +152,8 @@ def test_events_high_unchanged_does_not_trip(caplog):
         ]
     )
     with caplog.at_level(logging.WARNING, logger="metadata.Diagnostics"):
-        wd._tick()
-        wd._tick()
+        wd.tick()
+        wd.tick()
     assert not any("memory_pressure" in r.getMessage() for r in caplog.records)
 
 
@@ -182,9 +182,9 @@ def test_events_oom_increment_trips_dump(caplog):
         ]
     )
     with caplog.at_level(logging.WARNING, logger="metadata.Diagnostics"):
-        wd._tick()
+        wd.tick()
         caplog.clear()
-        wd._tick()
+        wd.tick()
     out = "\n".join(r.getMessage() for r in caplog.records)
     assert "memory-pressure-cgroup-oom" in out
 
@@ -207,10 +207,10 @@ def test_psi_tripwire_is_throttled(caplog):
         ]
     )
     with caplog.at_level(logging.WARNING, logger="metadata.Diagnostics"):
-        wd._tick()
+        wd.tick()
         first_count = sum("diag.warn.memory_pressure" in r.getMessage() for r in caplog.records)
-        wd._tick()
-        wd._tick()
+        wd.tick()
+        wd.tick()
         second_count = sum("diag.warn.memory_pressure" in r.getMessage() for r in caplog.records)
     assert first_count == 1
     assert second_count == 1

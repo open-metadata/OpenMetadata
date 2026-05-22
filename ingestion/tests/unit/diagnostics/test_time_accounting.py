@@ -15,7 +15,7 @@ import time
 
 import pytest
 
-from metadata.ingestion.diagnostics.config import DiagnosticsConfig
+from metadata.ingestion.diagnostics.monitors.monitor import Monitor
 from metadata.ingestion.diagnostics.registry import OperationRegistry
 from metadata.ingestion.diagnostics.time_accounting import (
     TimeAccountingSampler,
@@ -217,14 +217,15 @@ def test_summary_line_handles_zero_samples():
 # ---- thread lifecycle smoke test ----
 
 
-def test_sampler_run_can_be_stopped_quickly():
+def test_monitor_runs_sampler_and_can_be_stopped_quickly():
     registry = OperationRegistry()
-    sampler = TimeAccountingSampler(registry, config=DiagnosticsConfig(time_accounting_interval_seconds=0.05))
-    sampler.start()
+    sampler = TimeAccountingSampler(registry)
+    monitor = Monitor("diag-time-accounting", 0.05, sampler.tick)
+    monitor.start()
     time.sleep(0.15)  # let it tick 2-3 times
-    sampler.stop()
-    sampler.join(timeout=1.0)
-    assert not sampler.is_alive()
+    monitor.stop()
+    monitor.join(timeout=1.0)
+    assert not monitor.is_alive()
     snap = sampler.snapshot()
     # At least one tick should have happened
     assert snap["samples"] >= 1

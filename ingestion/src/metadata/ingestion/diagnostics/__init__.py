@@ -63,6 +63,7 @@ class _DiagnosticsState:
         signals_installed: bool,
         db_introspector: Any,
         time_sampler: Any,
+        time_sampler_monitor: Any,
     ) -> None:
         self.registry = registry
         self.http_tracker = http_tracker
@@ -72,6 +73,7 @@ class _DiagnosticsState:
         self.signals_installed = signals_installed
         self.db_introspector = db_introspector
         self.time_sampler = time_sampler
+        self.time_sampler_monitor = time_sampler_monitor
 
 
 def is_active() -> bool:
@@ -117,23 +119,30 @@ def install(workflow: Any) -> bool:
     # from paying the import cost on every workflow start.
     try:
         from metadata.ingestion.diagnostics import stage_progress as _stage_progress  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.config import DiagnosticsConfig  # noqa: PLC0415
         from metadata.ingestion.diagnostics.db_introspect import DbIntrospector  # noqa: PLC0415
-        from metadata.ingestion.diagnostics.heartbeat import HeartbeatThread  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.heartbeat import Heartbeat  # noqa: PLC0415
         from metadata.ingestion.diagnostics.http_introspect import HttpTracker  # noqa: PLC0415
         from metadata.ingestion.diagnostics.memory import MemoryTracker  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.monitors.monitor import Monitor  # noqa: PLC0415
         from metadata.ingestion.diagnostics.registry import OperationRegistry  # noqa: PLC0415
         from metadata.ingestion.diagnostics.signals import install_signal_handlers  # noqa: PLC0415
         from metadata.ingestion.diagnostics.time_accounting import TimeAccountingSampler  # noqa: PLC0415
-        from metadata.ingestion.diagnostics.watchdog import WatchdogThread  # noqa: PLC0415
+        from metadata.ingestion.diagnostics.watchdog import Watchdog  # noqa: PLC0415
 
+        config = DiagnosticsConfig()
         registry = OperationRegistry()
         http_tracker = HttpTracker()
         memory_tracker = MemoryTracker()
         _stage_progress.install(_stage_progress.StageProgressCollector())
         db_introspector = DbIntrospector(registry)
         db_introspector.install()
+
         time_sampler = TimeAccountingSampler(registry)
-        time_sampler.start()
+        time_sampler_monitor = Monitor(
+            "diag-time-accounting", config.time_accounting_interval_seconds, time_sampler.tick
+        )
+        time_sampler_monitor.start()
 
         signals_installed = install_signal_handlers(
             registry=registry,
@@ -142,19 +151,17 @@ def install(workflow: Any) -> bool:
             workflow=workflow,
         )
 
-        watchdog = WatchdogThread(
-            registry=registry,
-            http_tracker=http_tracker,
-            memory_tracker=memory_tracker,
-            workflow=workflow,
+        watchdog = Monitor(
+            "diag-watchdog",
+            config.watchdog_tick_seconds,
+            Watchdog(registry, http_tracker, memory_tracker, workflow, config).tick,
         )
         watchdog.start()
 
-        heartbeat = HeartbeatThread(
-            registry=registry,
-            http_tracker=http_tracker,
-            memory_tracker=memory_tracker,
-            workflow=workflow,
+        heartbeat = Monitor(
+            "diag-heartbeat",
+            config.heartbeat_interval_seconds,
+            Heartbeat(registry, http_tracker, memory_tracker, workflow).tick,
         )
         heartbeat.start()
 
@@ -167,6 +174,7 @@ def install(workflow: Any) -> bool:
             signals_installed=signals_installed,
             db_introspector=db_introspector,
             time_sampler=time_sampler,
+            time_sampler_monitor=time_sampler_monitor,
         )
     except Exception as exc:
         # Diagnostics must never break the workflow it is monitoring.
@@ -194,9 +202,9 @@ def shutdown() -> None:
     # workflow actually spent its wall clock.
     with suppress(Exception):
         emit_log(logging.INFO, state.time_sampler.summary_log_line())
-    for thread in (state.watchdog, state.heartbeat, state.time_sampler):
+    for monitor in (state.watchdog, state.heartbeat, state.time_sampler_monitor):
         with suppress(Exception):
-            thread.stop()
+            monitor.stop()
     with suppress(Exception):
         state.db_introspector.uninstall()
     with suppress(Exception):
