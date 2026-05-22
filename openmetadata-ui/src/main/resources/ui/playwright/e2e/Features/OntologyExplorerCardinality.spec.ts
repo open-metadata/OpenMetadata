@@ -177,7 +177,10 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     test('ONE_TO_ONE relation type should have label "1" on both ends', async ({
       page,
     }) => {
-      const cardinalityMap = await readCardinalityMap(page);
+      const cardinalityMap = await readCardinalityMap(
+        page,
+        CUSTOM_RELATION_NAMES.ONE_TO_ONE
+      );
 
       expect(cardinalityMap[CUSTOM_RELATION_NAMES.ONE_TO_ONE]).toEqual({
         startLabelText: '1',
@@ -188,7 +191,10 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     test('ONE_TO_MANY relation type should have "1" at source and "M" at target', async ({
       page,
     }) => {
-      const cardinalityMap = await readCardinalityMap(page);
+      const cardinalityMap = await readCardinalityMap(
+        page,
+        CUSTOM_RELATION_NAMES.ONE_TO_MANY
+      );
 
       expect(cardinalityMap[CUSTOM_RELATION_NAMES.ONE_TO_MANY]).toEqual({
         startLabelText: '1',
@@ -199,7 +205,10 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     test('MANY_TO_ONE relation type should have "M" at source and "1" at target', async ({
       page,
     }) => {
-      const cardinalityMap = await readCardinalityMap(page);
+      const cardinalityMap = await readCardinalityMap(
+        page,
+        CUSTOM_RELATION_NAMES.MANY_TO_ONE
+      );
 
       expect(cardinalityMap[CUSTOM_RELATION_NAMES.MANY_TO_ONE]).toEqual({
         startLabelText: 'M',
@@ -210,7 +219,10 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     test('MANY_TO_MANY relation type should have label "M" on both ends', async ({
       page,
     }) => {
-      const cardinalityMap = await readCardinalityMap(page);
+      const cardinalityMap = await readCardinalityMap(
+        page,
+        CUSTOM_RELATION_NAMES.MANY_TO_MANY
+      );
 
       expect(cardinalityMap[CUSTOM_RELATION_NAMES.MANY_TO_MANY]).toEqual({
         startLabelText: 'M',
@@ -221,7 +233,10 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     test('CUSTOM relation type with sourceMax=1 and no targetMax should produce "1" → "M"', async ({
       page,
     }) => {
-      const cardinalityMap = await readCardinalityMap(page);
+      const cardinalityMap = await readCardinalityMap(
+        page,
+        CUSTOM_RELATION_NAMES.CUSTOM_1_M
+      );
 
       expect(cardinalityMap[CUSTOM_RELATION_NAMES.CUSTOM_1_M]).toEqual({
         startLabelText: '1',
@@ -232,7 +247,7 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     test('built-in relation type shows M:M cardinality in the cardinality map', async ({
       page,
     }) => {
-      const cardinalityMap = await readCardinalityMap(page);
+      const cardinalityMap = await readCardinalityMap(page, 'relatedTo');
 
       expect(cardinalityMap['relatedTo']).toEqual({
         startLabelText: 'M',
@@ -245,7 +260,8 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     test('edges for cardinality-typed relations appear in the graph edge data', async ({
       page,
     }) => {
-      const edges = await readGraphEdges(page);
+      // Wait for at least 5 edges so all custom-cardinality types are present.
+      const edges = await readGraphEdges(page, 5);
       const relationTypes = new Set(edges.map((e) => e.relationType));
 
       expect(

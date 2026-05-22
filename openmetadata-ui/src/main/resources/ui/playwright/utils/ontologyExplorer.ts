@@ -89,20 +89,24 @@ export interface RenderedEdge {
   inverseRelationType?: string;
 }
 
-export async function readGraphEdges(page: Page): Promise<RenderedEdge[]> {
+export async function readGraphEdges(
+  page: Page,
+  minCount = 1
+): Promise<RenderedEdge[]> {
   await page.waitForFunction(
-    () => {
+    (min) => {
       const el = document.querySelector<HTMLElement>('.ontology-g6-container');
       const raw = el?.dataset.edges;
       if (typeof raw !== 'string') {
         return false;
       }
       try {
-        return (JSON.parse(raw) as unknown[]).length > 0;
+        return (JSON.parse(raw) as unknown[]).length >= min;
       } catch {
         return false;
       }
     },
+    minCount,
     { timeout: 20000 }
   );
 
@@ -227,21 +231,29 @@ export type CardinalityLabels = {
 };
 
 export async function readCardinalityMap(
-  page: Page
+  page: Page,
+  waitForKeys: string | string[] = []
 ): Promise<Record<string, CardinalityLabels>> {
+  const keys = Array.isArray(waitForKeys) ? waitForKeys : [waitForKeys];
+
   await page.waitForFunction(
-    () => {
+    (requiredKeys) => {
       const el = document.querySelector<HTMLElement>('.ontology-g6-container');
       const raw = el?.dataset.cardinalityMap;
       if (typeof raw !== 'string') {
         return false;
       }
       try {
-        return Object.keys(JSON.parse(raw)).length > 0;
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+
+        return requiredKeys.length === 0
+          ? Object.keys(parsed).length > 0
+          : requiredKeys.every((k) => k in parsed);
       } catch {
         return false;
       }
     },
+    keys,
     { timeout: 20000 }
   );
 
