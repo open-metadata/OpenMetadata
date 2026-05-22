@@ -90,7 +90,6 @@ def lineage_source():
 
 class TestCacheLineage:
     def test_cache_table_lineage(self, lineage_source):
-<<<<<<< fix/databricks-external-table-path-lineage-27561
         TableRow = namedtuple(
             "TableRow",
             [
@@ -100,19 +99,10 @@ class TestCacheLineage:
                 "target_path",
             ],
         )
-=======
-        TableRow = namedtuple("TableRow", ["source_table_full_name", "target_table_full_name"])
->>>>>>> main
         mock_rows = [
-            TableRow(
-                "cat.schema.source1", "cat.schema.target1", None, None
-            ),
-            TableRow(
-                "cat.schema.source2", "cat.schema.target1", None, None
-            ),
-            TableRow(
-                "cat.schema.source1", "cat.schema.target2", None, None
-            ),
+            TableRow("cat.schema.source1", "cat.schema.target1", None, None),
+            TableRow("cat.schema.source2", "cat.schema.target1", None, None),
+            TableRow("cat.schema.source1", "cat.schema.target2", None, None),
         ]
 
         mock_conn = MagicMock()
@@ -132,7 +122,6 @@ class TestCacheLineage:
         }
 
     def test_cache_column_lineage(self, lineage_source):
-<<<<<<< fix/databricks-external-table-path-lineage-27561
         TableRow = namedtuple(
             "TableRow",
             [
@@ -142,9 +131,6 @@ class TestCacheLineage:
                 "target_path",
             ],
         )
-=======
-        TableRow = namedtuple("TableRow", ["source_table_full_name", "target_table_full_name"])
->>>>>>> main
         ColumnRow = namedtuple(
             "ColumnRow",
             [
@@ -163,11 +149,7 @@ class TestCacheLineage:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return [
-                    TableRow(
-                        "cat.schema.src", "cat.schema.tgt", None, None
-                    )
-                ]
+                return [TableRow("cat.schema.src", "cat.schema.tgt", None, None)]
             return [
                 ColumnRow(
                     "cat.schema.src",
@@ -237,17 +219,14 @@ class TestCacheLineage:
 
         mock_conn = MagicMock()
         mock_conn.execute.return_value = mock_rows
-        lineage_source.engine.connect.return_value.__enter__ = Mock(
-            return_value=mock_conn
-        )
+        lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
         lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
 
         lineage_source._cache_lineage()
 
-        assert (
-            lineage_source.table_lineage_map["bronze_ns.deltalake_ns.managed_table"]
-            == {"bronze_ns.deltalake_ns.external_table"}
-        )
+        assert lineage_source.table_lineage_map["bronze_ns.deltalake_ns.managed_table"] == {
+            "bronze_ns.deltalake_ns.external_table"
+        }
 
     def test_cache_table_lineage_skips_unresolvable_path(self, lineage_source):
         lineage_source.external_path_to_fqn = {}
@@ -272,9 +251,7 @@ class TestCacheLineage:
 
         mock_conn = MagicMock()
         mock_conn.execute.return_value = mock_rows
-        lineage_source.engine.connect.return_value.__enter__ = Mock(
-            return_value=mock_conn
-        )
+        lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
         lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
 
         lineage_source._cache_lineage()
@@ -456,9 +433,7 @@ class TestExternalLocationLineage:
 
         mock_conn = MagicMock()
         mock_conn.execute.return_value = mock_rows
-        lineage_source.engine.connect.return_value.__enter__ = Mock(
-            return_value=mock_conn
-        )
+        lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
         lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
 
         lineage_source._cache_external_locations()

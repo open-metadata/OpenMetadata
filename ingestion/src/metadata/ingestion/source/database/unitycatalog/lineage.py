@@ -112,18 +112,13 @@ class UnitycatalogLineageSource(Source):
             with self.engine.connect() as conn:
                 rows = conn.execute(text(UNITY_CATALOG_TABLE_LINEAGE.format(query_log_duration=query_log_duration)))
                 for row in rows:
-<<<<<<< fix/databricks-external-table-path-lineage-27561
                     source = row.source_table_full_name
                     target = row.target_table_full_name
 
                     if not source and row.source_path:
-                        source = self.external_path_to_fqn.get(
-                            row.source_path.rstrip("/")
-                        )
+                        source = self.external_path_to_fqn.get(row.source_path.rstrip("/"))
                     if not target and row.target_path:
-                        target = self.external_path_to_fqn.get(
-                            row.target_path.rstrip("/")
-                        )
+                        target = self.external_path_to_fqn.get(row.target_path.rstrip("/"))
 
                     if source and target:
                         self.table_lineage_map[target].add(source)
@@ -133,9 +128,6 @@ class UnitycatalogLineageSource(Source):
                             f"source_path={getattr(row, 'source_path', None)}, "
                             f"target_path={getattr(row, 'target_path', None)}"
                         )
-=======
-                    self.table_lineage_map[row.target_table_full_name].add(row.source_table_full_name)
->>>>>>> main
             logger.info(
                 f"Cached table lineage: {sum(len(v) for v in self.table_lineage_map.values())} edges "
                 f"for {len(self.table_lineage_map)} target tables"
@@ -149,25 +141,15 @@ class UnitycatalogLineageSource(Source):
                 rows = conn.execute(text(UNITY_CATALOG_COLUMN_LINEAGE.format(query_log_duration=query_log_duration)))
                 for row in rows:
                     source = row.source_table_full_name or (
-                        self.external_path_to_fqn.get(
-                            row.source_path.rstrip("/")
-                        ) if row.source_path else ""
+                        self.external_path_to_fqn.get(row.source_path.rstrip("/")) if row.source_path else ""
                     )
-<<<<<<< fix/databricks-external-table-path-lineage-27561
                     target = row.target_table_full_name or (
-                        self.external_path_to_fqn.get(
-                            row.target_path.rstrip("/")
-                        ) if row.target_path else ""
+                        self.external_path_to_fqn.get(row.target_path.rstrip("/")) if row.target_path else ""
                     )
 
                     if source and target:
                         table_key = (source, target)
-                        self.column_lineage_map[table_key].append(
-                            (row.source_column_name, row.target_column_name)
-                        )
-=======
-                    self.column_lineage_map[table_key].append((row.source_column_name, row.target_column_name))
->>>>>>> main
+                        self.column_lineage_map[table_key].append((row.source_column_name, row.target_column_name))
             logger.info(
                 f"Cached column lineage: {sum(len(v) for v in self.column_lineage_map.values())} "
                 f"column mappings for {len(self.column_lineage_map)} table pairs"
@@ -187,16 +169,8 @@ class UnitycatalogLineageSource(Source):
                 for row in rows:
                     table_fqn = f"{row.table_catalog}.{row.table_schema}.{row.table_name}"
                     self.external_location_map[table_fqn] = row.storage_path
-<<<<<<< fix/databricks-external-table-path-lineage-27561
-            self.external_path_to_fqn = {
-                v.rstrip("/"): k for k, v in self.external_location_map.items()
-            }
-            logger.info(
-                f"Cached {len(self.external_location_map)} external table locations"
-            )
-=======
+            self.external_path_to_fqn = {v.rstrip("/"): k for k, v in self.external_location_map.items()}
             logger.info(f"Cached {len(self.external_location_map)} external table locations")
->>>>>>> main
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to cache external table locations: {exc}")
