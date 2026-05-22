@@ -446,7 +446,7 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
               q ->
                   q.term(
                       t ->
-                          t.field("service.name.keyword")
+                          t.field("service.displayName.keyword")
                               .value(FieldValue.of(request.getServiceName())))));
     }
   }
@@ -467,7 +467,7 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
               q ->
                   q.term(
                       t ->
-                          t.field("database.name.keyword")
+                          t.field("database.displayName.keyword")
                               .value(FieldValue.of(request.getDatabaseName())))));
     }
   }
@@ -479,7 +479,7 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
               q ->
                   q.term(
                       t ->
-                          t.field("databaseSchema.name.keyword")
+                          t.field("databaseSchema.displayName.keyword")
                               .value(FieldValue.of(request.getSchemaName())))));
     }
   }

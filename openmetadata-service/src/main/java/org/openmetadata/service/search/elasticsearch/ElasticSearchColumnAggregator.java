@@ -578,7 +578,10 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     if (!nullOrEmpty(request.getServiceName())) {
       boolBuilder.filter(
           Query.of(
-              q -> q.term(t -> t.field("service.name.keyword").value(request.getServiceName()))));
+              q ->
+                  q.term(
+                      t ->
+                          t.field("service.displayName.keyword").value(request.getServiceName()))));
     }
   }
 
@@ -595,7 +598,11 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     if (!nullOrEmpty(request.getDatabaseName())) {
       boolBuilder.filter(
           Query.of(
-              q -> q.term(t -> t.field("database.name.keyword").value(request.getDatabaseName()))));
+              q ->
+                  q.term(
+                      t ->
+                          t.field("database.displayName.keyword")
+                              .value(request.getDatabaseName()))));
     }
   }
 
@@ -605,7 +612,9 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
           Query.of(
               q ->
                   q.term(
-                      t -> t.field("databaseSchema.name.keyword").value(request.getSchemaName()))));
+                      t ->
+                          t.field("databaseSchema.displayName.keyword")
+                              .value(request.getSchemaName()))));
     }
   }
 
