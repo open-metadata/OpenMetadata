@@ -4353,6 +4353,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // write + one batched change-event insert per type, regardless of descendant count.
     // For hard delete, bulkHardDeleteSubtree replaces the legacy per-entity cleanup loop
     // that opened an independent JDBI transaction per descendant.
+    //
+    // Time-series children are intentionally skipped — see dispatchToContainedChildren
+    // for the rationale (millions-of-rows lock risk, orphans cleaned offline by
+    // DataRetention).
     Map<String, List<UUID>> idsByType =
         children.stream()
             .collect(
@@ -4360,11 +4364,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
                     EntityRelationshipRecord::getType,
                     Collectors.mapping(EntityRelationshipRecord::getId, Collectors.toList())));
     for (var entry : idsByType.entrySet()) {
-      EntityRepository<?> repo = Entity.getEntityRepository(entry.getKey());
-      if (hardDelete) {
-        repo.bulkHardDeleteSubtree(entry.getValue(), updatedBy);
-      } else {
-        repo.bulkSoftDeleteSubtree(entry.getValue(), updatedBy);
+      String childType = entry.getKey();
+      if (!Entity.isTimeSeriesEntity(childType)) {
+        EntityRepository<?> repo = Entity.getEntityRepository(childType);
+        if (hardDelete) {
+          repo.bulkHardDeleteSubtree(entry.getValue(), updatedBy);
+        } else {
+          repo.bulkSoftDeleteSubtree(entry.getValue(), updatedBy);
+        }
       }
     }
   }
