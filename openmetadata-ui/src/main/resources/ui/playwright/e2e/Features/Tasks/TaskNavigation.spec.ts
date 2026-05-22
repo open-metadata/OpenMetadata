@@ -101,7 +101,6 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       try {
         const response = await apiContext.post('/api/v1/feed', {
           data: {
-            from: adminUser.responseData.name,
             message: `Update description for table ${entityFqn}`,
             about: `<#E::table::${entityFqn}::description>`,
             type: 'Task',
@@ -210,7 +209,6 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
         try {
           const response = await apiContext.post('/api/v1/feed', {
             data: {
-              from: adminUser.responseData.name,
               message: `Update description for table ${entityFqn}`,
               about: `<#E::table::${entityFqn}::description>`,
               type: 'Task',
