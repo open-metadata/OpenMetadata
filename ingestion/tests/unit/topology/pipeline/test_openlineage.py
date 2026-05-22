@@ -507,64 +507,158 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_get_column_lineage__invalid_inputs_outputs_structure(self):
-        """Test with invalid input and output structure."""
+        """Datasets with no resolvable identity are skipped, not fatal.
+
+        A malformed/unresolvable dataset must not abort the event - column
+        lineage simply yields nothing for it.
+        """
         inputs = [{"invalid": "data"}]
         outputs = [{"invalid": "data"}]
-        with self.assertRaises(ValueError):
-            self.open_lineage_source._get_column_lineage(inputs, outputs)
+        result = self.open_lineage_source._get_column_lineage(inputs, outputs)
+        self.assertEqual(result, {})
 
-    def test_get_table_details_with_symlinks(self):
-        """Test with valid data where symlinks are present."""
-        data = {"facets": {"symlinks": {"identifiers": [{"name": "project.schema.table"}]}}}
-        result = self.open_lineage_source._get_table_details(data)
-        self.assertEqual(result.name, "table")
-        self.assertEqual(result.schema, "schema")
+    def test_iter_table_candidates_with_symlinks(self):
+        """Symlink identity is a candidate; dotted name parsed to schema.table."""
+        data = {"facets": {"symlinks": {"identifiers": [{"name": "project.schema.table", "type": "TABLE"}]}}}
+        candidates = OpenlineageSource._iter_table_candidates(data)
+        self.assertEqual(candidates[0][0].name, "table")
+        self.assertEqual(candidates[0][0].schema, "schema")
 
-    def test_get_table_details_without_symlinks(self):
-        """Test with valid data but without symlinks."""
+    def test_iter_table_candidates_without_symlinks(self):
+        """Top-level dotted name is the sole candidate when no symlinks."""
         data = {"name": "schema.table"}
-        result = self.open_lineage_source._get_table_details(data)
-        self.assertEqual(result.name, "table")
-        self.assertEqual(result.schema, "schema")
+        candidates = OpenlineageSource._iter_table_candidates(data)
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0][0].name, "table")
+        self.assertEqual(candidates[0][0].schema, "schema")
 
-    def test_get_table_details_normalizes_caps_symlinks_to_lowercase(self):
-        """Test that CAPS table/schema names from symlinks are normalized to lowercase."""
-        data = {"facets": {"symlinks": {"identifiers": [{"name": "PROJECT.SCHEMA.CASE_TEST_SOURCE"}]}}}
-        result = self.open_lineage_source._get_table_details(data)
-        self.assertEqual(result.name, "case_test_source")
-        self.assertEqual(result.schema, "schema")
+    def test_iter_table_candidates_normalizes_caps_symlinks_to_lowercase(self):
+        """CAPS names from a symlink identifier are normalized to lowercase."""
+        data = {"facets": {"symlinks": {"identifiers": [{"name": "PROJECT.SCHEMA.CASE_TEST_SOURCE", "type": "TABLE"}]}}}
+        candidates = OpenlineageSource._iter_table_candidates(data)
+        self.assertEqual(candidates[0][0].name, "case_test_source")
+        self.assertEqual(candidates[0][0].schema, "schema")
 
-    def test_get_table_details_normalizes_caps_name_to_lowercase(self):
-        """Test that CAPS table/schema names from name attribute are normalized to lowercase."""
+    def test_iter_table_candidates_normalizes_caps_name_to_lowercase(self):
+        """CAPS names from the top-level name attribute are normalized to lowercase."""
         data = {"name": "HK_SCHEMA.CASE_TEST_SOURCE"}
-        result = self.open_lineage_source._get_table_details(data)
-        self.assertEqual(result.name, "case_test_source")
-        self.assertEqual(result.schema, "hk_schema")
+        candidates = OpenlineageSource._iter_table_candidates(data)
+        self.assertEqual(candidates[0][0].name, "case_test_source")
+        self.assertEqual(candidates[0][0].schema, "hk_schema")
 
-    def test_get_table_details_normalizes_mixed_case_to_lowercase(self):
-        """Test that mixed-case names are normalized to lowercase."""
-        data = {"name": "MySchema.MyTable"}
-        result = self.open_lineage_source._get_table_details(data)
-        self.assertEqual(result.name, "mytable")
-        self.assertEqual(result.schema, "myschema")
+    def test_iter_table_candidates_missing_symlinks_and_name_is_empty(self):
+        """No name and no symlinks yields no candidates (no exception raised)."""
+        self.assertEqual(OpenlineageSource._iter_table_candidates({}), [])
 
-    def test_get_table_details_invalid_data_missing_symlinks_and_name(self):
-        """Test with invalid data missing both symlinks and name."""
-        data = {}
-        with self.assertRaises(ValueError):
-            self.open_lineage_source._get_table_details(data)
+    def test_iter_table_candidates_unparseable_name_is_empty(self):
+        """A single-segment top-level name parses to nothing and is skipped."""
+        self.assertEqual(OpenlineageSource._iter_table_candidates({"name": "invalidname"}), [])
 
-    def test_get_table_details_invalid_symlinks_structure(self):
-        """Test with invalid symlinks structure."""
-        data = {"facets": {"symlinks": {"identifiers": [{}]}}}
-        with self.assertRaises(ValueError):
-            self.open_lineage_source._get_table_details(data)
+    def test_iter_table_candidates_glue_symlink_over_s3_toplevel(self):
+        """Customer scenario: Spark writes a Glue-cataloged table stored in S3.
 
-    def test_get_table_details_invalid_name_structure(self):
-        """Test with invalid name structure."""
-        data = {"name": "invalidname"}
-        with self.assertRaises(ValueError):
-            self.open_lineage_source._get_table_details(data)
+        The Glue identity lives only in the symlinks facet; the top-level
+        namespace is the physical S3 bucket. The Glue symlink must win.
+        Source: https://openlineage.io/spec/facets/dataset-facets/symlinks/
+        """
+        data = {
+            "namespace": "s3://lakehouse--managed-us-west-2--prod",
+            "name": "main/store_of_value/gsheet_recon_stats_notes",
+            "facets": {
+                "symlinks": {
+                    "identifiers": [
+                        {
+                            "namespace": "arn:aws:glue:us-west-2:012621376717",
+                            "name": "table/store_of_value/gsheet_recon_stats_notes",
+                            "type": "TABLE",
+                        }
+                    ]
+                }
+            },
+        }
+        candidates = OpenlineageSource._iter_table_candidates(data)
+        self.assertEqual(candidates[0][0].schema, "store_of_value")
+        self.assertEqual(candidates[0][0].name, "gsheet_recon_stats_notes")
+        self.assertEqual(candidates[0][1], "arn:aws:glue:us-west-2:012621376717")
+
+    def test_iter_table_candidates_skips_location_symlink(self):
+        """LOCATION symlinks are physical paths and must be excluded entirely."""
+        data = {
+            "namespace": "hive://metastore:9083",
+            "name": "analytics.daily_revenue",
+            "facets": {
+                "symlinks": {
+                    "identifiers": [
+                        {"namespace": "s3://bucket", "name": "warehouse/analytics/daily_revenue", "type": "LOCATION"}
+                    ]
+                }
+            },
+        }
+        candidates = OpenlineageSource._iter_table_candidates(data)
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0][0].schema, "analytics")
+        self.assertEqual(candidates[0][0].name, "daily_revenue")
+
+    def test_iter_table_candidates_dedupes_identical_identities(self):
+        """A symlink byte-identical to the top-level identity is de-duplicated."""
+        data = {
+            "namespace": "bigquery",
+            "name": "proj.schema.table",
+            "facets": {
+                "symlinks": {"identifiers": [{"namespace": "bigquery", "name": "proj.schema.table", "type": "TABLE"}]}
+            },
+        }
+        candidates = OpenlineageSource._iter_table_candidates(data)
+        self.assertEqual(len(candidates), 1)
+
+    def test_iter_table_candidates_keeps_same_table_under_different_namespaces(self):
+        """Same schema.table under different namespaces are distinct resolution
+        paths (namespace drives service lookup) and must both be kept."""
+        data = {
+            "namespace": "trino://host:8080",
+            "name": "catalog.sales.users",
+            "facets": {
+                "symlinks": {
+                    "identifiers": [{"namespace": "arn:aws:glue:r:a", "name": "table/sales/users", "type": "TABLE"}]
+                }
+            },
+        }
+        candidates = OpenlineageSource._iter_table_candidates(data)
+        self.assertEqual(len(candidates), 2)
+        self.assertEqual({ns for _, ns in candidates}, {"arn:aws:glue:r:a", "trino://host:8080"})
+
+    def test_resolve_table_falls_back_to_toplevel_when_symlink_unresolved(self):
+        """Resolution-aware: a symlink that parses but does not resolve to a
+        configured service falls through to the next candidate."""
+        data = {
+            "namespace": "s3://bucket",
+            "name": "schema.real_table",
+            "facets": {
+                "symlinks": {"identifiers": [{"namespace": "arn:aws:glue:r:a", "name": "table/g/t", "type": "TABLE"}]}
+            },
+        }
+        with patch.object(
+            self.open_lineage_source,
+            "_get_table_fqn",
+            side_effect=lambda details, namespace=None: (
+                "svc.schema.real_table" if details.name == "real_table" else None
+            ),
+        ):
+            resolved = self.open_lineage_source._resolve_table(data)
+        self.assertIsNotNone(resolved)
+        self.assertEqual(resolved.fqn, "svc.schema.real_table")
+        self.assertEqual(resolved.details.name, "real_table")
+
+    def test_resolve_table_returns_none_when_nothing_resolves(self):
+        """No candidate resolves -> None (event continues, warning logged)."""
+        data = {"namespace": "s3://b", "name": "schema.table"}
+        with patch.object(self.open_lineage_source, "_get_table_fqn", return_value=None):
+            self.assertIsNone(self.open_lineage_source._resolve_table(data))
+
+    def test_resolve_table_returns_none_for_location_only_dataset(self):
+        """An object-store-only dataset (no parseable identity) resolves to None."""
+        data = {"namespace": "s3://bucket", "name": "warehouse/path/to/file"}
+        self.assertIsNone(self.open_lineage_source._resolve_table(data))
 
     def test_get_pipelines_list(self):
         """Test get_pipelines_list method"""
@@ -644,6 +738,65 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         self.assertEqual(col_lineage, expected_col_lineage)
         self.assertEqual(table_lineage, expected_table_lineage)
+
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om")
+    def test_yield_pipeline_lineage_details_glue_symlink_datasets(self, mock_get_table_from_om):
+        """End-to-end: an event whose datasets carry the Glue identity only in
+        the symlinks facet (top-level namespace is the physical S3 bucket)
+        still produces a table lineage edge - the Spark-on-Glue-catalog
+        customer scenario. Only the OpenMetadata boundary is mocked; the full
+        candidate-resolution path runs for real.
+        """
+        src_uuid = "11111111-1111-1111-1111-111111111111"
+        dst_uuid = "22222222-2222-2222-2222-222222222222"
+
+        def t_fqn_build_side_effect(table_details, services=None):
+            return f"glueService.{table_details.schema}.{table_details.name}"
+
+        def mock_get_by_name(entity, fqn):
+            ids = {
+                "glueService.store_of_value.src_table": src_uuid,
+                "glueService.store_of_value.gsheet_recon_stats_notes": dst_uuid,
+            }
+            return Mock(id=Mock(root=ids.get(fqn, "33333333-3333-3333-3333-333333333333")))
+
+        mock_get_table_from_om.side_effect = t_fqn_build_side_effect
+
+        def glue_symlink_dataset(table_name):
+            return {
+                "namespace": "s3://lakehouse--managed-us-west-2--prod",
+                "name": f"main/store_of_value/{table_name}",
+                "facets": {
+                    "symlinks": {
+                        "identifiers": [
+                            {
+                                "namespace": "arn:aws:glue:us-west-2:012621376717",
+                                "name": f"table/store_of_value/{table_name}",
+                                "type": "TABLE",
+                            }
+                        ]
+                    }
+                },
+            }
+
+        event = copy.deepcopy(FULL_OL_KAFKA_EVENT)
+        event["inputs"] = [glue_symlink_dataset("src_table")]
+        event["outputs"] = [glue_symlink_dataset("gsheet_recon_stats_notes")]
+        ol_event = self.read_openlineage_event_from_kafka(event)
+
+        with patch.object(
+            OpenMetadataConnection,
+            "get_by_name",
+            create=True,
+            side_effect=mock_get_by_name,
+        ):
+            results = list(self.open_lineage_source.yield_pipeline_lineage_details(ol_event))
+
+        lineage = [r.right for r in results if r.right and isinstance(r.right, AddLineageRequest)]
+        self.assertEqual(len(lineage), 1, "Glue-symlink datasets must produce exactly one lineage edge")
+        edge = lineage[0].edge
+        self.assertEqual(str(edge.fromEntity.id.root), src_uuid)
+        self.assertEqual(str(edge.toEntity.id.root), dst_uuid)
 
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_schema_fqn_from_om")
@@ -1047,9 +1200,8 @@ class OpenLineageUnitTest(unittest.TestCase):
                 self.assertGreater(len(req.edge.lineageDetails.columnsLineage), 0)
 
     def test_entity_detection_kafka_namespace_returns_topic(self):
-        """Test that _get_entity_details correctly identifies Kafka topics vs tables
-        based on the namespace prefix, exercising the full detection path including
-        _get_topic_details for kafka:// and _get_table_details for other namespaces."""
+        """_get_entity_details identifies kafka:// datasets as topics and
+        extracts topic details via _get_topic_details."""
         kafka_data = {
             "name": "my-events-topic",
             "namespace": "kafka://broker-host:9092",
@@ -1064,7 +1216,8 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertEqual(result.topic_details.broker_hostname, "broker-host:9092")
 
     def test_entity_detection_non_kafka_namespace_returns_table(self):
-        """Test that non-kafka namespaces (e.g. bigquery, hive) are detected as tables."""
+        """Non-kafka namespaces are classified as tables; identity resolution
+        is candidate-based and handled separately by _resolve_table."""
         table_data = {
             "name": "schema.my_table",
             "namespace": "bigquery",
@@ -1072,10 +1225,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         }
         result = OpenlineageSource._get_entity_details(table_data)
         self.assertEqual(result.entity_type, "table")
-        self.assertIsNotNone(result.table_details)
         self.assertIsNone(result.topic_details)
-        self.assertEqual(result.table_details.name, "my_table")
-        self.assertEqual(result.table_details.schema, "schema")
 
     def test_topic_details_extraction_various_broker_formats(self):
         """Test _get_topic_details extracts broker hostname correctly from various
@@ -1989,54 +2139,53 @@ class OpenLineageUnitTest(unittest.TestCase):
         """A Cosmos name not matching colls/{collection} is non-conformant and returns None."""
         self.assertIsNone(OpenlineageSource._parse_cosmos_table_name("azurecosmos://host/dbs/mydb", "mycollection"))
 
-    def test_get_table_details_glue_namespace_parses_slash_name(self):
+    def test_candidate_glue_namespace_parses_slash_name(self):
         """AWS Glue EMR events use arn:aws:glue namespace + table/{db}/{table} name."""
         data = {
             "namespace": "arn:aws:glue:us-east-1:123456789012",
             "name": "table/sales/users",
         }
-        result = OpenlineageSource._get_table_details(data)
-        self.assertEqual(result.name, "users")
-        self.assertEqual(result.schema, "sales")
+        details, _ = OpenlineageSource._iter_table_candidates(data)[0]
+        self.assertEqual(details.name, "users")
+        self.assertEqual(details.schema, "sales")
 
-    def test_get_table_details_kusto_namespace_parses_slash_name(self):
+    def test_candidate_kusto_namespace_parses_slash_name(self):
         """Azure Kusto events use azurekusto namespace + {db}/{table} name."""
         data = {
             "namespace": "azurekusto://mycluster.kusto.windows.net",
             "name": "mydb/mytable",
         }
-        result = OpenlineageSource._get_table_details(data)
-        self.assertEqual(result.name, "mytable")
-        self.assertEqual(result.schema, "mydb")
+        details, _ = OpenlineageSource._iter_table_candidates(data)[0]
+        self.assertEqual(details.name, "mytable")
+        self.assertEqual(details.schema, "mydb")
 
-    def test_get_table_details_cosmos_namespace_parses_colls_name(self):
+    def test_candidate_cosmos_namespace_parses_colls_name(self):
         """Azure Cosmos DB events carry the database in the namespace path."""
         data = {
             "namespace": "azurecosmos://host.documents.azure.com/dbs/mydb",
             "name": "colls/orders",
         }
-        result = OpenlineageSource._get_table_details(data)
-        self.assertEqual(result.name, "orders")
-        self.assertEqual(result.schema, "mydb")
+        details, _ = OpenlineageSource._iter_table_candidates(data)[0]
+        self.assertEqual(details.name, "orders")
+        self.assertEqual(details.schema, "mydb")
 
-    def test_get_entity_details_glue_namespace_resolves_to_table(self):
-        """Glue ARN namespace + table/{db}/{table} name resolves to a table entity."""
+    def test_entity_details_glue_namespace_classified_as_table(self):
+        """Glue ARN namespace is classified as a table; identity parses via candidates."""
         data = {
             "namespace": "arn:aws:glue:us-east-1:123456789012",
             "name": "table/sales/users",
             "facets": {},
         }
-        result = OpenlineageSource._get_entity_details(data)
-        self.assertIsNotNone(result)
-        self.assertEqual(result.entity_type, "table")
-        self.assertEqual(result.table_details.name, "users")
-        self.assertEqual(result.table_details.schema, "sales")
+        self.assertEqual(OpenlineageSource._get_entity_details(data).entity_type, "table")
+        details, _ = OpenlineageSource._iter_table_candidates(data)[0]
+        self.assertEqual(details.name, "users")
+        self.assertEqual(details.schema, "sales")
 
-    def test_get_entity_details_unparseable_name_raises_value_error(self):
-        """Unrecognised name formats raise ValueError so callers can surface the error."""
+    def test_unparseable_name_yields_no_candidates(self):
+        """Unrecognised name formats yield no candidates instead of raising,
+        so a single bad dataset never aborts the whole event."""
         data = {"namespace": "trino://host:8080", "name": "invalidname"}
-        with self.assertRaises(ValueError):
-            OpenlineageSource._get_entity_details(data)
+        self.assertEqual(OpenlineageSource._iter_table_candidates(data), [])
 
 
 if __name__ == "__main__":

@@ -65,6 +65,8 @@ from metadata.ingestion.source.pipeline.openlineage.models import (
     LineageNode,
     OpenLineageEvent,
     PipelineFQN,
+    ResolvedTable,
+    SymlinkType,
     TableDetails,
     TableFQN,
     TopicDetails,
@@ -135,82 +137,147 @@ class OpenlineageSource(PipelineServiceSource):
     @staticmethod
     def _get_entity_details(data: Dict) -> EntityDetails:  # noqa: UP006
         """
-        Determine the entity type (table or topic) from an OpenLineage input/output entry
-        based on the namespace prefix.
+        Determine whether an OpenLineage dataset is a topic or a table.
+
+        Topics are detected by the ``kafka://`` namespace. Table identity is
+        not resolved here - it is candidate-based (top-level plus symlinks)
+        and handled by :meth:`_resolve_table`.
 
         :param data: single input/output entry from an OpenLineage event
-        :return: EntityDetails with entity_type and corresponding details (TableDetails or TopicDetails)
+        :return: EntityDetails carrying the entity type (and topic details)
         """
-        namespace = data.get("namespace", "")
-
-        # Kafka topic detection
-        if namespace.startswith("kafka://"):
+        if data.get("namespace", "").startswith("kafka://"):
             return EntityDetails(
                 entity_type="topic",
                 topic_details=OpenlineageSource._get_topic_details(data),
             )
-        else:  # noqa: RET505
-            return EntityDetails(
-                entity_type="table",
-                table_details=OpenlineageSource._get_table_details(data),
-            )
+        return EntityDetails(entity_type="table")
 
-    @classmethod
-    def _get_table_details(cls, data: Dict) -> TableDetails:  # noqa: UP006
+    @staticmethod
+    def _parse_dotted_table_name(name: str) -> Optional[TableDetails]:  # noqa: UP045
         """
-        extracts table entity schema and name from input/output entry collected from Open Lineage.
+        Parse a dot-separated ``[db.]schema.table`` name used by SQL engines.
 
-        :param data: single entry from inputs/outputs objects
-        :return: TableDetails object with schema and name
+        BigQuery prefixes the GCP project id; only the last two segments
+        (schema, table) map to OpenMetadata. Names are lowercased for
+        case-insensitive FQN matching across connectors.
+        """
+        parts = name.split(".")
+        if len(parts) < 2:
+            return None
+        return TableDetails(name=parts[-1].lower(), schema=parts[-2].lower())
+
+    @staticmethod
+    def _parse_table_identity(namespace: str, name: str) -> Optional[TableDetails]:  # noqa: UP045
+        """
+        Parse a single OpenLineage ``(namespace, name)`` identity to a table.
+
+        Returns ``None`` for identities this connector cannot resolve to a
+        table (object-store paths, malformed names) so callers can try the
+        next candidate instead of aborting the whole event.
+
+        Source: https://openlineage.io/docs/spec/naming/
+        """
+        if not name:
+            return None
+        if namespace.startswith("arn:aws:glue:"):
+            return OpenlineageSource._parse_glue_table_name(name)
+        if namespace.startswith("azurekusto://"):
+            return OpenlineageSource._parse_slash_table_name(name)
+        if namespace.startswith("azurecosmos://"):
+            return OpenlineageSource._parse_cosmos_table_name(namespace, name)
+        return OpenlineageSource._parse_dotted_table_name(name)
+
+    @staticmethod
+    def _raw_table_identities(data: Dict) -> List[Tuple[str, str]]:  # noqa: UP006
+        """
+        Ordered raw ``(namespace, name)`` identity candidates for a dataset.
+
+        Symlink identifiers (logical/catalog identity, which OpenMetadata
+        database services hold) come first, then the top-level identity.
+        Only identifiers explicitly typed ``LOCATION`` (physical paths) are
+        excluded - this connector resolves tables/topics, never containers.
+        Identifiers with a missing or non-``LOCATION`` type are still tried;
+        non-table candidates simply fail to parse and the next is used.
+
+        Source: https://openlineage.io/spec/facets/1-0-1/SymlinksDatasetFacet.json
         """
         symlinks = data.get("facets", {}).get("symlinks", {}).get("identifiers", [])
+        identities: List[Tuple[str, str]] = [  # noqa: UP006
+            (identifier.get("namespace", ""), identifier.get("name", ""))
+            for identifier in symlinks
+            if identifier.get("type") != SymlinkType.LOCATION.value
+        ]
+        identities.append((data.get("namespace", ""), data.get("name", "")))
+        return identities
 
-        # for some OL events name can be extracted from dataset facet but symlinks is preferred so - if present - we
-        # use it instead
-        if len(symlinks) > 0:
-            try:
-                # @todo verify if table can have multiple identifiers pointing at it
-                name = symlinks[0]["name"]
-            except (KeyError, IndexError):
-                raise ValueError("input table name cannot be retrieved from symlinks.identifiers facet.")  # noqa: B904
-        else:
-            try:
-                name = data["name"]
-            except KeyError:
-                raise ValueError("input table name cannot be retrieved from name attribute.")  # noqa: B904
+    @classmethod
+    def _iter_table_candidates(cls, data: Dict) -> List[Tuple[TableDetails, str]]:  # noqa: UP006
+        """
+        Parsed, de-duplicated table candidates in resolution priority order.
 
-        namespace = data.get("namespace", "")
+        Each entry is ``(table_details, namespace)`` where namespace is the
+        identity's own namespace (used for namespace-aware service lookup).
+        """
+        candidates: List[Tuple[TableDetails, str]] = []  # noqa: UP006
+        seen: set = set()
+        for namespace, name in cls._raw_table_identities(data):
+            details = cls._parse_table_identity(namespace, name)
+            if not details:
+                continue
+            # namespace is part of the key: it drives namespace-aware
+            # service resolution, so same schema.table under different
+            # namespaces are distinct resolution paths, not duplicates.
+            key = (namespace, details.schema, details.name)
+            if key not in seen:
+                seen.add(key)
+                candidates.append((details, namespace))
+        return candidates
 
-        # AWS Glue: arn:aws:glue:{region}:{account} / table/{database}/{table}
-        # Source: https://openlineage.io/docs/spec/naming/
-        if namespace.startswith("arn:aws:glue:"):
-            result = OpenlineageSource._parse_glue_table_name(name)
-            if result:
-                return result
+    def _resolve_table(self, data: Dict) -> Optional[ResolvedTable]:  # noqa: UP006, UP045
+        """
+        Resolve an OpenLineage dataset to an existing OpenMetadata table.
 
-        # Azure Data Explorer (Kusto): azurekusto://{host} / {database}/{table}
-        if namespace.startswith("azurekusto://"):
-            result = OpenlineageSource._parse_slash_table_name(name)
-            if result:
-                return result
+        Tries each identity candidate (symlink ``TABLE`` identifiers first,
+        then the top-level identity) and returns the first that resolves to a
+        table in a configured service. A single detailed warning is logged
+        when none resolve so the event can be diagnosed from logs alone,
+        without aborting the rest of the event.
+        """
+        ol_name = self._get_ol_table_name(data)
+        candidates = self._iter_table_candidates(data)
+        if not candidates:
+            self._log_unresolvable_dataset(data, ol_name)
+            return None
 
-        # Azure Cosmos DB: azurecosmos://{host}/dbs/{db} / colls/{collection}
-        if namespace.startswith("azurecosmos://"):
-            result = OpenlineageSource._parse_cosmos_table_name(namespace, name)
-            if result:
-                return result
+        attempts: List[str] = []  # noqa: UP006
+        for details, namespace in candidates:
+            table_fqn = self._get_table_fqn(details, namespace=namespace)
+            if table_fqn:
+                return ResolvedTable(fqn=table_fqn, details=details)
+            attempts.append(f"[namespace='{namespace}' schema='{details.schema}' table='{details.name}']")
 
-        name_parts = name.split(".")
+        self._log_unmatched_dataset(ol_name, attempts)
+        return None
 
-        if len(name_parts) < 2:
-            raise ValueError(f"input table name should be of 'schema.table' format! Received: {name}")
+    @staticmethod
+    def _log_unresolvable_dataset(data: Dict, ol_name: str) -> None:  # noqa: UP006
+        symlinks = data.get("facets", {}).get("symlinks", {}).get("identifiers", [])
+        logger.warning(
+            f"OpenLineage dataset '{ol_name}' has no resolvable table identity "
+            f"(namespace='{data.get('namespace', '')}', name='{data.get('name', '')}', "
+            f"symlinks={symlinks}). Object-store/LOCATION-only datasets are not "
+            "supported for table lineage by the OpenLineage connector."
+        )
 
-        # we take last two elements to explicitly collect schema and table names
-        # in BigQuery Open Lineage events name_parts would be list of 3 elements as first one is GCP Project ID
-        # however, concept of GCP Project ID is not represented in Open Metadata and hence - we need to skip this part
-        # Normalize to lowercase for case-insensitive FQN matching: different connectors
-        # may store names in different cases (e.g. Trino lowercases, Spark preserves original)
-        return TableDetails(name=name_parts[-1].lower(), schema=name_parts[-2].lower())
+    @staticmethod
+    def _log_unmatched_dataset(ol_name: str, attempts: List[str]) -> None:  # noqa: UP006
+        logger.warning(
+            f"OpenLineage dataset '{ol_name}' matched no table in configured services. "
+            f"Tried {len(attempts)} candidate(s): {'; '.join(attempts)}. Ensure the "
+            "source is ingested and 'dbServiceNames'/'namespaceToServiceMapping' are "
+            "configured so the table can be located."
+        )
 
     @staticmethod
     def _get_topic_details(data: Dict) -> TopicDetails:  # noqa: UP006
@@ -586,71 +653,56 @@ class OpenlineageSource(PipelineServiceSource):
         if not self.get_db_service_names():
             return None
 
-        om_table_fqn = None
+        candidates = self._iter_table_candidates(table)
+        if not candidates:
+            return None
 
-        try:
-            table_details = OpenlineageSource._get_table_details(table)
-        except ValueError as e:
-            return Either(
-                left=StackTraceError(
-                    name="",
-                    error=f"Failed to get partial table name: {e}",
-                    stackTrace=traceback.format_exc(),
-                )
-            )
-        try:
-            om_table_fqn = self._get_table_fqn_from_om(table_details)
+        if any(self._table_already_registered(details) for details, _ in candidates):
+            return None
 
-            # if fqn found then it means table is already registered and we don't need to render create table request
-            return None  # noqa: TRY300
-        except FQNNotFoundException:
-            pass
-
-        # If OM Table FQN was not found based on OL Partial Name - we need to register it.
-        if not om_table_fqn:
-            try:
-                om_schema_fqn = self._get_schema_fqn_from_om(table_details.schema)
-            except FQNNotFoundException:
-                logger.warning(
-                    f"Schema '{table_details.schema}' not found in configured services "
-                    f"{self.get_db_service_names()}. Skipping table creation for "
-                    f"'{table_details.name}'."
-                )
-                return None
-
-            # After finding schema fqn (based on partial schema name) we know where we can create table
-            # and we move forward with creating request.
-            if om_schema_fqn:
-                columns = OpenlineageSource._get_om_table_columns(table) or []
-
+        for details, _ in candidates:
+            schema_fqn = self._safe_schema_fqn(details.schema)
+            if schema_fqn:
                 request = CreateTableRequest(
-                    name=table_details.name,
-                    columns=columns,
-                    databaseSchema=om_schema_fqn,
+                    name=details.name,
+                    columns=OpenlineageSource._get_om_table_columns(table) or [],
+                    databaseSchema=schema_fqn,
                 )
-
                 return Either(right=request)
 
+        logger.warning(
+            f"OpenLineage dataset '{self._get_ol_table_name(table)}' could not be "
+            f"registered: no schema for candidate(s) "
+            f"{[d.schema for d, _ in candidates]} found in configured services "
+            f"{self.get_db_service_names()}. Skipping table creation."
+        )
         return None
+
+    def _table_already_registered(self, table_details: TableDetails) -> bool:
+        try:
+            return bool(self._get_table_fqn_from_om(table_details))
+        except FQNNotFoundException:
+            return False
+
+    def _safe_schema_fqn(self, schema: str) -> Optional[str]:  # noqa: UP045
+        try:
+            return self._get_schema_fqn_from_om(schema)
+        except FQNNotFoundException:
+            return None
 
     @classmethod
     def _get_ol_table_name(cls, table: Dict) -> str:  # noqa: UP006
-        return "/".join(table.get(f) for f in ["namespace", "name"]).replace("//", "/")
+        return "/".join(table.get(f) or "" for f in ["namespace", "name"]).replace("//", "/")
 
     def _build_ol_name_to_fqn_map(self, tables: List):  # noqa: UP006
         result = {}
 
         for table in tables:
-            entity_details = self._get_entity_details(table)
-            if entity_details.entity_type != "table":
+            if self._get_entity_details(table).entity_type != "table":
                 continue
-            table_fqn = self._get_table_fqn(
-                entity_details.table_details,
-                namespace=table.get("namespace"),
-            )
-
-            if table_fqn:
-                result[OpenlineageSource._get_ol_table_name(table)] = table_fqn
+            resolved = self._resolve_table(table)
+            if resolved:
+                result[OpenlineageSource._get_ol_table_name(table)] = resolved.fqn
 
         return result
 
@@ -673,15 +725,14 @@ class OpenlineageSource(PipelineServiceSource):
         ol_name_to_fqn_map = self._build_ol_name_to_fqn_map(inputs + outputs)
 
         for table in outputs:
-            entity_details = self._get_entity_details(table)
             # Column-level lineage is only supported for tables for now.
-            if entity_details.entity_type != "table":
+            if self._get_entity_details(table).entity_type != "table":
                 continue
 
-            output_table_fqn = self._get_table_fqn(
-                entity_details.table_details,
-                namespace=table.get("namespace"),
-            )
+            resolved = self._resolve_table(table)
+            if not resolved:
+                continue
+            output_table_fqn = resolved.fqn
             for field_name, field_spec in table.get("facets", {}).get("columnLineage", {}).get("fields", {}).items():
                 for input_field in field_spec.get("inputFields", []):
                     input_table_ol_name = OpenlineageSource._get_ol_table_name(input_field)
@@ -863,24 +914,21 @@ class OpenlineageSource(PipelineServiceSource):
                     if create_table_request:
                         yield create_table_request
 
-                    table_fqn = self._get_table_fqn(
-                        entity_details.table_details,
-                        namespace=entity_data.get("namespace"),
-                    )
+                    resolved = self._resolve_table(entity_data)
 
-                    if table_fqn:
-                        table_entity = self._get_by_name_cached(Table, table_fqn)
+                    if resolved:
+                        table_entity = self._get_by_name_cached(Table, resolved.fqn)
                         if table_entity:
                             entity_list.append(
                                 LineageNode(
-                                    fqn=TableFQN(value=table_fqn),
+                                    fqn=TableFQN(value=resolved.fqn),
                                     uuid=table_entity.id.root,
                                     node_type="table",
                                 )
                             )
                         else:
-                            logger.warning(f"Table entity not found for: {table_fqn}")
-                            self.status.warning(table_fqn, "Table entity not found in OpenMetadata")
+                            logger.warning(f"Table entity not found for: {resolved.fqn}")
+                            self.status.warning(resolved.fqn, "Table entity not found in OpenMetadata")
 
                 elif entity_details.entity_type == "topic":
                     topic_entity = self._get_topic_entity(entity_details.topic_details)
