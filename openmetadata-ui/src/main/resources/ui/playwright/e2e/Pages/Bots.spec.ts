@@ -12,6 +12,7 @@
  */
 import { expect, test } from '@playwright/test';
 import {
+  BOT_DETAILS,
   createBot,
   deleteBot,
   redirectToBotPage,
@@ -20,40 +21,93 @@ import {
   updateBotDetails,
 } from '../../utils/bot';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
+import { searchFromSearchInput } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Bots Page should work properly', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
-  test.slow(true);
+test.describe(
+  'Bots Page should work properly',
+  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  () => {
+    test.slow(true);
 
-  test('Bots Page should work properly', async ({ page }) => {
-    await redirectToBotPage(page);
+    test('Bots Page should work properly', async ({ page }) => {
+      await redirectToBotPage(page);
 
-    await test.step(
-      'Verify ingestion bot delete button is always disabled',
-      async () => {
+      await test.step('Verify ingestion bot delete button is always disabled', async () => {
         await expect(
           page.getByTestId('bot-delete-ingestion-bot')
         ).toBeDisabled();
-      }
-    );
+      });
 
-    await test.step('Create Bot', async () => {
-      await createBot(page);
-    });
+      await test.step('Create Bot', async () => {
+        await createBot(page);
+      });
 
-    await test.step('Update display name and description', async () => {
-      await updateBotDetails(page);
-    });
+      await test.step('Update display name and description', async () => {
+        await updateBotDetails(page);
+      });
 
-    await test.step('Update token expiration', async () => {
-      await tokenExpirationForDays(page);
-      await tokenExpirationUnlimitedDays(page);
-    });
+      await redirectToBotPage(page);
 
-    await test.step('Delete Bot', async () => {
-      await deleteBot(page);
+      const searchInput = page.getByTestId('searchbar');
+      const createdBotLink = page.getByTestId(
+        `bot-link-${BOT_DETAILS.updatedBotName}`
+      );
+
+      await test.step('Search bot by display name', async () => {
+        await searchFromSearchInput(
+          page,
+          searchInput,
+          BOT_DETAILS.updatedBotName
+        );
+
+        await expect(createdBotLink).toBeVisible();
+      });
+
+      await test.step('Search bot by bot name', async () => {
+        await searchFromSearchInput(page, searchInput, BOT_DETAILS.botName);
+
+        await expect(createdBotLink).toBeVisible();
+      });
+
+      await test.step('Search bot by email', async () => {
+        await searchFromSearchInput(page, searchInput, BOT_DETAILS.botEmail);
+
+        await expect(createdBotLink).toBeVisible();
+      });
+
+      await test.step('Search with no match shows empty state', async () => {
+        await searchFromSearchInput(
+          page,
+          searchInput,
+          `${BOT_DETAILS.updatedBotName}-no-match`
+        );
+
+        await expect(
+          page.getByTestId('search-error-placeholder')
+        ).toBeVisible();
+      });
+
+      await test.step('Clear search restores full list', async () => {
+        await searchInput.clear();
+        await searchInput.fill('');
+        await expect(searchInput).toHaveValue('');
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(createdBotLink).toBeVisible();
+      });
+
+      await test.step('Update token expiration', async () => {
+        await tokenExpirationForDays(page);
+        await tokenExpirationUnlimitedDays(page);
+      });
+
+      await test.step('Delete Bot', async () => {
+        await deleteBot(page);
+      });
     });
-  });
-});
+  }
+);
