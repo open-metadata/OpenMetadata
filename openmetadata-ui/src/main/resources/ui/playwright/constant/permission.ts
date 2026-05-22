@@ -21,6 +21,10 @@ export const DEFAULT_POLICIES = {
   teamOnlyAccessPolicy: 'Team only access Policy',
 };
 
+export const SYSTEM_POLICY_NAMES = {
+  taskAuthorPolicy: 'TaskAuthorPolicy',
+};
+
 export const RULE_DETAILS = {
   resources: 'All',
   operations: 'All',
