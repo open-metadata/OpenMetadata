@@ -18,10 +18,10 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { File06, Home02 } from '@untitledui/icons';
-import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ArchiveView from '../../../components/ContextCenter/ArchiveView/ArchiveView.component';
 import { ArchiveItem } from '../../../components/ContextCenter/ArchiveView/ArchiveView.interface';

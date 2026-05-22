@@ -19,12 +19,7 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  ChevronDown,
-  FilterLines,
-  Home02,
-  Plus,
-} from '@untitledui/icons';
+import { ChevronDown, FilterLines, Home02, Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
@@ -280,7 +275,6 @@ const ContextCenterMemoriesPage: FC = () => {
     setSearchValue(value);
     setCurrentPage(1);
   }, []);
-
 
   const handleDeleteMemory = useCallback((memory: MemoryItem) => {
     setMemoryToDelete(memory);
