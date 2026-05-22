@@ -159,13 +159,13 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
                   .getLinkString();
           boolean removed = assigneeList.remove(updatedByEntityLink);
           if (removed) {
-            if (assigneeList.isEmpty()) {
+            if (assigneeList.isEmpty() && !workflowManagedTask) {
               assigneeList.add(updatedByEntityLink);
               LOG.debug(
                   "[Process: {}] Self-approval prevention skipped for updatedBy user '{}': no other assignees available",
                   execution.getProcessInstanceId(),
                   updatedBy);
-            } else {
+            } else if (!assigneeList.isEmpty()) {
               LOG.debug(
                   "[Process: {}] Prevented self-approval: Removed updatedBy user '{}' from assignees",
                   execution.getProcessInstanceId(),
