@@ -324,7 +324,37 @@ export default defineConfig(async ({ mode }) => {
             if (id.includes('node_modules/js-yaml')) {
               return 'vendor-yaml';
             }
+            // Linear-style per-package chunking, but with a twist: scoped packages
+            // get grouped by SCOPE (e.g. every @analytics/foo lands in
+            // vendor-analytics, every @react-aria/foo lands in vendor-react-aria).
+            // That's a coarser split than strict per-package but still wins on the
+            // cache invalidation story — bumping ONE @analytics package invalidates
+            // ONE chunk, not the whole vendor graph. The reason for grouping by
+            // scope: many scopes ship dozens of micro-packages (@analytics has 8+,
+            // @react-aria has 30+), and giving each a 2-3 KB chunk means a
+            // long tail of HTTP requests that hurts more than the granular cache
+            // wins. Unscoped packages still get their own chunk.
+            //
+            // For specialist scopes that are already explicitly named above
+            // (@reactflow, @tiptap, @codemirror, @melloware), the explicit rule
+            // wins and this generic regex never reaches them.
+            const scopedMatch = id.match(/node_modules[\\/](@[^\\/]+)[\\/]/);
+            if (scopedMatch) {
+              const scope = scopedMatch[1].replace('@', '');
+              return `vendor-${scope}`;
+            }
+            const unscopedMatch = id.match(/node_modules[\\/]([^\\/]+)/);
+            if (unscopedMatch) {
+              return `vendor-${unscopedMatch[1]}`;
+            }
           },
+          // Merge any chunk smaller than this back into its primary importer. Keeps
+          // the per-package split sane for big packages while preventing the long
+          // tail of ~1 KB utility packages from each becoming their own HTTP
+          // request. 10 KB is a balance — small enough that lodash / dayjs /
+          // classnames stay separable, large enough that 200 tiny packages don't
+          // each get a network roundtrip.
+          experimentalMinChunkSize: 10 * 1024,
         },
       },
     },
