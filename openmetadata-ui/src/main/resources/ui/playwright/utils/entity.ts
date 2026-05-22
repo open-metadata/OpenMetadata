@@ -2137,9 +2137,12 @@ export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
 
   await quickFilterResponse;
 
-  await expect(
-    page.locator('[data-testid="search-dropdown-Service Type"]')
-  ).toContainText(serviceType);
+  // Click on filter dropdown
+  await page.getByTestId('search-dropdown-Service Type').click();
+  // assert on dropdown item visibility
+  await page.getByRole('menuitem', { name: serviceType }).waitFor();
+  // assert on checkbox state
+  await expect(page.getByTestId(`${serviceType}-checkbox`)).toBeChecked();
 
   await expect(
     page

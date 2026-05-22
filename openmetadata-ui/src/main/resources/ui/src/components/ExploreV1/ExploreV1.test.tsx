@@ -34,16 +34,21 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const Button = ({
     children,
     iconLeading,
+    iconTrailing,
     onClick,
+    onPress,
     ...rest
   }: {
     children?: import('react').ReactNode;
     iconLeading?: import('react').ReactNode;
+    iconTrailing?: import('react').ReactNode;
     onClick?: () => void;
+    onPress?: () => void;
   } & Record<string, unknown>) => (
-    <button type="button" onClick={onClick} {...rest}>
+    <button type="button" onClick={onPress ?? onClick} {...rest}>
       {iconLeading}
       {children}
+      {iconTrailing}
     </button>
   );
 
@@ -89,10 +94,74 @@ jest.mock('@openmetadata/ui-core-components', () => {
     title?: import('react').ReactNode;
   } & Record<string, unknown>) => <span {...rest}>{title}</span>;
 
-  return { Alert, Button, Card, Typography };
+  const Box = ({
+    children,
+    ...rest
+  }: {
+    children?: import('react').ReactNode;
+  } & Record<string, unknown>) => <div {...rest}>{children}</div>;
+
+  const Dropdown = {
+    Root: ({
+      children,
+      ...props
+    }: {
+      children?: import('react').ReactNode;
+    } & Record<string, unknown>) => <div {...props}>{children}</div>,
+    Popover: ({ children }: { children?: import('react').ReactNode }) => (
+      <div>{children}</div>
+    ),
+    Menu: ({
+      children,
+      ...props
+    }: {
+      children?: import('react').ReactNode;
+    } & Record<string, unknown>) => (
+      <div role="menu" {...props}>
+        {children}
+      </div>
+    ),
+    Item: ({
+      children,
+      label,
+      onClick,
+      onPress,
+      ...props
+    }: {
+      children?: import('react').ReactNode;
+      label?: string;
+      onClick?: () => void;
+      onPress?: () => void;
+    } & Record<string, unknown>) => (
+      <div role="menuitem" onClick={onPress ?? onClick} {...props}>
+        {label ?? children}
+      </div>
+    ),
+  };
+
+  const Divider = () => <hr />;
+
+  const Toggle = ({
+    isSelected,
+    onChange,
+    ...props
+  }: {
+    isSelected?: boolean;
+    onChange?: (value: boolean) => void;
+  } & Record<string, unknown>) => (
+    <input
+      checked={isSelected}
+      type="checkbox"
+      onChange={(e) => onChange?.(e.target.checked)}
+      {...props}
+    />
+  );
+
+  return { Alert, Box, Button, Card, Divider, Dropdown, Toggle, Typography };
 });
 
 jest.mock('@untitledui/icons', () => ({
+  ChevronDown: () => <span>ChevronDown</span>,
   Download01: () => <span data-testid="download-01-icon" />,
 }));
 
@@ -401,7 +470,12 @@ describe('ExploreV1', () => {
 
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
-    fireEvent.click(screen.getByTestId('export-search-results-button'));
+    const toolsButton = screen.getByText('label.tool-plural');
+    fireEvent.click(toolsButton);
+
+    const exportMenuItem = screen.getByText('label.export');
+    fireEvent.click(exportMenuItem);
+
     const modal = await screen.findByTestId('export-scope-modal');
 
     const exportButton = within(modal).getByRole('button', {
@@ -427,7 +501,12 @@ describe('ExploreV1', () => {
 
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
-    fireEvent.click(screen.getByTestId('export-search-results-button'));
+    const toolsButton = screen.getByText('label.tool-plural');
+    fireEvent.click(toolsButton);
+
+    const exportMenuItem = screen.getByText('label.export');
+    fireEvent.click(exportMenuItem);
+
     const modal = await screen.findByTestId('export-scope-modal');
     const exportButton = within(modal).getByRole('button', {
       name: 'label.export',
@@ -450,7 +529,12 @@ describe('ExploreV1', () => {
 
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
-    fireEvent.click(screen.getByTestId('export-search-results-button'));
+    const toolsButton = screen.getByText('label.tool-plural');
+    fireEvent.click(toolsButton);
+
+    const exportMenuItem = screen.getByText('label.export');
+    fireEvent.click(exportMenuItem);
+
     const modal = await screen.findByTestId('export-scope-modal');
     const exportButton = within(modal).getByRole('button', {
       name: 'label.export',

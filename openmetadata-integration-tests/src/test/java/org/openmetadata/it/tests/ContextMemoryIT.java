@@ -50,7 +50,7 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
     supportsDomains = true;
     supportsDataProducts = false;
     supportsCustomExtension = true;
-    supportsSearchIndex = false;
+    supportsSearchIndex = true;
   }
 
   // ===================================================================
