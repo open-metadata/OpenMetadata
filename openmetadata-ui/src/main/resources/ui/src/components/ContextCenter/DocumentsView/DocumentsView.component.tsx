@@ -85,11 +85,7 @@ const FileActions: FC<FileActionsProps> = ({
             label={t('label.share-file')}
           />
           {canDelete && (
-            <Dropdown.Item
-
-              data-testid="delete-btn"
-              id="delete"
-            >
+            <Dropdown.Item data-testid="delete-btn" id="delete">
               <div className="tw:flex tw:items-center tw:gap-2">
                 <Trash01
                   aria-hidden="true"
@@ -104,7 +100,6 @@ const FileActions: FC<FileActionsProps> = ({
                 </Typography>
               </div>
             </Dropdown.Item>
-
           )}
         </Dropdown.Menu>
       </Dropdown.Popover>

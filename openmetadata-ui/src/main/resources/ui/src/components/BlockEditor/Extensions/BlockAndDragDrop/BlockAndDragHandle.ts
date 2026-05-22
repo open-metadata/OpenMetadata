@@ -188,13 +188,9 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
     }
 
     if (i18n.dir() === 'rtl') {
-      blockHandleElement.style.right = `${
-        rect.right - rect.width + 6
-      }px`;
+      blockHandleElement.style.right = `${rect.right - rect.width + 6}px`;
     } else {
-      blockHandleElement.style.left = `${
-        rect.left - rect.width + 6
-      }px`;
+      blockHandleElement.style.left = `${rect.left - rect.width + 6}px`;
     }
     blockHandleElement.style.top = `${rect.top}px`;
     showBlockHandle();

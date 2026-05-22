@@ -151,7 +151,9 @@ export const unFollowKnowledgePage = async (
 };
 
 export const deleteKnowledgePage = async (id: string) => {
-  const response = await APIClient.delete(`/contextCenter/pages/${id}?hardDelete=false&recursive=false`);
+  const response = await APIClient.delete(
+    `/contextCenter/pages/${id}?hardDelete=false&recursive=false`
+  );
 
   return response.data;
 };

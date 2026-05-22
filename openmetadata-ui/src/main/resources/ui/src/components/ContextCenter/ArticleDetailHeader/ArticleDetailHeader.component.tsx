@@ -370,7 +370,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                         size={16}
                       />
                     </TooltipTrigger>
-
                   </Tooltip>
                   <Typography
                     className={
@@ -401,7 +400,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                         size={16}
                       />
                     </TooltipTrigger>
-
                   </Tooltip>
 
                   {owners.length > 0 ? (
@@ -438,7 +436,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                   <>
                     <Dot className="tw:text-gray-400" size="xs" />
                     <div className="tw:flex tw:items-center tw:gap-1.5">
-
                       <Tooltip title={t('label.editor')}>
                         <TooltipTrigger>
                           <EditorIcon
@@ -447,7 +444,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                             width={16}
                           />
                         </TooltipTrigger>
-
                       </Tooltip>
                       <div className="tw:flex tw:items-center tw:gap-0.5">
                         {editors.map((user) => (
@@ -572,7 +568,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
             <Tooltip
               isOpen={isEmpty(copyTooltip) ? undefined : true}
-              title={isEmpty(copyTooltip) ? t('label.copy-item', { item: t('label.url') }) : copyTooltip}>
+              title={
+                isEmpty(copyTooltip)
+                  ? t('label.copy-item', { item: t('label.url') })
+                  : copyTooltip
+              }>
               <TooltipTrigger>
                 <ButtonUtility
                   color="secondary"
@@ -606,11 +606,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                         setIsDeleteModalOpen(true);
                       }
                     }}>
-                    <Dropdown.Item
-
-                      data-testid="delete-btn"
-                      id="delete"
-                    >
+                    <Dropdown.Item data-testid="delete-btn" id="delete">
                       <div className="tw:flex tw:items-center tw:gap-2">
                         <Trash01
                           aria-hidden="true"

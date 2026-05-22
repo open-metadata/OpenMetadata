@@ -66,10 +66,7 @@ const MemoryActions: FC<MemoryActionsWithOpenProps> = ({
             />
           )}
           {canDelete && (
-            <Dropdown.Item
-              data-testid="delete-btn"
-              id="delete"
-            >
+            <Dropdown.Item data-testid="delete-btn" id="delete">
               <div className="tw:flex tw:items-center tw:gap-2">
                 <Trash01
                   aria-hidden="true"
@@ -143,7 +140,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
         <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap">
           {memory.updatedBy && (
-            <Typography className='tw:text-gray-700' size="text-sm">
+            <Typography className="tw:text-gray-700" size="text-sm">
               {memory.updatedBy}
             </Typography>
           )}
@@ -171,22 +168,22 @@ const MemoryRow: FC<MemoryRowProps> = ({
           </Typography>
           {(memory.usageCount !== undefined ||
             memory.lastUsedAt !== undefined) && (
-              <div className="tw:flex tw:items-center tw:gap-1 tw:shrink-0">
-                <Clock className="tw:text-gray-500" size={12} strokeWidth={1.5} />
-                <Typography
-                  className="tw:text-gray-500 tw:whitespace-nowrap"
-                  size="text-xs">
-                  {memory.usageCount === undefined
-                    ? ''
-                    : t('label.used-n-times', { count: memory.usageCount })}
-                  {memory.lastUsedAt
-                    ? ` · ${t('label.last')} ${getShortRelativeTime(
+            <div className="tw:flex tw:items-center tw:gap-1 tw:shrink-0">
+              <Clock className="tw:text-gray-500" size={12} strokeWidth={1.5} />
+              <Typography
+                className="tw:text-gray-500 tw:whitespace-nowrap"
+                size="text-xs">
+                {memory.usageCount === undefined
+                  ? ''
+                  : t('label.used-n-times', { count: memory.usageCount })}
+                {memory.lastUsedAt
+                  ? ` · ${t('label.last')} ${getShortRelativeTime(
                       memory.lastUsedAt
                     )}`
-                    : ''}
-                </Typography>
-              </div>
-            )}
+                  : ''}
+              </Typography>
+            </div>
+          )}
         </div>
 
         {memory.tags && memory.tags.length > 0 && (
@@ -219,10 +216,11 @@ const MemoryRow: FC<MemoryRowProps> = ({
 
       {/* 3-dot actions — visible on hover or while menu is open */}
       <div
-        className={`tw:absolute tw:top-3 tw:right-3 tw:transition-opacity  ${isMenuOpen
+        className={`tw:absolute tw:top-3 tw:right-3 tw:transition-opacity  ${
+          isMenuOpen
             ? 'tw:opacity-100'
             : 'tw:opacity-0 tw:group-hover:opacity-100'
-          }`}
+        }`}
         onClick={(e) => e.stopPropagation()}>
         <MemoryActions
           canDelete={canDelete}

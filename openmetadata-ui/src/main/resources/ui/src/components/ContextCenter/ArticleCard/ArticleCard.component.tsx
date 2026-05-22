@@ -49,13 +49,21 @@ const ArticleCard: FC<ArticleCardProps> = ({ article, onClick }) => {
           onClick?.(article);
         }
       }}>
-      <div className='tw:flex tw:flex-col tw:gap-2'>
+      <div className="tw:flex tw:flex-col tw:gap-2">
         <Typography ellipsis className="tw:text-gray-700" weight="semibold">
           {title}
         </Typography>
-        {description ? <Typography className="tw:text-gray-500 tw:line-clamp-2">
-          {getTextFromHtmlString(getHtmlStringFromMarkdownString(description))}
-        </Typography> : <Typography className="text-grey-muted">{t('label.no-description')}</Typography>}
+        {description ? (
+          <Typography className="tw:text-gray-500 tw:line-clamp-2">
+            {getTextFromHtmlString(
+              getHtmlStringFromMarkdownString(description)
+            )}
+          </Typography>
+        ) : (
+          <Typography className="text-grey-muted">
+            {t('label.no-description')}
+          </Typography>
+        )}
 
         {tagsToShow.length > 0 && (
           <div className="tw:flex tw:flex-wrap tw:gap-1">

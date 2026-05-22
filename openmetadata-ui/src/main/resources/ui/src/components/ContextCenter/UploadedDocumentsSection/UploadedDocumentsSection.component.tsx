@@ -85,9 +85,7 @@ const UploadedDocumentsSection: FC<UploadedDocumentsSectionProps> = ({
   );
 
   return (
-    <Card
-      className="tw:p-6"
-      data-testid="uploaded-documents-section">
+    <Card className="tw:p-6" data-testid="uploaded-documents-section">
       <div className="tw:flex tw:items-center tw:justify-between tw:pb-5">
         <div className="tw:flex tw:items-center tw:gap-3">
           <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">

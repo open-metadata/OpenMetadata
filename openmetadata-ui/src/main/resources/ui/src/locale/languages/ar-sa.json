@@ -722,6 +722,7 @@
     "edit-workflow-agent": "تعديل وكيل {{workflow}}",
     "edited": "تم التعديل",
     "edited-columns": "الأعمدة المعدّلة",
+    "editor": "محرر",
     "effect": "تأثير",
     "elastic-search-re-index": "إعادة فهرسة Elasticsearch",
     "elasticsearch": "Elasticsearch",

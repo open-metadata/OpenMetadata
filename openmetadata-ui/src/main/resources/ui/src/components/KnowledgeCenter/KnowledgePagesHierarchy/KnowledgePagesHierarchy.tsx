@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography as AntTypography, Button, Modal, Skeleton, Tree } from 'antd';
+import {
+  Button,
+  Modal,
+  Skeleton,
+  Tree,
+  Typography as AntTypography,
+} from 'antd';
 import { DataNode } from 'antd/es/tree';
 import { AntTreeNodeProps, DirectoryTreeProps, TreeProps } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
@@ -740,22 +746,27 @@ const KnowledgePagesHierarchy = forwardRef<
     return (
       <div className="knowledge-pages-hierarchy-wrapper">
         <div className="tw:flex tw:items-center tw:gap-3 tw:p-4 pt-2 tw:mb-2">
-            <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
-              <File06 className="tw:text-gray-600" height={20} strokeWidth={1.2} width={20} />
-            </div>
-            <div>
-              <Typography size="text-md" weight="semibold">
-                {t('label.article-plural')}
-              </Typography>
-              <Typography
-                className="tw:text-gray-500 tw:flex tw:items-center tw:gap-3"
-                size="text-xs">
-                <span>
-                  {paginationState.paging.total} {t('label.article-plural')}
-                </span>
-              </Typography>
-            </div>
+          <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
+            <File06
+              className="tw:text-gray-600"
+              height={20}
+              strokeWidth={1.2}
+              width={20}
+            />
           </div>
+          <div>
+            <Typography size="text-md" weight="semibold">
+              {t('label.article-plural')}
+            </Typography>
+            <Typography
+              className="tw:text-gray-500 tw:flex tw:items-center tw:gap-3"
+              size="text-xs">
+              <span>
+                {paginationState.paging.total} {t('label.article-plural')}
+              </span>
+            </Typography>
+          </div>
+        </div>
         <DirectoryTree
           data-testid="knowledge-pages-hierarchy"
           defaultExpandAll={false}

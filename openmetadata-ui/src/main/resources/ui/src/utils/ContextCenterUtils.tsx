@@ -80,7 +80,13 @@ export const getFileTypeIcon = (fileType: string) => {
     case 'image':
       return <ImageIcon {...commonProps} />;
     default:
-      return <File06 strokeWidth={1.2} {...commonProps} className="tw:text-gray-500" />;
+      return (
+        <File06
+          strokeWidth={1.2}
+          {...commonProps}
+          className="tw:text-gray-500"
+        />
+      );
   }
 };
 
