@@ -122,10 +122,147 @@
     </script>
 
     <title>OpenMetadata</title>
+
+    <!--
+      Inlined loading shell. Shown the instant the HTML is parsed — about a
+      second before the React bundle finishes executing on a cold tab. Lives
+      inside <head> as a <style> + inside <div id="root"> as DOM, so it's
+      replaced atomically when React calls createRoot().render() on root.
+      No external CSS, no JS, no fonts — first paint is bounded by the HTML
+      parser, not the network.
+    -->
+    <style nonce="${cspNonce}">
+      .om-boot-shell {
+        position: fixed;
+        inset: 0;
+        background: #fafafa;
+        display: flex;
+        flex-direction: column;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        color: #535862;
+        z-index: 0;
+      }
+      .om-boot-shell__bar {
+        height: 56px;
+        border-bottom: 1px solid #e9eaeb;
+        background: #ffffff;
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        gap: 16px;
+      }
+      .om-boot-shell__logo {
+        height: 28px;
+        width: 28px;
+        border-radius: 6px;
+        background: linear-gradient(135deg, #4b48ff, #6f6cff);
+      }
+      .om-boot-shell__body {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+      }
+      .om-boot-shell__sidebar {
+        width: 240px;
+        border-right: 1px solid #e9eaeb;
+        background: #ffffff;
+        padding: 16px 12px;
+      }
+      .om-boot-shell__skeleton {
+        height: 14px;
+        margin: 12px 4px;
+        border-radius: 6px;
+        background: linear-gradient(
+          90deg,
+          #f0f1f2 25%,
+          #e3e5e8 37%,
+          #f0f1f2 63%
+        );
+        background-size: 400% 100%;
+        animation: om-boot-shimmer 1.4s ease infinite;
+      }
+      .om-boot-shell__skeleton--short {
+        width: 60%;
+      }
+      .om-boot-shell__skeleton--medium {
+        width: 80%;
+      }
+      .om-boot-shell__main {
+        flex: 1;
+        padding: 24px 32px;
+      }
+      .om-boot-shell__title {
+        height: 22px;
+        width: 280px;
+        margin-bottom: 24px;
+        border-radius: 8px;
+        background: linear-gradient(
+          90deg,
+          #f0f1f2 25%,
+          #e3e5e8 37%,
+          #f0f1f2 63%
+        );
+        background-size: 400% 100%;
+        animation: om-boot-shimmer 1.4s ease infinite;
+      }
+      .om-boot-shell__card {
+        height: 96px;
+        margin-bottom: 16px;
+        border-radius: 12px;
+        background: linear-gradient(
+          90deg,
+          #f0f1f2 25%,
+          #e3e5e8 37%,
+          #f0f1f2 63%
+        );
+        background-size: 400% 100%;
+        animation: om-boot-shimmer 1.4s ease infinite;
+      }
+      @keyframes om-boot-shimmer {
+        0% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0 50%;
+        }
+      }
+      /*
+        When React mounts it replaces the children of #root, so the shell
+        unmounts naturally. The .om-boot-shell--hidden class is here as a
+        belt-and-braces escape hatch if something delays unmount.
+      */
+      .om-boot-shell--hidden {
+        display: none;
+      }
+    </style>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
+    <div id="root">
+      <div class="om-boot-shell" aria-hidden="true">
+        <div class="om-boot-shell__bar">
+          <div class="om-boot-shell__logo"></div>
+        </div>
+        <div class="om-boot-shell__body">
+          <aside class="om-boot-shell__sidebar">
+            <div class="om-boot-shell__skeleton om-boot-shell__skeleton--medium"></div>
+            <div class="om-boot-shell__skeleton om-boot-shell__skeleton--short"></div>
+            <div class="om-boot-shell__skeleton om-boot-shell__skeleton--medium"></div>
+            <div class="om-boot-shell__skeleton om-boot-shell__skeleton--short"></div>
+            <div class="om-boot-shell__skeleton om-boot-shell__skeleton--medium"></div>
+            <div class="om-boot-shell__skeleton om-boot-shell__skeleton--short"></div>
+            <div class="om-boot-shell__skeleton om-boot-shell__skeleton--medium"></div>
+          </aside>
+          <main class="om-boot-shell__main">
+            <div class="om-boot-shell__title"></div>
+            <div class="om-boot-shell__card"></div>
+            <div class="om-boot-shell__card"></div>
+            <div class="om-boot-shell__card"></div>
+          </main>
+        </div>
+      </div>
+    </div>
     <img
       referrerpolicy="no-referrer-when-downgrade"
       src="https://static.scarf.sh/a.png?x-pxid=9744b844-501a-4ca1-ad54-29b13e6b4642"
