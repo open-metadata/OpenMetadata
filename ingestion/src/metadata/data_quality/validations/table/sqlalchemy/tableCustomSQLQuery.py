@@ -370,7 +370,7 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             return [], []
         return [str(col) for col in rows[0]._fields], [list(row) for row in rows]
 
-    def get_inspection_query(self):
+    def get_inspection_query(self) -> Optional[str]:  # noqa: UP045
         return self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
             "sqlExpression",
@@ -380,7 +380,7 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
     def result_with_failed_samples(self, result: TestCaseResultResponse) -> None:
         """Collect failed-row samples when consent is given and strategy is ROWS."""
         if not (
-            getattr(self.test_case, "computePassedFailedRowCount", False)
+            getattr(result.testCase, "computePassedFailedRowCount", False)
             and result.testCaseResult.testCaseStatus == TestCaseStatus.Failed
             and self._get_strategy() == Strategy.ROWS
         ):
