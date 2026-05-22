@@ -94,10 +94,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     // are no-ops until their pages migrate to useQuery. {@code prefetchQuery} is idempotent
     // within the configured {@code staleTime}, so repeated hovers don't re-fire the request.
     const handlePrefetch = useCallback(() => {
-      if (
-        source.entityType === EntityType.TABLE &&
-        source.fullyQualifiedName
-      ) {
+      if (source.entityType === EntityType.TABLE && source.fullyQualifiedName) {
         prefetchTable(queryClient, source.fullyQualifiedName);
       }
     }, [queryClient, source.entityType, source.fullyQualifiedName]);
