@@ -31,6 +31,8 @@ public class SearchMetadataTool implements McpTool {
   private static final int MAX_ALLOWED_AGGREGATION_BUCKETS = 50;
   private static final int DESCRIPTION_MAX_LENGTH = 500;
   private static final int DESCRIPTION_TRUNCATE_LENGTH = 450;
+  private static final int MAX_RESPONSE_CHARS = 100_000;
+  private static final int COLUMN_NAMES_MAX = 20;
 
   private static final List<String> ESSENTIAL_FIELDS_ONLY =
       List.of(
@@ -332,9 +334,42 @@ public class SearchMetadataTool implements McpTool {
       result.put(
           "message",
           String.format(
-              "Found %d total results, showing first %d. Use pagination or refine your search for more specific results, you can call these 3 times by yourself with pagination , and then only if the user ask for more paginate.",
+              "Found %d total results, showing first %d. "
+                  + "There are many matching assets — are you looking for something specific? "
+                  + "Try narrowing with a service name, schema name, or more specific search term.",
               totalResults, cleanedResults.size()));
       result.put("hasMore", true);
+    }
+
+    try {
+      String serialized = JsonUtils.pojoToJson(result);
+      LOG.info(
+          "[MCP] search_metadata response size: {} chars for query '{}'",
+          serialized.length(),
+          query);
+      if (serialized.length() > MAX_RESPONSE_CHARS) {
+        int targetCount =
+            Math.min(
+                Math.max(1, cleanedResults.size() * MAX_RESPONSE_CHARS / serialized.length()),
+                cleanedResults.size());
+        List<Map<String, Object>> trimmed = new ArrayList<>(cleanedResults.subList(0, targetCount));
+        LOG.warn(
+            "[MCP] search_metadata response trimmed: {} chars -> {} results (was {})",
+            serialized.length(),
+            trimmed.size(),
+            cleanedResults.size());
+        result.put("results", trimmed);
+        result.put("returnedCount", trimmed.size());
+        result.put(
+            "message",
+            String.format(
+                "Response exceeded %d characters and was trimmed to %d of %d results. "
+                    + "There are many matching assets — are you looking for something specific? "
+                    + "Try narrowing with a service name, schema, or specific name.",
+                MAX_RESPONSE_CHARS, trimmed.size(), totalResults));
+      }
+    } catch (RuntimeException e) {
+      LOG.warn("Failed to check response size for query '{}': {}", query, e.getMessage());
     }
 
     return result;
@@ -363,6 +398,20 @@ public class SearchMetadataTool implements McpTool {
       Object descObj = result.get("description");
       if (descObj instanceof String description && description.length() > DESCRIPTION_MAX_LENGTH) {
         result.put("description", description.substring(0, DESCRIPTION_TRUNCATE_LENGTH) + "...");
+      }
+    }
+    // Truncate long columnNames lists — tables with hundreds of columns cause major token bloat
+    if (result.containsKey("columnNames")) {
+      Object colNamesObj = result.get("columnNames");
+      if (colNamesObj instanceof List<?> colNames && colNames.size() > COLUMN_NAMES_MAX) {
+        LOG.info(
+            "[MCP] columnNames truncated: {} -> {} for entity {}",
+            colNames.size(),
+            COLUMN_NAMES_MAX,
+            result.get("fullyQualifiedName"));
+        List<Object> truncated = new ArrayList<>(colNames.subList(0, COLUMN_NAMES_MAX));
+        truncated.add(String.format("... %d more columns", colNames.size() - COLUMN_NAMES_MAX));
+        result.put("columnNames", truncated);
       }
     }
     return result;
