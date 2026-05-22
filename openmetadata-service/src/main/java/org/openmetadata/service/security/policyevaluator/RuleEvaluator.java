@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.Function;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
@@ -90,6 +91,57 @@ public class RuleEvaluator {
       return false;
     }
     return subjectContext.isReviewer(resourceContext.getEntity().getReviewers());
+  }
+
+  @Function(
+      name = "isTaskFiler",
+      input = "none",
+      description =
+          "Returns true if the logged in user filed (created) the task being accessed. "
+              + "Only applies when the resource is a task.",
+      examples = {"isTaskFiler()", "!isTaskFiler()"})
+  public boolean isTaskFiler() {
+    Task task = currentTask();
+    boolean filer = false;
+    if (task != null && task.getCreatedBy() != null) {
+      filer = subjectContext.isOwner(List.of(task.getCreatedBy()));
+    }
+    return filer;
+  }
+
+  @Function(
+      name = "isTaskAssignee",
+      input = "none",
+      description =
+          "Returns true if the logged in user (or one of their teams) is an assignee of the "
+              + "task being accessed. Only applies when the resource is a task.",
+      examples = {"isTaskAssignee()", "!isTaskAssignee()"})
+  public boolean isTaskAssignee() {
+    Task task = currentTask();
+    return task != null && subjectContext.isOwner(task.getAssignees());
+  }
+
+  @Function(
+      name = "isTaskReviewer",
+      input = "none",
+      description =
+          "Returns true if the logged in user (or one of their teams) is a reviewer of the "
+              + "task being accessed. Only applies when the resource is a task.",
+      examples = {"isTaskReviewer()", "!isTaskReviewer()"})
+  public boolean isTaskReviewer() {
+    Task task = currentTask();
+    return task != null && subjectContext.isOwner(task.getReviewers());
+  }
+
+  private Task currentTask() {
+    Task task = null;
+    if (!expressionValidation && subjectContext != null && resourceContext != null) {
+      EntityInterface entity = resourceContext.getEntity();
+      if (entity instanceof Task t) {
+        task = t;
+      }
+    }
+    return task;
   }
 
   @Function(
