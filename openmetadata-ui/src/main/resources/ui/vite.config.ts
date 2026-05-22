@@ -168,6 +168,17 @@ export default defineConfig(({ mode }) => {
       },
     },
 
+    preview: {
+      port: 3000,
+      proxy: {
+        '/api/': {
+          target: devServerTarget,
+          changeOrigin: true,
+          ws: true,
+        },
+      },
+    },
+
     build: {
       outDir: 'dist',
       assetsDir: 'assets',
