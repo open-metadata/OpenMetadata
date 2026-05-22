@@ -46,6 +46,7 @@ import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -681,6 +682,66 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
       throws HttpResponseException {
     WebTarget target = getResource("domains/" + domainName + "/assets/remove");
     TestUtils.put(target, request, Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  private BulkOperationResult bulkAddAssetsResult(String domainName, BulkAssets request)
+      throws HttpResponseException {
+    WebTarget target = getResource("domains/" + domainName + "/assets/add");
+    return TestUtils.put(target, request, BulkOperationResult.class, Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  private BulkOperationResult bulkRemoveAssetsResult(String domainName, BulkAssets request)
+      throws HttpResponseException {
+    WebTarget target = getResource("domains/" + domainName + "/assets/remove");
+    return TestUtils.put(target, request, BulkOperationResult.class, Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_bulkAddAssets_dryRunTrue_doesNotApply(TestInfo test) throws IOException {
+    Domain domain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    Table table =
+        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 1)), ADMIN_AUTH_HEADERS);
+
+    BulkOperationResult result =
+        bulkAddAssetsResult(
+            domain.getFullyQualifiedName(),
+            new BulkAssets().withDryRun(true).withAssets(List.of(table.getEntityReference())));
+
+    assertEquals(Boolean.TRUE, result.getDryRun());
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    ResultList<EntityReference> assets = getAssets(domain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(0, assets.getData().size(), "dryRun must not attach the asset");
+  }
+
+  @Test
+  void test_bulkRemoveAssets_dryRunTrue_doesNotApply(TestInfo test) throws IOException {
+    Domain domain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    Table table =
+        tableTest.createEntity(tableTest.createRequest(getEntityName(test, 1)), ADMIN_AUTH_HEADERS);
+
+    bulkAddAssets(
+        domain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table.getEntityReference())));
+    assertEquals(1, getAssets(domain.getId(), 100, 0, ADMIN_AUTH_HEADERS).getData().size());
+
+    BulkOperationResult result =
+        bulkRemoveAssetsResult(
+            domain.getFullyQualifiedName(),
+            new BulkAssets().withDryRun(true).withAssets(List.of(table.getEntityReference())));
+
+    assertEquals(Boolean.TRUE, result.getDryRun());
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    ResultList<EntityReference> assets = getAssets(domain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(1, assets.getData().size(), "dryRun must not detach the asset");
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table.getId())));
   }
 
   @Test
