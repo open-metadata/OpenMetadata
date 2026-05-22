@@ -1619,6 +1619,11 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
+  protected List<Column> getColumnsForExtensionPersistence(Table entity) {
+    return entity.getColumns();
+  }
+
+  @Override
   protected void clearEntitySpecificRelationshipsForMany(List<Table> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(Table::getId).toList();
