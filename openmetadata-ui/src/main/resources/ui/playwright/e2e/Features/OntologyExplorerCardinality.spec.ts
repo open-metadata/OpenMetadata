@@ -38,23 +38,40 @@ const CUSTOM_RELATION_NAMES = {
   CUSTOM_1_M: 'pw-cardinality-custom',
 } as const;
 
+// Each relation type gets its own isolated source-target pair so no single
+// term accumulates multiple cardinality-constrained relations, which would
+// trigger backend re-validation failures on the second PATCH.
 const glossary = new Glossary();
-const termA = new GlossaryTerm(glossary);
-const termB = new GlossaryTerm(glossary);
-const termC = new GlossaryTerm(glossary);
-const termD = new GlossaryTerm(glossary);
-const termE = new GlossaryTerm(glossary);
+const otoSrc = new GlossaryTerm(glossary);
+const otoDst = new GlossaryTerm(glossary);
+const otmSrc = new GlossaryTerm(glossary);
+const otmDst = new GlossaryTerm(glossary);
+const mtoSrc = new GlossaryTerm(glossary);
+const mtoDst = new GlossaryTerm(glossary);
+const mtmSrc = new GlossaryTerm(glossary);
+const mtmDst = new GlossaryTerm(glossary);
+const cusSrc = new GlossaryTerm(glossary);
+const cusDst = new GlossaryTerm(glossary);
+const relSrc = new GlossaryTerm(glossary);
+const relDst = new GlossaryTerm(glossary);
 
 test.describe('Ontology Explorer - Cardinality Labels', () => {
   test.beforeAll(async ({ browser }) => {
     const { page, apiContext } = await createApiContext(browser);
 
     await glossary.create(apiContext);
-    await termA.create(apiContext);
-    await termB.create(apiContext);
-    await termC.create(apiContext);
-    await termD.create(apiContext);
-    await termE.create(apiContext);
+    await otoSrc.create(apiContext);
+    await otoDst.create(apiContext);
+    await otmSrc.create(apiContext);
+    await otmDst.create(apiContext);
+    await mtoSrc.create(apiContext);
+    await mtoDst.create(apiContext);
+    await mtmSrc.create(apiContext);
+    await mtmDst.create(apiContext);
+    await cusSrc.create(apiContext);
+    await cusDst.create(apiContext);
+    await relSrc.create(apiContext);
+    await relDst.create(apiContext);
 
     await addRelationTypeWithCardinality(apiContext, {
       name: CUSTOM_RELATION_NAMES.ONE_TO_ONE,
@@ -84,30 +101,12 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
       targetMax: null,
     });
 
-    await addTermRelation(
-      apiContext,
-      termA,
-      termB,
-      CUSTOM_RELATION_NAMES.ONE_TO_ONE
-    );
-    await addTermRelation(
-      apiContext,
-      termA,
-      termC,
-      CUSTOM_RELATION_NAMES.ONE_TO_MANY
-    );
-    await addTermRelation(
-      apiContext,
-      termA,
-      termD,
-      CUSTOM_RELATION_NAMES.MANY_TO_ONE
-    );
-    await addTermRelation(
-      apiContext,
-      termA,
-      termE,
-      CUSTOM_RELATION_NAMES.MANY_TO_MANY
-    );
+    await addTermRelation(apiContext, otoSrc, otoDst, CUSTOM_RELATION_NAMES.ONE_TO_ONE);
+    await addTermRelation(apiContext, otmSrc, otmDst, CUSTOM_RELATION_NAMES.ONE_TO_MANY);
+    await addTermRelation(apiContext, mtoSrc, mtoDst, CUSTOM_RELATION_NAMES.MANY_TO_ONE);
+    await addTermRelation(apiContext, mtmSrc, mtmDst, CUSTOM_RELATION_NAMES.MANY_TO_MANY);
+    await addTermRelation(apiContext, cusSrc, cusDst, CUSTOM_RELATION_NAMES.CUSTOM_1_M);
+    await addTermRelation(apiContext, relSrc, relDst, 'relatedTo');
 
     await disposeApiContext(page, apiContext);
   });
@@ -117,11 +116,18 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
 
     await deleteEntities(
       apiContext,
-      termA,
-      termB,
-      termC,
-      termD,
-      termE,
+      otoSrc,
+      otoDst,
+      otmSrc,
+      otmDst,
+      mtoSrc,
+      mtoDst,
+      mtmSrc,
+      mtmDst,
+      cusSrc,
+      cusDst,
+      relSrc,
+      relDst,
       glossary
     );
 

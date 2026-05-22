@@ -150,32 +150,32 @@ export async function addTermRelation(
   toTerm: GlossaryTerm,
   relationType: string
 ) {
+  const toTermRef = {
+    id: toTerm.responseData.id,
+    type: 'glossaryTerm',
+    name: toTerm.responseData.name,
+    displayName: toTerm.responseData.displayName,
+    fullyQualifiedName: toTerm.responseData.fullyQualifiedName,
+  };
   const termRes = await apiContext.get(
     `/api/v1/glossaryTerms/${fromTerm.responseData.id}?fields=relatedTerms`
   );
   const termData = await termRes.json();
-  const existingRelations: Array<Record<string, unknown>> =
-    termData.relatedTerms ?? [];
+  const hasExisting =
+    Array.isArray(termData.relatedTerms) && termData.relatedTerms.length > 0;
+  const patchOp = hasExisting
+    ? {
+        op: 'add',
+        path: '/relatedTerms/-',
+        value: { relationType, term: toTermRef },
+      }
+    : {
+        op: 'add',
+        path: '/relatedTerms',
+        value: [{ relationType, term: toTermRef }],
+      };
 
-  await fromTerm.patch(apiContext, [
-    {
-      op: 'add',
-      path: '/relatedTerms',
-      value: [
-        ...existingRelations,
-        {
-          relationType,
-          term: {
-            id: toTerm.responseData.id,
-            type: 'glossaryTerm',
-            name: toTerm.responseData.name,
-            displayName: toTerm.responseData.displayName,
-            fullyQualifiedName: toTerm.responseData.fullyQualifiedName,
-          },
-        },
-      ],
-    },
-  ]);
+  await fromTerm.patch(apiContext, [patchOp]);
 }
 
 export async function navigateAndFilterByGlossary(
