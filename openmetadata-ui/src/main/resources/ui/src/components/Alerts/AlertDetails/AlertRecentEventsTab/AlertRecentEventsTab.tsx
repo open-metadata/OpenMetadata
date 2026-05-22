@@ -43,9 +43,9 @@ import {
   getChangeEventDataFromTypedEvent,
   getLabelsForEventDetails,
 } from '../../../../utils/Alerts/AlertsUtil';
-import { Transi18next } from '../../../../utils/CommonUtils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';

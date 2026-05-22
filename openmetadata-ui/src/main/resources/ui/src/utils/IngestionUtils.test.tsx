@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
+import { ServiceCategory } from '../enums/service.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
+import { StorageServiceType } from '../generated/entity/services/storageService';
 import { ServicesType } from '../interface/service.interface';
 import { getIngestionTypes, getSupportedPipelineTypes } from './IngestionUtils';
 
@@ -98,6 +100,30 @@ describe('getSupportedPipelineTypes', () => {
     const result = getSupportedPipelineTypes(serviceDetails);
 
     expect(result).toContain(PipelineType.ElasticSearchReindex);
+  });
+
+  it('should return only AutoClassification for storage services with supportsProfiler', () => {
+    const serviceDetails: ServicesType = {
+      id: '',
+      name: '',
+      serviceType: StorageServiceType.S3,
+      connection: {
+        config: {
+          supportsMetadataExtraction: true,
+          supportsProfiler: true,
+        },
+      },
+    };
+    const result = getSupportedPipelineTypes(
+      serviceDetails,
+      ServiceCategory.STORAGE_SERVICES
+    );
+
+    expect(result).toEqual([
+      PipelineType.Metadata,
+      PipelineType.AutoClassification,
+    ]);
+    expect(result).not.toContain(PipelineType.Profiler);
   });
 });
 

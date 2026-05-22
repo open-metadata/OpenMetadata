@@ -10,7 +10,7 @@ public class PostMapper {
     return new Post()
         .withId(UUID.randomUUID())
         .withMessage(create.getMessage())
-        .withFrom(create.getFrom())
+        .withFrom(user)
         .withReactions(Collections.emptyList())
         .withPostTs(System.currentTimeMillis());
   }

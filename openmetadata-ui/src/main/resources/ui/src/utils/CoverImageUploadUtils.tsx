@@ -18,7 +18,7 @@ import imageClassBase from '../components/BlockEditor/Extensions/image/ImageClas
 import { CoverImageFileValue } from '../components/common/CoverImageUpload/CoverImageUpload.interface';
 import { ERROR_MESSAGE } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
-import { getIsErrorMatch } from './CommonUtils';
+import { getIsErrorMatch } from './APIUtils';
 import {
   showNotistackError,
   showNotistackSuccess,

@@ -17,7 +17,6 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
 @Builder
 public class FeedFilter {
   @Getter private ThreadType threadType;
-  @Getter private Boolean activeAnnouncement;
   @Getter private TaskStatus taskStatus;
   @Getter private Boolean resolved;
   @Getter private FilterType filterType;
@@ -38,15 +37,7 @@ public class FeedFilter {
     if (threadType != null) {
       queryParams.put("threadType", threadType.value());
       condition1 = "type = :threadType";
-      if (ThreadType.Announcement.equals(threadType) && activeAnnouncement != null) {
-        // Add activeAnnouncement filter
-        long now = System.currentTimeMillis(); // epoch time in milliseconds
-        String condition2 =
-            activeAnnouncement
-                ? String.format("%s BETWEEN announcementStart AND announcementEnd", now)
-                : String.format("%s NOT BETWEEN announcementStart AND announcementEnd", now);
-        condition1 = addCondition(condition1, condition2);
-      } else if (ThreadType.Task.equals(threadType) && taskStatus != null) {
+      if (ThreadType.Task.equals(threadType) && taskStatus != null) {
         queryParams.put("taskStatus", taskStatus.toString());
         condition1 = addCondition(condition1, "taskStatus = :taskStatus");
       }

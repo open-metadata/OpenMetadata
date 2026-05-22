@@ -22,7 +22,7 @@ import { TopicSampleData } from '../../../generated/entity/data/topic';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getSampleDataBySearchIndexId } from '../../../rest/SearchIndexAPI';
 import { getSampleDataByTopicId } from '../../../rest/topicsAPI';
-import { Transi18next } from '../../../utils/CommonUtils';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import MessageCard from './MessageCard';

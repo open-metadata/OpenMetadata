@@ -36,8 +36,8 @@ import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/Asy
 import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { deleteEntity } from '../../../rest/miscAPI';
-import { Transi18next } from '../../../utils/CommonUtils';
 import deleteWidgetClassBase from '../../../utils/DeleteWidget/DeleteWidgetClassBase';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import './delete-widget-modal.style.less';

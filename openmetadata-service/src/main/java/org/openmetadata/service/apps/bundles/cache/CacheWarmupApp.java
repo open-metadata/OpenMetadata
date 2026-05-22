@@ -1,6 +1,15 @@
+/*
+ *  Copyright 2024 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ */
 package org.openmetadata.service.apps.bundles.cache;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_CONFIG;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
@@ -8,19 +17,16 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET
 import static org.openmetadata.service.socket.WebSocketManager.CACHE_WARMUP_JOB_BROADCAST_CHANNEL;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import java.net.InetAddress;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -28,67 +34,110 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
+import org.openmetadata.schema.entity.applications.configuration.internal.CacheWarmupAppConfig;
 import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.cache.BundleWarmupBatcher;
 import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheConfig;
+import org.openmetadata.service.cache.CacheKeys;
+import org.openmetadata.service.cache.CacheMetrics;
 import org.openmetadata.service.cache.CacheProvider;
-import org.openmetadata.service.cache.CachedEntityDao;
-import org.openmetadata.service.cache.CachedRelationshipDao;
-import org.openmetadata.service.cache.CachedTagUsageDao;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.workflows.interfaces.Source;
-import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.quartz.JobExecutionContext;
 
+/**
+ * Cache warmup driven by bulk SQL + pipelined Redis writes.
+ *
+ * <p>The previous implementation iterated entities one at a time through
+ * {@code EntityRepository.find(Include.ALL)} (which triggers the full ReadBundle fan-out) and
+ * fronted the work with a producer/consumer queue plus a single-instance Redis distributed lock.
+ * Even modest installs took hours, and multi-instance deployments idled all but one server.
+ *
+ * <p>The new flow:
+ * <ul>
+ *   <li>Stream pages of raw JSON rows via {@link EntityDAO#listAfterWithOffset} — no joins, no
+ *       relationship resolution, just the column store.</li>
+ *   <li>Populate {@code om:<ns>:e:<type>:<uuid>} (HSET field {@code base}) and
+ *       {@code om:<ns>:en:<type>:<fqnHash>} (SET) for each row.</li>
+ *   <li>Write each batch with Lettuce async pipelining — one await covers the whole batch rather
+ *       than one RTT per key.</li>
+ *   <li>No distributed lock. Instances warm independently; Redis writes are idempotent, so the
+ *       worst case is redundant SETs of identical JSON.</li>
+ * </ul>
+ *
+ * <p>The {@code bundle:{<uuid>}:<type>} entries are pre-warmed by default via {@link
+ * org.openmetadata.service.cache.BundleWarmupBatcher}, which uses cheap batched queries to populate
+ * tags + certification. Operators can opt into {@code warmRelationships=true} to also batch-warm
+ * common low-cardinality relation fields in the bundle. Set {@code warmBundles=false} in the app
+ * config (or
+ * {@code -Dom.cache.warmBundles=false} at JVM start) to skip the bundle pass for very large
+ * installs.
+ *
+ * <p>Optional opt-in {@code enableDistributedClaim=true} adds a Redis SETNX-based per-entity-
+ * type claim so multi-instance deployments avoid redundant DB scans. Per-entity-type checkpoints
+ * persist warmup progress across restarts; an aborted run resumes from the last successfully
+ * pipelined offset.
+ */
 @Slf4j
 public class CacheWarmupApp extends AbstractNativeApplication {
-
   private static final String ALL = "all";
-  private static final String POISON_PILL = "__POISON_PILL__";
-  private static final int DEFAULT_BATCH_SIZE = 100;
-  private static final int DEFAULT_QUEUE_SIZE = 10000;
-  private static final int MAX_PRODUCER_THREADS = 10;
-  private static final int MAX_CONSUMER_THREADS = 10;
-  private static final int MAX_TOTAL_THREADS = 30;
-  private static final String WARMUP_LOCK_KEY = "cache:warmup:lock";
-  private static final int LOCK_TTL_SECONDS = 3600; // 1 hour TTL for the lock
+  private static final int DEFAULT_BATCH_SIZE = 1000;
+  private static final Set<String> LEGACY_APP_CONFIG_FIELDS =
+      Set.of("consumerThreads", "queueSize");
+  // Built per-instance from cacheConfig.redis.keyspace so multi-environment deployments sharing
+  // one Redis with different keyspaces don't collide on warmup metadata. TTL is one day for
+  // checkpoints (long enough for ops staff to notice and resume a stuck warmup, short enough
+  // that abandoned checkpoints self-clean). Claim TTL is short enough to limit the
+  // stop-the-world hold if an instance dies mid-warm.
+  private static final Duration CHECKPOINT_TTL = Duration.ofDays(1);
+  private static final Duration CLAIM_TTL = Duration.ofMinutes(10);
 
+  // Bound how long we wait for a flapping cache before declaring the warmup partial. Each retry
+  // sleeps {@link #UNAVAILABLE_BACKOFF_MS}, so the total grace before bailing is roughly
+  // MAX_UNAVAILABLE_RETRIES * UNAVAILABLE_BACKOFF_MS / 1000 seconds. Old behaviour was a single
+  // {@code break} on first {@code !available}, which combined with a 300ms-timeout cache flipping
+  // unavailable on the very first hiccup left 84% of entities cold while the run reported SUCCESS.
+  private static final int MAX_UNAVAILABLE_RETRIES = 30;
+  private static final long UNAVAILABLE_BACKOFF_MS = 1_000L;
+
+  // Runtime state used for the AppRunRecord broadcast. We keep an EventPublisherJob here purely
+  // because that's what the AppRunRecord serialization expects in the success/failure contexts;
+  // it is NOT parsed from the user-supplied JSON. User configuration lives on {@link #appConfig}.
   @Getter private EventPublisherJob jobData;
-  private ExecutorService producerExecutor;
-  private ExecutorService consumerExecutor;
-  private ExecutorService jobExecutor;
-  private final AtomicReference<Stats> cacheWarmupStats = new AtomicReference<>();
-  private final AtomicReference<Integer> batchSize = new AtomicReference<>(DEFAULT_BATCH_SIZE);
-  private JobExecutionContext jobExecutionContext;
-  private volatile boolean stopped = false;
-  private volatile long lastWebSocketUpdate = 0;
-  private static final long WEBSOCKET_UPDATE_INTERVAL_MS = 2000;
+  private CacheWarmupAppConfig appConfig;
 
   private CacheProvider cacheProvider;
-  private CachedEntityDao cachedEntityDao;
-  private CachedRelationshipDao cachedRelationshipDao;
-  private CachedTagUsageDao cachedTagUsageDao;
+  private CacheKeys keys;
+  private CacheConfig cacheConfig;
+  private BundleWarmupBatcher bundleBatcher;
+  // Set during initCacheComponents from cacheConfig.redis.keyspace.
+  private String checkpointKeyPrefix;
+  private String claimKeyPrefix;
+  private final String instanceId = generateInstanceId();
 
-  private BlockingQueue<WarmupTask> taskQueue;
-  private final AtomicBoolean producersDone = new AtomicBoolean(false);
-  private final AtomicLong totalEntitiesProcessed = new AtomicLong(0);
-  private final AtomicLong totalProcessingTime = new AtomicLong(0);
-  private volatile double currentThroughput = 0.0;
-
-  record WarmupTask(
-      String entityType, ResultList<? extends EntityInterface> entities, int offset) {}
+  private JobExecutionContext jobExecutionContext;
+  private volatile boolean stopped = false;
+  private final Stats stats = new Stats().withEntityStats(new EntityStats());
+  private volatile boolean partiallyWarmed = false;
+  // Per-entity-type bail-out reasons collected during warmEntity. Surfaced through
+  // jobData.failure → AppRunRecord.failureContext when the run finishes in ACTIVE_ERROR /
+  // FAILED so operators can see which entity types and offsets bailed without trawling logs.
+  private final java.util.Map<String, String> partialWarmupFailures =
+      new java.util.concurrent.ConcurrentHashMap<>();
+  private volatile long lastWebSocketUpdate = 0;
+  private static final long WEBSOCKET_UPDATE_INTERVAL_MS = 2000;
 
   public CacheWarmupApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -97,488 +146,693 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   @Override
   public void init(App app) {
     super.init(app);
-    jobData = JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class);
+    appConfig = parseAppConfig(app.getAppConfiguration());
+    jobData = newRuntimeJobData();
+  }
+
+  private CacheWarmupAppConfig parseAppConfig(Object raw) {
+    return normalizeAppConfig(raw);
+  }
+
+  static CacheWarmupAppConfig normalizeAppConfig(final Object raw) {
+    if (raw == null) {
+      return new CacheWarmupAppConfig();
+    }
+    final Object rawConfig =
+        raw instanceof String configJson
+            ? JsonUtils.readValue(configJson, new TypeReference<Map<String, Object>>() {})
+            : raw;
+    if (rawConfig == null) {
+      return new CacheWarmupAppConfig();
+    }
+    final Map<String, Object> sanitized =
+        JsonUtils.convertValue(rawConfig, new TypeReference<Map<String, Object>>() {});
+    if (sanitized == null) {
+      return new CacheWarmupAppConfig();
+    }
+    LEGACY_APP_CONFIG_FIELDS.forEach(sanitized::remove);
+    return JsonUtils.convertValue(sanitized, CacheWarmupAppConfig.class);
+  }
+
+  private EventPublisherJob newRuntimeJobData() {
+    EventPublisherJob runtime = new EventPublisherJob();
+    if (appConfig != null) {
+      runtime.setEntities(appConfig.getEntities());
+      if (appConfig.getBatchSize() != null) {
+        runtime.setBatchSize(appConfig.getBatchSize());
+      }
+    }
+    return runtime;
   }
 
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
     this.jobExecutionContext = jobExecutionContext;
-    stopped = false;
-
+    this.stopped = false;
     try {
-      initializeCacheComponents();
-      initializeJobData(jobExecutionContext);
-      runCacheWarmup(jobExecutionContext);
-    } catch (Exception ex) {
-      handleExecutionException(ex);
+      // Resolve the live config before constructing components. On-demand runs carry user
+      // overrides in the Quartz JobDataMap (entities, batchSize, warmBundles,
+      // enableDistributedClaim) that aren't in the persisted App config, and bundleBatcher in
+      // particular needs the right warmBundles flag at construction time.
+      initJobData(jobExecutionContext);
+      initCacheComponents();
+      if (cacheProvider == null || !cacheProvider.available()) {
+        // Surface this as FAILED — initJobData set status to RUNNING above, and the finally block
+        // will broadcast the terminal state. Leaving it RUNNING here would pin the job record in
+        // an active state indefinitely. Populate jobData.failure so the AppRunRecord carries an
+        // actionable reason instead of a bare FAILED status.
+        LOG.warn("Cache not available, skipping warmup");
+        jobData.setStatus(EventPublisherJob.Status.FAILED);
+        jobData.setFailure(
+            new IndexingError()
+                .withErrorSource(IndexingError.ErrorSource.JOB)
+                .withMessage(
+                    cacheProvider == null
+                        ? "Cache provider not configured — warmup skipped"
+                        : "Redis cache provider unavailable at warmup start — warmup skipped"));
+        return;
+      }
+      runWarmup();
+    } catch (Exception e) {
+      LOG.error("Cache warmup failed", e);
+      if (jobData != null) {
+        jobData.setStatus(EventPublisherJob.Status.FAILED);
+        jobData.setFailure(
+            new IndexingError()
+                .withErrorSource(IndexingError.ErrorSource.JOB)
+                .withMessage("Cache warmup failed: " + exceptionMessage(e)));
+      }
     } finally {
-      finalizeJobExecution(jobExecutionContext);
-    }
-  }
-
-  private void initializeCacheComponents() {
-    cacheProvider = CacheBundle.getCacheProvider();
-    cachedEntityDao = CacheBundle.getCachedEntityDao();
-    cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
-    cachedTagUsageDao = CacheBundle.getCachedTagUsageDao();
-
-    if (cacheProvider == null || !cacheProvider.available()) {
-      throw new AppException("Cache provider not available for warmup");
-    }
-  }
-
-  private void initializeJobData(JobExecutionContext jobExecutionContext) {
-    if (jobData == null) {
-      jobData = loadJobData(jobExecutionContext);
-    }
-
-    String jobName = jobExecutionContext.getJobDetail().getKey().getName();
-    if (jobName.equals(ON_DEMAND_JOB)) {
-      Map<String, Object> jsonAppConfig =
-          JsonUtils.convertValue(jobData, new TypeReference<Map<String, Object>>() {});
-      getApp().setAppConfiguration(jsonAppConfig);
-    }
-  }
-
-  private EventPublisherJob loadJobData(JobExecutionContext jobExecutionContext) {
-    String appConfigJson =
-        (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_CONFIG);
-    if (appConfigJson != null) {
-      return JsonUtils.readValue(appConfigJson, EventPublisherJob.class);
-    }
-
-    if (getApp() != null && getApp().getAppConfiguration() != null) {
-      return JsonUtils.convertValue(getApp().getAppConfiguration(), EventPublisherJob.class);
-    }
-
-    throw new AppException("JobData is not initialized");
-  }
-
-  private void runCacheWarmup(JobExecutionContext jobExecutionContext) throws Exception {
-    setupEntities();
-    LOG.info("Cache Warmup Job Started for Entities: {}", jobData.getEntities());
-
-    // Try to acquire distributed lock for cache warmup
-    if (!acquireWarmupLock()) {
-      LOG.info("Another cache warmup job is already running on a different server. Skipping.");
-      jobData.setStatus(EventPublisherJob.Status.STOPPED);
-      return;
-    }
-
-    try {
-      initializeJob(jobExecutionContext);
-      updateJobStatus(EventPublisherJob.Status.RUNNING);
-      performCacheWarmup();
-      updateFinalJobStatus();
-      handleJobCompletion();
-      // Send final status update to persist the completed state
       sendUpdates(jobExecutionContext, true);
-    } finally {
-      releaseWarmupLock();
     }
   }
 
-  private void setupEntities() {
-    boolean containsAll = jobData.getEntities().contains(ALL);
-    if (containsAll) {
-      jobData.setEntities(getAll());
+  private void initCacheComponents() {
+    cacheProvider = CacheBundle.getCacheProvider();
+    cacheConfig = CacheBundle.getCacheConfig();
+    if (cacheConfig != null) {
+      keys = new CacheKeys(cacheConfig.redis.keyspace);
+      String ks = cacheConfig.redis.keyspace == null ? "om:prod" : cacheConfig.redis.keyspace;
+      checkpointKeyPrefix = ks + ":warmup:checkpoint:";
+      claimKeyPrefix = ks + ":warmup:claim:";
+    }
+    if (warmBundlesEnabled() && cacheProvider != null && keys != null) {
+      bundleBatcher =
+          new BundleWarmupBatcher(collectionDAO, cacheProvider, keys, warmRelationshipsEnabled());
     }
   }
 
-  private void initializeJob(JobExecutionContext jobExecutionContext) {
-    cleanUpStaleJobsFromRuns();
+  private boolean warmBundlesEnabled() {
+    if (appConfig != null && appConfig.getWarmBundles() != null) {
+      return appConfig.getWarmBundles();
+    }
+    return Boolean.parseBoolean(System.getProperty("om.cache.warmBundles", "true"));
+  }
 
-    LOG.debug("Executing Cache Warmup Job with JobData: {}", jobData);
-    updateJobStatus(EventPublisherJob.Status.RUNNING);
+  private boolean warmRelationshipsEnabled() {
+    if (appConfig != null && appConfig.getWarmRelationships() != null) {
+      return appConfig.getWarmRelationships();
+    }
+    return Boolean.parseBoolean(System.getProperty("om.cache.warmRelationships", "false"));
+  }
 
-    cacheWarmupStats.set(initializeTotalRecords(jobData.getEntities()));
-    jobData.setStats(cacheWarmupStats.get());
+  private boolean distributedClaimEnabled() {
+    if (appConfig != null && appConfig.getEnableDistributedClaim() != null) {
+      return appConfig.getEnableDistributedClaim();
+    }
+    return Boolean.parseBoolean(System.getProperty("om.cache.warmup.distributedClaim", "false"));
+  }
 
+  /** When true, this run warms every entity type even if another instance has already
+   *  claimed it. Use sparingly — concurrent warmers race on the same Redis keys, which is
+   *  idempotent but wastes work and may briefly serve mixed-version reads. */
+  private boolean forceWarmup() {
+    return appConfig != null
+        && appConfig.getForce() != null
+        && Boolean.TRUE.equals(appConfig.getForce());
+  }
+
+  /** Stash a per-entity-type bail-out reason. We append rather than replace so a single
+   *  entity type that hits multiple failure paths during one run keeps the full picture. */
+  private void recordPartialFailure(String entityType, String reason) {
+    partialWarmupFailures.merge(entityType, reason, (a, b) -> a + "; " + b);
+  }
+
+  /** Compose an {@link IndexingError} summarising every entity-type partial failure for
+   *  display in the AppRunRecord's failureContext. The message is bounded so it doesn't blow
+   *  up the websocket payload on degenerate runs. */
+  private IndexingError buildPartialWarmupFailure() {
+    if (partialWarmupFailures.isEmpty()) {
+      return new IndexingError()
+          .withErrorSource(IndexingError.ErrorSource.JOB)
+          .withMessage(
+              "Cache warmup completed with one or more entity types only partially warmed");
+    }
+    StringBuilder sb = new StringBuilder("Partial warmup; per-entity reasons:");
+    int budget = 1024;
+    for (Map.Entry<String, String> e : partialWarmupFailures.entrySet()) {
+      String chunk = String.format(" %s=[%s];", e.getKey(), e.getValue());
+      if (sb.length() + chunk.length() > budget) {
+        sb.append(" (truncated, ")
+            .append(partialWarmupFailures.size())
+            .append(" entity types total)");
+        break;
+      }
+      sb.append(chunk);
+    }
+    return new IndexingError()
+        .withErrorSource(IndexingError.ErrorSource.JOB)
+        .withFailedCount(partialWarmupFailures.size())
+        .withMessage(sb.toString());
+  }
+
+  private static String exceptionMessage(Throwable t) {
+    String msg = t.getMessage();
+    return msg != null ? msg : t.getClass().getSimpleName();
+  }
+
+  private void initJobData(JobExecutionContext ctx) {
+    boolean isOnDemand = ctx.getJobDetail().getKey().getName().equals(ON_DEMAND_JOB);
+    // For on-demand runs, OmAppJobListener places the user-supplied config (with overrides
+    // for entities / batchSize / warmBundles / warmRelationships / enableDistributedClaim) into the
+    // Quartz
+    // JobDataMap[APP_CONFIG]. {@code init(App)} ran earlier and cached the persisted App
+    // config in {@code appConfig}; if we don't reload here, those manual overrides are
+    // silently ignored. Always reload for on-demand; for scheduled runs the persisted config
+    // is what we want.
+    if (appConfig == null || isOnDemand) {
+      appConfig = loadAppConfig(ctx);
+    }
+    jobData = newRuntimeJobData();
+    if (isOnDemand) {
+      // Reflect the (typed) user-supplied config back onto the in-memory App instance so the
+      // rest of THIS execution (status pushes, WebSocket payloads, downstream handlers reading
+      // getApp()) sees the override. Intentionally NOT persisted via AppRepository — on-demand
+      // is meant to be a one-shot override of the stored config, not a permanent edit. The
+      // Configuration page continues to reflect the persisted defaults; users that want a
+      // permanent change save the config explicitly through the API. Round-trip through Map
+      // so AbstractNativeApplication's persistence layer doesn't need to know about
+      // CacheWarmupAppConfig directly.
+      Map<String, Object> asMap =
+          JsonUtils.convertValue(appConfig, new TypeReference<Map<String, Object>>() {});
+      getApp().setAppConfiguration(asMap);
+    }
     if (jobData.getBatchSize() == null) {
       jobData.setBatchSize(DEFAULT_BATCH_SIZE);
     }
-    batchSize.set(jobData.getBatchSize());
+    jobData.setStatus(EventPublisherJob.Status.RUNNING);
+    jobData.setStats(stats);
+  }
 
+  private CacheWarmupAppConfig loadAppConfig(JobExecutionContext ctx) {
+    String raw = (String) ctx.getJobDetail().getJobDataMap().get(APP_CONFIG);
+    if (raw != null) {
+      return normalizeAppConfig(raw);
+    }
+    if (getApp() != null && getApp().getAppConfiguration() != null) {
+      return parseAppConfig(getApp().getAppConfiguration());
+    }
+    throw new AppException("CacheWarmup app configuration is not initialized");
+  }
+
+  private void runWarmup() {
+    Set<String> entityTypes = resolveEntityTypes();
+    for (String entityType : entityTypes) {
+      initEntityStats(entityType);
+    }
+    long totalTargetCount = 0;
+    for (String entityType : entityTypes) {
+      totalTargetCount +=
+          stats.getEntityStats().getAdditionalProperties().get(entityType).getTotalRecords();
+    }
+    stats.setJobStats(new StepStats().withTotalRecords((int) totalTargetCount));
     sendUpdates(jobExecutionContext, true);
-  }
 
-  private void cleanUpStaleJobsFromRuns() {
-    try {
-      App app = getApp();
-      if (app != null && app.getId() != null) {
-        collectionDAO.appExtensionTimeSeriesDao().markStaleEntriesStopped(app.getId().toString());
-        LOG.debug("Cleaned up stale cache warmup jobs.");
+    int batchSize = jobData.getBatchSize();
+    Duration ttl = Duration.ofSeconds(cacheConfig.entityTtlSeconds);
+    partiallyWarmed = false;
+    partialWarmupFailures.clear();
+    for (String entityType : entityTypes) {
+      if (stopped) break;
+      warmupEntityType(entityType, batchSize, ttl);
+    }
+    if (stopped) {
+      jobData.setStatus(EventPublisherJob.Status.STOPPED);
+    } else if (partiallyWarmed) {
+      jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
+      // Surface the per-entity bail-out reasons in jobData.failure so
+      // updateRecordToDbAndNotify (and the WebSocket payload) carry actionable detail. The UI
+      // shows AppRunRecord.failureContext.failure verbatim, so a human-readable summary here
+      // beats an opaque ACTIVE_ERROR with no clue which entity type or offset failed.
+      jobData.setFailure(buildPartialWarmupFailure());
+      LOG.warn("Cache warmup completed with one or more entity types only partially warmed");
+    } else {
+      jobData.setStatus(EventPublisherJob.Status.COMPLETED);
+      CacheMetrics metrics = CacheMetrics.getInstance();
+      if (metrics != null) {
+        metrics.recordWarmupCompleted();
       }
-    } catch (Exception ex) {
-      LOG.error("Failed in marking stale entries as stopped.", ex);
     }
   }
 
-  private void performCacheWarmup() throws InterruptedException {
-    long totalEntities = cacheWarmupStats.get().getJobStats().getTotalRecords();
-
-    ThreadConfiguration threadConfig = calculateThreadConfiguration(totalEntities);
-    initializeQueueAndExecutors(threadConfig);
-    executeWarmup(threadConfig.numConsumers);
-  }
-
-  private ThreadConfiguration calculateThreadConfiguration(long totalEntities) {
-    int numConsumers =
-        jobData.getConsumerThreads() != null
-            ? Math.min(jobData.getConsumerThreads(), MAX_CONSUMER_THREADS)
-            : 4;
-    int numProducers = Math.clamp((int) (totalEntities / 5000), 2, MAX_PRODUCER_THREADS);
-
-    return adjustThreadsForLimit(numProducers, numConsumers);
-  }
-
-  private ThreadConfiguration adjustThreadsForLimit(int numProducers, int numConsumers) {
-    int totalThreads = numProducers + numConsumers + jobData.getEntities().size();
-    if (totalThreads > MAX_TOTAL_THREADS) {
-      double ratio = (double) MAX_TOTAL_THREADS / totalThreads;
-      numProducers = Math.max(1, (int) (numProducers * ratio));
-      numConsumers = Math.max(1, (int) (numConsumers * ratio));
+  private void warmupEntityType(String entityType, int batchSize, Duration ttl) {
+    if (Entity.USER.equals(entityType)) {
+      LOG.debug("Skipping user entity type — not cached by design");
+      return;
     }
-    return new ThreadConfiguration(numProducers, numConsumers);
-  }
-
-  private void initializeQueueAndExecutors(ThreadConfiguration threadConfig) {
-    int queueSize = jobData.getQueueSize() != null ? jobData.getQueueSize() : DEFAULT_QUEUE_SIZE;
-
-    taskQueue = new LinkedBlockingQueue<>(queueSize);
-    producersDone.set(false);
-
-    jobExecutor =
-        Executors.newFixedThreadPool(
-            jobData.getEntities().size(), Thread.ofPlatform().name("warmup-job-", 0).factory());
-    consumerExecutor =
-        Executors.newFixedThreadPool(
-            threadConfig.numConsumers, Thread.ofPlatform().name("warmup-consumer-", 0).factory());
-    producerExecutor =
-        Executors.newFixedThreadPool(
-            threadConfig.numProducers, Thread.ofPlatform().name("warmup-producer-", 0).factory());
-  }
-
-  private void executeWarmup(int numConsumers) throws InterruptedException {
-    CountDownLatch consumerLatch = startConsumerThreads(numConsumers);
-
+    if (distributedClaimEnabled() && !forceWarmup() && !claimEntityType(entityType)) {
+      LOG.info("Skipping {} — claimed by another instance", entityType);
+      return;
+    }
+    if (distributedClaimEnabled() && forceWarmup()) {
+      LOG.info(
+          "Force warmup enabled for {} — bypassing distributed claim (operator override)",
+          entityType);
+    }
+    EntityRepository<?> repository;
+    EntityDAO<?> dao;
+    Class<? extends EntityInterface> entityClass;
     try {
-      processEntityWarmup();
-      signalConsumersToStop(numConsumers);
-      waitForConsumersToComplete(consumerLatch);
-    } catch (InterruptedException e) {
-      stopped = true;
-      Thread.currentThread().interrupt();
-      throw e;
-    } finally {
-      cleanupExecutors();
+      repository = Entity.getEntityRepository(entityType);
+      dao = repository.getDao();
+      entityClass = repository.getEntityClass();
+    } catch (Exception e) {
+      LOG.debug("Unknown entity type {}, skipping", entityType);
+      return;
     }
-  }
 
-  private CountDownLatch startConsumerThreads(int numConsumers) {
-    CountDownLatch consumerLatch = new CountDownLatch(numConsumers);
-    for (int i = 0; i < numConsumers; i++) {
-      final int consumerId = i;
-      consumerExecutor.submit(() -> runConsumer(consumerId, consumerLatch));
+    int offset = readCheckpoint(entityType);
+    if (offset > 0) {
+      LOG.info("Resuming {} warmup from checkpoint offset {}", entityType, offset);
     }
-    return consumerLatch;
-  }
-
-  private void runConsumer(int consumerId, CountDownLatch consumerLatch) {
-    LOG.debug("Consumer {} started", consumerId);
-    try {
-      while (!stopped && (!producersDone.get() || !taskQueue.isEmpty())) {
+    int success = 0;
+    int bundlesWritten = 0;
+    int failed = 0;
+    int unavailableAttempts = 0;
+    boolean bailedOut = false;
+    long start = System.currentTimeMillis();
+    while (!stopped) {
+      if (!cacheProvider.available()) {
+        // Cache flipped to unavailable mid-warmup. Old behaviour was an immediate {@code break}
+        // here, which combined with a hair-trigger availability flag (a single 300ms timeout
+        // marked the whole provider unavailable) routinely left 80%+ of entities cold while the
+        // run reported COMPLETED. Now we wait for the health-check to confirm recovery (with
+        // bounded retries) before declaring this entity type partially warmed.
+        if (++unavailableAttempts > MAX_UNAVAILABLE_RETRIES) {
+          LOG.warn(
+              "Cache provider unavailable for {} after {} retries (~{}s); marking warmup partial",
+              entityType,
+              unavailableAttempts,
+              (MAX_UNAVAILABLE_RETRIES * UNAVAILABLE_BACKOFF_MS) / 1000);
+          partiallyWarmed = true;
+          bailedOut = true;
+          recordPartialFailure(
+              entityType,
+              String.format(
+                  "cache unavailable after %d retries at offset %d", unavailableAttempts, offset));
+          break;
+        }
         try {
-          WarmupTask task = taskQueue.poll(100, TimeUnit.MILLISECONDS);
-          if (task != null && !POISON_PILL.equals(task.entityType())) {
-            processWarmupTask(task);
-          }
-        } catch (InterruptedException e) {
+          Thread.sleep(UNAVAILABLE_BACKOFF_MS);
+        } catch (InterruptedException ie) {
           Thread.currentThread().interrupt();
           break;
         }
+        continue;
       }
-    } finally {
-      LOG.debug("Consumer {} finished", consumerId);
-      consumerLatch.countDown();
-    }
-  }
-
-  private void processWarmupTask(WarmupTask task) {
-    String entityType = task.entityType();
-    ResultList<? extends EntityInterface> entities = task.entities();
-
-    long startTime = System.currentTimeMillis();
-    int successCount = 0;
-    int failedCount = 0;
-
-    for (EntityInterface entity : entities.getData()) {
+      // Reset retry counter once the provider is available again so a flaky cache that recovers
+      // doesn't accumulate retry budget across separate hiccups within the same entity type.
+      unavailableAttempts = 0;
+      List<String> page;
       try {
-        boolean success = warmupEntity(entityType, entity);
-        if (success) {
-          successCount++;
-        }
-        // Note: Not counting skipped entities (deleted, invalid) as failures
+        page = dao.listAfterWithOffset(batchSize, offset);
       } catch (Exception e) {
-        LOG.debug("Error warming up entity {} {}: {}", entityType, entity.getId(), e.getMessage());
-        failedCount++;
+        // DB read failures during warmup leave the rest of this entity type cold. Mark
+        // partial so the run reports ACTIVE_ERROR (not COMPLETED) and the saved checkpoint
+        // is preserved for the next run instead of being cleared at the end of warmEntity.
+        LOG.warn("Bulk fetch failed for {} at offset {}", entityType, offset, e);
+        partiallyWarmed = true;
+        bailedOut = true;
+        recordPartialFailure(
+            entityType,
+            String.format("bulk fetch failed at offset %d: %s", offset, exceptionMessage(e)));
+        break;
       }
-    }
+      if (page.isEmpty()) break;
 
-    long processingTime = System.currentTimeMillis() - startTime;
-    totalProcessingTime.addAndGet(processingTime);
-    totalEntitiesProcessed.addAndGet(successCount);
-
-    StepStats entityStats =
-        new StepStats().withSuccessRecords(successCount).withFailedRecords(failedCount);
-    updateStats(entityType, entityStats);
-
-    sendUpdates(jobExecutionContext);
-  }
-
-  private boolean warmupEntity(String entityType, EntityInterface entity) {
-    // Skip caching user entities
-    if ("user".equals(entityType)) {
-      return false; // Not cached, but not an error
-    }
-
-    // Validate entity has required fields before caching
-    if (entity.getId() == null) {
-      LOG.warn("Skipping entity with null ID - Type: {}, Name: {}", entityType, entity.getName());
-      return false; // Skip this entity and continue with others
-    }
-
-    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-
-    // Use find method instead of get to avoid UriInfo requirement
-    EntityInterface fullEntity = repository.find(entity.getId(), Include.ALL);
-
-    // Validate the full entity before caching
-    if (fullEntity == null || fullEntity.getId() == null) {
-      LOG.warn(
-          "Failed to load full entity - Type: {}, ID: {}, Name: {}. Skipping.",
-          entityType,
-          entity.getId(),
-          entity.getName());
-      return false; // Skip this entity and continue with others
-    }
-
-    // Cache the entity - this triggers write-through caching
-    String entityJson = JsonUtils.pojoToJson(fullEntity);
-    cachedEntityDao.putBase(entityType, fullEntity.getId(), entityJson);
-    cachedEntityDao.putByName(entityType, fullEntity.getFullyQualifiedName(), entityJson);
-
-    // Cache entity reference
-    String refJson = JsonUtils.pojoToJson(fullEntity.getEntityReference());
-    cachedEntityDao.putReference(entityType, fullEntity.getId(), refJson);
-    cachedEntityDao.putReferenceByName(entityType, fullEntity.getFullyQualifiedName(), refJson);
-
-    // Cache tags if available (stored in entity hash)
-    if (fullEntity.getTags() != null && !fullEntity.getTags().isEmpty()) {
-      String tagsJson = JsonUtils.pojoToJson(fullEntity.getTags());
-      cachedTagUsageDao.putTags(entityType, entity.getId(), tagsJson);
-    }
-
-    return true; // Successfully cached the entity
-  }
-
-  private void signalConsumersToStop(int numConsumers) {
-    producersDone.set(true);
-    for (int i = 0; i < numConsumers; i++) {
-      taskQueue.offer(new WarmupTask(POISON_PILL, null, -1));
-    }
-  }
-
-  private void waitForConsumersToComplete(CountDownLatch consumerLatch)
-      throws InterruptedException {
-    boolean finished = consumerLatch.await(5, TimeUnit.MINUTES);
-    if (!finished) {
-      LOG.warn("Consumers did not finish within timeout");
-    }
-  }
-
-  private void processEntityWarmup() throws InterruptedException {
-    int latchCount = getTotalLatchCount(jobData.getEntities());
-    CountDownLatch producerLatch = new CountDownLatch(latchCount);
-
-    for (String entityType : jobData.getEntities()) {
-      jobExecutor.submit(() -> processEntityType(entityType, producerLatch));
-    }
-
-    while (!producerLatch.await(1, TimeUnit.SECONDS)) {
-      if (stopped || Thread.currentThread().isInterrupted()) {
-        LOG.info("Stop signal received during warmup");
-        producerExecutor.shutdownNow();
-        jobExecutor.shutdownNow();
-        return;
-      }
-    }
-  }
-
-  private void processEntityType(String entityType, CountDownLatch producerLatch) {
-    try {
-      int totalEntityRecords = getTotalEntityRecords(entityType);
-      int loadPerThread = calculateNumberOfThreads(totalEntityRecords);
-
-      if (totalEntityRecords > 0) {
-        for (int i = 0; i < loadPerThread; i++) {
-          int currentOffset = i * batchSize.get();
-          producerExecutor.submit(() -> processBatch(entityType, currentOffset, producerLatch));
+      Map<String, Map<String, String>> hsetBatch = new HashMap<>(page.size() * 2);
+      Map<String, String> setBatch = new HashMap<>(page.size());
+      List<EntityInterface> parsedEntities = new ArrayList<>(page.size());
+      // Per-page deltas — updateEntityStats adds to the running totals, so passing cumulative
+      // counts would double-count entries from earlier pages.
+      int pageSuccess = 0;
+      int pageFailed = 0;
+      for (String json : page) {
+        if (json == null || json.isEmpty()) continue;
+        try {
+          EntityInterface entity = JsonUtils.readValue(json, entityClass);
+          if (entity.getId() == null || entity.getFullyQualifiedName() == null) {
+            pageFailed++;
+            continue;
+          }
+          hsetBatch.put(keys.entity(entityType, entity.getId()), Map.of("base", json));
+          setBatch.put(keys.entityByName(entityType, entity.getFullyQualifiedName()), json);
+          parsedEntities.add(entity);
+          pageSuccess++;
+        } catch (Exception e) {
+          pageFailed++;
         }
       }
-    } catch (Exception e) {
-      LOG.error("Error processing entity type {}", entityType, e);
-    }
-  }
-
-  private void processBatch(String entityType, int currentOffset, CountDownLatch producerLatch) {
-    try {
-      if (stopped) {
-        return;
-      }
-
-      // Request essential fields to ensure entities are properly deserialized with IDs
-      Source<?> source =
-          new PaginatedEntitiesSource(
-              entityType,
-              batchSize.get(),
-              List.of("id", "name", "fullyQualifiedName", "version", "updatedAt", "updatedBy"));
-      // Properly encode the offset as a cursor like SearchIndexApp does
-      Object resultList =
-          source.readWithCursor(RestUtil.encodeCursor(String.valueOf(currentOffset)));
-
-      if (resultList != null) {
-        @SuppressWarnings("unchecked")
-        ResultList<? extends EntityInterface> entities =
-            (ResultList<? extends EntityInterface>) resultList;
-
-        if (!nullOrEmpty(entities.getData()) && !stopped) {
-          WarmupTask task = new WarmupTask(entityType, entities, currentOffset);
-          taskQueue.put(task);
-        }
-      }
-    } catch (Exception e) {
-      if (!stopped) {
-        LOG.error("Error processing batch for entity type {}", entityType, e);
-      }
-    } finally {
-      producerLatch.countDown();
-    }
-  }
-
-  private void cleanupExecutors() {
-    shutdownExecutor(consumerExecutor, "ConsumerExecutor", 30, TimeUnit.SECONDS);
-    shutdownExecutor(jobExecutor, "JobExecutor", 20, TimeUnit.SECONDS);
-    shutdownExecutor(producerExecutor, "ProducerExecutor", 1, TimeUnit.MINUTES);
-  }
-
-  private void shutdownExecutor(
-      ExecutorService executor, String name, long timeout, TimeUnit unit) {
-    if (executor != null && !executor.isShutdown()) {
-      executor.shutdown();
       try {
-        if (!executor.awaitTermination(timeout, unit)) {
-          executor.shutdownNow();
-          LOG.warn("{} did not terminate within timeout.", name);
-        } else {
-          LOG.info("{} terminated successfully.", name);
+        cacheProvider.pipelineHset(hsetBatch, ttl);
+        cacheProvider.pipelineSet(setBatch, ttl);
+        success += pageSuccess;
+        failed += pageFailed;
+        updateEntityStats(entityType, pageSuccess, pageFailed);
+        boolean bundleOk = true;
+        if (bundleBatcher != null && !parsedEntities.isEmpty()) {
+          BundleWarmupBatcher.BatchResult bundleResult =
+              bundleBatcher.warmupBatch(entityType, parsedEntities, ttl);
+          bundlesWritten += bundleResult.success();
+          // Whole-page bundle failure (Redis pipeline error / DB tag fetch error) means the
+          // bundles for this page are cold despite the entity JSON being warm. Hold the
+          // checkpoint so the next run retries the page; advance only on partial-or-better
+          // success. This trades an occasional duplicate entity write for not silently leaving
+          // bundle keys stale.
+          if (bundleResult.success() == 0 && bundleResult.failed() > 0) {
+            bundleOk = false;
+            // Bundle keys are cold even though entity JSON is warm. Surface as partial so
+            // the run status reflects the incoherent state and the operator can re-trigger.
+            // Set bailedOut so the end-of-warmEntity block preserves the checkpoint —
+            // otherwise a later success page would advance it past this failed page and the
+            // next retry would skip the still-cold bundles.
+            partiallyWarmed = true;
+            bailedOut = true;
+            recordPartialFailure(
+                entityType,
+                String.format(
+                    "bundle warmup failed at offset %d (%d rows)", offset, bundleResult.failed()));
+            LOG.warn(
+                "Bundle warmup pass failed for {} batch at offset {} ({} rows); holding"
+                    + " checkpoint so the next run retries.",
+                entityType,
+                offset,
+                bundleResult.failed());
+          }
         }
-      } catch (InterruptedException e) {
-        LOG.error("Interrupted while waiting for {} to terminate.", name, e);
-        executor.shutdownNow();
-        Thread.currentThread().interrupt();
+        if (bundleOk) {
+          writeCheckpoint(entityType, offset + page.size());
+        }
+        // Refresh the distributed claim TTL on every successful page — large entity types can
+        // outlast CLAIM_TTL, and without refresh another instance could acquire mid-warm.
+        refreshClaim(entityType);
+      } catch (RuntimeException e) {
+        // Redis rejected the batch. Count every row in this page as failed so warmup progress and
+        // the WebSocket status reflect the actual state — the cache is not warm for these rows.
+        // Mark partial so the run reports ACTIVE_ERROR rather than COMPLETED — the bundle/key
+        // state for these rows is incoherent and a follow-up retry should re-warm them.
+        // bailedOut prevents subsequent success pages from clearing the checkpoint at end-of-
+        // warmEntity, so the next retry resumes at this failed page.
+        LOG.warn("Pipelined write failed for {} batch at offset {}", entityType, offset, e);
+        int pageTotal = pageSuccess + pageFailed;
+        failed += pageTotal;
+        updateEntityStats(entityType, 0, pageTotal);
+        partiallyWarmed = true;
+        bailedOut = true;
+        recordPartialFailure(
+            entityType,
+            String.format(
+                "pipelined write failed at offset %d (%d rows): %s",
+                offset, pageTotal, exceptionMessage(e)));
+      }
+      offset += page.size();
+      sendUpdates(jobExecutionContext, false);
+      if (page.size() < batchSize) break;
+    }
+    long elapsed = System.currentTimeMillis() - start;
+    LOG.info(
+        "Warmed {} entities (type={}, failed={}, bundles={}) in {} ms",
+        success,
+        entityType,
+        failed,
+        bundlesWritten,
+        elapsed);
+    if (!stopped) {
+      reportCoverage(entityType, dao, success, bundlesWritten);
+      // Only clear the checkpoint when this entity type fully completed. If we bailed because
+      // the cache went unavailable, the saved offset is the last successfully pipelined page
+      // and the next run should resume from there — clearing it would force a restart from
+      // offset 0 and re-warm everything we already wrote.
+      if (!bailedOut) {
+        clearCheckpoint(entityType);
       }
     }
-  }
-
-  private void handleExecutionException(Exception ex) {
-    LOG.error("Cache Warmup Job Failed", ex);
-    if (jobData != null) {
-      jobData.setStatus(EventPublisherJob.Status.FAILED);
+    if (distributedClaimEnabled()) {
+      releaseClaim(entityType);
     }
   }
 
-  private void finalizeJobExecution(JobExecutionContext jobExecutionContext) {
-    sendUpdates(jobExecutionContext, true);
-  }
-
-  private void updateFinalJobStatus() {
-    if (stopped) {
-      updateJobStatus(EventPublisherJob.Status.STOPPED);
-    } else if (hasIncompleteProcessing()) {
-      updateJobStatus(EventPublisherJob.Status.ACTIVE_ERROR);
-    } else {
-      updateJobStatus(EventPublisherJob.Status.COMPLETED);
+  private boolean claimEntityType(String entityType) {
+    if (cacheProvider == null || !cacheProvider.available() || claimKeyPrefix == null) {
+      return true;
+    }
+    try {
+      return cacheProvider.setIfAbsent(claimKeyPrefix + entityType, instanceId, CLAIM_TTL);
+    } catch (Exception e) {
+      LOG.debug("Claim attempt failed, proceeding without lock for {}", entityType, e);
+      return true;
     }
   }
 
-  private boolean hasIncompleteProcessing() {
-    if (jobData == null || jobData.getStats() == null || jobData.getStats().getJobStats() == null) {
-      return false;
+  /**
+   * Refresh the claim TTL after a successful page so a long-running warm doesn't lose the lock
+   * mid-flight. Compare-and-set: GET the current owner; if it's still us, SET with a fresh
+   * TTL. If somebody else now owns it (our TTL expired), don't fight — just stop refreshing.
+   * The warmup itself continues to completion regardless; the worst case is the other instance
+   * does redundant work (Redis writes are idempotent).
+   */
+  private void refreshClaim(String entityType) {
+    if (!distributedClaimEnabled()
+        || cacheProvider == null
+        || !cacheProvider.available()
+        || claimKeyPrefix == null) {
+      return;
     }
-
-    StepStats jobStats = jobData.getStats().getJobStats();
-    long failed = jobStats.getFailedRecords() != null ? jobStats.getFailedRecords() : 0;
-    long processed = jobStats.getSuccessRecords() != null ? jobStats.getSuccessRecords() : 0;
-    long total = jobStats.getTotalRecords() != null ? jobStats.getTotalRecords() : 0;
-
-    return failed > 0 || (total > 0 && processed < total);
-  }
-
-  private void handleJobCompletion() {
-    if (jobData != null && jobData.getStats() != null) {
-      StepStats jobStats = jobData.getStats().getJobStats();
-      LOG.info(
-          "Cache Warmup Job Completed - Total: {}, Success: {}, Failed: {}",
-          jobStats.getTotalRecords(),
-          jobStats.getSuccessRecords(),
-          jobStats.getFailedRecords());
-
-      if (currentThroughput > 0) {
-        LOG.info("Average throughput: {} entities/sec", String.format("%.1f", currentThroughput));
+    String key = claimKeyPrefix + entityType;
+    try {
+      String owner = cacheProvider.get(key).orElse(null);
+      if (instanceId.equals(owner)) {
+        cacheProvider.set(key, instanceId, CLAIM_TTL);
       }
+    } catch (Exception e) {
+      LOG.debug("Failed to refresh claim for {}", entityType, e);
     }
   }
 
-  private void updateJobStatus(EventPublisherJob.Status newStatus) {
-    if (jobData != null) {
-      jobData.setStatus(newStatus);
+  /**
+   * Compare-and-delete release. If our claim's TTL expired and another instance acquired the key
+   * mid-warm, we must NOT delete their lock. We GET the current owner and only DEL when it
+   * still matches our {@link #instanceId}. This is a non-atomic check (a second instance could
+   * still acquire between our GET and DEL), but the resulting cost is at most one redundant
+   * concurrent warm — the Redis writes are idempotent.
+   */
+  private void releaseClaim(String entityType) {
+    // Don't gate on cacheProvider.available() here. The common case for needing to release is
+    // exactly when a partial-warm bailed because the provider went unavailable — if the
+    // provider has since recovered, our claim is still in Redis and we'd otherwise leave it
+    // held until CLAIM_TTL (10 min), which makes every follow-up run on any node skip this
+    // entity type for a long window. The DEL is best-effort: if Redis is still down we catch
+    // the exception and let the TTL clean it up.
+    if (cacheProvider == null || claimKeyPrefix == null) {
+      return;
     }
+    String key = claimKeyPrefix + entityType;
+    try {
+      String owner = cacheProvider.get(key).orElse(null);
+      if (instanceId.equals(owner)) {
+        cacheProvider.del(key);
+      } else if (owner != null) {
+        LOG.debug(
+            "Skipping release of claim {} — owner {} != self {}", entityType, owner, instanceId);
+      }
+    } catch (Exception e) {
+      LOG.debug(
+          "Failed to release claim for {} (provider available={}); CLAIM_TTL will clear it",
+          entityType,
+          cacheProvider.available(),
+          e);
+    }
+  }
+
+  private int readCheckpoint(String entityType) {
+    if (cacheProvider == null || !cacheProvider.available() || checkpointKeyPrefix == null) {
+      return 0;
+    }
+    try {
+      return cacheProvider.get(checkpointKeyPrefix + entityType).map(Integer::parseInt).orElse(0);
+    } catch (Exception e) {
+      LOG.debug("Failed to read checkpoint for {}", entityType, e);
+      return 0;
+    }
+  }
+
+  private void writeCheckpoint(String entityType, int offset) {
+    if (cacheProvider == null || !cacheProvider.available() || checkpointKeyPrefix == null) {
+      return;
+    }
+    try {
+      cacheProvider.set(checkpointKeyPrefix + entityType, Integer.toString(offset), CHECKPOINT_TTL);
+    } catch (Exception e) {
+      LOG.debug("Failed to write checkpoint for {} at {}", entityType, offset, e);
+    }
+  }
+
+  private void clearCheckpoint(String entityType) {
+    if (cacheProvider == null || !cacheProvider.available() || checkpointKeyPrefix == null) {
+      return;
+    }
+    try {
+      cacheProvider.del(checkpointKeyPrefix + entityType);
+    } catch (Exception e) {
+      LOG.debug("Failed to clear checkpoint for {}", entityType, e);
+    }
+  }
+
+  private void reportCoverage(
+      String entityType, EntityDAO<?> dao, int success, int bundlesWritten) {
+    CacheMetrics metrics = CacheMetrics.getInstance();
+    if (metrics == null) {
+      return;
+    }
+    int total;
+    try {
+      total = dao.listTotalCount();
+    } catch (Exception e) {
+      LOG.debug("Failed to fetch total count for coverage metric: {}", entityType, e);
+      return;
+    }
+    if (total <= 0) {
+      return;
+    }
+    // Prefer the actual Redis key count when the provider supports it — this gives the true
+    // end-state coverage including pages warmed by prior resumed runs. Fall back to the
+    // current-run success count when SCAN is unsupported (negative return). Same reasoning for
+    // the bundle pass below.
+    long entityKeys = scanEntityKeyCount(entityType);
+    double coverage = entityKeys >= 0 ? (double) entityKeys / total : (double) success / total;
+    metrics.recordCoverage(entityType, coverage);
+    if (coverage < 0.95) {
+      LOG.warn(
+          "Cache coverage below threshold for {}: {}/{} ({}%)",
+          entityType, entityKeys >= 0 ? entityKeys : success, total, Math.round(coverage * 100));
+    }
+    if (bundleBatcher != null) {
+      long bundleKeys = scanBundleKeyCount(entityType);
+      double bundleCoverage =
+          bundleKeys >= 0 ? (double) bundleKeys / total : (double) bundlesWritten / total;
+      metrics.recordBundleCoverage(entityType, bundleCoverage);
+    }
+  }
+
+  private long scanEntityKeyCount(String entityType) {
+    if (cacheProvider == null || cacheConfig == null || !cacheProvider.available()) {
+      return -1L;
+    }
+    return cacheProvider.scanCount(cacheConfig.redis.keyspace + ":e:" + entityType + ":*");
+  }
+
+  private long scanBundleKeyCount(String entityType) {
+    if (cacheProvider == null || cacheConfig == null || !cacheProvider.available()) {
+      return -1L;
+    }
+    // CacheKeys.bundle wraps the id portion in {} for hash-tag colocation:
+    // om:<ks>:bundle:{<id>}:<type> — match all those for this type.
+    return cacheProvider.scanCount(cacheConfig.redis.keyspace + ":bundle:*:" + entityType);
+  }
+
+  private static String generateInstanceId() {
+    try {
+      return InetAddress.getLocalHost().getHostName()
+          + ":"
+          + ProcessHandle.current().pid()
+          + ":"
+          + System.currentTimeMillis();
+    } catch (Exception e) {
+      return "warmup:" + System.currentTimeMillis();
+    }
+  }
+
+  private Set<String> resolveEntityTypes() {
+    Set<String> configured =
+        jobData.getEntities() == null
+            ? new HashSet<>()
+            : new LinkedHashSet<>(jobData.getEntities());
+    if (configured.isEmpty() || configured.contains(ALL)) {
+      configured = new LinkedHashSet<>(Entity.getEntityList());
+    }
+    configured.remove(Entity.USER);
+    return configured;
+  }
+
+  private void initEntityStats(String entityType) {
+    int total = getEntityCount(entityType);
+    stats
+        .getEntityStats()
+        .getAdditionalProperties()
+        .put(
+            entityType,
+            new StepStats().withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0));
+  }
+
+  private int getEntityCount(String entityType) {
+    try {
+      return Entity.getEntityRepository(entityType).getDao().listTotalCount();
+    } catch (Exception e) {
+      LOG.debug("Cannot get count for {}: {}", entityType, e.getMessage());
+      return 0;
+    }
+  }
+
+  private void updateEntityStats(String entityType, int successDelta, int failedDelta) {
+    StepStats per = stats.getEntityStats().getAdditionalProperties().get(entityType);
+    if (per == null) return;
+    per.setSuccessRecords(
+        (per.getSuccessRecords() == null ? 0 : per.getSuccessRecords()) + successDelta);
+    per.setFailedRecords(
+        (per.getFailedRecords() == null ? 0 : per.getFailedRecords()) + failedDelta);
+    updateJobStatsAggregate();
+    jobData.setStats(stats);
+  }
+
+  private void updateJobStatsAggregate() {
+    int success = 0;
+    int failed = 0;
+    for (StepStats s : stats.getEntityStats().getAdditionalProperties().values()) {
+      success += s.getSuccessRecords() == null ? 0 : s.getSuccessRecords();
+      failed += s.getFailedRecords() == null ? 0 : s.getFailedRecords();
+    }
+    StepStats job = stats.getJobStats() == null ? new StepStats() : stats.getJobStats();
+    job.setSuccessRecords(success);
+    job.setFailedRecords(failed);
+    if (job.getTotalRecords() == null) {
+      job.setTotalRecords(success + failed);
+    }
+    stats.setJobStats(job);
   }
 
   @Override
   public void stop() {
-    LOG.info("Cache warmup job is being stopped.");
+    LOG.info("Cache warmup stopping");
     stopped = true;
-
     if (jobData != null) {
       jobData.setStatus(EventPublisherJob.Status.STOPPED);
     }
-
-    if (producerExecutor != null) {
-      producerExecutor.shutdownNow();
-    }
-    if (consumerExecutor != null) {
-      consumerExecutor.shutdownNow();
-    }
-    if (jobExecutor != null) {
-      jobExecutor.shutdownNow();
-    }
-
-    if (taskQueue != null) {
-      taskQueue.clear();
-    }
-
-    // Release the distributed lock when stopping
-    releaseWarmupLock();
-
-    LOG.info("Cache warmup job stopped successfully.");
   }
 
   @Override
   protected void validateConfig(Map<String, Object> appConfig) {
     try {
-      JsonUtils.convertValue(appConfig, EventPublisherJob.class);
+      normalizeAppConfig(appConfig);
     } catch (IllegalArgumentException e) {
       throw AppException.byMessage(
           jakarta.ws.rs.core.Response.Status.BAD_REQUEST,
@@ -586,307 +840,53 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     }
   }
 
-  public void updateRecordToDbAndNotify(JobExecutionContext jobExecutionContext) {
+  private void sendUpdates(JobExecutionContext ctx, boolean force) {
     try {
-      // Check if scheduler is available (null in test contexts)
-      if (jobExecutionContext == null || jobExecutionContext.getScheduler() == null) {
-        LOG.debug("Scheduler not available, skipping DB update");
+      long now = System.currentTimeMillis();
+      if (!force && now - lastWebSocketUpdate < WEBSOCKET_UPDATE_INTERVAL_MS) {
         return;
       }
-
-      // Try to get the job record - this will fail in test environments without listener
-      AppRunRecord appRecord = null;
-      try {
-        appRecord = getJobRecord(jobExecutionContext);
-      } catch (Exception e) {
-        // In test environments, the listener may not be available - this is expected
-        LOG.debug(
-            "Unable to get job record - likely running in test environment: {}", e.getMessage());
-        return;
-      }
-
-      if (appRecord != null) {
-        appRecord.setStatus(AppRunRecord.Status.fromValue(jobData.getStatus().value()));
-        if (jobData.getFailure() != null) {
-          appRecord.setFailureContext(
-              new FailureContext().withAdditionalProperty("failure", jobData.getFailure()));
-        }
-        if (jobData.getStats() != null) {
-          SuccessContext successContext =
-              new SuccessContext().withAdditionalProperty("stats", jobData.getStats());
-
-          // Add detailed progress metrics
-          if (jobData.getStats().getJobStats() != null) {
-            StepStats jobStats = jobData.getStats().getJobStats();
-            long total = jobStats.getTotalRecords() != null ? jobStats.getTotalRecords() : 0;
-            long processed =
-                jobStats.getSuccessRecords() != null ? jobStats.getSuccessRecords() : 0;
-            long failed = jobStats.getFailedRecords() != null ? jobStats.getFailedRecords() : 0;
-
-            if (total > 0) {
-              double progressPercentage = (processed + failed) * 100.0 / total;
-              successContext.withAdditionalProperty("progressPercentage", progressPercentage);
-            }
-
-            if (currentThroughput > 0) {
-              successContext.withAdditionalProperty(
-                  "throughput", String.format("%.1f entities/sec", currentThroughput));
-            }
-
-            successContext.withAdditionalProperty("entitiesProcessed", processed + failed);
-            successContext.withAdditionalProperty("totalEntities", total);
-          }
-
-          appRecord.setSuccessContext(successContext);
-        }
-
-        // Use the parent class method to properly update and persist the record
-        pushAppStatusUpdates(jobExecutionContext, appRecord, true);
-
-        // Also broadcast via WebSocket for real-time updates
-        if (WebSocketManager.getInstance() != null) {
-          String messageJson = JsonUtils.pojoToJson(appRecord);
-          WebSocketManager.getInstance()
-              .broadCastMessageToAll(CACHE_WARMUP_JOB_BROADCAST_CHANNEL, messageJson);
-        }
-      }
-    } catch (Exception e) {
-      // Only log at debug level for expected test environment issues
-      if (e.getMessage() != null && e.getMessage().contains("listener\" is null")) {
-        LOG.debug("Running in test environment without OmAppJobListener: {}", e.getMessage());
-      } else {
-        LOG.warn("Failed to update record to DB and notify: {}", e.getMessage());
-      }
-    }
-  }
-
-  private void sendUpdates(JobExecutionContext jobExecutionContext) {
-    sendUpdates(jobExecutionContext, false);
-  }
-
-  private void sendUpdates(JobExecutionContext jobExecutionContext, boolean forceUpdate) {
-    try {
-      long currentTime = System.currentTimeMillis();
-      if (!forceUpdate && (currentTime - lastWebSocketUpdate < WEBSOCKET_UPDATE_INTERVAL_MS)) {
-        return;
-      }
-
-      lastWebSocketUpdate = currentTime;
-      updateThroughputMetrics();
-
-      jobExecutionContext.getJobDetail().getJobDataMap().put(APP_RUN_STATS, jobData.getStats());
-      jobExecutionContext
-          .getJobDetail()
+      lastWebSocketUpdate = now;
+      if (ctx == null || ctx.getScheduler() == null) return;
+      ctx.getJobDetail().getJobDataMap().put(APP_RUN_STATS, jobData.getStats());
+      ctx.getJobDetail()
           .getJobDataMap()
           .put(WEBSOCKET_STATUS_CHANNEL, CACHE_WARMUP_JOB_BROADCAST_CHANNEL);
-      updateRecordToDbAndNotify(jobExecutionContext);
-    } catch (Exception ex) {
-      LOG.error("Failed to send updated stats with WebSocket", ex);
-    }
-  }
-
-  private void updateThroughputMetrics() {
-    long processedEntities = totalEntitiesProcessed.get();
-    long processingTime = totalProcessingTime.get();
-    if (processingTime > 0) {
-      currentThroughput = (processedEntities * 1000.0) / processingTime;
-    }
-  }
-
-  private Stats initializeTotalRecords(Set<String> entities) {
-    Stats stats = new Stats();
-    stats.setEntityStats(new EntityStats());
-
-    int total = 0;
-    for (String entityType : entities) {
-      int entityTotal = getEntityTotal(entityType);
-      total += entityTotal;
-
-      StepStats entityStats = new StepStats();
-      entityStats.setTotalRecords(entityTotal);
-      entityStats.setSuccessRecords(0);
-      entityStats.setFailedRecords(0);
-
-      stats.getEntityStats().getAdditionalProperties().put(entityType, entityStats);
-    }
-
-    StepStats jobStats = new StepStats();
-    jobStats.setTotalRecords(total);
-    stats.setJobStats(jobStats);
-
-    return stats;
-  }
-
-  private int getEntityTotal(String entityType) {
-    try {
-      EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-      return repository.getDao().listTotalCount();
+      updateRecordToDbAndNotify(ctx);
     } catch (Exception e) {
-      LOG.debug("Error while getting total entities for '{}'", entityType, e);
-      return 0;
+      LOG.debug("Stats update failed", e);
     }
   }
 
-  private Set<String> getAll() {
-    return new HashSet<>(Entity.getEntityList());
-  }
-
-  private int getTotalLatchCount(Set<String> entities) {
-    return entities.stream()
-        .mapToInt(
-            entityType -> {
-              int totalRecords = getTotalEntityRecords(entityType);
-              return calculateNumberOfThreads(totalRecords);
-            })
-        .sum();
-  }
-
-  private int getTotalEntityRecords(String entityType) {
-    if (cacheWarmupStats.get() == null || cacheWarmupStats.get().getEntityStats() == null) {
-      return 0;
-    }
-
-    StepStats statsObj =
-        cacheWarmupStats.get().getEntityStats().getAdditionalProperties().get(entityType);
-    if (statsObj != null) {
-      return statsObj.getTotalRecords() != null ? statsObj.getTotalRecords() : 0;
-    }
-    return 0;
-  }
-
-  private int calculateNumberOfThreads(int totalEntityRecords) {
-    int mod = totalEntityRecords % batchSize.get();
-    if (mod == 0) {
-      return totalEntityRecords / batchSize.get();
-    } else {
-      return (totalEntityRecords / batchSize.get()) + 1;
-    }
-  }
-
-  synchronized void updateStats(String entityType, StepStats currentEntityStats) {
-    Stats stats = cacheWarmupStats.get();
-    if (stats == null) {
-      return;
-    }
-
-    updateEntityStats(stats, entityType, currentEntityStats);
-    updateJobStats(stats);
-    cacheWarmupStats.set(stats);
-    jobData.setStats(stats);
-  }
-
-  private void updateEntityStats(Stats stats, String entityType, StepStats currentEntityStats) {
-    StepStats entityStats = stats.getEntityStats().getAdditionalProperties().get(entityType);
-    if (entityStats != null) {
-      entityStats.withSuccessRecords(
-          entityStats.getSuccessRecords() + currentEntityStats.getSuccessRecords());
-      entityStats.withFailedRecords(
-          entityStats.getFailedRecords() + currentEntityStats.getFailedRecords());
-    }
-  }
-
-  private void updateJobStats(Stats stats) {
-    StepStats jobStats = stats.getJobStats();
-
-    int totalSuccess =
-        stats.getEntityStats().getAdditionalProperties().values().stream()
-            .mapToInt(StepStats::getSuccessRecords)
-            .sum();
-
-    int totalFailed =
-        stats.getEntityStats().getAdditionalProperties().values().stream()
-            .mapToInt(StepStats::getFailedRecords)
-            .sum();
-
-    jobStats.withSuccessRecords(totalSuccess).withFailedRecords(totalFailed);
-  }
-
-  private static class ThreadConfiguration {
-    final int numProducers;
-    final int numConsumers;
-
-    ThreadConfiguration(int numProducers, int numConsumers) {
-      this.numProducers = numProducers;
-      this.numConsumers = numConsumers;
-    }
-  }
-
-  /**
-   * Tries to acquire a distributed lock using Redis to ensure only one instance
-   * of the cache warmup job runs across all OpenMetadata servers.
-   */
-  private boolean acquireWarmupLock() {
-    if (cacheProvider == null) {
-      LOG.warn("Cache provider not available, cannot acquire distributed lock");
-      return false;
-    }
-
+  private void updateRecordToDbAndNotify(JobExecutionContext ctx) {
     try {
-      String lockValue = generateLockValue();
-      // Use Redis SET NX (set if not exists) with expiration for distributed locking
-      boolean acquired =
-          cacheProvider.setIfAbsent(
-              WARMUP_LOCK_KEY, lockValue, java.time.Duration.ofSeconds(LOCK_TTL_SECONDS));
-
-      if (acquired) {
-        LOG.info("Successfully acquired cache warmup lock with value: {}", lockValue);
-        // Store lock value for verification during release
-        jobExecutionContext.getJobDetail().getJobDataMap().put("lockValue", lockValue);
-        return true;
-      } else {
-        // Check if existing lock is expired (stale)
-        java.util.Optional<String> existingLock = cacheProvider.get(WARMUP_LOCK_KEY);
-        existingLock.ifPresent(s -> LOG.info("Cache warmup is already running with lock: {}", s));
-        return false;
+      AppRunRecord record = getJobRecord(ctx);
+      if (record == null) return;
+      record.setStatus(AppRunRecord.Status.fromValue(jobData.getStatus().value()));
+      if (jobData.getFailure() != null) {
+        record.setFailureContext(
+            new FailureContext().withAdditionalProperty("failure", jobData.getFailure()));
+      }
+      if (jobData.getStats() != null) {
+        SuccessContext sc =
+            new SuccessContext().withAdditionalProperty("stats", jobData.getStats());
+        record.setSuccessContext(sc);
+      }
+      pushAppStatusUpdates(ctx, record, true);
+      if (WebSocketManager.getInstance() != null) {
+        WebSocketManager.getInstance()
+            .broadCastMessageToAll(
+                CACHE_WARMUP_JOB_BROADCAST_CHANNEL, JsonUtils.pojoToJson(record));
       }
     } catch (Exception e) {
-      LOG.error("Failed to acquire warmup lock", e);
-      return false;
+      LOG.debug("Unable to update app record (likely test context): {}", e.getMessage());
     }
   }
 
-  /**
-   * Releases the distributed lock after cache warmup completes.
-   */
-  private void releaseWarmupLock() {
-    if (cacheProvider == null) {
-      return;
-    }
-
-    try {
-      String expectedLockValue =
-          (String) jobExecutionContext.getJobDetail().getJobDataMap().get("lockValue");
-
-      if (expectedLockValue != null) {
-        // Only release if we own the lock (compare-and-delete pattern)
-        java.util.Optional<String> currentLock = cacheProvider.get(WARMUP_LOCK_KEY);
-        if (currentLock.isPresent() && currentLock.get().equals(expectedLockValue)) {
-          cacheProvider.del(WARMUP_LOCK_KEY);
-          LOG.info("Released cache warmup lock: {}", expectedLockValue);
-        } else {
-          LOG.warn(
-              "Lock value mismatch, not releasing lock. Expected: {}, Current: {}",
-              expectedLockValue,
-              currentLock.orElse("none"));
-        }
-      }
-    } catch (Exception e) {
-      LOG.error("Failed to release warmup lock", e);
-    }
-  }
-
-  /**
-   * Generates a unique lock value containing server instance information.
-   */
-  private String generateLockValue() {
-    try {
-      String hostname = java.net.InetAddress.getLocalHost().getHostName();
-      String timestamp = String.valueOf(System.currentTimeMillis());
-      String threadId = String.valueOf(Thread.currentThread().getId());
-      return String.format("%s:%s:%s", hostname, timestamp, threadId);
-    } catch (Exception e) {
-      // Fallback to a random UUID if hostname cannot be determined
-      return java.util.UUID.randomUUID().toString();
-    }
+  // kept for callers that expect a Collection<String> of entities configured
+  @SuppressWarnings("unused")
+  private Set<String> getAllEntityTypes() {
+    Collection<String> all = Entity.getEntityList();
+    return new HashSet<>(all);
   }
 }

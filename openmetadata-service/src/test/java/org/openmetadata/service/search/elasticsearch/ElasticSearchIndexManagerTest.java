@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.lenient;
@@ -574,6 +575,34 @@ class ElasticSearchIndexManagerTest {
 
     assertTrue(result.isEmpty());
     verify(indicesClient).getAlias(any(GetAliasRequest.class));
+  }
+
+  @Test
+  void testListIndicesByPrefix_EmptyPrefixScopesToClusterAlias() throws IOException {
+    when(indicesClient.getAlias(any(GetAliasRequest.class))).thenReturn(getAliasResponse);
+    when(getAliasResponse.aliases()).thenReturn(Map.of());
+
+    indexManager.listIndicesByPrefix("");
+
+    var captor = forClass(GetAliasRequest.class);
+    verify(indicesClient).getAlias(captor.capture());
+    assertEquals(
+        List.of(CLUSTER_ALIAS + IndexMapping.INDEX_NAME_SEPARATOR + "*"),
+        captor.getValue().index());
+  }
+
+  @Test
+  void testListIndicesByPrefix_EmptyPrefixWithoutClusterAliasUsesWildcard() throws IOException {
+    ElasticSearchIndexManager unscopedManager =
+        new ElasticSearchIndexManager(elasticsearchClient, "");
+    when(indicesClient.getAlias(any(GetAliasRequest.class))).thenReturn(getAliasResponse);
+    when(getAliasResponse.aliases()).thenReturn(Map.of());
+
+    unscopedManager.listIndicesByPrefix(null);
+
+    var captor = forClass(GetAliasRequest.class);
+    verify(indicesClient).getAlias(captor.capture());
+    assertEquals(List.of("*"), captor.getValue().index());
   }
 
   @Test

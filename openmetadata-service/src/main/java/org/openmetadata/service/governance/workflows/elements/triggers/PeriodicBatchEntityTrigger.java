@@ -194,11 +194,10 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
         new ServiceTaskBuilder()
             .id(getFlowableElementId(workflowTriggerId, "fetchEntityTask"))
             .implementation(FetchEntitiesImpl.class.getName())
+            .addFieldExtension(entityTypesExpr)
+            .addFieldExtension(searchFilterExpr)
+            .addFieldExtension(batchSizeExpr)
             .build();
-
-    serviceTask.getFieldExtensions().add(entityTypesExpr);
-    serviceTask.getFieldExtensions().add(searchFilterExpr);
-    serviceTask.getFieldExtensions().add(batchSizeExpr);
 
     serviceTask.setAsynchronousLeave(true);
 

@@ -35,10 +35,7 @@ except ImportError:
 
 skip_gx = pytest.mark.skipif(
     not _gx_version_ok,
-    reason=(
-        "Great Expectations not installed or version mismatch "
-        f"(required: {_GX_0_18})"
-    ),
+    reason=(f"Great Expectations not installed or version mismatch (required: {_GX_0_18})"),
 )
 
 
@@ -71,9 +68,7 @@ def test_get_table_entity(input, expected, mocked_ometa, mocked_ge_data_context)
         ("service_name", "get_by_name"),
     ],
 )
-def test_get_table_entity_database_service_name(
-    input, expected, mocked_ometa, mocked_ge_data_context
-):
+def test_get_table_entity_database_service_name(input, expected, mocked_ometa, mocked_ge_data_context):
     """Test get table entity"""
 
     ometa_validation = OpenMetadataValidationAction(
@@ -99,9 +94,7 @@ def test_render_template(fixture_jinja_environment):
 
 
 @skip_gx
-def test_table_config_map_initialization(
-    mocked_ometa, mocked_ge_data_context, table_config_map_fixture
-):
+def test_table_config_map_initialization(mocked_ometa, mocked_ge_data_context, table_config_map_fixture):
     """Test that expectation_suite_table_config_map parameter works"""
     action = OpenMetadataValidationAction(
         data_context=mocked_ge_data_context,
@@ -114,9 +107,7 @@ def test_table_config_map_initialization(
 
 
 @skip_gx
-def test_table_config_map_returns_mapped_values(
-    mocked_ometa, mocked_ge_data_context, table_config_map_fixture
-):
+def test_table_config_map_returns_mapped_values(mocked_ometa, mocked_ge_data_context, table_config_map_fixture):
     """Test that mapped values are actually returned for known suite"""
     action = OpenMetadataValidationAction(
         data_context=mocked_ge_data_context,
@@ -128,38 +119,18 @@ def test_table_config_map_returns_mapped_values(
     )
 
     # When we ask for a suite that's in the map, should get mapped values
-    assert (
-        action.table_mapper.get_part_name(TablePart.DATABASE, "test_suite")
-        == "mapped_db"
-    )
-    assert (
-        action.table_mapper.get_part_name(TablePart.SCHEMA, "test_suite")
-        == "mapped_schema"
-    )
-    assert (
-        action.table_mapper.get_part_name(TablePart.TABLE, "test_suite")
-        == "mapped_table"
-    )
+    assert action.table_mapper.get_part_name(TablePart.DATABASE, "test_suite") == "mapped_db"
+    assert action.table_mapper.get_part_name(TablePart.SCHEMA, "test_suite") == "mapped_schema"
+    assert action.table_mapper.get_part_name(TablePart.TABLE, "test_suite") == "mapped_table"
 
     # When we ask for a suite NOT in the map, should get defaults
-    assert (
-        action.table_mapper.get_part_name(TablePart.DATABASE, "unknown_suite")
-        == "default_db"
-    )
-    assert (
-        action.table_mapper.get_part_name(TablePart.SCHEMA, "unknown_suite")
-        == "default_schema"
-    )
-    assert (
-        action.table_mapper.get_part_name(TablePart.TABLE, "unknown_suite")
-        == "default_table"
-    )
+    assert action.table_mapper.get_part_name(TablePart.DATABASE, "unknown_suite") == "default_db"
+    assert action.table_mapper.get_part_name(TablePart.SCHEMA, "unknown_suite") == "default_schema"
+    assert action.table_mapper.get_part_name(TablePart.TABLE, "unknown_suite") == "default_table"
 
 
 @skip_gx
-def test_backward_compatibility_without_config_map(
-    mocked_ometa, mocked_ge_data_context
-):
+def test_backward_compatibility_without_config_map(mocked_ometa, mocked_ge_data_context):
     """Test that existing behavior still works without config map"""
     action = OpenMetadataValidationAction(
         data_context=mocked_ge_data_context,

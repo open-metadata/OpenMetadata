@@ -125,6 +125,17 @@
       font-weight: 500;
     }
 
+    .tableWrapper *::selection {
+      color: @white;
+      background-color: @primary-color;
+    }
+
+    /* FOR Firefox */
+    .tableWrapper *::-moz-selection {
+      color: @white;
+      background-color: @primary-color;
+    }
+
     blockquote {
       border-left: 4px solid @border-color;
     }

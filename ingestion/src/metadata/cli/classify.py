@@ -12,6 +12,7 @@
 """
 Sampler utility for the metadata CLI
 """
+
 import sys
 import traceback
 from pathlib import Path
@@ -37,16 +38,14 @@ def run_classification(config_path: Path) -> None:
     config_dict = None
     try:
         # pylint: disable=import-outside-toplevel
-        from metadata.workflow.classification import AutoClassificationWorkflow
+        from metadata.workflow.classification import AutoClassificationWorkflow  # noqa: PLC0415
 
         config_dict = load_config_file(config_path)
         logger.debug("Using workflow config:\n%s", redacted_config(config_dict))
         workflow = AutoClassificationWorkflow.create(config_dict)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        WorkflowInitErrorHandler.print_init_error(
-            exc, config_dict, PipelineType.metadata
-        )
+        WorkflowInitErrorHandler.print_init_error(exc, config_dict, PipelineType.metadata)
         sys.exit(1)
 
     execute_workflow(workflow=workflow, config_dict=config_dict)

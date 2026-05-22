@@ -1,0 +1,54 @@
+{
+  "$id": "https://open-metadata.org/schema/type/tagUpdatePayload.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TagUpdatePayload",
+  "description": "Payload for Tag Update tasks.",
+  "javaType": "org.openmetadata.schema.type.TagUpdatePayload",
+  "type": "object",
+  "properties": {
+    "fieldPath": {
+      "description": "Path to the field being tagged (e.g., 'columns.customer_id' or empty for entity-level).",
+      "type": "string"
+    },
+    "operation": {
+      "description": "Type of tag operation.",
+      "type": "string",
+      "enum": ["Add", "Remove", "Replace"],
+      "default": "Add"
+    },
+    "currentTags": {
+      "description": "Current tags on the field/entity.",
+      "type": "array",
+      "items": {
+        "$ref": "tagLabel.json"
+      }
+    },
+    "tagsToAdd": {
+      "description": "Tags to be added.",
+      "type": "array",
+      "items": {
+        "$ref": "tagLabel.json"
+      }
+    },
+    "tagsToRemove": {
+      "description": "Tags to be removed.",
+      "type": "array",
+      "items": {
+        "$ref": "tagLabel.json"
+      }
+    },
+    "source": {
+      "description": "Source of the tag update.",
+      "type": "string",
+      "enum": ["User", "Agent", "AutoPilot", "Classification"],
+      "default": "User"
+    },
+    "confidence": {
+      "description": "Confidence score for AI-generated tag suggestions (0-100).",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    }
+  },
+  "additionalProperties": false
+}

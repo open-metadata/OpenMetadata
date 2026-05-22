@@ -9,10 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """PinotDb source module"""
-from typing import Iterable, Optional
+
+from typing import Iterable, Optional  # noqa: I001, UP035
 
 from pinotdb import sqlalchemy as pinot_sqlalchemy
 from sqlalchemy import types
+from sqlalchemy.sql import sqltypes
 
 from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
     PinotDBConnection,
@@ -24,13 +26,18 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 
+DOUBLE_TYPE = getattr(types, "DOUBLE", getattr(sqltypes, "DOUBLE", types.Float))
+
 
 def get_type_custom(data_type, field_size):
     type_map = {
         "int": types.BigInteger,
         "long": types.BigInteger,
         "float": types.Float,
-        "double": types.DOUBLE,
+        # SQLAlchemy 1.4 does not expose DOUBLE in sqlalchemy.types, but
+        # pinotdb returns "double". Prefer DOUBLE when available, then fall back
+        # to sqltypes.DOUBLE, and finally Float to avoid runtime crashes.
+        "double": DOUBLE_TYPE,
         # BOOLEAN, is added after release 0.7.1.
         # In release 0.7.1 and older releases, BOOLEAN is equivalent to STRING.
         "boolean": types.Boolean,
@@ -57,15 +64,11 @@ class PinotdbSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: PinotDBConnection = config.serviceConnection.root.config
         if not isinstance(connection, PinotDBConnection):
-            raise InvalidSourceException(
-                f"Expected PinotdbConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected PinotdbConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_database_names(self) -> Iterable[str]:

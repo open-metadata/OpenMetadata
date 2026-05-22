@@ -12,9 +12,10 @@
 """
 Test Bigquery connector with CLI
 """
+
 import random
 from datetime import datetime
-from typing import List, Tuple
+from typing import List, Tuple  # noqa: UP035
 
 import pytest
 
@@ -23,16 +24,20 @@ from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     DmlOperationType,
-    ProfileSampleType,
     SystemProfile,
     TableProfilerConfig,
 )
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
-from metadata.generated.schema.type.basic import Timestamp
+from metadata.generated.schema.type.basic import ProfileSampleType, Timestamp
+from metadata.generated.schema.type.samplingConfig import (
+    ProfileSampleConfig,
+    SampleConfigType,
+)
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 
-from .common.test_cli_db import CliCommonDB
-from .common_e2e_sqa_mixins import SQACommonMethods
+from .common.test_cli_db import CliCommonDB  # noqa: TID252
+from .common_e2e_sqa_mixins import SQACommonMethods  # noqa: TID252
 
 
 class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
@@ -49,7 +54,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                        FROM `open-metadata-beta`.exclude_me.orders;
     """
 
-    insert_data_queries: List[str] = [
+    insert_data_queries: List[str] = [  # noqa: RUF012, UP006
         (
             "INSERT INTO `open-metadata-beta.exclude_me`.orders (id, order_name) VALUES "
             + ",".join(
@@ -119,15 +124,15 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return "local_bigquery.open-metadata-beta.exclude_me.orders"
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:
+    def get_includes_schemas() -> List[str]:  # noqa: UP006
         return ["exclude_me"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:
+    def get_includes_tables() -> List[str]:  # noqa: UP006
         return ["exclude_table"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:
+    def get_excludes_tables() -> List[str]:  # noqa: UP006
         return ["testtable"]
 
     @staticmethod
@@ -151,7 +156,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return 2
 
     @staticmethod
-    def delete_queries() -> List[str]:
+    def delete_queries() -> List[str]:  # noqa: UP006
         return [
             """
             DELETE FROM `open-metadata-beta.exclude_me`.orders WHERE id IN (1)
@@ -159,14 +164,14 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         ]
 
     @staticmethod
-    def update_queries() -> List[str]:
+    def update_queries() -> List[str]:  # noqa: UP006
         return [
             """
             UPDATE `open-metadata-beta.exclude_me`.orders SET order_name = 'NINTENDO' WHERE id = 2
             """,
         ]
 
-    def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:
+    def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:  # noqa: UP006
         return [
             (
                 "local_bigquery.open-metadata-beta.exclude_me.orders",
@@ -189,15 +194,20 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         self.openmetadata.create_or_update_table_profiler_config(
             self.get_data_quality_table(),
             TableProfilerConfig(
-                profileSampleType=ProfileSampleType.ROWS,
-                profileSample=100,
+                profileSampleConfig=ProfileSampleConfig(
+                    sampleConfigType=SampleConfigType.STATIC,
+                    config=StaticSamplingConfig(
+                        profileSample=100,
+                        profileSampleType=ProfileSampleType.ROWS,
+                    ),
+                ),
             ),
         )
 
     def get_data_quality_table(self):
         return self.fqn_created_table()
 
-    def get_test_case_definitions(self) -> List[TestCaseDefinition]:
+    def get_test_case_definitions(self) -> List[TestCaseDefinition]:  # noqa: UP006
         return [
             TestCaseDefinition(
                 name="bigquery_data_diff",
@@ -222,9 +232,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @pytest.mark.order(9999)
     def test_profiler_w_partition_table(self):
         """Test profiler sample for partitioned table"""
-        self.build_config_file(
-            E2EType.INGEST_DB_FILTER_SCHEMA, {"includes": ["w_partition"]}
-        )
+        self.build_config_file(E2EType.INGEST_DB_FILTER_SCHEMA, {"includes": ["w_partition"]})
         self.run_command()
 
         self.build_config_file(E2EType.PROFILER, {"includes": ["w_partition"]})

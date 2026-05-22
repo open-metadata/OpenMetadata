@@ -146,7 +146,10 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   );
 
   const metadataRow = (
-    <DescriptionSourceBadge changeSummaryEntry={changeSummaryEntry} />
+    <DescriptionSourceBadge
+      changeSummaryEntry={changeSummaryEntry}
+      showBadge={false}
+    />
   );
 
   if (!description?.trim()) {

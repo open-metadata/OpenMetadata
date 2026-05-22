@@ -33,6 +33,13 @@ public class IngestionPipelineIndex implements TaggableIndex, ServiceBackedIndex
     return excludeFields;
   }
 
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(TaggableIndex.super.getRequiredReindexFields());
+    fields.add("pipelineStatuses");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     doc.put(
         "name",

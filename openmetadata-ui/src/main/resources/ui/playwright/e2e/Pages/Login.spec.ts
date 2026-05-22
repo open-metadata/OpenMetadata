@@ -15,9 +15,14 @@ import { JWT_EXPIRY_TIME_MAP, LOGIN_ERROR_MESSAGE } from '../../constant/login';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { clickOutside, redirectToHomePage } from '../../utils/common';
+import {
+  clickOutside,
+  getDefaultAdminAPIContext,
+  redirectToHomePage,
+  visitOwnProfilePage,
+} from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { updateJWTTokenExpiryTime } from '../../utils/login';
-import { visitUserProfilePage } from '../../utils/user';
 
 const user = new UserClass();
 const CREDENTIALS = user.data;
@@ -149,36 +154,56 @@ test.describe('Login flow should work properly', () => {
     await page.locator('[data-testid="go-back-button"]').click();
   });
 
-  test('Refresh should work', async ({ browser }) => {
-    const browserContext = await browser.newContext();
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    const page1 = await browserContext.newPage(),
-      page2 = await browserContext.newPage();
+  test('Refresh should work', async ({ page: page1, browser }) => {
+    test.slow();
+
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
+    const context = page1.context();
+    const page2 = await context.newPage();
 
     const testUser = new UserClass();
     await testUser.create(apiContext);
+    await testUser.setAdminRole(apiContext);
 
     await test.step('Login and wait for refresh call is made', async () => {
       // User login
 
       await testUser.login(page1);
       await redirectToHomePage(page1);
+      await waitForAllLoadersToDisappear(page1);
       await redirectToHomePage(page2);
+      await waitForAllLoadersToDisappear(page2);
+      await page2.reload();
 
       // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token refresh timer to fire
       await page1.waitForTimeout(3 * 60 * 1000);
 
-      await redirectToHomePage(page1);
+      await page1.bringToFront();
+      await visitOwnProfilePage(page1);
+      await waitForAllLoadersToDisappear(page1);
+      await expect(page1.getByTestId('user-display-name')).toHaveText(
+        testUser.responseData.displayName ?? testUser.responseData.name
+      );
 
-      await visitUserProfilePage(page1, testUser.responseData.name);
-      await redirectToHomePage(page2);
-      await visitUserProfilePage(page2, testUser.responseData.name);
+      await page2.bringToFront();
+      await page2.evaluate(() => {
+        document.dispatchEvent(
+          new Event('visibilitychange', { bubbles: true })
+        );
+      });
+
+      await visitOwnProfilePage(page2);
+      await waitForAllLoadersToDisappear(page2);
+      await expect(page2.getByTestId('user-display-name')).toHaveText(
+        testUser.responseData.displayName ?? testUser.responseData.name
+      );
 
       await page1.close();
       await page2.close();
     });
 
-    await browserContext.close();
     await afterAction();
   });
 

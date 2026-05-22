@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Server test
 """
+
 import pytest
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
@@ -34,9 +35,7 @@ def profiler_configuration():
                 disabled=False,
                 metrics=[MetricType.valuesCount, MetricType.distinctCount],
             ),
-            MetricConfigurationDefinition(
-                dataType=DataType.DATETIME, disabled=True, metrics=None
-            ),
+            MetricConfigurationDefinition(dataType=DataType.DATETIME, disabled=True, metrics=None),
         ]
     )
 
@@ -66,9 +65,7 @@ class TestOMetaServerAPI:
     - metadata: OpenMetadata client (session scope)
     """
 
-    def test_profiler_configuration(
-        self, metadata, profiler_configuration, settings_cleanup
-    ):
+    def test_profiler_configuration(self, metadata, profiler_configuration, settings_cleanup):
         """
         Test get_profiler_configuration
         """
@@ -90,16 +87,10 @@ class TestOMetaServerAPI:
         updated_profiler_settings = metadata.create_or_update_settings(settings)
         assert settings.model_dump_json() == updated_profiler_settings.model_dump_json()
 
-    def test_profiler_configuration_with_sample_data_config(
-        self, metadata, settings_cleanup
-    ):
+    def test_profiler_configuration_with_sample_data_config(self, metadata, settings_cleanup):
         """Test profiler configuration round-trip with sampleDataConfig"""
-        sample_config = SampleDataIngestionConfig(
-            storeSampleData=False, readSampleData=True
-        )
-        profiler_config = ProfilerConfiguration(
-            metricConfiguration=[], sampleDataConfig=sample_config
-        )
+        sample_config = SampleDataIngestionConfig(storeSampleData=False, readSampleData=True)
+        profiler_config = ProfilerConfiguration(metricConfiguration=[], sampleDataConfig=sample_config)
         settings = Settings(
             config_type=SettingType.profilerConfiguration,
             config_value=profiler_config,
@@ -110,9 +101,7 @@ class TestOMetaServerAPI:
         assert created.config_value.sampleDataConfig.storeSampleData is False
         assert created.config_value.sampleDataConfig.readSampleData is True
 
-        profiler_config.sampleDataConfig = SampleDataIngestionConfig(
-            storeSampleData=True, readSampleData=False
-        )
+        profiler_config.sampleDataConfig = SampleDataIngestionConfig(storeSampleData=True, readSampleData=False)
         updated = metadata.create_or_update_settings(settings)
         assert updated.config_value.sampleDataConfig.storeSampleData is True
         assert updated.config_value.sampleDataConfig.readSampleData is False

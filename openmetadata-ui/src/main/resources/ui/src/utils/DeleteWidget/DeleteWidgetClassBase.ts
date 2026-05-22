@@ -52,6 +52,9 @@ class DeleteWidgetClassBase {
       case EntityType.SPREADSHEET:
       case EntityType.WORKSHEET:
         return `drives/${entityType}s`;
+      case EntityType.KNOWLEDGE_CENTER:
+      case EntityType.KNOWLEDGE_PAGE:
+        return 'contextCenter/pages';
       default:
         return `${entityType}s`;
     }

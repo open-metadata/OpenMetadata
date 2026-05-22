@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from sqlalchemy import Column, Integer
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.sql.selectable import CTE
+from sqlalchemy.sql.selectable import CTE  # noqa: TC002
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import (
@@ -12,16 +12,22 @@ from metadata.generated.schema.entity.data.table import (
     DataType,
     PartitionIntervalTypes,
     PartitionProfilerConfig,
-    ProfileSampleType,
     Table,
 )
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
+from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.samplingConfig import SampleConfigType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
-from metadata.sampler.models import SampleConfig
+from metadata.sampler.models import (
+    ProfileSampleConfig,
+    SampleConfig,
+)
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sqlalchemy.mssql.sampler import MssqlSampler
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
@@ -83,20 +89,25 @@ class SampleTest(TestCase):
             service_connection_config=self.mssql_conn,
             ometa_client=None,
             entity=self.table_entity,
-            sample_config=SampleConfig(
-                profileSampleType=ProfileSampleType.PERCENTAGE, profileSample=50.0
+            config=DatabaseSamplerConfig(
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=SampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=50.0,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    )
+                )
             ),
         )
-        query: CTE = sampler.get_sample_query()
+        query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = (
             'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users_1.id AS id \n'
             "FROM users AS users_1 TABLESAMPLE system(50.0 PERCENT))\n "
             'SELECT "9bc65c2abec141778ffaa729489f3e87_rnd".id \nFROM "9bc65c2abec141778ffaa729489f3e87_rnd"'
         )
-        assert (
-            expected_query.casefold()
-            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
-        )
+        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
 
     def test_row_sampling(self, sampler_mock):
         """
@@ -106,20 +117,25 @@ class SampleTest(TestCase):
             service_connection_config=self.mssql_conn,
             ometa_client=None,
             entity=self.table_entity,
-            sample_config=SampleConfig(
-                profileSampleType=ProfileSampleType.ROWS, profileSample=50
+            config=DatabaseSamplerConfig(
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=SampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=50,
+                            profileSampleType=ProfileSampleType.ROWS,
+                        ),
+                    )
+                )
             ),
         )
-        query: CTE = sampler.get_sample_query()
+        query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = (
             'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users_1.id AS id '
             "\nFROM users AS users_1 TABLESAMPLE system(50 ROWS))\n "
             'SELECT "9bc65c2abec141778ffaa729489f3e87_rnd".id \nFROM "9bc65c2abec141778ffaa729489f3e87_rnd"'
         )
-        assert (
-            expected_query.casefold()
-            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
-        )
+        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
 
     def test_sampling_with_partition(self, sampler_mock):
         """
@@ -129,25 +145,29 @@ class SampleTest(TestCase):
             service_connection_config=self.mssql_conn,
             ometa_client=None,
             entity=self.table_entity,
-            sample_config=SampleConfig(
-                profileSampleType=ProfileSampleType.PERCENTAGE,
-                profileSample=50.0,
-            ),
-            partition_details=PartitionProfilerConfig(
-                enablePartitioning=True,
-                partitionColumnName="id",
-                partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
-                partitionValues=["1", "2"],
+            config=DatabaseSamplerConfig(
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=SampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=50.0,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    )
+                ),
+                partition_details=PartitionProfilerConfig(
+                    enablePartitioning=True,
+                    partitionColumnName="id",
+                    partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                    partitionValues=["1", "2"],
+                ),
             ),
         )
-        query: CTE = sampler.get_sample_query()
+        query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = (
             'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users_1.id AS id \n'
             "FROM users AS users_1 TABLESAMPLE system(50.0 PERCENT) "
             "\nWHERE id IN ('1', '2'))\n SELECT \"9bc65c2abec141778ffaa729489f3e87_rnd\".id "
             '\nFROM "9bc65c2abec141778ffaa729489f3e87_rnd"'
         )
-        assert (
-            expected_query.casefold()
-            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
-        )
+        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()

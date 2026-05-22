@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,170 +10,106 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { ReactionOperation } from '../../enums/reactions.enum';
-import { Thread } from '../../generated/entity/feed/thread';
-import { ReactionType } from '../../generated/type/reaction';
+import { MemoryRouter } from 'react-router-dom';
 import { MOCK_ANNOUNCEMENT_DATA } from '../../mocks/Announcement.mock';
-import { mockUserData } from '../../mocks/MyDataPage.mock';
 import AnnouncementFeedCardBody from './AnnouncementFeedCardBody.component';
 
+jest.mock('../../utils/date-time/DateTimeUtils', () => ({
+  formatDateTime: jest.fn(() => 'formatted-time'),
+}));
+
+jest.mock('../../utils/EntityUtilClassBase', () => ({
+  __esModule: true,
+  default: {
+    getEntityLink: jest.fn(() => '/entity-link'),
+  },
+}));
+
 jest.mock('../../utils/FeedUtils', () => ({
-  getEntityField: jest.fn(),
-  getEntityFQN: jest.fn(),
-  getEntityType: jest.fn(),
+  getEntityFQN: jest.fn(() => 'service.database.table'),
+  getEntityType: jest.fn(() => 'table'),
 }));
 
-jest.mock('../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn(() => ({
-    currentUser: mockUserData,
-  })),
-}));
+jest.mock('../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
+);
 
-jest.mock('../ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBody', () =>
-  jest.fn().mockImplementation(({ onPostUpdate, onReactionSelect }) => (
-    <>
-      <p>FeedCardBody</p>
-      <button onClick={() => onPostUpdate('message')}>PostUpdateButton</button>
-      <button
-        onClick={() =>
-          onReactionSelect(ReactionType.Confused, ReactionOperation.ADD)
-        }>
-        ReactionSelectButton
-      </button>
-    </>
+jest.mock('../Modals/AnnouncementModal/EditAnnouncementModal', () =>
+  jest.fn().mockImplementation(({ onConfirm }) => (
+    <button
+      onClick={() =>
+        onConfirm('Updated title', {
+          description: 'Updated description',
+          startTime: 10,
+          endTime: 20,
+        })
+      }>
+      SaveAnnouncement
+    </button>
   ))
 );
 
-jest.mock(
-  '../ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeader',
-  () => {
-    return jest.fn().mockReturnValue(<p>FeedCardHeader</p>);
-  }
-);
-
-jest.mock('../common/PopOverCard/UserPopOverCard', () => {
-  return jest.fn().mockImplementation(() => <p>UserPopOverCard</p>);
-});
-jest.mock('../common/ProfilePicture/ProfilePicture', () => {
-  return jest.fn().mockImplementation(() => <p>ProfilePicture</p>);
-});
-
-jest.mock('../Modals/AnnouncementModal/EditAnnouncementModal', () => {
-  return jest.fn().mockImplementation(() => <p>EditAnnouncementModal</p>);
-});
-
-jest.mock('../ActivityFeed/ActivityFeedCard/PopoverContent', () => {
-  return jest.fn().mockImplementation(() => <p>PopoverContent</p>);
-});
-
-const mockFeedCardProps = {
-  feed: {
-    from: 'admin',
-    id: '36ea94c9-7f12-489c-94df-56cbefe14b2f',
-    message: 'Cypress announcement',
-    postTs: 1714026576902,
-    reactions: [],
-  },
-  task: MOCK_ANNOUNCEMENT_DATA.data[0],
-  entityLink:
-    '<#E::database::cy-database-service-373851.cypress-database-1714026557974>',
-  isThread: true,
+const mockProps = {
+  announcement: MOCK_ANNOUNCEMENT_DATA.data[0],
   editPermission: true,
-  isReplyThreadOpen: false,
-  updateThreadHandler: jest.fn(),
-  onReply: jest.fn(),
+  updateAnnouncementHandler: jest.fn(),
   onConfirmation: jest.fn(),
-  showReplyThread: jest.fn(),
 };
 
-describe('Test AnnouncementFeedCardBody Component', () => {
-  it('Check if AnnouncementFeedCardBody component has all child components', async () => {
-    render(<AnnouncementFeedCardBody {...mockFeedCardProps} />);
-    const feedCardHeader = screen.getByText('FeedCardHeader');
-    const feedCardBody = screen.getByText('FeedCardBody');
-    const profilePictures = screen.getAllByText('ProfilePicture');
-    const userPopOverCard = screen.getByText('UserPopOverCard');
+describe('AnnouncementFeedCardBody', () => {
+  it('renders the announcement title and description', () => {
+    render(<AnnouncementFeedCardBody {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
 
-    expect(feedCardHeader).toBeInTheDocument();
-    expect(feedCardBody).toBeInTheDocument();
-    expect(userPopOverCard).toBeInTheDocument();
-    expect(profilePictures).toHaveLength(4);
+    expect(screen.getByText('Cypress announcement')).toBeInTheDocument();
+    expect(
+      screen.getByText('Cypress announcement description')
+    ).toBeInTheDocument();
   });
 
-  it('should trigger onPostUpdate  from FeedCardBody', async () => {
-    render(<AnnouncementFeedCardBody {...mockFeedCardProps} />);
+  it('opens the edit flow and patches the announcement', () => {
+    render(<AnnouncementFeedCardBody {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
 
-    const postUpdateButton = screen.getByText('PostUpdateButton');
+    fireEvent.click(screen.getByTestId('announcement-actions'));
+    fireEvent.click(screen.getByText('label.edit'));
+    fireEvent.click(screen.getByText('SaveAnnouncement'));
 
-    fireEvent.click(postUpdateButton);
-
-    expect(mockFeedCardProps.updateThreadHandler).toHaveBeenCalledWith(
+    expect(mockProps.updateAnnouncementHandler).toHaveBeenCalledWith(
       MOCK_ANNOUNCEMENT_DATA.data[0].id,
-      MOCK_ANNOUNCEMENT_DATA.data[0].id,
-      true,
-      [{ op: 'replace', path: '/message', value: 'message' }]
+      expect.any(Array)
     );
   });
 
-  it('should trigger ReactionSelectButton from FeedCardBody', async () => {
-    render(<AnnouncementFeedCardBody {...mockFeedCardProps} />);
+  it('sends delete confirmation for the selected announcement', () => {
+    render(<AnnouncementFeedCardBody {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
 
-    const reactionSelectButton = screen.getByText('ReactionSelectButton');
+    fireEvent.click(screen.getByTestId('announcement-actions'));
+    fireEvent.click(screen.getByText('label.delete'));
 
-    fireEvent.click(reactionSelectButton);
-
-    expect(mockFeedCardProps.updateThreadHandler).toHaveBeenCalledWith(
-      MOCK_ANNOUNCEMENT_DATA.data[0].id,
-      MOCK_ANNOUNCEMENT_DATA.data[0].id,
-      true,
-      [
-        {
-          op: 'add',
-          path: '/reactions/0',
-          value: {
-            reactionType: 'confused',
-            user: {
-              id: '123',
-            },
-          },
-        },
-      ]
+    expect(mockProps.onConfirmation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        threadId: MOCK_ANNOUNCEMENT_DATA.data[0].id,
+        isThread: true,
+      })
     );
-  });
-
-  it('should trigger postReplies button', async () => {
-    render(<AnnouncementFeedCardBody {...mockFeedCardProps} />);
-
-    const showReplyThread = screen.getByTestId('show-reply-thread');
-
-    fireEvent.click(showReplyThread);
-
-    expect(mockFeedCardProps.showReplyThread).toHaveBeenCalled();
-  });
-
-  it('should not render PostReplies Profile Picture if showRepliesButton is false', async () => {
-    render(
-      <AnnouncementFeedCardBody
-        {...mockFeedCardProps}
-        showRepliesButton={false}
-      />
-    );
-
-    const profilePictures = screen.queryByText('ProfilePicture');
-    const showReplyThread = screen.queryByTestId('show-reply-thread');
-
-    expect(profilePictures).not.toBeInTheDocument();
-    expect(showReplyThread).not.toBeInTheDocument();
-  });
-
-  it('should not render PostReplies button if repliesPost is empty', async () => {
-    render(
-      <AnnouncementFeedCardBody {...mockFeedCardProps} task={{} as Thread} />
-    );
-
-    const showReplyThread = screen.queryByTestId('show-reply-thread');
-
-    expect(showReplyThread).not.toBeInTheDocument();
   });
 });

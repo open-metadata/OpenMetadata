@@ -12,24 +12,18 @@
  */
 import { EntityType } from '../../../../enums/entity.enum';
 import { Column } from '../../../../generated/entity/data/table';
-import { Thread } from '../../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../../generated/entity/type';
+import { Task } from '../../../../rest/tasksAPI';
 
-export type TaskTabProps = {
-  taskThread: Thread;
+export interface TaskTabProps {
+  task: Task;
+  entityType: EntityType;
   owners?: EntityReference[];
+  columns?: Column[];
   isForFeedTab?: boolean;
   hasGlossaryReviewer?: boolean;
   onUpdateEntityDetails?: () => void;
   onAfterClose?: () => void;
   handlePanelResize?: (isFullWidth: boolean) => void;
   isOpenInDrawer?: boolean;
-} & (
-  | TableTaskTabProps
-  | { columns?: undefined; entityType: Exclude<EntityType, EntityType.TABLE> }
-);
-
-export interface TableTaskTabProps {
-  columns?: Column[];
-  entityType: EntityType.TABLE;
 }

@@ -12,6 +12,7 @@
 """
 Custom OM connection headers
 """
+
 import json
 from functools import singledispatch
 
@@ -52,15 +53,11 @@ def _(_, conn, cursor, statement, parameters, context, executemany):
     """
     version = pkg_resources.require("openmetadata-ingestion")[0].version
     st_list = statement.split(" ")
-    statement_with_header = (
-        f"{st_list[0]} {render_query_header(version)} {' '.join(st_list[1:])}"
-    )
+    statement_with_header = f"{st_list[0]} {render_query_header(version)} {' '.join(st_list[1:])}"
     return statement_with_header, parameters
 
 
-def inject_query_header(
-    conn, cursor, statement, parameters, context, executemany
-):  # pylint: disable=unused-argument
+def inject_query_header(conn, cursor, statement, parameters, context, executemany):  # pylint: disable=unused-argument
     """
     Inject the query header for OpenMetadata Queries
     """
