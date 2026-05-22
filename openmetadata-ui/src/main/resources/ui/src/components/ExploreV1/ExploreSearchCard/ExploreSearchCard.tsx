@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
-import { forwardRef, useMemo } from 'react';
+import { forwardRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
@@ -31,6 +32,7 @@ import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import { TableColumnSearchSource } from '../../../interface/search.interface';
+import { prefetchTable } from '../../../rest/queries/tableQuery';
 import {
   getEntityName,
   highlightEntityNameAndDescription,
@@ -78,12 +80,27 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const { t } = useTranslation();
     const { tab } = useRequiredParams<{ tab: string }>();
     const { isTourOpen } = useTourProvider();
+    const queryClient = useQueryClient();
 
     const source = useMemo(() => {
       return highlight
         ? highlightEntityNameAndDescription(_source, highlight)
         : _source;
     }, [_source, highlight]);
+
+    // Hover/focus on a Table card warms the React Query cache so the click that follows hits
+    // an already-populated slot. Dispatched on entityType because only the Table detail page
+    // currently reads from a shared {@code ['table', fqn, fields]} slot; other entity types
+    // are no-ops until their pages migrate to useQuery. {@code prefetchQuery} is idempotent
+    // within the configured {@code staleTime}, so repeated hovers don't re-fire the request.
+    const handlePrefetch = useCallback(() => {
+      if (
+        source.entityType === EntityType.TABLE &&
+        source.fullyQualifiedName
+      ) {
+        prefetchTable(queryClient, source.fullyQualifiedName);
+      }
+    }, [queryClient, source.entityType, source.fullyQualifiedName]);
 
     const otherDetails = useMemo(() => {
       if (source?.entityType === EntityType.TABLE_COLUMN) {
@@ -341,7 +358,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                     source,
                     openEntityInNewPage
                   )}
-                  to={isObject(entityLink) ? entityLink.pathname : entityLink}>
+                  to={isObject(entityLink) ? entityLink.pathname : entityLink}
+                  onFocus={handlePrefetch}
+                  onMouseEnter={handlePrefetch}>
                   <Typography.Text
                     className="text-lg font-medium text-link-color break-word whitespace-normal"
                     data-testid="entity-header-display-name">

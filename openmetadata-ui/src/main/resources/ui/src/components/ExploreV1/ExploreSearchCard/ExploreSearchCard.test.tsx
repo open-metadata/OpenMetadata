@@ -11,11 +11,18 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import ExploreSearchCard from './ExploreSearchCard';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
+
+const mockPrefetchTable = jest.fn();
+
+jest.mock('../../../rest/queries/tableQuery', () => ({
+  prefetchTable: (...args: unknown[]) => mockPrefetchTable(...args),
+}));
 
 jest.mock('../../../utils/RouterUtils', () => ({
   getDomainPath: jest.fn().mockReturnValue('/mock-domain'),
@@ -79,7 +86,7 @@ const defaultProps: Omit<ExploreSearchCardProps, 'source'> = {
 const renderCard = (
   sourceOverrides: Partial<ExploreSearchCardProps['source']>
 ) =>
-  render(
+  renderWithQueryClient(
     <MemoryRouter>
       <ExploreSearchCard
         {...defaultProps}
@@ -134,7 +141,7 @@ describe('ExploreSearchCard - Highlight functionality', () => {
   });
 
   it('uses base source when highlight is not provided', () => {
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ExploreSearchCard
           {...defaultProps}
@@ -155,7 +162,7 @@ describe('ExploreSearchCard - Highlight functionality', () => {
       displayName: ['<span class="highlight">Test</span> Table'],
     };
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ExploreSearchCard
           {...defaultProps}
@@ -183,7 +190,7 @@ describe('ExploreSearchCard - Highlight functionality', () => {
       name: ['<span class="highlight">test</span>-table'],
     };
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ExploreSearchCard
           {...defaultProps}
@@ -211,7 +218,7 @@ describe('ExploreSearchCard - Highlight functionality', () => {
       ],
     };
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ExploreSearchCard
           {...defaultProps}
@@ -238,7 +245,7 @@ describe('ExploreSearchCard - Highlight functionality', () => {
       name: ['<span class="highlight">name</span>'],
     };
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ExploreSearchCard
           {...defaultProps}
@@ -270,7 +277,7 @@ describe('ExploreSearchCard - Highlight functionality', () => {
       ],
     };
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ExploreSearchCard
           {...defaultProps}
@@ -298,7 +305,7 @@ describe('ExploreSearchCard - Highlight functionality', () => {
   it('handles empty highlight object', () => {
     const highlightData = {};
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ExploreSearchCard
           {...defaultProps}
@@ -322,7 +329,7 @@ describe('ExploreSearchCard - Highlight functionality', () => {
   });
 
   it('memoizes source correctly when highlight changes', () => {
-    const { rerender } = render(
+    const { rerender } = renderWithQueryClient(
       <MemoryRouter>
         <ExploreSearchCard
           {...defaultProps}
@@ -355,5 +362,72 @@ describe('ExploreSearchCard - Highlight functionality', () => {
     );
 
     expect(highlightEntityNameAndDescription).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('ExploreSearchCard - Prefetch on hover', () => {
+  beforeEach(() => {
+    mockPrefetchTable.mockClear();
+  });
+
+  it('prefetches table details when hovering a Table card', () => {
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          source={{
+            ...baseSource,
+            entityType: 'table',
+            fullyQualifiedName: 'svc.db.schema.users',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.mouseEnter(screen.getByTestId('entity-link'));
+
+    expect(mockPrefetchTable).toHaveBeenCalledTimes(1);
+    expect(mockPrefetchTable).toHaveBeenCalledWith(
+      expect.anything(),
+      'svc.db.schema.users'
+    );
+  });
+
+  it('also prefetches on keyboard focus for accessibility', () => {
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          source={{
+            ...baseSource,
+            entityType: 'table',
+            fullyQualifiedName: 'svc.db.schema.users',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.focus(screen.getByTestId('entity-link'));
+
+    expect(mockPrefetchTable).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not prefetch when entityType is not a Table', () => {
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          source={{
+            ...baseSource,
+            entityType: 'dashboard',
+            fullyQualifiedName: 'svc.dash.daily-active',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.mouseEnter(screen.getByTestId('entity-link'));
+
+    expect(mockPrefetchTable).not.toHaveBeenCalled();
   });
 });

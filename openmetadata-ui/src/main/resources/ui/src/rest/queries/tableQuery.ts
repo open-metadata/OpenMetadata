@@ -12,7 +12,9 @@
  */
 
 import { QueryClient } from '@tanstack/react-query';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
+import { defaultFieldsWithColumns } from '../../utils/DatasetDetailsUtils';
 import { getTableDetailsByFQN } from '../tableAPI';
 
 /**
@@ -59,3 +61,21 @@ export const prefetchTableByFqn = (
     .catch(() => undefined);
 
 export type TableQueryData = Table | undefined;
+
+/**
+ * Field set used for hover-prefetch. Matches the maximal {@code tableFields} the detail page
+ * reads when the viewer has both {@code ViewUsage} and {@code ViewTests} permissions — the
+ * common case for engineering / data users. Restricted viewers (no usage/test perms) read a
+ * narrower {@code tableFields} on the page, so a hover-prefetch by them lands in a cache slot
+ * the page won't consume; that's acceptable since prefetch is best-effort and the wasted
+ * bytes are bounded to one request per hover.
+ */
+const PREFETCH_TABLE_FIELDS = `${defaultFieldsWithColumns},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.TESTSUITE}`;
+
+/**
+ * Convenience wrapper around {@link prefetchTableByFqn} for hover handlers. Uses the
+ * canonical {@link PREFETCH_TABLE_FIELDS} so the warmed cache slot matches what
+ * {@code TableDetailsPageV1} reads on mount for a permitted viewer.
+ */
+export const prefetchTable = (queryClient: QueryClient, fqn: string) =>
+  prefetchTableByFqn(queryClient, fqn, PREFETCH_TABLE_FIELDS);
