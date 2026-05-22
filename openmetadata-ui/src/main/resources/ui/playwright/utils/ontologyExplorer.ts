@@ -21,7 +21,16 @@ import { sidebarClick } from '../utils/sidebar';
 export async function applyGlossaryFilter(page: Page, glossaryId: string) {
   await page.getByTestId('search-dropdown-Glossary').click();
   await page.getByTestId(glossaryId).click();
+  const termsResponse = page
+    .waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/glossaryTerms') &&
+        response.status() === 200,
+      { timeout: 30000 }
+    )
+    .catch(() => null);
   await page.getByTestId('update-btn').click();
+  await termsResponse;
 }
 
 export async function navigateToOntologyExplorer(page: Page) {
@@ -84,8 +93,15 @@ export async function readGraphEdges(page: Page): Promise<RenderedEdge[]> {
   await page.waitForFunction(
     () => {
       const el = document.querySelector<HTMLElement>('.ontology-g6-container');
-
-      return typeof el?.dataset.edges === 'string';
+      const raw = el?.dataset.edges;
+      if (typeof raw !== 'string') {
+        return false;
+      }
+      try {
+        return (JSON.parse(raw) as unknown[]).length > 0;
+      } catch {
+        return false;
+      }
     },
     { timeout: 20000 }
   );
@@ -214,9 +230,18 @@ export async function readCardinalityMap(
   page: Page
 ): Promise<Record<string, CardinalityLabels>> {
   await page.waitForFunction(
-    () =>
-      typeof document.querySelector<HTMLElement>('.ontology-g6-container')
-        ?.dataset.cardinalityMap === 'string',
+    () => {
+      const el = document.querySelector<HTMLElement>('.ontology-g6-container');
+      const raw = el?.dataset.cardinalityMap;
+      if (typeof raw !== 'string') {
+        return false;
+      }
+      try {
+        return Object.keys(JSON.parse(raw)).length > 0;
+      } catch {
+        return false;
+      }
+    },
     { timeout: 20000 }
   );
 
@@ -374,5 +399,70 @@ export async function waitForMoreNodesThan(
     },
     count,
     { timeout: 30000 }
+  );
+}
+export async function applyMultiGlossaryFilter(
+  page: Page,
+  ...glossaryIds: string[]
+): Promise<void> {
+  await page.getByTestId('search-dropdown-Glossary').click();
+  for (const id of glossaryIds) {
+    await page.getByTestId(id).click();
+  }
+  const termsResponse = page
+    .waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/glossaryTerms') &&
+        response.status() === 200,
+      { timeout: 30000 }
+    )
+    .catch(() => null);
+  await page.getByTestId('update-btn').click();
+  await termsResponse;
+}
+
+export async function waitForNodePresent(
+  page: Page,
+  termId: string
+): Promise<void> {
+  await page.waitForFunction(
+    (id) => {
+      const el = document.querySelector<HTMLElement>('.ontology-g6-container');
+      const raw = el?.dataset.nodePositions;
+      if (!raw) {
+        return false;
+      }
+      try {
+        return id in JSON.parse(raw);
+      } catch {
+        return false;
+      }
+    },
+    termId,
+    { timeout: 20000 }
+  );
+}
+
+export async function waitForNodeAbsent(
+  page: Page,
+  termId: string
+): Promise<void> {
+  await page.waitForFunction(
+    (id) => {
+      const el = document.querySelector<HTMLElement>('.ontology-g6-container');
+      const raw = el?.dataset.nodePositions;
+      if (!raw) {
+        return false;
+      }
+      try {
+        const positions = JSON.parse(raw);
+
+        return !(id in positions) && Object.keys(positions).length > 0;
+      } catch {
+        return false;
+      }
+    },
+    termId,
+    { timeout: 20000 }
   );
 }

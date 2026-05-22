@@ -207,7 +207,6 @@ test.describe('Ontology Explorer — E2E', () => {
 
     await page.getByTestId('view-mode-select').click();
     await page.getByRole('option', { name: 'Overview' }).click();
-    await waitForGraphLoaded(page);
 
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
       '6 Relations'
