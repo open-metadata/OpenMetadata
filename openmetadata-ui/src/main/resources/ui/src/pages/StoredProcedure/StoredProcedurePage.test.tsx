@@ -45,6 +45,8 @@ jest.mock('../../rest/storedProceduresAPI', () => ({
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
   getFeedCounts: jest.fn(),
   sortTagsCaseInsensitive: jest.fn(),
 }));

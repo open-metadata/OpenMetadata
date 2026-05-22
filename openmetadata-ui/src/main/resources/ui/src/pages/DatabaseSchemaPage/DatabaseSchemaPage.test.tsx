@@ -17,7 +17,7 @@ import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getDatabaseSchemaDetailsByFQN } from '../../rest/databaseAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
-import { getFeedCounts } from '../../utils/CommonUtils';
+import { fetchEntityTaskCountsInto } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import DatabaseSchemaPageComponent from './DatabaseSchemaPage.component';
 import {
@@ -119,6 +119,8 @@ jest.mock('../../rest/tableAPI', () => ({
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
   getEntityMissingError: jest.fn().mockImplementation((error) => error),
   getFeedCounts: jest.fn().mockImplementation(() => FEED_COUNT_INITIAL_DATA),
   sortTagsCaseInsensitive: jest.fn(),
@@ -410,8 +412,7 @@ describe('Tests for DatabaseSchemaPage', () => {
         databaseSchema: 'sample_data.ecommerce_db.shopify',
         limit: 0,
       });
-      expect(getFeedCounts).toHaveBeenCalledWith(
-        'databaseSchema',
+      expect(fetchEntityTaskCountsInto).toHaveBeenCalledWith(
         'sample_data.ecommerce_db.shopify',
         expect.any(Function)
       );
@@ -437,8 +438,7 @@ describe('Tests for DatabaseSchemaPage', () => {
         databaseSchema: 'Glue.default.information_schema',
         limit: 0,
       });
-      expect(getFeedCounts).toHaveBeenCalledWith(
-        'databaseSchema',
+      expect(fetchEntityTaskCountsInto).toHaveBeenCalledWith(
         'Glue.default.information_schema',
         expect.any(Function)
       );
