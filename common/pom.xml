@@ -55,6 +55,13 @@
       <artifactId>jsonschema2pojo-core</artifactId>
       <version>${jsonschema2pojo.version}</version>
       <scope>provided</scope>
+      <exclusions>
+        <!-- commons-lang 2.x is EOL with no fix for CVE-2025-48924; we use commons-lang3 instead -->
+        <exclusion>
+          <groupId>commons-lang</groupId>
+          <artifactId>commons-lang</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
