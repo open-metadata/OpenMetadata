@@ -45,6 +45,10 @@ public class NodeFactoryRegistry {
     extensions.put(subType, extension);
   }
 
+  public void deregister(NodeSubType subType) {
+    extensions.remove(subType);
+  }
+
   public Optional<NodeInterface> create(
       NodeSubType subType,
       WorkflowNodeDefinitionInterface nodeDefinition,

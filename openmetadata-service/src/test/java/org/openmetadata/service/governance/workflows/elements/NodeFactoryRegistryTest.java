@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Optional;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,11 @@ class NodeFactoryRegistryTest {
   @Order(2)
   void testGetInstanceReturnsSameSingleton() {
     assertSame(NodeFactoryRegistry.getInstance(), NodeFactoryRegistry.getInstance());
+  }
+
+  @AfterAll
+  static void cleanupRegistry() {
+    NodeFactoryRegistry.getInstance().deregister(NodeSubType.POLICY_AGENT_TASK);
   }
 
   @Test

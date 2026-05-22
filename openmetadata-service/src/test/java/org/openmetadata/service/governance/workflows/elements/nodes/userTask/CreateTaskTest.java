@@ -23,8 +23,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.LocalDate;
+import java.time.Instant;
+import java.time.Period;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -287,43 +289,63 @@ class CreateTaskTest {
 
   @Test
   void testResolveEffectiveDueDateComputesMonthDuration() {
-    long expected =
-        LocalDate.now(ZoneOffset.UTC)
-            .plusMonths(1)
-            .atStartOfDay(ZoneOffset.UTC)
-            .toInstant()
-            .toEpochMilli();
+    long before = System.currentTimeMillis();
     Long result =
         CreateTask.resolveEffectiveDueDate(TaskEntityStatus.Granted, Map.of("duration", "P1M"), 0L);
-    assertEquals(expected, result);
+    long after = System.currentTimeMillis();
+
+    long expectedMin =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(before), ZoneOffset.UTC)
+            .plus(Period.ofMonths(1))
+            .toInstant()
+            .toEpochMilli();
+    long expectedMax =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(after), ZoneOffset.UTC)
+            .plus(Period.ofMonths(1))
+            .toInstant()
+            .toEpochMilli();
+    assertTrue(result >= expectedMin && result <= expectedMax);
   }
 
   @Test
   void testResolveEffectiveDueDateComputesYearDuration() {
-    long expected =
-        LocalDate.now(ZoneOffset.UTC)
-            .plusYears(1)
-            .atStartOfDay(ZoneOffset.UTC)
-            .toInstant()
-            .toEpochMilli();
+    long before = System.currentTimeMillis();
     Long result =
         CreateTask.resolveEffectiveDueDate(TaskEntityStatus.Granted, Map.of("duration", "P1Y"), 0L);
-    assertEquals(expected, result);
+    long after = System.currentTimeMillis();
+
+    long expectedMin =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(before), ZoneOffset.UTC)
+            .plus(Period.ofYears(1))
+            .toInstant()
+            .toEpochMilli();
+    long expectedMax =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(after), ZoneOffset.UTC)
+            .plus(Period.ofYears(1))
+            .toInstant()
+            .toEpochMilli();
+    assertTrue(result >= expectedMin && result <= expectedMax);
   }
 
   @Test
   void testResolveEffectiveDueDateComputesCombinedPeriod() {
-    long expected =
-        LocalDate.now(ZoneOffset.UTC)
-            .plusYears(2)
-            .plusMonths(3)
-            .atStartOfDay(ZoneOffset.UTC)
-            .toInstant()
-            .toEpochMilli();
+    long before = System.currentTimeMillis();
     Long result =
         CreateTask.resolveEffectiveDueDate(
             TaskEntityStatus.Granted, Map.of("duration", "P2Y3M"), 0L);
-    assertEquals(expected, result);
+    long after = System.currentTimeMillis();
+
+    long expectedMin =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(before), ZoneOffset.UTC)
+            .plus(Period.of(2, 3, 0))
+            .toInstant()
+            .toEpochMilli();
+    long expectedMax =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(after), ZoneOffset.UTC)
+            .plus(Period.of(2, 3, 0))
+            .toInstant()
+            .toEpochMilli();
+    assertTrue(result >= expectedMin && result <= expectedMax);
   }
 
   @Test
@@ -368,25 +390,40 @@ class CreateTaskTest {
 
   @Test
   void testParseMillisFromIso8601DurationHandlesMonths() {
-    long expected =
-        LocalDate.now(ZoneOffset.UTC)
-            .plusMonths(3)
-            .atStartOfDay(ZoneOffset.UTC)
+    long before = System.currentTimeMillis();
+    Long result = CreateTask.parseMillisFromIso8601Duration("P3M", 0L);
+    long after = System.currentTimeMillis();
+
+    long expectedMin =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(before), ZoneOffset.UTC)
+            .plus(Period.ofMonths(3))
             .toInstant()
             .toEpochMilli();
-    assertEquals(expected, CreateTask.parseMillisFromIso8601Duration("P3M", 0L));
+    long expectedMax =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(after), ZoneOffset.UTC)
+            .plus(Period.ofMonths(3))
+            .toInstant()
+            .toEpochMilli();
+    assertTrue(result >= expectedMin && result <= expectedMax);
   }
 
   @Test
   void testParseMillisFromIso8601DurationHandlesYearsAndMonths() {
-    long expected =
-        LocalDate.now(ZoneOffset.UTC)
-            .plusYears(1)
-            .plusMonths(6)
-            .atStartOfDay(ZoneOffset.UTC)
+    long before = System.currentTimeMillis();
+    Long result = CreateTask.parseMillisFromIso8601Duration("P1Y6M", 0L);
+    long after = System.currentTimeMillis();
+
+    long expectedMin =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(before), ZoneOffset.UTC)
+            .plus(Period.of(1, 6, 0))
             .toInstant()
             .toEpochMilli();
-    assertEquals(expected, CreateTask.parseMillisFromIso8601Duration("P1Y6M", 0L));
+    long expectedMax =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(after), ZoneOffset.UTC)
+            .plus(Period.of(1, 6, 0))
+            .toInstant()
+            .toEpochMilli();
+    assertTrue(result >= expectedMin && result <= expectedMax);
   }
 
   @Test
