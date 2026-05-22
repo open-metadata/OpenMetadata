@@ -1086,9 +1086,8 @@ export interface ConfigObject {
      *
      * Choose between API or database connection fetch metadata from superset.
      *
-     * Underlying database connection. See
-     * https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for
-     * supported backends.
+     * Choose between database connection or REST API connection to fetch metadata from
+     * Airflow.
      *
      * Matillion Auth Configuration
      *
@@ -1297,19 +1296,6 @@ export interface ConfigObject {
      * Source Python Class Name to instantiated by the ingestion workflow
      */
     sourcePythonClass?: string;
-    /**
-     * Choose between Database connection or HDB User Store connection.
-     *
-     * Choose between API or database connection fetch metadata from superset.
-     *
-     * Choose between database connection or REST API connection to fetch metadata from
-     * Airflow.
-     *
-     * Matillion Auth Configuration
-     *
-     * Choose between mysql and postgres connection for alation database
-     */
-    connection?: ConfigConnection;
     /**
      * Couchbase connection Bucket options.
      */
@@ -4005,6 +3991,7 @@ export enum ConnectionType {
     Mysql = "Mysql",
     Postgres = "Postgres",
     RESTAPI = "RestAPI",
+    S3 = "S3",
     SQLite = "SQLite",
 }
 

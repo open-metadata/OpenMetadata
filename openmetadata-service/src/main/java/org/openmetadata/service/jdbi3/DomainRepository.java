@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
@@ -280,14 +281,27 @@ public class DomainRepository extends EntityRepository<Domain> {
       BulkAssets request,
       boolean isAdd,
       String userName) {
+    boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
     BulkOperationResult result =
-        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(dryRun);
     List<BulkResponse> success = new ArrayList<>();
+
+    if (nullOrEmpty(request.getAssets())) {
+      // Nothing to Validate — schema marks assets optional, so a request without it is valid
+      return result.withSuccessRequest(
+          List.of(new BulkResponse().withMessage("Nothing to Validate.")));
+    }
 
     EntityUtil.populateEntityReferences(request.getAssets());
 
     for (EntityReference ref : request.getAssets()) {
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+
+      if (dryRun) {
+        success.add(new BulkResponse().withRequest(ref));
+        result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+        continue;
+      }
 
       cleanupOldDomain(ref, fromEntity, relationship);
       cleanupDataProducts(entityId, ref, relationship, isAdd);
@@ -306,8 +320,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
     result.withSuccessRequest(success);
 
-    // Create a Change Event on successful addition/removal of assets
-    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+    if (!dryRun && result.getStatus().equals(ApiStatus.SUCCESS)) {
       EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
       ChangeDescription change =
           addBulkAddRemoveChangeDescription(
