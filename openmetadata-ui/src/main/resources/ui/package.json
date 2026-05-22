@@ -250,6 +250,7 @@
     "postcss": "8.5.10",
     "prettier": "2.8.8",
     "react-test-renderer": "^18.2.0",
+    "rollup-plugin-visualizer": "^7.0.1",
     "sync-i18n": "^0.0.20",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.18",
