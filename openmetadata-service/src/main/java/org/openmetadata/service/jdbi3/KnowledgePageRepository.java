@@ -59,6 +59,7 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.knowledge.KnowledgePageResource;
 import org.openmetadata.service.search.PropagationDescriptor;
+import org.openmetadata.service.search.vector.PageBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -70,6 +71,11 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 @Repository
 public class KnowledgePageRepository extends EntityRepository<Page> {
   public static final String KNOWLEDGE_PAGE_ENTITY = "page";
+
+  static {
+    PageBodyTextContributor.INSTANCE.register();
+  }
+
   private static final String KNOWLEDGE_PATCH_FIELDS = "page,relatedEntities,parent,children";
   private static final String KNOWLEDGE_UPDATE_FIELDS = "page,relatedEntities,parent,children";
   public static final String RELATED_ENTITIES = "relatedEntities";
