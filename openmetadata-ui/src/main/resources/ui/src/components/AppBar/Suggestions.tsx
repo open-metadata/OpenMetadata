@@ -13,7 +13,7 @@
 
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { ContainerSearchSource } from 'interface/search.interface';
+import { ContainerSearchSource } from '../../interface/search.interface';
 import { isEmpty, isString } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
