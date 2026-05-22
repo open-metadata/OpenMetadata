@@ -250,14 +250,23 @@ public class McpServer implements McpServerProvider {
           CatalogSecurityContext securityContext =
               jwtFilter.getCatalogSecurityContext((String) context.get("Authorization"));
           String userName = securityContext.getUserPrincipal().getName();
-          McpSchema.CallToolResult result = null;
+          String clientName =
+              (String)
+                  context.get(org.openmetadata.mcp.AuthEnrichedMcpContextExtractor.CLIENT_NAME);
+          org.openmetadata.mcp.tools.DefaultToolContext.CallToolOutcome outcome = null;
           try {
             ImpersonationContext.setImpersonatedBy(getMcpBotName());
-            result = toolContext.callTool(authorizer, limits, tool.name(), securityContext, req);
-            return result;
+            outcome =
+                toolContext.callToolWithMetadata(
+                    authorizer, limits, tool.name(), securityContext, req);
+            return outcome.result();
           } finally {
-            boolean success = result != null && !Boolean.TRUE.equals(result.isError());
-            McpUsageRecorder.record(tool.name(), userName, success);
+            boolean success = outcome != null && !Boolean.TRUE.equals(outcome.result().isError());
+            Long latencyMs = outcome != null ? outcome.latencyMs() : null;
+            org.openmetadata.schema.entity.app.mcp.McpToolCallUsage.ErrorCategory category =
+                outcome != null ? outcome.errorCategory() : null;
+            McpUsageRecorder.record(
+                tool.name(), userName, success, latencyMs, category, clientName);
             ImpersonationContext.clear();
           }
         });
