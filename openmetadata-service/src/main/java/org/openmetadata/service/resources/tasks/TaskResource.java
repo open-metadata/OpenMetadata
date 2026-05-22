@@ -68,6 +68,7 @@ import org.openmetadata.schema.type.DataAccessType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.type.TaskEntityStatus;
@@ -76,6 +77,7 @@ import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -91,9 +93,11 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.security.policyevaluator.TaskResourceContext;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Path("/v1/tasks")
@@ -116,6 +120,35 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
   public TaskResource(Authorizer authorizer, Limits limits) {
     super(Entity.TASK, authorizer, limits);
+    // PATCH on assignees / priority must require ReassignTask, not the default EditAll.
+    // Without this, any holder of EditAll on the task resource (filer, assignees, reviewers via
+    // TaskAuthorPolicy) could reassign or change priority through a JSON Patch, bypassing the
+    // entity-owner-only guard enforced in bulk operations.
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, "assignees", MetadataOperation.REASSIGN_TASK);
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, "priority", MetadataOperation.REASSIGN_TASK);
+    // PATCH on status / resolution / approvedBy / approvedAt must require ResolveTask. Without
+    // this, the filer's EditAll allow rule would let them PATCH /status to a terminal value
+    // (Approved, Rejected, …) and bypass the self-approval deny on ResolveTask. The dedicated
+    // /resolve endpoint and the bulk Approve/Reject path remain the only state-transition routes.
+    ResourceRegistry.mapEntityFieldOperation(Entity.TASK, "status", MetadataOperation.RESOLVE_TASK);
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, "resolution", MetadataOperation.RESOLVE_TASK);
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, "approvedBy", MetadataOperation.RESOLVE_TASK);
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, "approvedById", MetadataOperation.RESOLVE_TASK);
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, "approvedAt", MetadataOperation.RESOLVE_TASK);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    return List.of(
+        MetadataOperation.RESOLVE_TASK,
+        MetadataOperation.CLOSE_TASK,
+        MetadataOperation.REASSIGN_TASK);
   }
 
   public static class TaskList extends ResultList<Task> {
@@ -1194,7 +1227,21 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           boolean hardDelete,
       @Parameter(description = "Task Id", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    // Use TaskResourceContext so isTaskFiler() can read task.createdBy. The default
+    // EntityResource.delete builds a generic ResourceContext that loads only owners/tags/domains,
+    // which would leave createdBy null and prevent the filer-delete-own-task TaskAuthorPolicy
+    // rule from matching. Include.ALL so a hardDelete request can fetch a previously soft-deleted
+    // task for the authorization check.
+    Task task = repository.get(uriInfo, id, getFields(FIELDS), Include.ALL, false);
+    OperationContext operationContext = new OperationContext(Entity.TASK, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, new TaskResourceContext(task));
+    RestUtil.DeleteResponse<Task> response =
+        repository.delete(securityContext.getUserPrincipal().getName(), id, false, hardDelete);
+    if (hardDelete) {
+      limits.invalidateCache(entityType);
+    }
+    addHref(uriInfo, response.entity());
+    return response.toResponse();
   }
 
   // ========================= Suggestion Endpoints =========================
@@ -1368,7 +1415,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         if (params == null || params.getAssignees() == null || params.getAssignees().isEmpty()) {
           throw new IllegalArgumentException("Assignees required for Assign operation");
         }
-        repository.checkPermissionsForOwnerOnlyAction(securityContext, task, "reassignTask");
+        repository.checkPermissionsForOwnerOnlyAction(
+            authorizer, securityContext, task, "reassignTask");
         List<EntityReference> newAssignees =
             params.getAssignees().stream().map(this::resolveUserOrTeam).toList();
         task.setAssignees(newAssignees);
@@ -1380,7 +1428,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         if (params == null || params.getPriority() == null) {
           throw new IllegalArgumentException("Priority required for UpdatePriority operation");
         }
-        repository.checkPermissionsForOwnerOnlyAction(securityContext, task, "changeTaskPriority");
+        repository.checkPermissionsForOwnerOnlyAction(
+            authorizer, securityContext, task, "changeTaskPriority");
         task.setPriority(params.getPriority());
         task.setUpdatedBy(userName);
         task.setUpdatedAt(System.currentTimeMillis());

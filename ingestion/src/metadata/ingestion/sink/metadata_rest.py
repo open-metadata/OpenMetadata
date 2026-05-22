@@ -79,6 +79,7 @@ from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Sink
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.custom_properties import OMetaCustomProperties
 from metadata.ingestion.models.data_insight import OMetaDataInsightSample
 from metadata.ingestion.models.delete_entity import DeleteEntity
@@ -475,6 +476,19 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         lineage_response = self._run_dispatch(add_lineage.lineage_request)
         if lineage_response and lineage_response.right is not None and add_lineage.entity_fqn and add_lineage.entity:
             self.metadata.patch_lineage_processed_flag(entity=add_lineage.entity, fqn=add_lineage.entity_fqn)
+
+    @_run_dispatch.register
+    def write_barrier(self, record: Barrier) -> Either[Entity]:
+        """Flush the buffer synchronously so subsequent records in the same
+        stream see committed entities."""
+        if self.buffer:
+            logger.debug(
+                "Barrier flush: %d entities, reason=%s",
+                len(self.buffer),
+                record.reason,
+            )
+            return self._flush_buffer()
+        return Either(right=None)  # pyright: ignore[reportCallIssue]
 
     def _create_role(self, create_role: CreateRoleRequest) -> Optional[Role]:  # noqa: UP045
         """
