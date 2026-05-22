@@ -15,7 +15,8 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.jdbi3.ListFilter.escape;
-import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
+import static org.openmetadata.service.jdbi3.ListFilter.escapeBackslashAndApostrophe;
+import static org.openmetadata.service.jdbi3.ListFilter.escapeForMySqlRegexReplacement;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -55,6 +56,22 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 public interface EntityDAO<T extends EntityInterface> {
   org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(EntityDAO.class);
+
+  /**
+   * Maximum number of values expanded into a single SQL IN-list. JDBI's {@code @BindList}
+   * produces one bind parameter per element. OpenMetadata supports MySQL and PostgreSQL —
+   * PostgreSQL's protocol caps each statement at 65535 bind parameters
+   * (the {@code int2}-size {@code numParams} field), and MySQL's {@code max_allowed_packet}
+   * caps total statement size. 30k UUID/hash strings stays comfortably under both: each
+   * UUID is ~36 chars, so an IN-list of this size is ~1MB on the wire (well below the 64MB
+   * MySQL default) and still leaves headroom for Postgres's parameter ceiling. Callers that
+   * may exceed this size must chunk their input lists; helpers in this interface
+   * ({@link #findEntitiesByIds}, {@link #findEntityByNames}, {@link #findReferencesByFqns},
+   * {@link #deleteByIds}) already do. (SQL Server isn't a supported connection type here —
+   * its ~2100 sp_executesql cap would require a separate, much smaller constant if it ever
+   * is.)
+   */
+  int MAX_IN_LIST_CHUNK_SIZE = 30_000;
 
   /** Methods that need to be overridden by interfaces extending this */
   String getTableName();
@@ -309,7 +326,7 @@ public interface EntityDAO<T extends EntityInterface> {
     }
     List<String> nameHashes =
         entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList();
-    int maxChunkSize = 30000;
+    int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
     if (nameHashes.size() <= maxChunkSize) {
       return findReferenceRows(nameHashes, include).stream()
           .map(row -> row.toEntityReference(Entity.getEntityTypeFromClass(getEntityClass())))
@@ -362,6 +379,16 @@ public interface EntityDAO<T extends EntityInterface> {
     if (!getNameHashColumn().equals("fqnHash")) {
       return;
     }
+    // The regex replacement argument to MySQL's REGEXP_REPLACE has its own escape layer
+    // on top of the SQL string-literal layer — `\1`/`\2` are backreferences, `\\` is a
+    // literal backslash. Using escapeBackslashAndApostrophe here would only escape for the
+    // SQL layer, leaving a stray backslash in newPrefix to be interpreted by the regex
+    // engine. escapeForMySqlRegexReplacement applies both layers (regex-replacement first,
+    // then SQL string-literal) so an input backslash round-trips to a single literal
+    // backslash in the replacement output. The source pattern goes through escape() which
+    // already covers the SQL + LIKE-underscore layers — the regex-pattern layer is
+    // tolerated here because OpenMetadata's name validation forbids the regex metas that
+    // would matter (\ . * ? + ^ $ ( ) [ ] { } |).
     String mySqlUpdate =
         String.format(
             "UPDATE %s SET json = "
@@ -370,11 +397,16 @@ public interface EntityDAO<T extends EntityInterface> {
                 + "WHERE fqnHash LIKE '%s.%%'",
             getTableName(),
             escape(oldPrefix),
-            escapeApostrophe(newPrefix),
+            escapeForMySqlRegexReplacement(newPrefix),
             FullyQualifiedName.buildHash(oldPrefix),
             FullyQualifiedName.buildHash(newPrefix),
             FullyQualifiedName.buildHash(oldPrefix));
 
+    // Postgres path embeds the prefixes inside a double-quoted JSON pattern, so escape
+    // backslashes and apostrophes first (so a literal "\\" or "''" isn't reparsed by the
+    // SQL string-literal layer), then escape double-quotes so the JSON-pattern delimiter
+    // can't be broken out of. Apostrophe escaping is still required because the JSON
+    // pattern itself sits inside a single-quoted SQL string literal.
     String postgresUpdate =
         String.format(
             "UPDATE %s SET json = "
@@ -383,8 +415,8 @@ public interface EntityDAO<T extends EntityInterface> {
                 + ", fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
                 + "WHERE fqnHash LIKE '%s.%%'",
             getTableName(),
-            ReindexingUtil.escapeDoubleQuotes(escapeApostrophe(oldPrefix)),
-            ReindexingUtil.escapeDoubleQuotes(escapeApostrophe(newPrefix)),
+            ReindexingUtil.escapeDoubleQuotes(escapeBackslashAndApostrophe(oldPrefix)),
+            ReindexingUtil.escapeDoubleQuotes(escapeBackslashAndApostrophe(newPrefix)),
             FullyQualifiedName.buildHash(oldPrefix),
             FullyQualifiedName.buildHash(newPrefix),
             FullyQualifiedName.buildHash(oldPrefix));
@@ -645,6 +677,26 @@ public interface EntityDAO<T extends EntityInterface> {
   @SqlUpdate("DELETE FROM <table> WHERE id = :id")
   int delete(@Define("table") String table, @BindUUID("id") UUID id);
 
+  @SqlUpdate("DELETE FROM <table> WHERE id IN (<ids>)")
+  int deleteByIds(@Define("table") String table, @BindList("ids") List<String> ids);
+
+  default int deleteByIds(List<UUID> ids) {
+    if (ids == null || ids.isEmpty()) {
+      return 0;
+    }
+    List<String> stringIds = ids.stream().map(UUID::toString).toList();
+    int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
+    if (stringIds.size() <= maxChunkSize) {
+      return deleteByIds(getTableName(), stringIds);
+    }
+    int deleted = 0;
+    for (int i = 0; i < stringIds.size(); i += maxChunkSize) {
+      List<String> chunk = stringIds.subList(i, Math.min(i + maxChunkSize, stringIds.size()));
+      deleted += deleteByIds(getTableName(), chunk);
+    }
+    return deleted;
+  }
+
   @ConnectionAwareSqlUpdate(value = "ANALYZE TABLE <table>", connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(value = "ANALYZE <table>", connectionType = POSTGRES)
   void analyze(@Define("table") String table);
@@ -731,7 +783,7 @@ public interface EntityDAO<T extends EntityInterface> {
     }
 
     List<String> distinctIds = ids.stream().map(UUID::toString).distinct().toList();
-    int maxChunkSize = 30000;
+    int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
 
     if (distinctIds.size() <= maxChunkSize) {
       return findByIds(getTableName(), distinctIds, getCondition(include)).stream()
@@ -776,7 +828,7 @@ public interface EntityDAO<T extends EntityInterface> {
     }
 
     List<String> names = entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList();
-    int maxChunkSize = 30000;
+    int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
 
     if (names.size() <= maxChunkSize) {
       return findByNames(getTableName(), getNameHashColumn(), names, getCondition(include)).stream()

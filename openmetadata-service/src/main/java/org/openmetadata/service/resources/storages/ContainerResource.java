@@ -662,7 +662,10 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted Container.",
-      description = "Restore a soft deleted Container.",
+      description =
+          "Restore a soft deleted Container. Pass async=true to run the restore in the background"
+              + " and receive a 202 Accepted response with a job id; useful for deep container"
+              + " hierarchies.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -670,13 +673,27 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Container.class)))
+                    schema = @Schema(implementation = Container.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Async restore started. Track completion via the jobId.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.service.util.RestoreEntityResponse.class)))
       })
   public Response restoreContainer(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Run the restore asynchronously. (Default = `false`)")
+          @QueryParam("async")
+          @DefaultValue("false")
+          boolean async,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return restoreEntity(uriInfo, securityContext, restore.getId(), async);
   }
 
   @PUT

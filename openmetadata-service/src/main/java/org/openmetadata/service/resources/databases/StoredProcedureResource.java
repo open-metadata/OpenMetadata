@@ -641,7 +641,9 @@ public class StoredProcedureResource
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted stored procedure.",
-      description = "Restore a soft deleted stored procedure.",
+      description =
+          "Restore a soft deleted stored procedure. Pass async=true to run the restore in the"
+              + " background and receive a 202 Accepted response with a job id.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -649,12 +651,26 @@ public class StoredProcedureResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = StoredProcedure.class)))
+                    schema = @Schema(implementation = StoredProcedure.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Async restore started. Track completion via the jobId.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.service.util.RestoreEntityResponse.class)))
       })
   public Response restoreStoredProcedure(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Run the restore asynchronously. (Default = `false`)")
+          @QueryParam("async")
+          @DefaultValue("false")
+          boolean async,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return restoreEntity(uriInfo, securityContext, restore.getId(), async);
   }
 }

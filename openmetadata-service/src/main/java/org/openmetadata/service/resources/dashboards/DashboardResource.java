@@ -653,7 +653,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted dashboard",
-      description = "Restore a soft deleted dashboard.",
+      description =
+          "Restore a soft deleted dashboard. Pass async=true to run the restore in the background"
+              + " and receive a 202 Accepted response with a job id.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -661,12 +663,26 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Dashboard.class)))
+                    schema = @Schema(implementation = Dashboard.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Async restore started. Track completion via the jobId.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.service.util.RestoreEntityResponse.class)))
       })
   public Response restoreDashboard(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Run the restore asynchronously. (Default = `false`)")
+          @QueryParam("async")
+          @DefaultValue("false")
+          boolean async,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return restoreEntity(uriInfo, securityContext, restore.getId(), async);
   }
 }

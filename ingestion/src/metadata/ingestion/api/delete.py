@@ -12,6 +12,7 @@
 Delete methods
 """
 
+import os
 import traceback
 from typing import Dict, Iterable, List, Optional, Set, Type  # noqa: UP035
 
@@ -25,6 +26,16 @@ from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
+# Env var that opts every connector into the server-side async delete cascade. When set,
+# mark-deletion calls fire DELETE /<entity>/async/{id}?recursive=true and return 202 + a
+# jobId immediately, so ingestion does not block on the server-side cascade (issue #4003).
+# Explicit dispatch_async= passed to the generators overrides this default.
+DELETE_DISPATCH_ASYNC_ENV = "OM_INGESTION_DELETE_ASYNC"
+
+
+def _default_dispatch_async() -> bool:
+    return os.getenv(DELETE_DISPATCH_ASYNC_ENV, "").lower() in {"true", "1", "yes", "on"}
+
 
 def delete_entity_from_source(
     metadata: OpenMetadata,
@@ -32,6 +43,7 @@ def delete_entity_from_source(
     entity_source_state: Set[str],  # noqa: UP006
     mark_deleted_entity: bool = True,
     params: Optional[Dict[str, str]] = None,  # noqa: UP006, UP045
+    dispatch_async: Optional[bool] = None,  # noqa: UP045
 ) -> Iterable[Either[DeleteEntity]]:
     """
     Soft-delete the entities of ``entity_type`` within ``params`` scope that were not seen in
@@ -46,7 +58,12 @@ def delete_entity_from_source(
     :param entity_source_state: FQNs of the entities produced by the connector this run
     :param mark_deleted_entity: When True, the soft-delete cascades to child entities
     :param params: single-key scope dict, e.g. {"database": fqn} / {"databaseSchema": fqn}
+    :param dispatch_async: For the legacy fallback path, route the sink delete through the
+        server-side async endpoint (returns 202 + jobId, runs cascade on the server's
+        executor) so ingestion does not block on large hierarchies — see issue #4003. The
+        server-side bulk deleteStale path is already async by design and ignores this flag.
     """
+    use_async = dispatch_async if dispatch_async is not None else _default_dispatch_async()
     try:
         result = metadata.delete_stale_entities(
             entity=entity_type,
@@ -59,7 +76,12 @@ def delete_entity_from_source(
             return
         # Older server without the deleteStale endpoint: fall back to client-side detection.
         yield from _delete_stale_entities_legacy(
-            metadata, entity_type, entity_source_state, mark_deleted_entity, params
+            metadata,
+            entity_type,
+            entity_source_state,
+            mark_deleted_entity,
+            params,
+            use_async,
         )
     except Exception as exc:
         yield Either(
@@ -77,6 +99,7 @@ def _delete_stale_entities_legacy(
     entity_source_state: Set[str],  # noqa: UP006
     mark_deleted_entity: bool,
     params: Optional[Dict[str, str]],  # noqa: UP006, UP045
+    dispatch_async: bool,
 ) -> Iterable[Either[DeleteEntity]]:
     """Legacy client-side stale detection: paginate the scope and diff FQNs locally."""
     entity_state = metadata.list_all_entities(entity=entity_type, params=params)
@@ -87,6 +110,7 @@ def _delete_stale_entities_legacy(
                 right=DeleteEntity(
                     entity=entity,
                     mark_deleted_entities=mark_deleted_entity,
+                    dispatch_async=dispatch_async,
                 ),
             )
 
@@ -96,19 +120,29 @@ def delete_entity_by_name(
     entity_type: Type[T],  # noqa: UP006
     entity_names: List[str],  # noqa: UP006
     mark_deleted_entity: bool = True,
+    dispatch_async: Optional[bool] = None,  # noqa: UP045
 ) -> Iterable[Either[DeleteEntity]]:
     """
-    Method to delete the entites contained on a given list
+    Method to delete the entities contained on a given list
     :param metadata: OMeta client
     :param entity_type: Pydantic Entity model
     :param entity_names: List of FullyQualifiedNames of the entities to be deleted
     :param mark_deleted_entity: Option to mark the entity as deleted or not
+    :param dispatch_async: see :func:`delete_entity_from_source`
     """
+    use_async = dispatch_async if dispatch_async is not None else _default_dispatch_async()
     try:
         for entity_name in entity_names:
             entity = metadata.get_by_name(entity=entity_type, fqn=entity_name)
             if entity:
-                yield Either(right=DeleteEntity(entity=entity, mark_deleted_entities=mark_deleted_entity))
+                yield Either(
+                    left=None,
+                    right=DeleteEntity(
+                        entity=entity,
+                        mark_deleted_entities=mark_deleted_entity,
+                        dispatch_async=use_async,
+                    ),
+                )
     except Exception as exc:
         yield Either(
             left=StackTraceError(

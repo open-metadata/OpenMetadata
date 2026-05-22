@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.ingestion.api.models import Either, Entity
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.custom_properties import OMetaCustomProperties
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -472,6 +473,21 @@ class TopologyRunnerMixin(Generic[C]):
         yield entity_request
 
         self.context.get().update_context_value(stage=stage, value=right)
+
+    @yield_and_update_context.register
+    def _(
+        self,
+        right: Barrier,
+        stage: NodeStage,
+        entity_request: Either[C],
+    ) -> Iterable[Either[Entity]]:
+        """Forward Barrier records without touching the context.
+
+        Defensive: a Barrier yielded from a context-bearing stage would
+        otherwise reach the default handler, which assumes the record has a
+        ``.name`` attribute.
+        """
+        yield entity_request  # pyright: ignore
 
     def sink_request(self, stage: NodeStage, entity_request: Either[C]) -> Iterable[Either[Entity]]:
         """
