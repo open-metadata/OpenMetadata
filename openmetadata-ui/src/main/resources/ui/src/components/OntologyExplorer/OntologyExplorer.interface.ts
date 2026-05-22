@@ -57,6 +57,7 @@ export interface OntologyEdge {
   to: string;
   label: string;
   relationType: string;
+  inverseRelationType?: string;
 }
 
 export interface OntologyGraphData {
@@ -191,6 +192,7 @@ export interface HierarchyEdge {
   from: string;
   to: string;
   relationType: string;
+  inverseRelationType?: string;
   color?: string;
 }
 
