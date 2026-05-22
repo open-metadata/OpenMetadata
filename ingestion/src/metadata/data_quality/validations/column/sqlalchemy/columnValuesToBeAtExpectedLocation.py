@@ -17,6 +17,10 @@ from typing import Iterator, List, cast  # noqa: UP035
 
 from sqlalchemy import Column, inspect
 
+from metadata.data_quality.runtime.failed_row_sample import (
+    FailedRowPolicy,
+    SkipFailedRows,
+)
 from metadata.data_quality.validations.column.base.columnValuesToBeAtExpectedLocation import (
     BaseColumnValuesToBeAtExpectedLocationValidator,
 )
@@ -31,6 +35,9 @@ logger = test_suite_logger()
 
 class ColumnValuesToBeAtExpectedLocationValidator(BaseColumnValuesToBeAtExpectedLocationValidator, SQAValidatorMixin):
     """Validator for column value to be at expected location test case"""
+
+    def _default_failed_row_policy(self) -> FailedRowPolicy:
+        return SkipFailedRows(reason="Geo-distance test compares lat/long against expected, not row content.")
 
     def _fetch_data(self, columns: List[str]) -> Iterator:  # noqa: UP006
         """Fetch data from the runner object"""

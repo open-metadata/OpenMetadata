@@ -16,7 +16,7 @@ SQARowSamplerMixin: SQLAlchemy-based row sampling (builds query, captures compil
 PandasFailedRowSamplerMixin: DataFrame-based row sampling (filters chunks via df.query())
 """
 
-from typing import Any, List, Tuple, cast  # noqa: UP035
+from typing import Any, List, Optional, Tuple, cast  # noqa: UP035
 
 from sqlalchemy import inspect
 
@@ -27,6 +27,9 @@ FAILED_ROW_SAMPLE_SIZE = 50
 
 class PandasFailedRowSamplerMixin:
     """Mixin to fetch failed row samples from Pandas DataFrames"""
+
+    def get_inspection_query(self) -> Optional[str]:  # noqa: UP045
+        return None
 
     def _get_failed_rows_sample(self) -> Tuple[List[str], List[List[Any]]]:  # noqa: UP006
         cols = None
@@ -65,6 +68,9 @@ class PandasFailedRowSamplerMixin:
 
 class SQARowSamplerMixin:
     """Mixin to fetch failed row samples from SQLAlchemy queries"""
+
+    def get_inspection_query(self) -> Optional[str]:  # noqa: UP045
+        return getattr(self, "_inspection_query", None)
 
     def _get_failed_rows_sample(self) -> Tuple[List[str], List[List[Any]]]:  # noqa: UP006
         # pylint: disable=protected-access

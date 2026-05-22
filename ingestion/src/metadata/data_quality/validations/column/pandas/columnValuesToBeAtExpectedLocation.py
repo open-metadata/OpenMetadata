@@ -15,6 +15,10 @@ Pandas validator for column value to be at expected location test case
 
 from typing import List, cast  # noqa: UP035
 
+from metadata.data_quality.runtime.failed_row_sample import (
+    FailedRowPolicy,
+    SkipFailedRows,
+)
 from metadata.data_quality.validations.column.base.columnValuesToBeAtExpectedLocation import (
     BaseColumnValuesToBeAtExpectedLocationValidator,
 )
@@ -30,6 +34,9 @@ class ColumnValuesToBeAtExpectedLocationValidator(
     BaseColumnValuesToBeAtExpectedLocationValidator, PandasValidatorMixin
 ):
     """Validator for column value to be at expected location test case"""
+
+    def _default_failed_row_policy(self) -> FailedRowPolicy:
+        return SkipFailedRows(reason="Geo-distance test compares lat/long against expected, not row content.")
 
     def _fetch_data(self, columns: List[str]):  # noqa: UP006
         from pandas import DataFrame  # pylint: disable=import-outside-toplevel  # noqa: PLC0415

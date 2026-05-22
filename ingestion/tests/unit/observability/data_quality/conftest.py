@@ -26,6 +26,11 @@ from metadata.data_quality.builders.validator_builder import ValidatorBuilder
 from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
     SQATestSuiteInterface,
 )
+from metadata.data_quality.runtime.failed_row_sample import FailedRowSampleHandler
+from metadata.data_quality.runtime.gates import (
+    ConsentMustBeGiven,
+    StatusMustBeFailed,
+)
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
@@ -109,6 +114,9 @@ def create_sqlite_table(worker_id):
         sampler,
         TABLE,
         validator_builder=ValidatorBuilder,
+        failed_row_handler=FailedRowSampleHandler(
+            default_gates=(ConsentMustBeGiven(), StatusMustBeFailed()),
+        ),
     )
 
     runner = sqa_profiler_interface.runner

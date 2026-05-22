@@ -13,6 +13,10 @@
 Validator for table column name to exist test case
 """
 
+from metadata.data_quality.runtime.failed_row_sample import (
+    FailedRowPolicy,
+    SkipFailedRows,
+)
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
@@ -26,6 +30,9 @@ logger = test_suite_logger()
 
 class TableColumnNameToExistValidator(BaseTableColumnNameToExistValidator, PandasValidatorMixin):
     """Validator for table column name to exist test case"""
+
+    def _default_failed_row_policy(self) -> FailedRowPolicy:
+        return SkipFailedRows(reason="Schema-shape tests inspect table metadata, not row content.")
 
     def _run_results(self):
         """compute result of the test case"""

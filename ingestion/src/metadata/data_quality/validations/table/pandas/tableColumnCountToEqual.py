@@ -15,6 +15,10 @@ Validator for table column count to be equal test case
 
 from typing import Optional
 
+from metadata.data_quality.runtime.failed_row_sample import (
+    FailedRowPolicy,
+    SkipFailedRows,
+)
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
@@ -28,6 +32,9 @@ logger = test_suite_logger()
 
 class TableColumnCountToEqualValidator(BaseTableColumnCountToEqualValidator, PandasValidatorMixin):
     """Validator for table column count to be equal test case"""
+
+    def _default_failed_row_policy(self) -> FailedRowPolicy:
+        return SkipFailedRows(reason="Schema-shape tests inspect table metadata, not row content.")
 
     def _run_results(self) -> Optional[int]:  # noqa: UP045
         """compute result of the test case"""

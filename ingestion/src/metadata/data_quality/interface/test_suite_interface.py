@@ -19,6 +19,10 @@ from typing import Optional, Set, Type  # noqa: UP035
 
 from metadata.data_quality.api.models import TestCaseResultResponse
 from metadata.data_quality.builders.validator_builder import ValidatorBuilder
+from metadata.data_quality.runtime.failed_row_sample import (
+    FailedRowSampleHandler,
+    FailedSampleContext,
+)
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator  # noqa: TC001
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,  # noqa: TC001
@@ -50,6 +54,8 @@ class TestSuiteInterface(ABC):
         sampler: SamplerInterface,
         table_entity: Table,
         validator_builder: Type[ValidatorBuilder],  # noqa: UP006
+        *,
+        failed_row_handler: FailedRowSampleHandler,
     ):
         """Required attribute for the interface"""
         self.ometa_client = ometa_client
@@ -57,6 +63,7 @@ class TestSuiteInterface(ABC):
         self.table_entity = table_entity
         self.sampler = sampler
         self.validator_builder_class = validator_builder
+        self._failed_row_handler = failed_row_handler
 
     @classmethod
     def create(
@@ -125,7 +132,14 @@ class TestSuiteInterface(ABC):
         try:
             test_result = validator.run_validation()
             response = TestCaseResultResponse(testCaseResult=test_result, testCase=test_case)
-            validator.result_with_failed_samples(response)
+            self._failed_row_handler.apply(
+                FailedSampleContext(
+                    test_case=test_case,
+                    runner=validator.runner,
+                    result=response,
+                    validator=validator,
+                )
+            )
             return response  # noqa: TRY300
         except Exception as err:
             message = f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"

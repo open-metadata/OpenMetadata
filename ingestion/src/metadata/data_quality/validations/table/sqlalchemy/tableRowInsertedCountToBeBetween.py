@@ -15,6 +15,10 @@ Validator for table row inserted count to be between test case
 
 from sqlalchemy import Column, inspect, text
 
+from metadata.data_quality.runtime.failed_row_sample import (
+    FailedRowPolicy,
+    SkipFailedRows,
+)
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
@@ -30,6 +34,9 @@ from metadata.utils.sqa_utils import (
 
 class TableRowInsertedCountToBeBetweenValidator(BaseTableRowInsertedCountToBeBetweenValidator, SQAValidatorMixin):
     """Validator for table row inserted count to be between test case"""
+
+    def _default_failed_row_policy(self) -> FailedRowPolicy:
+        return SkipFailedRows(reason="Row-count tests verify cardinality, not row content.")
 
     def _get_column_name(self):
         """returns the column name to be validated"""

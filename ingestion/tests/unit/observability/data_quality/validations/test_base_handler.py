@@ -4,6 +4,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from metadata.data_quality.runtime.failed_row_sample import (
+    FailedRowPolicy,
+    SkipFailedRows,
+)
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_IMPACT_SCORE_KEY,
     DIMENSION_VALUE_KEY,
@@ -52,6 +56,9 @@ def test_get_test_case_param_value(param_values, name, type_, default, expected)
 
 class MockTestValidator(BaseTestValidator):
     """Mock validator for testing the new functionality"""
+
+    def _default_failed_row_policy(self) -> FailedRowPolicy:
+        return SkipFailedRows(reason="Test mock — no row sampling needed.")
 
     def _run_validation(self) -> TestCaseResult:
         """Mock implementation of _run_validation"""

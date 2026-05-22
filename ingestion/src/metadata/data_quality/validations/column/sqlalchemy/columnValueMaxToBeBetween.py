@@ -16,6 +16,10 @@ from typing import List, Optional  # noqa: UP035
 
 from sqlalchemy import Column
 
+from metadata.data_quality.runtime.failed_row_sample import (
+    FailedRowPolicy,
+    SkipFailedRows,
+)
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_TOTAL_COUNT_KEY,
 )
@@ -34,6 +38,9 @@ logger = test_suite_logger()
 
 class ColumnValueMaxToBeBetweenValidator(BaseColumnValueMaxToBeBetweenValidator, SQAValidatorMixin):
     """Validator for column value max to be between test case"""
+
+    def _default_failed_row_policy(self) -> FailedRowPolicy:
+        return SkipFailedRows(reason="Statistical tests compare aggregates, not row content.")
 
     def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:  # noqa: UP045
         """compute result of the test case

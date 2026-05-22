@@ -18,6 +18,12 @@ from typing import List, Optional  # noqa: UP035
 from sqlalchemy import Column
 from sqlalchemy.exc import CompileError, SQLAlchemyError
 
+from metadata.data_quality.runtime.failed_row_sample import (
+    CollectFailedRows,
+    FailedRowPolicy,
+    fetch_via_validator,
+    inspection_query_via_validator,
+)
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
     DIMENSION_TOTAL_COUNT_KEY,
@@ -27,9 +33,6 @@ from metadata.data_quality.validations.column.base.columnValuesToNotMatchRegex i
 )
 from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
     SQARowSamplerMixin,
-)
-from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
-    FailedSampleValidatorMixin,
 )
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
@@ -44,12 +47,17 @@ logger = test_suite_logger()
 
 
 class ColumnValuesToNotMatchRegexValidator(
-    FailedSampleValidatorMixin,
     BaseColumnValuesToNotMatchRegexValidator,
     SQAValidatorMixin,
     SQARowSamplerMixin,
 ):
     """Validator for column values to not match regex test case"""
+
+    def _default_failed_row_policy(self) -> FailedRowPolicy:
+        return CollectFailedRows(
+            fetcher=fetch_via_validator,
+            inspection_query=inspection_query_via_validator,
+        )
 
     def _run_results(self, metric: Metrics, column: Column, **kwargs) -> Optional[int]:  # noqa: UP045
         """compute result of the test case

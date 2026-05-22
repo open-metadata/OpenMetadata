@@ -18,6 +18,10 @@ from typing import List, cast  # noqa: UP035
 from sqlalchemy import inspect
 from sqlalchemy.sql.base import ColumnCollection
 
+from metadata.data_quality.runtime.failed_row_sample import (
+    FailedRowPolicy,
+    SkipFailedRows,
+)
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
@@ -31,6 +35,9 @@ logger = test_suite_logger()
 
 class TableColumnToMatchSetValidator(BaseTableColumnToMatchSetValidator, SQAValidatorMixin):
     """Validator for table column name to match set test case"""
+
+    def _default_failed_row_policy(self) -> FailedRowPolicy:
+        return SkipFailedRows(reason="Schema-shape tests inspect table metadata, not row content.")
 
     def _run_results(self) -> List[str]:  # noqa: UP006
         """compute result of the test case"""

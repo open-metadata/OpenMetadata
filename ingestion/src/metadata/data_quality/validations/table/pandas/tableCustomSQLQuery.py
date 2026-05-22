@@ -15,6 +15,10 @@ Validator for table custom SQL Query test case
 
 from typing import Optional
 
+from metadata.data_quality.runtime.failed_row_sample import (
+    FailedRowPolicy,
+    SkipFailedRows,
+)
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
@@ -29,6 +33,9 @@ logger = test_suite_logger()
 
 class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, PandasValidatorMixin):
     """Validator for table custom SQL Query test case"""
+
+    def _default_failed_row_policy(self) -> FailedRowPolicy:
+        return SkipFailedRows(reason="Pandas variant of custom SQL does not collect row samples.")
 
     def _run_results(self, sql_expression: str, strategy: Strategy = Strategy.ROWS):
         """compute result of the test case"""

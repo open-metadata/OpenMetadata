@@ -11,6 +11,10 @@
 
 """Pandas validator for table rule library SQL expression tests"""
 
+from metadata.data_quality.runtime.failed_row_sample import (
+    FailedRowPolicy,
+    SkipFailedRows,
+)
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
@@ -28,6 +32,9 @@ class TableRuleLibrarySqlExpressionValidator(BaseValidator, PandasValidatorMixin
     For Pandas sources, the 'sqlExpression' field contains a pandas query()
     expression. Parameters are directly substituted via Jinja2.
     """
+
+    def _default_failed_row_policy(self) -> FailedRowPolicy:
+        return SkipFailedRows(reason="Rule-library SQL evaluates aggregate expression, not row content.")
 
     def _run_results(self, sql_expression: str) -> int:
         """Execute the pandas query expression and return matching row count."""

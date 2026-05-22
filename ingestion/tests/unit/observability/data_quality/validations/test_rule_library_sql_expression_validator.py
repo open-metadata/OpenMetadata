@@ -7,6 +7,10 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 
+from metadata.data_quality.runtime.failed_row_sample import (
+    FailedRowPolicy,
+    SkipFailedRows,
+)
 from metadata.data_quality.validations.column.base.columnRuleLibrarySqlExpressionValidator import (
     RESERVED_PARAMS,
 )
@@ -19,6 +23,15 @@ from metadata.data_quality.validations.column.pandas.columnRuleLibrarySqlExpress
 from metadata.data_quality.validations.column.sqlalchemy.columnRuleLibrarySqlExpressionValidator import (
     ColumnRuleLibrarySqlExpressionValidator as SQAValidator,
 )
+
+
+class _TestableBaseValidator(BaseValidator):
+    """Concrete subclass that satisfies BaseTestValidator's abstract policy
+    method so the BaseValidator's own implementations can be exercised in
+    isolation (without inheriting any sqa/pandas overrides)."""
+
+    def _default_failed_row_policy(self) -> FailedRowPolicy:
+        return SkipFailedRows(reason="Test-only stub.")
 
 
 class TestReservedParams:
@@ -42,7 +55,7 @@ class TestBaseValidatorGetUserParams:
         mock_test_case.parameterValues = None
         mock_execution_date = datetime.now()
 
-        validator = BaseValidator.__new__(BaseValidator)
+        validator = _TestableBaseValidator.__new__(_TestableBaseValidator)
         validator.runner = mock_runner
         validator.test_case = mock_test_case
         validator.execution_date = mock_execution_date
@@ -143,7 +156,7 @@ class TestBaseValidatorCompileSqlExpression:
         mock_test_case.parameterValues = []
         mock_execution_date = datetime.now()
 
-        validator = BaseValidator.__new__(BaseValidator)
+        validator = _TestableBaseValidator.__new__(_TestableBaseValidator)
         validator.runner = mock_runner
         validator.test_case = mock_test_case
         validator.execution_date = mock_execution_date

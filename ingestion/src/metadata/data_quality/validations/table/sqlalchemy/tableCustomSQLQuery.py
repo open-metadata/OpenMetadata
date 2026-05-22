@@ -13,7 +13,6 @@
 Validator for table custom SQL Query test case
 """
 
-import traceback
 from typing import Any, List, Optional, Tuple, cast  # noqa: UP035
 
 import sqlparse
@@ -22,12 +21,14 @@ from sqlalchemy.sql import func, select
 from sqlparse.sql import Statement, Token, Where
 from sqlparse.tokens import Keyword
 
-from metadata.data_quality.api.models import TestCaseResultResponse
+from metadata.data_quality.runtime.failed_row_sample import (
+    CollectFailedRows,
+    FailedRowPolicy,
+    FailedSampleContext,
+)
+from metadata.data_quality.runtime.gates import StrategyMustBeRows
 from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
     FAILED_ROW_SAMPLE_SIZE,
-)
-from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
-    FailedSampleValidatorMixin,
 )
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
@@ -40,7 +41,7 @@ from metadata.data_quality.validations.table.base.tableCustomSQLQuery import (
     Strategy,
 )
 from metadata.generated.schema.entity.data.table import TableData
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.functions.table_metric_computer import TableMetricComputer
 from metadata.profiler.processor.runner import QueryRunner
@@ -50,8 +51,24 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQLQueryValidator, SQAValidatorMixin):
+def _fetch_custom_sql(ctx: FailedSampleContext) -> Optional[TableData]:  # noqa: UP045
+    ctx.result.validateColumns = False
+    return ctx.validator.fetch_failed_rows_sample()
+
+
+def _inspection_query_custom_sql(ctx: FailedSampleContext) -> Optional[str]:  # noqa: UP045
+    return ctx.validator.get_inspection_query()
+
+
+class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidatorMixin):
     """Validator for table custom SQL Query test case"""
+
+    def _default_failed_row_policy(self) -> FailedRowPolicy:
+        return CollectFailedRows(
+            fetcher=_fetch_custom_sql,
+            inspection_query=_inspection_query_custom_sql,
+            extra_gates=(StrategyMustBeRows(),),
+        )
 
     def _replace_where_clause(self, sql_query: str, partition_expression: str) -> Optional[str]:  # noqa: UP045
         """Replace or add WHERE clause in SQL query using sqlparse.
@@ -376,20 +393,3 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             "sqlExpression",
             str,
         )
-
-    def result_with_failed_samples(self, result: TestCaseResultResponse) -> None:
-        """Override: tableCustomSQLQuery uses ROWS strategy check instead of
-        computePassedFailedRowCount, and sets validateColumns=False."""
-        if result.testCaseResult.testCaseStatus == TestCaseStatus.Failed and self._get_strategy() == Strategy.ROWS:
-            result.validateColumns = False
-            try:
-                result.failedRowsSample = self.fetch_failed_rows_sample()
-            except Exception:
-                logger.debug(traceback.format_exc())
-                logger.error("Failed to fetch failed rows sample")
-
-            try:
-                result.inspectionQuery = self.get_inspection_query()
-            except Exception:
-                logger.debug(traceback.format_exc())
-                logger.error("Failed to get inspection query")

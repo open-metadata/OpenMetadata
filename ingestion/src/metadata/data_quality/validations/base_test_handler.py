@@ -32,7 +32,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel
 
-from metadata.data_quality.api.models import TestCaseResultResponse  # noqa: TC001
+from metadata.data_quality.runtime.failed_row_sample import FailedRowPolicy  # noqa: TC001
 from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
@@ -105,6 +105,8 @@ class BaseTestValidator(ABC):
     This can be useful to resolve complex test parameters based on the parameters given by the user.
     """
 
+    failed_row_policy: FailedRowPolicy
+
     def __init__(
         self,
         runner: Union[QueryRunner, PandasRunner],  # noqa: UP007
@@ -114,6 +116,18 @@ class BaseTestValidator(ABC):
         self.runner = runner
         self.test_case = test_case
         self.execution_date = execution_date
+        self.failed_row_policy = self._default_failed_row_policy()
+
+    @abstractmethod
+    def _default_failed_row_policy(self) -> FailedRowPolicy:
+        """Declare this validator's default failed-row sampling behavior.
+
+        Return `CollectFailedRows(fetcher=..., inspection_query=..., extra_gates=...)`
+        to opt in, or `SkipFailedRows(reason="...")` to opt out with a documented
+        rationale. `@abstractmethod` makes the declaration mandatory: concrete
+        subclasses cannot instantiate without it.
+        """
+        raise NotImplementedError
 
     def is_dimensional_test(self) -> bool:
         """Check if test case has dimension columns configured for dimensional analysis
@@ -176,13 +190,6 @@ class BaseTestValidator(ABC):
                 logger.debug(traceback.format_exc())
 
         return test_result
-
-    def result_with_failed_samples(self, result: TestCaseResultResponse) -> None:  # noqa: B027
-        """Hook for failed row sampling. No-op by default.
-
-        Overridden by FailedSampleValidatorMixin to fetch and stash
-        failed row samples on the validator instance.
-        """
 
     @abstractmethod
     def _run_validation(self) -> TestCaseResult:

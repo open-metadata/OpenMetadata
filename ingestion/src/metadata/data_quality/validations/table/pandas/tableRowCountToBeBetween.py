@@ -15,6 +15,10 @@ Validator for table row count to be between test case
 
 from typing import Optional
 
+from metadata.data_quality.runtime.failed_row_sample import (
+    FailedRowPolicy,
+    SkipFailedRows,
+)
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
@@ -26,6 +30,9 @@ from metadata.profiler.metrics.registry import Metrics
 
 class TableRowCountToBeBetweenValidator(BaseTableRowCountToBeBetweenValidator, PandasValidatorMixin):
     """Validator for table row count to be between test case"""
+
+    def _default_failed_row_policy(self) -> FailedRowPolicy:
+        return SkipFailedRows(reason="Row-count tests verify cardinality, not row content.")
 
     def _run_results(self, metric: Metrics) -> Optional[int]:  # noqa: UP045
         """compute result of the test case"""

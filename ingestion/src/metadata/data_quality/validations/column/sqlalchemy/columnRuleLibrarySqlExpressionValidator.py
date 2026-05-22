@@ -16,6 +16,10 @@ from typing import Dict, Tuple  # noqa: UP035
 from jinja2 import Template
 from sqlalchemy import text
 
+from metadata.data_quality.runtime.failed_row_sample import (
+    FailedRowPolicy,
+    SkipFailedRows,
+)
 from metadata.data_quality.validations.column.base.columnRuleLibrarySqlExpressionValidator import (
     ColumnRuleLibrarySqlExpressionValidator as BaseValidator,
 )
@@ -30,6 +34,9 @@ logger = test_suite_logger()
 
 class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
     """SQLAlchemy implementation of Column Rule Library SQL Expression validator."""
+
+    def _default_failed_row_policy(self) -> FailedRowPolicy:
+        return SkipFailedRows(reason="Rule-library SQL evaluates aggregate expression, not row content.")
 
     def compile_sql_expression(self, column_name: str, table_name: str) -> Tuple[str, Dict[str, str]]:  # noqa: UP006
         """Compile SQL expression with SQLAlchemy bind parameters using Jinja2.

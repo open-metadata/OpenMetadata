@@ -29,6 +29,10 @@ from sqlalchemy import Column as SAColumn
 from sqlalchemy import literal, select
 from sqlalchemy.engine import make_url
 
+from metadata.data_quality.runtime.failed_row_sample import (
+    FailedRowPolicy,
+    SkipFailedRows,
+)
 from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
@@ -197,6 +201,9 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
     """
 
     runtime_params: TableDiffRuntimeParameters
+
+    def _default_failed_row_policy(self) -> FailedRowPolicy:
+        return SkipFailedRows(reason="Table-diff reports row-level mismatch counts, not the full row payload.")
 
     def _run_validation(self):
         """Run validation for the table diff test"""

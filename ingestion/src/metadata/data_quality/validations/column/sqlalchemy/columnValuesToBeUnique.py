@@ -19,6 +19,12 @@ from typing import List, Optional, cast  # noqa: UP035
 from sqlalchemy import Column, case, func, inspect, literal_column, select
 from sqlalchemy.exc import SQLAlchemyError
 
+from metadata.data_quality.runtime.failed_row_sample import (
+    CollectFailedRows,
+    FailedRowPolicy,
+    fetch_via_validator,
+    inspection_query_via_validator,
+)
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
     DIMENSION_TOTAL_COUNT_KEY,
@@ -28,9 +34,6 @@ from metadata.data_quality.validations.column.base.columnValuesToBeUnique import
 )
 from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
     SQARowSamplerMixin,
-)
-from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
-    FailedSampleValidatorMixin,
 )
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
@@ -46,12 +49,17 @@ logger = logging.getLogger(__name__)
 
 
 class ColumnValuesToBeUniqueValidator(
-    FailedSampleValidatorMixin,
     BaseColumnValuesToBeUniqueValidator,
     SQAValidatorMixin,
     SQARowSamplerMixin,
 ):
     """Validator for column values to be unique test case"""
+
+    def _default_failed_row_policy(self) -> FailedRowPolicy:
+        return CollectFailedRows(
+            fetcher=fetch_via_validator,
+            inspection_query=inspection_query_via_validator,
+        )
 
     @staticmethod
     def _calculate_failed_count(count: int, unique_count: int) -> int:

@@ -19,6 +19,11 @@ from typing import Optional, cast
 from metadata.data_quality.builders.validator_builder import ValidatorBuilder
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.data_quality.runner.core import DataTestsRunner
+from metadata.data_quality.runtime.failed_row_sample import FailedRowSampleHandler
+from metadata.data_quality.runtime.gates import (
+    ConsentMustBeGiven,
+    StatusMustBeFailed,
+)
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
@@ -154,12 +159,20 @@ class BaseTestSuiteRunner:
             ),
         )
 
+        failed_row_handler = FailedRowSampleHandler(
+            default_gates=(
+                ConsentMustBeGiven(),
+                StatusMustBeFailed(),
+            )
+        )
+
         self.interface: TestSuiteInterface = test_suite_class.create(
             service_connection_config=self.service_conn_config,
             ometa_client=self.ometa_client,
             sampler=sampler_interface,
             table_entity=self.entity,
             validator_builder=self.validator_builder_class,
+            failed_row_handler=failed_row_handler,
         )
         return self.interface
 
