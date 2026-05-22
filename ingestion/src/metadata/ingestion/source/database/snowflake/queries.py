@@ -596,18 +596,20 @@ SNOWFLAKE_ACCESS_HISTORY_LINEAGE = textwrap.dedent(
             downstream.value:"objectName"::STRING,
             direct_source.value:"objectName"::STRING
     )
-    SELECT
-        te.UPSTREAM_TABLE,
-        te.UPSTREAM_DOMAIN,
-        te.DOWNSTREAM_TABLE,
-        te.DOWNSTREAM_DOMAIN,
-        te.QUERY_ID,
-        te.QUERY_TEXT,
-        ce.COLUMN_PAIRS
-    FROM table_edges te
-    LEFT JOIN column_edges_grouped ce
-        ON te.UPSTREAM_TABLE = ce.UPSTREAM_TABLE
-        AND te.DOWNSTREAM_TABLE = ce.DOWNSTREAM_TABLE
+    SELECT * FROM (
+        SELECT
+            te.UPSTREAM_TABLE,
+            te.UPSTREAM_DOMAIN,
+            te.DOWNSTREAM_TABLE,
+            te.DOWNSTREAM_DOMAIN,
+            te.QUERY_ID,
+            te.QUERY_TEXT,
+            ce.COLUMN_PAIRS
+        FROM table_edges te
+        LEFT JOIN column_edges_grouped ce
+            ON te.UPSTREAM_TABLE = ce.UPSTREAM_TABLE
+            AND te.DOWNSTREAM_TABLE = ce.DOWNSTREAM_TABLE
+    )
     {filter_condition}
     """
 )
