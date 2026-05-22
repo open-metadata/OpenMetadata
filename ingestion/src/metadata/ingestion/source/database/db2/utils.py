@@ -161,12 +161,11 @@ def install_clidriver(clidriver_version: str) -> None:
     import platform  # noqa: PLC0415
     import subprocess  # noqa: PLC0415
     import sys  # noqa: PLC0415
-    from urllib.request import URLError, urlopen  # noqa: PLC0415
-
     from importlib.metadata import (  # noqa: PLC0415
         PackageNotFoundError,
         distribution,
     )
+    from urllib.request import URLError, urlopen  # noqa: PLC0415
 
     clidriver_version = f"v{clidriver_version}"
     system = platform.system().lower()
