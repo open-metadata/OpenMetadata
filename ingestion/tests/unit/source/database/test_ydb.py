@@ -25,7 +25,6 @@ from metadata.ingestion.source.database.ydb.utils import (
     table_of,
 )
 
-
 # ---------------------------------------------------------------------------
 # schema_of
 # ---------------------------------------------------------------------------
@@ -367,6 +366,8 @@ class TestYdbSamplerBuildTableOrm:
         from metadata.generated.schema.entity.data.table import (
             Column,
             DataType,
+        )
+        from metadata.generated.schema.entity.data.table import (
             Table as OMTable,
         )
 
@@ -444,20 +445,19 @@ class TestYdbSamplerGetSampleQuery:
         We don't execute anything — only compile — so SQLite is enough to
         produce a valid SQLAlchemy statement object that can be inspected.
         """
-        from sqlalchemy import Column, Integer, MetaData
+        from sqlalchemy import Column, Integer, MetaData, create_engine
         from sqlalchemy import Table as SaTable
-        from sqlalchemy import create_engine
         from sqlalchemy.orm import declarative_base, sessionmaker
 
         from metadata.sampler.models import SampleConfig
         from metadata.sampler.sqlalchemy.ydb.sampler import YdbSampler
 
         engine = create_engine("sqlite://")
-        Base = declarative_base()
+        Base = declarative_base()  # noqa: N806
 
         class Foo(Base):
             __tablename__ = "schema/foo"
-            __table_args__ = {"quote": True}
+            __table_args__ = {"quote": True}  # noqa: RUF012
             id = Column(Integer, primary_key=True)
             value = Column(Integer)
 
@@ -518,3 +518,43 @@ class TestYdbSamplerGetSampleQuery:
         result = sampler.get_sample_query(None)
         assert isinstance(result, Subquery)
         assert not isinstance(result, CTE)
+
+    def test_percentage_path_has_no_order_by(self):
+        """YQL rejects subqueries with ``ORDER BY`` and no ``LIMIT`` (issue
+        4504, severity 2 — treated as fatal by ydb-dbapi). The base sampler
+        adds ``ORDER BY rnd.random`` when ``profileSample==100`` and
+        ``randomizedSample is True``; our override must drop it."""
+        from metadata.generated.schema.type.basic import ProfileSampleType
+        from metadata.generated.schema.type.staticSamplingConfig import (
+            StaticSamplingConfig,
+        )
+
+        sampler = self._make_sampler_with_orm(randomized=True)
+        static = StaticSamplingConfig(
+            profileSample=100, profileSampleType=ProfileSampleType.PERCENTAGE
+        )
+        sql = self._compile(sampler.get_sample_query(static)).replace("\n", " ")
+        assert "ORDER BY" not in sql.upper()
+
+
+# ---------------------------------------------------------------------------
+# RandomNumFn YDB compile — emits "0", not bare RANDOM()
+# ---------------------------------------------------------------------------
+
+
+class TestRandomNumFnYdb:
+    def test_emits_zero(self):
+        """YQL ``Random()`` requires at least one argument (severity-1 error
+        otherwise). The YDB compile override mirrors Snowflake/Teradata and
+        emits ``0`` instead — downstream ``MOD(0, 100) <= profileSample``
+        degrades to a full-table scan, which is the same trade-off the
+        already-shipped Snowflake sampler makes."""
+        from sqlalchemy.dialects import registry
+
+        from metadata.profiler.orm.functions.random_num import RandomNumFn
+        from metadata.profiler.orm.registry import Dialects
+
+        ydb_dialect = registry.load("yql")()
+        compiled = str(RandomNumFn().compile(dialect=ydb_dialect))
+        assert compiled == "0"
+        assert Dialects.YDB == "yql"  # belt-and-braces: the @compiles key matches

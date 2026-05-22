@@ -111,6 +111,19 @@ def _(*_, **__):
     return "0"
 
 
+@compiles(RandomNumFn, Dialects.YDB)
+def _(*_, **__):
+    """YQL ``Random()`` requires at least one argument (severity-1 error
+    otherwise). Without ORM-level context we can't synthesise a per-row
+    seed, so we follow the Snowflake/Teradata approach: emit ``0`` and let
+    the downstream ``MOD(0, 100) <= profile_sample`` filter degrade to a
+    full-table scan. Real per-row sampling on YDB needs either a native
+    TABLESAMPLE (not in YQL today) or a row-varying seed expression
+    threaded through the sampler — both follow-ups.
+    """
+    return "0"
+
+
 @compiles(RandomNumFn, Dialects.Vertica)
 def _(*_, **__):
     """

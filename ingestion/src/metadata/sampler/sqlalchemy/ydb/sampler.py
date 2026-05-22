@@ -20,7 +20,7 @@ as the table name and no schema, so generated SQL becomes
 ``FROM `jaffle_shop/customers``` — the form YDB accepts.
 """
 
-from typing import Optional  # noqa: UP035
+from typing import Optional
 
 from pydantic import BaseModel
 from sqlalchemy import MetaData
@@ -62,14 +62,24 @@ class YdbSampler(SQASampler):
     def get_sample_query(
         self, static: StaticSamplingConfig | None, *, column=None
     ) -> Query:
-        """Mirror of :py:meth:`SQASampler.get_sample_query` but emit subqueries
-        instead of CTEs.
+        """Mirror of :py:meth:`SQASampler.get_sample_query` adapted for YDB.
 
-        YQL in some YDB releases rejects ``WITH ... AS (...) SELECT ...`` as a
-        top-level statement (``mismatched input 'WITH'``). Subqueries
-        (``FROM (SELECT ...) AS x``) are accepted everywhere and produce the
-        same shape downstream — ``inspect(ds).c`` / ``select_from(ds)`` work
-        identically for CTE and Subquery.
+        Two YQL-specific deviations from the base implementation:
+
+        * **Subqueries instead of CTEs.** Some YDB releases reject
+          ``WITH ... AS (...) SELECT ...`` at the top level
+          (``mismatched input 'WITH'``). ``FROM (SELECT ...) AS x`` is
+          accepted everywhere and downstream consumers
+          (``inspect(ds).c`` / ``select_from(ds)``) work identically for
+          ``CTE`` and ``Subquery``.
+
+        * **No ``ORDER BY random`` in the sample subquery.** YQL raises
+          ``ORDER BY without LIMIT in subquery will be ignored`` (issue 4504)
+          when a subquery has ``ORDER BY`` but no ``LIMIT``. The
+          ``RandomNumFn`` compile override for YDB emits ``0`` (see
+          ``random_num.py``), so the order would be over a constant column
+          anyway — dropping it removes the warning with no behavioural
+          change.
         """
         selectable = self.set_tablesample(static, self.raw_dataset.__table__)  # type: ignore
         with self.session_factory() as client:
@@ -79,42 +89,22 @@ class YdbSampler(SQASampler):
                     column,
                     (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                 ).subquery(f"{self.get_sampler_table_name()}_rnd")
-                session_query = client.query(rnd)
-                session_query = session_query.where(
+                session_query = client.query(rnd).where(
                     rnd.c.random <= static.profileSample
                 )
-                if (
-                    static.profileSample == 100
-                    and self.sample_config.randomizedSample is True
-                ):
-                    session_query = session_query.order_by(rnd.c.random)
                 return session_query.subquery(
                     f"{self.get_sampler_table_name()}_sample"
                 )
 
-            table_query = client.query(self.raw_dataset)
-            if self.partition_details:
-                table_query = self.get_partitioned_query(table_query)
-            session_query = self._base_sample_query(
-                selectable,
-                column,
-                (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)
-                if self.sample_config.randomizedSample is True
-                else None,
-            )
-            query = (
-                session_query.order_by(RANDOM_LABEL)
-                if self.sample_config.randomizedSample is True
-                else session_query
-            )
-            return query.limit(static.profileSample if static else None).subquery(
-                f"{self.get_sampler_table_name()}_rnd"
-            )
+            session_query = self._base_sample_query(selectable, column, None)
+            return session_query.limit(
+                static.profileSample if static else None
+            ).subquery(f"{self.get_sampler_table_name()}_rnd")
 
     def build_table_orm(
         self,
         table: Table,
-        service_conn_config: BaseModel,  # noqa: ARG002
+        service_conn_config: BaseModel,
         ometa_client: OpenMetadata,
     ) -> Optional[type]:  # noqa: UP045
         if not table.columns:
