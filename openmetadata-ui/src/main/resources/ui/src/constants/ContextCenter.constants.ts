@@ -13,7 +13,7 @@
 // ─── File type badge ──────────────────────────────────────────────────────────
 
 import { DocFileType } from 'components/ContextCenter/DocumentsView/DocumentsView.interface';
-import { MemoryType } from 'generated/entity/context/contextMemory';
+import { MemoryType } from '../generated/entity/context/contextMemory';
 
 export const FILE_TYPE_STYLES: Record<
   DocFileType,

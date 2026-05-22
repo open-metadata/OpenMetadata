@@ -29,7 +29,6 @@ import { Lightbulb03, Plus, Share07, Trash01, X } from '@untitledui/icons';
 import { ConfigProvider } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { MEMORY_TYPE_OPTIONS } from 'constants/ContextCenter.constants';
 import { compare } from 'fast-json-patch';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +36,7 @@ import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverC
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetSelectList';
 import TagSelectForm from '../../../components/Tag/TagsSelectForm/TagsSelectForm.component';
+import { MEMORY_TYPE_OPTIONS } from '../../../constants/ContextCenter.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   LabelType,
