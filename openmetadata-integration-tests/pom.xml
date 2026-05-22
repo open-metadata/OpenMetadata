@@ -338,6 +338,7 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/tests/search/*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
@@ -374,6 +375,7 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -431,6 +433,7 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/tests/search/*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -468,6 +471,7 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
@@ -526,6 +530,7 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/tests/search/*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -564,6 +569,7 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
@@ -622,6 +628,7 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/tests/search/*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
@@ -658,6 +665,7 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -714,6 +722,7 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/tests/search/*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -751,6 +760,7 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
@@ -807,6 +817,7 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/tests/search/*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
@@ -844,6 +855,7 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -914,6 +926,7 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/tests/search/*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -953,6 +966,7 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
@@ -1010,6 +1024,7 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/tests/search/*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
@@ -1048,6 +1063,7 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
