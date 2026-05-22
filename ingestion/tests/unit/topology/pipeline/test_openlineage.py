@@ -635,6 +635,32 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertEqual(len(candidates), 2)
         self.assertEqual({ns for _, ns in candidates}, {"arn:aws:glue:r:a", "trino://host:8080"})
 
+    def test_symlink_identifiers_tolerates_malformed_facets(self):
+        """Missing, null, or wrongly typed facet shapes yield an empty list."""
+        self.assertEqual(OpenlineageSource._symlink_identifiers({}), [])
+        self.assertEqual(OpenlineageSource._symlink_identifiers({"facets": None}), [])
+        self.assertEqual(OpenlineageSource._symlink_identifiers({"facets": {"symlinks": None}}), [])
+        self.assertEqual(
+            OpenlineageSource._symlink_identifiers({"facets": {"symlinks": {"identifiers": {}}}}),
+            [],
+        )
+
+    def test_symlink_identifiers_drops_non_dict_entries(self):
+        """Non-dictionary identifier entries are skipped, valid ones kept."""
+        data = {"facets": {"symlinks": {"identifiers": ["bad", None, {"name": "schema.tbl", "type": "TABLE"}]}}}
+        self.assertEqual(
+            OpenlineageSource._symlink_identifiers(data),
+            [{"name": "schema.tbl", "type": "TABLE"}],
+        )
+
+    def test_iter_table_candidates_tolerates_malformed_facets(self):
+        """A malformed facets block must not abort candidate extraction; the
+        top-level identity is still returned."""
+        data = {"namespace": "trino://host", "name": "schema.tbl", "facets": None}
+        candidates = OpenlineageSource._iter_table_candidates(data)
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0][0].name, "tbl")
+
     def test_resolve_table_falls_back_to_toplevel_when_symlink_unresolved(self):
         """Resolution-aware: a symlink that parses but does not resolve to a
         configured service falls through to the next candidate."""

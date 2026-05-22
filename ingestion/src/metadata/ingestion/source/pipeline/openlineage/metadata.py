@@ -197,6 +197,25 @@ class OpenlineageSource(PipelineServiceSource):
         return OpenlineageSource._parse_dotted_table_name(name)
 
     @staticmethod
+    def _symlink_identifiers(data: Dict) -> List[Dict]:  # noqa: UP006
+        """
+        Safely extract the symlink identifier dictionaries from a dataset.
+
+        Malformed events are tolerated by returning an empty list instead of
+        raising. A missing, null, or wrongly typed facets, symlinks, or
+        identifiers field, and non-dictionary identifier entries, are all
+        skipped, so a single bad event never aborts processing.
+
+        Source: https://openlineage.io/spec/facets/1-0-1/SymlinksDatasetFacet.json
+        """
+        facets = data.get("facets")
+        symlinks = facets.get("symlinks") if isinstance(facets, dict) else None
+        identifiers = symlinks.get("identifiers") if isinstance(symlinks, dict) else None
+        if not isinstance(identifiers, list):
+            return []
+        return [identifier for identifier in identifiers if isinstance(identifier, dict)]
+
+    @staticmethod
     def _raw_table_identities(data: Dict) -> List[Tuple[str, str]]:  # noqa: UP006
         """
         Ordered raw ``(namespace, name)`` identity candidates for a dataset.
@@ -204,16 +223,16 @@ class OpenlineageSource(PipelineServiceSource):
         Symlink identifiers (logical/catalog identity, which OpenMetadata
         database services hold) come first, then the top-level identity.
         Only identifiers explicitly typed ``LOCATION`` (physical paths) are
-        excluded - this connector resolves tables/topics, never containers.
-        Identifiers with a missing or non-``LOCATION`` type are still tried;
-        non-table candidates simply fail to parse and the next is used.
+        excluded, as this connector resolves tables and topics, never
+        containers. Identifiers with a missing or non-``LOCATION`` type are
+        still tried, and non-table candidates simply fail to parse so that
+        the next candidate is used.
 
         Source: https://openlineage.io/spec/facets/1-0-1/SymlinksDatasetFacet.json
         """
-        symlinks = data.get("facets", {}).get("symlinks", {}).get("identifiers", [])
         identities: List[Tuple[str, str]] = [  # noqa: UP006
             (identifier.get("namespace", ""), identifier.get("name", ""))
-            for identifier in symlinks
+            for identifier in OpenlineageSource._symlink_identifiers(data)
             if identifier.get("type") != SymlinkType.LOCATION.value
         ]
         identities.append((data.get("namespace", ""), data.get("name", "")))
@@ -288,7 +307,7 @@ class OpenlineageSource(PipelineServiceSource):
 
     @staticmethod
     def _log_unresolvable_dataset(data: Dict, ol_name: str) -> None:  # noqa: UP006
-        symlinks = data.get("facets", {}).get("symlinks", {}).get("identifiers", [])
+        symlinks = OpenlineageSource._symlink_identifiers(data)
         logger.warning(
             f"OpenLineage dataset '{ol_name}' has no resolvable table identity "
             f"(namespace='{data.get('namespace', '')}', name='{data.get('name', '')}', "
