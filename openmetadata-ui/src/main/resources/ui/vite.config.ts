@@ -189,6 +189,14 @@ export default defineConfig(({ mode }) => {
       cssCodeSplit: true,
       reportCompressedSize: false,
       chunkSizeWarningLimit: 1500,
+      // Vite auto-emits <link rel="modulepreload"> for the entry chunk's
+      // sync-imported sibling chunks. Keep that behaviour, but drop the polyfill
+      // — OpenMetadata's React 18 / Antd 5 / Vite 7 toolchain already targets
+      // modern browsers that support modulepreload natively (Chrome 66+, Edge
+      // 79+, Safari 17+, Firefox 115+). The polyfill is a small JS shim plus
+      // one extra script request; on a fast first-paint path even small wins
+      // count, and we're not the right project to be carrying it.
+      modulePreload: { polyfill: false },
       rollupOptions: {
         output: {
           assetFileNames: (assetInfo) => {
