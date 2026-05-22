@@ -48,12 +48,12 @@ import {
 import { waitForSearchIndexed } from '../../utils/polling';
 import { test as base } from '../fixtures/pages';
 
-const table1 = new TableClass();
-const table2 = new TableClass();
-const pipeline = new PipelineClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
-const domain = new Domain();
+let table1: TableClass;
+let table2: TableClass;
+let pipeline: PipelineClass;
+let domain: Domain;
 
 const SOURCE_NAME_1 = 'container';
 const SOURCE_DISPLAY_NAME_1 = 'Container';
@@ -93,6 +93,10 @@ const data = {
 };
 
 test.beforeAll(async ({ browser }) => {
+  table1 = new TableClass();
+  table2 = new TableClass();
+  pipeline = new PipelineClass();
+  domain = new Domain();
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await commonPrerequisites({
     apiContext,
@@ -183,7 +187,6 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('Pipeline Alert', async ({ page }) => {
-  test.slow();
   const ALERT_NAME = generateAlertName();
 
   await test.step('Create alert', async () => {

@@ -43,6 +43,15 @@ const ContextCenterDocumentsPage = withSuspenseFallback(
   )
 );
 
+const ContextCenterMemoriesPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../../pages/ContextCenterPage/ContextCenterMemoriesPage/ContextCenterMemoriesPage'
+      )
+  )
+);
+
 const KnowledgeCenterFilterPage = withSuspenseFallback(
   React.lazy(
     () =>
@@ -106,6 +115,10 @@ const ContextCenterRouter = () => {
           ROUTES.CONTEXT_CENTER,
           ''
         )}
+      />
+      <Route
+        element={<ContextCenterMemoriesPage />}
+        path={ROUTES.CONTEXT_CENTER_MEMORIES.replace(ROUTES.CONTEXT_CENTER, '')}
       />
       <Route
         element={<KnowledgeCenterFilterPage />}

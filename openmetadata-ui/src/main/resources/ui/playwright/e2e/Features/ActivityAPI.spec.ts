@@ -40,10 +40,7 @@ import {
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
-// Investigation needed:
-// 1. Profile actual event propagation time — measure how long it typically takes from a PATCH/PUT call to the event appearing in /api/v1/activity, then tighten the ceiling.
-// 2. If synchronous flushing is not feasible, restructure tests to assert entity state directly via the entity API, seed a pre-built activity event, and verify only that the UI renders it decoupling UI assertions from event latency.
-test.describe.fixme(
+test.describe(
   'Activity API - Entity Changes',
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
