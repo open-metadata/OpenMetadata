@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { VotingDataProps } from 'components/Entity/Voting/voting.interface';
+import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
 import React, { ReactNode } from 'react';
 import { EntityStatus } from '../generated/entity/data/glossaryTerm';
 import { ChangeDescription, EntityReference } from '../generated/entity/type';

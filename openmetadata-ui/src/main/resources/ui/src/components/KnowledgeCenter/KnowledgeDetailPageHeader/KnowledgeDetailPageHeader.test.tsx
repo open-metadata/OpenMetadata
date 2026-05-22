@@ -17,12 +17,12 @@ import {
   screen,
 } from '@testing-library/react';
 import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
-import { User } from 'generated/entity/teams/user';
+import { User } from '../../../generated/entity/teams/user';
 import {
   ContentChangeState,
   KnowledgePage,
-} from 'interface/knowledge-center.interface';
-import { MOCK_KNOWLEDGE_PAGE_DATA } from 'pages/KnowledgePage/KnowledgePage.mock';
+} from '../../../interface/knowledge-center.interface';
+import { MOCK_KNOWLEDGE_PAGE_DATA } from '../../../pages/KnowledgePage/KnowledgePage.mock';
 import { MemoryRouter } from 'react-router-dom';
 import KnowledgeDetailPageHeader, {
   KnowledgeDetailPageHeaderProps,

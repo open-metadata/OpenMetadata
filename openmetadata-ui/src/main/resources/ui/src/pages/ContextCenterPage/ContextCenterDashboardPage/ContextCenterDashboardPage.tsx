@@ -13,7 +13,7 @@
 
 import { Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { Asset } from 'generated/attachments/asset';
+import { Asset } from '../../../generated/attachments/asset';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';

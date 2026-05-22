@@ -13,7 +13,7 @@
 
 import { File06 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { DocFile } from 'components/ContextCenter/DocumentsView/DocumentsView.interface';
+import { DocFile } from '../components/ContextCenter/DocumentsView/DocumentsView.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isNull, isUndefined } from 'lodash';
 import { ReactComponent as DOCIcon } from '../assets/svg/ic-doc.svg';

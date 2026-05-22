@@ -16,7 +16,7 @@ import {
   PageHierarchy,
   PageType,
   QuickLink,
-} from 'interface/knowledge-center.interface';
+} from '../interface/knowledge-center.interface';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import {

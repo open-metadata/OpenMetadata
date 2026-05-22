@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { SearchOutlined } from '@ant-design/icons';
-import { QuickLink } from 'generated/api/data/createPage';
+import { QuickLink } from '../generated/api/data/createPage';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
