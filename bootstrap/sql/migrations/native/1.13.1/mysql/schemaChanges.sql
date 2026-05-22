@@ -1,0 +1,2 @@
+-- Schema changes for OpenMetadata 1.13.1
+-- No DDL changes; data backfill runs in the Java migration step.
