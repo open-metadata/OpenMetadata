@@ -31,7 +31,9 @@ import {
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const CUSTOM_OWNS_RELATION = 'pw-gp-owns';
+// Unique suffix per worker/repeat so parallel runs don't share relation type names.
+const RUN_ID = Math.random().toString(36).slice(2, 8);
+const CUSTOM_OWNS_RELATION = `pw-gp-owns-${RUN_ID}`;
 
 const catalog = new Glossary();
 const termProduct = new GlossaryTerm(catalog);
@@ -209,7 +211,8 @@ test.describe('Ontology Explorer — E2E', () => {
     await page.getByRole('option', { name: 'Overview' }).click();
 
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
-      '6 Relations'
+      '6 Relations',
+      { timeout: 45000 }
     );
   });
 

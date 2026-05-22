@@ -30,12 +30,14 @@ import {
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
+// Unique suffix per worker/repeat so parallel runs don't share relation type names.
+const RUN_ID = Math.random().toString(36).slice(2, 8);
 const CUSTOM_RELATION_NAMES = {
-  ONE_TO_ONE: 'pw-cardinality-oto',
-  ONE_TO_MANY: 'pw-cardinality-otm',
-  MANY_TO_ONE: 'pw-cardinality-mto',
-  MANY_TO_MANY: 'pw-cardinality-mtm',
-  CUSTOM_1_M: 'pw-cardinality-custom',
+  ONE_TO_ONE: `pw-c-oto-${RUN_ID}`,
+  ONE_TO_MANY: `pw-c-otm-${RUN_ID}`,
+  MANY_TO_ONE: `pw-c-mto-${RUN_ID}`,
+  MANY_TO_MANY: `pw-c-mtm-${RUN_ID}`,
+  CUSTOM_1_M: `pw-c-cus-${RUN_ID}`,
 } as const;
 
 // Each relation type gets its own isolated source-target pair so no single
@@ -101,11 +103,36 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
       targetMax: null,
     });
 
-    await addTermRelation(apiContext, otoSrc, otoDst, CUSTOM_RELATION_NAMES.ONE_TO_ONE);
-    await addTermRelation(apiContext, otmSrc, otmDst, CUSTOM_RELATION_NAMES.ONE_TO_MANY);
-    await addTermRelation(apiContext, mtoSrc, mtoDst, CUSTOM_RELATION_NAMES.MANY_TO_ONE);
-    await addTermRelation(apiContext, mtmSrc, mtmDst, CUSTOM_RELATION_NAMES.MANY_TO_MANY);
-    await addTermRelation(apiContext, cusSrc, cusDst, CUSTOM_RELATION_NAMES.CUSTOM_1_M);
+    await addTermRelation(
+      apiContext,
+      otoSrc,
+      otoDst,
+      CUSTOM_RELATION_NAMES.ONE_TO_ONE
+    );
+    await addTermRelation(
+      apiContext,
+      otmSrc,
+      otmDst,
+      CUSTOM_RELATION_NAMES.ONE_TO_MANY
+    );
+    await addTermRelation(
+      apiContext,
+      mtoSrc,
+      mtoDst,
+      CUSTOM_RELATION_NAMES.MANY_TO_ONE
+    );
+    await addTermRelation(
+      apiContext,
+      mtmSrc,
+      mtmDst,
+      CUSTOM_RELATION_NAMES.MANY_TO_MANY
+    );
+    await addTermRelation(
+      apiContext,
+      cusSrc,
+      cusDst,
+      CUSTOM_RELATION_NAMES.CUSTOM_1_M
+    );
     await addTermRelation(apiContext, relSrc, relDst, 'relatedTo');
 
     await disposeApiContext(page, apiContext);

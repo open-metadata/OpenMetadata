@@ -126,7 +126,9 @@ export class GlossaryTerm extends EntityClass {
     if (!response.ok()) {
       const body = await response.text();
       throw new Error(
-        `GlossaryTerm.patch failed for ${this.responseData.id}: HTTP ${response.status()} — ${body}`
+        `GlossaryTerm.patch failed for ${
+          this.responseData.id
+        }: HTTP ${response.status()} — ${body}`
       );
     }
 
