@@ -13,7 +13,6 @@
 
 import { File06 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { DocFile } from 'components/ContextCenter/DocumentsView/DocumentsView.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isNull, isUndefined } from 'lodash';
 import { ReactComponent as DOCIcon } from '../assets/svg/ic-doc.svg';
@@ -21,6 +20,7 @@ import { ReactComponent as ImageIcon } from '../assets/svg/ic-image.svg';
 import { ReactComponent as PDFIcon } from '../assets/svg/ic-pdf.svg';
 import { ReactComponent as XLSIcon } from '../assets/svg/ic-xls.svg';
 import { ArticleCardItem } from '../components/ContextCenter/ArticleCard/ArticleCard.interface';
+import { DocFile } from '../components/ContextCenter/DocumentsView/DocumentsView.interface';
 import { UploadedDocumentItem } from '../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
 import { CREATE_PAGE_HASH } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
