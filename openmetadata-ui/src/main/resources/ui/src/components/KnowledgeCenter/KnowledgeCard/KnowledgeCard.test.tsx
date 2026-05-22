@@ -14,9 +14,9 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Settings } from 'luxon';
 import '../../../test/unit/mocks/mui.mock';
 
+import { MemoryRouter } from 'react-router-dom';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { User } from '../../../generated/entity/teams/user';
-import { MemoryRouter } from 'react-router-dom';
 import KnowledgeCard, { KnowledgeCardProps } from './KnowledgeCard';
 import {
   KNOWLEDGE_PAGE_MOCK_DATA,

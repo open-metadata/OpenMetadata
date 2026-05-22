@@ -12,9 +12,9 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ContentChangeState } from '../../../interface/knowledge-center.interface';
-import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
 import ArticleDetailHeader from './ArticleDetailHeader.component';
 
 const mockNavigate = jest.fn();
