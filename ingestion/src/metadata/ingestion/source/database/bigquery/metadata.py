@@ -664,9 +664,14 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         ]
 
     def _get_filtered_schema_names(self, return_fqn: bool = False, add_to_status: bool = True) -> Iterable[str]:
-        raw_names = list(self.get_raw_database_schema_names())
+        # Only materialize when log_discovered needs the count up front;
+        # mark-deleted paths iterate once with add_to_status=False so
+        # streaming saves O(n) memory on large projects.
         if add_to_status:
+            raw_names: Iterable[str] = list(self.get_raw_database_schema_names())
             log_discovered(logger, self.status, "Schema", raw_names)
+        else:
+            raw_names = self.get_raw_database_schema_names()
         for schema_name in raw_names:
             schema_fqn = fqn.build(
                 self.metadata,
@@ -685,7 +690,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                         logger,
                         self.status,
                         "Schema",
-                        schema_fqn,
+                        schema_name,
                         matched_against=filter_name,
                         use_fqn_for_filtering=self.source_config.useFqnForFiltering,
                     )
@@ -855,7 +860,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     logger,
                     self.status,
                     "Database",
-                    database_fqn,
+                    project_id,
                     matched_against=filter_name,
                     use_fqn_for_filtering=self.source_config.useFqnForFiltering,
                 )

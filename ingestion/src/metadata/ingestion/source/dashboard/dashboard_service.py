@@ -581,13 +581,11 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         # the extra shallow copy when the source already gave us a list.
         dashboards_result = self.get_dashboards_list() or []
         dashboards = dashboards_result if isinstance(dashboards_result, list) else list(dashboards_result)
-        # Materialize names once and pass the list to log_discovered so it
-        # can take the zero-allocation Sized path instead of re-listing a
-        # generator over the (potentially large) dashboard objects.
-        dashboard_names = [self.get_dashboard_name(d) for d in dashboards]
-        log_discovered(logger, self.status, "Dashboard", dashboard_names)
-        for dashboard in dashboards:
-            dashboard_name = self.get_dashboard_name(dashboard)
+        # Compute names once and reuse — `get_dashboard_name` is a
+        # connector-specific call that may not be free.
+        dashboard_pairs = [(d, self.get_dashboard_name(d)) for d in dashboards]
+        log_discovered(logger, self.status, "Dashboard", [n for _, n in dashboard_pairs])
+        for dashboard, dashboard_name in dashboard_pairs:
             if filter_by_dashboard(
                 self.source_config.dashboardFilterPattern,
                 dashboard_name,

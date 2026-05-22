@@ -423,7 +423,7 @@ class SnowflakeSource(
                         logger,
                         self.status,
                         "Database",
-                        database_fqn,
+                        new_database,
                         matched_against=filter_name,
                         use_fqn_for_filtering=self.source_config.useFqnForFiltering,
                     )

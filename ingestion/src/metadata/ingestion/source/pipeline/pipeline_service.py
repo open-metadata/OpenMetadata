@@ -367,12 +367,11 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         # shallow copy when the source already returned a list.
         pipelines_result = self.get_pipelines_list() or []
         pipelines = pipelines_result if isinstance(pipelines_result, list) else list(pipelines_result)
-        # Materialize names once into a list so log_discovered takes the
-        # zero-allocation Sized path instead of re-listing a generator.
-        pipeline_names = [self.get_pipeline_name(p) for p in pipelines]
-        log_discovered(logger, self.status, "Pipeline", pipeline_names)
-        for pipeline_detail in pipelines:
-            pipeline_name = self.get_pipeline_name(pipeline_detail)
+        # Compute names once and reuse — `get_pipeline_name` is a
+        # connector-specific call that may not be free.
+        pipeline_pairs = [(p, self.get_pipeline_name(p)) for p in pipelines]
+        log_discovered(logger, self.status, "Pipeline", [n for _, n in pipeline_pairs])
+        for pipeline_detail, pipeline_name in pipeline_pairs:
             if filter_by_pipeline(
                 self.source_config.pipelineFilterPattern,
                 pipeline_name,

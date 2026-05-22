@@ -570,11 +570,16 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                 filter_name,
             ):
                 if add_to_status:
+                    # Store the raw database name; expose the FQN via
+                    # matched_against. Matches the convention used by
+                    # Dashboard/Pipeline/Topic/MLModel sources and keeps
+                    # the report column readable when useFqnForFiltering
+                    # is False.
                     log_filtered(
                         logger,
                         self.status,
                         "Database",
-                        database_fqn,
+                        database_name,
                         matched_against=filter_name,
                         use_fqn_for_filtering=self.source_config.useFqnForFiltering,
                     )
@@ -582,9 +587,15 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
             yield database_fqn if return_fqn else database_name
 
     def _get_filtered_schema_names(self, return_fqn: bool = False, add_to_status: bool = True) -> Iterable[str]:
-        raw_names = list(self.get_raw_database_schema_names())
+        # Only materialize when log_discovered actually needs the count up
+        # front. Mark-deleted maintenance paths call us with
+        # add_to_status=False and iterate once — streaming saves O(n) memory
+        # on large schemas.
         if add_to_status:
+            raw_names: Iterable[str] = list(self.get_raw_database_schema_names())
             log_discovered(logger, self.status, "Schema", raw_names)
+        else:
+            raw_names = self.get_raw_database_schema_names()
         for schema_name in raw_names:
             schema_fqn = fqn.build(
                 self.metadata,
@@ -603,7 +614,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                         logger,
                         self.status,
                         "Schema",
-                        schema_fqn,
+                        schema_name,
                         matched_against=filter_name,
                         use_fqn_for_filtering=self.source_config.useFqnForFiltering,
                     )
@@ -799,8 +810,12 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
             # filtered out, as well as any databases that were processed in this run
             all_database_fqns = set()
 
-            # Get all databases from the source (both filtered-in and filtered-out)
-            for database_name in self._get_filtered_database_names():
+            # Get all databases from the source (both filtered-in and
+            # filtered-out). Pass add_to_status=False — the main ingestion
+            # path already called log_filtered for each rejected database,
+            # so recording them again here would double-count Status.filtered
+            # and the report's "Passed filter patterns" math would go negative.
+            for database_name in self._get_filtered_database_names(add_to_status=False):
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,

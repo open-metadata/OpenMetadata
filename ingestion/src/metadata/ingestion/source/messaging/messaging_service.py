@@ -215,12 +215,11 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         # shallow copy when the source already returned a list.
         topics_result = self.get_topic_list() or []
         topics = topics_result if isinstance(topics_result, list) else list(topics_result)
-        # Materialize names once into a list so log_discovered takes the
-        # zero-allocation Sized path instead of re-listing a generator.
-        topic_names = [self.get_topic_name(t) for t in topics]
-        log_discovered(logger, self.status, "Topic", topic_names)
-        for topic_details in topics:
-            topic_name = self.get_topic_name(topic_details)
+        # Compute names once and reuse — `get_topic_name` is a
+        # connector-specific call that may not be free.
+        topic_pairs = [(t, self.get_topic_name(t)) for t in topics]
+        log_discovered(logger, self.status, "Topic", [n for _, n in topic_pairs])
+        for topic_details, topic_name in topic_pairs:
             if filter_by_topic(
                 self.source_config.topicFilterPattern,
                 topic_name,

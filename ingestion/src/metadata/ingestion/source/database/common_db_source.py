@@ -406,7 +406,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                             logger,
                             self.status,
                             "Table",
-                            table_fqn,
+                            table_name,
                             matched_against=filter_name,
                             use_fqn_for_filtering=self.source_config.useFqnForFiltering,
                         )
@@ -452,7 +452,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                             logger,
                             self.status,
                             "Table",
-                            view_fqn,
+                            view_name,
                             matched_against=filter_name,
                             use_fqn_for_filtering=self.source_config.useFqnForFiltering,
                         )
