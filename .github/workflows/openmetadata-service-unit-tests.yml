@@ -61,6 +61,7 @@ jobs:
               - 'pom.xml'
               - 'Makefile'
               - 'bootstrap/**'
+              - 'conf/**'
             k8s_operator:
               - 'openmetadata-k8s-operator/**'
 

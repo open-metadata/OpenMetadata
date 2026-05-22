@@ -37,6 +37,7 @@ on:
       - "common/**"
       - "pom.xml"
       - "bootstrap/**"
+      - "conf/**"
   # `pull_request_target` is intentional and required so the workflow runs against PRs from
   # forks (which `pull_request` cannot for security reasons). The `safe to test` label gate
   # below is what makes this safe — see security note in the file header.
@@ -74,6 +75,7 @@ jobs:
               - 'common/**'
               - 'pom.xml'
               - 'bootstrap/**'
+              - 'conf/**'
 
   integration-tests-postgres-elasticsearch-redis:
     needs: changes
