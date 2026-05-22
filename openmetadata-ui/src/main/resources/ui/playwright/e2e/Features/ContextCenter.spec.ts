@@ -141,14 +141,6 @@ test.describe('Context Center', () => {
 
     // Upload a document via API so document-related tests have data
     const fileContent = Buffer.from('Playwright seed document');
-    const formData = new FormData();
-    formData.append(
-      'file',
-      new Blob([fileContent], { type: 'text/plain' }),
-      'seed-document.txt'
-    );
-    formData.append('entityLink', '<#E::page::contextCenter.documents>');
-    formData.append('assetType', 'External');
 
     await apiContext.post('/api/v1/contextCenter/drive/files/upload', {
       multipart: {

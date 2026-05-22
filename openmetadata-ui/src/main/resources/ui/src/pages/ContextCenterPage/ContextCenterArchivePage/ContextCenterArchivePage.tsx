@@ -33,6 +33,7 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Include } from '../../../generated/type/include';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { PageType } from '../../../interface/knowledge-center.interface';
 import {
   deleteDriveFile,
   listArchivedContextFiles,
@@ -77,7 +78,11 @@ const ContextCenterArchivePage: FC = () => {
     setIsLoading(true);
     try {
       const [pagesResponse, files] = await Promise.all([
-        getListKnowledgePages({ include: Include.Deleted, limit: 100 }),
+        getListKnowledgePages({
+          include: Include.Deleted,
+          limit: 100,
+          pageType: PageType.ARTICLE,
+        }),
         listArchivedContextFiles(),
       ]);
 

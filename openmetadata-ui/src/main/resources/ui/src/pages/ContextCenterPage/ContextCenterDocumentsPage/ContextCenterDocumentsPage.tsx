@@ -13,7 +13,6 @@
 
 import { Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import DocumentFolderView from 'components/ContextCenter/DocumentsView/DocumentFolderView.component';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
@@ -21,6 +20,7 @@ import AlertBar from '../../../components/AlertBar/AlertBar';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import '../../../components/common/ResizablePanels/resizable-panels.less';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
+import DocumentFolderView from '../../../components/ContextCenter/DocumentsView/DocumentFolderView.component';
 import DocumentsView from '../../../components/ContextCenter/DocumentsView/DocumentsView.component';
 import {
   DocFile,

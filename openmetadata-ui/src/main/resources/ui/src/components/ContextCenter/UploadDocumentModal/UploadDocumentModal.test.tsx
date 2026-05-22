@@ -143,7 +143,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 
 const defaultProps = {
   isOpen: true,
-  entityLink: 'entity::link',
+  folderFqn: undefined,
   onClose: jest.fn(),
   onUploaded: jest.fn(),
 };

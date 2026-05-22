@@ -64,10 +64,10 @@ import {
   QuickLinkFormModalFormData,
 } from '../QuickLinkFormModal/QuickLinkFormModal';
 
-import { getEntityName } from 'utils/EntityUtils';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { getEntityName } from '../../../utils/EntityUtils';
 import './knowledge-card.less';
 
 export interface KnowledgeCardProps {
