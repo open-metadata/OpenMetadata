@@ -33,21 +33,28 @@ import { EntityType } from '../../../enums/entity.enum';
 import {
   FeedbackType,
   RecognizerFeedback,
-  TaskDetails,
 } from '../../../generated/entity/feed/thread';
+import { Task } from '../../../rest/tasksAPI';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 
 interface FeedbackApprovalTaskProps {
-  task: TaskDetails;
+  task: Task;
 }
 
 const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
   const { t } = useTranslation();
-  const feedback: RecognizerFeedback | undefined = task?.feedback;
-  const recognizerName = task?.recognizer?.recognizerName || '';
+  const payload =
+    task?.payload && typeof task.payload === 'object'
+      ? (task.payload as Record<string, unknown>)
+      : undefined;
+  const feedback = payload?.feedback as RecognizerFeedback | undefined;
+  const recognizer =
+    (payload?.recognizer as { recognizerName?: string } | undefined) ??
+    undefined;
+  const recognizerName = recognizer?.recognizerName || '';
 
   const feedbackTypeLabel = useMemo(() => {
     if (!feedback?.feedbackType) {

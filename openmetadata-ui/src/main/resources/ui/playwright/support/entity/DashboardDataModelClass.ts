@@ -12,17 +12,32 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
-import {
-  Column,
-  DashboardDataModel,
-  DataType,
-} from '../../../src/generated/entity/data/dashboardDataModel';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
+import {
+  EntityReference,
+  EntityTypeEndpoint,
+  ResponseDataType,
+  ResponseDataWithServiceType,
+} from './Entity.interface';
 import { EntityClass } from './EntityClass';
+
+export interface DashboardDataModel extends ResponseDataWithServiceType {
+  columns: EntityReference[];
+  dataModelType: string;
+  project: string;
+}
+
+export interface Column {
+  name: string;
+  dataType: string;
+  dataLength?: number;
+  dataTypeDisplay: string;
+  description: string;
+  children?: Column[];
+}
 
 export class DashboardDataModelClass extends EntityClass {
   private readonly dashboardDataModelName: string;
@@ -85,35 +100,35 @@ export class DashboardDataModelClass extends EntityClass {
     this.children = [
       {
         name: 'country_name',
-        dataType: DataType.Varchar,
+        dataType: `VARCHAR`,
         dataLength: 256,
         dataTypeDisplay: 'varchar',
         description: 'Name of the country.',
       },
       {
         name: 'user_details',
-        dataType: DataType.Varchar,
+        dataType: `VARCHAR`,
         dataLength: 256,
         dataTypeDisplay: 'varchar',
         description: 'User details.',
         children: [
           {
             name: 'name',
-            dataType: DataType.Varchar,
+            dataType: `VARCHAR`,
             dataLength: 256,
             dataTypeDisplay: 'varchar',
             description: 'Name of the user.',
             children: [
               {
                 name: 'first_name',
-                dataType: DataType.Varchar,
+                dataType: `VARCHAR`,
                 dataLength: 256,
                 dataTypeDisplay: 'varchar',
                 description: 'First name of the user.',
               },
               {
                 name: 'last_name',
-                dataType: DataType.Varchar,
+                dataType: `VARCHAR`,
                 dataLength: 256,
                 dataTypeDisplay: 'varchar',
                 description: 'Last name of the user.',

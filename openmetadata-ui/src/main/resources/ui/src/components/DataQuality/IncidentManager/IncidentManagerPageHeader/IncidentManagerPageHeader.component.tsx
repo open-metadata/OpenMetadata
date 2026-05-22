@@ -20,12 +20,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as InternalLinkIcon } from '../../../../assets/svg/InternalIcons.svg';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
-import { ThreadType } from '../../../../generated/api/feed/createThread';
-import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
-import {
-  Thread,
-  ThreadTaskStatus,
-} from '../../../../generated/entity/feed/thread';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   ChangeDescription,
@@ -39,8 +33,10 @@ import {
 import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import {
+  getIncidentTaskByStateId,
   getListTestCaseIncidentByStateId,
-  postTestCaseIncidentStatus,
+  Task,
+  transitionIncident,
   updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
 import { getNameFromFQN } from '../../../../utils/CommonUtils';
@@ -52,7 +48,8 @@ import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVer
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { getTaskDetailPath } from '../../../../utils/TasksUtils';
+import { getTaskDisplayId } from '../../../../utils/TasksUtils';
+import { getTaskDetailPath as getNewTaskDetailPath } from '../../../../utils/TaskUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -70,23 +67,18 @@ const IncidentManagerPageHeader = ({
 }: IncidentManagerPageHeaderProps) => {
   const { t } = useTranslation();
   const { entityRules } = useEntityRules(EntityType.TABLE);
-  const [activeTask, setActiveTask] = useState<Thread>();
+  const [incidentTask, setIncidentTask] = useState<Task | null>(null);
   const [testCaseStatusData, setTestCaseStatusData] =
     useState<TestCaseResolutionStatus>();
   const [isLoading, setIsLoading] = useState(true);
   const { testCase: testCaseData, testCasePermission } = useTestCaseStore();
 
-  const { fqn: decodedFqn, dimensionKey } = useRequiredParams<{
+  const { dimensionKey } = useRequiredParams<{
     fqn: string;
     dimensionKey?: string;
   }>();
-  const {
-    setActiveThread,
-    entityThread,
-    getFeedData,
-    testCaseResolutionStatus,
-    updateTestCaseIncidentStatus,
-  } = useActivityFeedProvider();
+  const { testCaseResolutionStatus, updateTestCaseIncidentStatus } =
+    useActivityFeedProvider();
 
   const { ownerDisplayName, ownerRef } = useMemo(() => {
     return getCommonExtraInfoForVersionDetails(
@@ -130,47 +122,54 @@ const IncidentManagerPageHeader = ({
     }
   };
 
-  const updateAssignee = async (data: CreateTestCaseResolutionStatus) => {
-    try {
-      await postTestCaseIncidentStatus(data);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   const onIncidentStatusUpdate = (data: TestCaseResolutionStatus) => {
     setTestCaseStatusData(data);
     updateTestCaseIncidentStatus([...testCaseResolutionStatus, data]);
   };
 
-  const handleAssigneeUpdate = (assignee?: EntityReference[]) => {
+  const handleAssigneeUpdate = async (assignee?: EntityReference[]) => {
     if (isUndefined(testCaseStatusData)) {
       return;
     }
 
+    const taskId = testCaseStatusData.stateId;
+    if (!taskId) {
+      return;
+    }
+
     const assigneeData = assignee?.[0];
+    const transitionId =
+      testCaseStatusData.testCaseResolutionStatusType ===
+      TestCaseResolutionStatusTypes.Assigned
+        ? 'reassign'
+        : 'assign';
 
-    const updatedData: TestCaseResolutionStatus = {
-      ...testCaseStatusData,
-      testCaseResolutionStatusDetails: {
-        ...testCaseStatusData?.testCaseResolutionStatusDetails,
-        assignee: assigneeData,
-      },
-      testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
-    };
-
-    const createTestCaseResolutionStatus: CreateTestCaseResolutionStatus = {
-      severity: testCaseStatusData.severity,
-      testCaseReference:
-        testCaseStatusData.testCaseReference?.fullyQualifiedName ?? '',
-      testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
-      testCaseResolutionStatusDetails: {
-        assignee: assigneeData,
-      },
-    };
-
-    updateAssignee(createTestCaseResolutionStatus);
-    onIncidentStatusUpdate(updatedData);
+    try {
+      await transitionIncident(taskId, {
+        transitionId,
+        payload: assigneeData
+          ? {
+              assignees: [
+                {
+                  id: assigneeData.id,
+                  type: assigneeData.type ?? 'user',
+                  name: assigneeData.name,
+                  fullyQualifiedName:
+                    assigneeData.fullyQualifiedName ?? assigneeData.name,
+                  displayName: assigneeData.displayName,
+                },
+              ],
+            }
+          : undefined,
+      });
+      const refreshed = await getListTestCaseIncidentByStateId(taskId);
+      const latest = refreshed?.data?.[0];
+      if (latest) {
+        onIncidentStatusUpdate(latest);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const fetchTestCaseResolution = async (id: string) => {
@@ -183,48 +182,44 @@ const IncidentManagerPageHeader = ({
     }
   };
 
-  useEffect(() => {
-    if (decodedFqn) {
-      setIsLoading(true);
-      getFeedData(
-        undefined,
-        undefined,
-        ThreadType.Task,
-        EntityType.TEST_CASE,
-        decodedFqn
-      ).finally(() => setIsLoading(false));
-    } else {
-      setIsLoading(false);
+  const fetchIncidentTask = async (stateId: string) => {
+    try {
+      const task = await getIncidentTaskByStateId(stateId);
+      setIncidentTask(task);
+    } catch {
+      setIncidentTask(null);
     }
-  }, [decodedFqn]);
+  };
 
-  useEffect(() => {
-    const openTask = entityThread.find(
-      (thread) => thread.task?.status === ThreadTaskStatus.Open
-    );
-    setActiveTask(openTask);
-    setActiveThread(openTask);
-  }, [entityThread]);
+  // In task-first mode, stateId equals the task UUID (see
+  // IncidentTcrsSyncHandler). The pre-task-first code read from
+  // payload.testCaseResolutionStatusId, but that field doesn't exist
+  // in the new task system.
+  const incidentStateId = useMemo(() => incidentTask?.id, [incidentTask]);
 
   useEffect(() => {
     const status = last(testCaseResolutionStatus);
 
-    if (status?.stateId === activeTask?.task?.testCaseResolutionStatusId) {
+    if (status?.stateId === incidentStateId) {
+      setTestCaseStatusData(status);
       if (
         status?.testCaseResolutionStatusType ===
         TestCaseResolutionStatusTypes.Resolved
       ) {
-        setTestCaseStatusData(undefined);
         fetchTaskCount();
-      } else {
-        setTestCaseStatusData(status);
       }
     }
-  }, [testCaseResolutionStatus]);
+  }, [testCaseResolutionStatus, incidentStateId, fetchTaskCount]);
 
   useEffect(() => {
     if (testCaseData?.incidentId) {
-      fetchTestCaseResolution(testCaseData.incidentId);
+      setIsLoading(true);
+      Promise.allSettled([
+        fetchTestCaseResolution(testCaseData.incidentId),
+        fetchIncidentTask(testCaseData.incidentId),
+      ]).finally(() => setIsLoading(false));
+    } else {
+      setIsLoading(false);
     }
   }, [testCaseData]);
 
@@ -276,9 +271,16 @@ const IncidentManagerPageHeader = ({
 
     const details = testCaseStatusData?.testCaseResolutionStatusDetails;
 
+    const taskLinkInfo = incidentTask
+      ? {
+          path: getNewTaskDetailPath(incidentTask),
+          label: `#${getTaskDisplayId(incidentTask.taskId)}`,
+        }
+      : null;
+
     return (
       <>
-        {activeTask && (
+        {taskLinkInfo && (
           <>
             <Divider className="self-center m-x-sm" type="vertical" />
             <Typography
@@ -290,9 +292,9 @@ const IncidentManagerPageHeader = ({
 
               <Link
                 className="font-medium flex items-center gap-2"
-                data-testid="table-name"
-                to={getTaskDetailPath(activeTask)}>
-                {`#${activeTask?.task?.id}`}
+                data-testid="incident-task-link"
+                to={taskLinkInfo.path}>
+                {taskLinkInfo.label}
                 <InternalLinkIcon className="text-grey-muted" width="14px" />
               </Link>
             </Typography>
@@ -341,7 +343,7 @@ const IncidentManagerPageHeader = ({
         </Typography>
       </>
     );
-  }, [testCaseStatusData, isLoading, activeTask, hasEditStatusPermission]);
+  }, [testCaseStatusData, isLoading, incidentTask, hasEditStatusPermission]);
 
   return (
     <Space wrap align="center" className="incident-manager-header w-full ">

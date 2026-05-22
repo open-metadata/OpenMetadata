@@ -112,9 +112,7 @@ class TestTableCustomSQLQueryValidator(unittest.TestCase):
         partition_expr = "status = 'active'"
 
         result = self.validator._replace_where_clause(sql, partition_expr)
-        expected = (
-            "SELECT id FROM table1 WHERE status = 'active' UNION SELECT id FROM table2"
-        )
+        expected = "SELECT id FROM table1 WHERE status = 'active' UNION SELECT id FROM table2"
 
         self.assertEqual(result, expected)
 
@@ -165,9 +163,7 @@ class TestTableCustomSQLQueryValidator(unittest.TestCase):
 
         result = self.validator._replace_where_clause(sql, partition_expr)
 
-        self.assertIn(
-            "WHERE u.created_at BETWEEN '2023-01-01' AND '2023-12-31'", result
-        )
+        self.assertIn("WHERE u.created_at BETWEEN '2023-01-01' AND '2023-12-31'", result)
         self.assertIn("WHERE created_at > '2022-01-01'", result)
         self.assertIn("ORDER BY o.total DESC", result)
         self.assertNotIn("WHERE u.status = 'active' AND o.total > 100", result)

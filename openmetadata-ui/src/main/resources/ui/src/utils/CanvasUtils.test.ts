@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Edge, Node, Viewport } from 'reactflow';
+import { EntityType } from '../enums/entity.enum';
 import {
   BoundingBox,
   boundsIntersect,
@@ -63,7 +64,7 @@ const createMockNode = (
   id,
   position: { x: 0, y: 0 },
   data: {
-    node: { columns: columns ? Array(columns).fill({}) : [] },
+    node: { columns: columns ? new Array(columns).fill({}) : [] },
     isRootNode,
   },
   width: 400,
@@ -169,7 +170,7 @@ describe('CanvasUtils', () => {
         const edge = createMockEdge('edge1', 'node1', 'node2');
         const sourceNode = createMockNode('node1');
 
-        const result = getEdgeCoordinates(edge, sourceNode, undefined);
+        const result = getEdgeCoordinates(edge, sourceNode);
 
         expect(result).toBeNull();
       });
@@ -218,6 +219,7 @@ describe('CanvasUtils', () => {
 
         const result = getEdgeCoordinates(edge, sourceNode, targetNode);
 
+        // Y uses node.height (100) from createMockNode, so midpoint = 50
         expect(result).toEqual({
           sourceX: 400,
           sourceY: 33,
@@ -237,9 +239,9 @@ describe('CanvasUtils', () => {
 
         expect(result).not.toBeNull();
         expect(result?.sourceX).toBe(500);
-        expect(result?.sourceY).toBe(233);
+        expect(result?.sourceY).toBe(233); // 200 + 100/2
         expect(result?.targetX).toBe(590);
-        expect(result?.targetY).toBe(333);
+        expect(result?.targetY).toBe(333); // 300 + 100/2
       });
     });
 
@@ -249,7 +251,7 @@ describe('CanvasUtils', () => {
         columnCount: number
       ): Node => {
         const node = createMockNode(id, columnCount);
-        node.data.node.flattenColumns = Array(columnCount).fill({});
+        node.data.node.flattenColumns = new Array(columnCount).fill({});
 
         return node;
       };
@@ -391,6 +393,54 @@ describe('CanvasUtils', () => {
         expect(result?.targetX).toBe(490);
       });
     });
+
+    describe('temp lineage nodes', () => {
+      const createTempNode = (id: string, measuredHeight: number): Node => ({
+        id,
+        position: { x: 0, y: 0 },
+        data: {
+          node: {
+            id,
+            name: id,
+            entityType: EntityType.TABLE,
+            isTempTable: true,
+            columns: [],
+          },
+          isRootNode: false,
+        },
+        width: 400,
+        height: measuredHeight,
+      });
+
+      it('uses measured node.height for temp node entity-level edge', () => {
+        const edge = createMockEdge('edge1', 'temp_staging', 'node2', false);
+        const tempNode = createTempNode('temp_staging', 80);
+        const targetNode = createMockNode('node2');
+        targetNode.position = { x: 500, y: 0 };
+
+        const result = getEdgeCoordinates(edge, tempNode, targetNode);
+
+        expect(result).not.toBeNull();
+        expect(result?.sourceY).toBe(20); // 0 + 40/2 (Fixed height for temp nodes)
+        expect(result?.targetY).toBe(33); // 0 + 100/2 - 17 since target is not rootNode
+      });
+
+      it('centers edge at actual midpoint when measured height differs from computed height', () => {
+        const edge = createMockEdge('edge1', 'node1', 'node2', false);
+        const sourceNode = createMockNode('node1');
+        sourceNode.height = 150;
+        sourceNode.position = { x: 0, y: 100 };
+        const targetNode = createMockNode('node2');
+        targetNode.height = 200;
+        targetNode.position = { x: 500, y: 100 };
+
+        const result = getEdgeCoordinates(edge, sourceNode, targetNode);
+
+        expect(result).not.toBeNull();
+        expect(result?.sourceY).toBe(133); // 100 + 150/2 - 17 since source node is rootNode
+        expect(result?.targetY).toBe(133); // 100 + 200/2 - 17 since target is not rootNode
+      });
+    });
   });
 
   describe('getEdgeBounds', () => {
@@ -414,6 +464,7 @@ describe('CanvasUtils', () => {
       expect(result).not.toBeNull();
       expect(result!.minX).toBeLessThan(351);
       expect(result!.maxX).toBeGreaterThan(500);
+      // sourceY = 50 (node.height=100 / 2), padding=50 → minY = 0
       expect(result!.minY).toBeLessThan(0);
       expect(result!.maxY).toBeGreaterThan(100);
     });

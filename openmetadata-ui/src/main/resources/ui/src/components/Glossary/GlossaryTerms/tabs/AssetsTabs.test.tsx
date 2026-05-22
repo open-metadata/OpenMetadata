@@ -125,6 +125,16 @@ jest.mock('../../../Modals/ConfirmationModal/ConfirmationModal', () => ({
     .mockImplementation(() => <div>ConfirmationModal.component</div>),
 }));
 
+jest.mock(
+  '../../../DataAssets/DomainAssetDryRunModal/DomainAssetDryRunModal.component',
+  () => ({
+    __esModule: true,
+    default: jest
+      .fn()
+      .mockImplementation(() => <div>DomainAssetDryRunModal.component</div>),
+  })
+);
+
 jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => ({
   __esModule: true,
   default: jest.fn().mockReturnValue({

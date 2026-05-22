@@ -1,0 +1,105 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/feed/taskFormSchema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TaskFormSchema",
+  "description": "A TaskFormSchema defines the form structure for creating or resolving a specific type of task. It includes a JSON Schema for validation and a UI schema for rendering.",
+  "javaInterfaces": ["org.openmetadata.schema.NamedEntityInterface"],
+  "javaType": "org.openmetadata.schema.entity.feed.TaskFormSchema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "description": "Unique identifier (UUID) for this form schema.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Unique key for this form schema (e.g., 'DescriptionSuggestion').",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display name for the form schema.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the form schema.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "taskType": {
+      "description": "The task type this form schema applies to.",
+      "type": "string"
+    },
+    "taskCategory": {
+      "description": "The task category this form schema applies to.",
+      "type": "string"
+    },
+    "formSchema": {
+      "description": "JSON Schema object defining the form fields and validation.",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "uiSchema": {
+      "description": "RJSF uiSchema object for customizing form rendering.",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "workflowDefinitionRef": {
+      "description": "Name of the WorkflowDefinition that orchestrates tasks created from this schema.",
+      "type": "string"
+    },
+    "workflowVersion": {
+      "description": "Version of the bound workflow definition when this form schema was last saved.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "createFormSchema": {
+      "description": "Optional JSON Schema override used specifically when creating a task.",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "createUiSchema": {
+      "description": "Optional uiSchema override used specifically when creating a task.",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "transitionForms": {
+      "description": "Per-transition form configuration keyed by transition identifier or formRef.",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "defaultStageMappings": {
+      "description": "Default workflow stage to coarse task status mappings keyed by stage identifier.",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "../tasks/task.json#/definitions/taskStatus"
+      }
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedBy": {
+      "description": "User who last updated the form schema.",
+      "type": "string"
+    },
+    "updatedAt": {
+      "description": "Last update timestamp.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "href": {
+      "description": "Link to the resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When true indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["id", "name", "taskType", "formSchema"],
+  "additionalProperties": false
+}

@@ -1,1 +1,1 @@
--- Placeholder for 1.12.6 Postgres schema changes
+-- Placeholder for 1.12.6 PostgreSQL schema changes

@@ -24,12 +24,14 @@ import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.s
 import LandingPageBg from '../../../../assets/svg/landing-page-header-bg.svg';
 import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
-import { Thread } from '../../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../../hooks/useDomainStore';
 import { SearchSourceAlias } from '../../../../interface/search.interface';
-import { getActiveAnnouncement } from '../../../../rest/feedsAPI';
+import {
+  AnnouncementEntity,
+  getActiveAnnouncements,
+} from '../../../../rest/announcementsAPI';
 import {
   getRecentlyViewedData,
   isLinearGradient,
@@ -63,15 +65,18 @@ const CustomiseLandingPageHeader = ({
 }: CustomiseLandingPageHeaderProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, applicationConfig } = useApplicationStore();
   const { activeDomain, activeDomainEntityRef, updateActiveDomain } =
     useDomainStore();
   const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(false);
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
-  const [announcements, setAnnouncements] = useState<Thread[]>([]);
+  const [announcements, setAnnouncements] = useState<AnnouncementEntity[]>([]);
   const [isAnnouncementLoading, setIsAnnouncementLoading] = useState(true);
   const [showAnnouncements, setShowAnnouncements] = useState(false);
-  const bgColor = backgroundColor ?? DEFAULT_HEADER_BG_COLOR;
+  const adminPanelBackgroundColor =
+    applicationConfig?.customTheme?.panelBackgroundColor;
+  const bgColor =
+    backgroundColor || adminPanelBackgroundColor || DEFAULT_HEADER_BG_COLOR;
 
   const landingPageStyle = useMemo(() => {
     const backgroundImage = isLinearGradient(bgColor)
@@ -109,7 +114,7 @@ const CustomiseLandingPageHeader = ({
   const fetchAnnouncements = useCallback(async () => {
     try {
       setIsAnnouncementLoading(true);
-      const response = await getActiveAnnouncement();
+      const response = await getActiveAnnouncements();
 
       setAnnouncements(response.data);
       setShowAnnouncements(response.data.length > 0);

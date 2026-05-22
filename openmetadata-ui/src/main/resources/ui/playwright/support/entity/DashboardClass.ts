@@ -23,6 +23,11 @@ import {
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
+export interface DataModelType extends ResponseDataWithServiceType {
+  columns?: unknown[];
+  dataModelType?: string;
+}
+
 export class DashboardClass extends EntityClass {
   private dashboardName: string;
   private dashboardDataModelName: string;
@@ -56,15 +61,14 @@ export class DashboardClass extends EntityClass {
     name: string;
     displayName: string;
     service: string;
-    columns: unknown[];
-    dataModelType: string;
+    columns: DataModelType['columns'];
+    dataModelType: DataModelType['dataModelType'];
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
   entityResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
-  dataModelResponseData: ResponseDataWithServiceType =
-    {} as ResponseDataWithServiceType;
+  dataModelResponseData: DataModelType = {} as DataModelType;
   chartsResponseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(name?: string, dataModelType = 'SupersetDataModel') {
@@ -218,7 +222,7 @@ export class DashboardClass extends EntityClass {
     entity: ResponseDataWithServiceType;
     service: ResponseDataType;
     charts: ResponseDataType;
-    dataModel: ResponseDataWithServiceType;
+    dataModel: DataModelType;
   }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;

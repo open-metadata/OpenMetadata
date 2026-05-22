@@ -42,10 +42,10 @@ import {
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
 import i18n from '../utils/i18next/LocalUtil';
-import { Transi18next } from './CommonUtils';
 import documentationLinksClassBase from './DocumentationLinksClassBase';
 import { getEntityNameLabel } from './EntityUtils';
 import Fqn from './Fqn';
+import { Transi18next } from './i18next/LocalUtil';
 import { getEntityIcon } from './TableUtils';
 
 const { t } = i18n;

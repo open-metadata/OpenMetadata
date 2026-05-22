@@ -215,7 +215,7 @@ export const GLOSSARY_DROPDOWN_ITEMS = [
   },
   {
     label: 'label.status',
-    key: EntityFields.GLOSSARY_TERM_STATUS,
+    key: EntityFields.ENTITY_STATUS,
   },
 ];
 
@@ -352,6 +352,17 @@ export const LINEAGE_DROPDOWN_ITEMS = [
   {
     label: 'label.column',
     key: EntityFields.COLUMN,
+  },
+];
+
+export const KNOWLEDGE_PAGE_DROPDOWN_ITEMS = [
+  {
+    label: t('label.owner-plural'),
+    key: EntityFields.OWNERS,
+  },
+  {
+    label: t('label.tag'),
+    key: EntityFields.TAG,
   },
 ];
 

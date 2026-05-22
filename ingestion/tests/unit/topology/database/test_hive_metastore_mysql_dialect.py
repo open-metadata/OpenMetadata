@@ -47,9 +47,7 @@ class TestHiveMySQLMetastoreDialect(TestCase):
         mock_connection.execute.return_value = mock_result
 
         # Call the method
-        result = self.dialect._get_table_columns(
-            mock_connection, "test_table", "test_schema"
-        )
+        result = self.dialect._get_table_columns(mock_connection, "test_table", "test_schema")
 
         # Verify connection.execute was called
         self.assertTrue(mock_connection.execute.called)

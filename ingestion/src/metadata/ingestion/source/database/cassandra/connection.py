@@ -12,7 +12,8 @@
 """
 Source connection handler
 """
-from functools import partial
+
+from functools import partial  # noqa: I001
 from typing import Optional
 
 from cassandra.auth import PlainTextAuthProvider
@@ -78,9 +79,7 @@ def get_connection(connection: CassandraConnection):
                 password=connection.authType.password.get_secret_value(),
             )
 
-    connection.connectionArguments = (
-        connection.connectionArguments or init_empty_connection_arguments()
-    )
+    connection.connectionArguments = connection.connectionArguments or init_empty_connection_arguments()
 
     cluster = Cluster(
         **cluster_config,
@@ -88,15 +87,15 @@ def get_connection(connection: CassandraConnection):
     )
     session = cluster.connect()
 
-    return session
+    return session  # noqa: RET504
 
 
 def test_connection(
     metadata: OpenMetadata,
     session: CassandraSession,
     service_connection: CassandraConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -104,7 +103,7 @@ def test_connection(
     """
 
     class SchemaHolder(BaseModel):
-        schema: Optional[str] = None
+        schema: Optional[str] = None  # noqa: UP045
 
     holder = SchemaHolder()
 

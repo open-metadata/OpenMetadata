@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.governance.workflows;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -83,6 +84,31 @@ class WorkflowHandlerSchemaUpdateTest {
 
       assertTrue(ex.getMessage().contains("openmetadata-ops.sh migrate"));
       assertInstanceOf(FlowableWrongDbException.class, ex.getCause());
+    }
+  }
+
+  @Test
+  void migrationModeDoesNotLoadPipelineServiceClient() {
+    ProcessEngine mockEngine = mock(ProcessEngine.class, RETURNS_DEEP_STUBS);
+
+    try (MockedConstruction<StandaloneProcessEngineConfiguration> ignored =
+            mockConstruction(
+                StandaloneProcessEngineConfiguration.class,
+                (mock, ctx) -> when(mock.buildProcessEngine()).thenReturn(mockEngine));
+        MockedStatic<ProcessEngines> ignoredEngines = mockStatic(ProcessEngines.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<PipelineServiceClientFactory> pscMock =
+            mockStatic(PipelineServiceClientFactory.class)) {
+
+      setupEntityMock(entityMock);
+      pscMock
+          .when(() -> PipelineServiceClientFactory.createPipelineServiceClient(any()))
+          .thenThrow(new RuntimeException("pipeline client class not on classpath"));
+
+      assertDoesNotThrow(() -> WorkflowHandler.initialize(buildMockConfig(), true));
+      pscMock.verify(
+          () -> PipelineServiceClientFactory.createPipelineServiceClient(any()),
+          org.mockito.Mockito.never());
     }
   }
 

@@ -10,29 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AxiosError } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ENTITY_PATH } from '../../constants/constants';
+import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
-import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
-} from '../../utils/date-time/DateTimeUtils';
-import {
-  DRAWER_NAVIGATION_OPTIONS,
-  getEntityOverview,
-  hasLineageTab,
-} from '../../utils/EntityUtils';
-
-import { AxiosError } from 'axios';
-import { Operation } from 'fast-json-patch';
-import { ENTITY_PATH } from '../../constants/constants';
-import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel, TestCaseStatus } from '../../generated/tests/testCase';
@@ -41,7 +31,17 @@ import { useChangeSummary } from '../../hooks/useChangeSummary';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { updateTableColumn } from '../../rest/tableAPI';
 import { listTestCases } from '../../rest/testAPI';
+import { getEntityOverview } from '../../utils/DataAssetSummaryPanelUtils';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../utils/date-time/DateTimeUtils';
+import EntityLink from '../../utils/EntityLink';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import {
+  DRAWER_NAVIGATION_OPTIONS,
+  hasLineageTab,
+} from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { generateEntityLink, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -174,10 +174,43 @@ export const DataAssetSummaryPanelV1 = ({
     [entityType]
   );
 
-  const { changeSummary } = useChangeSummary(entityType, dataAsset.id ?? '', {
-    fieldPrefix: 'description',
-    limit: 1,
-  });
+  const isColumnEntity = entityType === EntityType.TABLE_COLUMN;
+
+  const {
+    changeSummaryEntityType,
+    changeSummaryEntityId,
+    changeSummaryParams,
+  } = useMemo(() => {
+    if (!isColumnEntity) {
+      return {
+        changeSummaryEntityType: entityType,
+        changeSummaryEntityId: dataAsset.id ?? '',
+        changeSummaryParams: { fieldPrefix: 'description', limit: 1 },
+      };
+    }
+    const columnData = dataAsset as typeof dataAsset & {
+      table?: { id?: string };
+    };
+    const columnName = EntityLink.getTableColumnNameFromColumnFqn(
+      dataAsset.fullyQualifiedName ?? '',
+      false
+    );
+
+    return {
+      changeSummaryEntityType: EntityType.TABLE,
+      changeSummaryEntityId: columnData.table?.id ?? '',
+      changeSummaryParams: {
+        fieldPrefix: `columns.${columnName}.description`,
+        limit: 1,
+      },
+    };
+  }, [isColumnEntity, entityType, dataAsset.id, dataAsset.fullyQualifiedName]);
+
+  const { changeSummary } = useChangeSummary(
+    changeSummaryEntityType,
+    changeSummaryEntityId,
+    changeSummaryParams
+  );
 
   const fetchIncidentCount = useCallback(async () => {
     if (
@@ -267,7 +300,6 @@ export const DataAssetSummaryPanelV1 = ({
   };
   // Columns inherit owners, domains, tier, and data products from their parent table
   // These fields should not be editable on columns
-  const isColumnEntity = entityType === EntityType.TABLE_COLUMN;
 
   const {
     editDomainPermission,
@@ -374,7 +406,9 @@ export const DataAssetSummaryPanelV1 = ({
   }, [entityPermissions, dataAsset?.fullyQualifiedName]);
 
   const commonEntitySummaryInfo = useMemo(() => {
-    const descriptionChangeSummaryEntry = changeSummary?.description;
+    const descriptionChangeSummaryEntry = isColumnEntity
+      ? changeSummary?.[changeSummaryParams.fieldPrefix]
+      : changeSummary?.description;
 
     switch (entityType) {
       case EntityType.API_COLLECTION:

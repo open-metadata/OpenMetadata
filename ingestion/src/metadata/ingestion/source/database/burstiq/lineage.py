@@ -16,8 +16,9 @@ Each edge contains:
 - fromDictionary -> toDictionary (table lineage)
 - condition: [{fromCol, toCol}] (column lineage)
 """
+
 import traceback
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
@@ -58,20 +59,16 @@ class BurstiqLineageSource(Source):
         self.config = config
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
-        self.client: Optional[BurstIQClient] = None
+        self.client: Optional[BurstIQClient] = None  # noqa: UP045
         self.test_connection()
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: BurstIQConnection = config.serviceConnection.root.config
         if not isinstance(connection, BurstIQConnection):
-            raise InvalidSourceException(
-                f"Expected BurstIQConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected BurstIQConnection, but got {connection}")
         return cls(config, metadata)
 
     def test_connection(self):
@@ -86,14 +83,14 @@ class BurstiqLineageSource(Source):
 
     def prepare(self):
         """Nothing to prepare"""
-        pass
+        pass  # noqa: PIE790
 
     def close(self):
         """Close the BurstIQ client"""
         if self.client:
             self.client.close()
 
-    def _get_table_entity(self, dictionary_name: str) -> Optional[Table]:
+    def _get_table_entity(self, dictionary_name: str) -> Optional[Table]:  # noqa: UP045
         """
         Get table entity from OpenMetadata
 
@@ -117,7 +114,7 @@ class BurstiqLineageSource(Source):
             logger.debug(f"Table not found for dictionary {dictionary_name}: {exc}")
             return None
 
-    def _process_edge(self, edge: BurstIQEdge) -> Optional[Either[AddLineageRequest]]:
+    def _process_edge(self, edge: BurstIQEdge) -> Optional[Either[AddLineageRequest]]:  # noqa: UP045
         """
         Process a single edge and create lineage request
 
@@ -133,8 +130,7 @@ class BurstiqLineageSource(Source):
 
             if not from_table or not to_table:
                 logger.debug(
-                    f"Skipping edge {edge.name}: tables not found "
-                    f"({edge.fromDictionary} -> {edge.toDictionary})"
+                    f"Skipping edge {edge.name}: tables not found ({edge.fromDictionary} -> {edge.toDictionary})"
                 )
                 return None
 
@@ -146,11 +142,7 @@ class BurstiqLineageSource(Source):
                     to_col_fqn = get_column_fqn(to_table, col_map.toCol)
 
                     if from_col_fqn and to_col_fqn:
-                        column_lineage.append(
-                            ColumnLineage(
-                                fromColumns=[from_col_fqn], toColumn=to_col_fqn
-                            )
-                        )
+                        column_lineage.append(ColumnLineage(fromColumns=[from_col_fqn], toColumn=to_col_fqn))
 
             # Create lineage details
             lineage_details = None
@@ -168,8 +160,7 @@ class BurstiqLineageSource(Source):
             )
 
             logger.info(
-                f"Created lineage: {edge.fromDictionary} -> {edge.toDictionary} "
-                f"({len(column_lineage)} columns)"
+                f"Created lineage: {edge.fromDictionary} -> {edge.toDictionary} ({len(column_lineage)} columns)"
             )
 
             return Either(right=AddLineageRequest(edge=entities_edge))
@@ -177,7 +168,7 @@ class BurstiqLineageSource(Source):
         except Exception as exc:
             return Either(
                 left=StackTraceError(
-                    name=f"Error processing edge",
+                    name=f"Error processing edge",  # noqa: F541
                     error=str(exc),
                     stackTrace=traceback.format_exc(),
                 )

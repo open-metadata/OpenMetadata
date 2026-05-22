@@ -1,0 +1,86 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+
+# Adds a second OM instance that shares MySQL/Elasticsearch/Redis with the
+# primary one in docker-compose.yml. Used to validate that pub/sub
+# invalidation keeps per-instance Guava caches coherent.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.redis.yml \
+#                  -f docker-compose.multiserver.yml up -d
+services:
+  openmetadata-server-2:
+    image: development-openmetadata-server
+    build:
+      context: ../../.
+      dockerfile: docker/development/Dockerfile
+    container_name: openmetadata_server_2
+    restart: always
+    networks:
+      - local_app_net
+    depends_on:
+      mysql:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8587:8585"
+      - "8588:8586"
+    environment:
+      OPENMETADATA_CLUSTER_NAME: openmetadata
+      SERVER_PORT: 8585
+      SERVER_ADMIN_PORT: 8586
+      LOG_LEVEL: INFO
+      FERNET_KEY: jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=
+      DB_DRIVER_CLASS: com.mysql.cj.jdbc.Driver
+      DB_SCHEME: mysql
+      DB_USE_SSL: "false"
+      DB_USER: openmetadata_user
+      DB_USER_PASSWORD: openmetadata_password
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_PARAMS: allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      OM_DATABASE: openmetadata_db
+      ELASTICSEARCH_HOST: elasticsearch
+      ELASTICSEARCH_PORT: 9200
+      ELASTICSEARCH_SCHEME: http
+      SEARCH_TYPE: elasticsearch
+      ELASTICSEARCH_CLUSTER_ALIAS: openmetadata
+      AUTHENTICATION_PROVIDER: basic
+      AUTHENTICATION_ENABLE_SELF_SIGNUP: "true"
+      AUTHORIZER_CLASS_NAME: org.openmetadata.service.security.DefaultAuthorizer
+      AUTHORIZER_REQUEST_FILTER: org.openmetadata.service.security.JwtFilter
+      AUTHORIZER_ADMIN_PRINCIPALS: "[admin]"
+      AUTHORIZER_PRINCIPAL_DOMAIN: open-metadata.org
+      AUTHORIZER_ALLOWED_DOMAINS: "[]"
+      AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN: '["all"]'
+      AUTHORIZER_INGESTION_PRINCIPALS: "[ingestion-bot]"
+      AUTHENTICATION_RESPONSE_TYPE: id_token
+      AUTHENTICATION_CLIENT_TYPE: public
+      AUTHENTICATION_PUBLIC_KEYS: "[http://openmetadata-server-2:8585/api/v1/system/config/jwks]"
+      AUTHENTICATION_AUTHORITY: https://accounts.google.com
+      AUTHENTICATION_JWT_PRINCIPAL_CLAIMS: "[email,preferred_username,sub]"
+      RSA_PUBLIC_KEY_FILE_PATH: ./conf/public_key.der
+      RSA_PRIVATE_KEY_FILE_PATH: ./conf/private_key.der
+      JWT_ISSUER: open-metadata.org
+      JWT_KEY_ID: Gb389a-9f76-gdjs-a92j-0242bk94356
+      PIPELINE_SERVICE_CLIENT_ENDPOINT: http://ingestion:8080
+      PIPELINE_SERVICE_CLIENT_CLASS_NAME: org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient
+      AIRFLOW_USERNAME: admin
+      AIRFLOW_PASSWORD: admin
+      AIRFLOW_TIMEOUT: 10
+      SECRET_MANAGER: db
+      SERVER_HOST_API_URL: http://openmetadata-server-2:8585/api
+      EVENT_MONITOR: prometheus
+      OPENMETADATA_HEAP_OPTS: "-Xmx1G -Xms1G"
+      CACHE_PROVIDER: redis
+      CACHE_REDIS_URL: redis://redis:6379
+      CACHE_REDIS_AUTH_TYPE: NONE
+      CACHE_REDIS_KEYSPACE: om:dev
+      CACHE_ENTITY_TTL: 3600
+      CACHE_RELATIONSHIP_TTL: 3600
+      CACHE_TAG_TTL: 3600
+      CACHE_REDIS_COMMAND_TIMEOUT: 300

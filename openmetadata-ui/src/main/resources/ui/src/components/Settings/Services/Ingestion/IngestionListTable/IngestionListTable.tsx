@@ -40,12 +40,12 @@ import {
   deleteIngestionPipelineById,
   getRunHistoryForPipeline,
 } from '../../../../../rest/ingestionPipelineAPI';
-import { Transi18next } from '../../../../../utils/CommonUtils';
 import {
   getColumnSorter,
   getEntityName,
   highlightSearchText,
 } from '../../../../../utils/EntityUtils';
+import { Transi18next } from '../../../../../utils/i18next/LocalUtil';
 import {
   renderNameField,
   renderScheduleField,

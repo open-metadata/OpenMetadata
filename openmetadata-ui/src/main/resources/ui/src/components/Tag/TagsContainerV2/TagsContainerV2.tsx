@@ -15,7 +15,6 @@ import { Col, Form, Row, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isArray, isEmpty, isEqual } from 'lodash';
-import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -163,27 +162,28 @@ const TagsContainerV2 = ({
   );
 
   const handleSave = async (data: DefaultOptionType | DefaultOptionType[]) => {
+    // Pass every TagLabel field through so server-managed ones (appliedBy, appliedAt) survive the JSON-Patch diff.
     const updatedTags = (isArray(data) ? data : [data]).map((tag) => {
-      let tagData: EntityTags = {
-        tagFQN: typeof tag === 'string' ? tag : tag.value,
+      const tagFQN: string =
+        typeof tag === 'string' ? tag : String(tag.value ?? '');
+
+      const option = typeof tag === 'object' ? tag.data ?? {} : {};
+
+      return {
+        tagFQN,
         source: tagType,
-        labelType: LabelType.Manual,
+        labelType: option.labelType ?? defaultLabelType ?? LabelType.Manual,
+        state: option.state ?? defaultState ?? State.Confirmed,
+        name: option.name,
+        displayName: option.displayName,
+        description: option.description,
+        style: option.style ?? {},
+        href: option.href,
+        appliedBy: option.appliedBy,
+        appliedAt: option.appliedAt,
+        metadata: option.metadata,
+        reason: option.reason,
       };
-
-      if (tag.data) {
-        tagData = {
-          ...tagData,
-          name: tag.data?.name,
-          displayName: tag.data?.displayName,
-          description: tag.data?.description,
-          style: tag.data?.style ?? {},
-          labelType:
-            tag.data?.labelType ?? defaultLabelType ?? LabelType.Manual,
-          state: tag.data?.state ?? defaultState ?? State.Confirmed,
-        };
-      }
-
-      return tagData;
     });
 
     const newTags = updatedTags.map((t) => t.tagFQN);

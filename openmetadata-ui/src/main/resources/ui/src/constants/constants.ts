@@ -22,6 +22,11 @@ import {
   GlobalSettingsMenuCategory,
 } from './GlobalSettings.constants';
 
+export const KNOWLEDGE_CENTER_CLASSIFICATION = 'KnowledgeCenter';
+export const CREATE_PAGE_HASH = 'create';
+export const SHORT_DELAY = 3000;
+export const LONG_DELAY = 10000;
+
 export const LITE_GRAY_COLOR = '#DBE0EB';
 export const TEXT_BODY_COLOR = '#37352F';
 export const TEXT_GREY_MUTED = '#757575';
@@ -56,12 +61,10 @@ export const AGGREGATE_PAGE_SIZE_LARGE = 1000;
 export const ES_MAX_PAGE_SIZE = 10000;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
-export const LINEAGE_CHILD_ITEMS_PER_PAGE = 10;
 export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
 export const MAX_NAME_LENGTH = 256;
 export const EXPORT_ALL_ASSETS_LIMIT = 200000;
-export const CUSTOM_PROPERTY_NAME_REGEX = /^[a-zA-Z0-9_]+$/;
 export const INGESTION_PROGRESS_START_VAL = 20;
 export const INGESTION_PROGRESS_END_VAL = 80;
 export const DEPLOYED_PROGRESS_VAL = 100;
@@ -82,19 +85,10 @@ export const LAST_VERSION_FETCH_TIME_KEY = 'versionFetchTime';
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData`;
 export const VERSION = 'VERSION';
-export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
 export const DISABLED = 'disabled';
-export const imageTypes = {
-  image: 's96-c',
-  image192: 's192-c',
-  image24: 's24-c',
-  image32: 's32-c',
-  image48: 's48-c',
-  image512: 's512-c',
-  image72: 's72-c',
-};
+
 export const NO_DATA_PLACEHOLDER = '--';
 export const PIPE_SYMBOL = '|';
 export const NO_DATA = '-';
@@ -155,9 +149,29 @@ export const ROUTES = {
   EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,
   ONTOLOGY_EXPLORER: '/governance/ontology',
   WORKFLOWS: '/workflows',
+  WORKFLOWS_WITH_FQN_TAB: `/workflows/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   SQL_BUILDER: '/sql-builder',
   SETTINGS: `/settings`,
   KNOWLEDGE_CENTER_PAGE: '/knowledge-center',
+  KNOWLEDGE_CENTER: '/knowledge-center',
+  KNOWLEDGE_PAGE: `/knowledge-center/${PLACEHOLDER_ROUTE_FQN}`,
+  KNOWLEDGE_PAGE_WITH_TAB: `/knowledge-center/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  KNOWLEDGE_PAGE_WITH_SUB_TAB: `/knowledge-center/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+  KNOWLEDGE_PAGE_VERSION: `/knowledge-center/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  KNOWLEDGE_CENTER_FILTER: '/knowledge-center-filter',
+  CONTEXT_CENTER: '/context-center',
+  CONTEXT_CENTER_WITH_TAB: `/context-center/${PLACEHOLDER_ROUTE_TAB}`,
+  CONTEXT_CENTER_DASHBOARD: '/context-center/dashboard',
+  CONTEXT_CENTER_ARTICLES: '/context-center/articles',
+  CONTEXT_CENTER_ARTICLE_DETAIL: `/context-center/articles/${PLACEHOLDER_ROUTE_FQN}`,
+  CONTEXT_CENTER_ARTICLE_DETAIL_WITH_TAB: `/context-center/articles/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  CONTEXT_CENTER_ARTICLE_DETAIL_WITH_SUB_TAB: `/context-center/articles/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+  CONTEXT_CENTER_ARTICLE_VERSION: `/context-center/articles/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  CONTEXT_CENTER_DOCUMENTS: '/context-center/documents',
+  CONTEXT_CENTER_FILTER: '/context-center/filter',
+  CONTEXT_CENTER_MEMORIES: '/context-center/memories',
+  CONTEXT_CENTER_INTEGRATIONS: '/context-center/integrations',
+  CONTEXT_CENTER_ARCHIVE: '/context-center/archive',
   SETTINGS_WITH_CATEGORY: `/settings/${PLACEHOLDER_SETTING_CATEGORY}`,
   SETTINGS_WITH_CATEGORY_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_FQN}`,
   SETTINGS_WITH_TAB: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}`,
@@ -349,7 +363,10 @@ export const SOCKET_EVENTS = {
   DELETE_ENTITY_CHANNEL: 'deleteEntityChannel',
   MOVE_GLOSSARY_TERM_CHANNEL: 'moveGlossaryTermChannel',
   CHART_DATA_STREAM: 'chartDataStream',
+  QUERY_RUNNER_CHANNEL: 'queryRunnerChannel',
 };
+
+export const CACHE_WARMUP_APPLICATION_NAME = 'CacheWarmupApplication';
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
   '/database/': [i18n.t('message.in-this-database')],

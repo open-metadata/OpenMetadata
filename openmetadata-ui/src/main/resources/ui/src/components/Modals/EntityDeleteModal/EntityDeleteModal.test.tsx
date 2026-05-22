@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import * as CommonUtils from '../../../utils/CommonUtils';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import EntityDeleteModal from './EntityDeleteModal';
 
 const onCancel = jest.fn();
@@ -33,13 +34,6 @@ jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
   default: {
     getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
   },
-}));
-
-jest.mock('react-i18next', () => ({
-  Trans: jest.fn().mockImplementation(() => <div>Trans</div>),
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
 }));
 
 describe('Test EntityDelete Modal Component', () => {
@@ -141,18 +135,6 @@ describe('Test EntityDelete Modal Component', () => {
   });
 
   it('should render with correct brandName (OpenMetadata or Collate)', async () => {
-    // Mock Transi18next to actually render interpolated values
-    const mockTransi18next = jest.fn(({ values }) => (
-      <div data-testid="transi18next-mock">
-        {values?.entityName && `Entity: ${values.entityName}`}
-        {values?.brandName && ` Brand: ${values.brandName}`}
-      </div>
-    ));
-
-    jest
-      .spyOn(CommonUtils, 'Transi18next')
-      .mockImplementation(mockTransi18next);
-
     await act(async () => {
       render(<EntityDeleteModal {...mockProp} visible />, {
         wrapper: MemoryRouter,
@@ -168,7 +150,7 @@ describe('Test EntityDelete Modal Component', () => {
     expect(bodyText.textContent).not.toContain('{{brandName}}');
 
     // Verify Transi18next was called with brandName parameter
-    expect(mockTransi18next).toHaveBeenCalledWith(
+    expect(Transi18next).toHaveBeenCalledWith(
       expect.objectContaining({
         i18nKey: 'message.permanently-delete-metadata',
         values: expect.objectContaining({

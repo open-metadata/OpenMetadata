@@ -76,12 +76,11 @@ MOCK_CONFIG = {
 
 @pytest.fixture
 def lineage_source():
-    with patch(
-        "metadata.ingestion.source.database.unitycatalog.lineage.UnitycatalogLineageSource.test_connection"
-    ), patch("metadata.ingestion.ometa.ometa_api.OpenMetadata") as mock_metadata, patch(
-        "metadata.ingestion.source.database.unitycatalog.lineage.get_sqlalchemy_connection"
-    ) as mock_engine, patch(
-        "metadata.ingestion.source.database.unitycatalog.lineage.get_connection"
+    with (
+        patch("metadata.ingestion.source.database.unitycatalog.lineage.UnitycatalogLineageSource.test_connection"),
+        patch("metadata.ingestion.ometa.ometa_api.OpenMetadata") as mock_metadata,
+        patch("metadata.ingestion.source.database.unitycatalog.lineage.get_sqlalchemy_connection") as mock_engine,
+        patch("metadata.ingestion.source.database.unitycatalog.lineage.get_connection"),
     ):
         config = WorkflowSource.model_validate(MOCK_CONFIG["source"])
         source = UnitycatalogLineageSource(config, mock_metadata)
@@ -91,6 +90,7 @@ def lineage_source():
 
 class TestCacheLineage:
     def test_cache_table_lineage(self, lineage_source):
+<<<<<<< fix/databricks-external-table-path-lineage-27561
         TableRow = namedtuple(
             "TableRow",
             [
@@ -100,6 +100,9 @@ class TestCacheLineage:
                 "target_path",
             ],
         )
+=======
+        TableRow = namedtuple("TableRow", ["source_table_full_name", "target_table_full_name"])
+>>>>>>> main
         mock_rows = [
             TableRow(
                 "cat.schema.source1", "cat.schema.target1", None, None
@@ -114,9 +117,7 @@ class TestCacheLineage:
 
         mock_conn = MagicMock()
         mock_conn.execute.return_value = mock_rows
-        lineage_source.engine.connect.return_value.__enter__ = Mock(
-            return_value=mock_conn
-        )
+        lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
         lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
 
         lineage_source._cache_lineage()
@@ -131,6 +132,7 @@ class TestCacheLineage:
         }
 
     def test_cache_column_lineage(self, lineage_source):
+<<<<<<< fix/databricks-external-table-path-lineage-27561
         TableRow = namedtuple(
             "TableRow",
             [
@@ -140,6 +142,9 @@ class TestCacheLineage:
                 "target_path",
             ],
         )
+=======
+        TableRow = namedtuple("TableRow", ["source_table_full_name", "target_table_full_name"])
+>>>>>>> main
         ColumnRow = namedtuple(
             "ColumnRow",
             [
@@ -184,9 +189,7 @@ class TestCacheLineage:
 
         mock_conn = MagicMock()
         mock_conn.execute.side_effect = mock_execute
-        lineage_source.engine.connect.return_value.__enter__ = Mock(
-            return_value=mock_conn
-        )
+        lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
         lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
 
         lineage_source._cache_lineage()
@@ -201,9 +204,7 @@ class TestCacheLineage:
     def test_cache_lineage_handles_query_failure(self, lineage_source):
         mock_conn = MagicMock()
         mock_conn.execute.side_effect = Exception("Access denied")
-        lineage_source.engine.connect.return_value.__enter__ = Mock(
-            return_value=mock_conn
-        )
+        lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
         lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
 
         lineage_source._cache_lineage()
@@ -289,26 +290,20 @@ class TestProcessTableLineage:
         target_table = Table(
             id=uuid4(),
             name=EntityName(root="target"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="local_unitycatalog.cat.schema.target"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="local_unitycatalog.cat.schema.target"),
             columns=[],
         )
 
         source_table = Table(
             id=uuid4(),
             name=EntityName(root="source"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="local_unitycatalog.cat.schema.source"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="local_unitycatalog.cat.schema.source"),
             columns=[],
         )
 
         lineage_source.metadata.get_by_name.return_value = source_table
 
-        results = list(
-            lineage_source._process_table_lineage(target_table, "cat.schema.target")
-        )
+        results = list(lineage_source._process_table_lineage(target_table, "cat.schema.target"))
 
         assert len(results) == 1
         assert isinstance(results[0], Either)
@@ -318,23 +313,17 @@ class TestProcessTableLineage:
 
     def test_process_table_lineage_with_column_lineage(self, lineage_source):
         lineage_source.table_lineage_map = {"cat.schema.target": {"cat.schema.source"}}
-        lineage_source.column_lineage_map = {
-            ("cat.schema.source", "cat.schema.target"): [("col_a", "col_x")]
-        }
+        lineage_source.column_lineage_map = {("cat.schema.source", "cat.schema.target"): [("col_a", "col_x")]}
 
         target_table = Table(
             id=uuid4(),
             name=EntityName(root="target"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="local_unitycatalog.cat.schema.target"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="local_unitycatalog.cat.schema.target"),
             columns=[
                 Column(
                     name=ColumnName(root="col_x"),
                     dataType=DataType.STRING,
-                    fullyQualifiedName=FullyQualifiedEntityName(
-                        root="local_unitycatalog.cat.schema.target.col_x"
-                    ),
+                    fullyQualifiedName=FullyQualifiedEntityName(root="local_unitycatalog.cat.schema.target.col_x"),
                 )
             ],
         )
@@ -342,38 +331,26 @@ class TestProcessTableLineage:
         source_table = Table(
             id=uuid4(),
             name=EntityName(root="source"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="local_unitycatalog.cat.schema.source"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="local_unitycatalog.cat.schema.source"),
             columns=[
                 Column(
                     name=ColumnName(root="col_a"),
                     dataType=DataType.STRING,
-                    fullyQualifiedName=FullyQualifiedEntityName(
-                        root="local_unitycatalog.cat.schema.source.col_a"
-                    ),
+                    fullyQualifiedName=FullyQualifiedEntityName(root="local_unitycatalog.cat.schema.source.col_a"),
                 )
             ],
         )
 
         lineage_source.metadata.get_by_name.return_value = source_table
 
-        results = list(
-            lineage_source._process_table_lineage(target_table, "cat.schema.target")
-        )
+        results = list(lineage_source._process_table_lineage(target_table, "cat.schema.target"))
 
         assert len(results) == 1
         lineage_details = results[0].right.edge.lineageDetails
         assert lineage_details is not None
         assert len(lineage_details.columnsLineage) == 1
-        assert (
-            lineage_details.columnsLineage[0].fromColumns[0].root
-            == "local_unitycatalog.cat.schema.source.col_a"
-        )
-        assert (
-            lineage_details.columnsLineage[0].toColumn.root
-            == "local_unitycatalog.cat.schema.target.col_x"
-        )
+        assert lineage_details.columnsLineage[0].fromColumns[0].root == "local_unitycatalog.cat.schema.source.col_a"
+        assert lineage_details.columnsLineage[0].toColumn.root == "local_unitycatalog.cat.schema.target.col_x"
 
     def test_process_table_lineage_skips_malformed_names(self, lineage_source):
         lineage_source.table_lineage_map = {"cat.schema.target": {"malformed_name"}}
@@ -382,15 +359,11 @@ class TestProcessTableLineage:
         target_table = Table(
             id=uuid4(),
             name=EntityName(root="target"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="local_unitycatalog.cat.schema.target"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="local_unitycatalog.cat.schema.target"),
             columns=[],
         )
 
-        results = list(
-            lineage_source._process_table_lineage(target_table, "cat.schema.target")
-        )
+        results = list(lineage_source._process_table_lineage(target_table, "cat.schema.target"))
 
         assert len(results) == 0
 
@@ -401,40 +374,30 @@ class TestProcessTableLineage:
         target_table = Table(
             id=uuid4(),
             name=EntityName(root="target"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="local_unitycatalog.cat.schema.target"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="local_unitycatalog.cat.schema.target"),
             columns=[],
         )
 
         lineage_source.metadata.get_by_name.return_value = None
 
-        results = list(
-            lineage_source._process_table_lineage(target_table, "cat.schema.target")
-        )
+        results = list(lineage_source._process_table_lineage(target_table, "cat.schema.target"))
 
         assert len(results) == 0
 
 
 class TestColumnLineageDetails:
     def test_self_loop_prevention(self, lineage_source):
-        lineage_source.column_lineage_map = {
-            ("cat.schema.src", "cat.schema.tgt"): [("col_a", "col_a")]
-        }
+        lineage_source.column_lineage_map = {("cat.schema.src", "cat.schema.tgt"): [("col_a", "col_a")]}
 
         table = Table(
             id=uuid4(),
             name=EntityName(root="tgt"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="local_unitycatalog.cat.schema.tgt"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="local_unitycatalog.cat.schema.tgt"),
             columns=[
                 Column(
                     name=ColumnName(root="col_a"),
                     dataType=DataType.STRING,
-                    fullyQualifiedName=FullyQualifiedEntityName(
-                        root="local_unitycatalog.cat.schema.tgt.col_a"
-                    ),
+                    fullyQualifiedName=FullyQualifiedEntityName(root="local_unitycatalog.cat.schema.tgt.col_a"),
                 )
             ],
         )
@@ -442,16 +405,12 @@ class TestColumnLineageDetails:
         same_table_as_source = Table(
             id=uuid4(),
             name=EntityName(root="src"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="local_unitycatalog.cat.schema.src"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="local_unitycatalog.cat.schema.src"),
             columns=[
                 Column(
                     name=ColumnName(root="col_a"),
                     dataType=DataType.STRING,
-                    fullyQualifiedName=FullyQualifiedEntityName(
-                        root="local_unitycatalog.cat.schema.src.col_a"
-                    ),
+                    fullyQualifiedName=FullyQualifiedEntityName(root="local_unitycatalog.cat.schema.src.col_a"),
                 )
             ],
         )
@@ -469,23 +428,17 @@ class TestColumnLineageDetails:
         table = Table(
             id=uuid4(),
             name=EntityName(root="tgt"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="local_unitycatalog.cat.schema.tgt"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="local_unitycatalog.cat.schema.tgt"),
             columns=[],
         )
         from_table = Table(
             id=uuid4(),
             name=EntityName(root="src"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="local_unitycatalog.cat.schema.src"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="local_unitycatalog.cat.schema.src"),
             columns=[],
         )
 
-        result = lineage_source._get_column_lineage_details(
-            from_table, table, "cat.schema.src", "cat.schema.tgt"
-        )
+        result = lineage_source._get_column_lineage_details(from_table, table, "cat.schema.src", "cat.schema.tgt")
 
         assert result is None
 
@@ -530,29 +483,19 @@ class TestExternalLocationLineage:
 
         mock_conn = MagicMock()
         mock_conn.execute.return_value = mock_rows
-        lineage_source.engine.connect.return_value.__enter__ = Mock(
-            return_value=mock_conn
-        )
+        lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
         lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
 
         lineage_source._cache_external_locations()
 
         assert len(lineage_source.external_location_map) == 2
-        assert (
-            lineage_source.external_location_map["cat.schema.ext_table1"]
-            == "s3://bucket/path1"
-        )
-        assert (
-            lineage_source.external_location_map["cat.schema.ext_table2"]
-            == "s3://bucket/path2/"
-        )
+        assert lineage_source.external_location_map["cat.schema.ext_table1"] == "s3://bucket/path1"
+        assert lineage_source.external_location_map["cat.schema.ext_table2"] == "s3://bucket/path2/"
 
     def test_cache_external_locations_handles_failure(self, lineage_source):
         mock_conn = MagicMock()
         mock_conn.execute.side_effect = Exception("Access denied")
-        lineage_source.engine.connect.return_value.__enter__ = Mock(
-            return_value=mock_conn
-        )
+        lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
         lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
 
         lineage_source._cache_external_locations()
@@ -560,16 +503,12 @@ class TestExternalLocationLineage:
         assert len(lineage_source.external_location_map) == 0
 
     def test_process_external_location_lineage_from_cache(self, lineage_source):
-        lineage_source.external_location_map = {
-            "cat.schema.test_table": "s3://bucket/path"
-        }
+        lineage_source.external_location_map = {"cat.schema.test_table": "s3://bucket/path"}
 
         table_entity = Table(
             id=uuid4(),
             name=EntityName(root="test_table"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="service.db.schema.test_table"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="service.db.schema.test_table"),
             columns=[],
         )
 
@@ -579,15 +518,9 @@ class TestExternalLocationLineage:
             service=EntityReference(id=uuid4(), type="storageService"),
         )
 
-        lineage_source.metadata.es_search_container_by_path.return_value = [
-            container_entity
-        ]
+        lineage_source.metadata.es_search_container_by_path.return_value = [container_entity]
 
-        results = list(
-            lineage_source._process_external_location_lineage(
-                table_entity, "cat.schema.test_table"
-            )
-        )
+        results = list(lineage_source._process_external_location_lineage(table_entity, "cat.schema.test_table"))
 
         assert len(results) == 1
         assert isinstance(results[0], Either)
@@ -602,16 +535,12 @@ class TestExternalLocationLineage:
         )
 
     def test_process_external_location_strips_trailing_slash(self, lineage_source):
-        lineage_source.external_location_map = {
-            "cat.schema.test_table": "s3://test-bucket/data/"
-        }
+        lineage_source.external_location_map = {"cat.schema.test_table": "s3://test-bucket/data/"}
 
         table_entity = Table(
             id=uuid4(),
             name=EntityName(root="test_table"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="service.db.schema.test_table"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="service.db.schema.test_table"),
             columns=[],
         )
 
@@ -621,15 +550,9 @@ class TestExternalLocationLineage:
             service=EntityReference(id=uuid4(), type="storageService"),
         )
 
-        lineage_source.metadata.es_search_container_by_path.return_value = [
-            container_entity
-        ]
+        lineage_source.metadata.es_search_container_by_path.return_value = [container_entity]
 
-        results = list(
-            lineage_source._process_external_location_lineage(
-                table_entity, "cat.schema.test_table"
-            )
-        )
+        results = list(lineage_source._process_external_location_lineage(table_entity, "cat.schema.test_table"))
 
         assert len(results) == 1
         lineage_source.metadata.es_search_container_by_path.assert_called_once_with(
@@ -642,41 +565,27 @@ class TestExternalLocationLineage:
         table_entity = Table(
             id=uuid4(),
             name=EntityName(root="test_table"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="service.db.schema.test_table"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="service.db.schema.test_table"),
             columns=[],
         )
 
-        results = list(
-            lineage_source._process_external_location_lineage(
-                table_entity, "cat.schema.test_table"
-            )
-        )
+        results = list(lineage_source._process_external_location_lineage(table_entity, "cat.schema.test_table"))
 
         assert len(results) == 0
 
     def test_process_external_location_no_container_found(self, lineage_source):
-        lineage_source.external_location_map = {
-            "cat.schema.test_table": "s3://bucket/path"
-        }
+        lineage_source.external_location_map = {"cat.schema.test_table": "s3://bucket/path"}
 
         table_entity = Table(
             id=uuid4(),
             name=EntityName(root="test_table"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="service.db.schema.test_table"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="service.db.schema.test_table"),
             columns=[],
         )
 
         lineage_source.metadata.es_search_container_by_path.return_value = []
 
-        results = list(
-            lineage_source._process_external_location_lineage(
-                table_entity, "cat.schema.test_table"
-            )
-        )
+        results = list(lineage_source._process_external_location_lineage(table_entity, "cat.schema.test_table"))
 
         assert len(results) == 0
 
@@ -689,32 +598,20 @@ class TestContainerColumnLineage:
                     name=ColumnName(root="id"),
                     displayName="id",
                     dataType=DataType.INT,
-                    fullyQualifiedName=FullyQualifiedEntityName(
-                        root="service.container.id"
-                    ),
+                    fullyQualifiedName=FullyQualifiedEntityName(root="service.container.id"),
                 ),
                 Column(
                     name=ColumnName(root="name"),
                     displayName="name",
                     dataType=DataType.STRING,
-                    fullyQualifiedName=FullyQualifiedEntityName(
-                        root="service.container.name"
-                    ),
+                    fullyQualifiedName=FullyQualifiedEntityName(root="service.container.name"),
                 ),
             ]
         )
 
-        assert (
-            lineage_source._get_data_model_column_fqn(data_model, "id")
-            == "service.container.id"
-        )
-        assert (
-            lineage_source._get_data_model_column_fqn(data_model, "name")
-            == "service.container.name"
-        )
-        assert (
-            lineage_source._get_data_model_column_fqn(data_model, "nonexistent") is None
-        )
+        assert lineage_source._get_data_model_column_fqn(data_model, "id") == "service.container.id"
+        assert lineage_source._get_data_model_column_fqn(data_model, "name") == "service.container.name"
+        assert lineage_source._get_data_model_column_fqn(data_model, "nonexistent") is None
         assert lineage_source._get_data_model_column_fqn(None, "id") is None
 
     def test_get_container_column_lineage(self, lineage_source):
@@ -724,17 +621,13 @@ class TestContainerColumnLineage:
                     name=ColumnName(root="id"),
                     displayName="id",
                     dataType=DataType.INT,
-                    fullyQualifiedName=FullyQualifiedEntityName(
-                        root="service.container.id"
-                    ),
+                    fullyQualifiedName=FullyQualifiedEntityName(root="service.container.id"),
                 ),
                 Column(
                     name=ColumnName(root="name"),
                     displayName="name",
                     dataType=DataType.STRING,
-                    fullyQualifiedName=FullyQualifiedEntityName(
-                        root="service.container.name"
-                    ),
+                    fullyQualifiedName=FullyQualifiedEntityName(root="service.container.name"),
                 ),
             ]
         )
@@ -742,23 +635,17 @@ class TestContainerColumnLineage:
         table_entity = Table(
             id=uuid4(),
             name=EntityName(root="test_table"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="service.db.schema.test_table"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="service.db.schema.test_table"),
             columns=[
                 Column(
                     name=ColumnName(root="id"),
                     dataType=DataType.INT,
-                    fullyQualifiedName=FullyQualifiedEntityName(
-                        root="service.db.schema.test_table.id"
-                    ),
+                    fullyQualifiedName=FullyQualifiedEntityName(root="service.db.schema.test_table.id"),
                 ),
                 Column(
                     name=ColumnName(root="name"),
                     dataType=DataType.STRING,
-                    fullyQualifiedName=FullyQualifiedEntityName(
-                        root="service.db.schema.test_table.name"
-                    ),
+                    fullyQualifiedName=FullyQualifiedEntityName(root="service.db.schema.test_table.name"),
                 ),
             ],
         )
@@ -769,9 +656,7 @@ class TestContainerColumnLineage:
         assert len(result.columnsLineage) == 2
         assert result.source == LineageSource.ExternalTableLineage
         assert result.columnsLineage[0].fromColumns[0].root == "service.container.id"
-        assert (
-            result.columnsLineage[0].toColumn.root == "service.db.schema.test_table.id"
-        )
+        assert result.columnsLineage[0].toColumn.root == "service.db.schema.test_table.id"
 
 
 class TestLineageTableStreamsModel:
@@ -802,15 +687,10 @@ class TestLineageTableStreamsModel:
             securable_type="EXTERNAL_LOCATION",
         )
 
-        lineage_streams = LineageTableStreams(
-            upstreams=[LineageEntity(fileInfo=file_info)], downstreams=[]
-        )
+        lineage_streams = LineageTableStreams(upstreams=[LineageEntity(fileInfo=file_info)], downstreams=[])
 
         assert len(lineage_streams.upstreams) == 1
-        assert (
-            lineage_streams.upstreams[0].fileInfo.path
-            == "s3://bucket/path/file.parquet"
-        )
+        assert lineage_streams.upstreams[0].fileInfo.path == "s3://bucket/path/file.parquet"
         assert lineage_streams.upstreams[0].tableInfo is None
 
     def test_mixed(self):

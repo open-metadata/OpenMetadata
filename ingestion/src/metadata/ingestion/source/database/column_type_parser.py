@@ -13,7 +13,7 @@ Generic Column Type Parser.
 """
 
 import re
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union  # noqa: UP035
 
 from sqlalchemy.dialects.postgresql import BYTEA
 from sqlalchemy.sql import sqltypes as types
@@ -31,7 +31,7 @@ def create_sqlalchemy_type(name: str):
             "__repr__": lambda self: f"{name}()",
         },
     )
-    return sqlalchemy_type
+    return sqlalchemy_type  # noqa: RET504
 
 
 NUMERIC_TYPES_SUPPORTING_PRECISION = {
@@ -48,9 +48,9 @@ class ColumnTypeParser:
     Column Type Parser Class
     """
 
-    _BRACKETS = {"(": ")", "[": "]", "{": "}", "<": ">"}
+    _BRACKETS = {"(": ")", "[": "]", "{": "}", "<": ">"}  # noqa: RUF012
 
-    _COLUMN_TYPE_MAPPING: Dict[Type[types.TypeEngine], str] = {
+    _COLUMN_TYPE_MAPPING: Dict[Type[types.TypeEngine], str] = {  # noqa: RUF012, UP006
         types.ARRAY: "ARRAY",
         types.Boolean: "BOOLEAN",
         types.CHAR: "CHAR",
@@ -82,7 +82,7 @@ class ColumnTypeParser:
         BYTEA: "BYTEA",
     }
 
-    _SOURCE_TYPE_TO_OM_TYPE = {
+    _SOURCE_TYPE_TO_OM_TYPE = {  # noqa: RUF012
         "ARRAY": "ARRAY",
         "BIGINT": "BIGINT",
         "BIGNUMERIC": "NUMERIC",
@@ -314,7 +314,7 @@ class ColumnTypeParser:
 
     try:
         # pylint: disable=import-outside-toplevel
-        from teradatasqlalchemy import BYTE, VARBYTE
+        from teradatasqlalchemy import BYTE, VARBYTE  # noqa: PLC0415
 
         _COLUMN_TYPE_MAPPING[BYTE] = "BINARY"
         _SOURCE_TYPE_TO_OM_TYPE["BYTE"] = "BINARY"
@@ -351,25 +351,22 @@ class ColumnTypeParser:
 
     @staticmethod
     def _parse_datatype_string(
-        data_type: str, **kwargs: Any  # pylint: disable=unused-argument
-    ) -> Union[object, Dict[str, object]]:
+        data_type: str,
+        **kwargs: Any,  # pylint: disable=unused-argument
+    ) -> Union[object, Dict[str, object]]:  # noqa: UP006, UP007
         data_type = data_type.lower().strip()
         data_type = data_type.replace(" ", "")
         if data_type.startswith("array<"):
             if data_type[-1] != ">":
                 raise ValueError(f"expected '>' found: {data_type}")
-            arr_data_type = ColumnTypeParser._parse_primitive_datatype_string(
-                data_type[6:-1]
-            )["dataType"]
+            arr_data_type = ColumnTypeParser._parse_primitive_datatype_string(data_type[6:-1])["dataType"]
             data_type_string = {
                 "dataType": "ARRAY",
                 "arrayDataType": arr_data_type,
                 "dataTypeDisplay": data_type,
             }
             if arr_data_type == DataType.STRUCT.value:
-                children = ColumnTypeParser._parse_struct_fields_string(
-                    data_type[6:-1][7:-1]
-                )["children"]
+                children = ColumnTypeParser._parse_struct_fields_string(data_type[6:-1][7:-1])["children"]
                 data_type_string["children"] = children
             return data_type_string
         if data_type.startswith("map<"):
@@ -378,17 +375,16 @@ class ColumnTypeParser:
             parts = ColumnTypeParser._ignore_brackets_split(data_type[4:-1], ",")
             if len(parts) != 2:
                 raise ValueError(
-                    "The map type string format is: 'map<key_type,value_type>', "
-                    + f"but got: {data_type}"
+                    "The map type string format is: 'map<key_type,value_type>', " + f"but got: {data_type}"
                 )
             return {"dataType": "MAP", "dataTypeDisplay": data_type}
-        if data_type.startswith("uniontype<") or data_type.startswith("union<"):
+        if data_type.startswith("uniontype<") or data_type.startswith("union<"):  # noqa: PIE810
             if data_type[-1] != ">":
                 raise ValueError(f"'>' should be the last char, but got: {data_type}")
             parts = ColumnTypeParser._ignore_brackets_split(data_type[10:-1], ",")
             temp = []
             for part in parts:
-                temp.append(ColumnTypeParser._parse_datatype_string(part))
+                temp.append(ColumnTypeParser._parse_datatype_string(part))  # noqa: PERF401
             return temp
         if data_type.startswith("struct<"):
             if data_type[-1] != ">":
@@ -399,23 +395,17 @@ class ColumnTypeParser:
         return ColumnTypeParser._parse_primitive_datatype_string(data_type)
 
     @staticmethod
-    def _parse_struct_fields_string(stuct_type: str) -> Dict[str, object]:
-        parts = ColumnTypeParser._ignore_brackets_split(
-            stuct_type, ",", skip_no_child_validation=True
-        )
+    def _parse_struct_fields_string(stuct_type: str) -> Dict[str, object]:  # noqa: UP006
+        parts = ColumnTypeParser._ignore_brackets_split(stuct_type, ",", skip_no_child_validation=True)
         columns = []
         for part in parts:
             name_and_type = ColumnTypeParser._ignore_brackets_split(part, ":")
             if len(name_and_type) != 2:
-                raise ValueError(
-                    "expected format is: 'field_name:field_type', " + f"but got: {part}"
-                )
+                raise ValueError("expected format is: 'field_name:field_type', " + f"but got: {part}")
             field_name = name_and_type[0].strip()
             if field_name.startswith("`"):
                 if field_name[-1] != "`":
-                    raise ValueError(
-                        f"'`' should be the last char, but got: {stuct_type}"
-                    )
+                    raise ValueError(f"'`' should be the last char, but got: {stuct_type}")
                 field_name = field_name[1:-1]
             field_type = ColumnTypeParser._parse_datatype_string(name_and_type[1])
             field_type["name"] = field_name
@@ -430,7 +420,7 @@ class ColumnTypeParser:
     @staticmethod
     def _parse_primitive_datatype_string(  # pylint: disable=too-many-return-statements
         dtype: str,
-    ) -> Dict[str, object]:
+    ) -> Dict[str, object]:  # noqa: UP006
         if dtype.upper() in ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE:
             return {
                 "dataType": ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE[dtype.upper()],
@@ -470,9 +460,7 @@ class ColumnTypeParser:
         }
 
     @staticmethod
-    def _ignore_brackets_split(
-        string: str, separator: str, skip_no_child_validation: bool = False
-    ) -> List[str]:
+    def _ignore_brackets_split(string: str, separator: str, skip_no_child_validation: bool = False) -> List[str]:  # noqa: UP006
         parts = []
         buf = ""
         level = 0
@@ -500,9 +488,7 @@ class ColumnTypeParser:
         return parts
 
     @staticmethod
-    def check_col_precision(
-        datatype: str, col_raw_type: object
-    ) -> Optional[Tuple[str, str]]:
+    def check_col_precision(datatype: str, col_raw_type: object) -> Optional[Tuple[str, str]]:  # noqa: UP006, UP045
         """
         Method retuerns the precision details of column if available
         """
@@ -510,7 +496,7 @@ class ColumnTypeParser:
             args = re.search(r"\((.*)\)", str(col_raw_type))
             if args and args.group(1):
                 args = tuple(re.split(r"\s*,\s*", args.group(1)))
-                return args
+                return args  # noqa: RET504
         return None
 
     @staticmethod

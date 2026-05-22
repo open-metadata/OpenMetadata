@@ -35,7 +35,10 @@ const mockSetGlossaryChildTerms = jest.fn();
 const mockGetFirstLevelGlossaryTermsPaginated = jest.fn();
 const mockGetGlossaryTermChildrenLazy = jest.fn();
 const mockSearchGlossaryTermsPaginated = jest.fn();
-const mockGetAllFeeds = jest.fn();
+const mockListTasks = jest.fn();
+const mockResolveTask = jest.fn();
+const mockPermissionForApproveOrReject = jest.fn();
+const mockShowSuccessToast = jest.fn();
 
 jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossaryTerms: jest
@@ -55,10 +58,18 @@ jest.mock('../../../rest/glossaryAPI', () => ({
     .mockImplementation((...args) => mockSearchGlossaryTermsPaginated(...args)),
 }));
 
-jest.mock('../../../rest/feedsAPI', () => ({
-  getAllFeeds: jest
+jest.mock('../../../rest/tasksAPI', () => ({
+  listTasks: jest.fn().mockImplementation((...args) => mockListTasks(...args)),
+  resolveTask: jest
     .fn()
-    .mockImplementation((...args) => mockGetAllFeeds(...args)),
+    .mockImplementation((...args) => mockResolveTask(...args)),
+  TaskCategory: { Approval: 'Approval' },
+  TaskEntityStatus: { Open: 'Open' },
+  TaskEntityType: {
+    GlossaryApproval: 'GlossaryApproval',
+    RequestApproval: 'RequestApproval',
+  },
+  TaskResolutionType: { Approved: 'Approved', Rejected: 'Rejected' },
 }));
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
@@ -98,7 +109,7 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
   }),
   permissionForApproveOrReject: jest
     .fn()
-    .mockReturnValue({ permission: false, taskId: '' }),
+    .mockImplementation((...args) => mockPermissionForApproveOrReject(...args)),
 }));
 
 jest.mock('../../../utils/EntityStatusUtils', () => ({
@@ -185,7 +196,9 @@ jest.mock('react-intersection-observer', () => {
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
-  showSuccessToast: jest.fn(),
+  showSuccessToast: jest
+    .fn()
+    .mockImplementation((...args) => mockShowSuccessToast(...args)),
 }));
 
 jest.mock('react-dnd', () => ({
@@ -244,7 +257,12 @@ describe('Test GlossaryTermTab component', () => {
         },
       ],
     });
-    mockGetAllFeeds.mockResolvedValue({ data: [] });
+    mockListTasks.mockResolvedValue({ data: [] });
+    mockResolveTask.mockResolvedValue({});
+    mockPermissionForApproveOrReject.mockReturnValue({
+      permission: false,
+      taskId: '',
+    });
 
     // Reset store to default state
     Object.assign(mockUseGlossaryStore, {
@@ -630,38 +648,38 @@ describe('Test GlossaryTermTab component', () => {
   });
 
   describe('Glossary vs Glossary Term Context', () => {
-    it('should behave differently when isGlossary is true', async () => {
+    it('should fetch tasks when isGlossary is true', async () => {
       render(<GlossaryTermTab isGlossary />, {
         wrapper: MemoryRouter,
       });
 
       await waitFor(() => {
-        expect(mockGetAllFeeds).toHaveBeenCalledWith(
-          expect.stringContaining('glossary'),
-          undefined,
-          'Task',
-          undefined,
-          'Open',
-          undefined,
-          100000
+        expect(mockListTasks).toHaveBeenCalledWith(
+          expect.objectContaining({
+            status: 'Open',
+            category: 'Approval',
+            type: 'RequestApproval',
+            limit: 100000,
+            fields: 'about,assignees',
+          })
         );
       });
     });
 
-    it('should behave differently when isGlossary is false', async () => {
+    it('should fetch tasks when isGlossary is false', async () => {
       render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,
       });
 
       await waitFor(() => {
-        expect(mockGetAllFeeds).toHaveBeenCalledWith(
-          expect.stringContaining('glossaryTerm'),
-          undefined,
-          'Task',
-          undefined,
-          'Open',
-          undefined,
-          100000
+        expect(mockListTasks).toHaveBeenCalledWith(
+          expect.objectContaining({
+            status: 'Open',
+            category: 'Approval',
+            type: 'RequestApproval',
+            limit: 100000,
+            fields: 'about,assignees',
+          })
         );
       });
     });
@@ -709,15 +727,15 @@ describe('Test GlossaryTermTab component', () => {
       });
     });
 
-    it('should handle errors when fetching feeds', async () => {
-      mockGetAllFeeds.mockRejectedValue(new Error('Feeds error'));
+    it('should handle errors when fetching tasks', async () => {
+      mockListTasks.mockRejectedValue(new Error('Tasks error'));
 
       render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,
       });
 
       await waitFor(() => {
-        expect(mockGetAllFeeds).toHaveBeenCalled();
+        expect(mockListTasks).toHaveBeenCalled();
       });
     });
   });
@@ -727,7 +745,7 @@ describe('Test GlossaryTermTab component', () => {
       const termWithInReviewStatus = [
         {
           ...mockedGlossaryTerms[0],
-          status: 'InReview',
+          entityStatus: 'In Review',
         },
       ];
       mockUseGlossaryStore.glossaryChildTerms = termWithInReviewStatus;
@@ -744,6 +762,63 @@ describe('Test GlossaryTermTab component', () => {
 
         expect(table).toBeInTheDocument();
       });
+    });
+
+    it('should keep the term in review when an approval vote is recorded but the task stays open', async () => {
+      const term = {
+        ...mockedGlossaryTerms[0],
+        entityStatus: 'In Review',
+      };
+
+      mockUseGlossaryStore.glossaryChildTerms = [term];
+      mockListTasks.mockResolvedValue({
+        data: [
+          {
+            id: 'task-1',
+            about: {
+              fullyQualifiedName: term.fullyQualifiedName,
+            },
+            assignees: [{ id: 'user-1' }],
+          },
+        ],
+      });
+      mockPermissionForApproveOrReject.mockReturnValue({
+        permission: true,
+        taskId: 'task-1',
+      });
+      mockResolveTask.mockResolvedValue({
+        id: 'task-1',
+        status: 'Open',
+        assignees: [{ id: 'user-2' }],
+      });
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`${term.name}-approve-btn`)
+        ).toBeInTheDocument();
+      });
+
+      mockSetGlossaryChildTerms.mockClear();
+      mockShowSuccessToast.mockClear();
+
+      fireEvent.click(screen.getByTestId(`${term.name}-approve-btn`));
+
+      await waitFor(() => {
+        expect(mockResolveTask).toHaveBeenCalledWith(
+          'task-1',
+          expect.objectContaining({
+            resolutionType: 'Approved',
+            newValue: 'approved',
+          })
+        );
+      });
+
+      expect(mockShowSuccessToast).toHaveBeenCalledWith('Vote recorded.');
+      expect(mockSetGlossaryChildTerms).not.toHaveBeenCalled();
     });
   });
 

@@ -30,7 +30,7 @@ Make sure the SQL server that you are trying to connect is in running state.
 
 This step allow the sql server to accept remote connection request.
 
-![remote-connection](/doc-images/Database/Mssql/remote-connection.png)
+![remote-connection](/locales/doc-images/Database/Mssql/remote-connection.png)
 
 #### 3. Configure Windows Firewall 
 

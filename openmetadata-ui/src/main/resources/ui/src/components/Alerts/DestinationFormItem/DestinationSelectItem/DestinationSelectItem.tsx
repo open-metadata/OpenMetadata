@@ -48,7 +48,7 @@ import {
   getSubscriptionTypeOptions,
   normalizeDestinationConfig,
 } from '../../../../utils/Alerts/AlertsUtil';
-import { Transi18next } from '../../../../utils/CommonUtils';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { checkIfDestinationIsInternal } from '../../../../utils/ObservabilityUtils';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 
