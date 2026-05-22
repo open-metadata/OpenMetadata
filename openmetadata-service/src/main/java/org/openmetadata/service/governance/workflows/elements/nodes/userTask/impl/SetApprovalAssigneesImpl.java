@@ -170,6 +170,11 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
                   "[Process: {}] Prevented self-approval: Removed updatedBy user '{}' from assignees",
                   execution.getProcessInstanceId(),
                   updatedBy);
+            } else {
+              LOG.debug(
+                  "[Process: {}] Prevented self-approval for workflow-managed task: updatedBy user '{}' removed, task left unassigned",
+                  execution.getProcessInstanceId(),
+                  updatedBy);
             }
           }
         }
