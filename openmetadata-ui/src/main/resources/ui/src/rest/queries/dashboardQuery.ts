@@ -14,8 +14,24 @@
 import { QueryClient } from '@tanstack/react-query';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
-import { defaultFields } from '../../utils/DashboardDetailsUtils';
 import { getDashboardByFqn } from '../dashboardAPI';
+
+// Inlined here (not imported from {@code DashboardDetailsUtils}) to break a circular import:
+// {@code DashboardDetailsUtils.tsx} pulls {@code ChartType} from
+// {@code DashboardDetailsPage.component.tsx}, and the page imports {@code dashboardQueryFn} /
+// {@code dashboardQueryKey} from this file. Importing back into Utils from here closes the
+// cycle and triggers a TDZ "Cannot access X before initialization" error in production
+// bundles. Keep this list in sync with {@code DashboardDetailsUtils.defaultFields}.
+const DASHBOARD_DEFAULT_FIELDS = [
+  TabSpecificField.DOMAINS,
+  TabSpecificField.OWNERS,
+  TabSpecificField.FOLLOWERS,
+  TabSpecificField.TAGS,
+  TabSpecificField.CHARTS,
+  TabSpecificField.VOTES,
+  TabSpecificField.DATA_PRODUCTS,
+  TabSpecificField.EXTENSION,
+].join(',');
 
 /**
  * Shared query plumbing for a single Dashboard by FQN. Mirrors
@@ -42,7 +58,7 @@ export const prefetchDashboardByFqn = (
 
 export type DashboardQueryData = Dashboard | undefined;
 
-const PREFETCH_DASHBOARD_FIELDS = `${defaultFields},${TabSpecificField.USAGE_SUMMARY}`;
+const PREFETCH_DASHBOARD_FIELDS = `${DASHBOARD_DEFAULT_FIELDS},${TabSpecificField.USAGE_SUMMARY}`;
 
 /**
  * Convenience wrapper for hover handlers — uses the maximal fields the

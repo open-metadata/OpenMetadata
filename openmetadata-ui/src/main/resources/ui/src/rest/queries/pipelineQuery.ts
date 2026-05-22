@@ -14,8 +14,23 @@
 import { QueryClient } from '@tanstack/react-query';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
-import { defaultFields } from '../../utils/PipelineDetailsUtils';
 import { getPipelineByFqn } from '../pipelineAPI';
+
+// Inlined here (not imported from {@code PipelineDetailsUtils}) to avoid the kind of
+// circular import that broke production bundles for Dashboard (see {@code dashboardQuery.ts}
+// for the detailed write-up). Keep this list in sync with
+// {@code PipelineDetailsUtils.defaultFields}.
+const PIPELINE_DEFAULT_FIELDS = [
+  TabSpecificField.FOLLOWERS,
+  TabSpecificField.TAGS,
+  TabSpecificField.OWNERS,
+  TabSpecificField.TASKS,
+  TabSpecificField.PIPELINE_STATUS,
+  TabSpecificField.DOMAINS,
+  TabSpecificField.DATA_PRODUCTS,
+  TabSpecificField.VOTES,
+  TabSpecificField.EXTENSION,
+].join(',');
 
 export const pipelineQueryKey = (fqn: string, fields: string) =>
   ['pipeline', fqn, fields] as const;
@@ -37,7 +52,7 @@ export const prefetchPipelineByFqn = (
 
 export type PipelineQueryData = Pipeline | undefined;
 
-const PREFETCH_PIPELINE_FIELDS = `${defaultFields},${TabSpecificField.USAGE_SUMMARY}`;
+const PREFETCH_PIPELINE_FIELDS = `${PIPELINE_DEFAULT_FIELDS},${TabSpecificField.USAGE_SUMMARY}`;
 
 export const prefetchPipeline = (queryClient: QueryClient, fqn: string) =>
   prefetchPipelineByFqn(queryClient, fqn, PREFETCH_PIPELINE_FIELDS);
