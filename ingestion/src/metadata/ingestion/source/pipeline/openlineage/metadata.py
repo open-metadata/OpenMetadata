@@ -95,6 +95,13 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+# Maximum number of entries in the per-event table resolution cache.
+# A dataset is resolved several times while a single event is processed, so
+# the result is memoized to avoid repeated work and duplicate warning logs.
+# The cache is reset for every event and capped at this size, so it can never
+# grow without bound or exhaust memory.
+RESOLUTION_CACHE_MAXSIZE = 1000
+
 
 class OpenlineageSource(PipelineServiceSource):
     """
@@ -128,6 +135,7 @@ class OpenlineageSource(PipelineServiceSource):
         self._current_pipeline_service = None
         self._entity_cache: LRUCache = LRUCache(maxsize=10000)
         self._namespace_to_service_cache: LRUCache = LRUCache(maxsize=10000)
+        self._resolution_cache: LRUCache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
         self._db_service_type_map: Dict[str, str] = self._build_db_service_type_map()  # noqa: UP006
 
     def close(self) -> None:
@@ -238,13 +246,31 @@ class OpenlineageSource(PipelineServiceSource):
         """
         Resolve an OpenLineage dataset to an existing OpenMetadata table.
 
-        Tries each identity candidate (symlink ``TABLE`` identifiers first,
-        then the top-level identity) and returns the first that resolves to a
-        table in a configured service. A single detailed warning is logged
-        when none resolve so the event can be diagnosed from logs alone,
-        without aborting the rest of the event.
+        The same dataset is resolved multiple times while a single event is
+        processed. The result is memoized in a per-event cache so that the
+        resolution work, and its warning log, run only once per dataset. The
+        cache is reset at the start of every event, which ensures that a
+        table registered by an earlier event is never served a stale result.
         """
         ol_name = self._get_ol_table_name(data)
+        if ol_name in self._resolution_cache:
+            return self._resolution_cache[ol_name]
+
+        resolved = self._resolve_table_uncached(data, ol_name)
+        self._resolution_cache[ol_name] = resolved
+        return resolved
+
+    def _resolve_table_uncached(self, data: Dict, ol_name: str) -> Optional[ResolvedTable]:  # noqa: UP006, UP045
+        """
+        Run candidate-based resolution for :meth:`_resolve_table`.
+
+        Each identity candidate is tried in priority order, starting with the
+        symlink identifiers and falling back to the top-level identity. The
+        first candidate that resolves to a table in a configured service is
+        returned. When no candidate resolves, a single detailed warning is
+        logged so that the event can be diagnosed from the logs, and the
+        method returns None without aborting the rest of the event.
+        """
         candidates = self._iter_table_candidates(data)
         if not candidates:
             self._log_unresolvable_dataset(data, ol_name)
@@ -899,6 +925,10 @@ class OpenlineageSource(PipelineServiceSource):
             )
 
     def yield_pipeline_lineage_details(self, pipeline_details: OpenLineageEvent) -> Iterable[Either[AddLineageRequest]]:  # noqa: C901
+        # Start every event with a fresh resolution cache so results never
+        # leak across events and the cache cannot grow without bound.
+        self._resolution_cache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
+
         inputs, outputs = pipeline_details.inputs, pipeline_details.outputs
 
         input_edges: List[LineageNode] = []  # noqa: UP006

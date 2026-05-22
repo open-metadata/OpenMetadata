@@ -37,10 +37,14 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.source.pipeline.openlineage.metadata import OpenlineageSource
+from metadata.ingestion.source.pipeline.openlineage.metadata import (
+    RESOLUTION_CACHE_MAXSIZE,
+    OpenlineageSource,
+)
 from metadata.ingestion.source.pipeline.openlineage.models import (
     EntityDetails,
     OpenLineageEvent,
+    ResolvedTable,
     TableDetails,
 )
 from metadata.ingestion.source.pipeline.openlineage.utils import (
@@ -205,6 +209,10 @@ class OpenLineageUnitTest(unittest.TestCase):
     def setUp(self, mock_consumer, mock_test_connection):
         mock_test_connection.return_value = False
         self.mock_consumer = mock_consumer
+        # Fresh per-test resolution cache, mirroring what prepare() sets up in
+        # production, so each test starts with no memoized resolutions.
+        for source in (self.open_lineage_source, self.open_lineage_kinesis_source):
+            source._resolution_cache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
 
     def setup_mock_consumer_with_kafka_event(self, event):
         mock_msg = MagicMock()
@@ -659,6 +667,42 @@ class OpenLineageUnitTest(unittest.TestCase):
         """An object-store-only dataset (no parseable identity) resolves to None."""
         data = {"namespace": "s3://bucket", "name": "warehouse/path/to/file"}
         self.assertIsNone(self.open_lineage_source._resolve_table(data))
+
+    def test_resolve_table_memoizes_within_event(self):
+        """The underlying resolution runs once per dataset; repeated calls for
+        the same dataset are served from the per-event cache."""
+        data = {"namespace": "trino://host", "name": "schema.tbl"}
+        sentinel = ResolvedTable(fqn="svc.schema.tbl", details=TableDetails(name="tbl", schema="schema"))
+        with patch.object(self.open_lineage_source, "_resolve_table_uncached", return_value=sentinel) as mock_uncached:
+            first = self.open_lineage_source._resolve_table(data)
+            second = self.open_lineage_source._resolve_table(data)
+        self.assertIs(first, second)
+        self.assertEqual(mock_uncached.call_count, 1)
+
+    def test_resolve_table_memoizes_negative_result(self):
+        """An unresolvable dataset is cached too, so its warning is logged once."""
+        data = {"namespace": "trino://host", "name": "schema.missing"}
+        with patch.object(self.open_lineage_source, "_resolve_table_uncached", return_value=None) as mock_uncached:
+            self.open_lineage_source._resolve_table(data)
+            self.open_lineage_source._resolve_table(data)
+        self.assertEqual(mock_uncached.call_count, 1)
+
+    def test_yield_pipeline_lineage_details_resets_resolution_cache(self):
+        """Each event starts with a fresh resolution cache, so a result from an
+        earlier event can never be served as a stale hit."""
+        self.open_lineage_source._resolution_cache["stale-key"] = "STALE"
+        cache_before = self.open_lineage_source._resolution_cache
+
+        event = copy.deepcopy(FULL_OL_KAFKA_EVENT)
+        event["inputs"] = []
+        event["outputs"] = []
+        ol_event = self.read_openlineage_event_from_kafka(event)
+
+        with patch.object(OpenMetadataConnection, "get_by_name", create=True, return_value=None):
+            list(self.open_lineage_source.yield_pipeline_lineage_details(ol_event))
+
+        self.assertIsNot(self.open_lineage_source._resolution_cache, cache_before)
+        self.assertNotIn("stale-key", self.open_lineage_source._resolution_cache)
 
     def test_get_pipelines_list(self):
         """Test get_pipelines_list method"""
