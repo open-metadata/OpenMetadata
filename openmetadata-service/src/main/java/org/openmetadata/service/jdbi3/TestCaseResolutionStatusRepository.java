@@ -304,8 +304,9 @@ public class TestCaseResolutionStatusRepository
     ResolveTask resolveTask =
         new ResolveTask()
             .withTestCaseFQN(testCase.getFullyQualifiedName())
-            .withTestCaseFailureReason(resolved.getTestCaseFailureReason())
-            .withNewValue(resolved.getTestCaseFailureComment());
+            .withTestCaseFailureReason(
+                resolved != null ? resolved.getTestCaseFailureReason() : null)
+            .withNewValue(resolved != null ? resolved.getTestCaseFailureComment() : null);
 
     Thread thread = getIncidentTask(lastIncidentStatus);
 
