@@ -14,10 +14,7 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import {
-  getApiContext,
-  redirectToHomePage,
-} from '../../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
   addRelatedTermsByRelationType,
   selectActiveGlossary,
@@ -61,7 +58,9 @@ test.describe('Glossary Term — Related Terms', () => {
 
       const termBName =
         termB.responseData?.displayName ?? termB.data.displayName;
-      const searchResB = page.waitForResponse('**/api/v1/glossaryTerms/search*');
+      const searchResB = page.waitForResponse(
+        '**/api/v1/glossaryTerms/search*'
+      );
       await firstInput.fill(termBName);
       await searchResB;
       await page.getByRole('option', { exact: true, name: termBName }).click();
@@ -73,7 +72,9 @@ test.describe('Glossary Term — Related Terms', () => {
 
       const termCName =
         termC.responseData?.displayName ?? termC.data.displayName;
-      const searchResC = page.waitForResponse('**/api/v1/glossaryTerms/search*');
+      const searchResC = page.waitForResponse(
+        '**/api/v1/glossaryTerms/search*'
+      );
       await secondInput.fill(termCName);
       await searchResC;
       await page.getByRole('option', { exact: true, name: termCName }).click();
@@ -217,7 +218,6 @@ test.describe('Glossary Term — Related Terms', () => {
   test('should add three relations to a single term and persist all after reload', async ({
     page,
   }) => {
-
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
     const termA = new GlossaryTerm(glossary);
@@ -290,7 +290,6 @@ test.describe('Glossary Term — Related Terms', () => {
   test('should add Related To, Narrower, and Has Part to the same target term and persist all after reload', async ({
     page,
   }) => {
-
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
     const termBalance = new GlossaryTerm(glossary);
