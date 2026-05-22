@@ -20,7 +20,7 @@ import time
 import pytest
 
 from metadata.ingestion import diagnostics
-from metadata.ingestion.diagnostics import PRESSURE_PSI_AVG10_THRESHOLD
+from metadata.ingestion.diagnostics.config import DiagnosticsConfig
 from metadata.ingestion.diagnostics.http_introspect import HttpTracker
 from metadata.ingestion.diagnostics.memory import MemorySample, MemoryTracker
 from metadata.ingestion.diagnostics.registry import OperationRegistry
@@ -67,7 +67,7 @@ def test_psi_below_threshold_does_not_trip(caplog):
                 cgroup_current=None,
                 cgroup_max=None,
                 oom_kill_count=None,
-                psi_some_avg10=PRESSURE_PSI_AVG10_THRESHOLD - 0.1,
+                psi_some_avg10=DiagnosticsConfig().pressure_psi_avg10_threshold - 0.1,
             )
         ]
     )

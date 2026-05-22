@@ -44,27 +44,8 @@ from collections.abc import Iterator
 from contextlib import contextmanager, suppress
 from typing import Any, Optional
 
+from metadata.ingestion.diagnostics.config import DIAG_LOG_PREFIX
 from metadata.utils.logger import diag_logger
-
-WATCHDOG_TICK_SECONDS = 10
-STUCK_WARN_SECONDS = 60
-AUTO_DUMP_SECONDS = 300
-REDUMP_THROTTLE_SECONDS = 300
-HEARTBEAT_INTERVAL_SECONDS = 30
-MEMORY_SAMPLE_INTERVAL_SECONDS = 30
-KWARGS_TRUNCATION_CHARS = 2000
-OP_STACK_DEPTH_CAP = 20
-DIAG_LOG_PREFIX = "diag"
-
-# Pre-OOM tripwire thresholds. PSI `some avg10` is a percentage 0..100
-# representing how much of the last 10 s the cgroup was stalled on
-# memory; sustained values >10% reliably predict OOMKill within tens of
-# seconds on gradual leaks (see /proc/pressure docs).
-PRESSURE_PSI_AVG10_THRESHOLD = 10.0
-# Memory-pressure tripwire dumps are throttled to one per reason per
-# 5 minutes so we don't flood the logs with snapshots while pressure is
-# sustained.
-PRESSURE_DUMP_THROTTLE_SECONDS = 300
 
 _state: Optional["_DiagnosticsState"] = None
 

@@ -27,16 +27,8 @@ import threading
 import time
 from typing import Any
 
-from metadata.ingestion.diagnostics import (
-    AUTO_DUMP_SECONDS,
-    DIAG_LOG_PREFIX,
-    PRESSURE_DUMP_THROTTLE_SECONDS,
-    PRESSURE_PSI_AVG10_THRESHOLD,
-    REDUMP_THROTTLE_SECONDS,
-    STUCK_WARN_SECONDS,
-    WATCHDOG_TICK_SECONDS,
-    emit_log,
-)
+from metadata.ingestion.diagnostics import DIAG_LOG_PREFIX, emit_log
+from metadata.ingestion.diagnostics.config import DiagnosticsConfig
 from metadata.ingestion.diagnostics.memory import MemorySample
 from metadata.ingestion.diagnostics.registry import OperationRegistry, format_op_frame
 from metadata.ingestion.diagnostics.signals import emit_full_dump
@@ -51,12 +43,14 @@ class WatchdogThread(threading.Thread):
         http_tracker: Any,
         memory_tracker: Any,
         workflow: Any,
+        config: DiagnosticsConfig = DiagnosticsConfig(),
     ) -> None:
         super().__init__(name="diag-watchdog", daemon=True)
         self._registry = registry
         self._http_tracker = http_tracker
         self._memory_tracker = memory_tracker
         self._workflow = workflow
+        self._config = config
         self._stop_event = threading.Event()
         # (thread_id, op_name) -> monotonic timestamp of last action
         self._last_warned: dict[tuple[int, str], float] = {}
@@ -74,7 +68,7 @@ class WatchdogThread(threading.Thread):
         self._stop_event.set()
 
     def run(self) -> None:
-        while not self._stop_event.wait(WATCHDOG_TICK_SECONDS):
+        while not self._stop_event.wait(self._config.watchdog_tick_seconds):
             try:
                 self._tick()
             except Exception as exc:
@@ -87,13 +81,13 @@ class WatchdogThread(threading.Thread):
         now = time.monotonic()
 
         for tid, (op_name, kwargs, age) in self._registry.deepest_per_thread().items():
-            if age < STUCK_WARN_SECONDS:
+            if age < self._config.stuck_warn_seconds:
                 continue
 
             key = (tid, op_name)
             thread_name = name_by_ident.get(tid, f"tid-{tid}")
 
-            if age >= AUTO_DUMP_SECONDS and self._should_fire(self._last_dumped, key, now):
+            if age >= self._config.auto_dump_seconds and self._should_fire(self._last_dumped, key, now):
                 self._last_dumped[key] = now
                 # A dump implies a warn — track the warn timestamp too so
                 # we don't double-log.
@@ -135,7 +129,7 @@ class WatchdogThread(threading.Thread):
 
     def _check_psi_tripwire(self, sample: MemorySample, now: float) -> None:
         psi = sample.psi_some_avg10
-        if psi is None or psi < PRESSURE_PSI_AVG10_THRESHOLD:
+        if psi is None or psi < self._config.pressure_psi_avg10_threshold:
             return
         if not self._should_fire_pressure("psi", now):
             return
@@ -182,7 +176,7 @@ class WatchdogThread(threading.Thread):
 
     def _should_fire_pressure(self, key: str, now: float) -> bool:
         previous = self._last_pressure_dumped.get(key)
-        return previous is None or (now - previous) >= PRESSURE_DUMP_THROTTLE_SECONDS
+        return previous is None or (now - previous) >= self._config.pressure_dump_throttle_seconds
 
     def _fire_pressure_dump(self, reason: str, sample: MemorySample, now: float, throttle_key: str) -> None:
         self._last_pressure_dumped[throttle_key] = now
@@ -200,10 +194,9 @@ class WatchdogThread(threading.Thread):
             workflow=self._workflow,
         )
 
-    @staticmethod
-    def _should_fire(last_map: dict[tuple[int, str], float], key: tuple[int, str], now: float) -> bool:
+    def _should_fire(self, last_map: dict[tuple[int, str], float], key: tuple[int, str], now: float) -> bool:
         previous = last_map.get(key)
-        return previous is None or (now - previous) >= REDUMP_THROTTLE_SECONDS
+        return previous is None or (now - previous) >= self._config.redump_throttle_seconds
 
     def _emit_stuck_warn(self, thread_name: str, op_name: str, kwargs: dict, age: float) -> None:
         frame = format_op_frame(op_name, kwargs, age)

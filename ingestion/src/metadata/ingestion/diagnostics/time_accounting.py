@@ -58,10 +58,10 @@ import time
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
+from metadata.ingestion.diagnostics.config import DiagnosticsConfig
+
 if TYPE_CHECKING:
     from metadata.ingestion.diagnostics.registry import OperationRegistry
-
-TIME_ACCOUNTING_INTERVAL_SECONDS = 0.1
 
 
 def _categorize(op_name: str) -> str:
@@ -91,11 +91,12 @@ class TimeAccountingSampler(threading.Thread):
     def __init__(
         self,
         registry: OperationRegistry,
-        interval: float = TIME_ACCOUNTING_INTERVAL_SECONDS,
+        config: DiagnosticsConfig = DiagnosticsConfig(),
     ) -> None:
         super().__init__(name="diag-time-accounting", daemon=True)
         self._registry = registry
-        self._interval = interval
+        self._config = config
+        self._interval = config.time_accounting_interval_seconds
         self._stop_event = threading.Event()
         self._lock = threading.Lock()
         self._totals: dict[str, float] = defaultdict(float)

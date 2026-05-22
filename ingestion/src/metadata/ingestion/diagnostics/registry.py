@@ -20,7 +20,11 @@ import threading
 import time
 from typing import Any
 
-from metadata.ingestion.diagnostics import KWARGS_TRUNCATION_CHARS, OP_STACK_DEPTH_CAP
+# Self-protection bounds on the registry itself (mechanism, not operator policy):
+# cap per-thread op-stack growth and truncate stored kwargs (SQL/URLs can be huge)
+# so the observer never becomes the memory/output problem it watches for.
+KWARGS_TRUNCATION_CHARS = 2000
+OP_STACK_DEPTH_CAP = 20
 
 
 class OperationRegistry:

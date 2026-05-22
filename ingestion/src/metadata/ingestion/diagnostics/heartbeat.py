@@ -27,11 +27,8 @@ import os
 import threading
 from typing import Any
 
-from metadata.ingestion.diagnostics import (
-    DIAG_LOG_PREFIX,
-    HEARTBEAT_INTERVAL_SECONDS,
-    emit_log,
-)
+from metadata.ingestion.diagnostics import DIAG_LOG_PREFIX, emit_log
+from metadata.ingestion.diagnostics.config import DiagnosticsConfig
 from metadata.ingestion.diagnostics.memory import (
     MemoryTracker,
     format_bytes,
@@ -50,12 +47,14 @@ class HeartbeatThread(threading.Thread):
         http_tracker: Any,
         memory_tracker: MemoryTracker,
         workflow: Any,
+        config: DiagnosticsConfig = DiagnosticsConfig(),
     ) -> None:
         super().__init__(name="diag-heartbeat", daemon=True)
         self._registry = registry
         self._http_tracker = http_tracker
         self._memory_tracker = memory_tracker
         self._workflow = workflow
+        self._config = config
         self._stop_event = threading.Event()
         self._ticks = 0
 
@@ -63,7 +62,7 @@ class HeartbeatThread(threading.Thread):
         self._stop_event.set()
 
     def run(self) -> None:
-        while not self._stop_event.wait(HEARTBEAT_INTERVAL_SECONDS):
+        while not self._stop_event.wait(self._config.heartbeat_interval_seconds):
             try:
                 self._emit()
             except Exception as exc:
