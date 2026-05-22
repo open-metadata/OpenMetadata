@@ -30,6 +30,27 @@
       window.BASE_PATH = '${basePath}';
     </script>
 
+    <!--
+      Theme restore — runs before any bundle parses so the boot shell paints
+      in the user's last theme instead of always flashing the light skeleton
+      and re-painting once React reads localStorage. Mirrors Linear's inline
+      splash trick (see linear.app/changelog): pre-paint reads of stable
+      localStorage keys avoid a visible re-theme on cold load. The bundle's
+      ThemeProvider re-reads the same `ui-theme` key on mount and stays in
+      sync with the class we set here. `appStart` mark gives the bundle a
+      RUM anchor to measure HTML-parse → first paint vs. JS-ready.
+    -->
+    <script nonce="${cspNonce}">
+      try {
+        if (localStorage.getItem('ui-theme') === 'dark') {
+          document.documentElement.classList.add('dark-mode');
+        }
+      } catch (e) {}
+      try {
+        performance.mark('appStart');
+      } catch (e) {}
+    </script>
+
     <link rel="shortcut icon" href="${basePath}favicon.png" type="image/png" />
     <link
       rel="apple-touch-icon"
@@ -234,6 +255,33 @@
       */
       .om-boot-shell--hidden {
         display: none;
+      }
+
+      /*
+        Dark variant — applied by the pre-paint script above when
+        localStorage.ui-theme is "dark". Matches the dark-mode CSS variables
+        the bundle eventually sets via ThemeProvider, so the visual transition
+        from shell to React UI is seamless instead of a light→dark flash.
+      */
+      .dark-mode .om-boot-shell {
+        background: #0e0f11;
+        color: #94959b;
+      }
+      .dark-mode .om-boot-shell__bar,
+      .dark-mode .om-boot-shell__sidebar {
+        background: #16181b;
+        border-color: #2a2d31;
+      }
+      .dark-mode .om-boot-shell__skeleton,
+      .dark-mode .om-boot-shell__title,
+      .dark-mode .om-boot-shell__card {
+        background: linear-gradient(
+          90deg,
+          #1f2226 25%,
+          #2a2d31 37%,
+          #1f2226 63%
+        );
+        background-size: 400% 100%;
       }
     </style>
   </head>

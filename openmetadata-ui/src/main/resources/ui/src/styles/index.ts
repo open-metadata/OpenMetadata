@@ -17,13 +17,11 @@ import '@fontsource/poppins/500.css'; // Font 500
 import '@fontsource/poppins/600.css'; // Font 600
 import '@fontsource/source-code-pro'; // Font 400
 
-import '@fontsource/inter'; // Font 400
-import '@fontsource/inter/400.css'; // Font 400
-import '@fontsource/inter/500.css'; // Font 500
-import '@fontsource/inter/600.css'; // Font 600
-import '@fontsource/inter/700.css'; // Font 700
-import '@fontsource/inter/800.css'; // Font 800
-import '@fontsource/inter/900.css'; // Font 900
+// Variable Inter aliased under the "Inter" family name. Loads one woff2 per
+// Unicode subset covering the full 100–900 weight axis, replacing the prior
+// 6 weight-specific woff2 files per subset (~30 → ~7 fetches). See the file
+// header in {@link ./inter-variable.css} for context.
+import './inter-variable.css';
 
 import '@react-awesome-query-builder/antd/css/styles.css';
 import 'reactflow/dist/base.css';
