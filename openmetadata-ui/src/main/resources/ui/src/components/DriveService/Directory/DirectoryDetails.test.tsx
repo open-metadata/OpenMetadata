@@ -43,9 +43,8 @@ jest.mock('../../../utils/CommonUtils', () => ({
   fetchEntityActivityCountInto: (
     ...args: [EntityType, string, (data: FeedCounts) => void]
   ) => mockFetchEntityActivityCountInto(...args),
-  fetchEntityTaskCountsInto: (
-    ...args: [string, (data: FeedCounts) => void]
-  ) => mockFetchEntityTaskCountsInto(...args),
+  fetchEntityTaskCountsInto: (...args: [string, (data: FeedCounts) => void]) =>
+    mockFetchEntityTaskCountsInto(...args),
   getEntityMissingError: jest.fn(),
   getFeedCounts: (...args: [EntityType, string, (data: FeedCounts) => void]) =>
     mockGetFeedCounts(...args),
