@@ -300,13 +300,24 @@ public class OpenMetadataAssetServletTest {
   }
 
   @Test
-  public void testRootPathSkipsEtagWhenCspNonceIsPresent() throws Exception {
-    // With a per-request CSP nonce in the body, a cached body would carry a stale nonce that
-    // the next request's CSP header would reject. The servlet must not emit an ETag or attempt
-    // a 304 in that case — always send the freshly-rendered body.
+  public void testRootPathSkipsEtagWhenCspPolicyUsesNonce() throws Exception {
+    // When the configured CSP policy contains __CSP_NONCE__ — meaning every request emits a
+    // unique CSP header that the response body's inline scripts must match — the servlet must
+    // not emit an ETag or attempt a 304. A cached body would carry a stale nonce that the
+    // next request's CSP header would reject.
     String path = "/";
     String nonce = "request-nonce-abc";
     StringWriter bodyCapture = new StringWriter();
+
+    // Wire a CSP factory whose policy uses the __CSP_NONCE__ placeholder. The servlet's
+    // cspRequiresPerRequestBody() calls build() on the factory; build() returns an empty
+    // map unless {@code enabled} is true, so both flags need setting.
+    org.openmetadata.service.config.web.CspHeaderFactory cspFactory =
+        new org.openmetadata.service.config.web.CspHeaderFactory();
+    cspFactory.setEnabled(true);
+    cspFactory.setPolicy("script-src 'nonce-__CSP_NONCE__'");
+    when(webConfiguration.getCspHeaderFactory()).thenReturn(cspFactory);
+
     when(request.getRequestURI()).thenReturn(path);
     when(request.getContextPath()).thenReturn("");
     when(request.getAttribute("cspNonce")).thenReturn(nonce);
@@ -324,6 +335,31 @@ public class OpenMetadataAssetServletTest {
     verify(response, never()).setHeader(eq("ETag"), anyString());
     verify(response, never()).setStatus(HttpServletResponse.SC_NOT_MODIFIED);
     assertTrue(bodyCapture.toString().contains(nonce));
+  }
+
+  @Test
+  public void testRootPathEmitsEtagWhenCspIsNotConfigured() throws Exception {
+    // The common case: no CSP header is configured. CspNonceHandler still populates the
+    // request attribute with a fresh value (it runs unconditionally) but the nonce is
+    // decorative — no CSP header polices the body's inline scripts. The servlet must emit
+    // ETag and honour 304 here; this is the test that would have caught the original bug.
+    String path = "/";
+    String nonce = "request-nonce-abc";
+    String etag = "\"shellEtag\"";
+    when(webConfiguration.getCspHeaderFactory()).thenReturn(null);
+    when(request.getRequestURI()).thenReturn(path);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getAttribute("cspNonce")).thenReturn(nonce);
+    when(request.getHeader("If-None-Match")).thenReturn(etag);
+
+    try (MockedStatic<IndexResource> indexResource =
+        org.mockito.Mockito.mockStatic(IndexResource.class)) {
+      indexResource.when(() -> IndexResource.getIndexEtag("/")).thenReturn(etag);
+      servlet.doGet(request, response);
+    }
+
+    verify(response).setHeader("ETag", etag);
+    verify(response).setStatus(HttpServletResponse.SC_NOT_MODIFIED);
   }
 
   @Test

@@ -31,6 +31,7 @@ import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.service.config.OMWebConfiguration;
+import org.openmetadata.service.config.web.CspHeaderFactory;
 import org.openmetadata.service.resources.system.IndexResource;
 import org.openmetadata.service.security.CspNonceHandler;
 
@@ -141,9 +142,15 @@ public class OpenMetadataAssetServlet extends AssetServlet {
   /**
    * Write the SPA shell, honouring {@code If-None-Match} with a 304 when possible.
    *
-   * <p>The cspNonce is per-request (each load gets a fresh value the page's inline scripts use
-   * to clear the CSP); we therefore only 304 when there's no nonce in play, so a cached body
-   * carrying a stale nonce can't be served against a CSP header that lists a fresh one.
+   * <p>The earlier draft of this method gated on whether {@link CspNonceHandler} had populated
+   * a {@code cspNonce} request attribute — but that handler always populates the attribute,
+   * even on deployments that never emit a CSP header. The effect was that the ETag path was
+   * never taken in practice. Now we gate on whether CSP is <i>actually</i> enforced in a way
+   * that depends on the per-request body content (i.e. the configured policy contains the
+   * {@code __CSP_NONCE__} placeholder). For everything else — no CSP at all, or a CSP that
+   * uses {@code 'self'} / hash-based directives — the nonce attribute in the body is
+   * decorative and serving a cached body with a stale nonce against a fresh CSP header
+   * cannot cause script execution to fail.
    *
    * <p>The ETag itself describes the stable shell (post-basePath substitution, pre-nonce). It
    * changes when the running JAR's bundled {@code index.html} or {@code basePath} change — i.e.
@@ -152,8 +159,7 @@ public class OpenMetadataAssetServlet extends AssetServlet {
   private void writeIndexHtml(HttpServletRequest req, HttpServletResponse resp, String cspNonce)
       throws IOException {
     String etag = IndexResource.getIndexEtag(this.basePath);
-    boolean hasPerRequestNonce = cspNonce != null && !cspNonce.isEmpty();
-    if (!hasPerRequestNonce) {
+    if (!cspRequiresPerRequestBody()) {
       resp.setHeader("ETag", etag);
       String ifNoneMatch = req.getHeader("If-None-Match");
       if (etag.equals(ifNoneMatch)) {
@@ -163,6 +169,25 @@ public class OpenMetadataAssetServlet extends AssetServlet {
     }
     resp.setContentType("text/html");
     resp.getWriter().write(IndexResource.getIndexFile(this.basePath, cspNonce));
+  }
+
+  /**
+   * True when the configured CSP policy contains the {@code __CSP_NONCE__} placeholder, which
+   * {@link CspNonceHandler} replaces with a fresh per-request value. In that mode the response
+   * body's inline scripts must match the header's nonce on every load, so we can't safely 304
+   * (the cached body would carry a stale nonce). False on the default deployment (no CSP
+   * configured) and on deployments that use {@code 'self'} / hash-based policies.
+   */
+  private boolean cspRequiresPerRequestBody() {
+    if (webConfiguration == null) {
+      return false;
+    }
+    CspHeaderFactory csp = webConfiguration.getCspHeaderFactory();
+    if (csp == null) {
+      return false;
+    }
+    return csp.build().values().stream()
+        .anyMatch(v -> v != null && v.contains(CspNonceHandler.CSP_NONCE_PLACEHOLDER));
   }
 
   /**
