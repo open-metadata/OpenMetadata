@@ -39,7 +39,10 @@ import {
   patchKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { generateFormFields, getPopupContainer } from '../../../utils/formUtils';
+import {
+  generateFormFields,
+  getPopupContainer,
+} from '../../../utils/formUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTagsWithoutTier } from '../../../utils/TableUtils';
@@ -73,61 +76,65 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
 
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const { initialValues, initialDataAssetsOptions, restRelatedDataAssets, defaultDataAssetsValues } =
-    useMemo(() => {
-      if (isUndefined(quickLink)) {
-        return {
-          initialValues: {},
-          initialDataAssetsOptions: [],
-          defaultDataAssetsValues: [],
-          restRelatedDataAssets: [],
-        };
-      }
-
-      const tagsWithoutTier = getTagsWithoutTier(quickLink.tags ?? []);
-      const { Classification: classification, Glossary: glossaries } =
-        getFilterTags(tagsWithoutTier);
-
-      const relatedDataAssets = quickLink.relatedEntities ?? [];
-      const { filteredRelatedDataAssets, restRelatedDataAssets } =
-        relatedDataAssets.reduce(
-          (acc, item) => {
-            if (!['team', 'user'].includes(item.type)) {
-              acc.filteredRelatedDataAssets.push(item);
-            } else {
-              acc.restRelatedDataAssets.push(item);
-            }
-
-            return acc;
-          },
-          {
-            filteredRelatedDataAssets: [] as EntityReference[],
-            restRelatedDataAssets: [] as EntityReference[],
-          }
-        );
-
-      const initialDataAssetsOptions: DataAssetOption[] =
-        filteredRelatedDataAssets.map((item) => ({
-          displayName: getEntityName(item),
-          reference: item,
-          label: getEntityName(item),
-          value: item.id,
-        }));
-
+  const {
+    initialValues,
+    initialDataAssetsOptions,
+    restRelatedDataAssets,
+    defaultDataAssetsValues,
+  } = useMemo(() => {
+    if (isUndefined(quickLink)) {
       return {
-        initialValues: {
-          displayName: quickLink.displayName,
-          url: (quickLink.page as QuickLink)?.url,
-          description: quickLink.description,
-          tags: classification,
-          glossaryTerms: glossaries,
-          relatedEntities: filteredRelatedDataAssets.map((item) => item.id),
-        },
-        initialDataAssetsOptions,
-        defaultDataAssetsValues: filteredRelatedDataAssets.map((item) => item.id),
-        restRelatedDataAssets,
+        initialValues: {},
+        initialDataAssetsOptions: [],
+        defaultDataAssetsValues: [],
+        restRelatedDataAssets: [],
       };
-    }, [quickLink]);
+    }
+
+    const tagsWithoutTier = getTagsWithoutTier(quickLink.tags ?? []);
+    const { Classification: classification, Glossary: glossaries } =
+      getFilterTags(tagsWithoutTier);
+
+    const relatedDataAssets = quickLink.relatedEntities ?? [];
+    const { filteredRelatedDataAssets, restRelatedDataAssets } =
+      relatedDataAssets.reduce(
+        (acc, item) => {
+          if (!['team', 'user'].includes(item.type)) {
+            acc.filteredRelatedDataAssets.push(item);
+          } else {
+            acc.restRelatedDataAssets.push(item);
+          }
+
+          return acc;
+        },
+        {
+          filteredRelatedDataAssets: [] as EntityReference[],
+          restRelatedDataAssets: [] as EntityReference[],
+        }
+      );
+
+    const initialDataAssetsOptions: DataAssetOption[] =
+      filteredRelatedDataAssets.map((item) => ({
+        displayName: getEntityName(item),
+        reference: item,
+        label: getEntityName(item),
+        value: item.id,
+      }));
+
+    return {
+      initialValues: {
+        displayName: quickLink.displayName,
+        url: (quickLink.page as QuickLink)?.url,
+        description: quickLink.description,
+        tags: classification,
+        glossaryTerms: glossaries,
+        relatedEntities: filteredRelatedDataAssets.map((item) => item.id),
+      },
+      initialDataAssetsOptions,
+      defaultDataAssetsValues: filteredRelatedDataAssets.map((item) => item.id),
+      restRelatedDataAssets,
+    };
+  }, [quickLink]);
 
   const handleQuickLinkUpdate = async (
     knowledgePage: KnowledgePage,
