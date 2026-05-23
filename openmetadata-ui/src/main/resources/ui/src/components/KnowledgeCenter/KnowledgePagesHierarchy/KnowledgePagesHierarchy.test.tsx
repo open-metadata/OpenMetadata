@@ -229,9 +229,7 @@ jest.mock('context/LimitsProvider/useLimitsStore', () => ({
 }));
 
 jest.mock('components/common/DeleteModal/DeleteModal', () =>
-  jest
-    .fn()
-    .mockReturnValue(<div data-testid="delete-widget">DeleteModal</div>)
+  jest.fn().mockReturnValue(<div data-testid="delete-widget">DeleteModal</div>)
 );
 
 describe('KnowledgePagesHierarchy', () => {

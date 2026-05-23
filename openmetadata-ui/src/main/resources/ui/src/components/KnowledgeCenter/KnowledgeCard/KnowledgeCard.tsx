@@ -22,7 +22,6 @@ import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 
-
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import { DisplayType } from '../../../components/Tag/TagsViewer/TagsViewer.interface';
 

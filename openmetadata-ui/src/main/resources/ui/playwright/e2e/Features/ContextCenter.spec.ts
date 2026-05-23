@@ -640,9 +640,7 @@ test.describe('Context Center', () => {
       await expect(header.getByTestId('version-btn')).toBeVisible();
 
       // manage button (three-dot menu)
-      await expect(
-        header.getByTestId('manage-button')
-      ).toBeVisible();
+      await expect(header.getByTestId('manage-button')).toBeVisible();
     });
 
     test('article detail page - tabs are visible', async ({ page }) => {
@@ -792,7 +790,7 @@ test.describe('Context Center', () => {
       const apiDeleteRes = page.waitForResponse(
         /\/api\/v1\/contextCenter\/pages\/.+\?hardDelete=true/
       );
-      await page.getByTestId('confirm-button').click()
+      await page.getByTestId('confirm-button').click();
       await apiDeleteRes;
 
       // Redirected back to articles list
