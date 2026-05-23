@@ -41,4 +41,5 @@ export interface DataAssetAsyncSelectListProps {
   filterFqns?: string[];
   queryFilter?: Record<string, unknown>;
   dropdownStyle?: CSSProperties;
+  getPopupContainer?: (triggerNode: HTMLElement) => HTMLElement;
 }
