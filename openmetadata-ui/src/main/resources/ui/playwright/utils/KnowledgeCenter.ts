@@ -219,7 +219,9 @@ export const createQuickLink = async (
 
   const modal = page.locator('.quick-link-form-modal');
 
-  await expect(modal.getByRole('heading', { name: 'Add Quick Link' })).toBeVisible();
+  await expect(
+    modal.getByRole('heading', { name: 'Add Quick Link' })
+  ).toBeVisible();
 
   await modal.locator('[data-testid="displayName"]').fill(data.displayName);
   await modal.locator('[data-testid="url"]').fill(data.url);
@@ -307,9 +309,7 @@ export const updateQuickLink = async (
   await modal
     .locator('[data-testid="url"]')
     .fill(knowledgePageQuickLink.updatedUrl);
-  await modal
-    .locator(descriptionBox)
-    .fill('');
+  await modal.locator(descriptionBox).fill('');
   await modal
     .locator(descriptionBox)
     .fill(knowledgePageQuickLink.updatedDescription);
