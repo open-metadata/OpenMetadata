@@ -76,62 +76,59 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
 
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const {
-    initialValues,
-    initialDataAssetsOptions,
-    restRelatedDataAssets,
-  } = useMemo(() => {
-    if (isUndefined(quickLink)) {
-      return {
-        initialValues: {},
-        initialDataAssetsOptions: [],
-        restRelatedDataAssets: [],
-      };
-    }
+  const { initialValues, initialDataAssetsOptions, restRelatedDataAssets } =
+    useMemo(() => {
+      if (isUndefined(quickLink)) {
+        return {
+          initialValues: {},
+          initialDataAssetsOptions: [],
+          restRelatedDataAssets: [],
+        };
+      }
 
-    const tagsWithoutTier = getTagsWithoutTier(quickLink.tags ?? []);
-    const { Classification: classification, Glossary: glossaries } =
-      getFilterTags(tagsWithoutTier);
+      const tagsWithoutTier = getTagsWithoutTier(quickLink.tags ?? []);
+      const { Classification: classification, Glossary: glossaries } =
+        getFilterTags(tagsWithoutTier);
 
-    const relatedDataAssets = quickLink.relatedEntities ?? [];
-    const { filteredRelatedDataAssets, restRelatedDataAssets } =
-      relatedDataAssets.reduce(
-        (acc, item) => {
-          if (!['team', 'user'].includes(item.type)) {
-            acc.filteredRelatedDataAssets.push(item);
-          } else {
-            acc.restRelatedDataAssets.push(item);
+      const relatedDataAssets = quickLink.relatedEntities ?? [];
+      const { filteredRelatedDataAssets, restRelatedDataAssets } =
+        relatedDataAssets.reduce(
+          (acc, item) => {
+            if (!['team', 'user'].includes(item.type)) {
+              acc.filteredRelatedDataAssets.push(item);
+            } else {
+              acc.restRelatedDataAssets.push(item);
+            }
+
+            return acc;
+          },
+          {
+            filteredRelatedDataAssets: [] as EntityReference[],
+            restRelatedDataAssets: [] as EntityReference[],
           }
+        );
 
-          return acc;
+      const initialDataAssetsOptions: DataAssetOption[] =
+        filteredRelatedDataAssets.map((item) => ({
+          displayName: getEntityName(item),
+          reference: item,
+          label: getEntityName(item),
+          value: item.id,
+        }));
+
+      return {
+        initialValues: {
+          displayName: quickLink.displayName,
+          url: (quickLink.page as QuickLink)?.url,
+          description: quickLink.description,
+          tags: classification,
+          glossaryTerms: glossaries,
+          relatedEntities: filteredRelatedDataAssets.map((item) => item.id),
         },
-        {
-          filteredRelatedDataAssets: [] as EntityReference[],
-          restRelatedDataAssets: [] as EntityReference[],
-        }
-      );
-
-    const initialDataAssetsOptions: DataAssetOption[] =
-      filteredRelatedDataAssets.map((item) => ({
-        displayName: getEntityName(item),
-        reference: item,
-        label: getEntityName(item),
-        value: item.id,
-      }));
-
-    return {
-      initialValues: {
-        displayName: quickLink.displayName,
-        url: (quickLink.page as QuickLink)?.url,
-        description: quickLink.description,
-        tags: classification,
-        glossaryTerms: glossaries,
-        relatedEntities: filteredRelatedDataAssets.map((item) => item.id),
-      },
-      initialDataAssetsOptions,
-      restRelatedDataAssets,
-    };
-  }, [quickLink]);
+        initialDataAssetsOptions,
+        restRelatedDataAssets,
+      };
+    }, [quickLink]);
 
   const handleQuickLinkUpdate = async (
     knowledgePage: KnowledgePage,
