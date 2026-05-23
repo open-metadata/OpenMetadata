@@ -30,9 +30,7 @@ const driveSchemaLoaders: Partial<Record<DriveServiceType, SchemaLoader>> = {
       '../jsons/connectionSchemas/connections/drive/googleDriveConnection.json'
     ),
   [DriveServiceType.SFTP]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/drive/sftpConnection.json'
-    ),
+    import('../jsons/connectionSchemas/connections/drive/sftpConnection.json'),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

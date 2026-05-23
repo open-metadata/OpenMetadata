@@ -20,26 +20,25 @@ type SchemaModule =
   | Record<string, unknown>;
 type SchemaLoader = () => Promise<SchemaModule>;
 
-const mlmodelSchemaLoaders: Partial<
-  Record<MlModelServiceType, SchemaLoader>
-> = {
-  [MlModelServiceType.Mlflow]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/mlmodel/mlflowConnection.json'
-    ),
-  [MlModelServiceType.Sklearn]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/mlmodel/sklearnConnection.json'
-    ),
-  [MlModelServiceType.CustomMlModel]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/mlmodel/customMlModelConnection.json'
-    ),
-  [MlModelServiceType.SageMaker]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/mlmodel/sageMakerConnection.json'
-    ),
-};
+const mlmodelSchemaLoaders: Partial<Record<MlModelServiceType, SchemaLoader>> =
+  {
+    [MlModelServiceType.Mlflow]: () =>
+      import(
+        '../jsons/connectionSchemas/connections/mlmodel/mlflowConnection.json'
+      ),
+    [MlModelServiceType.Sklearn]: () =>
+      import(
+        '../jsons/connectionSchemas/connections/mlmodel/sklearnConnection.json'
+      ),
+    [MlModelServiceType.CustomMlModel]: () =>
+      import(
+        '../jsons/connectionSchemas/connections/mlmodel/customMlModelConnection.json'
+      ),
+    [MlModelServiceType.SageMaker]: () =>
+      import(
+        '../jsons/connectionSchemas/connections/mlmodel/sageMakerConnection.json'
+      ),
+  };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {
   const maybeDefault = (mod as { default?: Record<string, unknown> }).default;

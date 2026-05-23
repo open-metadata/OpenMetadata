@@ -20,18 +20,21 @@ type SchemaModule =
   | Record<string, unknown>;
 type SchemaLoader = () => Promise<SchemaModule>;
 
-const storageSchemaLoaders: Partial<
-  Record<StorageServiceType, SchemaLoader>
-> = {
-  [StorageServiceType.S3]: () =>
-    import('../jsons/connectionSchemas/connections/storage/s3Connection.json'),
-  [StorageServiceType.Gcs]: () =>
-    import('../jsons/connectionSchemas/connections/storage/gcsConnection.json'),
-  [StorageServiceType.CustomStorage]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/storage/customStorageConnection.json'
-    ),
-};
+const storageSchemaLoaders: Partial<Record<StorageServiceType, SchemaLoader>> =
+  {
+    [StorageServiceType.S3]: () =>
+      import(
+        '../jsons/connectionSchemas/connections/storage/s3Connection.json'
+      ),
+    [StorageServiceType.Gcs]: () =>
+      import(
+        '../jsons/connectionSchemas/connections/storage/gcsConnection.json'
+      ),
+    [StorageServiceType.CustomStorage]: () =>
+      import(
+        '../jsons/connectionSchemas/connections/storage/customStorageConnection.json'
+      ),
+  };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {
   const maybeDefault = (mod as { default?: Record<string, unknown> }).default;

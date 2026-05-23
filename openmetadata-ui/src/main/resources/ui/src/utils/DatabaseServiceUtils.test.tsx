@@ -185,7 +185,9 @@ describe('getDatabaseConfig', () => {
   });
 
   it('should return empty schema and default UI schema for unknown database type', async () => {
-    const result = await getDatabaseConfig('UnknownType' as DatabaseServiceType);
+    const result = await getDatabaseConfig(
+      'UnknownType' as DatabaseServiceType
+    );
 
     expect(result).toHaveProperty('schema');
     expect(result).toHaveProperty('uiSchema');

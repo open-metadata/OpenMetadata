@@ -201,6 +201,7 @@ describe('ServiceConnectionDetails', () => {
           />
         );
       });
+
       expect(service.configVal).toHaveBeenCalled();
     });
   });

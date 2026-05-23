@@ -20,9 +20,7 @@ type SchemaModule =
   | Record<string, unknown>;
 type SchemaLoader = () => Promise<SchemaModule>;
 
-const searchSchemaLoaders: Partial<
-  Record<SearchServiceType, SchemaLoader>
-> = {
+const searchSchemaLoaders: Partial<Record<SearchServiceType, SchemaLoader>> = {
   [SearchServiceType.ElasticSearch]: () =>
     import(
       '../jsons/connectionSchemas/connections/search/elasticSearchConnection.json'

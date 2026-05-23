@@ -12,7 +12,13 @@
  */
 
 import { IChangeEvent } from '@rjsf/core';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { LoadingState } from 'Models';
 import React from 'react';
 import { ServiceCategory } from '../../../../enums/service.enum';
@@ -47,15 +53,17 @@ jest.mock('../../../../utils/ServiceConnectionUtils', () => ({
     validConfig: {},
   }),
   EMPTY_CONNECTION_SCHEMA: { schema: {}, uiSchema: {} },
-  getFilteredSchema: jest.fn((properties: Record<string, unknown> | undefined) => {
-    const {
-      filter1: _filter1,
-      filter2: _filter2,
-      ...rest
-    } = (properties || {}) as Record<string, unknown>;
+  getFilteredSchema: jest.fn(
+    (properties: Record<string, unknown> | undefined) => {
+      const {
+        filter1: _filter1,
+        filter2: _filter2,
+        ...rest
+      } = (properties || {}) as Record<string, unknown>;
 
-    return rest;
-  }),
+      return rest;
+    }
+  ),
 }));
 
 const MockFormBuilder = React.forwardRef<
@@ -151,15 +159,17 @@ describe('FiltersConfigForm', () => {
       },
       validConfig: {},
     });
-    mockGetFilteredSchema.mockImplementation((properties: Record<string, unknown> | undefined) => {
-      const {
-        filter1: _filter1,
-        filter2: _filter2,
-        ...rest
-      } = (properties || {}) as Record<string, unknown>;
+    mockGetFilteredSchema.mockImplementation(
+      (properties: Record<string, unknown> | undefined) => {
+        const {
+          filter1: _filter1,
+          filter2: _filter2,
+          ...rest
+        } = (properties || {}) as Record<string, unknown>;
 
-      return rest;
-    });
+        return rest;
+      }
+    );
   });
 
   describe('Schema Filtering', () => {
