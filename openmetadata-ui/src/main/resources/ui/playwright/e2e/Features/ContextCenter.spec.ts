@@ -641,7 +641,7 @@ test.describe('Context Center', () => {
 
       // manage button (three-dot menu)
       await expect(
-        header.getByRole('button', { name: 'Manage Article' })
+        header.getByTestId('manage-button')
       ).toBeVisible();
     });
 
@@ -783,28 +783,16 @@ test.describe('Context Center', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Click manage button to open dropdown
-      const manageBtn = page.getByRole('button', { name: 'Manage Article' });
+      const manageBtn = page.getByTestId('manage-button');
       await expect(manageBtn).toBeVisible();
       await manageBtn.click();
 
-      // Click Delete from the manage dropdown
-      const deleteOption = page
-        .getByTestId('manage-dropdown-list-container')
-        .getByText(/delete/i)
-        .first();
-      await expect(deleteOption).toBeVisible();
-      await deleteOption.click();
-
-      // DeleteWidgetModal: only hard-delete option available for knowledge pages
-      const deleteModal = page.getByRole('dialog');
-      await expect(deleteModal).toBeVisible();
-
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
+      await page.getByTestId('delete-btn').click();
 
       const apiDeleteRes = page.waitForResponse(
         /\/api\/v1\/contextCenter\/pages\/.+\?hardDelete=true/
       );
-      await page.getByTestId('confirm-button').click();
+      await page.getByTestId('confirm-button').click()
       await apiDeleteRes;
 
       // Redirected back to articles list

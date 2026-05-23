@@ -228,10 +228,10 @@ jest.mock('context/LimitsProvider/useLimitsStore', () => ({
     .mockImplementation(() => ({ getResourceLimit: jest.fn() })),
 }));
 
-jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () =>
+jest.mock('components/common/DeleteModal/DeleteModal', () =>
   jest
     .fn()
-    .mockReturnValue(<div data-testid="delete-widget">DeleteWidgetModal</div>)
+    .mockReturnValue(<div data-testid="delete-widget">DeleteModal</div>)
 );
 
 describe('KnowledgePagesHierarchy', () => {

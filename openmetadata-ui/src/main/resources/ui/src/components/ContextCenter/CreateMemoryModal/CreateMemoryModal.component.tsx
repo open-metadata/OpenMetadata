@@ -153,7 +153,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   if (isEditMode) {
     modalTitle = t('label.edit-entity', { entity: t('label.memory') });
   } else if (viewOnly) {
-    modalTitle = memoryToEdit?.title;
+    modalTitle =
+      memoryToEdit?.title ||
+      t('label.edit-entity', { entity: t('label.memory') });
   }
 
   const submitLabel = isEditMode

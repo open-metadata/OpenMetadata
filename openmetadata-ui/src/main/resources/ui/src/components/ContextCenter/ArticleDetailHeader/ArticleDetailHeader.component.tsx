@@ -49,7 +49,6 @@ import { ReactComponent as StarIcon } from '../../../assets/svg/ic-star.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../../components/common/Loader/Loader';
-import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
@@ -71,6 +70,7 @@ import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
 
 const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
@@ -154,12 +154,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   );
 
   const editors = useMemo(() => {
-    const list = uniqBy(
-      [...(knowledgePage?.editors ?? []), { name: knowledgePage?.updatedBy }],
-      'name'
-    );
-
-    return list.slice(0, 5);
+    return uniqBy(knowledgePage?.editors ?? [], 'name').slice(0, 5);
   }, [knowledgePage]);
 
   const { owners, firstDomain, extraDomains } = useMemo(() => {
@@ -189,6 +184,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       await fetchKnowledgePageHierarchy?.(true);
       setIsDeleteModalOpen(false);
       onToggleDelete();
+      navigate(contextCenterClassBase.getArticlesListPath());
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -364,7 +360,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 {/* Domain */}
                 <div className="tw:flex tw:items-center tw:gap-1.5">
                   <Tooltip title={t('label.domain')}>
-                    <TooltipTrigger>
+                    <TooltipTrigger className="tw:leading-0">
                       <Globe01
                         className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-fg-disabled"
                         size={16}
@@ -393,8 +389,8 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
                 {/* Owners */}
                 <div className="tw:flex tw:items-center tw:gap-1.5">
-                  <Tooltip title={t('label.domain')}>
-                    <TooltipTrigger>
+                  <Tooltip title={t('label.owner-plural')}>
+                    <TooltipTrigger className="tw:leading-0">
                       <User03
                         className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-fg-disabled"
                         size={16}
@@ -403,23 +399,14 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                   </Tooltip>
 
                   {owners.length > 0 ? (
-                    <div className="tw:flex tw:items-center tw:gap-1">
-                      {owners.slice(0, 4).map((owner) => (
-                        <UserPopOverCard
-                          className="tw:m-0"
-                          key={owner.id}
-                          profileWidth={20}
-                          userName={owner.name ?? ''}
-                        />
-                      ))}
-                      {owners.length > 4 && (
-                        <Typography
-                          className="tw:inline-flex tw:items-center tw:rounded-full tw:bg-gray-100 tw:px-1.5 tw:py-0.5 tw:text-gray-600"
-                          size="text-xs"
-                          weight="medium">
-                          +{owners.length - 4}
-                        </Typography>
-                      )}
+                    <div className="article-detail-owner-label">
+                      <OwnerLabel
+                        hasPermission={false}
+                        isCompactView={false}
+                        multiple={{ user: true, team: true }}
+                        owners={owners}
+                        showLabel={false}
+                      />
                     </div>
                   ) : (
                     <Typography
@@ -437,7 +424,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                     <Dot className="tw:text-gray-400" size="xs" />
                     <div className="tw:flex tw:items-center tw:gap-1.5">
                       <Tooltip title={t('label.editor')}>
-                        <TooltipTrigger>
+                        <TooltipTrigger className="tw:leading-0">
                           <EditorIcon
                             className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-fg-disabled"
                             height={16}
@@ -445,14 +432,14 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                           />
                         </TooltipTrigger>
                       </Tooltip>
-                      <div className="tw:flex tw:items-center tw:gap-0.5">
-                        {editors.map((user) => (
-                          <UserPopOverCard
-                            key={user.name}
-                            profileWidth={20}
-                            userName={user.name ?? ''}
-                          />
-                        ))}
+                      <div className="article-detail-owner-label tw:flex tw:items-center tw:gap-0.5">
+                        <OwnerLabel
+                          hasPermission={false}
+                          isCompactView={false}
+                          multiple={{ user: true, team: true }}
+                          owners={editors}
+                          showLabel={false}
+                        />
                       </div>
                     </div>
                   </>
