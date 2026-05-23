@@ -1093,7 +1093,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   public static OpenMetadataApplicationConfig createApplicationConfigCopy() {
-    if (APP == null || DATABASE_CONTAINER == null || searchHost == null || fusekiEndpoint == null) {
+    if (APP == null || DATABASE_CONTAINER == null || searchHost == null) {
       throw new IllegalStateException(
           "Application is not running. Ensure TestSuiteBootstrap has initialized.");
     }
