@@ -226,6 +226,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   gluepipeline: glue,
   custompipeline: pipelinedefault,
   microsoftfabricpipeline: microsoftFabric,
+  tableaupipeline: tableau,
 
   // ML Model services
   mlflow: mlflow,

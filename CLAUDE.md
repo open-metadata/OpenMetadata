@@ -551,3 +551,8 @@ These checks run automatically in CI. Code that violates them **will not merge**
 - Provide clean code blocks without unnecessary explanations
 - Assume readers are experienced developers
 - Focus on functionality over education
+
+
+This is the OpenMetadata repository. The main backend is Java (Spring/Dropwizard),
+ingestion framework is Python, and the UI is React/TypeScript.
+Always run tests relevant to your changes before creating a PR.

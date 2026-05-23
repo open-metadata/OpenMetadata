@@ -29,6 +29,7 @@ import microsoftFabricPipelineConnection from '../jsons/connectionSchemas/connec
 import nifiConnection from '../jsons/connectionSchemas/connections/pipeline/nifiConnection.json';
 import openLineageConnection from '../jsons/connectionSchemas/connections/pipeline/openLineageConnection.json';
 import splineConnection from '../jsons/connectionSchemas/connections/pipeline/splineConnection.json';
+import tableauPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/tableauPipelineConnection.json';
 
 export const getPipelineConfig = (type: PipelineServiceType) => {
   let schema = {};
@@ -102,6 +103,11 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
     }
     case PipelineServiceType.Flink: {
       schema = flinkConnection;
+
+      break;
+    }
+    case PipelineServiceType.TableauPipeline: {
+      schema = tableauPipelineConnection;
 
       break;
     }

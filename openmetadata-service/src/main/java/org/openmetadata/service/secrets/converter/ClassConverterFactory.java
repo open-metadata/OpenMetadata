@@ -58,6 +58,7 @@ import org.openmetadata.schema.services.connections.pipeline.MatillionConnection
 import org.openmetadata.schema.services.connections.pipeline.MulesoftConnection;
 import org.openmetadata.schema.services.connections.pipeline.NifiConnection;
 import org.openmetadata.schema.services.connections.pipeline.SSISConnection;
+import org.openmetadata.schema.services.connections.pipeline.TableauPipelineConnection;
 import org.openmetadata.schema.services.connections.pipeline.WherescapeConnection;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.security.RangerConnection;
@@ -125,7 +126,9 @@ public final class ClassConverterFactory {
             Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter()),
             Map.entry(SSISConnection.class, new SsisConnectionClassConverter()),
             Map.entry(WherescapeConnection.class, new WherescapeConnectionClassConverter()),
-            Map.entry(TimescaleConnection.class, new TimescaleConnectionClassConverter()));
+            Map.entry(TimescaleConnection.class, new TimescaleConnectionClassConverter()),
+            Map.entry(
+                TableauPipelineConnection.class, new TableauPipelineConnectionClassConverter()));
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {
