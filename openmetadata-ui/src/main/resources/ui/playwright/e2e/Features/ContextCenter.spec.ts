@@ -735,12 +735,6 @@ test.describe('Context Center', () => {
 
       await card.getByTestId('delete-quick-link-btn').click();
 
-      const deleteDialog = page.locator('[role="dialog"].ant-modal');
-      await expect(deleteDialog).toBeVisible();
-      await page.click('[data-testid="hard-delete-option"]');
-      await page.check('[data-testid="hard-delete"]');
-      await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
-
       const deleteRes = page.waitForResponse(
         '/api/v1/contextCenter/pages/*?hardDelete=true&recursive=false'
       );
