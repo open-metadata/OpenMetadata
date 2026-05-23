@@ -110,18 +110,13 @@
       href="${basePath}favicons/favicon-16x16.png" />
     <link rel="manifest" href="${basePath}manifest.json" />
 
-    <script nonce="${cspNonce}">
-      let images = [
-        '${basePath}images/governance.png',
-        '${basePath}images/data-collaboration.png',
-      ];
-
-      images.forEach((image) => {
-        let img = new Image();
-        img.loading = 'eager';
-        img.src = image;
-      });
-    </script>
+    <!--
+      governance.png and data-collaboration.png are only used on the /signin
+      and onboarding pages. The previous eager-preload script fired on every
+      page load (~200 KB combined). Removed — the bundle's signin route loads
+      them on demand via standard <img>, and the rest of the app never reads
+      them. Saves 2 image fetches per page view for signed-in users.
+    -->
 
     <script id="google-tag-manager" nonce="${cspNonce}">
       let isSandbox = location.host === 'sandbox.open-metadata.org';
