@@ -166,11 +166,37 @@ const ContainerPage = () => {
 
       return;
     }
+    // Column-deep-link fallback: the URL was a column FQN like
+    // {@code service.container.column}. Permission resolution succeeded for the column
+    // FQN (the permission backend returns an empty permission object rather than a 404),
+    // so {@code resolvedEntityFqn} was committed as the column FQN and the {@link
+    // useQuery} fired a GET that 404'd because columns aren't containers. Walk up to
+    // the parent container FQN and re-resolve, marking the original FQN as the active
+    // column so {@code GenericProvider} can deep-link the side panel.
+    if (
+      status === ClientErrors.NOT_FOUND &&
+      !activeColumnFqn &&
+      resolvedEntityFqn === decodedEntityFqn
+    ) {
+      const parentParts = Fqn.split(resolvedEntityFqn).slice(0, -1);
+      if (parentParts.length > 0) {
+        setActiveColumnFqn(resolvedEntityFqn);
+        setResolvedEntityFqn(Fqn.build(...parentParts));
+
+        return;
+      }
+    }
     if (status !== ClientErrors.NOT_FOUND) {
       showErrorToast(containerError as AxiosError);
     }
     setHasError(true);
-  }, [containerError, navigate]);
+  }, [
+    containerError,
+    navigate,
+    activeColumnFqn,
+    resolvedEntityFqn,
+    decodedEntityFqn,
+  ]);
 
   useEffect(() => {
     if (!containerData) {
