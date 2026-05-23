@@ -252,8 +252,8 @@ def create_test_data_from_sql(engine: Engine, file_path: Path):
 
 def custom_insert(self, conn, keys: list[str], data_iter):
     """
-    Hack pandas.io.sql.SQLTable._execute_insert_multi to retry untill rows are inserted.
-    This is required becauase using trino with pd.to_sql in our setup us unreliable.
+    Hack pandas.io.sql.SQLTable._execute_insert_multi to retry until rows are inserted.
+    This is required because using trino with pd.to_sql in our setup is unreliable.
     """
     rowcount = 0
     max_tries = 20

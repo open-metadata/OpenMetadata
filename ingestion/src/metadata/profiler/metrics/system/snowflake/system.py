@@ -86,7 +86,7 @@ class SnowflakeTableResovler:
     - The public schema
 
     This can be altered by changing the SEARCH_PATH session parameter. If the users change
-    this paramter, this resolver will might return wrong values.
+    this parameter, this resolver will might return wrong values.
 
     There is no way to extract the SEARCH_PATH from the query after it has been executed. Hence, we can
     only rely on the default behavior and maybe allow the users to configure the search path
