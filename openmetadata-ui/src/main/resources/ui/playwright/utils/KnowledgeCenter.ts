@@ -35,16 +35,10 @@ export const deletePage = async (
 ) => {
   if (!isQuickLink) {
     await page.getByTestId('manage-button').first().click();
-    await page.getByTestId('delete-button').click();
+    await page.getByTestId('delete-btn').click();
   }
 
-  await page.waitForSelector('[role="dialog"].ant-modal');
-
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-
-  await page.click('[data-testid="hard-delete-option"]');
-  await page.check('[data-testid="hard-delete"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+  await expect(page.getByTestId('confirm-button')).toBeVisible();
 
   const deleteResponse = page.waitForResponse(
     `/api/v1/contextCenter/pages/*?hardDelete=true&recursive=${!isQuickLink}`
