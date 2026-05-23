@@ -101,7 +101,9 @@ export async function readGraphEdges(
         return false;
       }
       try {
-        return (JSON.parse(raw) as unknown[]).length >= min;
+        const count = (JSON.parse(raw) as unknown[]).length;
+
+        return min === 0 ? true : count >= min;
       } catch {
         return false;
       }
