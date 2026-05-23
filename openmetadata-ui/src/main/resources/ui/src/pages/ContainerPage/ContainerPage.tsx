@@ -731,6 +731,16 @@ const ContainerPage = () => {
       return;
     }
 
+    // Column-deep-link already resolved: the fallback in {@link fetchResourcePermission}
+    // walked up to a parent that owns this column and set {@code activeColumnFqn} to the
+    // URL's full FQN. When the React Query container fetch is still in flight, this effect
+    // re-runs (because {@code containerData} reference changes) — without this guard it
+    // would re-fire {@code fetchResourcePermission}, which flips {@code permissionsLoading}
+    // true and cancels the in-flight container fetch, looping until 15s test timeout.
+    if (resolvedEntityFqn && activeColumnFqn === decodedEntityFqn) {
+      return;
+    }
+
     // On mount or when URL FQN changes, start permission fetch
     fetchResourcePermission(decodedEntityFqn);
   }, [decodedEntityFqn, resolvedEntityFqn, containerData, activeColumnFqn]);
