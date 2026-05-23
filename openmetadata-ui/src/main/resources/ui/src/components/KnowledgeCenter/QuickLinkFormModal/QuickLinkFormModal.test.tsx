@@ -12,37 +12,51 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   QuickLinkFormModal,
   QuickLinkFormModalProps,
 } from './QuickLinkFormModal';
 
 jest.mock('@openmetadata/ui-core-components', () => {
-  const MockDialogContent = jest.fn(({ children }: { children: React.ReactNode }) => (
-    <div data-testid="dialog-content">{children}</div>
-  ));
-  const MockDialogFooter = jest.fn(({ children }: { children: React.ReactNode }) => (
-    <div data-testid="dialog-footer">{children}</div>
-  ));
+  const MockDialogContent = jest.fn(
+    ({ children }: { children: React.ReactNode }) => (
+      <div data-testid="dialog-content">{children}</div>
+    )
+  );
+  const MockDialogFooter = jest.fn(
+    ({ children }: { children: React.ReactNode }) => (
+      <div data-testid="dialog-footer">{children}</div>
+    )
+  );
   const MockDialog = jest.fn(({ children }: { children: React.ReactNode }) => (
     <div data-testid="dialog">{children}</div>
-  )) as jest.Mock & { Content: typeof MockDialogContent; Footer: typeof MockDialogFooter };
+  )) as jest.Mock & {
+    Content: typeof MockDialogContent;
+    Footer: typeof MockDialogFooter;
+  };
 
   MockDialog.Content = MockDialogContent;
   MockDialog.Footer = MockDialogFooter;
 
   return {
-    ModalOverlay: jest.fn(({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) =>
-      isOpen ? <div data-testid="modal-overlay">{children}</div> : null
+    ModalOverlay: jest.fn(
+      ({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) =>
+        isOpen ? <div data-testid="modal-overlay">{children}</div> : null
     ),
     Modal: jest.fn(({ children }: { children: React.ReactNode }) => (
       <div data-testid="modal">{children}</div>
     )),
     Dialog: MockDialog,
-    Button: jest.fn(({ children, onClick }: { children: React.ReactNode; onClick: () => void }) => (
-      <button onClick={onClick}>{children}</button>
-    )),
+    Button: jest.fn(
+      ({
+        children,
+        onClick,
+      }: {
+        children: React.ReactNode;
+        onClick: () => void;
+      }) => <button onClick={onClick}>{children}</button>
+    ),
   };
 });
 
