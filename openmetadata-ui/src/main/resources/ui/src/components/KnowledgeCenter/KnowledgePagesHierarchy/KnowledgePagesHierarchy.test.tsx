@@ -17,9 +17,9 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { User } from 'generated/entity/teams/user';
 import { MemoryRouter } from 'react-router-dom';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { User } from '../../../generated/entity/teams/user';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import KnowledgePagesHierarchy from './KnowledgePagesHierarchy';
 
 const PageHierarchy = [

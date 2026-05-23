@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
 import {
   KnowledgePage,
   PageHierarchy,
   PageType,
   QuickLink,
-} from 'interface/knowledge-center.interface';
-import React from 'react';
-import { BrowserRouter } from 'react-router-dom';
+} from '../interface/knowledge-center.interface';
 import {
   extractKnowledgePageParentFQN,
   findPageAndParentInTreeData,
