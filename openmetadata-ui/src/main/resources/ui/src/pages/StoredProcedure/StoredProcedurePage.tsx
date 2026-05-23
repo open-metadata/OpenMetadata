@@ -48,6 +48,7 @@ import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
+import { useLazyEntityExtension } from '../../hooks/useLazyEntityExtension';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
   storedProcedureQueryFn,
@@ -55,6 +56,7 @@ import {
 } from '../../rest/queries/storedProcedureQuery';
 import {
   addStoredProceduresFollower,
+  getStoredProceduresByFqn,
   patchStoredProceduresDetails,
   removeStoredProceduresFollower,
   restoreStoredProcedures,
@@ -205,6 +207,16 @@ const StoredProcedurePage = () => {
     () => queryClient.invalidateQueries({ queryKey: storedProcedureCacheKey }),
     [queryClient, storedProcedureCacheKey]
   );
+
+  // Lazy custom-properties fetch — see {@link useLazyEntityExtension}.
+  useLazyEntityExtension<StoredProcedure>({
+    entityType: EntityType.STORED_PROCEDURE,
+    fqn: decodedStoredProcedureFQN,
+    activeTab,
+    fetcher: getStoredProceduresByFqn,
+    onResolve: (extension) =>
+      setStoredProcedure((prev) => (prev ? { ...prev, extension } : prev)),
+  });
 
   const {
     id: storedProcedureId = '',

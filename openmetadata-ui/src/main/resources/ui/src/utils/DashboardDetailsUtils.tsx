@@ -41,8 +41,11 @@ const EntityLineageTab = lazy(() =>
   )
 );
 
+// `EXTENSION` (custom-property values) is fetched lazily by {@link useLazyEntityExtension}
+// when the user activates the Custom Properties tab — it can run into hundreds of KB on
+// dashboards with many user-defined properties and only that tab consumes it.
 // eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.DOMAINS},${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.CHARTS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
+export const defaultFields = `${TabSpecificField.DOMAINS},${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.CHARTS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS}`;
 
 export const fetchCharts = async (
   charts: Dashboard['charts'],

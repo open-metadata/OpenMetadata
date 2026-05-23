@@ -28,14 +28,20 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { Paging } from '../../generated/type/paging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
+import { useLazyEntityExtension } from '../../hooks/useLazyEntityExtension';
 import {
   addFollower,
+  getPipelineByFqn,
   patchPipelineDetails,
   removeFollower,
   updatePipelinesVotes,
@@ -56,6 +62,7 @@ import {
 import { defaultFields } from '../../utils/PipelineDetailsUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const PipelineDetailsPage = () => {
   const { t } = useTranslation();
@@ -67,6 +74,7 @@ const PipelineDetailsPage = () => {
   const { entityFqn: decodedPipelineFQN } = useFqn({
     type: EntityType.PIPELINE,
   });
+  const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
 
   const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
   const [paging] = useState<Paging>({} as Paging);
@@ -171,6 +179,16 @@ const PipelineDetailsPage = () => {
     () => queryClient.invalidateQueries({ queryKey: pipelineCacheKey }),
     [queryClient, pipelineCacheKey]
   );
+
+  // Lazy custom-properties fetch — see {@link useLazyEntityExtension}.
+  useLazyEntityExtension<Pipeline>({
+    entityType: EntityType.PIPELINE,
+    fqn: decodedPipelineFQN,
+    activeTab,
+    fetcher: getPipelineByFqn,
+    onResolve: (extension) =>
+      setPipelineDetails((prev) => (prev ? { ...prev, extension } : prev)),
+  });
 
   const { pipelineId, currentVersion, followers } = useMemo(() => {
     return {

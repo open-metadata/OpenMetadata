@@ -44,8 +44,10 @@ const EntityLineageTab = lazy(() =>
   )
 );
 
+// `EXTENSION` (custom-property values) is fetched lazily by {@link useLazyEntityExtension}
+// when the user activates the Custom Properties tab. See DatasetDetailsUtils.ts for context.
 // eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.DOMAINS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
+export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.DOMAINS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS}`;
 
 export const makeData = (
   columns: SearchIndexField[] = []

@@ -46,6 +46,7 @@ import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
+import { useLazyEntityExtension } from '../../hooks/useLazyEntityExtension';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
   searchIndexQueryFn,
@@ -53,6 +54,7 @@ import {
 } from '../../rest/queries/searchIndexQuery';
 import {
   addFollower,
+  getSearchIndexDetailsByFQN,
   patchSearchIndexDetails,
   removeFollower,
   restoreSearchIndex,
@@ -162,6 +164,16 @@ function SearchIndexDetailsPage() {
     () => queryClient.invalidateQueries({ queryKey: searchIndexCacheKey }),
     [queryClient, searchIndexCacheKey]
   );
+
+  // Lazy custom-properties fetch — see {@link useLazyEntityExtension}.
+  useLazyEntityExtension<SearchIndex>({
+    entityType: EntityType.SEARCH_INDEX,
+    fqn: decodedSearchIndexFQN,
+    activeTab,
+    fetcher: getSearchIndexDetailsByFQN,
+    onResolve: (extension) =>
+      setSearchIndexDetails((prev) => (prev ? { ...prev, extension } : prev)),
+  });
 
   const {
     searchIndexTags,

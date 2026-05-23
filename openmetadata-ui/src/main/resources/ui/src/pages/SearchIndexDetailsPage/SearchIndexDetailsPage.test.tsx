@@ -220,8 +220,7 @@ describe('SearchIndexDetailsPage component', () => {
         expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
           'test-service.test-search-index',
           {
-            fields:
-              'fields,followers,tags,owners,domains,votes,dataProducts,extension',
+            fields: 'fields,followers,tags,owners,domains,votes,dataProducts',
           }
         );
       },
@@ -245,8 +244,7 @@ describe('SearchIndexDetailsPage component', () => {
         expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
           'test-service.test-search-index',
           {
-            fields:
-              'fields,followers,tags,owners,domains,votes,dataProducts,extension',
+            fields: 'fields,followers,tags,owners,domains,votes,dataProducts',
           }
         );
       },
@@ -275,8 +273,7 @@ describe('SearchIndexDetailsPage component', () => {
         expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
           'test-service.test-search-index',
           {
-            fields:
-              'fields,followers,tags,owners,domains,votes,dataProducts,extension',
+            fields: 'fields,followers,tags,owners,domains,votes,dataProducts',
           }
         );
       },

@@ -28,13 +28,19 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
+import { useLazyEntityExtension } from '../../hooks/useLazyEntityExtension';
 import {
   addFollower,
+  getMlModelByFQN,
   patchMlModelDetails,
   removeFollower,
   updateMlModelVotes,
@@ -55,6 +61,7 @@ import {
 } from '../../utils/PermissionsUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const MlModelPage = () => {
   const { t } = useTranslation();
@@ -62,6 +69,7 @@ const MlModelPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { entityFqn: mlModelFqn } = useFqn({ type: EntityType.MLMODEL });
+  const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const USERId = currentUser?.id ?? '';
 
   const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
@@ -156,6 +164,16 @@ const MlModelPage = () => {
     () => queryClient.invalidateQueries({ queryKey: mlModelCacheKey }),
     [queryClient, mlModelCacheKey]
   );
+
+  // Lazy custom-properties fetch — see {@link useLazyEntityExtension}.
+  useLazyEntityExtension<Mlmodel>({
+    entityType: EntityType.MLMODEL,
+    fqn: mlModelFqn,
+    activeTab,
+    fetcher: getMlModelByFQN,
+    onResolve: (extension) =>
+      setMlModelDetail((prev) => (prev ? { ...prev, extension } : prev)),
+  });
 
   const { mlModelId, followers } = useMemo(() => {
     return {
