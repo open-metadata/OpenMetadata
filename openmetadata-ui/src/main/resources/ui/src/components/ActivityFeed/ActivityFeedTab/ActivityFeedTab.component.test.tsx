@@ -76,6 +76,7 @@ jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
 }));
 
 jest.mock('../../../rest/tasksAPI', () => ({
+  ...jest.requireActual('../../../rest/tasksAPI'),
   getTaskCounts: (...args: unknown[]) => mockGetTaskCounts(...args),
   TaskStatusGroup: { Open: 'open', Closed: 'closed' },
 }));

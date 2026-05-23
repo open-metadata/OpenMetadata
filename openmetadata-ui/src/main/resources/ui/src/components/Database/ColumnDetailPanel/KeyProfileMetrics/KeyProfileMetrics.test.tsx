@@ -30,6 +30,9 @@ jest.mock('../../../../utils/NumberUtils', () => ({
     // Use en-US locale to ensure consistent formatting (1,234,567 not 12,34,567)
     return new Intl.NumberFormat('en-US').format(number);
   }),
+  calculatePercentage: jest.fn((value: number) =>
+    (value * 100).toFixed(0) + '%'
+  ),
 }));
 
 jest.mock('react-i18next', () => ({

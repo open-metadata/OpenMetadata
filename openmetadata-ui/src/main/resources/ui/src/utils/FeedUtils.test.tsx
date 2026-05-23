@@ -60,9 +60,13 @@ jest.mock('./FeedUtils', () => ({
   getEntityBreadcrumbs: jest.fn().mockReturnValue('entityBreadcrumbs'),
 }));
 
-jest.mock('./CommonUtils', () => ({
-  getPartialNameFromTableFQN: jest.fn(),
+jest.mock('./EntityDisplayUtils', () => ({
   getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceHolder'),
+}));
+
+jest.mock('./FqnUtils', () => ({
+  ...jest.requireActual('./FqnUtils'),
+  getPartialNameFromTableFQN: jest.fn(),
 }));
 
 describe('Feed Utils', () => {

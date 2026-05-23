@@ -11,13 +11,10 @@
  *  limitations under the License.
  */
 
-import {
-  filterSelectOptions,
-  getFirstAlphanumeric,
-  getTableFQNFromColumnFQN,
-  isLinearGradient,
-  normalizeToArray,
-} from './CommonUtils';
+import { getFirstAlphanumeric, isLinearGradient } from './ColorUtils';
+import { normalizeToArray } from './CommonUtils';
+import { filterSelectOptions } from './FilterQueryUtils';
+import { getTableFQNFromColumnFQN } from './FqnUtils';
 
 describe('Tests for CommonUtils', () => {
   describe('filterSelectOptions', () => {

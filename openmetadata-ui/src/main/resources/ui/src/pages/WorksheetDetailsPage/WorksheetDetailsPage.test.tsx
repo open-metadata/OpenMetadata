@@ -224,9 +224,12 @@ jest.mock('../../components/AppRouter/withActivityFeed', () => ({
 }));
 
 // Mock utils
-jest.mock('../../utils/CommonUtils', () => ({
-  addToRecentViewed: jest.fn(),
+jest.mock('../../utils/EntityDisplayUtils', () => ({
   getEntityMissingError: jest.fn().mockReturnValue('Worksheet not found'),
+}));
+
+jest.mock('../../utils/RecentActivityUtils', () => ({
+  addToRecentViewed: jest.fn(),
 }));
 
 jest.mock('../../utils/EntityUtils', () => ({

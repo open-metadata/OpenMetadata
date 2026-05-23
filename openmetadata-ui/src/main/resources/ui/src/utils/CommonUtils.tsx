@@ -15,69 +15,13 @@ import { AxiosError } from 'axios';
 import { isEmpty, isNil, isString, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { EntityType, FqnPart } from '../enums/entity.enum';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
 import { FeedCounts } from '../interface/feed.interface';
 import { getEntityActivityByFqn } from '../rest/feedsAPI';
 import { getTaskCounts } from '../rest/tasksAPI';
-import { getPartialNameFromFQN, getPartialNameFromTableFQN } from './FqnUtils';
 import { t } from './i18next/LocalUtil';
 import { showErrorToast } from './ToastUtils';
-
-// Re-exports for backward compatibility
-export {
-  entityChartColor,
-  getFirstAlphanumeric,
-  getRandomColor,
-  isLinearGradient,
-  reduceColorOpacity,
-} from './ColorUtils';
-export {
-  errorMsg,
-  getCountBadge,
-  getEntityDeleteMessage,
-  getEntityMissingError,
-  getEntityPlaceHolder,
-  getLoadingStatus,
-  getServiceLogo,
-  requiredField,
-} from './EntityDisplayUtils';
-export {
-  filterSelectOptions,
-  getEntityTypeExploreQueryFilter,
-  getServiceTypeExploreQueryFilter,
-  handleSearchFilterOption,
-} from './FilterQueryUtils';
-export {
-  getNameFromFQN,
-  getPartialNameFromFQN,
-  getPartialNameFromTableFQN,
-  getTableFQNFromColumnFQN,
-} from './FqnUtils';
-export {
-  calculatePercentage,
-  calculatePercentageFromValue,
-  digitFormatter,
-  formatNumberWithComma,
-  getStatisticsDisplayValue,
-} from './NumberUtils';
-export {
-  addToRecentSearched,
-  addToRecentViewed,
-  arraySorterByKey,
-  getRecentlyViewedData,
-  setRecentlySearchedData,
-  setRecentlyViewedData,
-} from './RecentActivityUtils';
-export {
-  getBase64EncodedString,
-  getTrimmedContent,
-  pluralize,
-  removeOuterEscapes,
-  replaceAllSpacialCharWith_,
-  replaceSpaceWith_,
-} from './StringUtils';
 
 export const hasEditAccess = (owners: EntityReference[], currentUser: User) => {
   return owners.some((owner) => {
@@ -99,28 +43,6 @@ export const hasEditAccess = (owners: EntityReference[], currentUser: User) => {
  */
 export const getNonDeletedTeams = (teams: EntityReference[]) => {
   return teams.filter((t) => !t.deleted);
-};
-
-/**
- * prepare label for given entity type and fqn
- * @param type - entity type
- * @param fqn - entity fqn
- * @param withQuotes - boolean value
- * @returns - label for entity
- */
-export const prepareLabel = (type: string, fqn: string, withQuotes = true) => {
-  let label = '';
-  if (type === EntityType.TABLE) {
-    label = getPartialNameFromTableFQN(fqn, [FqnPart.Table]);
-  } else {
-    label = getPartialNameFromFQN(fqn, ['database']);
-  }
-
-  if (withQuotes) {
-    return label;
-  } else {
-    return label.replace(/(^"|"$)/g, '');
-  }
 };
 
 export const getTeamsUser = (

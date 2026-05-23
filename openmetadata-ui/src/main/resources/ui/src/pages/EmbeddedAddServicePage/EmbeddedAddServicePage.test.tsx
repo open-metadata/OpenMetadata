@@ -141,7 +141,7 @@ jest.mock('../../rest/applicationAPI', () => ({
   triggerOnDemandApp: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/EntityDisplayUtils', () => ({
   getServiceLogo: jest.fn(),
 }));
 
