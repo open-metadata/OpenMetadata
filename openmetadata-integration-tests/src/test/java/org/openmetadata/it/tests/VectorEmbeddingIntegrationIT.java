@@ -26,6 +26,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
@@ -347,6 +349,136 @@ class VectorEmbeddingIntegrationIT {
   }
 
   @Test
+  void testGenerateColumnEmbeddingFields() {
+    Column column = createTestColumn("user_email", "Customer email address", testTable);
+
+    Map<String, Object> fields = vectorService.generateColumnEmbeddingFields(column, testTable);
+
+    assertNotNull(fields);
+    assertNotNull(fields.get("embedding"));
+    assertNotNull(fields.get("textToLLMContext"));
+    assertNotNull(fields.get("textToEmbed"));
+    assertNotNull(fields.get("fingerprint"));
+    assertEquals(0, fields.get("chunkIndex"));
+    assertTrue((int) fields.get("chunkCount") >= 1);
+
+    assertEquals(
+        testTable.getId().toString(),
+        fields.get("parentId"),
+        "Column parentId must point at the parent table id (Option B) so column hits collapse with their table in hybrid search");
+
+    float[] embedding = (float[]) fields.get("embedding");
+    assertEquals(
+        embeddingClient.getDimension(),
+        embedding.length,
+        "Column embedding dimension should match client dimension");
+
+    String textToEmbed = (String) fields.get("textToEmbed");
+    assertTrue(textToEmbed.contains("user_email"), "textToEmbed should contain the column name");
+    assertTrue(
+        textToEmbed.contains(testTable.getName()), "textToEmbed should anchor in parent table");
+    assertTrue(
+        textToEmbed.contains("Customer email address"),
+        "textToEmbed should include the column description");
+  }
+
+  @Test
+  void testColumnFingerprintIsStableAndContentSensitive() {
+    Column column = createTestColumn("amount", "Order amount in USD", testTable);
+
+    Map<String, Object> first = vectorService.generateColumnEmbeddingFields(column, testTable);
+    Map<String, Object> second = vectorService.generateColumnEmbeddingFields(column, testTable);
+    assertEquals(
+        first.get("fingerprint"),
+        second.get("fingerprint"),
+        "Column fingerprint should be stable for unchanged content");
+
+    column.setDescription("Order amount in EUR");
+    Map<String, Object> updated = vectorService.generateColumnEmbeddingFields(column, testTable);
+    assertFalse(
+        first.get("fingerprint").equals(updated.get("fingerprint")),
+        "Column fingerprint should change when description changes");
+  }
+
+  @Test
+  void testRefreshTableColumnEmbeddingsWritesAllColumns() throws Exception {
+    String columnIndex = "column_search_index";
+    createColumnIndex(columnIndex);
+
+    Column userId = createTestColumn("user_id", "User identifier", testTable);
+    Column userEmail = createTestColumn("user_email", "Customer email", testTable);
+    testTable.setColumns(List.of(userId, userEmail));
+
+    indexEmptyColumnDoc(columnIndex, userId);
+    indexEmptyColumnDoc(columnIndex, userEmail);
+
+    vectorService.refreshTableColumnEmbeddings(testTable, columnIndex);
+    Thread.sleep(1000);
+
+    Map<String, Object> userIdDoc =
+        getColumnDocument(
+            columnIndex,
+            org.openmetadata.service.search.indexes.ColumnSearchIndex.generateColumnId(
+                userId.getFullyQualifiedName()));
+    Map<String, Object> userEmailDoc =
+        getColumnDocument(
+            columnIndex,
+            org.openmetadata.service.search.indexes.ColumnSearchIndex.generateColumnId(
+                userEmail.getFullyQualifiedName()));
+
+    assertNotNull(userIdDoc, "user_id column doc should exist");
+    assertNotNull(userIdDoc.get("embedding"), "user_id should have an embedding");
+    assertNotNull(userIdDoc.get("fingerprint"));
+    assertEquals(
+        testTable.getId().toString(),
+        userIdDoc.get("parentId"),
+        "Column parentId should be the parent table id");
+
+    assertNotNull(userEmailDoc, "user_email column doc should exist");
+    assertNotNull(userEmailDoc.get("embedding"));
+    assertEquals(testTable.getId().toString(), userEmailDoc.get("parentId"));
+
+    openSearchClient.indices().delete(d -> d.index(columnIndex));
+  }
+
+  @Test
+  void testColumnFingerprintOptimization() throws Exception {
+    String columnIndex = "column_search_index_fp";
+    createColumnIndex(columnIndex);
+
+    Column column = createTestColumn("amount", "Order amount in USD", testTable);
+    indexEmptyColumnDoc(columnIndex, column);
+
+    vectorService.updateColumnEmbedding(column, testTable, columnIndex);
+    Thread.sleep(1000);
+
+    String columnDocId =
+        org.openmetadata.service.search.indexes.ColumnSearchIndex.generateColumnId(
+            column.getFullyQualifiedName());
+    Map<String, Object> initial = getColumnDocument(columnIndex, columnDocId);
+    String initialFingerprint = (String) initial.get("fingerprint");
+    assertNotNull(initialFingerprint);
+
+    vectorService.updateColumnEmbedding(column, testTable, columnIndex);
+    Thread.sleep(1000);
+    Map<String, Object> unchanged = getColumnDocument(columnIndex, columnDocId);
+    assertEquals(
+        initialFingerprint,
+        unchanged.get("fingerprint"),
+        "Column fingerprint should not change when content is unchanged");
+
+    column.setDescription("Order amount in EUR");
+    vectorService.updateColumnEmbedding(column, testTable, columnIndex);
+    Thread.sleep(1000);
+    Map<String, Object> after = getColumnDocument(columnIndex, columnDocId);
+    assertFalse(
+        initialFingerprint.equals(after.get("fingerprint")),
+        "Column fingerprint should change after description update");
+
+    openSearchClient.indices().delete(d -> d.index(columnIndex));
+  }
+
+  @Test
   void testPatchTableDescriptionUpdatesEmbeddingForSemanticSearch() throws Exception {
     UUID decoyId = UUID.randomUUID();
     Table decoyTable =
@@ -595,5 +727,143 @@ class VectorEmbeddingIntegrationIT {
         .withVersion(1.0)
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy("test-user");
+  }
+
+  private Column createTestColumn(String name, String description, Table parentTable) {
+    return new Column()
+        .withName(name)
+        .withDescription(description)
+        .withDataType(ColumnDataType.VARCHAR)
+        .withDataTypeDisplay("varchar(255)")
+        .withFullyQualifiedName(parentTable.getFullyQualifiedName() + "." + name);
+  }
+
+  private void createColumnIndex(String columnIndex) throws Exception {
+    InputStream indexStream =
+        getClass().getResourceAsStream("/elasticsearch/en/column_index_mapping.json");
+    String rawMapping = new String(indexStream.readAllBytes(), StandardCharsets.UTF_8);
+
+    String enrichedMapping = OsUtils.enrichIndexMappingForOpenSearch(rawMapping);
+    JsonNode indexConfig = mapper.readTree(enrichedMapping);
+    int actualDimension = embeddingClient.getDimension();
+
+    ObjectNode properties = (ObjectNode) indexConfig.get("mappings").get("properties");
+    if (!properties.has("embedding")) {
+      ObjectNode embeddingNode = mapper.createObjectNode();
+      embeddingNode.put("type", "knn_vector");
+      embeddingNode.put("dimension", actualDimension);
+      ObjectNode methodNode = mapper.createObjectNode();
+      methodNode.put("name", "hnsw");
+      methodNode.put("engine", "lucene");
+      methodNode.put("space_type", "cosinesimil");
+      ObjectNode paramsNode = mapper.createObjectNode();
+      paramsNode.put("m", 48);
+      paramsNode.put("ef_construction", 256);
+      methodNode.set("parameters", paramsNode);
+      embeddingNode.set("method", methodNode);
+      properties.set("embedding", embeddingNode);
+
+      JsonNode settingsNode = indexConfig.path("settings").path("index");
+      if (settingsNode.isObject()) {
+        ((ObjectNode) settingsNode).put("knn", true);
+      } else {
+        ObjectNode settings = (ObjectNode) indexConfig.path("settings");
+        ObjectNode indexSettings = mapper.createObjectNode();
+        indexSettings.put("knn", true);
+        if (settings.isMissingNode()) {
+          settings = mapper.createObjectNode();
+          ((ObjectNode) indexConfig).set("settings", settings);
+        }
+        settings.set("index", indexSettings);
+      }
+    } else {
+      ((ObjectNode) properties.get("embedding")).put("dimension", actualDimension);
+    }
+
+    String indexMapping = mapper.writeValueAsString(indexConfig);
+
+    var genericClient = openSearchClient.generic();
+    try (var response =
+        genericClient.execute(
+            os.org.opensearch.client.opensearch.generic.Requests.builder()
+                .method("PUT")
+                .endpoint("/" + columnIndex)
+                .json(indexMapping)
+                .build())) {
+      if (response.getStatus() >= 400) {
+        String errorBody = response.getBody().map(b -> b.bodyAsString()).orElse("no body");
+        throw new IOException(
+            "Failed to create index "
+                + columnIndex
+                + " (status "
+                + response.getStatus()
+                + "): "
+                + errorBody);
+      }
+    }
+  }
+
+  private void indexEmptyColumnDoc(String columnIndex, Column column) throws Exception {
+    String docId =
+        org.openmetadata.service.search.indexes.ColumnSearchIndex.generateColumnId(
+            column.getFullyQualifiedName());
+    String docJson =
+        mapper.writeValueAsString(
+            Map.of(
+                "name",
+                column.getName(),
+                "fullyQualifiedName",
+                column.getFullyQualifiedName(),
+                "deleted",
+                false,
+                "entityType",
+                "tableColumn"));
+
+    var genericClient = openSearchClient.generic();
+    try (var response =
+        genericClient.execute(
+            os.org.opensearch.client.opensearch.generic.Requests.builder()
+                .method("PUT")
+                .endpoint("/" + columnIndex + "/_doc/" + docId + "?refresh=true")
+                .json(docJson)
+                .build())) {
+      if (response.getStatus() >= 400) {
+        String errorBody = response.getBody().map(b -> b.bodyAsString()).orElse("no body");
+        throw new IOException("Failed to index column doc: " + errorBody);
+      }
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> getColumnDocument(String columnIndex, String docId) throws Exception {
+    openSearchClient.indices().refresh(r -> r.index(columnIndex));
+    var genericClient = openSearchClient.generic();
+    try (var response =
+        genericClient.execute(
+            os.org.opensearch.client.opensearch.generic.Requests.builder()
+                .method("GET")
+                .endpoint("/" + columnIndex + "/_doc/" + docId)
+                .build())) {
+      if (response.getStatus() == 404) {
+        return null;
+      }
+      String body =
+          response
+              .getBody()
+              .map(
+                  b -> {
+                    try {
+                      return new String(b.bodyAsBytes(), StandardCharsets.UTF_8);
+                    } catch (Exception e) {
+                      return "{}";
+                    }
+                  })
+              .orElse("{}");
+      JsonNode root = mapper.readTree(body);
+      if (root.has("_source")) {
+        return mapper.convertValue(root.get("_source"), Map.class);
+      }
+      return null;
+    }
   }
 }

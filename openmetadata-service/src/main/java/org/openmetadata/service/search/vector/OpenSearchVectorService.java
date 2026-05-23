@@ -15,6 +15,8 @@ import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -162,6 +164,11 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   @Override
+  public Map<String, Object> generateColumnEmbeddingFields(Column column, Table parentTable) {
+    return VectorDocBuilder.buildColumnEmbeddingFields(column, parentTable, embeddingClient);
+  }
+
+  @Override
   public void updateEntityEmbedding(EntityInterface entity, String entityIndexName) {
     try {
       String entityId = entity.getId().toString();
@@ -177,6 +184,50 @@ public class OpenSearchVectorService implements VectorIndexService {
       partialUpdateEntity(entityIndexName, entityId, embeddingFields);
     } catch (Exception e) {
       LOG.error("Failed to update embedding for entity {}: {}", entity.getId(), e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateColumnEmbedding(Column column, Table parentTable, String columnIndexName) {
+    try {
+      String columnId =
+          org.openmetadata.service.search.indexes.ColumnSearchIndex.generateColumnId(
+              column.getFullyQualifiedName());
+      String existingFingerprint = getExistingFingerprint(columnIndexName, columnId);
+      String currentFingerprint = VectorDocBuilder.computeFingerprintForColumn(column, parentTable);
+
+      if (currentFingerprint.equals(existingFingerprint)) {
+        LOG.debug("Skipping column {} - fingerprint unchanged", columnId);
+        return;
+      }
+
+      Map<String, Object> embeddingFields = generateColumnEmbeddingFields(column, parentTable);
+      partialUpdateEntity(columnIndexName, columnId, embeddingFields);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to update embedding for column {}: {}",
+          column.getFullyQualifiedName(),
+          e.getMessage(),
+          e);
+    }
+  }
+
+  /**
+   * Fan out embedding refresh to every column on a table. Columns are not entities — they have no
+   * lifecycle event of their own, so their embeddings would otherwise drift whenever a user
+   * patches the parent table's description, columns, or tags. Called from the table lifecycle
+   * handler and the reembed CLI's table consumer.
+   */
+  @Override
+  public void refreshTableColumnEmbeddings(Table table, String columnIndexName) {
+    if (table == null || table.getColumns() == null || table.getColumns().isEmpty()) {
+      return;
+    }
+    List<Column> flattened =
+        org.openmetadata.service.search.indexes.ColumnSearchIndex.flattenColumns(
+            table.getColumns());
+    for (Column column : flattened) {
+      updateColumnEmbedding(column, table, columnIndexName);
     }
   }
 

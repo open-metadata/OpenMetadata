@@ -622,12 +622,25 @@ public class OpenSearchBulkSink implements BulkSink {
     }
 
     List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
+
+    boolean columnEmbeddingsEnabled = isColumnVectorEmbeddingEnabled();
+    Map<String, String> existingFingerprints =
+        (columnEmbeddingsEnabled && !recreateIndex)
+            ? fetchExistingColumnFingerprints(flattenedColumns, columnIndexName)
+            : Collections.emptyMap();
+
     for (Column column : flattenedColumns) {
       try {
         ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
         Map<String, Object> searchIndexDoc = columnIndex.buildSearchIndexDoc();
-        String json = JsonUtils.pojoToJson(searchIndexDoc);
         String docId = searchIndexDoc.get("id").toString();
+
+        if (columnEmbeddingsEnabled) {
+          enrichColumnDocWithEmbedding(
+              column, table, searchIndexDoc, docId, recreateIndex, existingFingerprints);
+        }
+
+        String json = JsonUtils.pojoToJson(searchIndexDoc);
 
         BulkOperation operation;
         if (recreateIndex) {
@@ -661,6 +674,69 @@ public class OpenSearchBulkSink implements BulkSink {
             table.getFullyQualifiedName(),
             e);
       }
+    }
+  }
+
+  private boolean isColumnVectorEmbeddingEnabled() {
+    return searchRepository.isVectorEmbeddingEnabled()
+        && OpenSearchVectorService.getInstance() != null
+        && searchRepository.getIndexMapping(Entity.TABLE_COLUMN) != null;
+  }
+
+  private void enrichColumnDocWithEmbedding(
+      Column column,
+      Table table,
+      Map<String, Object> searchIndexDoc,
+      String docId,
+      boolean recreateIndex,
+      Map<String, String> existingFingerprints) {
+    OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+    if (vectorService == null) {
+      return;
+    }
+    try {
+      if (!recreateIndex) {
+        String currentFp = VectorDocBuilder.computeFingerprintForColumn(column, table);
+        String existingFp = existingFingerprints.get(docId);
+        if (existingFp != null && existingFp.equals(currentFp)) {
+          searchIndexDoc.put("fingerprint", currentFp);
+          searchIndexDoc.put("parentId", table.getId().toString());
+          vectorSuccess.incrementAndGet();
+          return;
+        }
+      }
+      Map<String, Object> embeddingFields =
+          vectorService.generateColumnEmbeddingFields(column, table);
+      searchIndexDoc.putAll(embeddingFields);
+      vectorSuccess.incrementAndGet();
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to generate embeddings for column {}: {}",
+          column.getFullyQualifiedName(),
+          e.getMessage(),
+          e);
+      vectorFailed.incrementAndGet();
+    }
+  }
+
+  private Map<String, String> fetchExistingColumnFingerprints(
+      List<Column> columns, String columnIndexName) {
+    if (columns.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+    if (vectorService == null) {
+      return Collections.emptyMap();
+    }
+    try {
+      List<String> docIds = new ArrayList<>(columns.size());
+      for (Column column : columns) {
+        docIds.add(ColumnSearchIndex.generateColumnId(column.getFullyQualifiedName()));
+      }
+      return vectorService.getExistingFingerprintsBatch(columnIndexName, docIds);
+    } catch (Exception e) {
+      LOG.warn("Failed to fetch existing column fingerprints: {}", e.getMessage());
+      return Collections.emptyMap();
     }
   }
 
