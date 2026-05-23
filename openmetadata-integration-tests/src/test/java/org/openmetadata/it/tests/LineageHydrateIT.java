@@ -160,9 +160,7 @@ public class LineageHydrateIT {
             .withEntities(
                 List.of(
                     new EntityReference().withType("table").withId(table.getId()),
-                    new EntityReference()
-                        .withType("table")
-                        .withId(java.util.UUID.randomUUID())));
+                    new EntityReference().withType("table").withId(java.util.UUID.randomUUID())));
 
     JsonNode response = postHydrate(client, request);
 
