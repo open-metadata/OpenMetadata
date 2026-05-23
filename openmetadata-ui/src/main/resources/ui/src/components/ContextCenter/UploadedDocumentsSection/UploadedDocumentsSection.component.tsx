@@ -18,7 +18,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowUpRight, Upload01 } from '@untitledui/icons';
-import { FC, useMemo } from 'react';
+import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -47,6 +47,9 @@ const DOCUMENT_SKELETON_KEYS = Array.from(
 const UploadedDocumentSectionLoading = () =>
   DOCUMENT_SKELETON_KEYS.map((key) => <DocumentCardSkeleton key={key} />);
 
+const CARD_WIDTH = 168;
+const CARD_GAP = 16;
+
 const UploadedDocumentsSection: FC<UploadedDocumentsSectionProps> = ({
   documents,
   onViewAll,
@@ -55,20 +58,41 @@ const UploadedDocumentsSection: FC<UploadedDocumentsSectionProps> = ({
   isLoading = false,
 }) => {
   const { t } = useTranslation();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [maxCards, setMaxCards] = useState(8);
 
-  const documentsToShow = useMemo(() => documents.slice(0, 25), [documents]);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) {
+      return;
+    }
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry.contentRect.width;
+      const count = Math.max(
+        1,
+        Math.floor((width + CARD_GAP) / (CARD_WIDTH + CARD_GAP))
+      );
+      setMaxCards(count);
+    });
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, []);
+
+  const documentsToShow = useMemo(
+    () => documents.slice(0, maxCards),
+    [documents, maxCards]
+  );
 
   return (
-    <Card
-      className="tw:p-6 tw:h-[calc(50vh-138px)] tw:overflow-y-scroll"
-      data-testid="uploaded-documents-section">
+    <Card className="tw:p-6" data-testid="uploaded-documents-section">
       <div className="tw:flex tw:items-center tw:justify-between tw:pb-5">
         <div className="tw:flex tw:items-center tw:gap-3">
-          <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50">
+          <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
             <Upload01 className="tw:text-gray-600" height={20} width={20} />
           </div>
           <div className="tw:flex tw:flex-col">
-            <Typography size="text-md" weight="bold">
+            <Typography size="text-md" weight="semibold">
               {t('label.uploaded-document-plural')}
             </Typography>
             <Typography className="tw:text-gray-500" size="text-xs">
@@ -88,7 +112,10 @@ const UploadedDocumentsSection: FC<UploadedDocumentsSectionProps> = ({
       </div>
 
       {documents.length > 0 || isLoading ? (
-        <div className="tw:grid tw:grid-cols-[repeat(auto-fill,168px)] tw:gap-4">
+        <div
+          className="tw:grid tw:gap-4"
+          ref={containerRef}
+          style={{ gridTemplateColumns: `repeat(${maxCards}, 1fr)` }}>
           {isLoading ? (
             <UploadedDocumentSectionLoading />
           ) : (
