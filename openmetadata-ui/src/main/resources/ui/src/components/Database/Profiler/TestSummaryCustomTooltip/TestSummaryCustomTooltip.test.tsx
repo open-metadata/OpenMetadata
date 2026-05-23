@@ -91,6 +91,9 @@ jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
 }));
 jest.mock('../../../../utils/CommonUtils', () => ({
   formatTimeFromSeconds: jest.fn().mockReturnValue('1 hour'),
+}));
+
+jest.mock('../../../../utils/NumberUtils', () => ({
   formatNumberWithComma: jest.fn().mockImplementation((num) => num.toString()),
 }));
 

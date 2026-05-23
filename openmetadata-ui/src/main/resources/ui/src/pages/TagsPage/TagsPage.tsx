@@ -53,7 +53,10 @@ import {
   patchClassification,
   patchTag,
 } from '../../rest/tagAPI';
-import { getCountBadge, getEntityDeleteMessage } from '../../utils/CommonUtils';
+import {
+  getCountBadge,
+  getEntityDeleteMessage,
+} from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
   checkPermission,

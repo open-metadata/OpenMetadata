@@ -57,7 +57,7 @@ import {
   restoreStoredProcedures,
   updateStoredProcedureVotes,
 } from '../../rest/storedProceduresAPI';
-import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
+import { getFeedCounts } from '../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -68,6 +68,7 @@ import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import {
   getStoredProcedureDetailsPageTabs,

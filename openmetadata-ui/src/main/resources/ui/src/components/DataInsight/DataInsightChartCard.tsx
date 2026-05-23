@@ -48,7 +48,7 @@ import {
   getChartPreviewByName,
 } from '../../rest/DataInsightAPI';
 import { updateActiveChartFilter } from '../../utils/ChartUtils';
-import { entityChartColor } from '../../utils/CommonUtils';
+import { entityChartColor } from '../../utils/ColorUtils';
 import {
   getQueryFilterForDataInsightChart,
   isPercentageSystemGraph,

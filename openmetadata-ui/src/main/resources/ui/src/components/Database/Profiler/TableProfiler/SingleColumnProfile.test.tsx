@@ -96,10 +96,13 @@ jest.mock('recharts', () => ({
 }));
 
 jest.mock('../../../../utils/CommonUtils', () => ({
-  formatNumberWithComma: (value: number) => value.toString(),
   Transi18next: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
+}));
+
+jest.mock('../../../../utils/NumberUtils', () => ({
+  formatNumberWithComma: (value: number) => value.toString(),
 }));
 
 jest.mock('../../../../utils/EntityUtils', () => ({

@@ -65,12 +65,13 @@ import {
 } from '../../rest/apiCollectionsAPI';
 import { getApiEndPoints } from '../../rest/apiEndpointsAPI';
 import apiCollectionClassBase from '../../utils/APICollection/APICollectionClassBase';
-import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
+import { getFeedCounts } from '../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import {

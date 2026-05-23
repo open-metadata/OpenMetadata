@@ -33,11 +33,9 @@ import {
   removeDriveAssetFollower,
   updateDriveAssetVotes,
 } from '../../rest/driveAPI';
-import {
-  addToRecentViewed,
-  getEntityMissingError,
-} from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DirectoryDetailsUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DirectoryDetailsPage from './DirectoryDetailsPage';

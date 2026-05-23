@@ -91,13 +91,13 @@ import {
   TableColumnSearchSource,
 } from '../interface/search.interface';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
-import {
-  getPartialNameFromTableFQN,
-  getTableFQNFromColumnFQN,
-} from './CommonUtils';
 import { getDataInsightPathWithFqn } from './DataInsightUtils';
 import EntityLink from './EntityLink';
 import Fqn from './Fqn';
+import {
+  getPartialNameFromTableFQN,
+  getTableFQNFromColumnFQN,
+} from './FqnUtils';
 import i18n from './i18next/LocalUtil';
 import { getKnowledgePagePath } from './KnowledgePageUtils';
 import {
@@ -228,10 +228,6 @@ export const getEntityFeedLink = (
 */
 export const getEntityUserLink = (userName: string): string => {
   return `<#E${ENTITY_LINK_SEPARATOR}user${ENTITY_LINK_SEPARATOR}${userName}>`;
-};
-
-export const getTitleCase = (text?: string) => {
-  return text ? startCase(text) : '';
 };
 
 /**

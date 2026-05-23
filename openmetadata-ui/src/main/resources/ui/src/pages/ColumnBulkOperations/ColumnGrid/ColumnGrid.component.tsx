@@ -87,7 +87,7 @@ import {
 } from '../../../generated/type/tagLabel';
 import { bulkUpdateColumnsAsync } from '../../../rest/columnAPI';
 import { formatContent } from '../../../utils/BlockEditorUtils';
-import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
+import { getTableFQNFromColumnFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
 import { stringToDOMElement } from '../../../utils/StringsUtils';

@@ -91,9 +91,9 @@ import {
   TaskPayload,
   TaskResolutionType,
 } from '../../../../rest/tasksAPI';
-import { getNameFromFQN } from '../../../../utils/CommonUtils';
 import { formatIsoDuration } from '../../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../../utils/EntityLink';
+import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { getErrorText } from '../../../../utils/StringsUtils';
 import {

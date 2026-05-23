@@ -15,7 +15,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
-import { getServiceLogo } from '../../utils/CommonUtils';
+import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
 import { getAddServiceEntityBreadcrumb } from '../../utils/ServiceUtils';
 import EmbeddedAddServicePage from './EmbeddedAddServicePage.component';

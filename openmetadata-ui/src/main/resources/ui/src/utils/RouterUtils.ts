@@ -50,7 +50,7 @@ import { PipelineType } from '../generated/api/services/ingestionPipelines/creat
 import { useMarketplaceStore } from '../hooks/useMarketplaceStore';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
-import { getPartialNameFromFQN } from './CommonUtils';
+import { getPartialNameFromFQN } from './FqnUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
 

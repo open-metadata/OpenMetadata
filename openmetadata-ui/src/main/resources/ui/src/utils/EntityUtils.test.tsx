@@ -130,6 +130,9 @@ jest.mock('./TagsUtils', () => ({
 jest.mock('./CommonUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockImplementation((value) => value),
   getTableFQNFromColumnFQN: jest.fn().mockImplementation((value) => value),
+}));
+
+jest.mock('./NumberUtils', () => ({
   formatNumberWithComma: jest.fn().mockImplementation((value) => value),
 }));
 jest.mock('./DataInsightUtils', () => ({

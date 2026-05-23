@@ -64,11 +64,11 @@ import {
   DataInsightTabs,
 } from '../interface/data-insight.interface';
 import { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
-import { entityChartColor } from '../utils/CommonUtils';
+import { entityChartColor } from '../utils/ColorUtils';
 import { axisTickFormatter } from './ChartUtils';
-import { pluralize } from './CommonUtils';
 import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
 import { t, translateWithNestedKeys } from './i18next/LocalUtil';
+import { pluralize } from './StringUtils';
 
 export const renderLegend = (
   legendData: LegendProps,

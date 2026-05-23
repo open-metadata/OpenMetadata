@@ -50,7 +50,7 @@ import {
   postAggregateFieldOptions,
 } from '../rest/miscAPI';
 import { nlqSearch, searchQuery } from '../rest/searchAPI';
-import { getCountBadge } from './CommonUtils';
+import { getCountBadge } from './EntityDisplayUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
 import { t, translateWithNestedKeys } from './i18next/LocalUtil';
 import { escapeESReservedCharacters } from './StringsUtils';

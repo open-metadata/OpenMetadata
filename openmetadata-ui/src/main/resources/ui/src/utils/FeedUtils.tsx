@@ -58,13 +58,9 @@ import {
   updateThread,
 } from '../rest/feedsAPI';
 import { searchQuery } from '../rest/searchAPI';
-import {
-  getEntityPlaceHolder,
-  getPartialNameFromFQN,
-  getPartialNameFromTableFQN,
-  getRandomColor,
-} from './CommonUtils';
+import { getRandomColor } from './ColorUtils';
 import { getRelativeCalendar } from './date-time/DateTimeUtils';
+import { getEntityPlaceHolder } from './EntityDisplayUtils';
 import EntityLink from './EntityLink';
 import entityUtilClassBase from './EntityUtilClassBase';
 import {
@@ -73,6 +69,7 @@ import {
   getEntityName,
 } from './EntityUtils';
 import Fqn from './Fqn';
+import { getPartialNameFromFQN, getPartialNameFromTableFQN } from './FqnUtils';
 import { t, Transi18next } from './i18next/LocalUtil';
 import {
   getImageWithResolutionAndFallback,

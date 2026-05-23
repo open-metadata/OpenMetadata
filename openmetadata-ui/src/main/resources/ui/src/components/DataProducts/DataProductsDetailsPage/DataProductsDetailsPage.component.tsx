@@ -71,11 +71,7 @@ import {
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataProductPortsView } from '../../../rest/dataProductAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import {
-  getEntityDeleteMessage,
-  getFeedCounts,
-  hasEditAccess,
-} from '../../../utils/CommonUtils';
+import { getFeedCounts, hasEditAccess } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -84,6 +80,7 @@ import {
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
+import { getEntityDeleteMessage } from '../../../utils/EntityDisplayUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   getEntityFeedLink,

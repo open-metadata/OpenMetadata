@@ -14,7 +14,6 @@ import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CardStyle, FieldOperation } from '../generated/entity/feed/thread';
-import { getPartialNameFromTableFQN } from './CommonUtils';
 import {
   entityDisplayName,
   getBackendFormat,
@@ -26,6 +25,7 @@ import {
   getFrontEndFormat,
   suggestions,
 } from './FeedUtils';
+import { getPartialNameFromTableFQN } from './FqnUtils';
 
 jest.mock('../rest/searchAPI', () => ({
   searchQuery: jest.fn().mockResolvedValue({
