@@ -51,6 +51,7 @@ import com.nimbusds.openid.connect.sdk.token.OIDCTokens;
 import com.nimbusds.openid.connect.sdk.validators.BadJWTExceptions;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.BadRequestException;
 import java.io.IOException;
 import java.net.URI;
@@ -122,6 +123,12 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
   public static final String REDIRECT_URI_KEY = "redirectUri";
 
+  public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
+  public static final String SESSION_REDIRECT_URI = "sessionRedirectUri";
+  public static final String SESSION_SSO_CALLBACK_URL = "googleCallbackUrl";
+
+  private static volatile AuthenticationCodeFlowHandler latestInstance;
+
   private OidcClient client;
   private List<String> claimsOrder;
   private Map<String, String> claimsMapping;
@@ -172,6 +179,29 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     this.authorizerConfiguration = authorizerConfiguration;
     this.sessionService = sessionService;
     initializeFields();
+    latestInstance = this;
+  }
+
+  public static AuthenticationCodeFlowHandler getInstance() {
+    AuthenticationCodeFlowHandler instance = latestInstance;
+    if (instance == null) {
+      throw new IllegalStateException(
+          "AuthenticationCodeFlowHandler has not been initialized. "
+              + "Ensure an OIDC AuthServeletHandler is created via AuthServeletHandlerFactory first.");
+    }
+    return instance;
+  }
+
+  public static HttpSession getHttpSession(HttpServletRequest request, boolean createSession) {
+    HttpSession session = request.getSession(false);
+    if (session == null && createSession) {
+      session = request.getSession(true);
+    }
+    return session;
+  }
+
+  public OidcClient getClient() {
+    return client;
   }
 
   public synchronized void updateConfiguration(
