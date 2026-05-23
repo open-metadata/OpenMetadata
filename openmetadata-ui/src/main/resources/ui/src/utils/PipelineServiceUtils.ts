@@ -28,6 +28,7 @@ import KafkaConnectConnection from '../jsons/connectionSchemas/connections/pipel
 import microsoftFabricPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/microsoftFabricPipelineConnection.json';
 import nifiConnection from '../jsons/connectionSchemas/connections/pipeline/nifiConnection.json';
 import openLineageConnection from '../jsons/connectionSchemas/connections/pipeline/openLineageConnection.json';
+import prefectConnection from '../jsons/connectionSchemas/connections/pipeline/prefectConnection.json';
 import splineConnection from '../jsons/connectionSchemas/connections/pipeline/splineConnection.json';
 
 export const getPipelineConfig = (type: PipelineServiceType) => {
@@ -97,6 +98,11 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
     }
     case PipelineServiceType.OpenLineage: {
       schema = openLineageConnection;
+
+      break;
+    }
+    case PipelineServiceType.Prefect: {
+      schema = prefectConnection;
 
       break;
     }

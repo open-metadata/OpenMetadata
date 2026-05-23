@@ -1,0 +1,70 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/prefectConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PrefectConnection",
+  "description": "Prefect Metadata Database Connection Config",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.PrefectConnection",
+  "definitions": {
+    "prefectType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Prefect"],
+      "default": "Prefect"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/prefectType",
+      "default": "Prefect"
+    },
+    "apiKey": {
+      "title": "Prefect API Key",
+      "description": "Prefect Cloud API key for authentication.",
+      "type": "string",
+      "password": true
+    },
+    "accountId": {
+      "title": "Account ID",
+      "description": "Prefect Cloud Account ID (required for Prefect Cloud). Found in the URL: app.prefect.cloud/account/{accountId}. Leave empty for self-hosted Prefect Server.",
+      "type": "string"
+    },
+    "workspaceId": {
+      "title": "Workspace ID",
+      "description": "Prefect Cloud Workspace ID (required for Prefect Cloud). Found in the URL after /workspaces/{workspaceId}. Leave empty for self-hosted Prefect Server.",
+      "type": "string"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Prefect API base URL. For Prefect Cloud: https://api.prefect.cloud (default). For self-hosted Prefect Server: http://localhost:4200 or your server URL.",
+      "type": "string",
+      "default": "https://api.prefect.cloud"
+    },
+    "numberOfStatus": {
+      "title": "Number of Status",
+      "description": "Number of past flow run statuses to ingest per flow.",
+      "type": "integer",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 100
+    },
+    "verifySSL": {
+      "title": "Verify SSL",
+      "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+      "default": "no-ssl"
+    },
+    "sslConfig": {
+      "title": "SSL Configuration",
+      "description": "SSL Configuration for Prefect API connection.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["apiKey"]
+}
