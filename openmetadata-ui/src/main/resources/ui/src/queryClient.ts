@@ -19,16 +19,23 @@ import { QueryClient } from '@tanstack/react-query';
  * AuthProvider's logout handler, anywhere outside React — invalidate and prefetch without
  * threading a ref through the tree.
  *
- * Defaults are tuned for OpenMetadata's typical access pattern: entities are mostly stable
- * within a session, so {@code staleTime} sits at 5 minutes (skip refetch on revisit if the
- * cache is fresh). {@code gcTime} (formerly {@code cacheTime}) is 30 minutes so a user
- * navigating away and back inside the session still hits the cache. Mutations don't retry —
- * a failed PUT shouldn't replay silently on a flaky network.
+ * Defaults are tuned for OpenMetadata's typical access pattern. {@code staleTime: 0}
+ * implements stale-while-revalidate: cached data renders synchronously on mount (so a
+ * hover-prefetch hit still feels instant), AND a background refetch fires to verify the
+ * value is current. This restores the network behavior that pre-migration Playwright tests
+ * assert on (they do {@code page.reload()} → wait for the entity GET to fire), without
+ * losing the perceived-instant feel of the cache. The refetch hits the backend's Caffeine
+ * cache so it's sub-ms on the server side.
+ *
+ * {@code gcTime} (formerly {@code cacheTime}) stays at 30 minutes so back-navigation
+ * within the session still benefits from the cached body during the refetch window.
+ *
+ * Mutations don't retry — a failed PUT shouldn't replay silently on a flaky network.
  */
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000,
+      staleTime: 0,
       gcTime: 30 * 60 * 1000,
       // Default refetch-on-focus to false: OpenMetadata entities don't change second-by-second
       // and many users alt-tab a lot during editing. Pages that need fresh-on-focus opt in
