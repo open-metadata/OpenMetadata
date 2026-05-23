@@ -175,7 +175,7 @@ const TeamsInfo = ({
     () => (
       <Space align="start" className="d-flex flex-col gap-2">
         <div className="d-flex gap-1">
-          <Typography className="tw:text-brand-700" weight="medium">{`${t(
+          <Typography className="text-primary" weight="medium">{`${t(
             'label.email'
           )}`}</Typography>
           {hasEditPermission && (
@@ -257,7 +257,7 @@ const TeamsInfo = ({
         ) : (
           <Space align="center">
             <Typography
-              className="tw:text-gray-700"
+              className="text-grey-700"
               data-testid="email-value"
               weight="medium">
               {email ?? NO_DATA_PLACEHOLDER}
@@ -279,7 +279,7 @@ const TeamsInfo = ({
         <Divider className="vertical-divider" type="vertical" />
         <Space align="start" className="d-flex flex-col gap-2">
           <div className="d-flex  gap-2">
-            <Typography className="tw:text-brand-700" weight="medium">
+            <Typography className="text-primary" weight="medium">
               {`${t('label.type')}`}
             </Typography>
             {hasEditPermission && !showTypeSelector && !isGroupType && (
@@ -321,7 +321,7 @@ const TeamsInfo = ({
             />
           ) : (
             <Typography
-              className="tw:text-gray-700"
+              className="text-grey-700"
               data-testid="team-type"
               weight="medium">
               {teamType}
@@ -351,7 +351,7 @@ const TeamsInfo = ({
         <Divider className="vertical-divider" type="vertical" />
         <Space align="start" className="d-flex flex-col gap-2">
           <div className="d-flex gap-2">
-            <Typography className="tw:text-brand-700" weight="medium">
+            <Typography className="text-primary" weight="medium">
               {t('label.persona')}
             </Typography>
             <PersonaSelectableList
@@ -375,7 +375,7 @@ const TeamsInfo = ({
                 {getEntityName(currentTeam.defaultPersona)}
               </Link>
             ) : (
-              <Typography className="tw:text-gray-700" weight="medium">
+              <Typography className="text-grey-700" weight="medium">
                 {t('message.no-persona-assigned')}
               </Typography>
             )}
@@ -433,7 +433,7 @@ const TeamsInfo = ({
 
       <Space align="start" className="d-flex flex-col gap-2">
         <Typography
-          className="tw:text-brand-700 tw:flex tw:items-center"
+          className="text-primary d-flex items-center"
           weight="medium">
           {t('label.total-user-plural')}
           <Tooltip
@@ -448,7 +448,7 @@ const TeamsInfo = ({
         </Typography>
 
         <Typography
-          className="tw:text-gray-700"
+          className="text-grey-700"
           data-testid="team-user-count"
           weight="medium">
           {currentTeam.userCount}

@@ -17,8 +17,10 @@ import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolu
 import { DataQualityDashboardChartFilters } from '../pages/DataQuality/DataQualityPage.interface';
 import {
   buildDataQualityDashboardFilters,
+  buildMustEsFilterForDataProducts,
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
+  buildMustEsFilterForTier,
 } from '../utils/DataQuality/DataQualityUtils';
 import { DataQualityReportParamsType, getDataQualityReport } from './testAPI';
 
@@ -111,9 +113,14 @@ export const fetchTestCaseSummaryByNoDimension = (
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
   }
-  const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
-  if (combinedTags.length > 0) {
-    mustFilter.push(buildMustEsFilterForTags(combinedTags));
+  if (filters?.tags && filters.tags.length > 0) {
+    mustFilter.push(buildMustEsFilterForTags(filters.tags));
+  }
+  if (filters?.tier && filters.tier.length > 0) {
+    mustFilter.push(buildMustEsFilterForTier(filters.tier));
+  }
+  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+    mustFilter.push(buildMustEsFilterForDataProducts(filters.dataProductFqns));
   }
 
   return getDataQualityReport({
@@ -140,10 +147,16 @@ export const fetchCountOfIncidentStatusTypeByDays = (
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn, true));
   }
-  // Tags and tier are both nested in testCase.tags array (tier is inherited from parent table)
-  const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
-  if (combinedTags.length > 0) {
-    mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
+  if (filters?.tags && filters.tags.length > 0) {
+    mustFilter.push(buildMustEsFilterForTags(filters.tags, true));
+  }
+  if (filters?.tier && filters.tier.length > 0) {
+    mustFilter.push(buildMustEsFilterForTier(filters.tier, true));
+  }
+  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+    mustFilter.push(
+      buildMustEsFilterForDataProducts(filters.dataProductFqns, 'testCase.')
+    );
   }
 
   return getDataQualityReport({
@@ -180,10 +193,16 @@ export const fetchIncidentTimeMetrics = (
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn, true));
   }
-  // Tags and tier are both nested in testCase.tags array (tier is inherited from parent table)
-  const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
-  if (combinedTags.length > 0) {
-    mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
+  if (filters?.tags && filters.tags.length > 0) {
+    mustFilter.push(buildMustEsFilterForTags(filters.tags, true));
+  }
+  if (filters?.tier && filters.tier.length > 0) {
+    mustFilter.push(buildMustEsFilterForTier(filters.tier, true));
+  }
+  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+    mustFilter.push(
+      buildMustEsFilterForDataProducts(filters.dataProductFqns, 'testCase.')
+    );
   }
 
   return getDataQualityReport({
@@ -229,10 +248,16 @@ export const fetchTestCaseStatusMetricsByDays = (
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn, true));
   }
-  // Tags and tier are both nested in testCase.tags array (tier is inherited from parent table)
-  const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
-  if (combinedTags.length > 0) {
-    mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
+  if (filters?.tags && filters.tags.length > 0) {
+    mustFilter.push(buildMustEsFilterForTags(filters.tags, true));
+  }
+  if (filters?.tier && filters.tier.length > 0) {
+    mustFilter.push(buildMustEsFilterForTier(filters.tier, true));
+  }
+  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+    mustFilter.push(
+      buildMustEsFilterForDataProducts(filters.dataProductFqns, 'testCase.')
+    );
   }
   if (filters?.entityFQN) {
     mustFilter.push({

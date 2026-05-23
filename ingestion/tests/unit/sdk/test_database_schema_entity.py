@@ -1,6 +1,7 @@
 """
 Comprehensive unit tests for DatabaseSchema entity with full mock coverage.
 """
+
 import unittest
 from unittest.mock import MagicMock
 from uuid import UUID
@@ -80,12 +81,8 @@ class TestDatabaseSchemaEntity(unittest.TestCase):
         fields = ["tables", "database", "owner"]
 
         # Mock tables
-        table1 = EntityReference(
-            id=UUID("950e8400-e29b-41d4-a716-446655440000"), type="table", name="users"
-        )
-        table2 = EntityReference(
-            id=UUID("950e8400-e29b-41d4-a716-446655440001"), type="table", name="orders"
-        )
+        table1 = EntityReference(id=UUID("950e8400-e29b-41d4-a716-446655440000"), type="table", name="users")
+        table2 = EntityReference(id=UUID("950e8400-e29b-41d4-a716-446655440001"), type="table", name="orders")
 
         expected_schema = MagicMock(spec=DatabaseSchemaEntity)
         expected_schema.id = UUID(self.schema_id)
@@ -134,11 +131,7 @@ class TestDatabaseSchemaEntity(unittest.TestCase):
 
         # Mock the get_by_id to return the current state
         current_entity = MagicMock(spec=type(schema_to_update))
-        current_entity.id = (
-            schema_to_update.id
-            if hasattr(schema_to_update, "id")
-            else UUID(self.entity_id)
-        )
+        current_entity.id = schema_to_update.id if hasattr(schema_to_update, "id") else UUID(self.entity_id)
         self.mock_ometa.get_by_id.return_value = current_entity
 
         # Mock the patch to return the updated entity

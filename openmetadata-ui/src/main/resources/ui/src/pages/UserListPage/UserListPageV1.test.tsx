@@ -22,6 +22,28 @@ import { getUsers } from '../../rest/userAPI';
 import { MOCK_EMPTY_USER_DATA, MOCK_USER_DATA } from './MockUserPageData';
 import UserListPageV1 from './UserListPageV1';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, onClick }) => (
+      <button onClick={onClick}>{children}</button>
+    )),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(
+      ({ icon, onClick, className, 'data-testid': testId }) => (
+        <button className={className} data-testid={testId} onClick={onClick}>
+          {icon}
+        </button>
+      )
+    ),
+  FeaturedIcon: jest.fn().mockImplementation(({ icon }) => <span>{icon}</span>),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
+  defaultColors: { gray: { 50: '#fafafa' } },
+}));
+
 const mockParam = {
   tab: GlobalSettingOptions.USERS,
 };

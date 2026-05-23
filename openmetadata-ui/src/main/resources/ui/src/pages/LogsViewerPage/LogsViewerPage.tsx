@@ -36,6 +36,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { ReactComponent as TimeDateIcon } from '../../assets/svg/time-date.svg';
 import { CopyToClipboardButton } from '../../components/common/CopyToClipboardButton/CopyToClipboardButton';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -84,6 +85,8 @@ import { LogViewerParams } from './LogsViewerPage.interfaces';
 const LogsViewerPage = () => {
   const { logEntityType } = useRequiredParams<LogViewerParams>();
   const { fqn: ingestionName } = useFqn();
+  const [searchParams] = useSearchParams();
+  const runId = searchParams.get('runId') ?? undefined;
 
   const { t } = useTranslation();
   const theme = useTheme();
@@ -116,7 +119,7 @@ const LogsViewerPage = () => {
           endTs: currentTime,
         });
 
-        const logs = await getLatestApplicationRuns(ingestionName);
+        const logs = await getLatestApplicationRuns(ingestionName, runId);
         setAppRuns(data);
         setLogs(logs.data_insight_task || logs.application_task);
 
@@ -314,7 +317,7 @@ const LogsViewerPage = () => {
       }.log`;
 
       if (isApplicationType) {
-        const logs = await downloadAppLogs(ingestionName);
+        const logs = await downloadAppLogs(ingestionName, runId);
         fileName = `${ingestionName}.log`;
         const element = document.createElement('a');
         const file = new Blob([logs || ''], { type: 'text/plain' });
@@ -344,6 +347,7 @@ const LogsViewerPage = () => {
     ingestionName,
     isApplicationType,
     reset,
+    runId,
     updateProgress,
   ]);
 
@@ -520,7 +524,7 @@ const LogsViewerPage = () => {
     } else {
       fetchIngestionDetailsByName();
     }
-  }, []);
+  }, [runId]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.log-viewer')}>

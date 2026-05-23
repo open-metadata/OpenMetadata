@@ -116,7 +116,7 @@ public class WebAnalyticsWorkflow {
     webAnalyticsUserActivityProcessor = new WebAnalyticsUserActivityProcessor(total);
   }
 
-  public void process() throws SearchIndexException {
+  public void process() {
     if (!webAnalyticsConfig.getEnabled()) {
       return;
     }
@@ -171,8 +171,7 @@ public class WebAnalyticsWorkflow {
   // one flow if
   // the other one errors.
   private Optional<String> processEvents(
-      PaginatedWebAnalyticEventDataSource source, Map<String, Object> contextData)
-      throws SearchIndexException {
+      PaginatedWebAnalyticEventDataSource source, Map<String, Object> contextData) {
     Optional<String> error = Optional.empty();
 
     String keysetCursor = null;
@@ -210,7 +209,7 @@ public class WebAnalyticsWorkflow {
 
     CreateReportDataProcessor createReportDataProcessor =
         new CreateReportDataProcessor(
-            entityViewReportData.values().size(),
+            entityViewReportData.size(),
             "[WebAnalyticsWorkflow] Entity View Report Data Processor",
             ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA);
 
@@ -275,7 +274,7 @@ public class WebAnalyticsWorkflow {
 
     CreateReportDataProcessor createReportdataProcessor =
         new CreateReportDataProcessor(
-            userActivityReportData.values().size(),
+            userActivityReportData.size(),
             "[WebAnalyticsWorkflow] User Activity Report Data Processor",
             ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
     Optional<List<ReportData>> userActivityReportDataList = Optional.empty();

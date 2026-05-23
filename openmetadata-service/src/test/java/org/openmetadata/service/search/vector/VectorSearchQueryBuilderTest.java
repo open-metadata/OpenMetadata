@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.vector;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -50,7 +51,7 @@ class VectorSearchQueryBuilderTest {
     // First filter should always be deleted=false
     JsonNode deletedFilter = filter.get(0);
     assertTrue(deletedFilter.has("term"));
-    assertEquals(false, deletedFilter.get("term").get("deleted").asBoolean());
+    assertFalse(deletedFilter.get("term").get("deleted").asBoolean());
   }
 
   @Test
@@ -264,7 +265,7 @@ class VectorSearchQueryBuilderTest {
     assertEquals(5, mustFilters.size());
 
     // First should always be deleted=false
-    assertEquals(false, mustFilters.get(0).get("term").get("deleted").asBoolean());
+    assertFalse(mustFilters.get(0).get("term").get("deleted").asBoolean());
 
     // Verify all filters are present (order may vary)
     String filtersJson = mustFilters.toString();
@@ -686,6 +687,27 @@ class VectorSearchQueryBuilderTest {
   }
 
   @Test
+  void testBuildsQueryWithPrimaryEntityIdFilter() throws Exception {
+    float[] vector = {0.1f, 0.2f};
+    int size = 10;
+    int k = 100;
+    String entityId = "a3f1c2d4-7b8e-4f2a-9c1d-0e5b6a7f8c9d";
+    Map<String, List<String>> filters = Map.of("primaryEntityId", List.of(entityId));
+
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters =
+        root.get("query").get("knn").get("embedding").get("filter").get("bool").get("must");
+
+    assertEquals(2, mustFilters.size());
+
+    JsonNode primaryEntityFilter = mustFilters.get(1);
+    assertTrue(primaryEntityFilter.has("term"));
+    assertEquals(entityId, primaryEntityFilter.get("term").get("primaryEntity.id").asText());
+  }
+
+  @Test
   void testIgnoresOnlyUnrecognizedFilterKeys() throws Exception {
     float[] vector = {0.1f, 0.2f};
     int size = 10;
@@ -700,6 +722,6 @@ class VectorSearchQueryBuilderTest {
 
     // Should have only 1 filter: deleted=false
     assertEquals(1, mustFilters.size());
-    assertEquals(false, mustFilters.get(0).get("term").get("deleted").asBoolean());
+    assertFalse(mustFilters.get(0).get("term").get("deleted").asBoolean());
   }
 }

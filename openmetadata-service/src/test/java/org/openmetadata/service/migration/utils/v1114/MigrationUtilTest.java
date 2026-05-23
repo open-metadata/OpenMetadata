@@ -275,7 +275,7 @@ class MigrationUtilTest {
   }
 
   @Test
-  void reseedRolesAndPoliciesIfMissingSkipsWhenBelowThreshold() throws Exception {
+  void reseedRolesAndPoliciesIfMissingSkipsWhenBelowThreshold() {
     Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
     stubSystemCounts(handle, SYSTEM_POLICIES, CHECK_POLICY_EXISTS_POSTGRES, 1);
     stubSystemCounts(handle, SYSTEM_ROLES, CHECK_ROLE_EXISTS_POSTGRES, 1);

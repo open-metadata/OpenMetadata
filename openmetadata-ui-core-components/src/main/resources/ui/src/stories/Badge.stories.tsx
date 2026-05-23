@@ -74,6 +74,9 @@ export const PillColors: StoryObj = {
       <Badge color="orange" type="pill-color">
         Orange
       </Badge>
+      <Badge color="blue-dark" type="pill-color">
+        Blue Dark
+      </Badge>
     </div>
   ),
 };
@@ -101,6 +104,9 @@ export const BadgeColors: StoryObj = {
       </Badge>
       <Badge color="indigo" type="color">
         Indigo
+      </Badge>
+      <Badge color="blue-dark" type="color">
+        Blue Dark
       </Badge>
     </div>
   ),
@@ -186,6 +192,34 @@ export const IconOnly: StoryObj = {
       <BadgeIcon color="brand" icon={HelpCircle} type="pill-color" />
       <BadgeIcon color="error" icon={HelpCircle} type="pill-color" />
       <BadgeIcon color="success" icon={HelpCircle} type="color" />
+    </div>
+  ),
+};
+
+/**
+ * This badge is used for tags.
+ */
+export const BlueDarkTag: StoryObj = {
+  render: () => (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <Badge color="blue-dark" type="pill-color">
+        Tag
+      </Badge>
+      <Badge color="blue-dark" size="lg" type="pill-color">
+        Tag Large
+      </Badge>
+      <BadgeWithDot color="blue-dark" type="pill-color">
+        Tag with Dot
+      </BadgeWithDot>
+      <BadgeWithIcon
+        color="blue-dark"
+        iconLeading={HelpCircle}
+        type="pill-color">
+        Tag with Icon
+      </BadgeWithIcon>
+      <BadgeWithButton color="blue-dark" type="pill-color">
+        Removable Tag
+      </BadgeWithButton>
     </div>
   ),
 };

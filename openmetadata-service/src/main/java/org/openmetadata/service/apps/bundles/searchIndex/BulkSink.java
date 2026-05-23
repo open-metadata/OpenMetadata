@@ -1,6 +1,5 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.system.StepStats;
@@ -12,7 +11,7 @@ public interface BulkSink {
 
   StepStats getStats();
 
-  void close() throws IOException;
+  void close();
 
   /**
    * Flush any pending bulk requests and wait for them to complete. Unlike close(), this does not
@@ -134,4 +133,13 @@ public interface BulkSink {
 
   /** Key for passing StageStatsTracker through context data to the sink. */
   String STATS_TRACKER_CONTEXT_KEY = "stageStatsTracker";
+
+  /**
+   * Key for passing a {@code Map<UUID, DocBuildContext>} through context data. Producers (the
+   * reindex worker / retry worker / bulk update path) prepare per-entity doc-build context —
+   * pre-fetched lineage today, additional batch-fetched fields in the future — and stuff it under
+   * this key. Sinks just look the per-entity entry up and hand it to {@code buildSearchIndexDoc(ctx)};
+   * they remain transport-only and stay ignorant of what the context carries.
+   */
+  String DOC_BUILD_CONTEXT_KEY = "docBuildContextByEntityId";
 }

@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from sqlalchemy.engine import Engine
@@ -74,15 +75,13 @@ class PostgresConnection(BaseConnection[PostgresConnectionConfig, Engine]):
         """
         Return the connection dictionary for this service.
         """
-        raise NotImplementedError(
-            "get_connection_dict is not implemented for PostgreSQL"
-        )
+        raise NotImplementedError("get_connection_dict is not implemented for PostgreSQL")
 
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part
@@ -91,8 +90,7 @@ class PostgresConnection(BaseConnection[PostgresConnectionConfig, Engine]):
         queries = {
             "GetQueries": POSTGRES_TEST_GET_QUERIES.format(
                 time_column_name=get_postgres_time_column_name(engine=self.client),
-                query_statement_source=self.service_connection.queryStatementSource
-                or "pg_stat_statements",
+                query_statement_source=self.service_connection.queryStatementSource or "pg_stat_statements",
             ),
             "GetDatabases": POSTGRES_GET_DATABASE,
             "GetTags": POSTGRES_TEST_GET_TAGS,

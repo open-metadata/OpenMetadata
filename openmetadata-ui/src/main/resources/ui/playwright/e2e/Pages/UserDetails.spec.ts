@@ -85,7 +85,7 @@ test.describe('User with different Roles', () => {
     adminPage,
   }) => {
     test.slow();
-    await redirectToUserPage(adminPage);
+    await visitUserProfilePage(adminPage, user1.getUserName());
 
     // Check if the avatar is visible
     await expect(adminPage.getByTestId('user-profile-teams')).toBeVisible();
@@ -110,8 +110,14 @@ test.describe('User with different Roles', () => {
     await expect(teamOption).toBeVisible();
     await teamOption.click();
 
-    await adminPage.getByTestId('teams-edit-save-btn').click();
+    const saveTeamsResponse = adminPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/') &&
+        response.request().method() === 'PATCH'
+    );
 
+    await adminPage.getByTestId('teams-edit-save-btn').click();
+    await saveTeamsResponse;
     await expect(adminPage.getByTestId('user-profile-teams')).toContainText(
       team.responseData.displayName ?? team.data.displayName
     );
@@ -495,7 +501,11 @@ test.describe('User with different Roles', () => {
 
     await expect(adminPage.getByTestId('user-profile-roles')).toBeVisible();
 
+    const initialRolesResponse = adminPage.waitForResponse(
+      '/api/v1/roles/search?*'
+    );
     await adminPage.getByTestId('edit-roles-button').click();
+    await initialRolesResponse;
 
     await expect(
       adminPage.getByTestId('profile-edit-roles-select')
@@ -506,11 +516,32 @@ test.describe('User with different Roles', () => {
     });
 
     await adminPage
+      .getByTestId('profile-edit-roles-select')
+      .locator('input')
+      .fill('Application');
+    await adminPage.waitForResponse('/api/v1/roles/search?*');
+    await adminPage
+      .locator('.ant-select-item-option-content')
+      .getByText('Application bot role', { exact: true })
+      .waitFor({ state: 'visible' });
+    await adminPage
       .locator('.ant-select-item-option-content')
       .getByText('Application bot role', { exact: true })
       .click();
 
+    await adminPage.getByTestId('profile-edit-roles-select').click();
+
+    await adminPage.locator('.ant-select-dropdown').waitFor({
+      state: 'hidden',
+    });
+
+    const saveTeamsResponse = adminPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/') &&
+        response.request().method() === 'PATCH'
+    );
     await adminPage.getByTestId('user-profile-edit-roles-save-button').click();
+    await saveTeamsResponse;
 
     await expect(adminPage.getByTestId('user-profile-roles')).toContainText(
       'Application bot role'

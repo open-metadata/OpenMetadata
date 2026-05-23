@@ -111,7 +111,7 @@ class BulkExecutorTest {
   }
 
   @Test
-  void testQueueCapacity() throws InterruptedException {
+  void testQueueCapacity() {
     BulkOperationConfiguration config = new BulkOperationConfiguration();
     config.setMaxThreads(1);
     config.setQueueSize(5);
@@ -149,7 +149,7 @@ class BulkExecutorTest {
   }
 
   @Test
-  void testHasCapacity() throws InterruptedException {
+  void testHasCapacity() {
     BulkOperationConfiguration config = new BulkOperationConfiguration();
     config.setMaxThreads(1);
     config.setQueueSize(2);
@@ -309,11 +309,7 @@ class BulkExecutorTest {
 
     AtomicBoolean taskExecuted = new AtomicBoolean(false);
 
-    Future<?> future =
-        executor.submitWithFuture(
-            () -> {
-              taskExecuted.set(true);
-            });
+    Future<?> future = executor.submitWithFuture(() -> taskExecuted.set(true));
 
     assertNotNull(future, "Should return a Future");
     future.get(5, TimeUnit.SECONDS);

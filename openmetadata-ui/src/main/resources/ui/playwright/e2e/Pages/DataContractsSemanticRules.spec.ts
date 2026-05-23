@@ -177,7 +177,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await addOwner({
         page,
-        owner: user2.responseData.displayName,
+        owner: user2.getUserDisplayName(),
         type: 'Users',
         endpoint: EntityTypeEndpoint.Table,
         dataTestId: 'data-assets-header',
@@ -210,7 +210,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--value .ant-select'),
-        user.responseData.displayName,
+        user.getUserDisplayName(),
         true
       );
 
@@ -235,7 +235,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await updateOwner({
         page,
-        owner: user.responseData.displayName,
+        owner: user.getUserDisplayName(),
         type: 'Users',
         endpoint: EntityTypeEndpoint.Table,
         dataTestId: 'data-assets-header',
@@ -281,7 +281,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await addOwner({
         page,
-        owner: user2.responseData.displayName,
+        owner: user2.getUserDisplayName(),
         type: 'Users',
         endpoint: EntityTypeEndpoint.Table,
         dataTestId: 'data-assets-header',
@@ -314,7 +314,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--value .ant-select'),
-        user.responseData.displayName,
+        user.getUserDisplayName(),
         true
       );
 
@@ -340,7 +340,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await updateOwner({
         page,
-        owner: user.responseData.displayName,
+        owner: user.getUserDisplayName(),
         type: 'Users',
         endpoint: EntityTypeEndpoint.Table,
         dataTestId: 'data-assets-header',
@@ -385,7 +385,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await addOwner({
         page,
-        owner: user2.responseData.displayName,
+        owner: user2.getUserDisplayName(),
         type: 'Users',
         endpoint: EntityTypeEndpoint.Table,
         dataTestId: 'data-assets-header',
@@ -418,7 +418,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--value .ant-select'),
-        user.responseData.displayName,
+        user.getUserDisplayName(),
         true
       );
 
@@ -443,7 +443,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await updateOwner({
         page,
-        owner: user.responseData.displayName,
+        owner: user.getUserDisplayName(),
         type: 'Users',
         endpoint: EntityTypeEndpoint.Table,
         dataTestId: 'data-assets-header',
@@ -527,7 +527,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
     await test.step('Should Passed since entity has owner', async () => {
       await addOwner({
         page,
-        owner: user2.responseData.displayName,
+        owner: user2.getUserDisplayName(),
         type: 'Users',
         endpoint: EntityTypeEndpoint.Table,
         dataTestId: 'data-assets-header',
@@ -609,7 +609,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
     await test.step('Should Failed since entity has owner', async () => {
       await addOwner({
         page,
-        owner: user2.responseData.displayName,
+        owner: user2.getUserDisplayName(),
         type: 'Users',
         endpoint: EntityTypeEndpoint.Table,
         dataTestId: 'data-assets-header',
@@ -996,11 +996,13 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 });
 
 test.describe('Data Contracts Semantics Rule Domain', () => {
-  const domain1 = new Domain();
-  const domain2 = new Domain();
+  let domain1: Domain;
+  let domain2: Domain;
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
+    domain1 = new Domain();
+    domain2 = new Domain();
     await domain1.create(apiContext);
     await domain2.create(apiContext);
     await afterAction();
@@ -1501,6 +1503,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
   });
 });
 
+// Version comparison tests use extreme thresholds (0.01 / 99.9) so results are
+// deterministic regardless of how many background version bumps CI introduces.
 test.describe('Data Contracts Semantics Rule Version', () => {
   test('Validate Entity Version Is', async ({ page, browser }) => {
     test.slow();
@@ -1746,9 +1750,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const table = new TableClass();
-    const domain = new Domain();
     await table.create(apiContext);
-    await domain.create(apiContext);
     await afterAction();
 
     await test.step('Open contract section and start adding contract', async () => {
@@ -1779,11 +1781,12 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTIC_OPERATIONS.less
       );
 
+      // Use 99.9 — any realistic entity version is always below this, so the
+      // check passes regardless of how many version bumps CI introduces.
       await ruleLocator
         .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
-        .fill('0.2');
+        .fill('99.9');
 
-      // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
 
       await expect(
@@ -1795,23 +1798,19 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     });
 
     await test.step('Contract with < condition for version should failed', async () => {
-      await assignSingleSelectDomain(page, domain.responseData);
+      // Lower the threshold to 0.01 — any realistic entity version always
+      // exceeds this, making the < check fail regardless of version bumps.
+      await clickEditContractButton(page);
+      await page.getByRole('tab', { name: 'Semantics' }).click();
 
-      await page.getByTestId('manage-contract-actions').click();
+      const versionInput = page
+        .locator('.group')
+        .first()
+        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
+      await versionInput.clear();
+      await versionInput.fill('0.01');
 
-      await page.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await saveAndTriggerDataContractValidation(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1828,9 +1827,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const table = new TableClass();
-    const domain = new Domain();
     await table.create(apiContext);
-    await domain.create(apiContext);
     await afterAction();
 
     await test.step('Open contract section and start adding contract', async () => {
@@ -1861,11 +1858,12 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTIC_OPERATIONS.greater
       );
 
+      // Use 99.9 — any realistic entity version is always below this, so
+      // entity_version > 99.9 always fails regardless of version bumps in CI.
       await ruleLocator
         .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
-        .fill('0.1');
+        .fill('99.9');
 
-      // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
 
       await expect(
@@ -1878,23 +1876,19 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     });
 
     await test.step('Contract with > condition for version should passed', async () => {
-      await assignSingleSelectDomain(page, domain.responseData);
+      // Lower the threshold to 0.01 — any realistic entity version always
+      // exceeds this, making the > check pass regardless of version bumps.
+      await clickEditContractButton(page);
+      await page.getByRole('tab', { name: 'Semantics' }).click();
 
-      await page.getByTestId('manage-contract-actions').click();
+      const versionInput = page
+        .locator('.group')
+        .first()
+        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
+      await versionInput.clear();
+      await versionInput.fill('0.01');
 
-      await page.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await saveAndTriggerDataContractValidation(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1913,9 +1907,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const table = new TableClass();
-    const domain = new Domain();
     await table.create(apiContext);
-    await domain.create(apiContext);
     await afterAction();
 
     await test.step('Open contract section and start adding contract', async () => {
@@ -1946,11 +1938,12 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTIC_OPERATIONS.less_equal
       );
 
+      // Use 99.9 — any realistic entity version is always below this, so
+      // entity_version <= 99.9 always passes regardless of version bumps in CI.
       await ruleLocator
         .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
-        .fill('0.1');
+        .fill('99.9');
 
-      // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
 
       await expect(
@@ -1962,23 +1955,19 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     });
 
     await test.step('Contract with <= condition for version should failed', async () => {
-      await assignSingleSelectDomain(page, domain.responseData);
+      // Lower the threshold to 0.01 — any realistic entity version always
+      // exceeds this, making the <= check fail regardless of version bumps.
+      await clickEditContractButton(page);
+      await page.getByRole('tab', { name: 'Semantics' }).click();
 
-      await page.getByTestId('manage-contract-actions').click();
+      const versionInput = page
+        .locator('.group')
+        .first()
+        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
+      await versionInput.clear();
+      await versionInput.fill('0.01');
 
-      await page.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await saveAndTriggerDataContractValidation(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1998,9 +1987,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const table = new TableClass();
-    const domain = new Domain();
     await table.create(apiContext);
-    await domain.create(apiContext);
     await afterAction();
 
     await test.step('Open contract section and start adding contract', async () => {
@@ -2009,7 +1996,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       await performInitialStepForRules(page);
     });
 
-    await test.step('Contract with >= condition for version should passed', async () => {
+    await test.step('Contract with >= condition for version should failed', async () => {
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
       await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
@@ -2028,50 +2015,47 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--operator .ant-select'),
-        DATA_CONTRACT_SEMANTIC_OPERATIONS.less_equal
+        DATA_CONTRACT_SEMANTIC_OPERATIONS.greater_equal
       );
 
+      // Use 99.9 — any realistic entity version is always below this, so
+      // entity_version >= 99.9 always fails regardless of version bumps in CI.
       await ruleLocator
         .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
-        .fill('0.1');
+        .fill('99.9');
 
-      // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
-      ).toContainText('Passed');
-      await expect(
-        page.getByTestId('data-contract-latest-result-btn')
-      ).not.toBeVisible();
-    });
-
-    await test.step('Contract with >= condition for version should failed', async () => {
-      await assignSingleSelectDomain(page, domain.responseData);
-
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.locator('.contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.getByTestId('contract-status-card-item-semantics-status')
       ).toContainText('Failed');
-
       await expect(
         page.getByTestId('data-contract-latest-result-btn')
       ).toContainText('Contract Failed');
+    });
+
+    await test.step('Contract with >= condition for version should passed', async () => {
+      // Lower the threshold to 0.01 — any realistic entity version always
+      // exceeds this, making the >= check pass regardless of version bumps.
+      await clickEditContractButton(page);
+      await page.getByRole('tab', { name: 'Semantics' }).click();
+
+      const versionInput = page
+        .locator('.group')
+        .first()
+        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
+      await versionInput.clear();
+      await versionInput.fill('0.01');
+
+      await saveAndTriggerDataContractValidation(page);
+
+      await expect(
+        page.getByTestId('contract-status-card-item-semantics-status')
+      ).toContainText('Passed');
+
+      await expect(
+        page.getByTestId('data-contract-latest-result-btn')
+      ).not.toBeVisible();
     });
   });
 });
@@ -2704,7 +2688,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--value .ant-select'),
-        table.entityResponseData.displayName,
+        table.entityResponseData.displayName || '',
         true
       );
 
@@ -2794,7 +2778,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--value .ant-select'),
-        table.entityResponseData.displayName,
+        table.entityResponseData.displayName || '',
         true
       );
 
@@ -2883,7 +2867,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--value .ant-select'),
-        table.entityResponseData.displayName,
+        table.entityResponseData.displayName || '',
         true
       );
 
@@ -2972,7 +2956,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--value .ant-select'),
-        table.entityResponseData.displayName,
+        table.entityResponseData.displayName || '',
         true
       );
 
@@ -3772,6 +3756,87 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
       await expect(
         page.getByTestId('data-contract-latest-result-btn')
       ).toContainText('Contract Failed');
+    });
+  });
+});
+
+test.describe('Data Contract - Semantics Fields Validation', () => {
+  const table = new TableClass();
+
+  test.beforeAll('Setup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await table.create(apiContext);
+    await afterAction();
+  });
+
+  test('Validate semantics fields', async ({ page }) => {
+    await test.step('Navigate to semantics tab', async () => {
+      await redirectToHomePage(page);
+      await table.visitEntityPage(page);
+      await performInitialStepForRules(page);
+      await page.getByRole('tab', { name: 'Semantics' }).click();
+    });
+
+    await test.step('Click save and verify rule error is shown', async () => {
+      await page.getByTestId('save-semantic-button').click();
+
+      await expect(page.getByText(/rule is required/i)).toBeVisible();
+      await expect(page.getByText(/name is required/i)).toBeVisible();
+      await expect(page.getByText(/description is required/i)).toBeVisible();
+    });
+
+    await test.step('Verify delete button is not visible with only one rule', async () => {
+      await expect(page.locator('.action--DELETE')).not.toBeVisible();
+    });
+
+    await test.step('fill the first rule completely', async () => {
+      await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+      await page.fill(
+        '#semantics_0_description',
+        DATA_CONTRACT_SEMANTICS1.description
+      );
+
+      const ruleLocator = page.locator('.group').nth(0);
+      await selectOption(
+        page,
+        ruleLocator.locator('.group--field .ant-select'),
+        'Owners',
+        true
+      );
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--operator .ant-select'),
+        'Is Set'
+      );
+    });
+
+    await test.step('Add a second rule condition', async () => {
+      await page.getByTestId('add-new-rule-btn').click();
+
+      await expect(page.locator('.action--DELETE').first()).toBeVisible();
+    });
+
+    await test.step('Delete the filled rule condition and verify rule error is shown', async () => {
+      const deleteButtons = page.locator('.action--DELETE');
+      await deleteButtons.first().click();
+
+      await expect(page.locator('.action--DELETE')).not.toBeVisible();
+      await expect(page.getByText(/rule is required/i)).toBeVisible();
+    });
+
+    await test.step('select Is Set operator and error is hidden', async () => {
+      await selectOption(
+        page,
+        page.locator('.rule--field .ant-select'),
+        'Owners',
+        true
+      );
+      await selectOption(
+        page,
+        page.locator('.rule--operator .ant-select'),
+        'Is Set'
+      );
+      await expect(page.getByText(/rule is required/i)).not.toBeVisible();
     });
   });
 });

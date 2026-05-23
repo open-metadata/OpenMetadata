@@ -184,3 +184,21 @@ export const validateRuleCondition = async (condition: string) => {
    */
   return response;
 };
+
+export const searchRoles = async (
+  query: string,
+  limit = 25
+): Promise<Role[]> => {
+  const response = await APIClient.get<{ data: Role[]; paging: Paging }>(
+    '/roles/search',
+    {
+      params: {
+        q: query || undefined,
+        limit,
+        offset: 0,
+      },
+    }
+  );
+
+  return response.data.data;
+};

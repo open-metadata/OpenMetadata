@@ -263,9 +263,8 @@ class SearchIndexHandlerTest {
   void testNullEntityHandling() {
     // Test with null entities - should handle gracefully without calling SearchRepository
     searchIndexHandler.onEntityCreated(null, mockSubjectContext);
-    searchIndexHandler.onEntityUpdated(
-        (EntityInterface) null, mockChangeDescription, mockSubjectContext);
-    searchIndexHandler.onEntityUpdated((EntityReference) null, mockSubjectContext);
+    searchIndexHandler.onEntityUpdated(null, mockChangeDescription, mockSubjectContext);
+    searchIndexHandler.onEntityUpdated(null, mockSubjectContext);
     searchIndexHandler.onEntityDeleted(null, mockSubjectContext);
     searchIndexHandler.onEntitySoftDeletedOrRestored(null, true, mockSubjectContext);
 

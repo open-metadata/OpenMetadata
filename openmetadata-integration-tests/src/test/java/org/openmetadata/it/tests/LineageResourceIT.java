@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.StringReader;
@@ -65,6 +66,8 @@ import org.openmetadata.schema.type.MlFeatureDataType;
 import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for Lineage resource operations.
@@ -354,6 +357,59 @@ public class LineageResourceIT {
     cleanupTable(client, source);
     cleanupTable(client, target1);
     cleanupTable(client, target2);
+  }
+
+  @Test
+  void testDirectionalSearchPreservePathsRetainsIntermediateNodes() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table root = createTable(client, namespace, "preserve_root");
+    Table mid = createTable(client, namespace, "preserve_mid");
+    Table leaf = createTable(client, namespace, "preserve_leaf");
+
+    addLineage(client, root, mid);
+    addLineage(client, mid, leaf);
+
+    String queryFilter =
+        """
+        {
+          "query": {
+            "bool": {
+              "must": [
+                {"wildcard": {"name.keyword": {"value": "*preserve_leaf*"}}}
+              ]
+            }
+          }
+        }
+        """;
+
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("fqn", root.getFullyQualifiedName())
+            .queryParam("upstreamDepth", "0")
+            .queryParam("downstreamDepth", "3")
+            .queryParam("includeDeleted", "false")
+            .queryParam("query_filter", queryFilter)
+            .queryParam("preserve_paths", "true")
+            .build();
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/lineage/getLineage/Downstream", null, options);
+    JsonNode result = OBJECT_MAPPER.readTree(response);
+
+    assertTrue(result.get("nodes").has(root.getFullyQualifiedName()));
+    assertTrue(result.get("nodes").has(mid.getFullyQualifiedName()));
+    assertTrue(result.get("nodes").has(leaf.getFullyQualifiedName()));
+    assertEquals(2, result.get("downstreamEdges").size());
+
+    deleteLineage(client, root.getEntityReference(), mid.getEntityReference());
+    deleteLineage(client, mid.getEntityReference(), leaf.getEntityReference());
+    cleanupTable(client, root);
+    cleanupTable(client, mid);
+    cleanupTable(client, leaf);
   }
 
   @Test
@@ -1492,5 +1548,128 @@ public class LineageResourceIT {
                     fromFqn.equals(r.get("fromFullyQualifiedName*"))
                         && toFqn.equals(r.get("toFullyQualifiedName*")));
     assertTrue(found, String.format("Expected edge %s -> %s not found in CSV", fromFqn, toFqn));
+  }
+
+  private void assertEdgeInAsyncCsv(List<CSVRecord> rows, String fromFqn, String toFqn) {
+    boolean found =
+        rows.stream()
+            .anyMatch(
+                r -> fromFqn.equals(r.get("fromEntityFQN")) && toFqn.equals(r.get("toEntityFQN")));
+    assertTrue(
+        found, String.format("Expected edge %s -> %s not found in async CSV", fromFqn, toFqn));
+  }
+
+  @Test
+  void testExportLineageAsyncBasicChain() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table t1 = createTable(client, namespace, "async_export_t1");
+    Table t2 = createTable(client, namespace, "async_export_t2");
+    Table t3 = createTable(client, namespace, "async_export_t3");
+
+    addLineage(client, t1, t2);
+    addLineage(client, t2, t3);
+
+    RequestOptions.Builder options = RequestOptions.builder();
+    options.queryParam("fqn", t2.getFullyQualifiedName());
+    options.queryParam("type", "table");
+    options.queryParam("upstreamDepth", "2");
+    options.queryParam("downstreamDepth", "2");
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/lineage/exportAsync", null, options.build());
+    JsonNode result = OBJECT_MAPPER.readTree(response);
+    assertNotNull(result.get("jobId"));
+    assertFalse(result.get("jobId").asText().isEmpty());
+
+    deleteLineage(client, t1.getEntityReference(), t2.getEntityReference());
+    deleteLineage(client, t2.getEntityReference(), t3.getEntityReference());
+
+    cleanupTable(client, t1);
+    cleanupTable(client, t2);
+    cleanupTable(client, t3);
+  }
+
+  @Test
+  void testExportLineageByEntityCountAsyncBasicChain() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table t1 = createTable(client, namespace, "ec_async_export_t1");
+    Table t2 = createTable(client, namespace, "ec_async_export_t2");
+    Table t3 = createTable(client, namespace, "ec_async_export_t3");
+
+    addLineage(client, t1, t2);
+    addLineage(client, t2, t3);
+
+    RequestOptions.Builder options = RequestOptions.builder();
+    options.queryParam("fqn", t2.getFullyQualifiedName());
+    options.queryParam("direction", "DOWNSTREAM");
+    options.queryParam("nodeDepth", "1");
+    options.queryParam("maxDepth", "2");
+    options.queryParam("type", "table");
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/lineage/exportByEntityCountAsync", null, options.build());
+    JsonNode result = OBJECT_MAPPER.readTree(response);
+    assertNotNull(result.get("jobId"));
+    assertFalse(result.get("jobId").asText().isEmpty());
+
+    deleteLineage(client, t1.getEntityReference(), t2.getEntityReference());
+    deleteLineage(client, t2.getEntityReference(), t3.getEntityReference());
+
+    cleanupTable(client, t1);
+    cleanupTable(client, t2);
+    cleanupTable(client, t3);
+  }
+
+  @Test
+  void testExportLineageAsyncWithColumnLineage() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table sourceTable = createTableWithMultipleColumns(client, namespace, "async_col_src");
+    Table targetTable = createTableWithMultipleColumns(client, namespace, "async_col_tgt");
+
+    String srcCol1 = sourceTable.getColumns().get(0).getFullyQualifiedName();
+    String tgtCol1 = targetTable.getColumns().get(0).getFullyQualifiedName();
+
+    LineageDetails details = new LineageDetails();
+    details
+        .getColumnsLineage()
+        .add(new ColumnLineage().withFromColumns(List.of(srcCol1)).withToColumn(tgtCol1));
+
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(sourceTable.getEntityReference())
+                    .withToEntity(targetTable.getEntityReference())
+                    .withLineageDetails(details));
+    executeAddLineage(client, addLineage);
+
+    RequestOptions.Builder options = RequestOptions.builder();
+    options.queryParam("fqn", sourceTable.getFullyQualifiedName());
+    options.queryParam("type", "table");
+    options.queryParam("upstreamDepth", "0");
+    options.queryParam("downstreamDepth", "1");
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/lineage/exportAsync", null, options.build());
+    JsonNode result = OBJECT_MAPPER.readTree(response);
+    assertNotNull(result.get("jobId"));
+    assertFalse(result.get("jobId").asText().isEmpty());
+
+    deleteLineage(client, sourceTable.getEntityReference(), targetTable.getEntityReference());
+    cleanupTable(client, sourceTable);
+    cleanupTable(client, targetTable);
   }
 }

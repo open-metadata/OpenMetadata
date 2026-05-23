@@ -26,11 +26,9 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class TableColumnCountToEqualValidator(
-    BaseTableColumnCountToEqualValidator, PandasValidatorMixin
-):
+class TableColumnCountToEqualValidator(BaseTableColumnCountToEqualValidator, PandasValidatorMixin):
     """Validator for table column count to be equal test case"""
 
-    def _run_results(self) -> Optional[int]:
+    def _run_results(self) -> Optional[int]:  # noqa: UP045
         """compute result of the test case"""
         return len(next(self.runner()).columns)

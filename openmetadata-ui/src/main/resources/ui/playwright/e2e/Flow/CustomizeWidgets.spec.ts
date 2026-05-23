@@ -44,16 +44,12 @@ import {
   verifyTotalDataAssetsFilters,
 } from '../../utils/widgetFilters';
 
-const adminUser = new UserClass();
-const persona = new PersonaClass();
+let adminUser: UserClass;
+let persona: PersonaClass;
 
 // Test domain and data products for comprehensive testing
-const testDomain = new Domain();
-const testDataProducts = [
-  new DataProduct([testDomain]),
-  new DataProduct([testDomain]),
-  new DataProduct([testDomain]),
-];
+let testDomain: Domain;
+let testDataProducts: DataProduct[] = [];
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
@@ -66,6 +62,15 @@ const test = base.extend<{ page: Page }>({
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow(true);
+
+  adminUser = new UserClass();
+  persona = new PersonaClass();
+  testDomain = new Domain();
+  testDataProducts = [
+    new DataProduct([testDomain]),
+    new DataProduct([testDomain]),
+    new DataProduct([testDomain]),
+  ];
 
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await adminUser.create(apiContext);
@@ -609,23 +614,20 @@ test('My Tasks Widget', async ({ page }) => {
   await test.step('Create a task', async () => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary1 = EntityDataClass.glossary1;
-    await apiContext.post('/api/v1/feed', {
+
+    // Use new Task API endpoint
+    await apiContext.post('/api/v1/tasks', {
       data: {
-        from: 'admin',
-        message: `Update description for glossary ${glossary1.responseData.displayName}`,
-        about: `<#E::glossary::${glossary1.responseData.fullyQualifiedName}::description>`,
-        taskDetails: {
-          assignees: [
-            {
-              id: adminUser.responseData.id,
-              type: 'user',
-            },
-          ],
-          suggestion: '<p>Test task description for My Tasks widget test</p>',
-          type: 'UpdateDescription',
-          oldValue: '',
+        name: `My Tasks Widget Test - ${Date.now()}`,
+        about: `<#E::glossary::${glossary1.responseData.fullyQualifiedName}>`,
+        type: 'DescriptionUpdate',
+        category: 'MetadataUpdate',
+        assignees: [adminUser.responseData.name],
+        payload: {
+          suggestedValue: 'Test task description for My Tasks widget test',
+          currentValue: '',
+          field: 'description',
         },
-        type: 'Task',
       },
     });
 
@@ -659,6 +661,8 @@ test('My Tasks Widget', async ({ page }) => {
   await test.step('Test widget filters', async () => {
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+    // wait for first card visible before applying filters
+    await expect(page.getByTestId('task-feed-card').first()).toBeVisible();
     await verifyTaskFilters(page, widgetKey);
   });
 
@@ -672,6 +676,8 @@ test('My Tasks Widget', async ({ page }) => {
       urlPattern: '/glossary', // Tasks can navigate to various entity detail pages
       apiResponseUrl: '/api/v1/feed',
       searchQuery: 'type=Task', // My Tasks uses feed API with type=Task
+      altApiResponseUrl: '/api/v1/tasks', // New Task API endpoint
+      emptyStateTestId: 'my-task-empty-state', // Custom empty state test ID for MyTaskWidget
     });
   });
 

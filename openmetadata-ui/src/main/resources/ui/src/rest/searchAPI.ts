@@ -23,7 +23,7 @@ import {
   SearchResponse,
 } from '../interface/search.interface';
 import { omitDeep } from '../utils/APIUtils';
-import { getQueryWithSlash } from '../utils/SearchUtils';
+import { getQueryWithSlash } from '../utils/StringsUtils';
 import APIClient from './index';
 
 const getSearchIndexParam: (
@@ -376,6 +376,25 @@ export const cleanOrphanIndexes = async (): Promise<OrphanCleanupResponse> => {
   const response: AxiosResponse<OrphanCleanupResponse> = await APIClient.delete(
     '/search/stats/orphan'
   );
+
+  return response.data;
+};
+
+export const exportSearchResultsCsvStream = async (params: {
+  q?: string;
+  index?: string;
+  deleted?: boolean;
+  query_filter?: string;
+  post_filter?: string;
+  sort_field?: string;
+  sort_order?: string;
+  size?: number;
+  from?: number;
+}): Promise<Blob> => {
+  const response = await APIClient.get<Blob>('/search/export', {
+    params,
+    responseType: 'blob',
+  });
 
   return response.data;
 };

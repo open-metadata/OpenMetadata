@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { stopApp } from '../../../rest/applicationAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import StopScheduleModal from './StopScheduleRunModal';
@@ -51,7 +57,7 @@ describe('StopScheduleModal', () => {
     const confirmButton = screen.getByText('label.confirm');
     fireEvent.click(confirmButton);
 
-    expect(stopApp).toHaveBeenCalledWith('test-app');
+    expect(stopApp).toHaveBeenCalledWith('test-app', undefined);
 
     await waitFor(() => {
       expect(mockProps.onStopWorkflowsUpdate).toHaveBeenCalled();
@@ -65,9 +71,11 @@ describe('StopScheduleModal', () => {
     render(<StopScheduleModal {...mockProps} />);
 
     const confirmButton = screen.getByText('label.confirm');
-    fireEvent.click(confirmButton);
+    await act(async () => {
+      fireEvent.click(confirmButton);
+    });
 
-    expect(stopApp).toHaveBeenCalledWith('test-app');
+    expect(stopApp).toHaveBeenCalledWith('test-app', undefined);
 
     await waitFor(() => {
       expect(showErrorToast).toHaveBeenCalledWith(new Error('API Error'));
@@ -82,5 +90,31 @@ describe('StopScheduleModal', () => {
     fireEvent.click(cancelButton);
 
     expect(mockProps.onClose).toHaveBeenCalled();
+  });
+
+  it('should pass runId to stopApp when provided', async () => {
+    (stopApp as jest.Mock).mockResolvedValueOnce({ status: 200 });
+
+    render(<StopScheduleModal {...mockProps} runId="run-123" />);
+
+    const confirmButton = screen.getByText('label.confirm');
+    fireEvent.click(confirmButton);
+
+    expect(stopApp).toHaveBeenCalledWith('test-app', 'run-123');
+
+    await waitFor(() => {
+      expect(mockProps.onClose).toHaveBeenCalled();
+    });
+  });
+
+  it('should call stopApp without runId when not provided', async () => {
+    (stopApp as jest.Mock).mockResolvedValueOnce({ status: 200 });
+
+    render(<StopScheduleModal {...mockProps} />);
+
+    const confirmButton = screen.getByText('label.confirm');
+    fireEvent.click(confirmButton);
+
+    expect(stopApp).toHaveBeenCalledWith('test-app', undefined);
   });
 });

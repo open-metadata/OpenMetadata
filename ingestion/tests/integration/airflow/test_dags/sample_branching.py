@@ -2,6 +2,7 @@
 Sample branching DAG for AirflowApi connector E2E testing.
 Tests that parallel task structures are captured correctly.
 """
+
 from datetime import datetime
 
 from airflow import DAG

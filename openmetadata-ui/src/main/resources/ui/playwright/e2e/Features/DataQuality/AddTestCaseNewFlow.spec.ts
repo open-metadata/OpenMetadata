@@ -25,7 +25,10 @@ import {
   getEntityDisplayName,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
-import { visitDataQualityTab } from '../../../utils/testCases';
+import {
+  visitDataQualityTab,
+  waitForTestSuiteIngestionPipelinesListResponse,
+} from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
 
 /**
@@ -254,12 +257,10 @@ test.describe(
         await expect(
           page.getByTestId('tableRowCountToEqual_test_case')
         ).toBeVisible();
-
-        const pipelineApi = page.waitForResponse(
-          '/api/v1/services/ingestionPipelines?*'
-        );
+        const ingestionPipelinesListResponse =
+          waitForTestSuiteIngestionPipelinesListResponse(page);
         await page.getByTestId('pipeline').click();
-        await pipelineApi;
+        await ingestionPipelinesListResponse;
 
         await expect(
           page
@@ -314,12 +315,11 @@ test.describe(
         await expect(
           page.getByTestId('columnValuesToBeUnique_test_case')
         ).toBeVisible();
+        const ingestionPipelinesListResponse =
+          waitForTestSuiteIngestionPipelinesListResponse(page);
 
-        const pipelineApi = page.waitForResponse(
-          '/api/v1/services/ingestionPipelines?*'
-        );
         await page.getByTestId('pipeline').click();
-        await pipelineApi;
+        await ingestionPipelinesListResponse;
 
         await expect(
           page
@@ -398,12 +398,11 @@ test.describe(
       await expect(
         page.getByTestId('pipeline').getByTestId('count')
       ).toHaveText('1');
+      const ingestionPipelinesListResponse =
+        waitForTestSuiteIngestionPipelinesListResponse(page);
 
-      const pipelineApi = page.waitForResponse(
-        '/api/v1/services/ingestionPipelines?*pipelineType=TestSuite*'
-      );
       await page.getByTestId('pipeline').click();
-      await pipelineApi;
+      await ingestionPipelinesListResponse;
 
       await page.getByTestId('more-actions').first().click();
       await page.getByTestId('actions-dropdown').waitFor({
@@ -422,7 +421,7 @@ test.describe(
         .getByTestId('edit-button')
         .click();
 
-      await page.waitForSelector('[data-testid="loader"]', {
+      await page.locator('[data-testid="loader"]').waitFor({
         state: 'detached',
       });
       const selectAllSwitch = page

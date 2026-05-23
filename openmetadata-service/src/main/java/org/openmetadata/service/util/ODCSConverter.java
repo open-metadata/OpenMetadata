@@ -180,11 +180,11 @@ public class ODCSConverter {
         desc.append(odcs.getDescription().getPurpose());
       }
       if (odcs.getDescription().getLimitations() != null) {
-        if (desc.length() > 0) desc.append("\n\n**Limitations:**\n");
+        if (!desc.isEmpty()) desc.append("\n\n**Limitations:**\n");
         desc.append(odcs.getDescription().getLimitations());
       }
       if (odcs.getDescription().getUsage() != null) {
-        if (desc.length() > 0) desc.append("\n\n**Usage:**\n");
+        if (!desc.isEmpty()) desc.append("\n\n**Usage:**\n");
         desc.append(odcs.getDescription().getUsage());
       }
       contract.setDescription(desc.toString());
@@ -330,6 +330,7 @@ public class ODCSConverter {
     if (status == null) return ODCSDataContract.OdcsStatus.DRAFT;
     return switch (status) {
       case APPROVED -> ODCSDataContract.OdcsStatus.ACTIVE;
+      case ARCHIVED -> ODCSDataContract.OdcsStatus.RETIRED;
       case DEPRECATED -> ODCSDataContract.OdcsStatus.DEPRECATED;
       case DRAFT, IN_REVIEW, REJECTED, UNPROCESSED -> ODCSDataContract.OdcsStatus.DRAFT;
     };
@@ -339,7 +340,8 @@ public class ODCSConverter {
     if (status == null) return EntityStatus.DRAFT;
     return switch (status) {
       case ACTIVE -> EntityStatus.APPROVED;
-      case DEPRECATED, RETIRED -> EntityStatus.DEPRECATED;
+      case DEPRECATED -> EntityStatus.DEPRECATED;
+      case RETIRED -> EntityStatus.ARCHIVED;
       case PROPOSED, DRAFT -> EntityStatus.DRAFT;
     };
   }

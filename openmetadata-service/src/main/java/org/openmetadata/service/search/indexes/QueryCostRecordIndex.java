@@ -21,6 +21,8 @@ public class QueryCostRecordIndex implements SearchIndex {
     EntityReference queryReference = queryCostRecord.getQueryReference();
     try {
       Query query = Entity.getEntity(queryReference, "*", Include.NON_DELETED);
+      query.setChangeDescription(null);
+      query.setIncrementalChangeDescription(null);
       doc.put("query", query);
       doc.put("service", query.getService());
     } catch (EntityNotFoundException ex) {
@@ -41,5 +43,10 @@ public class QueryCostRecordIndex implements SearchIndex {
   @Override
   public Object getEntity() {
     return queryCostRecord;
+  }
+
+  @Override
+  public String getEntityTypeName() {
+    return Entity.QUERY_COST_RECORD;
   }
 }

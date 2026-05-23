@@ -49,6 +49,7 @@ export class BundleTestSuiteClass {
           },
           name: `pw-bundle-suite-pipeline-${uuid()}`,
           loggerLevel: 'INFO',
+          enableStreamableLogs: true,
           pipelineType: 'TestSuite',
           service: {
             id: testSuiteData.id,

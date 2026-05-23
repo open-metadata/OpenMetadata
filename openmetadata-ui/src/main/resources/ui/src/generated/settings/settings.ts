@@ -476,6 +476,11 @@ export interface PipelineServiceClientConfiguration {
     microsoftAppTenantId?: string;
     metricConfiguration?:  MetricConfigurationDefinition[];
     /**
+     * Whether to enable sample data collection at the platform level. This setting will
+     * override the source configuration.
+     */
+    sampleDataConfig?: SampleDataIngestionConfig;
+    /**
      * Configurations of allowed searchable fields for each entity type
      */
     allowedFields?: AllowedSearchFields[];
@@ -1714,8 +1719,9 @@ export enum EventTypeFilter {
  */
 export interface ExecutorConfiguration {
     /**
-     * The interval in milliseconds to acquire async jobs. Default: 60 seconds. This controls
-     * how often Flowable polls for new jobs.
+     * The interval in milliseconds to acquire async jobs. Default: 1 second. Keep this low so
+     * user-facing workflow tasks (e.g. Glossary Term approval) appear within seconds of the
+     * triggering entity change instead of waiting a full polling cycle.
      */
     asyncJobAcquisitionInterval?: number;
     /**
@@ -1741,8 +1747,9 @@ export interface ExecutorConfiguration {
      */
     tasksDuePerAcquisition?: number;
     /**
-     * The interval in milliseconds to acquire timer jobs. Default: 60 seconds. This controls
-     * how often Flowable polls for scheduled jobs.
+     * The interval in milliseconds to acquire timer jobs. Default: 5 seconds. Timer jobs
+     * (due-date escalations, etc.) are less latency-sensitive than async jobs but still benefit
+     * from quick pickup.
      */
     timerJobAcquisitionInterval?: number;
 }
@@ -1884,10 +1891,6 @@ export enum LineageLayer {
  */
 export interface LogStorageConfiguration {
     /**
-     * Size of async buffer in MB for batching log writes
-     */
-    asyncBufferSizeMB?: number;
-    /**
      * AWS credentials configuration
      */
     awsConfig?: AWSCredentials;
@@ -1895,6 +1898,14 @@ export interface LogStorageConfiguration {
      * S3 bucket name for storing logs (required for S3 type)
      */
     bucketName?: string;
+    /**
+     * How often the sweeper wakes up to check for abandoned streams
+     */
+    cleanupIntervalMinutes?: number;
+    /**
+     * Triggers an out-of-band flush when pendingFlush exceeds this size
+     */
+    earlyFlushWatermarkBytes?: number;
     /**
      * Enable it for pipelines deployed in the server
      */
@@ -1916,6 +1927,14 @@ export interface LogStorageConfiguration {
      */
     maxConcurrentStreams?: number;
     /**
+     * Periodic cadence for flushing pendingFlush to partial.txt
+     */
+    partialFlushIntervalMinutes?: number;
+    /**
+     * Emit an alerting metric after this many consecutive failed flushes for a stream
+     */
+    pendingFlushAlertAfterFailures?: number;
+    /**
      * S3 key prefix for organizing logs
      */
     prefix?: string;
@@ -1928,7 +1947,7 @@ export interface LogStorageConfiguration {
      */
     storageClass?: StorageClass;
     /**
-     * Timeout in minutes for idle log streams before automatic cleanup
+     * Idle threshold in minutes before the abandoned-run sweeper finalizes a stream
      */
     streamTimeoutMinutes?: number;
     /**
@@ -2178,7 +2197,7 @@ export interface NaturalLanguageSearch {
      */
     djl?: Djl;
     /**
-     * The provider to use for generating vector embeddings (e.g., bedrock, openai).
+     * The provider to use for generating vector embeddings (e.g., bedrock, openai, google, djl).
      */
     embeddingProvider?: string;
     /**
@@ -2186,15 +2205,26 @@ export interface NaturalLanguageSearch {
      */
     enabled?: boolean;
     /**
+     * NLQ filter extractor cache and prompt tuning.
+     */
+    filterExtractor?: FilterExtractor;
+    /**
+     * Google Gemini configuration for embedding generation via the Generative Language API.
+     */
+    google?: Google;
+    /**
+     * Hybrid search runtime tuning combining BM25 keyword and KNN semantic queries.
+     */
+    hybridSearch?: HybridSearch;
+    /**
      * Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)
      */
     keywordWeight?: number;
     /**
-     * Maximum number of concurrent embedding API requests. Controls the semaphore used to
-     * throttle calls to the embedding provider and prevent overwhelming HTTP/2 connection
-     * limits.
+     * Maximum number of concurrent embedding and NLQ provider requests. Controls the semaphore
+     * used to throttle calls to the providers and prevent overwhelming HTTP/2 connection limits.
      */
-    maxConcurrentEmbeddingRequests?: number;
+    maxConcurrentRequests?: number;
     /**
      * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
      * endpoints.
@@ -2231,9 +2261,21 @@ export interface Bedrock {
      */
     embeddingModelId?: string;
     /**
+     * Maximum tokens the Bedrock model is allowed to generate.
+     */
+    maxTokens?: number;
+    /**
      * Bedrock model identifier to use for query transformation
      */
     modelId?: string;
+    /**
+     * Sampling temperature for Bedrock requests.
+     */
+    temperature?: number;
+    /**
+     * Bedrock InvokeModel API call timeout in seconds.
+     */
+    timeoutSeconds?: number;
 }
 
 /**
@@ -2290,6 +2332,84 @@ export interface Djl {
 }
 
 /**
+ * NLQ filter extractor cache and prompt tuning.
+ */
+export interface FilterExtractor {
+    /**
+     * Cache TTL in minutes for NLQ filter extraction results.
+     */
+    cacheExpiryMinutes?: number;
+    /**
+     * Max number of entries in the NLQ filter extraction result cache.
+     */
+    cacheMaxSize?: number;
+    /**
+     * Max sample values shown per filter category in the system prompt.
+     */
+    maxSampleValues?: number;
+}
+
+/**
+ * Google Gemini configuration for embedding generation via the Generative Language API.
+ */
+export interface Google {
+    /**
+     * API key from Google AI Studio for authenticating with the Generative Language API.
+     */
+    apiKey?: string;
+    /**
+     * Dimension of the embedding vector, sent to Google as `outputDimensionality`. For
+     * `gemini-embedding-001` valid values are 768, 1536, or 3072. For `text-embedding-004` use
+     * 768.
+     */
+    embeddingDimension?: number;
+    /**
+     * Gemini embedding model identifier (e.g., gemini-embedding-001, text-embedding-004).
+     */
+    embeddingModelId?: string;
+    /**
+     * Optional override for the full embedding endpoint URL. Must be the complete URL including
+     * the model and `:embedContent` action (e.g.
+     * `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent`),
+     * not just a base URL. Leave empty to use the default Generative Language API endpoint,
+     * which is constructed from `embeddingModelId`. The `key` query parameter is appended
+     * automatically.
+     */
+    endpoint?: string;
+    /**
+     * Gemini chat model identifier for query transformation (e.g., gemini-2.5-flash,
+     * gemini-1.5-flash).
+     */
+    modelId?: string;
+}
+
+/**
+ * Hybrid search runtime tuning combining BM25 keyword and KNN semantic queries.
+ */
+export interface HybridSearch {
+    /**
+     * Highlight fragment size (characters) for hybrid search hits.
+     */
+    fragmentSize?: number;
+    /**
+     * Maximum number of query terms forwarded to the shard-fair keyword sub-query.
+     */
+    maxQueryTerms?: number;
+    /**
+     * Pagination depth used by the hybrid query for RRF normalization.
+     */
+    paginationDepth?: number;
+    /**
+     * Name of the OpenSearch search pipeline used to normalize hybrid (BM25 + KNN) scores.
+     */
+    searchPipeline?: string;
+    /**
+     * Minimum score threshold for the semantic (KNN) sub-query results.
+     */
+    semanticScoreThreshold?: number;
+}
+
+/**
  * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
  * endpoints.
  */
@@ -2319,6 +2439,22 @@ export interface Openai {
      * https://your-resource.openai.azure.com). Leave empty for standard OpenAI API.
      */
     endpoint?: string;
+    /**
+     * Maximum tokens the OpenAI model is allowed to generate.
+     */
+    maxTokens?: number;
+    /**
+     * OpenAI model identifier to use for query transformation (chat completions).
+     */
+    modelId?: string;
+    /**
+     * Sampling temperature for OpenAI requests.
+     */
+    temperature?: number;
+    /**
+     * OpenAI HTTP request and connect timeout in seconds.
+     */
+    timeoutSeconds?: number;
 }
 
 /**
@@ -2563,6 +2699,27 @@ export interface RunTimeCleanUpConfiguration {
      * Batch size used when cleaning up Flowable Run Time data
      */
     batchSize?: number;
+}
+
+/**
+ * Whether to enable sample data collection at the platform level. This setting will
+ * override the source configuration.
+ *
+ * Define the configuration for sample data ingestion at the platform level. This
+ * configuration will override the source-level configuration for sample data collection.
+ */
+export interface SampleDataIngestionConfig {
+    /**
+     * Allows OpenMetadata to read the sample data. This setting won't save the sample data but
+     * sample data will temporarily be brought in OpenMetadata infrastructure for processing. If
+     * reading is disabled but storing is enabled, reading will be enabled by default.
+     */
+    readSampleData?: boolean;
+    /**
+     * Allows OpenMetadata to store the sample data. This setting will override the source
+     * configuration.
+     */
+    storeSampleData?: boolean;
 }
 
 /**

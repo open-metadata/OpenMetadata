@@ -335,10 +335,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context SecurityContext securityContext,
       @Parameter(
               description =
-                  "Time window in minutes (default: 5). Examples: 1 (last minute), 5 (last 5 minutes), 60 (last hour), 1440 (last day)",
+                  "Time window in minutes (default: 5). Use 0 for all time. Examples: 0 (all time), 1 (last minute), 5 (last 5 minutes), 60 (last hour), 1440 (last day)",
               schema = @Schema(type = "integer", example = "5"))
           @QueryParam("timeWindow")
           @DefaultValue("5")
+          @Min(value = 0, message = "must be greater than or equal to 0")
           int timeWindow,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -371,8 +372,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     // Create filter for online users - uses both lastLoginTime and lastActivityTime
     ListFilter filter = new ListFilter(Include.NON_DELETED);
-    filter.addQueryParam("lastActivityTimeGreaterThan", String.valueOf(thresholdTimestamp));
     filter.addQueryParam("isBot", "false"); // Exclude bots from online users
+    if (timeWindow > 0) {
+      filter.addQueryParam("lastActivityTimeGreaterThan", String.valueOf(thresholdTimestamp));
+    }
 
     ResultList<User> users =
         listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
@@ -529,7 +532,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     // Sync the Roles from token to User
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
-        && Boolean.FALSE.equals(user.getIsBot() != null && user.getIsBot())) {
+        && !(user.getIsBot() != null && user.getIsBot())) {
       reSyncUserRolesFromToken(
           uriInfo, user, getRolesFromAuthorizationToken(catalogSecurityContext));
     }
@@ -724,7 +727,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     CatalogSecurityContext catalogSecurityContext =
         (CatalogSecurityContext) containerRequestContext.getSecurityContext();
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
-        && Boolean.FALSE.equals(user.getIsBot() != null && user.getIsBot())) {
+        && !(user.getIsBot() != null && user.getIsBot())) {
       user.setRoles(validateAndGetRolesRef(getRolesFromAuthorizationToken(catalogSecurityContext)));
     }
   }
@@ -741,7 +744,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
                 create.getCreatePasswordType(),
                 create.getPassword());
       } catch (Exception ex) {
-        LOG.error("Error in sending invite to User" + ex.getMessage());
+        LOG.error("Error in sending invite to User{}", ex.getMessage());
       }
     }
   }
@@ -1369,7 +1372,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
               EmailUtil.getPasswordResetSubject(),
               TemplateConstants.RESET_LINK_TEMPLATE);
     } catch (Exception ex) {
-      LOG.error("Error in sending mail for reset password" + ex.getMessage());
+      LOG.error("Error in sending mail for reset password{}", ex.getMessage());
       return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
     }
     return Response.status(Response.Status.OK)
@@ -1939,8 +1942,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           repository.getByName(
               uriInfo, user.getFullyQualifiedName(), repository.getFieldsWithUserAuth("*"));
     } catch (EntityNotFoundException exc) {
-      LOG.debug(
-          String.format("User not found when adding auth mechanism for: [%s]", user.getName()));
+      LOG.debug("User not found when adding auth mechanism for: [{}]", user.getName());
       original = null;
     }
     return original;

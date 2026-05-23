@@ -73,6 +73,12 @@
   },
   "mappings": {
     "properties": {
+      "changeDescription": {
+        "enabled": false
+      },
+      "incrementalChangeDescription": {
+        "enabled": false
+      },
       "id": {
         "type": "text",
         "fields": {
@@ -312,6 +318,9 @@
           },
           "href": {
             "type": "text"
+          },
+          "mutuallyExclusive": {
+            "type": "boolean"
           }
         }
       },
@@ -530,8 +539,14 @@
       "childrenCount": {
         "type": "integer"
       },
+      "mutuallyExclusive": {
+        "type": "boolean"
+      },
       "fingerprint": {
         "type": "keyword"
+      },
+      "textToLLMContext": {
+        "type": "text"
       },
       "textToEmbed": {
         "type": "text"

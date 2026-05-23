@@ -19,12 +19,11 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
-import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { getDataProductDetailsPath } from '../../../utils/RouterUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import {
   EditIconButton,
@@ -72,7 +71,7 @@ const DataProductsContainer = ({
 
   const redirectLink = useCallback(
     (fqn: string) => {
-      navigate(getEntityDetailsPath(EntityType.DATA_PRODUCT, fqn));
+      navigate(getDataProductDetailsPath(fqn));
     },
     [navigate]
   );

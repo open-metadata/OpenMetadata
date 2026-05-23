@@ -32,43 +32,43 @@ const sizes = sortCx({
 
 export const cardStyles = sortCx({
   common: {
-    root: 'tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:relative tw:overflow-hidden tw:rounded-xl tw:transition tw:duration-100',
+    root: 'tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:relative tw:overflow-hidden tw:rounded-xl tw:transition tw:duration-100',
   },
   variants: {
     default: {
-      root: 'tw:ring-1 tw:ring-inset tw:ring-secondary tw:bg-primary',
+      root: 'tw:border-1 tw:border-secondary tw:bg-primary',
     },
     elevated: {
-      root: 'tw:ring-1 tw:ring-inset tw:ring-secondary tw:bg-primary tw:shadow-md',
+      root: 'tw:border-1 tw:border-secondary tw:bg-primary tw:shadow-md',
     },
-    outlined: { root: 'tw:ring-2 tw:ring-inset tw:ring-primary tw:bg-primary' },
+    outlined: { root: 'tw:border-2 tw:border-primary tw:bg-primary' },
     ghost: { root: 'tw:bg-transparent' },
   },
   colors: {
     default: { root: '' },
     brand: {
-      root: 'tw:bg-utility-brand-50 tw:ring-1 tw:ring-inset tw:ring-utility-brand-200',
+      root: 'tw:bg-utility-brand-50 tw:border-1 tw:border-utility-brand-200',
     },
     error: {
-      root: 'tw:bg-utility-error-50 tw:ring-1 tw:ring-inset tw:ring-utility-error-200',
+      root: 'tw:bg-utility-error-50 tw:border-1 tw:border-utility-error-200',
     },
     warning: {
-      root: 'tw:bg-utility-warning-50 tw:ring-1 tw:ring-inset tw:ring-utility-warning-200',
+      root: 'tw:bg-utility-warning-50 tw:border-1 tw:border-utility-warning-200',
     },
     success: {
-      root: 'tw:bg-utility-success-50 tw:ring-1 tw:ring-inset tw:ring-utility-success-200',
+      root: 'tw:bg-utility-success-50 tw:border-1 tw:border-utility-success-200',
     },
   },
   interactive: { root: 'tw:cursor-pointer' },
   interactiveVariants: {
-    default: { root: 'tw:hover:bg-primary_hover tw:hover:ring-primary' },
+    default: { root: 'tw:hover:bg-primary_hover tw:hover:border-primary' },
     elevated: { root: 'tw:hover:bg-primary_hover tw:hover:shadow-lg' },
-    outlined: { root: 'tw:hover:bg-secondary tw:hover:ring-primary' },
+    outlined: { root: 'tw:hover:bg-secondary tw:hover:border-primary' },
     ghost: {
-      root: 'tw:hover:bg-secondary tw:hover:ring-1 tw:hover:ring-inset tw:hover:ring-secondary',
+      root: 'tw:hover:bg-secondary tw:hover:border-1 tw:hover:border-inset tw:hover:border-secondary',
     },
   },
-  selected: { root: 'tw:ring-2 tw:ring-inset tw:ring-brand' },
+  selected: { root: 'tw:border-2 tw:border-brand' },
 });
 
 // ─── Sub-component interfaces ──────────────────────────────────────────────────
@@ -103,7 +103,7 @@ const CardHeader = ({
     <div
       {...props}
       className={cx(
-        'tw:flex tw:items-start tw:justify-between tw:gap-4 tw:border-b tw:border-secondary',
+        'tw:flex tw:items-start tw:justify-between tw:gap-4 tw:border-b tw:border-inherit',
         sizes[size].padding,
         className
       )}>

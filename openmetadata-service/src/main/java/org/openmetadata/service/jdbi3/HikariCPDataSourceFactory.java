@@ -160,14 +160,19 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     }
     config.setValidationTimeout(validTimeout != null ? validTimeout : 5000L);
 
-    // Leak detection threshold - default 0 (disabled)
     Long leakThreshold = leakDetectionThreshold;
     if (leakThreshold == null
         && properties != null
         && properties.containsKey("leakDetectionThreshold")) {
       leakThreshold = Long.parseLong(properties.get("leakDetectionThreshold"));
     }
-    config.setLeakDetectionThreshold(leakThreshold != null ? leakThreshold : 0L);
+    // Default leakDetectionThreshold to 60s (HikariCP's own default is 0 = disabled).
+    // On a busy server a leaked connection silently drains the pool until requests
+    // start queuing and k8s liveness probes fail; with this on, HikariCP logs a stack
+    // trace for any borrow that exceeds the threshold so the offending caller is
+    // identifiable. Operators that need a different threshold can override via
+    // `leakDetectionThreshold` in openmetadata.yaml.
+    config.setLeakDetectionThreshold(leakThreshold != null ? leakThreshold : 60000L);
 
     config.setAutoCommit(autoCommit);
     config.setReadOnly(readOnly);
@@ -262,7 +267,12 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     props.putIfAbsent("defaultRowFetchSize", "100");
     props.putIfAbsent("loginTimeout", "30");
     props.putIfAbsent("connectTimeout", "30");
-    props.putIfAbsent("socketTimeout", "0");
+    // Default socketTimeout from "0" (infinite — a stuck DB read held the
+    // connection forever, exhausted the pool, and stalled k8s liveness probes)
+    // to 5 minutes. Real OpenMetadata queries should never run that long; jobs
+    // that legitimately need a longer cap (bulk imports, reindex) should run
+    // with their own pool config.
+    props.putIfAbsent("socketTimeout", "300");
     props.putIfAbsent("tcpKeepAlive", "true");
     props.putIfAbsent("ApplicationName", "OpenMetadata");
 
@@ -318,7 +328,9 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     props.putIfAbsent("connectionCollation", "utf8mb4_unicode_ci");
     // MySQL connectTimeout is in milliseconds
     props.putIfAbsent("connectTimeout", "30000");
-    props.putIfAbsent("socketTimeout", "0");
+    // Default socketTimeout from "0" (infinite — see PostgreSQL note above) to
+    // 5 minutes (in milliseconds for MySQL).
+    props.putIfAbsent("socketTimeout", "300000");
 
     Map<String, String> properties = getProperties();
     if (properties != null) {
@@ -346,12 +358,12 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     }
 
     @Override
-    public void start() throws Exception {
+    public void start() {
       LOG.info("Starting HikariCP connection pool: {}", name);
     }
 
     @Override
-    public void stop() throws Exception {
+    public void stop() {
       LOG.info("Shutting down HikariCP connection pool: {}", name);
       if (!this.isClosed()) {
         this.close();
@@ -404,20 +416,20 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
 
     // Required DataSource interface methods (minimal implementation)
     @Override
-    public PrintWriter getLogWriter() throws SQLException {
+    public PrintWriter getLogWriter() {
       return null;
     }
 
     @Override
-    public void setLogWriter(PrintWriter out) throws SQLException {}
+    public void setLogWriter(PrintWriter out) {}
 
     @Override
-    public int getLoginTimeout() throws SQLException {
+    public int getLoginTimeout() {
       return 0;
     }
 
     @Override
-    public void setLoginTimeout(int seconds) throws SQLException {}
+    public void setLoginTimeout(int seconds) {}
 
     @Override
     public Logger getParentLogger() throws SQLFeatureNotSupportedException {
@@ -430,7 +442,7 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     }
 
     @Override
-    public boolean isWrapperFor(Class<?> iface) throws SQLException {
+    public boolean isWrapperFor(Class<?> iface) {
       return false;
     }
   }

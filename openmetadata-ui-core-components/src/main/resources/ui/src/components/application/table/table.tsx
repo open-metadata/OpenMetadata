@@ -59,7 +59,13 @@ export const TableRowActionsDropdown = () => (
   </Dropdown.Root>
 );
 
-const TableContext = createContext<{ size: 'sm' | 'md' }>({ size: 'md' });
+const TableContext = createContext<{
+  size: 'sm' | 'md';
+  stickyHeader: boolean;
+}>({
+  size: 'md',
+  stickyHeader: false,
+});
 
 const TableCardRoot = ({
   children,
@@ -68,7 +74,7 @@ const TableCardRoot = ({
   ...props
 }: HTMLAttributes<HTMLDivElement> & { size?: 'sm' | 'md' }) => {
   return (
-    <TableContext.Provider value={{ size }}>
+    <TableContext.Provider value={{ size, stickyHeader: false }}>
       <div
         {...props}
         className={cx(
@@ -142,14 +148,23 @@ interface TableRootProps
   extends AriaTableProps,
     Omit<ComponentPropsWithRef<'table'>, 'className' | 'slot' | 'style'> {
   size?: 'sm' | 'md';
+  stickyHeader?: boolean;
+  containerStyle?: React.CSSProperties;
 }
 
-const TableRoot = ({ className, size = 'md', ...props }: TableRootProps) => {
+const TableRoot = ({
+  className,
+  size = 'md',
+  stickyHeader = false,
+  containerStyle,
+  ...props
+}: TableRootProps) => {
   const context = useContext(TableContext);
 
   return (
-    <TableContext.Provider value={{ size: context?.size ?? size }}>
-      <div className="tw:overflow-x-auto">
+    <TableContext.Provider
+      value={{ size: context?.size ?? size, stickyHeader }}>
+      <div className="tw:overflow-x-auto" style={containerStyle}>
         <AriaTable
           className={(state) =>
             cx(
@@ -181,7 +196,7 @@ const TableHeader = <T extends object>({
   className,
   ...props
 }: TableHeaderProps<T>) => {
-  const { size } = useContext(TableContext);
+  const { size, stickyHeader } = useContext(TableContext);
   const { selectionBehavior, selectionMode } = useTableOptions();
 
   return (
@@ -189,7 +204,8 @@ const TableHeader = <T extends object>({
       {...props}
       className={(state) =>
         cx(
-          'tw:relative tw:bg-secondary',
+          'tw:bg-secondary',
+          stickyHeader ? 'tw:sticky tw:top-0 tw:z-10' : 'tw:relative',
           size === 'sm' ? 'tw:h-9' : 'tw:h-11',
 
           // Row border—using an "after" pseudo-element to avoid the border taking up space.

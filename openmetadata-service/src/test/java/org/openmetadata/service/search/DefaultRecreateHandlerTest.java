@@ -535,7 +535,9 @@ class DefaultRecreateHandlerTest {
     @DisplayName("Should promote partial data and record success when failed reindex has documents")
     void testFinalizeReindexPromotesPartialData() {
       AliasState aliasState = new AliasState();
-      aliasState.put("table_search_index", Set.of("table_search_index"));
+      // Canonical is a concrete index with no aliases (the realistic first-reindex shape; OS/ES
+      // forbid an alias and a concrete sharing the same name).
+      aliasState.put("table_search_index", Set.of());
       aliasState.put("table_search_index_rebuild_old", Set.of("stale"));
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
@@ -666,6 +668,62 @@ class DefaultRecreateHandlerTest {
       }
 
       verify(metrics).recordPromotionFailure("table");
+    }
+
+    @Test
+    @DisplayName(
+        "Should not delete-by-alias-name when canonical is currently an alias on a previous staged")
+    void testFinalizeReindexSkipsDeleteWhenCanonicalIsAlias() {
+      // After the first reindex, the canonical name (table_search_index) is an alias on the
+      // previous staged index, not a concrete one. OpenSearch's listIndicesByPrefix returns the
+      // alias name as one of its result keys; without the guard, finalizeReindex would attempt
+      // deleteIndexWithBackoff(canonicalIndex), fail with "matches an alias" and burn ~31s of
+      // exponential backoff per entity. The guard must drop the alias name from oldIndicesToDelete
+      // BEFORE the delete branch fires.
+      AliasState aliasState = new AliasState();
+      aliasState.put(
+          "table_search_index_rebuild_old",
+          new HashSet<>(Set.of("table_search_index", "table", "all")));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+      // Simulate the OpenSearch behavior where listIndicesByPrefix surfaces the alias name itself
+      // among its result keys (the key in our AliasState mock is what listIndicesByPrefix returns).
+      aliasState.put("table_search_index", Set.of());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .activeIndex("table_search_index_rebuild_old")
+                .stagedIndex("table_search_index_rebuild_new")
+                .existingAliases(new HashSet<>(Set.of("table_search_index", "table", "all")))
+                .canonicalAliases("table")
+                .parentAliases(new HashSet<>(Set.of("all")))
+                .build();
+
+        new DefaultRecreateHandler().finalizeReindex(context, true);
+      }
+
+      verify(client, never()).deleteIndexWithBackoff("table_search_index");
+      assertTrue(
+          aliasState.deletedIndices.contains("table_search_index_rebuild_old"),
+          "Old concrete rebuild must still be cleaned up by the swap path");
+      Set<String> stagedAliases = aliasState.indexAliases.get("table_search_index_rebuild_new");
+      assertTrue(
+          stagedAliases.contains("table_search_index"),
+          () -> "Canonical alias must end up on staged after promotion; got " + stagedAliases);
+      assertTrue(
+          stagedAliases.contains("table"),
+          () -> "Short alias must end up on staged after promotion; got " + stagedAliases);
+      assertTrue(
+          stagedAliases.contains("all"),
+          () -> "Parent alias must end up on staged after promotion; got " + stagedAliases);
     }
   }
 
@@ -834,7 +892,7 @@ class DefaultRecreateHandlerTest {
               invocation -> {
                 String index = invocation.getArgument(0);
                 @SuppressWarnings("unchecked")
-                Set<String> aliases = new HashSet<>((Set<String>) invocation.getArgument(1));
+                Set<String> aliases = new HashSet<>(invocation.getArgument(1));
                 indexAliases.computeIfPresent(
                     index,
                     (k, v) -> {
@@ -851,7 +909,7 @@ class DefaultRecreateHandlerTest {
               invocation -> {
                 String index = invocation.getArgument(0);
                 @SuppressWarnings("unchecked")
-                Set<String> aliases = new HashSet<>((Set<String>) invocation.getArgument(1));
+                Set<String> aliases = new HashSet<>(invocation.getArgument(1));
                 indexAliases.computeIfAbsent(index, k -> new HashSet<>()).addAll(aliases);
                 return null;
               })
@@ -863,10 +921,10 @@ class DefaultRecreateHandlerTest {
           .doAnswer(
               invocation -> {
                 @SuppressWarnings("unchecked")
-                Set<String> oldIndices = (Set<String>) invocation.getArgument(0);
+                Set<String> oldIndices = invocation.getArgument(0);
                 String newIndex = invocation.getArgument(1);
                 @SuppressWarnings("unchecked")
-                Set<String> aliases = new HashSet<>((Set<String>) invocation.getArgument(2));
+                Set<String> aliases = new HashSet<>(invocation.getArgument(2));
 
                 // Remove aliases from old indices
                 for (String oldIndex : oldIndices) {
@@ -911,10 +969,10 @@ class DefaultRecreateHandlerTest {
           .doAnswer(
               invocation -> {
                 @SuppressWarnings("unchecked")
-                Set<String> oldIndices = (Set<String>) invocation.getArgument(0);
+                Set<String> oldIndices = invocation.getArgument(0);
                 String newIndex = invocation.getArgument(1);
                 @SuppressWarnings("unchecked")
-                Set<String> aliases = new HashSet<>((Set<String>) invocation.getArgument(2));
+                Set<String> aliases = new HashSet<>(invocation.getArgument(2));
 
                 // Remove aliases from old indices
                 for (String oldIndex : oldIndices) {
@@ -933,6 +991,100 @@ class DefaultRecreateHandlerTest {
           .swapAliases(anySet(), anyString(), anySet());
 
       return client;
+    }
+  }
+
+  @Nested
+  @DisplayName("buildRevertJson Tests")
+  class BuildRevertJsonTests {
+
+    @Test
+    @DisplayName("Returns null when both live and bulk are unset")
+    void noConfig() {
+      assertEquals(null, DefaultRecreateHandler.buildRevertJson(null, null));
+    }
+
+    @Test
+    @DisplayName("Returns only fields the admin set when bulk overrides were not applied")
+    void liveOnlyWithoutBulk() {
+      org.openmetadata.schema.system.IndexSettings live =
+          new org.openmetadata.schema.system.IndexSettings()
+              .withRefreshInterval("30s")
+              .withNumberOfReplicas(2);
+      String json = DefaultRecreateHandler.buildRevertJson(live, null);
+      assertNotNull(json);
+      assertTrue(json.contains("\"refresh_interval\":\"30s\""));
+      assertTrue(json.contains("\"number_of_replicas\":2"));
+      // No bulk → no implicit safety fields
+      assertFalse(json.contains("\"translog\""));
+    }
+
+    @Test
+    @DisplayName("Bulk override + missing live: revert fills safe defaults for every bulk field")
+    void bulkOverrideTriggersFullRevert() {
+      org.openmetadata.schema.system.BulkIndexOverrides bulk =
+          new org.openmetadata.schema.system.BulkIndexOverrides()
+              .withRefreshInterval("-1")
+              .withNumberOfReplicas(0)
+              .withTranslogDurability(
+                  org.openmetadata.schema.system.BulkIndexOverrides.TranslogDurability.ASYNC)
+              .withTranslogSyncInterval("30s");
+      String json = DefaultRecreateHandler.buildRevertJson(null, bulk);
+      assertNotNull(json);
+      // Every field bulk touched gets a safe live default — never the bulk value.
+      assertTrue(json.contains("\"refresh_interval\":\"1s\""));
+      assertTrue(json.contains("\"number_of_replicas\":1"));
+      // Translog fields land in a nested object — what the OS/ES typed IndexSettings
+      // model expects when its _DESERIALIZER parses the body.
+      assertTrue(json.contains("\"translog\":{"));
+      assertTrue(json.contains("\"durability\":\"request\""));
+      assertTrue(json.contains("\"sync_interval\":\"5s\""));
+    }
+
+    @Test
+    @DisplayName(
+        "Partial live + full bulk: live values win, bulk-only fields fall back to defaults")
+    void partialLiveOverridesBulk() {
+      // Admin only set translogDurability on live; bulk disabled refresh, replicas, both translog
+      // fields. Expectation: translogDurability comes from live; the rest fall back to safe
+      // defaults (NOT bulk values).
+      org.openmetadata.schema.system.IndexSettings live =
+          new org.openmetadata.schema.system.IndexSettings()
+              .withTranslogDurability(
+                  org.openmetadata.schema.system.IndexSettings.TranslogDurability.REQUEST);
+      org.openmetadata.schema.system.BulkIndexOverrides bulk =
+          new org.openmetadata.schema.system.BulkIndexOverrides()
+              .withRefreshInterval("-1")
+              .withNumberOfReplicas(0)
+              .withTranslogDurability(
+                  org.openmetadata.schema.system.BulkIndexOverrides.TranslogDurability.ASYNC)
+              .withTranslogSyncInterval("30s");
+      String json = DefaultRecreateHandler.buildRevertJson(live, bulk);
+      assertNotNull(json);
+      assertTrue(json.contains("\"refresh_interval\":\"1s\""));
+      assertTrue(json.contains("\"number_of_replicas\":1"));
+      // Translog fields land in a nested object — what the OS/ES typed IndexSettings
+      // model expects when its _DESERIALIZER parses the body.
+      assertTrue(json.contains("\"translog\":{"));
+      assertTrue(json.contains("\"durability\":\"request\""));
+      assertTrue(json.contains("\"sync_interval\":\"5s\""));
+    }
+
+    @Test
+    @DisplayName("Bulk JSON properly escapes admin-supplied string values")
+    void bulkSettingsEscapesQuotesInValues() {
+      // Hostile / unusual but legal admin input — quote, backslash, newline. Naive string
+      // concatenation would produce invalid JSON; Jackson must escape these.
+      org.openmetadata.schema.system.BulkIndexOverrides bulk =
+          new org.openmetadata.schema.system.BulkIndexOverrides()
+              .withRefreshInterval("3s\"; \\rogue")
+              .withTranslogSyncInterval("60s\n");
+      String json = DefaultRecreateHandler.buildBulkSettingsJson(bulk);
+      assertNotNull(json);
+      // Must round-trip parse — the strongest evidence escaping worked.
+      org.openmetadata.schema.utils.JsonUtils.readTree(json);
+      assertTrue(json.contains("\\\"")); // escaped quote present
+      assertTrue(json.contains("\\\\")); // escaped backslash present
     }
   }
 }

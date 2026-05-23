@@ -51,7 +51,7 @@ public class OpenLineageMapper {
   private final Set<String> allowedEventTypes;
 
   public OpenLineageMapper(OpenLineageEntityResolver entityResolver) {
-    this(entityResolver, (OpenLineageSettings) null);
+    this(entityResolver, null);
   }
 
   public OpenLineageMapper(OpenLineageEntityResolver entityResolver, OpenLineageSettings settings) {

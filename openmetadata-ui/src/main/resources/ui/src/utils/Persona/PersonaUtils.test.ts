@@ -33,6 +33,11 @@ describe('PersonaUtils', () => {
           icon: 'svg-mock',
         }),
         expect.objectContaining({
+          key: PageType.DataMarketplace,
+          label: 'label.data-marketplace',
+          icon: 'svg-mock',
+        }),
+        expect.objectContaining({
           key: 'governance',
           label: 'label.governance',
           icon: 'svg-mock',

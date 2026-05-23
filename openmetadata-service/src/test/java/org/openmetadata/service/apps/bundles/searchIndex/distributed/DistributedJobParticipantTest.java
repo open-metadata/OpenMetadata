@@ -64,9 +64,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
-import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -145,9 +145,7 @@ class DistributedJobParticipantTest {
 
   @Test
   void testStartAndStop() {
-    participant =
-        new DistributedJobParticipant(
-            collectionDAO, searchRepository, "test-server-1", (CacheConfig) null);
+    participant = new DistributedJobParticipant(collectionDAO, searchRepository, "test-server-1");
 
     // Initially not participating
     assertFalse(participant.isParticipating());
@@ -165,9 +163,7 @@ class DistributedJobParticipantTest {
 
   @Test
   void testMultipleStartCallsAreIdempotent() {
-    participant =
-        new DistributedJobParticipant(
-            collectionDAO, searchRepository, "test-server-1", (CacheConfig) null);
+    participant = new DistributedJobParticipant(collectionDAO, searchRepository, "test-server-1");
 
     participant.start();
     participant.start(); // Second call should be no-op
@@ -181,9 +177,7 @@ class DistributedJobParticipantTest {
 
   @Test
   void testMultipleStopCallsAreIdempotent() {
-    participant =
-        new DistributedJobParticipant(
-            collectionDAO, searchRepository, "test-server-1", (CacheConfig) null);
+    participant = new DistributedJobParticipant(collectionDAO, searchRepository, "test-server-1");
 
     participant.start();
     participant.stop();
@@ -204,13 +198,9 @@ class DistributedJobParticipantTest {
     try (MockedConstruction<DistributedSearchIndexCoordinator> mocked =
         mockConstruction(
             DistributedSearchIndexCoordinator.class,
-            (mock, context) -> {
-              when(mock.getRecentJobs(any(), anyInt())).thenReturn(List.of());
-            })) {
+            (mock, context) -> when(mock.getRecentJobs(any(), anyInt())).thenReturn(List.of()))) {
 
-      participant =
-          new DistributedJobParticipant(
-              collectionDAO, searchRepository, "test-server-1", (CacheConfig) null);
+      participant = new DistributedJobParticipant(collectionDAO, searchRepository, "test-server-1");
       participant.start();
 
       // Wait a bit for the scheduler to run at least once
@@ -223,7 +213,7 @@ class DistributedJobParticipantTest {
   }
 
   @Test
-  void testJoinsActiveJobWithPendingPartitions() throws Exception {
+  void testJoinsActiveJobWithPendingPartitions() {
     UUID jobId = UUID.randomUUID();
     UUID partitionId = UUID.randomUUID();
 
@@ -238,6 +228,7 @@ class DistributedJobParticipantTest {
             .id(jobId)
             .status(IndexJobStatus.RUNNING)
             .jobConfiguration(config)
+            .stagedIndexMapping(Map.of("table", "table_staged"))
             .totalRecords(100)
             .build();
 
@@ -246,6 +237,7 @@ class DistributedJobParticipantTest {
             .id(jobId)
             .status(IndexJobStatus.COMPLETED)
             .jobConfiguration(config)
+            .stagedIndexMapping(Map.of("table", "table_staged"))
             .totalRecords(100)
             .processedRecords(100)
             .successRecords(100)
@@ -318,7 +310,7 @@ class DistributedJobParticipantTest {
   }
 
   @Test
-  void testDoesNotRejoinSameRunningJob() throws Exception {
+  void testDoesNotRejoinSameRunningJob() {
     UUID jobId = UUID.randomUUID();
 
     EventPublisherJob config = new EventPublisherJob();
@@ -330,6 +322,7 @@ class DistributedJobParticipantTest {
             .id(jobId)
             .status(IndexJobStatus.RUNNING)
             .jobConfiguration(config)
+            .stagedIndexMapping(Map.of("table", "table_staged"))
             .totalRecords(100)
             .build();
 
@@ -388,7 +381,7 @@ class DistributedJobParticipantTest {
   }
 
   @Test
-  void testClearsJobIdWhenJobCompletes() throws Exception {
+  void testClearsJobIdWhenJobCompletes() {
     UUID jobId = UUID.randomUUID();
 
     EventPublisherJob config = new EventPublisherJob();
@@ -402,6 +395,7 @@ class DistributedJobParticipantTest {
             .id(jobId)
             .status(IndexJobStatus.RUNNING)
             .jobConfiguration(config)
+            .stagedIndexMapping(Map.of("table", "table_staged"))
             .totalRecords(100)
             .build();
 
@@ -410,6 +404,7 @@ class DistributedJobParticipantTest {
             .id(jobId)
             .status(IndexJobStatus.COMPLETED)
             .jobConfiguration(config)
+            .stagedIndexMapping(Map.of("table", "table_staged"))
             .totalRecords(100)
             .processedRecords(100)
             .successRecords(100)
@@ -484,7 +479,7 @@ class DistributedJobParticipantTest {
   }
 
   @Test
-  void testAttemptsToClaimPartitions() throws Exception {
+  void testAttemptsToClaimPartitions() {
     UUID jobId = UUID.randomUUID();
     UUID partitionId = UUID.randomUUID();
 
@@ -499,6 +494,7 @@ class DistributedJobParticipantTest {
             .id(jobId)
             .status(IndexJobStatus.RUNNING)
             .jobConfiguration(config)
+            .stagedIndexMapping(Map.of("table", "table_staged"))
             .totalRecords(100)
             .build();
 
@@ -507,6 +503,7 @@ class DistributedJobParticipantTest {
             .id(jobId)
             .status(IndexJobStatus.COMPLETED)
             .jobConfiguration(config)
+            .stagedIndexMapping(Map.of("table", "table_staged"))
             .totalRecords(100)
             .processedRecords(100)
             .successRecords(100)
@@ -669,6 +666,7 @@ class DistributedJobParticipantTest {
             .id(jobId)
             .status(IndexJobStatus.RUNNING)
             .jobConfiguration(config)
+            .stagedIndexMapping(Map.of("table", "table_staged"))
             .build();
 
     SearchIndexPartition pendingPartition =
@@ -848,7 +846,6 @@ class DistributedJobParticipantTest {
     config.setBatchSize(50);
     config.setMaxConcurrentRequests(8);
     config.setPayLoadSize(4096L);
-    config.setRecreateIndex(true);
 
     SearchIndexJob runningJob =
         SearchIndexJob.builder()
@@ -883,7 +880,7 @@ class DistributedJobParticipantTest {
     CollectionDAO.AppExtensionTimeSeries appExtensionDao =
         mock(CollectionDAO.AppExtensionTimeSeries.class);
     AtomicReference<BulkSink.FailureCallback> callbackRef = new AtomicReference<>();
-    AtomicReference<Object> recreateContextRef = new AtomicReference<>();
+    AtomicReference<Object> stagedIndexContextRef = new AtomicReference<>();
     SuccessContext successContext = new SuccessContext().withAdditionalProperty("recovered", "yes");
 
     when(appRepository.getDao()).thenReturn(appDao);
@@ -929,7 +926,7 @@ class DistributedJobParticipantTest {
             mockConstruction(
                 PartitionWorker.class,
                 (mock, context) -> {
-                  recreateContextRef.set(context.arguments().get(3));
+                  stagedIndexContextRef.set(context.arguments().get(3));
                   when(mock.processPartition(partition))
                       .thenReturn(new PartitionWorker.PartitionResult(4, 1, false, 2, 3));
                 });
@@ -948,7 +945,7 @@ class DistributedJobParticipantTest {
           "processJobPartitions", new Class<?>[] {SearchIndexJob.class}, runningJob);
 
       assertNotNull(callbackRef.get());
-      assertNotNull(recreateContextRef.get());
+      assertNotNull(stagedIndexContextRef.get());
       callbackRef
           .get()
           .onFailure(
@@ -1007,6 +1004,38 @@ class DistributedJobParticipantTest {
   }
 
   @Test
+  void testProcessJobPartitionsSkipsJobWithoutStagedIndexMapping() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    EventPublisherJob config = new EventPublisherJob();
+    config.setEntities(Set.of("table"));
+
+    SearchIndexJob runningJob =
+        SearchIndexJob.builder()
+            .id(jobId)
+            .status(IndexJobStatus.RUNNING)
+            .jobConfiguration(config)
+            .build();
+
+    participant =
+        new DistributedJobParticipant(
+            collectionDAO, searchRepository, "test-server-1", testNotifier);
+    setParticipantRunning(true);
+
+    try (MockedConstruction<IndexingFailureRecorder> failureConstruction =
+            mockConstruction(IndexingFailureRecorder.class);
+        MockedConstruction<PartitionWorker> workerConstruction =
+            mockConstruction(PartitionWorker.class)) {
+
+      invokeParticipantMethod(
+          "processJobPartitions", new Class<?>[] {SearchIndexJob.class}, runningJob);
+
+      verify(searchRepository, never()).createBulkSink(anyInt(), anyInt(), anyLong());
+      assertTrue(failureConstruction.constructed().isEmpty());
+      assertTrue(workerConstruction.constructed().isEmpty());
+    }
+  }
+
+  @Test
   void testProcessJobPartitionsUsesDefaultBulkSinkSettingsAndHandlesInterruptedWait()
       throws Exception {
     UUID jobId = UUID.randomUUID();
@@ -1018,6 +1047,7 @@ class DistributedJobParticipantTest {
             .id(jobId)
             .status(IndexJobStatus.RUNNING)
             .jobConfiguration(config)
+            .stagedIndexMapping(Map.of("table", "table_staged"))
             .build();
     SearchIndexPartition pendingPartition =
         SearchIndexPartition.builder()
@@ -1030,7 +1060,9 @@ class DistributedJobParticipantTest {
     CollectionDAO.SearchIndexFailureDAO failureDao =
         mock(CollectionDAO.SearchIndexFailureDAO.class);
     when(collectionDAO.searchIndexFailureDAO()).thenReturn(failureDao);
-    when(searchRepository.createBulkSink(100, 100, 104857600L)).thenReturn(bulkSink);
+    when(searchRepository.createBulkSink(
+            100, 100, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES))
+        .thenReturn(bulkSink);
     when(bulkSink.flushAndAwait(60)).thenReturn(false);
 
     try (MockedConstruction<DistributedSearchIndexCoordinator> coordinatorMocked =
@@ -1054,7 +1086,8 @@ class DistributedJobParticipantTest {
       invokeParticipantMethod(
           "processJobPartitions", new Class<?>[] {SearchIndexJob.class}, runningJob);
 
-      verify(searchRepository).createBulkSink(100, 100, 104857600L);
+      verify(searchRepository)
+          .createBulkSink(100, 100, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES);
       verify(bulkSink).flushAndAwait(60);
       assertTrue(Thread.currentThread().isInterrupted());
       verify(coordinatorMocked.constructed().get(0)).claimNextPartition(jobId);

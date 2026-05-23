@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -45,12 +46,8 @@ public class CognitoAuthValidator {
         return poolValidation;
       }
 
-      FieldError publicKeyValidation = validatePublicKeyUrls(authConfig, cognitoDetails);
-      if (publicKeyValidation != null) {
-        return publicKeyValidation;
-      }
-
-      return null; // Success - Cognito public client validated
+      return validatePublicKeyUrls(
+          authConfig, cognitoDetails); // Success - Cognito public client validated
     } catch (Exception e) {
       LOG.error("Cognito public client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
@@ -82,17 +79,11 @@ public class CognitoAuthValidator {
       }
 
       // Validate client credentials
-      FieldError credentialsValidation =
-          validateClientCredentials(
-              cognitoDetails,
-              oidcConfig.getId(),
-              oidcConfig.getSecret(),
-              oidcConfig.getCallbackUrl());
-      if (credentialsValidation != null) {
-        return credentialsValidation;
-      }
-
-      return null; // Success - Cognito confidential client validated
+      return validateClientCredentials(
+          cognitoDetails,
+          oidcConfig.getId(),
+          oidcConfig.getSecret(),
+          oidcConfig.getCallbackUrl()); // Success - Cognito confidential client validated
     } catch (Exception e) {
       LOG.error("Cognito confidential client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
@@ -282,7 +273,7 @@ public class CognitoAuthValidator {
           }
 
           // Validate keys array is not empty
-          if (jwks.get("keys").size() == 0) {
+          if (jwks.get("keys").isEmpty()) {
             return ValidationErrorBuilder.createFieldError(
                 ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
                 "JWKS endpoint returned empty keys array: " + urlStr);
@@ -325,16 +316,16 @@ public class CognitoAuthValidator {
 
       // Build auth URL exactly as done in AuthenticationCodeFlowHandler
       // Build query parameters similar to buildLoginParams in AuthenticationCodeFlowHandler
-      StringBuilder authUrlBuilder = new StringBuilder(authorizationEndpoint);
-      authUrlBuilder.append("?response_type=code");
-      authUrlBuilder.append("&client_id=").append(clientId);
-      authUrlBuilder
-          .append("&redirect_uri=")
-          .append(java.net.URLEncoder.encode(redirectUri, "UTF-8"));
-      authUrlBuilder.append("&scope=openid%20email%20profile");
-      authUrlBuilder.append("&response_mode=query");
 
-      String authUrl = authUrlBuilder.toString();
+      String authUrl =
+          authorizationEndpoint
+              + "?response_type=code"
+              + "&client_id="
+              + clientId
+              + "&redirect_uri="
+              + java.net.URLEncoder.encode(redirectUri, StandardCharsets.UTF_8)
+              + "&scope=openid%20email%20profile"
+              + "&response_mode=query";
       LOG.debug("Testing client ID with auth URL: {}", authUrl);
 
       try {

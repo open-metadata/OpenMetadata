@@ -31,8 +31,8 @@ import {
   getSystemProfileList,
   getTableProfilesList,
 } from '../../../../../rest/tableAPI';
-import { Transi18next } from '../../../../../utils/CommonUtils';
 import documentationLinksClassBase from '../../../../../utils/DocumentationLinksClassBase';
+import { Transi18next } from '../../../../../utils/i18next/LocalUtil';
 import {
   calculateCustomMetrics,
   calculateRowCountMetrics,

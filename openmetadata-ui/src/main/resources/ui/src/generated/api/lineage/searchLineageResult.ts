@@ -23,6 +23,10 @@ export interface SearchLineageResult {
      */
     nodes?: any;
     /**
+     * Optional pagination information for table-mode impact analysis.
+     */
+    paginationInfo?: any;
+    /**
      * Upstream Edges for the entity.
      */
     upstreamEdges?: any;

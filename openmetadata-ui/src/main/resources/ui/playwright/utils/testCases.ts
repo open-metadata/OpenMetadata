@@ -73,6 +73,27 @@ export const deleteTestCase = async (page: Page, testCaseName: string) => {
   await toastNotification(page, /deleted successfully!/);
 };
 
+export const submitTestCaseForm = async (page: Page) => {
+  const testCaseResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/dataQuality/testCases') &&
+      response.request().method() === 'POST'
+  );
+  await page.getByTestId('create-btn').click();
+  const response = await testCaseResponse;
+
+  expect(response.status()).toBe(201);
+
+  // Wait for the drawer to close — this is the definitive signal that test
+  // case creation and any subsequent pipeline/deploy actions triggered by the
+  // form have finished. Unlike waiting for toast or specific API responses
+  // (which may or may not fire, or may be slow), the drawer closes only after
+  // the applicable submit flow completes.
+  await page.getByTestId('test-case-form-v1').waitFor({ state: 'detached' });
+
+  return response;
+};
+
 export const waitForPermissionsResponse = (page: Page) =>
   page.waitForResponse((res) => {
     const url = res.url();
@@ -115,6 +136,32 @@ export const waitForTestSuiteListResponse = (page: Page) =>
       res.request().method() === 'GET' &&
       res.status() === 200
   );
+
+/**
+ * Waits for the entity Pipeline tab / pipeline card list request that loads TestSuite
+ * ingestion pipelines (owners + pipelineStatuses, paginated).
+ */
+export const waitForTestSuiteIngestionPipelinesListResponse = (page: Page) =>
+  page.waitForResponse((res) => {
+    const url = res.url();
+    const method = res.request().method();
+
+    return (
+      method === 'GET' &&
+      url.includes('/api/v1/services/ingestionPipelines') &&
+      url.includes('pipelineStatuses') &&
+      url.includes('pipelineType=TestSuite')
+    );
+  });
+
+export const confirmIngestionPipelineHardDelete = async (page: Page) => {
+  await page.getByTestId('confirmation-text-input').fill('DELETE');
+  const deleteResponse = page.waitForResponse(
+    '/api/v1/services/ingestionPipelines/*?hardDelete=true'
+  );
+  await page.getByTestId('confirm-button').click();
+  await deleteResponse;
+};
 
 export const visitTestSuitesPage = async (page: Page) => {
   const listPromise = waitForTestSuiteListResponse(page);
@@ -295,6 +342,8 @@ export const navigateToGlobalDataQuality = async (page: Page) => {
  * @returns Download object from Playwright
  */
 export const performTestCaseExport = async (page: Page) => {
+  const downloadPromise = page.waitForEvent('download');
+
   await expect(page.getByTestId('export-button')).toBeVisible();
   await page.getByTestId('export-button').click();
   await page.locator('#export-form').waitFor({
@@ -302,8 +351,6 @@ export const performTestCaseExport = async (page: Page) => {
   });
   await expect(page.locator('#export-form')).toBeVisible();
   await expect(page.locator('#submit-button')).not.toBeDisabled();
-
-  const downloadPromise = page.waitForEvent('download');
   await page.locator('#submit-button').click();
   const download = await downloadPromise;
 
@@ -644,8 +691,8 @@ export const performE2EExportImportFlow = async (
     await page.getByRole('button', { name: 'Next' }).click();
 
     await validateImportStatus(page, {
-      passed: '3',
-      processed: '6',
+      passed: '2',
+      processed: '5',
       failed: '3',
     });
 
@@ -730,8 +777,8 @@ export const performE2EExportImportFlow = async (
     await page.getByRole('button', { name: 'Next' }).click();
 
     await validateImportStatus(page, {
-      passed: '3',
-      processed: '3',
+      passed: '2',
+      processed: '2',
       failed: '0',
     });
 

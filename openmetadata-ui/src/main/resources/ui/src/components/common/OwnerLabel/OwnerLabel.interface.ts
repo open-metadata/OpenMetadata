@@ -13,6 +13,8 @@
 import { ReactNode } from 'react';
 import { EntityReference } from '../../../generated/tests/testCase';
 
+export type AvatarSize = 16 | 18 | 20 | 24 | 32 | 40 | 48 | 56 | 64;
+
 export interface OwnerLabelProps {
   showDashPlaceholder?: boolean;
   owners?: EntityReference[];
@@ -29,7 +31,7 @@ export interface OwnerLabelProps {
   };
   tooltipText?: string;
   isCompactView?: boolean;
-  avatarSize?: number;
+  avatarSize?: AvatarSize;
   isAssignee?: boolean;
   onEditClick?: () => void;
   ownerLabelClassName?: string;

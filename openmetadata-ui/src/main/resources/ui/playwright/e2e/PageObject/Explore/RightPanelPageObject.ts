@@ -13,6 +13,7 @@
 
 import { expect, Locator, Page } from '@playwright/test';
 import { EntityClass } from '../../../support/entity/EntityClass';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { CustomPropertiesPageObject } from './CustomPropertiesPageObject';
 import { DataQualityPageObject } from './DataQualityPageObject';
 import { LineagePageObject } from './LineagePageObject';
@@ -935,7 +936,7 @@ export class RightPanelPageObject {
     await expect(this.panelLoaders).toHaveCount(0, { timeout });
 
     // Step 3: Wait for any remaining loaders on the page (fallback)
-    await this.pageLoader.waitFor({ state: 'detached', timeout });
+    await this.waitForLoadersToDisappear(timeout);
 
     // Step 4: Ensure panel is still visible and stable
     await this.getSummaryPanel().waitFor({ state: 'visible' });
@@ -1021,8 +1022,8 @@ export class RightPanelPageObject {
   /**
    * Wait for all loaders to disappear
    */
-  async waitForLoadersToDisappear() {
-    await this.pageLoader.waitFor({ state: 'detached' });
+  async waitForLoadersToDisappear(timeout?: number) {
+    await waitForAllLoadersToDisappear(this.page, 'loader', timeout);
   }
 
   /**

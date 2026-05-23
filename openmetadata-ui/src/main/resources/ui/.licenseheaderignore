@@ -62,6 +62,7 @@
 # Miscellaneous
 *.json
 *.txt
+*.xml
 
 # Docs, READMEs
 *.md

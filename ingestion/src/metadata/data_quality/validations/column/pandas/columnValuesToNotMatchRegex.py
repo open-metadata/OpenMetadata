@@ -14,7 +14,7 @@ Validator for column values to not match regex test case
 """
 
 from collections import defaultdict
-from typing import List, Optional, cast
+from typing import List, Optional, cast  # noqa: UP035
 
 import pandas as pd
 
@@ -27,10 +27,17 @@ from metadata.data_quality.validations.column.base.columnValuesToNotMatchRegex i
     BaseColumnValuesToNotMatchRegexValidator,
 )
 from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    PandasFailedRowSamplerMixin,
+)
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_pandas,
 )
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
@@ -41,13 +48,14 @@ logger = test_suite_logger()
 
 
 class ColumnValuesToNotMatchRegexValidator(
-    BaseColumnValuesToNotMatchRegexValidator, PandasValidatorMixin
+    FailedSampleValidatorMixin,
+    BaseColumnValuesToNotMatchRegexValidator,
+    PandasValidatorMixin,
+    PandasFailedRowSamplerMixin,
 ):
     """Validator for column values to not match regex test case"""
 
-    def _run_results(
-        self, metric: Metrics, column: SQALikeColumn, **kwargs
-    ) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: SQALikeColumn, **kwargs) -> Optional[int]:  # noqa: UP045
         """compute result of the test case
 
         Args:
@@ -63,7 +71,7 @@ class ColumnValuesToNotMatchRegexValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
         Follows the iterate pattern from the Mean metric's df_fn method to handle
@@ -88,14 +96,12 @@ class ColumnValuesToNotMatchRegexValidator(
         dimension_results = []
 
         try:
-            forbidden_regex = test_params[
-                BaseColumnValuesToNotMatchRegexValidator.FORBIDDEN_REGEX
-            ]
+            forbidden_regex = test_params[BaseColumnValuesToNotMatchRegexValidator.FORBIDDEN_REGEX]
 
             dfs = self.runner
-            not_regex_count_impl = add_props(expression=forbidden_regex)(
-                Metrics.notRegexCount.value
-            )(column).get_pandas_computation()
+            not_regex_count_impl = add_props(expression=forbidden_regex)(Metrics.notRegexCount.value)(
+                column
+            ).get_pandas_computation()
             row_count_impl = Metrics.rowCount().get_pandas_computation()
 
             dimension_aggregates = defaultdict(
@@ -106,35 +112,27 @@ class ColumnValuesToNotMatchRegexValidator(
             )
 
             for df in dfs:
-                df_typed = cast(pd.DataFrame, df)
+                df_typed = cast(pd.DataFrame, df)  # noqa: TC006
                 grouped = df_typed.groupby(dimension_col.name, dropna=False)
 
                 for dimension_value, group_df in grouped:
-                    dimension_value = self.format_dimension_value(dimension_value)
+                    dimension_value = self.format_dimension_value(dimension_value)  # noqa: PLW2901
 
-                    dimension_aggregates[dimension_value][
-                        Metrics.notRegexCount.name
-                    ] = not_regex_count_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][
-                            Metrics.notRegexCount.name
-                        ],
-                        group_df,
+                    dimension_aggregates[dimension_value][Metrics.notRegexCount.name] = (
+                        not_regex_count_impl.update_accumulator(
+                            dimension_aggregates[dimension_value][Metrics.notRegexCount.name],
+                            group_df,
+                        )
                     )
-                    dimension_aggregates[dimension_value][
-                        Metrics.rowCount.name
-                    ] = row_count_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.rowCount.name] = row_count_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.rowCount.name],
                         group_df,
                     )
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                not_regex_count = not_regex_count_impl.aggregate_accumulator(
-                    agg[Metrics.notRegexCount.name]
-                )
-                row_count = row_count_impl.aggregate_accumulator(
-                    agg[Metrics.rowCount.name]
-                )
+                not_regex_count = not_regex_count_impl.aggregate_accumulator(agg[Metrics.notRegexCount.name])
+                row_count = row_count_impl.aggregate_accumulator(agg[Metrics.rowCount.name])
 
                 results_data.append(
                     {
@@ -184,3 +182,15 @@ class ColumnValuesToNotMatchRegexValidator(
             NotImplementedError:
         """
         return self._compute_row_count(self.runner, column)
+
+    def filter(self):
+        expression = self.get_test_case_param_value(
+            self.test_case.parameterValues,
+            "forbiddenRegex",
+            str,
+        )
+        return f"{self.get_column().name}.astype('str').str.contains('{expression}')"
+
+    def fetch_failed_rows_sample(self):
+        cols, rows = self._get_failed_rows_sample()
+        return TableData(columns=cols, rows=rows)

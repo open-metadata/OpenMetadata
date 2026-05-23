@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { RuleObject } from 'antd/lib/form';
 import yaml from 'js-yaml';
-import { omit } from 'lodash';
+import { isEmpty, omit } from 'lodash';
 import { ReactComponent as ContractAbortedIcon } from '../../assets/svg/ic-contract-aborted.svg';
 import { ReactComponent as ContractFailedIcon } from '../../assets/svg/ic-contract-failed.svg';
 import { ReactComponent as ContractRunningIcon } from '../../assets/svg/ic-contract-running.svg';
@@ -34,6 +35,20 @@ import { formatMonth } from '../date-time/DateTimeUtils';
 import i18n, { t } from '../i18next/LocalUtil';
 import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
 import { getTermQuery } from '../SearchUtils';
+
+export const semanticRuleValidator = (_: RuleObject, value: string) => {
+  if (isEmpty(value) || value === '""' || value === '{}') {
+    return Promise.reject(
+      new Error(
+        t('message.field-text-is-required', {
+          fieldText: t('label.rule'),
+        })
+      )
+    );
+  }
+
+  return Promise.resolve();
+};
 
 export const getContractStatusLabelBasedOnFailedResult = (failed?: number) => {
   return failed === 0 ? t('label.passed') : t('label.failed');

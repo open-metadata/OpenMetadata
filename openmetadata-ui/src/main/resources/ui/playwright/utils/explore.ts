@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import { expect, Locator } from '@playwright/test';
 import { isEmpty, isUndefined } from 'lodash';
 import { Page } from 'playwright';
 import { EXPECTED_BUCKETS } from '../constant/explore';
@@ -31,16 +31,12 @@ export const searchAndClickOnOption = async (
 ) => {
   let testId = (filter.value ?? '').toLowerCase();
   // Filtering for tiers is done on client side, so no API call will be triggered
-  if (filter.key === 'tier.tagFQN') {
-    testId = filter.value ?? '';
-  } else {
-    const searchRes = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=${filter.key}**`
-    );
+  const searchRes = page.waitForResponse(
+    `/api/v1/search/aggregate?index=dataAsset&field=${filter.key}**`
+  );
 
-    await page.fill('[data-testid="search-input"]', filter.value ?? '');
-    await searchRes;
-  }
+  await page.fill('[data-testid="search-input"]', filter.value ?? '');
+  await searchRes;
 
   await page.getByTestId(testId).click();
 
@@ -70,10 +66,7 @@ export const selectNullOption = async (
                   ? [
                       {
                         term: {
-                          [filter.key]:
-                            filter.key === 'tier.tagFQN'
-                              ? filter.value
-                              : filter.value.toLowerCase(),
+                          [filter.key]: filter.value.toLowerCase(),
                         },
                       },
                     ]
@@ -308,13 +301,13 @@ export const validateBucketsForIndexAndSort = async (
 export const selectSortOrder = async (page: Page, sortOrder: string) => {
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('sorting-dropdown-label').click();
-  await page.getByRole('menuitem', { name: sortOrder }).waitFor({
+  await page.getByRole('menuitemradio', { name: sortOrder }).waitFor({
     state: 'visible',
   });
   const nameFilter = page.waitForResponse(
     `/api/v1/search/query?q=&index=dataAsset&*sort_field=displayName.keyword&sort_order=desc*`
   );
-  await page.getByRole('menuitem', { name: sortOrder }).click();
+  await page.getByRole('menuitemradio', { name: sortOrder }).click();
   await nameFilter;
 
   await expect(page.getByTestId('sorting-dropdown-label')).toHaveText(
@@ -366,12 +359,14 @@ export const navigateToExploreAndSelectEntity = async ({
   endpoint,
   fullyQualifiedName,
   exploreTab,
+  dataAssetTypeLeftPanelTestId,
 }: {
   page: Page;
   entityName: string;
   endpoint?: string;
   fullyQualifiedName?: string;
   exploreTab?: string;
+  dataAssetTypeLeftPanelTestId?: string;
 }) => {
   await redirectToExplorePage(page);
 
@@ -385,7 +380,37 @@ export const navigateToExploreAndSelectEntity = async ({
     endpoint,
     fullyQualifiedName,
     exploreTab,
+    dataAssetTypeLeftPanelTestId,
   });
+};
+
+export const getExportModalContent = (page: Page) =>
+  page.getByTestId('export-scope-modal').locator('.ant-modal-content');
+
+export const openExportScopeModal = async (page: Page) => {
+  await page.getByRole('button', { name: 'Tools' }).click();
+  await page.getByRole('menuitemradio', { name: 'Export' }).click();
+
+  await expect(getExportModalContent(page)).toBeVisible();
+};
+
+export const countCsvResponseRows = (csvText: string): number =>
+  csvText.split('\n').filter((line: string) => line.trim().length > 0).length -
+  1;
+
+export const getExportCountFromModal = async (
+  modalContent: Locator,
+  testId: string
+): Promise<number> => {
+  const countLocator = modalContent.getByTestId(testId);
+
+  await expect(countLocator).toBeVisible();
+  await expect(countLocator).toContainText(/\(\d[\d,]* Results?\)/);
+
+  const text = await countLocator.textContent();
+  const match = text?.match(/(\d[\d,]*)/);
+
+  return match ? parseInt(match[1].replace(/,/g, ''), 10) : 0;
 };
 
 export const getFlatColumnCountOfTable = (

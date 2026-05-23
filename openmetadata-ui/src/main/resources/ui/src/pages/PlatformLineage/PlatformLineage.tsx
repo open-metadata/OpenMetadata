@@ -236,7 +236,7 @@ const PlatformLineage = () => {
       <div className="d-flex justify-between items-center">
         <Select
           showSearch
-          className="w-1\/2"
+          className="w-max-500"
           data-testid="search-entity-select"
           filterOption={false}
           loading={isSearchLoading}
@@ -245,6 +245,7 @@ const PlatformLineage = () => {
           placeholder={t('label.search-entity-for-lineage', {
             entity: 'entity',
           })}
+          style={{ width: '50%' }}
           value={defaultValue}
           onFocus={() => !defaultValue && debouncedSearch('')}
           onSearch={debouncedSearch}

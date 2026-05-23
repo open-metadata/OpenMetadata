@@ -15,6 +15,7 @@ export interface StopScheduleRunModalProps {
   appName: string;
   isModalOpen: boolean;
   displayName: string;
+  runId?: string;
   onClose: () => void;
   onStopWorkflowsUpdate?: () => void;
 }

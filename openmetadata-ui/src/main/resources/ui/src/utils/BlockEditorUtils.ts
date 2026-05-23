@@ -24,6 +24,7 @@ import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import blockEditorExtensionsClassBase from './BlockEditorExtensionsClassBase';
 import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
 import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtils';
+import { getSanitizeContent } from './sanitize.utils';
 
 export const getSelectedText = (state: EditorState) => {
   const { from, to } = state.selection;
@@ -89,6 +90,12 @@ export type FormatContentFor = 'server' | 'client';
 // This avoids HTML encoding of < and > characters in entity links
 const ENTITY_LINK_MARKER_PREFIX = '__ENTITY_LINK_MARKER_';
 
+const escapeMarkdownLinkText = (text: string): string =>
+  text.replace(/[[\]()\\]/g, '\\$&');
+
+const sanitizeEntityLinkField = (value: string): string =>
+  value.replace(/[<>|]/g, '');
+
 export const formatContent = (
   htmlString: string,
   formatFor: FormatContentFor
@@ -113,12 +120,26 @@ export const formatContent = (
 
   if (formatFor === 'server') {
     anchorTags.forEach((tag, index) => {
-      const href = tag.getAttribute('href');
+      const rawHref = tag.getAttribute('href');
       const text = tag.textContent;
       const fqn = tag.getAttribute('data-fqn');
       const entityType = tag.getAttribute('data-entityType');
 
-      const entityLink = `<#E${ENTITY_LINK_SEPARATOR}${entityType}${ENTITY_LINK_SEPARATOR}${fqn}|[${text}](${href})>`;
+      // Validate href to only allow safe protocols before embedding into entity link string.
+      // This prevents unsafe URLs from bypassing DOMPurify via the post-sanitization replacement.
+      const href =
+        rawHref &&
+        (rawHref.startsWith('http://') ||
+          rawHref.startsWith('https://') ||
+          rawHref.startsWith('/') ||
+          rawHref.startsWith('#'))
+          ? rawHref
+          : '';
+
+      const safeEntityType = sanitizeEntityLinkField(entityType ?? '');
+      const safeFqn = sanitizeEntityLinkField(fqn ?? '');
+      const safeText = escapeMarkdownLinkText(text ?? '');
+      const entityLink = `<#E${ENTITY_LINK_SEPARATOR}${safeEntityType}${ENTITY_LINK_SEPARATOR}${safeFqn}|[${safeText}](${href})>`;
       const marker = `${ENTITY_LINK_MARKER_PREFIX}${index}__`;
 
       entityLinkMap.set(marker, entityLink);
@@ -138,15 +159,18 @@ export const formatContent = (
 
   // Apply additional transformations based on format
   if (formatFor === 'server') {
-    modifiedHtmlString =
+    modifiedHtmlString = getSanitizeContent(
       blockEditorExtensionsClassBase.serializeContentForBackend(
         modifiedHtmlString
-      );
+      )
+    );
 
     // Replace markers with actual entity links
     entityLinkMap.forEach((entityLink, marker) => {
       modifiedHtmlString = modifiedHtmlString.replace(marker, entityLink);
     });
+  } else {
+    modifiedHtmlString = getSanitizeContent(modifiedHtmlString);
   }
 
   return modifiedHtmlString;

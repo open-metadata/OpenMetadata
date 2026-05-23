@@ -421,7 +421,7 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
     }
 
     private List<EntityReference> getDataProducts(
-        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) {
       String dataProductsStr = csvRecord.get(fieldNumber);
       if (nullOrEmpty(dataProductsStr)) {
         return null;
@@ -450,39 +450,22 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "mimeType",
-          () -> {
-            recordChange("mimeType", original.getMimeType(), updated.getMimeType());
-          });
+          () -> recordChange("mimeType", original.getMimeType(), updated.getMimeType()));
       compareAndUpdate(
           "createdTime",
-          () -> {
-            recordChange("createdTime", original.getCreatedTime(), updated.getCreatedTime());
-          });
+          () -> recordChange("createdTime", original.getCreatedTime(), updated.getCreatedTime()));
       compareAndUpdate(
           "modifiedTime",
-          () -> {
-            recordChange("modifiedTime", original.getModifiedTime(), updated.getModifiedTime());
-          });
-      compareAndUpdate(
-          "path",
-          () -> {
-            recordChange("path", original.getPath(), updated.getPath());
-          });
+          () ->
+              recordChange("modifiedTime", original.getModifiedTime(), updated.getModifiedTime()));
+      compareAndUpdate("path", () -> recordChange("path", original.getPath(), updated.getPath()));
       compareAndUpdate(
           "driveFileId",
-          () -> {
-            recordChange("driveFileId", original.getDriveFileId(), updated.getDriveFileId());
-          });
-      compareAndUpdate(
-          "size",
-          () -> {
-            recordChange("size", original.getSize(), updated.getSize());
-          });
+          () -> recordChange("driveFileId", original.getDriveFileId(), updated.getDriveFileId()));
+      compareAndUpdate("size", () -> recordChange("size", original.getSize(), updated.getSize()));
       compareAndUpdate(
           "fileVersion",
-          () -> {
-            recordChange("fileVersion", original.getFileVersion(), updated.getFileVersion());
-          });
+          () -> recordChange("fileVersion", original.getFileVersion(), updated.getFileVersion()));
     }
   }
 }

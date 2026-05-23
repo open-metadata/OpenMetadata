@@ -25,7 +25,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ForkJoinPool;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -97,8 +96,7 @@ public class EventFilter implements ContainerResponseFilter {
               if (JwtFilter.EXCLUDED_ENDPOINTS.stream()
                   .noneMatch(endpoint -> uriInfo.getPath().contains(endpoint))) {
                 ParallelStreamUtil.runAsync(
-                    (Callable<Void>) () -> eventHandler.process(requestContext, responseContext),
-                    forkJoinPool);
+                    () -> eventHandler.process(requestContext, responseContext), forkJoinPool);
               }
             });
   }

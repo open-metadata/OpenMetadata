@@ -14,9 +14,10 @@ the buckets which require ingestion: s3:ListBucket, s3:GetObject and s3:GetBucke
 The cloudwatch client is used to fetch the total size in bytes for a bucket, and the total nr of files. This requires
 the cloudwatch:GetMetricData permissions
 """
+
 from dataclasses import dataclass
 from functools import partial
-from typing import Optional
+from typing import Any, Optional
 
 from botocore.client import BaseClient
 
@@ -39,6 +40,7 @@ from metadata.utils.constants import THREE_MIN
 class S3ObjectStoreClient:
     s3_client: BaseClient
     cloudwatch_client: BaseClient
+    session: Any = None
 
 
 def get_connection(connection: S3Connection) -> S3ObjectStoreClient:
@@ -46,9 +48,13 @@ def get_connection(connection: S3Connection) -> S3ObjectStoreClient:
     Returns 2 clients - the s3 client and the cloudwatch client needed for total nr of objects and total size
     """
     aws_client = AWSClient(connection.awsConfig)
+    session = aws_client.create_session()
+    endpoint_url = str(connection.awsConfig.endPointURL) if connection.awsConfig.endPointURL else None
+    kwargs = {"endpoint_url": endpoint_url} if endpoint_url else {}
     return S3ObjectStoreClient(
-        s3_client=aws_client.get_client(service_name="s3"),
-        cloudwatch_client=aws_client.get_client(service_name="cloudwatch"),
+        s3_client=session.client(service_name="s3", **kwargs),
+        cloudwatch_client=session.client(service_name="cloudwatch", **kwargs),
+        session=session,
     )
 
 
@@ -56,8 +62,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: S3ObjectStoreClient,
     service_connection: S3Connection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -72,12 +78,8 @@ def test_connection(
         client.s3_client.list_buckets()
 
     test_fn = {
-        "ListBuckets": partial(
-            test_buckets, client=client, connection=service_connection
-        ),
-        "GetMetrics": partial(
-            client.cloudwatch_client.list_metrics, Namespace="AWS/S3"
-        ),
+        "ListBuckets": partial(test_buckets, client=client, connection=service_connection),
+        "GetMetrics": partial(client.cloudwatch_client.list_metrics, Namespace="AWS/S3"),
     }
 
     return test_connection_steps(

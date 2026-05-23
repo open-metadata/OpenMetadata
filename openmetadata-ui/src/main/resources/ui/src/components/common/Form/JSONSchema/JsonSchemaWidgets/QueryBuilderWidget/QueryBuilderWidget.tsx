@@ -11,6 +11,14 @@
  *  limitations under the License.
  */
 import { InfoCircleOutlined } from '@ant-design/icons';
+import {
+  Actions,
+  Builder,
+  Config,
+  ImmutableTree,
+  Query,
+  Utils as QbUtils,
+} from '@react-awesome-query-builder/antd';
 import { WidgetProps } from '@rjsf/utils';
 import {
   Alert,
@@ -23,19 +31,8 @@ import {
   Typography,
 } from 'antd';
 import classNames from 'classnames';
-import { useEffect } from 'react';
-
-import {
-  Actions,
-  Builder,
-  Config,
-  ImmutableTree,
-  Query,
-  Utils as QbUtils,
-} from '@react-awesome-query-builder/antd';
-import 'antd/dist/antd.css';
 import { debounce, isEmpty, isUndefined } from 'lodash';
-import { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';

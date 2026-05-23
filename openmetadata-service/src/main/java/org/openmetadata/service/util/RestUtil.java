@@ -198,11 +198,7 @@ public final class RestUtil {
   }
 
   public static String normalizeQuotes(String input) {
-    return input
-        .replace('\u201c', '"')
-        .replace('\u201d', '"')
-        .replace('\u2018', '\'')
-        .replace('\u2019', '\'');
+    return input.replace('“', '"').replace('”', '"').replace('‘', '\'').replace('’', '\'');
   }
 
   public static List<String> extractJsonObjects(String input) {

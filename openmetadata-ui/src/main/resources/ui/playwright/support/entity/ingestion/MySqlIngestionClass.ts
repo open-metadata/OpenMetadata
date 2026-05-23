@@ -143,8 +143,11 @@ class MysqlIngestionClass extends ServiceBaseClass {
 
       await page.click('[data-menu-id*="profiler"]');
 
-      await page.locator('#root\\/profileSample').waitFor();
-      await page.fill('#root\\/profileSample', '10');
+      await page.getByTestId('profile-sample-input').waitFor();
+      await page
+        .getByTestId('profile-sample-input')
+        .locator('input')
+        .fill('10');
       await page.click('[data-testid="submit-btn"]');
       // Make sure we create ingestion with None schedule to avoid conflict between Airflow and Argo behavior
       await this.scheduleIngestion(page);

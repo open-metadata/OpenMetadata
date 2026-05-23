@@ -18,6 +18,7 @@ import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.LocalObjectReference;
 import io.fabric8.kubernetes.api.model.PodSecurityContext;
 import io.fabric8.kubernetes.api.model.ResourceRequirements;
+import io.fabric8.kubernetes.api.model.Toleration;
 import java.util.List;
 import java.util.Map;
 
@@ -86,6 +87,7 @@ public class OMJobSpec {
     private List<EnvVar> env;
     private ResourceRequirements resources;
     private Map<String, String> nodeSelector;
+    private List<Toleration> tolerations;
     private PodSecurityContext securityContext;
     private Map<String, String> labels;
     private Map<String, String> annotations;
@@ -156,6 +158,14 @@ public class OMJobSpec {
 
     public void setNodeSelector(Map<String, String> nodeSelector) {
       this.nodeSelector = nodeSelector;
+    }
+
+    public List<Toleration> getTolerations() {
+      return tolerations;
+    }
+
+    public void setTolerations(List<Toleration> tolerations) {
+      this.tolerations = tolerations;
     }
 
     public PodSecurityContext getSecurityContext() {

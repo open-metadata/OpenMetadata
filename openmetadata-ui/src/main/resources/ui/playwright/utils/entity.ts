@@ -158,7 +158,7 @@ export const addOwner = async ({
           const searchRetry = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/search/query') &&
-              response.url().includes('user_search_index')
+              response.url().includes(encodeURIComponent(owner))
           );
           await ownerSearchInput.fill('');
           await ownerSearchInput.fill(owner);
@@ -203,13 +203,19 @@ export const addOwnerWithoutValidation = async ({
       (await usersTab.getAttribute('aria-selected')) === 'true';
 
     if (!isTabAlreadySelected) {
+      // The call with size > 0 only fires after the tab click.
       const userListResponse = page.waitForResponse(
-        '/api/v1/search/query?q=&index=user&*'
+        (response) =>
+          response.url().includes('/api/v1/search/query?q=&index=user') &&
+          !response.url().includes('size=0') &&
+          response.status() === 200
       );
       await usersTab.click();
+      await expect(usersTab).toHaveAttribute('aria-selected', 'true');
       await userListResponse;
     }
   }
+
   await waitForAllLoadersToDisappear(page);
 
   const ownerSearchBar = await page
@@ -480,7 +486,7 @@ export const addMultiOwner = async (data: {
 
   for (const name of owners) {
     await expect(
-      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name)
+      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name).first()
     ).toBeVisible();
   }
 };
@@ -912,6 +918,12 @@ export const removeTag = async (page: Page, tags: string[]) => {
     await page.getByTestId('saveAssociatedTag').click();
     await patchRequest;
 
+    await page
+      .getByTestId('saveAssociatedTag')
+      .locator('[data-icon="loading"]')
+      .waitFor({ state: 'detached' });
+    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+
     await expect(
       page
         .getByTestId('KnowledgePanel.Tags')
@@ -962,6 +974,12 @@ export const removeTagsFromChildren = async ({
     await page.getByTestId('saveAssociatedTag').click();
 
     await patchRequest;
+
+    await page
+      .getByTestId('saveAssociatedTag')
+      .locator('[data-icon="loading"]')
+      .waitFor({ state: 'detached' });
+    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
     await expect(
       page
@@ -1016,9 +1034,11 @@ export const assignGlossaryTerm = async (
     .click();
 
   await patchRequest;
-  await expect(
-    page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
-  ).not.toBeVisible();
+  await page
+    .getByTestId('saveAssociatedTag')
+    .locator('[data-icon="loading"]')
+    .waitFor({ state: 'detached' });
+  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
   await expect(
     page
@@ -1162,10 +1182,6 @@ export const assignGlossaryTermToChildren = async ({
   );
   await expect(glossaryTermTag).toBeVisible();
 
-  // CRITICAL: Set up waitForResponse BEFORE the click that triggers it
-  const putRequest = page.waitForResponse(
-    (response) => response.request().method() === 'PUT'
-  );
   await glossaryTermTag.click();
 
   await page
@@ -1186,9 +1202,6 @@ export const assignGlossaryTermToChildren = async ({
 
   await expect(saveButton).not.toBeVisible();
 
-  await putRequest;
-
-  // CRITICAL: Wait for UI to update after API responses
   await waitForAllLoadersToDisappear(page);
 
   await expect(
@@ -1237,6 +1250,12 @@ export const removeGlossaryTerm = async (
       .getByTestId('saveAssociatedTag')
       .click();
     await patchRequest;
+
+    await page
+      .getByTestId('saveAssociatedTag')
+      .locator('[data-icon="loading"]')
+      .waitFor({ state: 'detached' });
+    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
     await expect(
       page
@@ -1290,6 +1309,12 @@ export const removeGlossaryTermFromChildren = async ({
     await page.getByTestId('saveAssociatedTag').click();
 
     await patchRequest;
+
+    await page
+      .getByTestId('saveAssociatedTag')
+      .locator('[data-icon="loading"]')
+      .waitFor({ state: 'detached' });
+    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
     await expect(
       page
@@ -1396,7 +1421,9 @@ const announcementForm = async (
 
   await page.locator('#announcement-submit').scrollIntoViewIfNeeded();
   const announcementSubmit = page.waitForResponse(
-    '/api/v1/feed?entityLink=*type=Announcement*'
+    (response) =>
+      response.url().includes('/api/v1/announcements') &&
+      response.request().method() === 'POST'
   );
   await page.click('#announcement-submit');
   await announcementSubmit;
@@ -1450,9 +1477,9 @@ export const replyAnnouncement = async (page: Page) => {
 
   await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
 
-  await expect(page.getByTestId('add-reply').locator('svg')).toBeVisible();
+  await expect(page.getByTestId('add-reply')).toBeVisible();
 
-  await page.getByTestId('add-reply').locator('svg').click();
+  await page.getByTestId('add-reply').click();
 
   await expect(page.locator('.ql-editor')).toBeVisible();
 
@@ -1490,28 +1517,26 @@ export const deleteAnnouncement = async (page: Page) => {
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
 
-  await page
-    .locator(
-      '[data-testid="announcement-thread-body"] [data-testid="announcement-card"]'
-    )
-    .isVisible();
-
-  await page.hover(
-    '[data-testid="announcement-thread-body"] [data-testid="announcement-card"] [data-testid="main-message"]'
+  const drawerAnnouncementCard = page.locator(
+    '[data-testid="announcement-drawer"] [data-testid="announcement-card"]'
   );
 
-  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
-
-  await page.click('[data-testid="delete-message"]');
+  await expect(drawerAnnouncementCard).toBeVisible();
+  await drawerAnnouncementCard.getByTestId('announcement-actions').click();
+  await page.getByTestId('announcement-delete-action').click();
   const modalText = await page.textContent('.ant-modal-body');
 
   expect(modalText).toContain(
     'Are you sure you want to permanently delete this message?'
   );
 
-  const getFeed = page.waitForResponse('/api/v1/feed/*');
+  const deleteAnnouncementResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/announcements/') &&
+      response.request().method() === 'DELETE'
+  );
   await page.click('[data-testid="save-button"]');
-  await getFeed;
+  await deleteAnnouncementResponse;
 
   await page.reload();
   await page.getByTestId('manage-button').click();
@@ -1540,14 +1565,9 @@ export const editAnnouncement = async (
 
   await expect(drawerAnnouncementCard).toBeVisible();
 
-  // Hover over the announcement card inside the drawer to show the edit options popover
-  await drawerAnnouncementCard.hover();
-
-  // Wait for the popover to become visible
-  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
-
-  // Click the edit message button in the popover
-  await page.click('[data-testid="edit-message"]');
+  // Open the announcement actions menu and choose edit
+  await drawerAnnouncementCard.getByTestId('announcement-actions').click();
+  await page.getByTestId('announcement-edit-action').click();
 
   // Wait for the edit announcement modal to open
   await expect(page.locator('.ant-modal-header')).toContainText(
@@ -1569,7 +1589,11 @@ export const editAnnouncement = async (
     .fill(data.description);
 
   // Save the changes and wait for the API response
-  const updateResponse = page.waitForResponse('/api/v1/feed/*');
+  const updateResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/announcements/') &&
+      response.request().method() === 'PATCH'
+  );
   await page
     .locator(
       '[data-testid="edit-announcement"] .ant-modal-footer .ant-btn-primary'
@@ -1959,9 +1983,18 @@ export const restoreEntity = async (page: Page) => {
 
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="restore-button"]');
+
+  const restoreResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/restore') &&
+      response.request().method() === 'PUT'
+  );
+
   await page.click('button:has-text("Restore")');
 
-  await toastNotification(page, /restored successfully/);
+  const response = await restoreResponse;
+
+  expect(response.status()).toBe(200);
 
   await expect(page.locator('[data-testid="deleted-badge"]')).toBeHidden();
 };
@@ -2104,9 +2137,12 @@ export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
 
   await quickFilterResponse;
 
-  await expect(
-    page.locator('[data-testid="search-dropdown-Service Type"]')
-  ).toContainText(serviceType);
+  // Click on filter dropdown
+  await page.getByTestId('search-dropdown-Service Type').click();
+  // assert on dropdown item visibility
+  await page.getByRole('menuitem', { name: serviceType }).waitFor();
+  // assert on checkbox state
+  await expect(page.getByTestId(`${serviceType}-checkbox`)).toBeChecked();
 
   await expect(
     page
@@ -2203,15 +2239,7 @@ export const checkExploreSearchFilter = async (
   entity?: EntityClass
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
-  if (filterKey === 'tier.tagFQN') {
-    const tierList = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN**`
-    );
-    await page.getByTestId(`search-dropdown-${filterLabel}`).click();
-    await tierList;
-  } else {
-    await page.getByTestId(`search-dropdown-${filterLabel}`).click();
-  }
+  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
   await searchAndClickOnOption(
     page,
     {
@@ -2222,17 +2250,11 @@ export const checkExploreSearchFilter = async (
     true
   );
 
-  const rawFilterValue = (filterValue ?? '').replace(/ /g, '+').toLowerCase();
-
-  // Use JSON.stringify to properly escape both backslashes and double quotes
+  const rawFilterValue = (filterValue ?? '').replaceAll(' ', '+').toLowerCase();
   const escapedValue = JSON.stringify(rawFilterValue).slice(1, -1);
-
-  const filterValueForSearchURL =
-    filterKey === 'tier.tagFQN'
-      ? filterValue
-      : /["%]/.test(filterValue ?? '')
-      ? escapedValue
-      : rawFilterValue;
+  const filterValueForSearchURL = /["%]/.test(filterValue ?? '')
+    ? escapedValue
+    : rawFilterValue;
 
   // Use a predicate to check the response URL contains the correct filter
   const queryRes = page.waitForResponse(

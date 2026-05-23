@@ -1,6 +1,6 @@
 package org.openmetadata.service.secrets;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -122,10 +122,8 @@ public class GCPSecretsManagerTest extends ExternalSecretsManagerTest {
 
     secretsManager.encryptAuthenticationMechanism("ingestion-bot", authMechanism);
 
-    boolean hasEmptyPayload =
-        mockSecretStorage.values().stream().anyMatch(value -> value.isEmpty());
-    assertEquals(
-        false,
+    boolean hasEmptyPayload = mockSecretStorage.values().stream().anyMatch(String::isEmpty);
+    assertFalse(
         hasEmptyPayload,
         "Token revocation with empty string should not create empty secret payloads");
   }
@@ -141,11 +139,8 @@ public class GCPSecretsManagerTest extends ExternalSecretsManagerTest {
 
     secretsManager.encryptAuthenticationMechanism("ingestion-bot", authMechanism);
 
-    boolean hasEmptyPayload =
-        mockSecretStorage.values().stream().anyMatch(value -> value.isEmpty());
-    assertEquals(
-        false,
-        hasEmptyPayload,
-        "Token revocation with null should not create empty secret payloads");
+    boolean hasEmptyPayload = mockSecretStorage.values().stream().anyMatch(String::isEmpty);
+    assertFalse(
+        hasEmptyPayload, "Token revocation with null should not create empty secret payloads");
   }
 }

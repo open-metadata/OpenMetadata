@@ -43,7 +43,7 @@ public class SetEntityCertificationImpl implements JavaDelegate {
                   varHandler.getNamespacedVariable(
                       inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
       String entityType = entityLink.getEntityType();
-      EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+      EntityInterface entity = Entity.getEntity(entityLink, "certification", Include.ALL);
 
       String certification =
           Optional.ofNullable(certificationExpr)
@@ -59,9 +59,7 @@ public class SetEntityCertificationImpl implements JavaDelegate {
       setStatus(entity, entityType, user, certification);
     } catch (Exception exc) {
       LOG.error(
-          String.format(
-              "[%s] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId())),
-          exc);
+          "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }

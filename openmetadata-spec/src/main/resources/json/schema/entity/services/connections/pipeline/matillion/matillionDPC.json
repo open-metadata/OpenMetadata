@@ -1,0 +1,46 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/matillion/matillionDPC.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Matillion DPC Auth Config",
+    "description": "Matillion Data Productivity Cloud Auth Config.",
+    "javaType": "org.openmetadata.schema.services.connections.pipeline.matillion.MatillionDPCAuth",
+    "type": "object",
+    "properties": {
+        "type": {
+            "type": "string",
+            "enum": [
+                "MatillionDPC"
+            ],
+            "default": "MatillionDPC"
+        },
+        "clientId": {
+            "title": "Client ID",
+            "description": "OAuth2 Client ID for Matillion DPC authentication.",
+            "type": "string"
+        },
+        "clientSecret": {
+            "title": "Client Secret",
+            "description": "OAuth2 Client Secret for Matillion DPC authentication.",
+            "type": "string",
+            "format": "password"
+        },
+        "region": {
+            "title": "Region",
+            "description": "Matillion DPC region. Determines the API base URL.",
+            "type": "string",
+            "enum": [
+                "us1",
+                "eu1"
+            ],
+            "default": "us1"
+        },
+        "personalAccessToken": {
+            "title": "Personal Access Token",
+            "description": "Personal Access Token for Matillion DPC. Alternative to OAuth2 Client Credentials.",
+            "type": "string",
+            "format": "password"
+        }
+    },
+    "required": [],
+    "additionalProperties": false
+}

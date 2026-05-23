@@ -12,12 +12,14 @@ import org.openmetadata.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.mcp.server.auth.jobs.OAuthTokenCleanupScheduler;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider;
 import org.openmetadata.mcp.tools.DefaultToolContext;
+import org.openmetadata.mcp.usage.McpUsageRecorder;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.McpServerProvider;
+import org.openmetadata.service.apps.bundles.mcp.McpAppConstants;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -27,8 +29,7 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
 public class McpServer implements McpServerProvider {
-  private static final String MCP_APP_NAME = "McpApplication";
-  private static final String DEFAULT_MCP_BOT_NAME = MCP_APP_NAME + "Bot";
+  private static final String DEFAULT_MCP_BOT_NAME = McpAppConstants.MCP_APP_NAME + "Bot";
 
   protected JwtFilter jwtFilter;
   protected Authorizer authorizer;
@@ -179,62 +180,29 @@ public class McpServer implements McpServerProvider {
           java.util.EnumSet.of(jakarta.servlet.DispatcherType.REQUEST), false, "/.well-known/*");
       LOG.info("OAuth well-known filter registered for /.well-known/* discovery paths");
 
-      // Register SSO callback endpoint — only needed for SSO providers (Google, Azure, Okta).
-      // If AuthenticationCodeFlowHandler isn't initialized (e.g., LDAP or Basic Auth),
-      // skip the SSO callback servlet but keep everything else working.
-      try {
-        org.openmetadata.schema.api.security.AuthenticationConfiguration authConfig =
-            SecurityConfigurationManager.getCurrentAuthConfig();
-        // Only register SSO callback for actual SSO providers (not basic/ldap)
-        if (authConfig == null
-            || authConfig.getProvider() == null
-            || authConfig.getProvider()
-                == org.openmetadata.schema.services.connections.metadata.AuthProvider.BASIC
-            || authConfig.getProvider()
-                == org.openmetadata.schema.services.connections.metadata.AuthProvider.LDAP) {
-          LOG.info(
-              "Skipping SSO callback registration — auth provider is {}",
-              authConfig != null ? authConfig.getProvider() : "null");
-          throw new IllegalStateException("Non-SSO provider");
-        }
-        org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType ssoServiceType;
-        try {
-          String providerStr = authConfig.getProvider().toString().toUpperCase();
-          ssoServiceType =
-              org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.valueOf(providerStr);
-        } catch (Exception e) {
-          ssoServiceType = org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.GOOGLE;
-          LOG.info(
-              "Using default SSO service type GOOGLE for provider: {}", authConfig.getProvider());
-        }
+      // Register MCP state checker so AuthCallbackServlet can forward MCP callbacks.
+      // SSO providers redirect to /callback (the registered URI), not /mcp/callback.
+      // This checker lets /callback detect MCP flow and forward to /mcp/callback.
+      org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository pendingAuthRepo =
+          new org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository();
+      org.openmetadata.service.security.AuthenticationCodeFlowHandler.setMcpStateChecker(
+          state -> pendingAuthRepo.findByPac4jState(state) != null);
+      LOG.info("Registered MCP state checker for SSO callback forwarding");
 
-        org.openmetadata.service.security.AuthenticationCodeFlowHandler ssoHandler =
-            org.openmetadata.service.security.AuthenticationCodeFlowHandler.getInstance();
-        org.openmetadata.mcp.server.auth.handlers.SSOCallbackServlet ssoCallbackServlet =
-            new org.openmetadata.mcp.server.auth.handlers.SSOCallbackServlet(
-                authProvider, ssoHandler, ssoServiceType, baseUrl);
-        ServletHolder ssoCallbackHolder = new ServletHolder(ssoCallbackServlet);
-        contextHandler.addServlet(ssoCallbackHolder, "/mcp/callback");
-
-        // Register MCP state checker so AuthCallbackServlet can forward MCP callbacks.
-        // SSO providers redirect to /callback (the registered URI), not /mcp/callback.
-        // This checker lets /callback detect MCP flow and forward to /mcp/callback.
-        org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository
-            pendingAuthRepo =
-                new org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository();
-        org.openmetadata.service.security.AuthenticationCodeFlowHandler.setMcpStateChecker(
-            state -> pendingAuthRepo.findByPac4jState(state) != null);
-        LOG.info("Registered MCP state checker for SSO callback forwarding");
-
-        LOG.info(
-            "Registered SSO callback endpoint at /mcp/callback for provider: {}", ssoServiceType);
-      } catch (Exception e) {
-        LOG.info(
-            "SSO callback servlet not registered (auth provider does not use SSO): {}",
-            e.getMessage());
-      }
+      // Register MCP callback servlet unconditionally — SSO availability is checked at
+      // request time, not startup time. This follows the same pattern as the regular auth
+      // servlets (AuthCallbackServlet, AuthLoginServlet) which are always registered and
+      // dispatch to the appropriate handler at runtime.
+      contextHandler.addServlet(
+          new ServletHolder(
+              new org.openmetadata.mcp.server.auth.handlers.McpCallbackServlet(authProvider)),
+          "/mcp/callback");
+      LOG.info("Registered /mcp/callback servlet (runtime SSO dispatch)");
     } catch (Exception ex) {
-      LOG.error("Error adding stateless transport", ex);
+      LOG.error(
+          "MCP server initialization failed — MCP OAuth will be non-functional. "
+              + "Check the configuration and restart.",
+          ex);
     }
   }
 
@@ -254,7 +222,7 @@ public class McpServer implements McpServerProvider {
     if (mcpBotName == null) {
       try {
         AbstractNativeApplication mcpApp =
-            ApplicationContext.getInstance().getAppIfExists(MCP_APP_NAME);
+            ApplicationContext.getInstance().getAppIfExists(McpAppConstants.MCP_APP_NAME);
         if (mcpApp != null && mcpApp.getApp().getBot() != null) {
           mcpBotName = mcpApp.getApp().getBot().getName();
         }
@@ -270,12 +238,26 @@ public class McpServer implements McpServerProvider {
     return new McpStatelessServerFeatures.SyncToolSpecification(
         tool,
         (context, req) -> {
+          CatalogSecurityContext securityContext =
+              jwtFilter.getCatalogSecurityContext((String) context.get("Authorization"));
+          String userName = securityContext.getUserPrincipal().getName();
+          String clientName =
+              (String)
+                  context.get(org.openmetadata.mcp.AuthEnrichedMcpContextExtractor.CLIENT_NAME);
+          org.openmetadata.mcp.tools.DefaultToolContext.CallToolOutcome outcome = null;
           try {
-            CatalogSecurityContext securityContext =
-                jwtFilter.getCatalogSecurityContext((String) context.get("Authorization"));
             ImpersonationContext.setImpersonatedBy(getMcpBotName());
-            return toolContext.callTool(authorizer, limits, tool.name(), securityContext, req);
+            outcome =
+                toolContext.callToolWithMetadata(
+                    authorizer, limits, tool.name(), securityContext, req);
+            return outcome.result();
           } finally {
+            boolean success = outcome != null && !Boolean.TRUE.equals(outcome.result().isError());
+            Long latencyMs = outcome != null ? outcome.latencyMs() : null;
+            org.openmetadata.schema.entity.app.mcp.McpToolCallUsage.ErrorCategory category =
+                outcome != null ? outcome.errorCategory() : null;
+            McpUsageRecorder.record(
+                tool.name(), userName, success, latencyMs, category, clientName);
             ImpersonationContext.clear();
           }
         });

@@ -23,6 +23,7 @@ The following steps are taken:
 5. Any specific configuration is done
 6. Needed configurations are yielded back to the test.
 """
+
 import io
 import time
 import uuid
@@ -34,7 +35,7 @@ import pytest
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.docker_client import DockerClient
 
-from ....containers import (
+from ....containers import (  # noqa: TID252
     MinioContainerConfigs,
     MySqlContainerConfigs,
     get_docker_network,
@@ -50,7 +51,7 @@ class MlflowContainerConfigs:
     backend_uri: str = "mysql+pymysql://mlflow:password@mlflow-db:3306/experiments"
     artifact_bucket: str = "mlops.local.com"
     port: int = 6000
-    exposed_port: Optional[int] = None
+    exposed_port: Optional[int] = None  # noqa: UP045
 
     def with_exposed_port(self, container):
         self.exposed_port = container.get_exposed_port(self.port)
@@ -80,17 +81,13 @@ def mlflow_environment():
     mysql_container_name = f"mlflow-db-{unique_id}"
     config.mysql_configs.container_name = mysql_container_name
     config.minio_configs.container_name = f"mlflow-artifact-{unique_id}"
-    config.mlflow_configs.backend_uri = (
-        f"mysql+pymysql://mlflow:password@{mysql_container_name}:3306/experiments"
-    )
+    config.mlflow_configs.backend_uri = f"mysql+pymysql://mlflow:password@{mysql_container_name}:3306/experiments"
 
     docker_network = get_docker_network(name=f"docker_mlflow_test_nw_{unique_id}")
 
     minio_container = get_minio_container(config.minio_configs)
     mysql_container = get_mysql_container(config.mysql_configs)
-    mlflow_container = build_and_get_mlflow_container(
-        config.mlflow_configs, config.minio_configs, unique_id
-    )
+    mlflow_container = build_and_get_mlflow_container(config.mlflow_configs, config.minio_configs, unique_id)
 
     with docker_network:
         minio_container.with_network(docker_network)

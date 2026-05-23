@@ -40,6 +40,18 @@
       "maximum": 10,
       "default": 3
     },
+    "upstreamDepth": {
+      "description": "Maximum upstream depth to compute pagination info for when requested",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "downstreamDepth": {
+      "description": "Maximum downstream depth to compute pagination info for when requested",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10
+    },
     "isConnectedVia": {
       "description": "Connected Via",
       "type": "boolean"
@@ -54,6 +66,11 @@
     },
     "preservePaths": {
       "description": "Preserve all paths when applying node-level filters. When true, intermediate nodes that don't match filters are kept if they're part of a path to matching nodes.",
+      "type": "boolean",
+      "default": false
+    },
+    "includePaginationInfo": {
+      "description": "Include pagination totals and depth counts in the response",
       "type": "boolean",
       "default": false
     },

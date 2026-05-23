@@ -29,10 +29,14 @@ import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import io.github.resilience4j.core.IntervalFunction;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -64,6 +68,7 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
@@ -75,6 +80,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -103,6 +109,21 @@ import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
+  private static final int MAX_TASK_CLEANUP_RETRIES = 3;
+  private static final long INITIAL_TASK_CLEANUP_RETRY_DELAY_MILLIS = 100L;
+  private static final long MAX_TASK_CLEANUP_RETRY_DELAY_MILLIS = 1000L;
+  private static final IntervalFunction TASK_CLEANUP_RETRY_INTERVAL_FUNCTION =
+      attempt -> {
+        long retryDelayMillis =
+            INITIAL_TASK_CLEANUP_RETRY_DELAY_MILLIS << Math.max(0, (int) attempt - 1);
+        return Math.min(retryDelayMillis, MAX_TASK_CLEANUP_RETRY_DELAY_MILLIS);
+      };
+  private static final RetryConfig TASK_CLEANUP_RETRY_CONFIG =
+      RetryConfig.custom()
+          .maxAttempts(MAX_TASK_CLEANUP_RETRIES)
+          .intervalFunction(TASK_CLEANUP_RETRY_INTERVAL_FUNCTION)
+          .retryOnException(UserRepository::isTransientDeadlock)
+          .build();
   static final String ROLES_FIELD = "roles";
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
@@ -304,7 +325,7 @@ public class UserRepository extends EntityRepository<User> {
 
     // Use the custom DAO method for optimized update
     // Note: @BindFQN will automatically hash the fqn, so we don't pre-hash it
-    ((UserDAO) daoCollection.userDAO()).updateLastActivityTime(fqn, lastActivityTime);
+    daoCollection.userDAO().updateLastActivityTime(fqn, lastActivityTime);
   }
 
   @Transaction
@@ -315,7 +336,7 @@ public class UserRepository extends EntityRepository<User> {
 
     // Bulk update all users' activity times in a single query
     // This is much more efficient than individual updates
-    UserDAO userDAO = (UserDAO) daoCollection.userDAO();
+    UserDAO userDAO = daoCollection.userDAO();
 
     // Build the CASE statement and collect nameHashes
     StringBuilder caseBuilder = new StringBuilder();
@@ -604,7 +625,7 @@ public class UserRepository extends EntityRepository<User> {
   private List<EntityReference> getGroupTeams(List<EntityReference> teams) {
     Set<EntityReference> result = new HashSet<>();
     for (EntityReference t : teams) {
-      Team team = Entity.getEntity(t, "", Include.ALL);
+      Team team = Entity.getEntity(Entity.TEAM, t.getId(), "teamType", Include.ALL);
       if (TeamType.GROUP.equals(team.getTeamType())) {
         result.add(t);
       } else {
@@ -1235,8 +1256,8 @@ public class UserRepository extends EntityRepository<User> {
     if (Boolean.TRUE.equals(entity.getIsBot())) {
       BotTokenCache.invalidateToken(entity.getName());
     }
-    // Remove suggestions
-    daoCollection.suggestionDAO().deleteByCreatedBy(entity.getId());
+    deleteSuggestionTasksForUser(entity);
+
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
         () -> {
@@ -1246,6 +1267,80 @@ public class UserRepository extends EntityRepository<User> {
             LOG.error("Error updating test case incident assignee: ", ex);
           }
         });
+  }
+
+  private void deleteSuggestionTasksForUser(User entity) {
+    Retry retry = Retry.of("user-task-cleanup", TASK_CLEANUP_RETRY_CONFIG);
+    retry
+        .getEventPublisher()
+        .onRetry(
+            event ->
+                LOG.warn(
+                    "Retrying suggestion task cleanup for user {} after transient deadlock in {} "
+                        + "ms (attempt {}/{})",
+                    entity.getFullyQualifiedName(),
+                    event.getWaitInterval().toMillis(),
+                    event.getNumberOfRetryAttempts() + 1,
+                    MAX_TASK_CLEANUP_RETRIES));
+    String creatorId = entity.getId().toString();
+    String category = TaskCategory.MetadataUpdate.value();
+    // Capture the (id, fqn) pairs *before* the bulk DELETE so we know which L1 Guava cache
+    // entries to drop. The DELETE is a direct SQL update that bypasses EntityRepository.delete
+    // and its cache-invalidate hook — without explicit eviction the next GET on a
+    // previously-read task returns the stale cached row even though the DB row is gone.
+    // FQN is required because tasks expose both GET /v1/tasks/{id} (CACHE_WITH_ID-keyed) and
+    // GET /v1/tasks/name/{taskId} (CACHE_WITH_NAME-keyed); dropping only by id would leave a
+    // by-name reader pinned to a stale entry.
+    List<EntityDAO.EntityIdFqnPair> tasksToInvalidate =
+        daoCollection.taskDAO().listIdAndFqnByCreatorAndCategory(creatorId, category);
+    retry.executeRunnable(
+        () -> daoCollection.taskDAO().deleteByCreatorAndCategory(creatorId, category));
+    if (!tasksToInvalidate.isEmpty()) {
+      invalidateTaskCacheForIds(tasksToInvalidate);
+    }
+  }
+
+  private void invalidateTaskCacheForIds(List<EntityDAO.EntityIdFqnPair> tasks) {
+    // Task is in UNCACHED_ENTITY_TYPES, so invalidateCacheForEntity clears only the local L1
+    // Guava cache and skips the pub/sub fan-out (deliberate perf optimization for the
+    // cascade-heavy bot/domain/data-product paths). In a multi-pod deployment, peer instances
+    // that previously read one of these tasks still hold it in their L1 cache and would serve
+    // the stale "deleted" row after this bulk SQL DELETE. Publish each (id, fqn) explicitly so
+    // peers drop both their by-id and by-name L1 entries.
+    var pubsub = CacheBundle.getCacheInvalidationPubSub();
+    for (EntityDAO.EntityIdFqnPair task : tasks) {
+      if (task.id == null) {
+        continue;
+      }
+      EntityRepository.invalidateCacheForEntity(Entity.TASK, task.id, task.fqn);
+      if (pubsub != null) {
+        pubsub.publish(Entity.TASK, task.id, task.fqn, "bot-task-cleanup");
+      }
+    }
+  }
+
+  static long getTaskCleanupRetryDelayMillis(int attempt) {
+    return TASK_CLEANUP_RETRY_INTERVAL_FUNCTION.apply(attempt);
+  }
+
+  private static boolean isTransientDeadlock(Throwable throwable) {
+    for (Throwable current = throwable; current != null; current = current.getCause()) {
+      if (current instanceof SQLException sqlException) {
+        int errorCode = sqlException.getErrorCode();
+        String sqlState = sqlException.getSQLState();
+        if (errorCode == 1213
+            || errorCode == 1205
+            || "40001".equals(sqlState)
+            || "40P01".equals(sqlState)) {
+          return true;
+        }
+      }
+      String message = current.getMessage();
+      if (message != null && message.contains("Deadlock found when trying to get lock")) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -1319,80 +1414,44 @@ public class UserRepository extends EntityRepository<User> {
       updated.setEmail(original.getEmail().toLowerCase());
       compareAndUpdate(
           "lastLoginTime",
-          () -> {
-            recordChange(
-                "lastLoginTime",
-                original.getLastLoginTime(),
-                updated.getLastLoginTime(),
-                false,
-                objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "lastLoginTime",
+                  original.getLastLoginTime(),
+                  updated.getLastLoginTime(),
+                  false,
+                  objectMatch,
+                  false));
 
-      compareAndUpdate(
-          "roles",
-          () -> {
-            updateRoles(original, updated);
-          });
-      compareAndUpdate(
-          "teams",
-          () -> {
-            updateTeams(original, updated);
-          });
-      compareAndUpdate(
-          "personas",
-          () -> {
-            updatePersonas(original, updated);
-          });
-      compareAndUpdate(
-          "defaultPersona",
-          () -> {
-            updateDefaultPersona(original, updated);
-          });
+      compareAndUpdate("roles", () -> updateRoles(original, updated));
+      compareAndUpdate("teams", () -> updateTeams(original, updated));
+      compareAndUpdate("personas", () -> updatePersonas(original, updated));
+      compareAndUpdate("defaultPersona", () -> updateDefaultPersona(original, updated));
       compareAndUpdate(
           "profile",
-          () -> {
-            recordChange("profile", original.getProfile(), updated.getProfile(), true);
-          });
+          () -> recordChange("profile", original.getProfile(), updated.getProfile(), true));
       compareAndUpdate(
           "timezone",
-          () -> {
-            recordChange("timezone", original.getTimezone(), updated.getTimezone());
-          });
+          () -> recordChange("timezone", original.getTimezone(), updated.getTimezone()));
       compareAndUpdate(
-          "isBot",
-          () -> {
-            recordChange("isBot", original.getIsBot(), updated.getIsBot());
-          });
+          "isBot", () -> recordChange("isBot", original.getIsBot(), updated.getIsBot()));
       compareAndUpdate(
-          "isAdmin",
-          () -> {
-            recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin());
-          });
+          "isAdmin", () -> recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin()));
       compareAndUpdate(
           "isEmailVerified",
-          () -> {
-            recordChange(
-                "isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified());
-          });
+          () ->
+              recordChange(
+                  "isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified()));
       compareAndUpdate(
           "allowImpersonation",
-          () -> {
-            recordChange(
-                "allowImpersonation",
-                original.getAllowImpersonation(),
-                updated.getAllowImpersonation());
-          });
+          () ->
+              recordChange(
+                  "allowImpersonation",
+                  original.getAllowImpersonation(),
+                  updated.getAllowImpersonation()));
+      compareAndUpdate("personaPreferences", () -> updatePersonaPreferences(original, updated));
       compareAndUpdate(
-          "personaPreferences",
-          () -> {
-            updatePersonaPreferences(original, updated);
-          });
-      compareAndUpdate(
-          "authenticationMechanism",
-          () -> {
-            updateAuthenticationMechanism(original, updated);
-          });
+          "authenticationMechanism", () -> updateAuthenticationMechanism(original, updated));
       compareAndUpdateAny(() -> SubjectCache.invalidateUser(updated.getName()), "roles", "teams");
     }
 
@@ -1562,8 +1621,7 @@ public class UserRepository extends EntityRepository<User> {
               systemDefaultPersonaId != null && systemDefaultPersonaId.equals(pref.getPersonaId());
 
           if (!isAssignedPersona && !isSystemDefaultPersona) {
-            LOG.warn(
-                "Persona with ID %s is not assigned to this user".formatted(pref.getPersonaId()));
+            LOG.warn("Persona with ID {} is not assigned to this user", pref.getPersonaId());
           }
           if (pref.getLandingPageSettings() != null) {
             UserUtil.validateUserPersonaPreferencesImage(pref.getLandingPageSettings());

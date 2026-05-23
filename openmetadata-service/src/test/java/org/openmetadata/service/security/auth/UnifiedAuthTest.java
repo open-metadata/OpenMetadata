@@ -54,7 +54,7 @@ public class UnifiedAuthTest {
 
     // Verify
     assertNotNull(handler);
-    assertTrue(handler instanceof BasicAuthServletHandler);
+    assertInstanceOf(BasicAuthServletHandler.class, handler);
   }
 
   @Test
@@ -69,11 +69,11 @@ public class UnifiedAuthTest {
 
     // Verify
     assertNotNull(handler);
-    assertTrue(handler instanceof LdapAuthServletHandler);
+    assertInstanceOf(LdapAuthServletHandler.class, handler);
   }
 
   @Test
-  void testUnifiedLoginEndpoint() throws Exception {
+  void testUnifiedLoginEndpoint() {
     when(mockAuthConfig.getProvider()).thenReturn(AuthProvider.BASIC);
     when(mockAuthConfig.getCallbackUrl()).thenReturn("http://localhost:8585");
     SecurityConfigurationManager.getInstance().setCurrentAuthConfig(mockAuthConfig);

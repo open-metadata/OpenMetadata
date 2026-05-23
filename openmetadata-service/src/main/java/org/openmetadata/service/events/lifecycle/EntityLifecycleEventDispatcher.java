@@ -48,8 +48,9 @@ public class EntityLifecycleEventDispatcher {
             maxThreads,
             60L,
             TimeUnit.SECONDS,
-            new LinkedBlockingQueue<>(),
-            Thread.ofVirtual().name("om-lifecycle-async-", 0).factory());
+            new LinkedBlockingQueue<>(5000),
+            Thread.ofVirtual().name("om-lifecycle-async-", 0).factory(),
+            new ThreadPoolExecutor.CallerRunsPolicy());
     pool.allowCoreThreadTimeOut(true);
     this.asyncExecutor = pool;
   }

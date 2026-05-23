@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import io.kubernetes.client.custom.Quantity;
 import io.kubernetes.client.openapi.models.V1LocalObjectReference;
+import io.kubernetes.client.openapi.models.V1Toleration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -53,6 +54,7 @@ public class K8sPipelineClientConfig {
   private static final String RUN_AS_NON_ROOT_KEY = "runAsNonRoot";
   private static final String EXTRA_ENV_VARS_KEY = "extraEnvVars";
   private static final String POD_ANNOTATIONS_KEY = "podAnnotations";
+  private static final String TOLERATIONS_KEY = "tolerations";
   private static final String STARTING_DEADLINE_SECONDS_KEY = "startingDeadlineSeconds";
   private static final String SKIP_INIT_KEY = "skipInit";
 
@@ -85,6 +87,7 @@ public class K8sPipelineClientConfig {
   // Extra configuration
   private final Map<String, String> extraEnvVars;
   private final Map<String, String> podAnnotations;
+  private final List<V1Toleration> tolerations;
   private final int startingDeadlineSeconds;
   private final boolean skipInit;
 
@@ -124,6 +127,7 @@ public class K8sPipelineClientConfig {
     List<String> rawExtraEnvs = parseListSafely(params.get(EXTRA_ENV_VARS_KEY));
     this.extraEnvVars = getConfigMap(rawExtraEnvs, ":");
     this.podAnnotations = parseKeyValuePairs(getStringParam(params, POD_ANNOTATIONS_KEY, ""));
+    this.tolerations = parseTolerations(params.get(TOLERATIONS_KEY));
     // Default to 0 seconds - prevents CronJobs from trying to catch up any missed executions
     // This eliminates duplicate executions when AutoPilot deploys pipelines
     this.startingDeadlineSeconds = getIntParam(params, STARTING_DEADLINE_SECONDS_KEY, 60);
@@ -237,6 +241,44 @@ public class K8sPipelineClientConfig {
     return parseKeyValuePairs(nodeSelectorStr);
   }
 
+  @SuppressWarnings("unchecked")
+  private List<V1Toleration> parseTolerations(Object value) {
+    if (value == null) {
+      return List.of();
+    }
+    try {
+      if (value instanceof List<?> rawList) {
+        List<V1Toleration> result = new ArrayList<>();
+        for (Object item : rawList) {
+          if (item instanceof Map<?, ?> map) {
+            V1Toleration toleration = new V1Toleration();
+            if (map.get("key") != null) {
+              toleration.setKey(map.get("key").toString());
+            }
+            if (map.get("operator") != null) {
+              toleration.setOperator(map.get("operator").toString());
+            }
+            if (map.get("value") != null) {
+              toleration.setValue(map.get("value").toString());
+            }
+            if (map.get("effect") != null) {
+              toleration.setEffect(map.get("effect").toString());
+            }
+            if (map.get("tolerationSeconds") != null) {
+              toleration.setTolerationSeconds(
+                  Long.parseLong(map.get("tolerationSeconds").toString()));
+            }
+            result.add(toleration);
+          }
+        }
+        return result;
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to parse tolerations [{}]: {}", value, e.getMessage());
+    }
+    return List.of();
+  }
+
   private Map<String, String> parseKeyValuePairs(String pairsStr) {
     Map<String, String> result = new HashMap<>();
     if (StringUtils.isBlank(pairsStr)) {
@@ -261,13 +303,11 @@ public class K8sPipelineClientConfig {
     try {
       if (value instanceof LinkedHashMap) {
         return (LinkedHashMap<String, LinkedHashMap<String, String>>) value;
-      } else if (value instanceof Map) {
+      } else if (value instanceof Map<?, ?> rawMap) {
         LinkedHashMap<String, LinkedHashMap<String, String>> result = new LinkedHashMap<>();
-        Map<?, ?> rawMap = (Map<?, ?>) value;
         for (Map.Entry<?, ?> entry : rawMap.entrySet()) {
-          if (entry.getKey() != null && entry.getValue() instanceof Map) {
+          if (entry.getKey() != null && entry.getValue() instanceof Map<?, ?> nestedMap) {
             String key = entry.getKey().toString();
-            Map<?, ?> nestedMap = (Map<?, ?>) entry.getValue();
             LinkedHashMap<String, String> nestedResult = new LinkedHashMap<>();
             for (Map.Entry<?, ?> nestedEntry : nestedMap.entrySet()) {
               if (nestedEntry.getKey() != null && nestedEntry.getValue() != null) {
@@ -321,16 +361,14 @@ public class K8sPipelineClientConfig {
       return List.of();
     }
     try {
-      if (value instanceof List) {
-        List<?> rawList = (List<?>) value;
+      if (value instanceof List<?> rawList) {
         return rawList.stream()
             .filter(Objects::nonNull)
             .map(Object::toString)
             .filter(s -> !nullOrEmpty(s))
             .collect(Collectors.toList());
-      } else if (value instanceof String) {
+      } else if (value instanceof String strValue) {
         // Handle case where Parameters serializes Lists to comma-separated strings
-        String strValue = (String) value;
         if (strValue.trim().isEmpty()) {
           return List.of();
         }
@@ -360,9 +398,7 @@ public class K8sPipelineClientConfig {
             String[] parts = keyValue.split(separator, 2);
             map.put(parts[0], parts[1]);
           } catch (Exception e) {
-            LOG.error(
-                String.format(
-                    "Could not extract config map [%s] due to [%s]", keyValue, e.getMessage()));
+            LOG.error("Could not extract config map [{}] due to [{}]", keyValue, e.getMessage());
           }
         });
     return map;

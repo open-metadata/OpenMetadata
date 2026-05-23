@@ -112,12 +112,11 @@ public class TestCaseDimensionResultRepository
    */
   public void storeDimensionResult(String testCaseFQN, TestCaseDimensionResult dimensionResult) {
     // Store the dimensional result using FQN as the entity hash
-    ((CollectionDAO.TestCaseDimensionResultTimeSeriesDAO) timeSeriesDao)
-        .insert(
-            testCaseFQN, // Use FQN as the entity hash
-            TEST_CASE_DIMENSION_RESULT_EXTENSION,
-            TEST_CASE_DIMENSION_RESULT_FIELD,
-            JsonUtils.pojoToJson(dimensionResult));
+    timeSeriesDao.insert(
+        testCaseFQN, // Use FQN as the entity hash
+        TEST_CASE_DIMENSION_RESULT_EXTENSION,
+        TEST_CASE_DIMENSION_RESULT_FIELD,
+        JsonUtils.pojoToJson(dimensionResult));
   }
 
   /**

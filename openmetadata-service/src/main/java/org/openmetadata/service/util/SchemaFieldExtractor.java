@@ -348,34 +348,34 @@ public class SchemaFieldExtractor {
     for (CustomProperty customProperty : typeEntity.getCustomProperties()) {
       String propertyName = customProperty.getName();
       String propertyType = customProperty.getPropertyType().getName();
-      String fullFieldName = propertyName; // No parent path for custom properties
+      // No parent path for custom properties
       String displayName = customProperty.getDisplayName();
-      LOG.debug("Processing custom property '{}'", fullFieldName);
+      LOG.debug("Processing custom property '{}'", propertyName);
 
       Object customPropertyConfigObj = customProperty.getCustomPropertyConfig();
 
       if (isEntityReferenceList(propertyType)) {
         String referenceType = "array<entityReference>";
         FieldDefinition fieldDef =
-            FieldDefinition.of(fullFieldName, displayName, referenceType, customPropertyConfigObj);
-        fieldTypesMap.putIfAbsent(fullFieldName, fieldDef);
-        processedFields.add(fullFieldName);
-        LOG.debug("Added custom property '{}', Type: '{}'", fullFieldName, referenceType);
+            FieldDefinition.of(propertyName, displayName, referenceType, customPropertyConfigObj);
+        fieldTypesMap.putIfAbsent(propertyName, fieldDef);
+        processedFields.add(propertyName);
+        LOG.debug("Added custom property '{}', Type: '{}'", propertyName, referenceType);
 
       } else if (isEntityReference(propertyType)) {
         String referenceType = "entityReference";
         FieldDefinition fieldDef =
-            FieldDefinition.of(fullFieldName, displayName, referenceType, customPropertyConfigObj);
-        fieldTypesMap.putIfAbsent(fullFieldName, fieldDef);
-        processedFields.add(fullFieldName);
-        LOG.debug("Added custom property '{}', Type: '{}'", fullFieldName, referenceType);
+            FieldDefinition.of(propertyName, displayName, referenceType, customPropertyConfigObj);
+        fieldTypesMap.putIfAbsent(propertyName, fieldDef);
+        processedFields.add(propertyName);
+        LOG.debug("Added custom property '{}', Type: '{}'", propertyName, referenceType);
 
       } else {
         FieldDefinition fieldDef =
-            FieldDefinition.of(fullFieldName, displayName, propertyType, customPropertyConfigObj);
-        fieldTypesMap.putIfAbsent(fullFieldName, fieldDef);
-        processedFields.add(fullFieldName);
-        LOG.debug("Added custom property '{}', Type: '{}'", fullFieldName, propertyType);
+            FieldDefinition.of(propertyName, displayName, propertyType, customPropertyConfigObj);
+        fieldTypesMap.putIfAbsent(propertyName, fieldDef);
+        processedFields.add(propertyName);
+        LOG.debug("Added custom property '{}', Type: '{}'", propertyName, propertyType);
       }
     }
   }

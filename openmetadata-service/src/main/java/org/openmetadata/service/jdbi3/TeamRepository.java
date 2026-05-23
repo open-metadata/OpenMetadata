@@ -100,11 +100,10 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.QueryFilterBuilder;
+import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -426,30 +425,21 @@ public class TeamRepository extends EntityRepository<Team> {
 
   public BulkOperationResult bulkAddAssets(String teamName, BulkAssets request, String userName) {
     Team team = getByName(null, teamName, getFields("id"));
-
-    // Validate all to be users
     validateAllRefUsers(request.getAssets());
-
-    for (EntityReference asset : request.getAssets()) {
-      if (!Objects.equals(asset.getType(), Entity.USER)) {
-        throw new IllegalArgumentException("Only users can be added to a Team");
-      }
-    }
-
     return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, true, userName);
   }
 
   public BulkOperationResult bulkRemoveAssets(
-      String domainName, BulkAssets request, String userName) {
-    Team team = getByName(null, domainName, getFields("id"));
-
-    // Validate all to be users
+      String teamName, BulkAssets request, String userName) {
+    Team team = getByName(null, teamName, getFields("id"));
     validateAllRefUsers(request.getAssets());
-
     return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, false, userName);
   }
 
   private void validateAllRefUsers(List<EntityReference> refs) {
+    if (nullOrEmpty(refs)) {
+      return;
+    }
     for (EntityReference asset : refs) {
       if (!Objects.equals(asset.getType(), Entity.USER)) {
         throw new IllegalArgumentException("Only users can be added to a Team");
@@ -612,6 +602,15 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
+  protected void postDelete(Team entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
+    PolicyConditionUpdater.updateAllPolicyConditions(
+        condition ->
+            PolicyConditionUpdater.removeFromCondition(
+                condition, entity.getName(), PolicyConditionUpdater.TEAM_FUNCTIONS));
+  }
+
+  @Override
   protected void entitySpecificCleanup(Team team) {
     // When a team is deleted, if the children team don't have another parent, set Organization as
     // the parent
@@ -622,7 +621,7 @@ public class TeamRepository extends EntityRepository<Team> {
           == 1) { // Only parent is being deleted, move the parent to Organization
         addRelationship(
             organization.getId(), childTeam.getId(), TEAM, TEAM, Relationship.PARENT_OF);
-        LOG.info("Moving parent of team " + childTeam.getId() + " to organization");
+        LOG.info("Moving parent of team {} to organization", childTeam.getId());
       }
     }
   }
@@ -741,13 +740,11 @@ public class TeamRepository extends EntityRepository<Team> {
         }
       }
     }
-    List<TeamHierarchy> topLevelNodes =
-        hierarchyMap.values().stream()
-            .filter(node -> !childIds.contains(node.getId()))
-            .sorted(Comparator.comparing(TeamHierarchy::getName))
-            .collect(Collectors.toList());
 
-    return topLevelNodes;
+    return hierarchyMap.values().stream()
+        .filter(node -> !childIds.contains(node.getId()))
+        .sorted(Comparator.comparing(TeamHierarchy::getName))
+        .collect(Collectors.toList());
   }
 
   private List<EntityReference> getUsers(Team team) {
@@ -1269,28 +1266,19 @@ public class TeamRepository extends EntityRepository<Team> {
       }
       compareAndUpdate(
           "profile",
-          () -> {
-            recordChange("profile", original.getProfile(), updated.getProfile(), true);
-          });
+          () -> recordChange("profile", original.getProfile(), updated.getProfile(), true));
       compareAndUpdate(
           "isJoinable",
-          () -> {
-            recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable());
-          });
+          () -> recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable()));
       compareAndUpdate(
           "teamType",
-          () -> {
-            recordChange("teamType", original.getTeamType(), updated.getTeamType());
-          });
+          () -> recordChange("teamType", original.getTeamType(), updated.getTeamType()));
       // If the team is empty then email should be null, not be empty
       if (CommonUtil.nullOrEmpty(updated.getEmail())) {
         updated.setEmail(null);
       }
       compareAndUpdate(
-          "email",
-          () -> {
-            recordChange("email", original.getEmail(), updated.getEmail());
-          });
+          "email", () -> recordChange("email", original.getEmail(), updated.getEmail()));
       AtomicBoolean hierarchyOrPolicyChanged = new AtomicBoolean(false);
       compareAndUpdate(
           "users",

@@ -626,6 +626,10 @@ export enum LabelType {
  */
 export interface TagLabelMetadata {
     /**
+     * Epoch time in milliseconds when the certification tag expires
+     */
+    expiryDate?: number;
+    /**
      * Metadata about the recognizer that automatically applied this tag
      */
     recognizer?: TagLabelRecognizerMetadata;
@@ -752,7 +756,9 @@ export enum DataModelType {
     PowerBIDataModel = "PowerBIDataModel",
     QlikDataModel = "QlikDataModel",
     QuickSightDataModel = "QuickSightDataModel",
+    SapS4HanaCdsView = "SapS4HanaCdsView",
     SigmaDataModel = "SigmaDataModel",
+    SsrsDataModel = "SsrsDataModel",
     SupersetDataModel = "SupersetDataModel",
     TableauDataModel = "TableauDataModel",
     TableauEmbeddedDatasource = "TableauEmbeddedDatasource",
@@ -826,6 +832,7 @@ export enum DashboardServiceType {
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     Redash = "Redash",
+    SapS4Hana = "SapS4Hana",
     Sigma = "Sigma",
     Ssrs = "Ssrs",
     Superset = "Superset",

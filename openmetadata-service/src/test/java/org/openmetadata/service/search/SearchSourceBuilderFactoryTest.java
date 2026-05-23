@@ -18,6 +18,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import es.co.elastic.clients.util.NamedValue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -340,10 +341,10 @@ public class SearchSourceBuilderFactoryTest {
         esFactory.buildDataAssetSearchBuilderV2(
             "table", "name:orders AND owner:alice", 0, 10, false, false);
 
-    assertTrue(emptyBuilder.query().isBool());
-    assertTrue(nullBuilder.query().isBool());
-    assertTrue(wildcardBuilder.query().isBool());
-    assertTrue(complexBuilder.query().isBool());
+    assertTrue(emptyBuilder.query().isFunctionScore());
+    assertTrue(nullBuilder.query().isFunctionScore());
+    assertTrue(wildcardBuilder.query().isFunctionScore());
+    assertTrue(complexBuilder.query().isFunctionScore());
     assertTrue(emptyBuilder.aggregations().isEmpty());
     assertTrue(complexBuilder.aggregations().isEmpty());
   }
@@ -519,6 +520,6 @@ public class SearchSourceBuilderFactoryTest {
     assertNotNull(builder.highlighter());
     assertEquals(
         Set.copyOf(List.of(expectedFields)),
-        Set.copyOf(builder.highlighter().fields().stream().map(field -> field.name()).toList()));
+        Set.copyOf(builder.highlighter().fields().stream().map(NamedValue::name).toList()));
   }
 }

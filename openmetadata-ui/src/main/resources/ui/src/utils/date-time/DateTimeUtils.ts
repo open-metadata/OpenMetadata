@@ -473,7 +473,20 @@ export const formatDuration = (ms: number) => {
     return pluralize(hours, 'hour');
   }
 };
+export const formatIsoDuration = (iso: string): string => {
+  const d = Duration.fromISO(iso);
+  if (!d.isValid) {
+    return iso;
+  }
+
+  return d.toHuman() || iso;
+};
+
 export const formatDurationToHHMMSS = (ms: number) => {
+  if (ms > 0 && ms < 1000) {
+    return `${Math.floor(ms)} ms`;
+  }
+
   return Duration.fromMillis(ms).toFormat('hh:mm:ss');
 };
 

@@ -34,7 +34,9 @@ public class SearchClusterMetrics {
   public static final long DEFAULT_HEAP_USED_BYTES = 512L * 1024 * 1024; // 512 MB
   public static final long DEFAULT_HEAP_MAX_BYTES = 1024L * 1024 * 1024; // 1 GB
   public static final long DEFAULT_MAX_CONTENT_LENGTH =
-      10 * 1024 * 1024L; // Conservative 10MB default
+      10 * 1024 * 1024L; // Conservative 10MB default (AWS OpenSearch hard limit)
+  // Safe bulk payload threshold: 90% of max_content_length to leave headroom for HTTP framing
+  public static final long DEFAULT_BULK_PAYLOAD_SIZE_BYTES = DEFAULT_MAX_CONTENT_LENGTH * 9 / 10;
 
   public static SearchClusterMetrics fetchClusterMetrics(
       SearchRepository searchRepository, long totalEntities, int maxDbConnections) {
@@ -254,13 +256,18 @@ public class SearchClusterMetrics {
     recommendedQueueSize = Math.max(1000, recommendedQueueSize);
 
     // --- CPU budget: derive internal thread pool sizes from available cores ---
-    // Each worker is a platform thread driving: DB read → field-fetch → doc-build → bulk send
-    // On small instances (2 vCPUs), uncapped threads cause 99%+ CPU and throughput collapse
+    // Consumer threads are mostly I/O-bound (waiting on search bulk responses), so they
+    // don't need a full core each. We cap CPU-intensive pools (field-fetch, doc-build) tightly
+    // but allow more consumer threads since they spend ~90% of time in I/O wait.
+    // On small instances (2 vCPUs) we must still reserve capacity for healthcheck probes
+    // to avoid liveness failures and SIGKILL (137).
     double targetCpuPercent = 0.70;
     double cpuBudget = availableCores * targetCpuPercent;
     int cpuBudgetedWorkers = Math.max(1, availableCores - 1);
-    recommendedConsumerThreads = Math.min(recommendedConsumerThreads, cpuBudgetedWorkers);
-    int recommendedFieldFetchThreads = Math.max(2, Math.min(50, availableCores * 2));
+    // Consumer threads are I/O-bound — allow more than CPU-bound budget
+    int consumerCap = Math.max(2, cpuBudgetedWorkers * 3);
+    recommendedConsumerThreads = Math.min(recommendedConsumerThreads, consumerCap);
+    int recommendedFieldFetchThreads = Math.max(2, Math.min(50, cpuBudgetedWorkers * 2));
     int recommendedDocBuildThreads = Math.max(1, Math.min(50, (int) Math.floor(cpuBudget * 2)));
     recommendedConcurrentRequests =
         Math.min(recommendedConcurrentRequests, Math.max(10, availableCores * 10));
@@ -440,9 +447,9 @@ public class SearchClusterMetrics {
     long usedHeap = totalHeap - freeHeap;
     double heapUsagePercent = (maxHeap > 0) ? (double) usedHeap / maxHeap * 100 : 50.0;
 
-    // Default to conservative 10MB for AWS-managed clusters if we can't fetch from cluster
-    long maxContentLength = DEFAULT_MAX_CONTENT_LENGTH; // Conservative 10MB default
-    long maxPayloadSize = DEFAULT_MAX_CONTENT_LENGTH; // Conservative 10MB default
+    // AWS-managed clusters expose max_content_length=10MB; use 90% as bulk threshold for headroom
+    long maxContentLength = DEFAULT_MAX_CONTENT_LENGTH;
+    long maxPayloadSize = DEFAULT_BULK_PAYLOAD_SIZE_BYTES;
     try {
       if (searchRepository != null) {
         SearchClient searchClient = searchRepository.getSearchClient();

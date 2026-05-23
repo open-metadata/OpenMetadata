@@ -17,11 +17,9 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.DATA_CONTRACT;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 
-import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -40,7 +38,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.ContractSLA;
 import org.openmetadata.schema.api.data.ContractSecurity;
-import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.DataContract;
@@ -53,7 +50,6 @@ import org.openmetadata.schema.entity.datacontract.FailedRule;
 import org.openmetadata.schema.entity.datacontract.QualityValidation;
 import org.openmetadata.schema.entity.datacontract.SchemaValidation;
 import org.openmetadata.schema.entity.datacontract.SemanticsValidation;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -75,8 +71,6 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SemanticsRule;
-import org.openmetadata.schema.type.TaskStatus;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
@@ -88,7 +82,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.data.DataContractResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -99,7 +92,6 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ValidatorUtil;
-import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 @Repository
@@ -711,20 +703,16 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     if (binaryTypes.contains(type1) && binaryTypes.contains(type2)) {
       return true;
     }
-    if (complexTypes.contains(type1) && complexTypes.contains(type2)) {
-      return true;
-    }
-
-    return false;
+    return complexTypes.contains(type1) && complexTypes.contains(type2);
   }
 
   /**
    * Validates entity-specific constraints for data contracts based on entity type.
    * Throws BadRequestException if any constraints are violated.
    *
-   * Supported entities: table, storedProcedure, database, databaseSchema, dashboard,
-   * dashboardDataModel, pipeline, topic, searchIndex, apiCollection, apiEndpoint, api,
-   * mlmodel, container, directory, file, spreadsheet, worksheet
+   * Supported entities: table, storedProcedure, database, databaseSchema, dashboard, chart,
+   * dashboardDataModel, pipeline, topic, searchIndex, apiCollection, apiEndpoint, api, apiService,
+   * metric, mlmodel, container, directory, file, spreadsheet, worksheet, dataProduct
    *
    * Validation support by entity type:
    * - All entities: Support semantics validation
@@ -737,7 +725,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     List<String> violations = new ArrayList<>();
 
     // First, check if the entity type is supported for data contracts
-    if (!isSupportedEntityType(entityType)) {
+    if (!isEntityTypeSupported(entityType)) {
       violations.add(
           String.format("Entity type '%s' is not supported for data contracts", entityType));
     } else {
@@ -772,7 +760,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   /**
    * Checks if the given entity type is supported for data contracts.
    */
-  private boolean isSupportedEntityType(String entityType) {
+  public boolean isEntityTypeSupported(String entityType) {
     return Set.of(
             Entity.TABLE,
             Entity.STORED_PROCEDURE,
@@ -787,6 +775,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             Entity.API_COLLECTION,
             Entity.API_ENDPOINT,
             Entity.API,
+            Entity.API_SERVICE,
+            Entity.METRIC,
             Entity.MLMODEL,
             Entity.CONTAINER,
             Entity.DIRECTORY,
@@ -892,10 +882,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     List<UUID> testsToRemove =
         currentTests.stream().filter(testId -> !testCaseRefs.contains(testId)).toList();
     if (!nullOrEmpty(testsToRemove)) {
-      testsToRemove.forEach(
-          test -> {
-            testCaseRepository.deleteTestCaseFromLogicalTestSuite(testSuite.getId(), test);
-          });
+      for (UUID test : testsToRemove) {
+        testCaseRepository.deleteTestCaseFromLogicalTestSuite(testSuite.getId(), test);
+      }
     }
   }
 
@@ -1206,7 +1195,13 @@ public class DataContractRepository extends EntityRepository<DataContract> {
                   .collect(Collectors.toList()));
 
     } catch (Exception e) {
-      LOG.error("Error during semantics validation", e);
+      LOG.error(
+          "Error during semantics validation for contract {}: {}",
+          dataContract.getFullyQualifiedName(),
+          e.getMessage(),
+          e);
+      int totalRules = Optional.ofNullable(dataContract.getSemantics()).map(List::size).orElse(0);
+      validation.withFailed(totalRules).withPassed(0).withTotal(totalRules);
     }
 
     return validation;
@@ -1222,10 +1217,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         testSuite.getTests().stream().map(EntityReference::getFullyQualifiedName).toList();
     List<ResultSummary> testSummary =
         testSuite.getTestCaseResultSummary().stream()
-            .filter(
-                test -> {
-                  return currentTests.contains(test.getTestCaseName());
-                })
+            .filter(test -> currentTests.contains(test.getTestCaseName()))
             .toList();
 
     List<ResultSummary> failedTests =
@@ -1245,19 +1237,22 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     result.withContractExecutionStatus(fallbackStatus);
 
     if (!nullOrEmpty(result.getSchemaValidation())) {
-      if (result.getSchemaValidation().getFailed() > 0) {
+      Integer schemaFailed = result.getSchemaValidation().getFailed();
+      if (schemaFailed != null && schemaFailed > 0) {
         result.withContractExecutionStatus(ContractExecutionStatus.Failed);
       }
     }
 
     if (!nullOrEmpty(result.getSemanticsValidation())) {
-      if (result.getSemanticsValidation().getFailed() > 0) {
+      Integer semanticsFailed = result.getSemanticsValidation().getFailed();
+      if (semanticsFailed != null && semanticsFailed > 0) {
         result.withContractExecutionStatus(ContractExecutionStatus.Failed);
       }
     }
 
     if (!nullOrEmpty(result.getQualityValidation())) {
-      if (result.getQualityValidation().getFailed() > 0) {
+      Integer qualityFailed = result.getQualityValidation().getFailed();
+      if (qualityFailed != null && qualityFailed > 0) {
         result.withContractExecutionStatus(ContractExecutionStatus.Failed);
       }
     }
@@ -1403,49 +1398,25 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "latestResult",
-          () -> {
-            recordChange("latestResult", original.getLatestResult(), updated.getLatestResult());
-          });
+          () ->
+              recordChange("latestResult", original.getLatestResult(), updated.getLatestResult()));
       compareAndUpdate(
           "entityStatus",
-          () -> {
-            recordChange("entityStatus", original.getEntityStatus(), updated.getEntityStatus());
-          });
+          () ->
+              recordChange("entityStatus", original.getEntityStatus(), updated.getEntityStatus()));
       compareAndUpdate(
           "testSuite",
-          () -> {
-            recordChange("testSuite", original.getTestSuite(), updated.getTestSuite());
-          });
+          () -> recordChange("testSuite", original.getTestSuite(), updated.getTestSuite()));
       compareAndUpdate(
           "termsOfUse",
-          () -> {
-            recordChange("termsOfUse", original.getTermsOfUse(), updated.getTermsOfUse());
-          });
+          () -> recordChange("termsOfUse", original.getTermsOfUse(), updated.getTermsOfUse()));
       compareAndUpdate(
           "security",
-          () -> {
-            recordChange("security", original.getSecurity(), updated.getSecurity());
-          });
-      compareAndUpdate(
-          "sla",
-          () -> {
-            recordChange("sla", original.getSla(), updated.getSla());
-          });
-      compareAndUpdate(
-          "schema",
-          () -> {
-            updateSchema(original, updated);
-          });
-      compareAndUpdate(
-          "qualityExpectations",
-          () -> {
-            updateQualityExpectations(original, updated);
-          });
-      compareAndUpdate(
-          "semantics",
-          () -> {
-            updateSemantics(original, updated);
-          });
+          () -> recordChange("security", original.getSecurity(), updated.getSecurity()));
+      compareAndUpdate("sla", () -> recordChange("sla", original.getSla(), updated.getSla()));
+      compareAndUpdate("schema", () -> updateSchema(original, updated));
+      compareAndUpdate("qualityExpectations", () -> updateQualityExpectations(original, updated));
+      compareAndUpdate("semantics", () -> updateSemantics(original, updated));
       // Preserve immutable creation fields
       updated.setCreatedAt(original.getCreatedAt());
       updated.setCreatedBy(original.getCreatedBy());
@@ -1656,11 +1627,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
       // Add entity's own semantics (not inherited)
       if (merged.getSemantics() != null) {
-        for (SemanticsRule entityRule : merged.getSemantics()) {
-          // Keep the inherited flag as-is from the entity rule (should be false/null for native
-          // rules)
-          mergedSemantics.add(entityRule);
-        }
+        // Keep the inherited flag as-is from the entity rule (should be false/null for native
+        // rules)
+        mergedSemantics.addAll(merged.getSemantics());
       }
 
       merged.setSemantics(mergedSemantics);
@@ -1791,44 +1760,22 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   private void closeApprovalTask(DataContract entity, String comment) {
-    EntityLink about = new EntityLink(DATA_CONTRACT, entity.getFullyQualifiedName());
-    FeedRepository feedRepository = Entity.getFeedRepository();
-    // Close User Tasks
-    try {
-      Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-      feedRepository.closeTask(
-          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
-    } catch (EntityNotFoundException ex) {
-      LOG.info("No approval task found for data contract {}", entity.getFullyQualifiedName());
-    }
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    taskRepository.closeApprovalTaskForEntity(
+        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
   }
 
   protected void updateTaskWithNewReviewers(DataContract dataContract) {
-    try {
-      EntityLink about = new EntityLink(DATA_CONTRACT, dataContract.getFullyQualifiedName());
-      FeedRepository feedRepository = Entity.getFeedRepository();
-      Thread originalTask =
-          feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-      dataContract =
-          Entity.getEntityByName(
-              Entity.DATA_CONTRACT,
-              dataContract.getFullyQualifiedName(),
-              "id,fullyQualifiedName,reviewers",
-              Include.ALL);
-
-      Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
-      updatedTask.getTask().withAssignees(new ArrayList<>(dataContract.getReviewers()));
-      JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
-      RestUtil.PatchResponse<Thread> thread =
-          feedRepository.patchThread(null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
-
-      // Send WebSocket Notification
-      WebsocketNotificationHandler.handleTaskNotification(thread.entity());
-    } catch (EntityNotFoundException e) {
-      LOG.info(
-          "{} Task not found for data contract {}",
-          TaskType.RequestApproval,
-          dataContract.getFullyQualifiedName());
-    }
+    dataContract =
+        Entity.getEntityByName(
+            Entity.DATA_CONTRACT,
+            dataContract.getFullyQualifiedName(),
+            "id,fullyQualifiedName,reviewers",
+            Include.ALL);
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    taskRepository.updateApprovalTaskAssignees(
+        dataContract.getFullyQualifiedName(),
+        new ArrayList<>(dataContract.getReviewers()),
+        dataContract.getUpdatedBy());
   }
 }

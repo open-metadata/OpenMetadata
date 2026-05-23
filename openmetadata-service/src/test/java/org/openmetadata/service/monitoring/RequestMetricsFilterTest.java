@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 class RequestMetricsFilterTest {
 
   @Test
-  void requestFilterIncrementsAndTracksWhenMetricsAvailable() throws Exception {
+  void requestFilterIncrementsAndTracksWhenMetricsAvailable() {
     JettyMetrics jettyMetrics = mock(JettyMetrics.class);
     RequestMetricsFilter filter = new RequestMetricsFilter(jettyMetrics);
     ContainerRequestContext requestContext = mock(ContainerRequestContext.class);
@@ -27,7 +27,7 @@ class RequestMetricsFilterTest {
   }
 
   @Test
-  void requestFilterSkipsTrackingWhenIncrementFails() throws Exception {
+  void requestFilterSkipsTrackingWhenIncrementFails() {
     JettyMetrics jettyMetrics = mock(JettyMetrics.class);
     doThrow(new RuntimeException("not ready")).when(jettyMetrics).incrementActiveRequests();
     RequestMetricsFilter filter = new RequestMetricsFilter(jettyMetrics);
@@ -39,7 +39,7 @@ class RequestMetricsFilterTest {
   }
 
   @Test
-  void responseFilterDecrementsWhenRequestWasTracked() throws Exception {
+  void responseFilterDecrementsWhenRequestWasTracked() {
     JettyMetrics jettyMetrics = mock(JettyMetrics.class);
     RequestMetricsFilter filter = new RequestMetricsFilter(jettyMetrics);
     ContainerRequestContext requestContext = mock(ContainerRequestContext.class);
@@ -53,7 +53,7 @@ class RequestMetricsFilterTest {
   }
 
   @Test
-  void responseFilterSkipsDecrementWhenRequestWasNotTracked() throws Exception {
+  void responseFilterSkipsDecrementWhenRequestWasNotTracked() {
     JettyMetrics jettyMetrics = mock(JettyMetrics.class);
     RequestMetricsFilter filter = new RequestMetricsFilter(jettyMetrics);
     ContainerRequestContext requestContext = mock(ContainerRequestContext.class);

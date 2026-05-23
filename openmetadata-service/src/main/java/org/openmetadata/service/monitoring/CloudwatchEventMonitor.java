@@ -113,7 +113,7 @@ public class CloudwatchEventMonitor extends EventMonitor {
                 "Invalid EventType " + event.getEventType());
           };
     } catch (IllegalArgumentException | CloudWatchException e) {
-      LOG.error("Failed to publish IngestionPipeline Cloudwatch metric due to " + e.getMessage());
+      LOG.error("Failed to publish IngestionPipeline Cloudwatch metric due to {}", e.getMessage());
     }
 
     return metricRequests;
@@ -142,7 +142,7 @@ public class CloudwatchEventMonitor extends EventMonitor {
                     timestamp,
                     getMetricNameByStatus(pipelineStatus.getPipelineState()));
               } else {
-                LOG.debug("Ignoring Ingestion Pipeline change type " + change.getName());
+                LOG.debug("Ignoring Ingestion Pipeline change type {}", change.getName());
               }
               return null;
             })

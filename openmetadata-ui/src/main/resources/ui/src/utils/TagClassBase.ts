@@ -20,6 +20,7 @@ import { PAGE_SIZE } from '../constants/constants';
 import {
   DESCRIPTION_WIDGET,
   GridSizes,
+  KNOWLEDGE_ARTICLE_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { queryFilterToRemoveSomeClassification } from '../constants/Tag.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -136,6 +137,7 @@ class TagClassBase {
       EntityTabs.ASSETS,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.CUSTOM_PROPERTIES,
+      EntityTabs.DATA_OBSERVABILITY,
     ].map((tab: EntityTabs) => ({
       id: tab,
       name: tab,
@@ -205,6 +207,7 @@ class TagClassBase {
           gridSizes: ['large'] as GridSizes[],
         },
       },
+      KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }
 

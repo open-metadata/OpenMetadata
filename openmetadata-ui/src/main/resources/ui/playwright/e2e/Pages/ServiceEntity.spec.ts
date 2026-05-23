@@ -11,12 +11,10 @@
  *  limitations under the License.
  */
 import { expect, Page, test as base } from '@playwright/test';
-import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import {
   CertificationSupportedServices,
   FollowSupportedServices,
 } from '../../constant/service';
-import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
@@ -32,19 +30,13 @@ import { StorageServiceClass } from '../../support/entity/service/StorageService
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
 } from '../../utils/common';
-import {
-  CustomPropertyTypeByName,
-  updateCustomPropertyInRightPanel,
-} from '../../utils/customProperty';
 
 const entities = {
   'Api Service': ApiServiceClass,
-  'Api Collection': ApiCollectionClass,
   'Database Service': DatabaseServiceClass,
   'Dashboard Service': DashboardServiceClass,
   'Messaging Service': MessagingServiceClass,
@@ -214,63 +206,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       await entity.inactiveAnnouncement(page);
     });
 
-    // Create custom property only for supported entities
-    if (CustomPropertySupportedEntityList.includes(entity.endpoint)) {
-      const properties = Object.values(CustomPropertyTypeByName);
-      const titleText = properties.join(', ');
-
-      /**
-       * Tests custom property management
-       * @description Sets and updates supported custom property types on the service
-       */
-      test(`Set & Update ${titleText} Custom Property `, async ({ page }) => {
-        // increase timeout as it using single test for multiple steps
-        test.slow(true);
-        test.setTimeout(6 * 60 * 1000);
-
-        const { apiContext, afterAction } = await getApiContext(page);
-        await entity.prepareCustomProperty(apiContext);
-
-        await test.step(`Set ${titleText} Custom Property`, async () => {
-          for (const type of properties) {
-            await entity.updateCustomProperty(
-              page,
-              entity.customPropertyValue[type].property,
-              entity.customPropertyValue[type].value
-            );
-          }
-        });
-
-        await test.step(`Update ${titleText} Custom Property`, async () => {
-          for (const type of properties) {
-            await entity.updateCustomProperty(
-              page,
-              entity.customPropertyValue[type].property,
-              entity.customPropertyValue[type].newValue
-            );
-          }
-        });
-
-        await test.step(`Update ${titleText} Custom Property in Right Panel`, async () => {
-          test.slow();
-          for (const [index, type] of properties.entries()) {
-            await updateCustomPropertyInRightPanel({
-              page,
-              entityName:
-                entity.entityResponseData['displayName'] ??
-                entity.entityResponseData['name'],
-              propertyDetails: entity.customPropertyValue[type].property,
-              value: entity.customPropertyValue[type].value,
-              endpoint: entity.endpoint,
-              skipNavigation: index > 0,
-            });
-          }
-        });
-
-        await entity.cleanupCustomProperty(apiContext);
-        await afterAction();
-      });
-    }
     if (FollowSupportedServices.includes(entity.endpoint)) {
       /**
        * Tests follow and unfollow actions

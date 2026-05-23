@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Chip, Typography } from '@mui/material';
+import { BadgeWithIcon, Typography } from '@openmetadata/ui-core-components';
 import { Cube01, Database01, Users01 } from '@untitledui/icons';
 
 const EMPTY_VALUE_INDICATOR = '-';
@@ -24,37 +24,37 @@ export const DomainTypeChip = ({ domainType }: DomainTypeChipProps) => {
   switch (domainType) {
     case 'Consumer-aligned':
       return (
-        <Chip
-          color="primary"
-          icon={<Users01 size={12} />}
-          label="Consumer-aligned"
-          size="small"
-          variant="outlined"
-        />
+        <BadgeWithIcon
+          color="brand"
+          iconLeading={Users01}
+          size="sm"
+          type="color">
+          Consumer-aligned
+        </BadgeWithIcon>
       );
     case 'Source-aligned':
       return (
-        <Chip
-          color="primary"
-          icon={<Cube01 size={12} />}
-          label="Source-aligned"
-          size="small"
-          variant="outlined"
-        />
+        <BadgeWithIcon
+          color="brand"
+          iconLeading={Cube01}
+          size="sm"
+          type="color">
+          Source-aligned
+        </BadgeWithIcon>
       );
     case 'Aggregate':
       return (
-        <Chip
-          color="primary"
-          icon={<Database01 size={12} />}
-          label="Aggregate"
-          size="small"
-          variant="outlined"
-        />
+        <BadgeWithIcon
+          color="brand"
+          iconLeading={Database01}
+          size="sm"
+          type="color">
+          Aggregate
+        </BadgeWithIcon>
       );
     default:
       return (
-        <Typography sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>
+        <Typography className="tw:text-gray-700" size="text-xs">
           {EMPTY_VALUE_INDICATOR}
         </Typography>
       );

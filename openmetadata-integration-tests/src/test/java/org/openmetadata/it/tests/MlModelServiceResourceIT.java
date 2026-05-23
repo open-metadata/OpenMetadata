@@ -106,7 +106,7 @@ public class MlModelServiceResourceIT extends BaseServiceIT<MlModelService, Crea
 
   @Override
   protected String getEntityType() {
-    return "mlModelService";
+    return "mlmodelService";
   }
 
   @Override

@@ -22,6 +22,7 @@ import {
 import {
   addReferences,
   addRelatedTerms,
+  addRelatedTermsByRelationType,
   addSynonyms,
   openAddGlossaryTermModal,
   selectActiveGlossary,
@@ -187,16 +188,76 @@ test.describe('Glossary Term Details Operations', () => {
         .getByTestId('edit-button')
         .click();
 
-      // Remove the related term by clicking the close icon on the tag
-      // Use a more robust selector that doesn't rely on FQN in attribute
-      await page.locator('.ant-tag-close-icon').first().click();
+      await page.locator('[data-testid^="remove-row-"]').first().click();
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await page.getByTestId('saveAssociatedTag').click();
+      await page.getByTestId('save-related-terms').click();
       await saveRes;
 
       // Verify related term is removed
       await expect(page.getByTestId(relatedTermName)).not.toBeVisible();
+    } finally {
+      await glossaryTerm1.delete(apiContext);
+      await glossaryTerm2.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('should keep multiple relation types for the same related term across reload', async ({
+    page,
+  }) => {
+    // Reproduces the previously-silent data loss: adding the same target term
+    // under two relation types collapsed to one on the next GET because the
+    // entity_relationship row was keyed without relationType. After the fix,
+    // both relation-type sections survive a reload.
+    test.slow();
+
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary);
+    const glossaryTerm2 = new GlossaryTerm(glossary);
+
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm1.create(apiContext);
+      await glossaryTerm2.create(apiContext);
+
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+
+      await addRelatedTermsByRelationType(page, [
+        { relationTypeLabel: 'Synonym', terms: [glossaryTerm2] },
+        { relationTypeLabel: 'See Also', terms: [glossaryTerm2] },
+      ]);
+
+      const relatedTermName = glossaryTerm2.responseData?.displayName ?? '';
+
+      // Both relation types render their own section with a chip for term 2.
+      await expect(page.getByTestId(relatedTermName)).toHaveCount(2);
+
+      // Reload — this is the failure path originally reported: PATCH succeeded
+      // but the next GET only showed the last relation type.
+      const reloadRes = page.waitForResponse(
+        `/api/v1/glossaryTerms/name/*${encodeURIComponent(
+          glossaryTerm1.data.name
+        )}*`
+      );
+      await page.reload();
+      await reloadRes;
+
+      await expect(page.getByTestId(relatedTermName)).toHaveCount(2);
+      await expect(
+        page
+          .getByTestId('related-term-container')
+          .getByText('Synonym', { exact: true })
+      ).toBeVisible();
+      await expect(
+        page
+          .getByTestId('related-term-container')
+          .getByText('See Also', { exact: true })
+      ).toBeVisible();
     } finally {
       await glossaryTerm1.delete(apiContext);
       await glossaryTerm2.delete(apiContext);
@@ -235,17 +296,19 @@ test.describe('Glossary Term Details Operations', () => {
 
       await expect(page.getByTestId(term1Name)).toBeVisible();
 
+      // Move mouse away to dismiss any tooltip that may be overlapping the edit button
+      await page.mouse.move(0, 0);
+
       // Clean up: remove the related term from term2's page - use edit button since term exists
       await page
         .getByTestId('related-term-container')
         .getByTestId('edit-button')
         .click();
 
-      // Use a more robust selector
-      await page.locator('.ant-tag-close-icon').first().click();
+      await page.locator('[data-testid^="remove-row-"]').first().click();
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await page.getByTestId('saveAssociatedTag').click();
+      await page.getByTestId('save-related-terms').click();
       await saveRes;
     } finally {
       await glossaryTerm1.delete(apiContext);

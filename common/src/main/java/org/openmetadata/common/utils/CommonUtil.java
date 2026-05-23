@@ -219,6 +219,11 @@ public final class CommonUtil {
     }
   }
 
+  public static String capitalizeFirst(String str) {
+    if (str == null || str.isEmpty()) return str;
+    return Character.toUpperCase(str.charAt(0)) + str.substring(1);
+  }
+
   public static <T> List<T> collectionOrDefault(List<T> c, List<T> defaultValue) {
     if (nullOrEmpty(c)) {
       return defaultValue;

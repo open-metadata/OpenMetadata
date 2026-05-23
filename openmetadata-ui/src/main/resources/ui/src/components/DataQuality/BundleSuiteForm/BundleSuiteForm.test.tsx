@@ -749,6 +749,44 @@ describe('BundleSuiteForm Component', () => {
       expect(await screen.findByText('Selected tests: 2')).toBeInTheDocument();
     });
 
+    it('should pre-fill test cases from bulk selection', async () => {
+      const initialValues = {
+        testCases: mockTestCases,
+      };
+
+      render(<BundleSuiteForm {...mockProps} initialValues={initialValues} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Selected tests: 2')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('add-test-case-list')).toBeInTheDocument();
+    });
+
+    it('should initialize testCaseSelectionPayload with initial test cases', async () => {
+      const initialValues = {
+        testCases: mockTestCases,
+      };
+
+      render(<BundleSuiteForm {...mockProps} initialValues={initialValues} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Selected tests: 2')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle empty initial test cases', async () => {
+      const initialValues = {
+        testCases: [],
+      };
+
+      render(<BundleSuiteForm {...mockProps} initialValues={initialValues} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Selected tests: 0')).toBeInTheDocument();
+      });
+    });
+
     it('should set default form values', async () => {
       render(<BundleSuiteForm {...mockProps} />);
 

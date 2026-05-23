@@ -62,6 +62,7 @@ import { patchDataProduct } from '../rest/dataProductAPI';
 import { patchDomains } from '../rest/domainAPI';
 import { patchDriveAssetDetails } from '../rest/driveAPI';
 import { patchGlossaries, patchGlossaryTerm } from '../rest/glossaryAPI';
+import { patchKnowledgePage } from '../rest/knowledgeCenterAPI';
 import { patchKPI } from '../rest/KpiAPI';
 import { patchMetric } from '../rest/metricsAPI';
 import { patchMlModelDetails } from '../rest/mlModelAPI';
@@ -94,10 +95,12 @@ import {
   FormattedStorageServiceType,
 } from './EntityUtils.interface';
 import Fqn from './Fqn';
+import { getKnowledgePagePath } from './KnowledgePageUtils';
 import {
   getApplicationDetailsPath,
   getBotsPath,
   getClassificationTagPath,
+  getDataProductDetailsPath,
   getDomainDetailsPath,
   getEditWebhookPath,
   getEntityDetailsPath,
@@ -199,6 +202,7 @@ class EntityUtilClassBase {
       patchPolicy(patch, id),
     [EntityType.CLASSIFICATION]: patchClassification,
     [EntityType.TEAM]: patchTeamDetail,
+    [EntityType.KNOWLEDGE_PAGE]: patchKnowledgePage,
   };
 
   private createNormalizedLookupMap<T extends Record<string, string>>(
@@ -360,12 +364,7 @@ class EntityUtilClassBase {
 
       case EntityType.DATA_PRODUCT:
       case SearchIndex.DATA_PRODUCT:
-        return getEntityDetailsPath(
-          EntityType.DATA_PRODUCT,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
+        return getDataProductDetailsPath(fullyQualifiedName, tab, subTab);
       case EntityType.APPLICATION:
         return getApplicationDetailsPath(fullyQualifiedName);
 
@@ -450,6 +449,9 @@ class EntityUtilClassBase {
 
       case EntityType.KPI:
         return getKpiPath(fullyQualifiedName);
+
+      case EntityType.KNOWLEDGE_PAGE:
+        return getKnowledgePagePath(fullyQualifiedName, tab, subTab);
 
       case SearchIndex.TABLE:
       case EntityType.TABLE:
@@ -592,6 +594,10 @@ class EntityUtilClassBase {
       }
       case EntityType.WORKSHEET: {
         return ResourceEntity.WORKSHEET;
+      }
+      case EntityType.KNOWLEDGE_PAGE:
+      case 'knowledge-center': {
+        return ResourceEntity.KNOWLEDGE_PAGE;
       }
 
       default: {

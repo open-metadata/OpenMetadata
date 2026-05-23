@@ -22,7 +22,7 @@ const NAV_ITEMS = [
   'Incident Manager',
   'Alerts',
   'Insights',
-  'Domains',
+  'Marketplace',
   'Govern',
   'Glossary',
   'Classification',
@@ -53,7 +53,8 @@ export const validateLeftSidebarWithHiddenItems = async (
     if (
       item === SidebarItem.OBSERVABILITY ||
       item === SidebarItem.GOVERNANCE ||
-      item === SidebarItem.DOMAINS
+      item === SidebarItem.DATA_MARKETPLACE_SECTION ||
+      item === SidebarItem.CONTEXT_CENTER
     ) {
       await expect(page.getByTestId(item)).toBeVisible();
     } else {
@@ -71,15 +72,7 @@ export const validateLeftSidebarWithHiddenItems = async (
           .locator(`[data-testid^="app-bar-item-"]`)
           .first();
 
-        try {
-          // Wait for at least one child to be visible (with timeout)
-          await anyChildInDropdown.waitFor({ state: 'visible', timeout: 3000 });
-        } catch {
-          // If no children are visible, the dropdown might not have expanded
-          // Wait a bit more and continue
-          // eslint-disable-next-line playwright/no-wait-for-timeout -- dropdown expansion fallback delay
-          await page.waitForTimeout(500);
-        }
+        await expect(anyChildInDropdown).toBeVisible(); // Ensure at least one child is visible before proceeding
 
         const childElement = page
           .locator(`[data-testid="app-bar-item-${items[1]}"]`)
@@ -103,18 +96,20 @@ export const validateLeftSidebarWithHiddenItems = async (
         }
 
         await page.click(`[data-testid="${items[0]}"]`);
-
-        await page.mouse.move(1280, 0); // Move mouse to top right corner
-
-        continue;
       }
-      hiddenItems.includes(item)
-        ? await expect(
-            page.getByTestId('left-sidebar').getByTestId(`app-bar-item-${item}`)
-          ).not.toBeVisible()
-        : await expect(
-            page.getByTestId('left-sidebar').getByTestId(`app-bar-item-${item}`)
-          ).toBeVisible();
+      const isNested = Object.keys(SIDEBAR_LIST_ITEMS).includes(item);
+
+      if (hiddenItems.includes(item)) {
+        await expect(
+          page.getByTestId(`app-bar-item-${item}`)
+        ).not.toBeVisible();
+      } else if (isNested) {
+        await expect(page.getByTestId(`app-bar-item-${item}`)).toBeVisible();
+      } else {
+        await expect(
+          page.getByTestId('left-sidebar').getByTestId(`app-bar-item-${item}`)
+        ).toBeVisible();
+      }
     }
   }
 };

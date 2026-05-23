@@ -35,10 +35,10 @@ class ApiResponse:
     def standard_response(status, response_obj):
         json_data = json.dumps(response_obj)
         resp = Response(json_data, status=status, mimetype="application/json")
-        return resp
+        return resp  # noqa: RET504
 
     @staticmethod
-    def success(response_obj: Union[Optional[dict], Optional[list]] = None):
+    def success(response_obj: Union[Optional[dict], Optional[list]] = None):  # noqa: UP007, UP045
         response_body = response_obj if response_obj is not None else {}
         return ApiResponse.standard_response(ApiResponse.STATUS_OK, response_body)
 
@@ -74,9 +74,7 @@ class ResponseFormat:
         Build the pipeline status
         """
         # Airflow 3.x uses logical_date instead of execution_date
-        logical_date = getattr(dag_run, "logical_date", None) or getattr(
-            dag_run, "execution_date", None
-        )
+        logical_date = getattr(dag_run, "logical_date", None) or getattr(dag_run, "execution_date", None)
         return PipelineStatus(
             pipelineState=dag_run.get_state(),
             runId=dag_run.run_id,

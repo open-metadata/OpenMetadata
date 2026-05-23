@@ -82,14 +82,11 @@ import {
   updateTestSuiteById,
 } from '../../rest/testAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
-import {
-  getDataQualityPagePath,
-  getTestSuitePath,
-} from '../../utils/RouterUtils';
 import { ExtraTestCaseDropdownOptions } from '../../utils/TestCaseUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './test-suite-details-page.less';
@@ -105,7 +102,11 @@ const TestSuiteDetailsPage = () => {
   const { showModal } = useEntityExportModalProvider();
 
   const afterDeleteAction = () => {
-    navigate(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
+    navigate(
+      observabilityRouterClassBase.getDataQualityPagePath(
+        DataQualityPageTabs.TEST_SUITES
+      )
+    );
   };
   const [testSuite, setTestSuite] = useState<TestSuite>();
 
@@ -186,14 +187,16 @@ const TestSuiteDetailsPage = () => {
     return [
       {
         name: t('label.test-suite-plural'),
-        url: getDataQualityPagePath(
+        url: observabilityRouterClassBase.getDataQualityPagePath(
           DataQualityPageTabs.TEST_SUITES,
           DataQualitySubTabs.BUNDLE_SUITES
         ),
       },
       {
         name: getEntityName(testSuite),
-        url: getTestSuitePath(testSuite?.fullyQualifiedName ?? ''),
+        url: observabilityRouterClassBase.getTestSuitePath(
+          testSuite?.fullyQualifiedName ?? ''
+        ),
       },
     ];
   }, [testSuite]);
@@ -283,7 +286,7 @@ const TestSuiteDetailsPage = () => {
       setSlashedBreadCrumb([
         {
           name: t('label.test-suite-plural'),
-          url: getDataQualityPagePath(
+          url: observabilityRouterClassBase.getDataQualityPagePath(
             DataQualityPageTabs.TEST_SUITES,
             DataQualitySubTabs.BUNDLE_SUITES
           ),

@@ -14,7 +14,7 @@ Helper module to process the service type from the config
 """
 
 from pydoc import locate
-from typing import Type
+from typing import Type  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -44,6 +44,9 @@ from metadata.generated.schema.metadataIngestion.dataInsightPipeline import (
     DataInsightPipeline,
 )
 from metadata.generated.schema.metadataIngestion.dbtPipeline import DbtPipeline
+from metadata.generated.schema.metadataIngestion.mcpServiceMetadataPipeline import (
+    McpServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.messagingServiceMetadataPipeline import (
     MessagingServiceMetadataPipeline,
 )
@@ -81,6 +84,7 @@ SERVICE_TYPE_REF = {
     ServiceType.Search.value: "searchService",
     ServiceType.Storage.value: "storageService",
     ServiceType.Security.value: "securityService",
+    ServiceType.Mcp.value: "mcpService",
     # We use test suites as "services" for DQ Ingestion Pipelines
     TestSuiteServiceType.TestSuite.value: "testSuite",
 }
@@ -97,6 +101,7 @@ SOURCE_CONFIG_TYPE_INGESTION = {
     MlModelServiceMetadataPipeline.__name__: PipelineType.metadata,
     StorageServiceMetadataPipeline.__name__: PipelineType.metadata,
     SearchServiceMetadataPipeline.__name__: PipelineType.metadata,
+    McpServiceMetadataPipeline.__name__: PipelineType.metadata,
     TestSuitePipeline.__name__: PipelineType.TestSuite,
     MetadataToElasticSearchPipeline.__name__: PipelineType.elasticSearchReindex,
     DataInsightPipeline.__name__: PipelineType.dataInsight,
@@ -116,17 +121,13 @@ def _clean(source_type: str):
 
 def get_pipeline_type_from_source_config(source_config: SourceConfig) -> PipelineType:
     """From the YAML serviceType, get the Ingestion Pipeline Type"""
-    pipeline_type = SOURCE_CONFIG_TYPE_INGESTION.get(
-        source_config.config.__class__.__name__
-    )
+    pipeline_type = SOURCE_CONFIG_TYPE_INGESTION.get(source_config.config.__class__.__name__)
     if not pipeline_type:
-        raise ValueError(
-            f"Cannot find Pipeline Type for SourceConfig {source_config.config}"
-        )
+        raise ValueError(f"Cannot find Pipeline Type for SourceConfig {source_config.config}")
     return pipeline_type
 
 
-def _get_service_type_from(  # pylint: disable=inconsistent-return-statements
+def _get_service_type_from(  # pylint: disable=inconsistent-return-statements  # noqa: RET503
     service_subtype: str,
 ) -> ServiceType:
     if service_subtype.lower() == "testsuite":
@@ -154,13 +155,11 @@ def get_reference_type_from_service_type(service_type: ServiceType) -> str:
     """Get the type to build the EntityReference from the service type"""
     service_reference = SERVICE_TYPE_REF.get(service_type.value)
     if not service_type:
-        raise ValueError(
-            f"Cannot find Service Type reference for service {service_type}"
-        )
+        raise ValueError(f"Cannot find Service Type reference for service {service_type}")
     return service_reference
 
 
-def get_service_class_from_service_type(service_type: ServiceType) -> Type[BaseModel]:
+def get_service_class_from_service_type(service_type: ServiceType) -> Type[BaseModel]:  # noqa: UP006
     """
     Method to get service class from service type
     """

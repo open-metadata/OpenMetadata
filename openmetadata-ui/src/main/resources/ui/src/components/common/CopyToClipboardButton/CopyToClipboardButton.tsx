@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { IconButton, Tooltip, TooltipProps } from '@mui/material';
+import {
+  ButtonUtility,
+  Tooltip,
+  TooltipTrigger,
+} from '@openmetadata/ui-core-components';
 import { FunctionComponent } from 'react';
+import type { Placement } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -20,7 +25,7 @@ import { useClipboard } from '../../../hooks/useClipBoard';
 interface Props {
   copyText: string;
   copyTimer?: number;
-  position?: TooltipProps['placement'];
+  position?: Placement;
   onCopy?: () => void;
 }
 
@@ -39,25 +44,20 @@ export const CopyToClipboardButton: FunctionComponent<Props> = ({
 
   return (
     <Tooltip
+      isOpen={hasCopied || undefined}
       placement={position}
       title={
-        hasCopied ? (
-          <span className="text-xs font-medium" data-testid="copy-success">
-            {t('message.copied-to-clipboard')}
-          </span>
-        ) : (
-          <span className="text-xs font-medium" data-testid="copy-tooltip">
-            {t('message.copy-to-clipboard')}
-          </span>
-        )
+        hasCopied
+          ? t('message.copied-to-clipboard')
+          : t('message.copy-to-clipboard')
       }>
-      <IconButton
-        className="h-8 m-l-md relative flex-center"
-        data-testid="copy-secret"
-        sx={{ padding: 0 }}
-        onClick={onCopyToClipBoard}>
-        <CopyIcon data-testid="copy-icon" width="16" />
-      </IconButton>
+      <TooltipTrigger>
+        <ButtonUtility
+          data-testid="copy-secret"
+          icon={<CopyIcon data-testid="copy-icon" width="16" />}
+          onClick={() => onCopyToClipBoard(copyText)}
+        />
+      </TooltipTrigger>
     </Tooltip>
   );
 };

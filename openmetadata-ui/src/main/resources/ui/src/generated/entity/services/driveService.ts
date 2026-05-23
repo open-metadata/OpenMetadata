@@ -20,6 +20,10 @@ export interface DriveService {
     changeDescription?: ChangeDescription;
     connection?:        DriveConnection;
     /**
+     * Reference to the data contract for this entity.
+     */
+    dataContract?: EntityReference;
+    /**
      * List of data products this entity is part of.
      */
     dataProducts?: EntityReference[];
@@ -480,14 +484,16 @@ export enum DriveServiceType {
 }
 
 /**
- * List of data products this entity is part of.
+ * Reference to the data contract for this entity.
  *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * List of data products this entity is part of.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -618,6 +624,10 @@ export enum LabelType {
  * was applied.
  */
 export interface TagLabelMetadata {
+    /**
+     * Epoch time in milliseconds when the certification tag expires
+     */
+    expiryDate?: number;
     /**
      * Metadata about the recognizer that automatically applied this tag
      */

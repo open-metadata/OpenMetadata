@@ -451,6 +451,15 @@ export const permanentDeleteUser = async (
   // Click on delete user button
   await page.click(`[data-testid="delete-user-btn-${username}"]`);
 
+  if (!isUserSoftDeleted) {
+    // Modal opens with soft-delete as default; wait for the form's
+    // initialization effect before switching, otherwise the click races
+    // with setFieldsValue and the selection gets clobbered.
+    await page
+      .locator('.ant-radio-wrapper-checked [data-testid="soft-delete"]')
+      .waitFor();
+  }
+
   // Click on hard delete
   await page.click('[data-testid="hard-delete"]');
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
@@ -707,8 +716,10 @@ export const addUser = async (
     personas?: string[];
   }
 ) => {
+  await waitForAllLoadersToDisappear(page);
   await page.click('[data-testid="add-user"]');
 
+  await page.waitForResponse('/api/v1/roles/search?*');
   await page.fill('[data-testid="email"]', email);
 
   await page.fill('[data-testid="displayName"]', name);
@@ -724,7 +735,9 @@ export const addUser = async (
     .getByRole('combobox');
   await expect(rolesCombobox).toBeVisible({ timeout: 120000 });
   await rolesCombobox.click();
+  const rolesSearchResponse = page.waitForResponse('/api/v1/roles/search?*');
   await rolesCombobox.fill(role);
+  await rolesSearchResponse;
   const roleOption = page
     .locator('.ant-select-item-option-content')
     .filter({ hasText: new RegExp(`^${role}$`) })

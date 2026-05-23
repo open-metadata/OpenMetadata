@@ -42,7 +42,10 @@ public class StatsReconciler {
       for (Map.Entry<String, StepStats> entry :
           stats.getEntityStats().getAdditionalProperties().entrySet()) {
         StepStats es = entry.getValue();
-        int actual = safeGet(es.getSuccessRecords()) + safeGet(es.getFailedRecords());
+        int actual =
+            safeGet(es.getSuccessRecords())
+                + safeGet(es.getFailedRecords())
+                + safeGet(es.getWarningRecords());
         if (actual > safeGet(es.getTotalRecords())) {
           es.setTotalRecords(actual);
         }
@@ -56,20 +59,18 @@ public class StatsReconciler {
       }
     }
 
-    int jobSuccess = sinkSuccess;
     int jobFailed = readerFailed + processFailed + sinkFailed;
     int jobTotal = readerTotal;
-    int jobWarnings = readerWarnings;
 
     jobStats.setTotalRecords(jobTotal);
-    jobStats.setSuccessRecords(jobSuccess);
+    jobStats.setSuccessRecords(sinkSuccess);
     jobStats.setFailedRecords(jobFailed);
-    jobStats.setWarningRecords(jobWarnings);
+    jobStats.setWarningRecords(readerWarnings);
 
-    int computedTotal = jobSuccess + jobFailed;
+    int computedTotal = sinkSuccess + jobFailed + readerWarnings;
     if (computedTotal != jobTotal && jobTotal > 0) {
       LOG.warn(
-          "Stats discrepancy detected: total={}, success+failed={}. "
+          "Stats discrepancy detected: total={}, success+failed+warnings={}. "
               + "Reader: total={}, failed={}, warnings={}. Process: failed={}. Sink: success={}, failed={}, warnings={}",
           jobTotal,
           computedTotal,

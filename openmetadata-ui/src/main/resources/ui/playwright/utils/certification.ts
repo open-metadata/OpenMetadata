@@ -56,3 +56,20 @@ export const setAllSystemCertificationTagsDisabled = async (
     await setTagDisabledByFqn(apiContext, tagFqn, disabled);
   }
 };
+
+/**
+ * Restores the Certification classification and all system certification tags
+ * (Gold, Silver, Bronze) to an enabled state.
+ *
+ * Disabling a classification can cascade and mark individual tags as
+ * disabled=true at the tag level. Re-enabling the classification alone does NOT
+ * reverse that cascade. This helper must be used instead of
+ * setCertificationClassificationDisabled(false) in any finally/cleanup block to
+ * guarantee a clean state for subsequent tests.
+ */
+export const restoreCertificationState = async (
+  apiContext: APIRequestContext
+) => {
+  await setCertificationClassificationDisabled(apiContext, false);
+  await setAllSystemCertificationTagsDisabled(apiContext, false);
+};

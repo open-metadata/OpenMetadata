@@ -241,7 +241,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
   // K8s API clients
   private BatchV1Api batchApi;
   private CoreV1Api coreApi;
-  private CustomObjectsApi customObjectsApi;
+  private final CustomObjectsApi customObjectsApi;
 
   // Configuration
   private final K8sPipelineClientConfig k8sConfig;
@@ -989,7 +989,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
       String message = String.format(K8S_AVAILABLE_FORMAT, namespace, serviceAccount);
 
-      return buildHealthyStatus(getKubernetesVersion()).withPlatform(message);
+      return buildHealthyStatus(getKubernetesVersion()).withReason(message);
 
     } catch (ApiException e) {
       String error =
@@ -1347,6 +1347,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
                             k8sConfig.getNodeSelector().isEmpty()
                                 ? null
                                 : k8sConfig.getNodeSelector())
+                        .tolerations(
+                            k8sConfig.getTolerations().isEmpty()
+                                ? null
+                                : k8sConfig.getTolerations())
                         .securityContext(buildPodSecurityContext())
                         .containers(
                             List.of(
@@ -1445,6 +1449,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                     .limits(k8sConfig.getResourceLimits()))
             .nodeSelector(
                 k8sConfig.getNodeSelector().isEmpty() ? null : k8sConfig.getNodeSelector())
+            .tolerations(k8sConfig.getTolerations().isEmpty() ? null : k8sConfig.getTolerations())
             .securityContext(buildPodSecurityContext())
             .labels(labels)
             .annotations(
@@ -1464,6 +1469,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
             .serviceAccountName(k8sConfig.getServiceAccountName())
             .nodeSelector(
                 k8sConfig.getNodeSelector().isEmpty() ? null : k8sConfig.getNodeSelector())
+            .tolerations(k8sConfig.getTolerations().isEmpty() ? null : k8sConfig.getTolerations())
             .securityContext(buildPodSecurityContext())
             .labels(labels)
             .annotations(
@@ -1526,6 +1532,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
                             k8sConfig.getNodeSelector().isEmpty()
                                 ? null
                                 : k8sConfig.getNodeSelector())
+                        .tolerations(
+                            k8sConfig.getTolerations().isEmpty()
+                                ? null
+                                : k8sConfig.getTolerations())
                         .securityContext(buildPodSecurityContext())
                         .containers(
                             List.of(
@@ -1617,11 +1627,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
       String runId,
       Map<String, Object> configOverride,
       ServiceEntityInterface service) {
-    List<V1EnvVar> envVars =
-        new ArrayList<>(
-            buildCommonIngestionEnvVars(pipeline, runId, configOverride, service, true));
-
-    return envVars;
+    return new ArrayList<>(
+        buildCommonIngestionEnvVars(pipeline, runId, configOverride, service, true));
   }
 
   private List<V1EnvVar> buildCommonIngestionEnvVars(
@@ -1792,6 +1799,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                     .limits(k8sConfig.getResourceLimits()))
             .nodeSelector(
                 k8sConfig.getNodeSelector().isEmpty() ? null : k8sConfig.getNodeSelector())
+            .tolerations(k8sConfig.getTolerations().isEmpty() ? null : k8sConfig.getTolerations())
             .securityContext(buildPodSecurityContext())
             .labels(labels)
             .annotations(
@@ -1810,6 +1818,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
             .serviceAccountName(k8sConfig.getServiceAccountName())
             .nodeSelector(
                 k8sConfig.getNodeSelector().isEmpty() ? null : k8sConfig.getNodeSelector())
+            .tolerations(k8sConfig.getTolerations().isEmpty() ? null : k8sConfig.getTolerations())
             .securityContext(buildPodSecurityContext())
             .labels(labels)
             .annotations(

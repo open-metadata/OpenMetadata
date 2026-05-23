@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { Layout } from 'react-grid-layout';
 
 export interface WidgetConfig
@@ -30,6 +31,7 @@ export interface WidgetCommonProps {
   selectedGridSize?: number;
   isEditView?: boolean;
   widgetKey: string;
+  dragHandle?: ReactNode;
   handleRemoveWidget?: (widgetKey: string) => void;
   handleLayoutUpdate?: (layout: Layout[]) => void;
   handleSaveLayout?: (layout: WidgetConfig[]) => Promise<void>;

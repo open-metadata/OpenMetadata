@@ -413,15 +413,13 @@ public class SubscriptionUtil {
             handleConversationNotification(action, category, type, event));
           // TODO: For Announcement, Immediate Consumer needs to be Notified (find information from
           // Lineage)
-        case Announcement -> {
-          receiverUrls.addAll(
-              buildReceivers(
-                  action,
-                  category,
-                  type,
-                  thread.getEntityRef().getType(),
-                  thread.getEntityRef().getId()));
-        }
+        case Announcement -> receiverUrls.addAll(
+            buildReceivers(
+                action,
+                category,
+                type,
+                thread.getEntityRef().getType(),
+                thread.getEntityRef().getId()));
       }
     } else {
       EntityInterface entityInterface = getEntity(event);
@@ -453,11 +451,9 @@ public class SubscriptionUtil {
       SubscriptionDestination.SubscriptionType type,
       String entityType,
       UUID id) {
-    Set<String> result = new HashSet<>();
-    result.addAll(
+    return new HashSet<>(
         buildReceiversListFromActions(
             action, category, type, Entity.getCollectionDAO(), id, entityType));
-    return result;
   }
 
   public static List<Invocation.Builder> getTargetsForWebhookAlert(

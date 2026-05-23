@@ -81,7 +81,7 @@ import os.org.opensearch.client.opensearch.core.search.Hit;
 public class OpenSearchEntityManager implements EntityManagementClient {
   private final OpenSearchClient client;
   private final boolean isClientAvailable;
-  private OpenSearchAsyncClient asyncClient;
+  private final OpenSearchAsyncClient asyncClient;
   private final boolean isAsyncClientAvailable;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -1182,7 +1182,11 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
-                  req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                  req.index(
+                          Entity.getSearchRepository()
+                              .getWriteFanoutTargets(
+                                  Entity.getSearchRepository()
+                                      .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)))
                       .query(termQuery)
                       .conflicts(Conflicts.Proceed)
                       .script(
@@ -1261,7 +1265,11 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
-                  req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                  req.index(
+                          Entity.getSearchRepository()
+                              .getWriteFanoutTargets(
+                                  Entity.getSearchRepository()
+                                      .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)))
                       .query(idsQuery)
                       .conflicts(Conflicts.Proceed)
                       .script(
@@ -1332,7 +1340,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
-                  req.index(domainIndexName)
+                  req.index(Entity.getSearchRepository().getWriteFanoutTargets(domainIndexName))
                       .query(combinedQuery)
                       .conflicts(Conflicts.Proceed)
                       .script(
@@ -1394,7 +1402,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
-                  req.index(indexName)
+                  req.index(Entity.getSearchRepository().getWriteFanoutTargets(indexName))
                       .query(matchingDomainQuery)
                       .conflicts(Conflicts.Proceed)
                       .script(
@@ -1558,8 +1566,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                 .withIncludeSourceFields(
                     SearchUtils.getRequiredEntityRelationshipFields(includeSourceFields));
         SearchEntityRelationshipResult tableER =
-            ((SearchClient) Entity.getSearchRepository().getSearchClient())
-                .searchEntityRelationship(request);
+            Entity.getSearchRepository().getSearchClient().searchEntityRelationship(request);
         Map.Entry<String, NodeInformation> tableNode =
             tableER.getNodes().entrySet().stream()
                 .filter(e -> fqn.toString().equals(e.getKey()))

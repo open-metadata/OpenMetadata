@@ -1,6 +1,7 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doThrow;
@@ -411,6 +412,26 @@ class IndexingFailureRecorderTest {
         assertEquals("SINK", captor.getValue().get(0).getFailureStage());
       }
     }
+
+    @Test
+    @DisplayName("Relationship warnings should have READER_RELATIONSHIP_WARNING stage")
+    @SuppressWarnings("unchecked")
+    void testRelationshipWarningStage() {
+      ArgumentCaptor<List<SearchIndexFailureRecord>> captor = ArgumentCaptor.forClass(List.class);
+
+      try (IndexingFailureRecorder recorder =
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 1)) {
+
+        recorder.recordRelationshipWarning(
+            "testCaseResolutionStatus", "entity-1", "fqn", "parent test case not found");
+
+        verify(failureDAO).insertBatch(captor.capture());
+        SearchIndexFailureRecord record = captor.getValue().get(0);
+        assertEquals("READER_RELATIONSHIP_WARNING", record.getFailureStage());
+        assertEquals("testCaseResolutionStatus", record.getEntityType());
+        assertEquals("entity-1", record.getEntityId());
+      }
+    }
   }
 
   @Nested
@@ -528,7 +549,7 @@ class IndexingFailureRecorderTest {
 
         assertTrue(records.get(0).getId() != null && !records.get(0).getId().isEmpty());
         assertTrue(records.get(1).getId() != null && !records.get(1).getId().isEmpty());
-        assertTrue(!records.get(0).getId().equals(records.get(1).getId()));
+        assertFalse(records.get(0).getId().equals(records.get(1).getId()));
       }
     }
   }

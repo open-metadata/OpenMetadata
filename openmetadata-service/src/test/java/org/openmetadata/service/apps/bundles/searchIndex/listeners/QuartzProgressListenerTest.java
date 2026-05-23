@@ -274,12 +274,10 @@ class QuartzProgressListenerTest {
         .queueSize(100)
         .maxConcurrentRequests(5)
         .payloadSize(4_096)
-        .recreateIndex(true)
-        .useDistributedIndexing(true)
         .build();
   }
 
-  private AtomicInteger getPendingErrors(QuartzProgressListener listener) throws Exception {
+  private AtomicInteger getPendingErrors(QuartzProgressListener listener) {
     return (AtomicInteger) getField(listener, "pendingErrors");
   }
 

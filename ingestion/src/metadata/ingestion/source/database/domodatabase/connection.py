@@ -44,18 +44,18 @@ def get_connection(connection: DomoDatabaseConnection) -> Domo:
             connection.secretToken.get_secret_value(),
             api_host=connection.apiHost,
         )
-        return domo
+        return domo  # noqa: RET504, TRY300
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg)  # noqa: B904
 
 
 def test_connection(
     metadata: OpenMetadata,
     domo: Domo,
     service_connection: DomoDatabaseConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part

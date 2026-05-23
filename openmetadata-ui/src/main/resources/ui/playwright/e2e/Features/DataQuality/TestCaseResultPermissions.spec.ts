@@ -20,43 +20,23 @@ import {
   TABLE_EDIT_RESULTS_POLICY,
   VIEW_RESULTS_POLICY,
 } from '../../../constant/dataQualityPermissions';
-import { PolicyClass } from '../../../support/access-control/PoliciesClass';
-import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { setupUserWithPolicy } from '../../../utils/permission';
 import { waitForTestCaseDetailsResponse } from '../../../utils/testCases';
 
 // --- Objects ---
-const viewResultsPolicy = new PolicyClass();
-const viewResultsRole = new RolesClass();
 const viewResultsUser = new UserClass();
-
-const editResultsPolicy = new PolicyClass();
-const editResultsRole = new RolesClass();
 const editResultsUser = new UserClass();
-
-const tableEditResultsPolicy = new PolicyClass();
-const tableEditResultsRole = new RolesClass();
 const tableEditResultsUser = new UserClass();
-
-const deleteResultsPolicy = new PolicyClass();
-const deleteResultsRole = new RolesClass();
 const deleteResultsUser = new UserClass();
-
-const partialDeleteTcPolicy = new PolicyClass();
-const partialDeleteTcRole = new RolesClass();
 const partialDeleteTcUser = new UserClass();
-
-const partialDeleteTablePolicy = new PolicyClass();
-const partialDeleteTableRole = new RolesClass();
 const partialDeleteTableUser = new UserClass();
 
-const table = new TableClass();
+let table: TableClass;
 
 // --- Fixtures ---
 const test = base.extend<{
@@ -119,9 +99,9 @@ test.describe(
     let testCaseName: string;
     let resultTimestamp: number;
 
-    const visitProfilerPage = async (page: Page) => {
+    const visitProfilerPage = async (page: Page, tableToVisit: TableClass) => {
       await redirectToHomePage(page);
-      await table.visitEntityPage(page);
+      await tableToVisit.visitEntityPage(page);
       await page.getByTestId('profiler').click();
       await page.getByRole('tab', { name: 'Data Quality' }).click();
       await waitForAllLoadersToDisappear(page);
@@ -134,6 +114,7 @@ test.describe(
     };
 
     test.beforeAll(async ({ browser }) => {
+      table = new TableClass();
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       await table.create(apiContext);
@@ -163,48 +144,47 @@ test.describe(
         timestamp: resultTimestamp,
       });
 
-      // Setup all users
-      await setupUserWithPolicy(
+      // Setup all users (policy + role + team via setCustomRulePolicy)
+      await viewResultsUser.create(apiContext, false);
+      await viewResultsUser.setCustomRulePolicy(
         apiContext,
-        viewResultsUser,
-        viewResultsPolicy,
-        viewResultsRole,
-        VIEW_RESULTS_POLICY
+        VIEW_RESULTS_POLICY,
+        'PW-DQ-result-view'
       );
-      await setupUserWithPolicy(
+
+      await editResultsUser.create(apiContext, false);
+      await editResultsUser.setCustomRulePolicy(
         apiContext,
-        editResultsUser,
-        editResultsPolicy,
-        editResultsRole,
-        EDIT_RESULTS_POLICY
+        EDIT_RESULTS_POLICY,
+        'PW-DQ-result-edit'
       );
-      await setupUserWithPolicy(
+
+      await tableEditResultsUser.create(apiContext, false);
+      await tableEditResultsUser.setCustomRulePolicy(
         apiContext,
-        tableEditResultsUser,
-        tableEditResultsPolicy,
-        tableEditResultsRole,
-        TABLE_EDIT_RESULTS_POLICY
+        TABLE_EDIT_RESULTS_POLICY,
+        'PW-DQ-result-table-edit'
       );
-      await setupUserWithPolicy(
+
+      await deleteResultsUser.create(apiContext, false);
+      await deleteResultsUser.setCustomRulePolicy(
         apiContext,
-        deleteResultsUser,
-        deleteResultsPolicy,
-        deleteResultsRole,
-        DELETE_RESULTS_POLICY
+        DELETE_RESULTS_POLICY,
+        'PW-DQ-result-delete'
       );
-      await setupUserWithPolicy(
+
+      await partialDeleteTcUser.create(apiContext, false);
+      await partialDeleteTcUser.setCustomRulePolicy(
         apiContext,
-        partialDeleteTcUser,
-        partialDeleteTcPolicy,
-        partialDeleteTcRole,
-        PARTIAL_DELETE_TC_ONLY_POLICY
+        PARTIAL_DELETE_TC_ONLY_POLICY,
+        'PW-DQ-result-partial-delete-tc'
       );
-      await setupUserWithPolicy(
+
+      await partialDeleteTableUser.create(apiContext, false);
+      await partialDeleteTableUser.setCustomRulePolicy(
         apiContext,
-        partialDeleteTableUser,
-        partialDeleteTablePolicy,
-        partialDeleteTableRole,
-        PARTIAL_DELETE_TABLE_ONLY_POLICY
+        PARTIAL_DELETE_TABLE_ONLY_POLICY,
+        'PW-DQ-result-partial-delete-table'
       );
 
       await afterAction();
@@ -214,7 +194,7 @@ test.describe(
       test('User with TEST_CASE.VIEW_ALL can view test case and results in UI', async ({
         viewResultsPage,
       }) => {
-        await visitProfilerPage(viewResultsPage);
+        await visitProfilerPage(viewResultsPage, table);
         await expect(viewResultsPage.getByTestId(testCaseName)).toBeVisible();
 
         await visitTestCaseDetailsPage(viewResultsPage);
@@ -241,7 +221,7 @@ test.describe(
       test('User with TABLE.VIEW_TESTS can view test case and results in UI (alternative)', async ({
         tableEditResultsPage,
       }) => {
-        await visitProfilerPage(tableEditResultsPage);
+        await visitProfilerPage(tableEditResultsPage, table);
         await expect(
           tableEditResultsPage.getByTestId(testCaseName)
         ).toBeVisible();
@@ -266,7 +246,7 @@ test.describe(
       test('User with TEST_CASE.EDIT_ALL can see edit action on test case', async ({
         editResultsPage,
       }) => {
-        await visitProfilerPage(editResultsPage);
+        await visitProfilerPage(editResultsPage, table);
         const actionDropdown = editResultsPage.getByTestId(
           `action-dropdown-${testCaseName}`
         );
@@ -281,7 +261,7 @@ test.describe(
       test('User with TABLE.EDIT_TESTS can see edit action on test case (alternative)', async ({
         tableEditResultsPage,
       }) => {
-        await visitProfilerPage(tableEditResultsPage);
+        await visitProfilerPage(tableEditResultsPage, table);
         const actionDropdown = tableEditResultsPage.getByTestId(
           `action-dropdown-${testCaseName}`
         );
@@ -298,7 +278,7 @@ test.describe(
       test('User with TABLE.DELETE + TEST_CASE.DELETE can see delete option for test case', async ({
         deleteResultsPage,
       }) => {
-        await visitProfilerPage(deleteResultsPage);
+        await visitProfilerPage(deleteResultsPage, table);
         const actionDropdown = deleteResultsPage.getByTestId(
           `action-dropdown-${testCaseName}`
         );
@@ -315,7 +295,7 @@ test.describe(
       test('User with only VIEW cannot see edit action and cannot POST results', async ({
         viewResultsPage,
       }) => {
-        await visitProfilerPage(viewResultsPage);
+        await visitProfilerPage(viewResultsPage, table);
         const actionDropdown = viewResultsPage.getByTestId(
           `action-dropdown-${testCaseName}`
         );
@@ -344,7 +324,7 @@ test.describe(
       test('User with only VIEW cannot PATCH results', async ({
         viewResultsPage,
       }) => {
-        await visitProfilerPage(viewResultsPage);
+        await visitProfilerPage(viewResultsPage, table);
         const actionDropdown = viewResultsPage.getByTestId(
           `action-dropdown-${testCaseName}`
         );
@@ -382,7 +362,7 @@ test.describe(
         partialDeleteTcPage,
         adminPage,
       }) => {
-        await visitProfilerPage(partialDeleteTcPage);
+        await visitProfilerPage(partialDeleteTcPage, table);
         await visitTestCaseDetailsPage(partialDeleteTcPage);
         await waitForAllLoadersToDisappear(partialDeleteTcPage);
         await expect(
@@ -426,7 +406,7 @@ test.describe(
         partialDeleteTablePage,
         adminPage,
       }) => {
-        await visitProfilerPage(partialDeleteTablePage);
+        await visitProfilerPage(partialDeleteTablePage, table);
         await visitTestCaseDetailsPage(partialDeleteTablePage);
         await expect(
           partialDeleteTablePage.getByTestId('test-case-result-tab-container')

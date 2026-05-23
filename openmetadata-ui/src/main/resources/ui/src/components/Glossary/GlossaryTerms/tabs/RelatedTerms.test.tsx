@@ -28,14 +28,35 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const React = require('react');
 
   return {
+    Autocomplete: Object.assign(
+      ({ children, ...props }: Record<string, unknown>) =>
+        React.createElement('div', props, children),
+      {
+        Item: ({ label, ...props }: Record<string, unknown>) =>
+          React.createElement('div', props, label),
+      }
+    ),
+    Badge: ({ children, ...props }: Record<string, unknown>) =>
+      React.createElement('span', props, children),
+    BadgeWithIcon: ({
+      children,
+      iconLeading: _iconLeading,
+      ...props
+    }: Record<string, unknown>) => React.createElement('span', props, children),
     Button: ({
       children,
       iconLeading: _iconLeading,
       ...props
     }: Record<string, unknown>) =>
       React.createElement('button', props, children),
-    Select: ({ children, ...props }: Record<string, unknown>) =>
-      React.createElement('select', props, children),
+    Select: Object.assign(
+      ({ children, ...props }: Record<string, unknown>) =>
+        React.createElement('select', props, children),
+      {
+        Item: ({ label, ...props }: Record<string, unknown>) =>
+          React.createElement('option', props, label),
+      }
+    ),
     Tooltip: ({ children, ...props }: Record<string, unknown>) =>
       React.createElement('span', props, children),
     TooltipTrigger: ({ children, ...props }: Record<string, unknown>) =>
@@ -44,6 +65,45 @@ jest.mock('@openmetadata/ui-core-components', () => {
       React.createElement('span', props, children),
   };
 });
+
+jest.mock('../../../common/ExpandableCard/ExpandableCard', () => ({
+  __esModule: true,
+  default: jest.fn(
+    ({
+      children,
+      cardProps,
+    }: {
+      children: unknown;
+      cardProps?: { title?: unknown };
+    }) => {
+      const React = require('react');
+
+      return React.createElement('div', {}, cardProps?.title, children);
+    }
+  ),
+}));
+
+jest.mock('../../../common/IconButtons/EditIconButton', () => ({
+  EditIconButton: ({ children, ...props }: Record<string, unknown>) => {
+    const React = require('react');
+
+    return React.createElement('button', props, children);
+  },
+  PlusIconButton: ({ children, ...props }: Record<string, unknown>) => {
+    const React = require('react');
+
+    return React.createElement('button', props, children);
+  },
+}));
+
+jest.mock('../../../../rest/glossaryAPI', () => ({
+  getGlossaryTermRelationSettings: jest.fn().mockResolvedValue({
+    relationTypes: [
+      { name: 'relatedTo', displayName: 'Related To', isSymmetric: true },
+    ],
+  }),
+  searchGlossaryTermsPaginated: jest.fn().mockResolvedValue({ data: [] }),
+}));
 
 jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
   useGenericContext: jest.fn().mockImplementation(() => mockContext),
@@ -93,10 +153,10 @@ describe('RelatedTerms', () => {
     expect(getByTestId('edit-button')).toBeInTheDocument();
   });
 
-  it('should not show the edit button if there are no related terms and the user has edit permissions', () => {
+  it('should show the edit button even if there are no related terms when the user has edit permissions', () => {
     mockContext.data = { ...MOCKED_GLOSSARY_TERMS[2], relatedTerms: [] };
-    const { queryByTestId } = render(<RelatedTerms />);
+    const { getByTestId } = render(<RelatedTerms />);
 
-    expect(queryByTestId('edit-button')).toBeNull();
+    expect(getByTestId('edit-button')).toBeInTheDocument();
   });
 });
