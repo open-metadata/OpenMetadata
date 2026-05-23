@@ -18,7 +18,10 @@ import CustomiseLandingPageHeader from './CustomiseLandingPageHeader';
 
 jest.mock('../../../../hooks/useApplicationStore');
 jest.mock('../../../../utils/ServiceUtilClassBase');
-jest.mock('../../../../utils/CommonUtils');
+jest.mock('../../../../utils/CommonUtils', () => ({
+  ...jest.requireActual('../../../../utils/CommonUtils'),
+  getRecentlyViewedData: jest.fn(),
+}));
 
 // Create typed mocks
 const mockUseApplicationStore = useApplicationStore as jest.MockedFunction<
@@ -139,5 +142,57 @@ describe('CustomiseLandingPageHeader', () => {
     render(<CustomiseLandingPageHeader hideCustomiseButton={false} />);
 
     expect(screen.getByTestId('customise-header-btn')).toBeInTheDocument();
+  });
+
+  describe('background color precedence', () => {
+    const TEST_ID = 'header-bg-test';
+
+    it('uses the backgroundColor prop when provided, overriding admin theme', () => {
+      mockUseApplicationStore.mockReturnValue({
+        currentUser: mockCurrentUser,
+        applicationConfig: {
+          customTheme: { panelBackgroundColor: '#aaaaaa' },
+        },
+      });
+
+      render(
+        <CustomiseLandingPageHeader
+          backgroundColor="#bbbbbb"
+          dataTestId={TEST_ID}
+        />
+      );
+
+      expect(screen.getByTestId(TEST_ID)).toHaveStyle({
+        backgroundColor: '#bbbbbb',
+      });
+    });
+
+    it('falls back to admin theme panelBackgroundColor when prop is absent', () => {
+      mockUseApplicationStore.mockReturnValue({
+        currentUser: mockCurrentUser,
+        applicationConfig: {
+          customTheme: { panelBackgroundColor: '#cccccc' },
+        },
+      });
+
+      render(<CustomiseLandingPageHeader dataTestId={TEST_ID} />);
+
+      expect(screen.getByTestId(TEST_ID)).toHaveStyle({
+        backgroundColor: '#cccccc',
+      });
+    });
+
+    it('falls back to the default gradient when neither prop nor admin theme is set', () => {
+      mockUseApplicationStore.mockReturnValue({
+        currentUser: mockCurrentUser,
+        applicationConfig: { customTheme: {} },
+      });
+
+      render(<CustomiseLandingPageHeader dataTestId={TEST_ID} />);
+
+      expect(screen.getByTestId(TEST_ID)).toHaveStyle({
+        backgroundBlendMode: 'overlay',
+      });
+    });
   });
 });

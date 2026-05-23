@@ -99,6 +99,7 @@ import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Chart;
@@ -459,6 +460,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   LearningResourceDAO learningResourceDAO();
+
+  @CreateSqlObject
+  ContextMemoryDAO contextMemoryDAO();
 
   @CreateSqlObject
   SuggestionDAO suggestionDAO();
@@ -981,6 +985,71 @@ public interface CollectionDAO {
         @Bind("parentHashChild") String parentHashChild,
         @Bind("nameLike") String nameLike,
         @Bind("includeDeleted") String includeDeleted);
+
+    /**
+     * Cascade an FQN rename to every descendant container row when a parent is reassigned
+     * (#24294). The generic {@link EntityDAO#updateFqn(String, String)} only rewrites the
+     * top-level {@code $.fullyQualifiedName} via MySQL {@code JSON_REPLACE}, which leaves
+     * nested column FQNs ({@code $.dataModel.columns[*].fullyQualifiedName}) pointing at the
+     * old parent — silently breaking column lookups on MySQL. Postgres works only by accident
+     * because the base impl does a global {@code REPLACE(json::text, ...)}.
+     *
+     * <p>This override rewrites every {@code "fullyQualifiedName": "OLD_PREFIX..."} occurrence
+     * in the JSON document so column FQNs follow their container. {@code WHERE fqnHash LIKE
+     * 'oldHash.%'} restricts the update to descendants — the moved row itself updates via the
+     * standard {@code storeEntity} path after {@code setFullyQualifiedName} runs in memory.
+     *
+     * <p><b>On SQL interpolation:</b> mirrors the pre-existing {@link EntityDAO#updateFqn}
+     * pattern — values are spliced into the SQL via {@link String#format} because the
+     * connection-aware {@code @SqlUpdate} dispatcher takes the full statement as a single
+     * {@code <mySqlUpdate>}/{@code <postgresUpdate>} bind. The values come from server-side
+     * code (the FQN computed by {@code setFullyQualifiedName}, not user-supplied input), and
+     * {@link ListFilter#escapeApostrophe} handles the only SQL meta-character that can appear
+     * in a validated entity name. If a future code path lets arbitrary strings reach this
+     * method, swap to a parameterised form with {@code @Bind} parameters.
+     */
+    @Override
+    default void updateFqn(String oldPrefix, String newPrefix) {
+      if (!getNameHashColumn().equals("fqnHash")) {
+        return;
+      }
+      String oldHash = FullyQualifiedName.buildHash(oldPrefix);
+      String newHash = FullyQualifiedName.buildHash(newPrefix);
+      String mySqlUpdate =
+          String.format(
+              "UPDATE %s SET json = CAST(REPLACE(CAST(json AS CHAR), "
+                  + "'\"fullyQualifiedName\": \"%s.', '\"fullyQualifiedName\": \"%s.') AS JSON), "
+                  + "fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
+                  + "WHERE fqnHash LIKE '%s.%%'",
+              getTableName(),
+              escapeApostrophe(oldPrefix),
+              escapeApostrophe(newPrefix),
+              oldHash,
+              newHash,
+              oldHash);
+      String postgresUpdate =
+          String.format(
+              "UPDATE %s SET json = REPLACE(json::text, "
+                  + "'\"fullyQualifiedName\": \"%s.', '\"fullyQualifiedName\": \"%s.')::jsonb, "
+                  + "fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
+                  + "WHERE fqnHash LIKE '%s.%%'",
+              getTableName(),
+              escapeApostrophe(oldPrefix),
+              escapeApostrophe(newPrefix),
+              oldHash,
+              newHash,
+              oldHash);
+      updateFqnInternal(mySqlUpdate, postgresUpdate);
+    }
+
+    /**
+     * Cheap descendant count used by the PATCH re-parent guard (#24294) to short-circuit
+     * absurd subtree moves before any cascade work runs. {@code fqnHash LIKE 'oldHash.%'}
+     * matches every descendant row (excluding the moved container itself) and the index on
+     * {@code fqnHash} makes this an O(log n) lookup.
+     */
+    @SqlQuery("SELECT COUNT(*) FROM storage_container_entity WHERE fqnHash LIKE :prefixLike")
+    int countDescendantsByPrefix(@Bind("prefixLike") String prefixLike);
   }
 
   class ContainerSummaryRowMapper implements RowMapper<Container> {
@@ -2059,6 +2128,29 @@ public interface CollectionDAO {
         condition = "AND deleted = TRUE";
       }
       return findToBatchAllTypesWithCondition(fromIds, relation, condition);
+    }
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
+            + "FROM entity_relationship "
+            + "WHERE fromId IN (<fromIds>) "
+            + "AND relation IN (<relations>) "
+            + "<cond>")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findToBatchAllTypesWithRelationsCondition(
+        @BindList("fromIds") List<String> fromIds,
+        @BindList("relations") List<Integer> relations,
+        @Define("cond") String condition);
+
+    default List<EntityRelationshipObject> findToBatchAllTypes(
+        List<String> fromIds, List<Integer> relations, Include include) {
+      String condition = "";
+      if (include == null || include == Include.NON_DELETED) {
+        condition = "AND deleted = FALSE";
+      } else if (include == Include.DELETED) {
+        condition = "AND deleted = TRUE";
+      }
+      return findToBatchAllTypesWithRelationsCondition(fromIds, relations, condition);
     }
 
     @SqlQuery(
@@ -4101,6 +4193,16 @@ public interface CollectionDAO {
 
     @SqlQuery("select id from thread_entity where entityId = :entityId")
     List<String> findByEntityId(@Bind("entityId") String entityId);
+
+    // DISTINCT is defence-in-depth: thread_entity.id is a primary key, and entityId is a
+    // single-valued column per row, so a single matching scan can't physically return the
+    // same id twice. The DISTINCT survives a future schema where a thread row picks up
+    // multiple entity references (or a join is added) — keeping the consumer code in
+    // deleteByAbout from re-issuing redundant relationship / extension / feed deletes for
+    // the same id under chunking.
+    @SqlQuery("select DISTINCT id from <tableName> where entityId IN (<entityIds>)")
+    List<String> findByEntityIds(
+        @Define("tableName") String tableName, @BindList("entityIds") List<String> entityIds);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -10806,6 +10908,23 @@ public interface CollectionDAO {
     }
   }
 
+  interface ContextMemoryDAO extends EntityDAO<ContextMemory> {
+    @Override
+    default String getTableName() {
+      return "context_memory";
+    }
+
+    @Override
+    default Class<ContextMemory> getEntityClass() {
+      return ContextMemory.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+  }
+
   interface SuggestionDAO {
     default String getTableName() {
       return "suggestions";
@@ -12447,6 +12566,15 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT COUNT(*) FROM search_index_failures WHERE jobId = :jobId")
     int countByJobId(@Bind("jobId") String jobId);
+
+    /**
+     * Count only real failures for a job, excluding {@code READER_RELATIONSHIP_WARNING} rows —
+     * stale-relationship warnings are recorded for visibility but are not failures.
+     */
+    @SqlQuery(
+        "SELECT COUNT(*) FROM search_index_failures WHERE jobId = :jobId "
+            + "AND failureStage <> 'READER_RELATIONSHIP_WARNING'")
+    int countFailuresByJobId(@Bind("jobId") String jobId);
 
     @SqlUpdate("DELETE FROM search_index_failures WHERE timestamp < :cutoffTime")
     int deleteOlderThan(@Bind("cutoffTime") long cutoffTime);

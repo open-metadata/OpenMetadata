@@ -506,7 +506,6 @@ const ExplorePageV1: FC<unknown> = () => {
 
   const handleAdvanceSearchQuickFiltersChange = useCallback(
     (filter?: QueryFilterInterface) => {
-      handlePageChange(1);
       setAdvancedSearchQuickFilters(filter);
       handleQuickFilterChange(filter);
     },

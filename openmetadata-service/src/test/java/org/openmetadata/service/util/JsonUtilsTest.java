@@ -21,10 +21,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.Json;
+import jakarta.json.JsonArray;
 import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonException;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonPatch;
 import jakarta.json.JsonPatchBuilder;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -115,6 +117,54 @@ class JsonUtilsTest {
             JsonException.class,
             () -> JsonUtils.applyPatch(original, jsonPatchBuilder2.build(), Team.class));
     assertTrue(jsonException.getMessage().contains("An array item index is out of range"));
+  }
+
+  @Test
+  void applyPatchRejectsMalformedJsonPointerPath() {
+    JsonObjectBuilder teamJson = Json.createObjectBuilder();
+    teamJson.add("id", UUID.randomUUID().toString()).add("name", "finance");
+    Team original = JsonUtils.readValue(teamJson.build().toString(), Team.class);
+
+    JsonArray malformedPatch =
+        Json.createArrayBuilder()
+            .add(
+                Json.createObjectBuilder()
+                    .add("op", "replace")
+                    .add("path", "displayName")
+                    .add("value", "Finance Team"))
+            .build();
+    JsonPatch patch = Json.createPatch(malformedPatch);
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, Team.class));
+    assertTrue(ex.getMessage().contains("displayName"));
+    assertTrue(ex.getMessage().contains("must begin with '/'"));
+  }
+
+  @Test
+  void applyPatchRejectsMalformedFromPointer() {
+    JsonObjectBuilder teamJson = Json.createObjectBuilder();
+    teamJson.add("id", UUID.randomUUID().toString()).add("name", "finance");
+    Team original = JsonUtils.readValue(teamJson.build().toString(), Team.class);
+
+    JsonArray malformedPatch =
+        Json.createArrayBuilder()
+            .add(
+                Json.createObjectBuilder()
+                    .add("op", "move")
+                    .add("from", "name")
+                    .add("path", "/displayName"))
+            .build();
+    JsonPatch patch = Json.createPatch(malformedPatch);
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, Team.class));
+    assertTrue(ex.getMessage().contains("from"));
+    assertTrue(ex.getMessage().contains("must begin with '/'"));
   }
 
   @Test

@@ -201,8 +201,24 @@ jobs:
           make snyk-ui-report || true
 
       - name: Publish Snyk Summary
+        id: snyk-summary
         if: always() && steps.maven-build.outcome == 'success'
-        run: python3 scripts/snyk_summary.py security-report >> $GITHUB_STEP_SUMMARY
+        run: |
+          python3 scripts/snyk_summary.py security-report \
+            --counts-file security-report/_counts.json \
+            --slack-file security-report/_slack.txt \
+            >> $GITHUB_STEP_SUMMARY
+          # Expose counts as step output for downstream gating.
+          counts=$(cat security-report/_counts.json)
+          echo "counts=$counts" >> $GITHUB_OUTPUT
+          high=$(jq '.high + .critical' security-report/_counts.json)
+          echo "high_critical=$high" >> $GITHUB_OUTPUT
+
+      - name: Fail on high/critical Snyk findings
+        if: always() && steps.snyk-summary.outputs.high_critical != '' && steps.snyk-summary.outputs.high_critical != '0'
+        run: |
+          echo "::error::Snyk found ${{ steps.snyk-summary.outputs.high_critical }} high/critical vulnerabilities (see Job Summary)"
+          exit 1
 
       - name: Generate Snyk HTML/PDF
         if: always() && steps.maven-build.outcome == 'success'
@@ -233,7 +249,15 @@ jobs:
     needs: [vulnerability-scan, security-scan]
     if: always()
     steps:
-      - name: Build notification message
+      - name: Download Snyk artifact
+        if: needs.security-scan.result != 'skipped'
+        uses: actions/download-artifact@v4
+        with:
+          name: security-report
+          path: security-report
+        continue-on-error: true
+
+      - name: Build Slack payload
         id: build
         run: |
           retire="${{ needs.vulnerability-scan.result }}"
@@ -255,17 +279,23 @@ jobs:
           else
             icon="⚠️"
           fi
-          echo "icon=$icon" >> $GITHUB_OUTPUT
-          echo "retire_icon=$retire_icon" >> $GITHUB_OUTPUT
-          echo "snyk_icon=$snyk_icon" >> $GITHUB_OUTPUT
+          run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          {
+            echo "$icon *Security scan* — *OpenMetadata Repo* on branch \`${{ github.ref_name }}\`"
+            echo "• Vulnerability scan (Retire.js): $retire_icon"
+            echo "• Security scan (Snyk): $snyk_icon"
+            echo "<$run_url|Open run details>"
+            if [ -f security-report/_slack.txt ]; then
+              echo
+              cat security-report/_slack.txt
+            fi
+          } > slack_body.txt
+          jq -Rs '{text: ., mrkdwn: true}' slack_body.txt > payload.json
 
       - name: Send Slack Notification
         uses: slackapi/slack-github-action@v1.27.1
         with:
           channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
-          payload: |
-            {
-              "text": "${{ steps.build.outputs.icon }} Security scan for OpenMetadata Repo on branch `${{ github.ref_name }}` — Vulnerability scan: ${{ steps.build.outputs.retire_icon }} | Security scan: ${{ steps.build.outputs.snyk_icon }}. Check <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
-            }
+          payload-file-path: payload.json
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
