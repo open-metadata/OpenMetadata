@@ -80,13 +80,11 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     initialValues,
     initialDataAssetsOptions,
     restRelatedDataAssets,
-    defaultDataAssetsValues,
   } = useMemo(() => {
     if (isUndefined(quickLink)) {
       return {
         initialValues: {},
         initialDataAssetsOptions: [],
-        defaultDataAssetsValues: [],
         restRelatedDataAssets: [],
       };
     }
@@ -131,7 +129,6 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
         relatedEntities: filteredRelatedDataAssets.map((item) => item.id),
       },
       initialDataAssetsOptions,
-      defaultDataAssetsValues: filteredRelatedDataAssets.map((item) => item.id),
       restRelatedDataAssets,
     };
   }, [quickLink]);
@@ -344,10 +341,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
               data-testid="quick-link-form"
               form={form}
               id="quick-link-form"
-              initialValues={{
-                ...initialValues,
-                relatedEntities: defaultDataAssetsValues,
-              }}
+              initialValues={initialValues}
               layout="vertical"
               onFinish={handleFormFinish}>
               {generateFormFields(formFields)}
