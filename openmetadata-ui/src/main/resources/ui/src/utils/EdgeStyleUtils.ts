@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 import { Theme } from '@mui/material';
-import { Edge } from 'reactflow';
+// `Edge` is only used as a parameter type — keep this type-only so the file doesn't drag
+// reactflow into whatever chunk imports it.
+import type { Edge } from 'reactflow';
 
 export interface EdgeStyle {
   stroke: string;

@@ -16,7 +16,10 @@ import { isEmpty, isUndefined, lowerCase, startCase } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import { Node } from 'reactflow';
+// Type-only import — `Node` is used solely as a type annotation in this file. A value import
+// would force `reactflow` into the eager chunk because EntityUtils.tsx is on the universal
+// page-load path (Header, Search, every entity page imports from here).
+import type { Node } from 'reactflow';
 import { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
