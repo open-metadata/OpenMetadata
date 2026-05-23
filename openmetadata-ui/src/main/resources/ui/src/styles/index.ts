@@ -24,8 +24,12 @@ import '@fontsource/source-code-pro'; // Font 400
 import './inter-variable.css';
 
 import '@react-awesome-query-builder/antd/css/styles.css';
-import 'reactflow/dist/base.css';
-import 'reactflow/dist/style.css';
+// reactflow CSS is co-located with the runtime in LineageProvider so it only
+// loads when the lineage canvas mounts. Previously imported here, which kept
+// `vendor-reactflow` in the entry chunk's modulepreload list even after the
+// 11 util/hook files were converted to `import type` (see PR-1 of bundle-size
+// follow-up). Side-effect CSS imports count as runtime dependencies for
+// Rollup's chunk-graph analysis.
 import './antd-master.less';
 import './app.less';
 import './components/add-edit-form-steps.less';

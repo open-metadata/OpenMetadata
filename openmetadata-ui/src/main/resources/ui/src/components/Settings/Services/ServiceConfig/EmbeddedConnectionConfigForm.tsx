@@ -31,6 +31,8 @@ import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import i18n, { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
+  ConnectionSchemaResult,
+  EMPTY_CONNECTION_SCHEMA,
   getConnectionSchemas,
   getFilteredSchema,
   getUISchemaWithNestedDefaultFilterFieldsHidden,
@@ -61,6 +63,11 @@ const EmbeddedConnectionConfigForm = ({
 
   const { isAirflowAvailable, platform } = useAirflowStatus();
   const [hostIp, setHostIp] = useState<string>();
+  const [connectionSchemaResult, setConnectionSchemaResult] =
+    useState<ConnectionSchemaResult>({
+      connSch: EMPTY_CONNECTION_SCHEMA,
+      validConfig: {} as ConfigData,
+    });
 
   const fetchHostIp = async () => {
     try {
@@ -81,6 +88,28 @@ const EmbeddedConnectionConfigForm = ({
     }
   }, [isAirflowAvailable]);
 
+  useEffect(() => {
+    let cancelled = false;
+    getConnectionSchemas({ data, serviceCategory, serviceType })
+      .then((result) => {
+        if (!cancelled) {
+          setConnectionSchemaResult(result);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setConnectionSchemaResult({
+            connSch: EMPTY_CONNECTION_SCHEMA,
+            validConfig: {} as ConfigData,
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [data, serviceCategory, serviceType]);
+
   const handleRequiredFieldsValidation = () => {
     return Boolean(formRef.current?.validateForm());
   };
@@ -91,15 +120,7 @@ const EmbeddedConnectionConfigForm = ({
     await onSave({ ...data, formData: updatedFormData });
   };
 
-  const { connSch, validConfig } = useMemo(
-    () =>
-      getConnectionSchemas({
-        data,
-        serviceCategory,
-        serviceType,
-      }),
-    [data, serviceCategory, serviceType]
-  );
+  const { connSch, validConfig } = connectionSchemaResult;
   const connectionSchema = connSch.schema as RJSFSchema;
 
   const shouldShowIPAlert = useMemo(() => {

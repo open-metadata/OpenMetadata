@@ -11,16 +11,18 @@
  *  limitations under the License.
  */
 import Form, { IChangeEvent } from '@rjsf/core';
-import { RegistryFieldsType } from '@rjsf/utils';
+import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { isEmpty, isUndefined } from 'lodash';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SERVICE_CONNECTION_UI_SCHEMA } from '../../../../constants/ServiceConnection.constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
+  ConnectionSchemaResult,
+  EMPTY_CONNECTION_SCHEMA,
   getConnectionSchemas,
   getFilteredSchema,
 } from '../../../../utils/ServiceConnectionUtils';
@@ -46,11 +48,35 @@ function FiltersConfigForm({
   const customFields: RegistryFieldsType = {
     ArrayField: WorkflowArrayFieldTemplate,
   };
-  const { connSch, validConfig } = getConnectionSchemas({
-    data,
-    serviceCategory,
-    serviceType,
-  });
+  const [connectionSchemaResult, setConnectionSchemaResult] =
+    useState<ConnectionSchemaResult>({
+      connSch: EMPTY_CONNECTION_SCHEMA,
+      validConfig: {} as ConfigData,
+    });
+
+  useEffect(() => {
+    let cancelled = false;
+    getConnectionSchemas({ data, serviceCategory, serviceType })
+      .then((result) => {
+        if (!cancelled) {
+          setConnectionSchemaResult(result);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setConnectionSchemaResult({
+            connSch: EMPTY_CONNECTION_SCHEMA,
+            validConfig: {} as ConfigData,
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [data, serviceCategory, serviceType]);
+
+  const { connSch, validConfig } = connectionSchemaResult;
 
   const handleSave = async (data: IChangeEvent<ConfigData>) => {
     const updatedFormData = formatFormDataForSubmit(data.formData);
@@ -58,20 +84,18 @@ function FiltersConfigForm({
     await onSave({ ...data, formData: updatedFormData });
   };
 
-  // Remove the filters property from the schema
-  // Since it'll have a separate form in the next step
-  const filteredSchema = useMemo(() => {
+  const filteredSchema = useMemo<RJSFSchema>(() => {
     const propertiesWithoutFilters = getFilteredSchema(
-      connSch.schema.properties,
+      connSch.schema.properties as Record<string, unknown> | undefined,
       false
     );
 
     return {
-      ...connSch.schema,
-      properties: propertiesWithoutFilters,
-      additionalProperties: false, // Disable additional properties for default filters form
-    };
-  }, [connSch.schema.properties]);
+      ...(connSch.schema as Record<string, unknown>),
+      properties: propertiesWithoutFilters as RJSFSchema['properties'],
+      additionalProperties: false,
+    } as RJSFSchema;
+  }, [connSch.schema]);
 
   return (
     <FormBuilder

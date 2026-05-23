@@ -33,6 +33,8 @@ import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import i18n, { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
+  ConnectionSchemaResult,
+  EMPTY_CONNECTION_SCHEMA,
   getConnectionSchemas,
   getFilteredSchema,
   getUISchemaWithNestedDefaultFilterFieldsHidden,
@@ -65,6 +67,11 @@ const ConnectionConfigForm = ({
 
   const { isAirflowAvailable, platform } = useAirflowStatus();
   const [hostIp, setHostIp] = useState<string>();
+  const [connectionSchemaResult, setConnectionSchemaResult] =
+    useState<ConnectionSchemaResult>({
+      connSch: EMPTY_CONNECTION_SCHEMA,
+      validConfig: {} as ConfigData,
+    });
 
   const fetchHostIp = async () => {
     try {
@@ -85,6 +92,28 @@ const ConnectionConfigForm = ({
     }
   }, [isAirflowAvailable]);
 
+  useEffect(() => {
+    let cancelled = false;
+    getConnectionSchemas({ data, serviceCategory, serviceType })
+      .then((result) => {
+        if (!cancelled) {
+          setConnectionSchemaResult(result);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setConnectionSchemaResult({
+            connSch: EMPTY_CONNECTION_SCHEMA,
+            validConfig: {} as ConfigData,
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [data, serviceCategory, serviceType]);
+
   const handleRequiredFieldsValidation = () => {
     return Boolean(formRef.current?.validateForm());
   };
@@ -100,15 +129,7 @@ const ConnectionConfigForm = ({
     ArrayField: WorkflowArrayFieldTemplate,
   };
 
-  const { connSch, validConfig } = useMemo(
-    () =>
-      getConnectionSchemas({
-        data,
-        serviceCategory,
-        serviceType,
-      }),
-    [data, serviceCategory, serviceType]
-  );
+  const { connSch, validConfig } = connectionSchemaResult;
   const connectionSchema = connSch.schema as RJSFSchema;
 
   const shouldShowIPAlert = useMemo(() => {
@@ -122,8 +143,6 @@ const ConnectionConfigForm = ({
     );
   }, [connSch.schema, isAirflowAvailable, hostIp, platform, ingestionRunner]);
 
-  // Remove the filters property from the schema
-  // Since it'll have a separate form in the next step
   const propertiesWithoutDefaultFilterPatternFields = useMemo(
     () =>
       getFilteredSchema(
@@ -141,8 +160,6 @@ const ConnectionConfigForm = ({
     [connectionSchema, propertiesWithoutDefaultFilterPatternFields]
   );
 
-  // UI Schema to hide the nested default filter pattern fields
-  // Since some connections have reference to the other connections
   const uiSchema = useMemo(() => {
     return getUISchemaWithNestedDefaultFilterFieldsHidden(connSch.uiSchema);
   }, [connSch.uiSchema]);

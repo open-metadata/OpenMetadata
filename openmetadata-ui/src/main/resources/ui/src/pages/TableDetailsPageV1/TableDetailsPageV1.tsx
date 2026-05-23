@@ -34,7 +34,6 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { mockDatasetData } from '../../constants/mockTourData.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -913,8 +912,13 @@ const TableDetailsPageV1: React.FC = () => {
     if (isTourOpen || isTourPage) {
       // Seed the cache with the tour mock so the rest of the page reads through the same
       // useQuery slot. The {@link useQuery} hook is {@code enabled: false} in tour mode, so
-      // this manual write is the only thing that populates the slot.
-      setTableDetails(mockDatasetData.tableDetails as unknown as Table);
+      // this manual write is the only thing that populates the slot. The tour mock data is
+      // ~113 KB so we lazy-load it only when actually in tour mode.
+      import('../../constants/mockTourData.constants').then(
+        ({ mockDatasetData }) => {
+          setTableDetails(mockDatasetData.tableDetails as unknown as Table);
+        }
+      );
     } else if (viewBasicPermission) {
       // Don't manually clear the cache to {@code undefined} here — that would flash a Loader
       // on every navigation between tables even when the destination is already cached.
