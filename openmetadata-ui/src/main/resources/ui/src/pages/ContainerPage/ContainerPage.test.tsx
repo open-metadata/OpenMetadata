@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -23,6 +23,7 @@ import {
   getContainerByName,
   getContainerChildrenByName,
 } from '../../rest/storageAPI';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
 import ContainerPage from './ContainerPage';
 import {
   MOCK_CONTAINER_DATA,
@@ -314,7 +315,7 @@ describe('Container Page Component', () => {
 
     (getContainerByName as jest.Mock).mockResolvedValue({});
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ContainerPage />
       </MemoryRouter>
@@ -332,7 +333,7 @@ describe('Container Page Component', () => {
   });
 
   it('fetch container data, if have view permission', async () => {
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ContainerPage />
       </MemoryRouter>
@@ -374,7 +375,7 @@ describe('Container Page Component', () => {
       'failed to fetch container data'
     ); // For fetch
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ContainerPage />
       </MemoryRouter>
@@ -394,7 +395,7 @@ describe('Container Page Component', () => {
   it('should render the page container data, with the schema tab selected', async () => {
     (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA);
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ContainerPage />
       </MemoryRouter>
@@ -443,7 +444,7 @@ describe('Container Page Component', () => {
   it('onClick of follow container should call addContainerFollower', async () => {
     (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA);
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ContainerPage />
       </MemoryRouter>
@@ -463,7 +464,7 @@ describe('Container Page Component', () => {
   it('tab switch should work', async () => {
     (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA);
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ContainerPage />
       </MemoryRouter>
@@ -492,7 +493,7 @@ describe('Container Page Component', () => {
       tab: EntityTabs.CHILDREN,
     });
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ContainerPage />
       </MemoryRouter>
@@ -519,7 +520,7 @@ describe('Container Page Component', () => {
   it('should pass entity name as pageTitle to PageLayoutV1', async () => {
     (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA);
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ContainerPage />
       </MemoryRouter>

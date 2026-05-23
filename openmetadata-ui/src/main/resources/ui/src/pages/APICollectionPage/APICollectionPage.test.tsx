@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, waitFor } from '@testing-library/react';
+import { waitFor } from '@testing-library/react';
 import { useParams } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { TabSpecificField } from '../../enums/entity.enum';
@@ -19,6 +19,7 @@ import { Include } from '../../generated/type/include';
 import { useFqn } from '../../hooks/useFqn';
 import { getApiCollectionByFQN } from '../../rest/apiCollectionsAPI';
 import { getApiEndPoints } from '../../rest/apiEndpointsAPI';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { fetchEntityTaskCountsInto } from '../../utils/CommonUtils';
 import APICollectionPage from './APICollectionPage';
 
@@ -153,7 +154,7 @@ jest.mock('../../utils/AdvancedSearchClassBase', () => {
 
 describe('APICollectionPage', () => {
   const renderComponent = () => {
-    return render(<APICollectionPage />);
+    return renderWithQueryClient(<APICollectionPage />);
   };
 
   it('should call APIs with updated FQN when FQN changes', async () => {

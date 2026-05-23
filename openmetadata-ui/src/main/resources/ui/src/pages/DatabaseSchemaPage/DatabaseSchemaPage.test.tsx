@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getDatabaseSchemaDetailsByFQN } from '../../rest/databaseAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { fetchEntityTaskCountsInto } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import DatabaseSchemaPageComponent from './DatabaseSchemaPage.component';
@@ -278,7 +279,7 @@ jest.mock(
 
 describe('Tests for DatabaseSchemaPage', () => {
   it('DatabaseSchemaPage should fetch permissions', () => {
-    render(<DatabaseSchemaPageComponent />);
+    renderWithQueryClient(<DatabaseSchemaPageComponent />);
 
     expect(mockEntityPermissionByFqn).toHaveBeenCalledWith(
       'databaseSchema',
@@ -287,7 +288,7 @@ describe('Tests for DatabaseSchemaPage', () => {
   });
 
   it('DatabaseSchemaPage should not fetch details if permission is there', () => {
-    render(<DatabaseSchemaPageComponent />);
+    renderWithQueryClient(<DatabaseSchemaPageComponent />);
 
     expect(getDatabaseSchemaDetailsByFQN).not.toHaveBeenCalled();
     expect(getStoredProceduresList).not.toHaveBeenCalled();
@@ -301,7 +302,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     }));
 
     await act(async () => {
-      render(<DatabaseSchemaPageComponent />);
+      renderWithQueryClient(<DatabaseSchemaPageComponent />);
     });
 
     expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
@@ -315,7 +316,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     }));
 
     await act(async () => {
-      render(<DatabaseSchemaPageComponent />);
+      renderWithQueryClient(<DatabaseSchemaPageComponent />);
     });
 
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(mockParams.fqn, {
@@ -332,7 +333,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     }));
 
     await act(async () => {
-      render(<DatabaseSchemaPageComponent />);
+      renderWithQueryClient(<DatabaseSchemaPageComponent />);
     });
 
     expect(getStoredProceduresList).toHaveBeenCalledWith({
@@ -348,7 +349,7 @@ describe('Tests for DatabaseSchemaPage', () => {
       }),
     }));
 
-    render(<DatabaseSchemaPageComponent />);
+    renderWithQueryClient(<DatabaseSchemaPageComponent />);
 
     await waitFor(() => {
       expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
@@ -372,7 +373,7 @@ describe('Tests for DatabaseSchemaPage', () => {
       }),
     }));
 
-    render(<DatabaseSchemaPageComponent />);
+    renderWithQueryClient(<DatabaseSchemaPageComponent />);
 
     await waitFor(() => {
       expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
@@ -400,7 +401,7 @@ describe('Tests for DatabaseSchemaPage', () => {
       }),
     }));
 
-    const { rerender } = render(<DatabaseSchemaPageComponent />);
+    const { rerender } = renderWithQueryClient(<DatabaseSchemaPageComponent />);
 
     // Wait for initial API calls
     await waitFor(() => {
@@ -462,7 +463,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     }));
 
     await act(async () => {
-      render(<DatabaseSchemaPageComponent />);
+      renderWithQueryClient(<DatabaseSchemaPageComponent />);
     });
 
     expect(PageLayoutV1).toHaveBeenCalledWith(
