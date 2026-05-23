@@ -279,8 +279,8 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
       id: 'tags',
       type: FieldTypes.TAG_SUGGESTION,
       props: {
+        'data-testid': 'tags-container',
         selectProps: {
-          'data-testid': 'tags-container',
           getPopupContainer,
           id: 'root/tags',
           disabled: !(permissions.EditAll || permissions.EditTags),
@@ -295,8 +295,8 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
       id: 'glossaryTerms',
       type: FieldTypes.TAG_SUGGESTION,
       props: {
+        'data-testid': 'glossaryTerms-container',
         selectProps: {
-          'data-testid': 'glossaryTerms-container',
           getPopupContainer,
           id: 'root/glossaryTerms',
           disabled: !(permissions.EditAll || permissions.EditTags),
