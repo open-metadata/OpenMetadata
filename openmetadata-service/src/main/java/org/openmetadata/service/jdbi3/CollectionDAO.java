@@ -8964,11 +8964,13 @@ public interface CollectionDAO {
      * starts with {@code entityFQNPrefix} (column-level tests). The prefix must already have LIKE
      * metacharacters escaped — callers should route through
      * {@link org.openmetadata.service.util.LikeEscape#escape(String)} and append {@code ".%"}.
-     * Uses {@code ESCAPE '\'} so the escaping is honored by both MySQL and PostgreSQL.
+     * Uses {@code ESCAPE '!'} to match the convention used elsewhere in this DAO; backslash is
+     * unsafe (MySQL treats it as a string-literal escape and JDBI's ColonPrefixSqlParser
+     * mishandles literal {@code '\'} inside single-quoted SQL strings).
      */
     @SqlQuery(
         "SELECT id FROM test_case WHERE entityFQN = :entityFQN "
-            + "OR entityFQN LIKE :entityFQNPrefix ESCAPE '\\'")
+            + "OR entityFQN LIKE :entityFQNPrefix ESCAPE '!'")
     List<String> findIdsByEntityFQN(
         @Bind("entityFQN") String entityFQN, @Bind("entityFQNPrefix") String entityFQNPrefix);
 

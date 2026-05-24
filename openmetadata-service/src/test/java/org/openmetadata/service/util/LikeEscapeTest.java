@@ -30,18 +30,24 @@ class LikeEscapeTest {
 
   @Test
   void escape_underscoreEscaped() {
-    assertEquals("my\\_table", LikeEscape.escape("my_table"));
+    assertEquals("my!_table", LikeEscape.escape("my_table"));
   }
 
   @Test
   void escape_percentAndUnderscoreEscaped() {
-    assertEquals("100\\%\\_growth", LikeEscape.escape("100%_growth"));
+    assertEquals("100!%!_growth", LikeEscape.escape("100%_growth"));
   }
 
   @Test
-  void escape_backslashDoubled() {
-    // Backslash must be doubled first so the subsequent % and _ replacements don't add extra
-    // backslashes onto pre-existing ones.
-    assertEquals("a\\\\b\\_c", LikeEscape.escape("a\\b_c"));
+  void escape_bangDoubled() {
+    // Bang is the escape character; it must be doubled first so the subsequent % and _
+    // replacements don't introduce ambiguity with pre-existing bangs in the input.
+    assertEquals("a!!b!_c", LikeEscape.escape("a!b_c"));
+  }
+
+  @Test
+  void escape_backslashUnchanged() {
+    // Backslash has no special meaning under ESCAPE '!', so it passes through as a literal.
+    assertEquals("a\\b!_c", LikeEscape.escape("a\\b_c"));
   }
 }
