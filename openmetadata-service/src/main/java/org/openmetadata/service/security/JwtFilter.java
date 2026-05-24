@@ -163,10 +163,10 @@ public class JwtFilter implements ContainerRequestFilter {
 
     Timer.Sample authSample = RequestLatencyContext.startAuthOperation();
     ImpersonationContext.clear();
-    String tokenFromHeader = extractToken(requestContext.getHeaders());
-    LOG.debug("Authorization header present: {}", !nullOrEmpty(tokenFromHeader));
 
     try {
+      String tokenFromHeader = extractToken(requestContext.getHeaders());
+      LOG.debug("Authorization header present: {}", !nullOrEmpty(tokenFromHeader));
       Map<String, Claim> claims = validateJwtAndGetClaims(tokenFromHeader);
       String userName =
           findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);

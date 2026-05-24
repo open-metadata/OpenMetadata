@@ -10545,7 +10545,8 @@ public interface CollectionDAO {
     UserSession findById(@Bind("id") String id) throws StatementException;
 
     @SqlQuery(
-        "SELECT json FROM user_session WHERE userId = :userId AND status = :status LIMIT :limit")
+        "SELECT json FROM user_session WHERE userId = :userId AND status = :status "
+            + "ORDER BY COALESCE(lastAccessedAt, 0) ASC LIMIT :limit")
     @RegisterRowMapper(UserSessionRowMapper.class)
     List<UserSession> findByUserIdAndStatus(
         @Bind("userId") String userId, @Bind("status") String status, @Bind("limit") int limit)

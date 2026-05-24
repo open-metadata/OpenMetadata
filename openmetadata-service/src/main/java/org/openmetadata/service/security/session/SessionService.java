@@ -167,8 +167,12 @@ public class SessionService implements Managed {
             .version(expectedVersion + 1)
             .build();
     if (!repository.updateIfVersion(expired, expectedVersion)) {
-      LOG.warn("Failed to expire pending session during activation, concurrent modification");
-      return repository.findById(pendingSession.getId());
+      LOG.warn(
+          "Failed to expire pending session {} during activation due to concurrent modification; refusing to issue an active session",
+          truncateId(pendingSession.getId()));
+      cache.invalidate(pendingSession.getId());
+      SessionCookieUtil.clearSessionCookie(request, response, authConfig);
+      return Optional.empty();
     }
     cache.invalidate(pendingSession.getId());
 
@@ -227,7 +231,8 @@ public class SessionService implements Managed {
   public Optional<UserSession> getActiveSession(
       jakarta.servlet.http.HttpServletRequest request,
       jakarta.servlet.http.HttpServletResponse response) {
-    Optional<UserSession> session = getSession(request);
+    Optional<UserSession> session =
+        SessionCookieUtil.getSessionId(request).flatMap(this::reloadSession);
     if (session.isEmpty()) {
       SessionCookieUtil.clearSessionCookie(request, response, authConfig);
       return Optional.empty();
@@ -454,15 +459,25 @@ public class SessionService implements Managed {
 
   private void expireSessionsInBatches(long now) {
     int maxIterations = 100;
+    java.util.Set<String> previousBatchIds = java.util.Collections.emptySet();
     for (int i = 0; i < maxIterations; i++) {
       List<UserSession> sessions = repository.findSessionsToExpire(now, CLEANUP_BATCH_SIZE);
       if (sessions.isEmpty()) {
+        return;
+      }
+      java.util.Set<String> currentBatchIds =
+          sessions.stream().map(UserSession::getId).collect(java.util.stream.Collectors.toSet());
+      if (currentBatchIds.equals(previousBatchIds)) {
+        LOG.warn(
+            "expireSessionsInBatches making no progress on {} sessions; aborting to avoid loop",
+            currentBatchIds.size());
         return;
       }
       sessions.forEach(this::expireIfNecessary);
       if (sessions.size() < CLEANUP_BATCH_SIZE) {
         return;
       }
+      previousBatchIds = currentBatchIds;
     }
     LOG.warn("expireSessionsInBatches reached maximum iterations ({})", maxIterations);
   }
@@ -527,11 +542,18 @@ public class SessionService implements Managed {
     if (nullOrEmpty(value)) {
       return null;
     }
+    Fernet fernet = Fernet.getInstance();
+    if (!fernet.isKeyDefined()) {
+      throw new IllegalStateException(
+          "Fernet encryption key is not configured; refresh tokens cannot be persisted without "
+              + "encryption. Configure fernetConfiguration.fernetKey before enabling session "
+              + "storage.");
+    }
     try {
-      return Fernet.getInstance().encryptIfApplies(value);
+      return fernet.encryptIfApplies(value);
     } catch (Exception e) {
-      LOG.warn("Fernet encryption unavailable, storing token without encryption");
-      return value;
+      throw new IllegalStateException(
+          "Fernet encryption failed while persisting a session refresh token", e);
     }
   }
 

@@ -239,7 +239,7 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   @Test
-  void isMcpState_returnsFlase_whenCheckerIsNull() {
+  void isMcpState_returnsFalse_whenCheckerIsNull() {
     AuthenticationCodeFlowHandler.setMcpStateChecker(null);
 
     assertFalse(AuthenticationCodeFlowHandler.isMcpState("some-state"));
@@ -326,23 +326,11 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   /**
-   * Creates a handler instance bypassing the constructor validation by using reflection to set
-   * fields directly. This allows testing individual methods without needing a real OIDC provider.
+   * Allocates an AuthenticationCodeFlowHandler without invoking its constructor (which requires a
+   * real OIDC provider for discovery), then injects the mocked collaborators via reflection.
    */
   private AuthenticationCodeFlowHandler createHandlerWithMockedInternals(
       SessionService sessionService, OidcClient client) throws Exception {
-    java.lang.reflect.Constructor<AuthenticationCodeFlowHandler> constructor =
-        AuthenticationCodeFlowHandler.class.getDeclaredConstructor(
-            org.openmetadata.schema.api.security.AuthenticationConfiguration.class,
-            org.openmetadata.schema.api.security.AuthorizerConfiguration.class,
-            SessionService.class);
-
-    java.lang.reflect.Constructor<AuthenticationCodeFlowHandler> unsafeConstructor =
-        AuthenticationCodeFlowHandler.class.getDeclaredConstructor(
-            org.openmetadata.schema.api.security.AuthenticationConfiguration.class,
-            org.openmetadata.schema.api.security.AuthorizerConfiguration.class,
-            SessionService.class);
-
     sun.misc.Unsafe unsafe = getUnsafe();
     AuthenticationCodeFlowHandler handler =
         (AuthenticationCodeFlowHandler)

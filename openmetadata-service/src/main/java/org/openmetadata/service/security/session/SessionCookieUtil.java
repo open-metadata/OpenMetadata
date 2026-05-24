@@ -54,7 +54,9 @@ public final class SessionCookieUtil {
       String value,
       int maxAgeSeconds,
       boolean expired) {
-    boolean secure = request.isSecure() || authConfig.getForceSecureSessionCookie();
+    boolean forceSecure =
+        authConfig != null && Boolean.TRUE.equals(authConfig.getForceSecureSessionCookie());
+    boolean secure = request.isSecure() || forceSecure;
     String sameSite = secure ? "None" : "Lax";
     StringBuilder cookie = new StringBuilder();
     cookie.append(COOKIE_NAME).append('=').append(value).append("; Path=/; HttpOnly; Max-Age=");
