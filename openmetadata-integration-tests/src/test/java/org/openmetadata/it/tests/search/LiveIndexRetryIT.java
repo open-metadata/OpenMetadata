@@ -45,7 +45,13 @@ import org.openmetadata.service.Entity;
 class LiveIndexRetryIT {
 
   private static final String TABLE_ALIAS = "table_search_index";
-  private static final Duration OUTAGE = Duration.ofSeconds(6);
+  // A *paused* engine doesn't refuse writes — the live-index call blocks until the client's
+  // response timeout (socketTimeoutSecs, 60s) elapses and only then fails, and the failure is
+  // what enqueues a retry row. So the outage must outlast that timeout: keep the engine paused
+  // well past it, poll for the retry row to appear, then resume explicitly. A short pause would
+  // just block-then-succeed on resume and never enqueue anything.
+  private static final Duration FAILURE_TIMEOUT = Duration.ofSeconds(120);
+  private static final Duration OUTAGE_BACKSTOP = Duration.ofSeconds(180);
   private static final Duration DRAIN_TIMEOUT = Duration.ofMinutes(2);
 
   private static ServerHandle server;
@@ -62,33 +68,31 @@ class LiveIndexRetryIT {
   void liveIndexEnqueuesRetriesDuringEsOutageAndDrainsAfter(final TestNamespace ns) {
     final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
 
-    EsOutageInjector.pauseFor(OUTAGE);
-
+    EsOutageInjector.pauseFor(OUTAGE_BACKSTOP);
     final Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
 
-    final long pendingDuringOutage =
-        Entity.getCollectionDAO().searchIndexRetryQueueDAO().countByStatus("PENDING")
-            + Entity.getCollectionDAO().searchIndexRetryQueueDAO().countByStatus("PENDING_RETRY_1")
-            + Entity.getCollectionDAO().searchIndexRetryQueueDAO().countByStatus("PENDING_RETRY_2");
-    assertThat(pendingDuringOutage)
-        .as("at least one retry row must exist while ES is paused")
-        .isGreaterThan(0);
+    try {
+      Awaitility.await("blocked live-index write times out and enqueues a retry row")
+          .atMost(FAILURE_TIMEOUT)
+          .pollInterval(Duration.ofSeconds(2))
+          .until(() -> pendingRetryCount() > 0);
+    } finally {
+      EsOutageInjector.unpause();
+    }
 
     Awaitility.await("retry queue drains and table appears in index")
         .atMost(DRAIN_TIMEOUT)
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
             () -> {
-              final long stillPending =
-                  Entity.getCollectionDAO().searchIndexRetryQueueDAO().countByStatus("PENDING")
-                      + Entity.getCollectionDAO()
-                          .searchIndexRetryQueueDAO()
-                          .countByStatus("PENDING_RETRY_1")
-                      + Entity.getCollectionDAO()
-                          .searchIndexRetryQueueDAO()
-                          .countByStatus("PENDING_RETRY_2");
-              assertThat(stillPending).as("retry queue must drain to zero pending").isZero();
+              assertThat(pendingRetryCount()).as("retry queue must drain to zero pending").isZero();
               search.assertEntityIndexed(TABLE_ALIAS, "table", table.getFullyQualifiedName());
             });
+  }
+
+  private static long pendingRetryCount() {
+    return Entity.getCollectionDAO().searchIndexRetryQueueDAO().countByStatus("PENDING")
+        + Entity.getCollectionDAO().searchIndexRetryQueueDAO().countByStatus("PENDING_RETRY_1")
+        + Entity.getCollectionDAO().searchIndexRetryQueueDAO().countByStatus("PENDING_RETRY_2");
   }
 }
