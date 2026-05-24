@@ -154,7 +154,7 @@ def log_filtered(
 def log_step_summary(
     logger: logging.Logger,
     status: Status,
-    source_name: str,
+    source_name: str | None,
 ) -> None:
     """Emit the end-of-step FILTER VISIBILITY REPORT. One log block,
     framed with grep-friendly markers, listing per entity type:
@@ -178,7 +178,7 @@ def log_step_summary(
         lines = [
             "",
             border,
-            f" {REPORT_HEADER_PREFIX}: {source_name}",
+            f" {REPORT_HEADER_PREFIX}: {source_name or '<unknown source>'}",
             border,
             " Note: 'Passed filter patterns' = discovered - filter rejections.",
             " It does not subtract source-side extraction failures or",

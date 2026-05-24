@@ -75,16 +75,28 @@ class MlflowSource(MlModelServiceSource):
         """
         List and filters models from the registry
         """
-        models = list(cast(RegisteredModel, self.client.search_registered_models()))  # noqa: TC006
-        log_discovered(logger, self.status, "MlModel", (m.name for m in models))
+        # search_registered_models returns List[RegisteredModel]; the prior
+        # cast() narrowed it to a single RegisteredModel, which made
+        # `list(...)` give pyright `list[tuple[str, Any]]` and broke
+        # `m.name` access in this loop.
+        models = cast("list[RegisteredModel]", list(self.client.search_registered_models()))
+        log_discovered(logger, self.status, "MlModel", [m.name for m in models])
         for model in models:
             if filter_by_mlmodel(self.source_config.mlModelFilterPattern, mlmodel_name=model.name):
                 log_filtered(logger, self.status, "MlModel", model.name)
                 continue
 
-            # Get the latest version
+            # Get the latest version. `latest_versions` is Optional on the
+            # mlflow model — the previous code worked only because pyright
+            # was treating model as Any (via the now-fixed cast). Guard with
+            # `or []` so the iteration is safe even on models with no
+            # versions tracked.
             latest_version: Optional[ModelVersion] = next(  # noqa: UP045
-                (ver for ver in model.latest_versions if ver.last_updated_timestamp == model.last_updated_timestamp),
+                (
+                    ver
+                    for ver in (model.latest_versions or [])
+                    if ver.last_updated_timestamp == model.last_updated_timestamp
+                ),
                 None,
             )
             if not latest_version:

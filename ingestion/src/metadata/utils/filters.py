@@ -76,11 +76,14 @@ def _filter(filter_pattern: Optional[FilterPattern], name: Optional[str]) -> boo
     return False
 
 
-def filter_by_schema(schema_filter_pattern: Optional[FilterPattern], schema_name: str) -> bool:  # noqa: UP045
+def filter_by_schema(schema_filter_pattern: Optional[FilterPattern], schema_name: Optional[str]) -> bool:  # noqa: UP045
     """
     Return True if the schema needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Include takes precedence over exclude. None name is treated as
+    filtered out (matches `_filter`'s contract) so callers can pass
+    Optional[str] freely (common when the name comes from `X if useFqn
+    else Y` where one side is FQN-typed as Optional).
 
     :param schema_filter_pattern: Model defining schema filtering logic
     :param schema fqn: table schema fqn
@@ -89,11 +92,12 @@ def filter_by_schema(schema_filter_pattern: Optional[FilterPattern], schema_name
     return _filter(schema_filter_pattern, schema_name)
 
 
-def filter_by_table(table_filter_pattern: Optional[FilterPattern], table_name: str) -> bool:  # noqa: UP045
+def filter_by_table(table_filter_pattern: Optional[FilterPattern], table_name: Optional[str]) -> bool:  # noqa: UP045
     """
     Return True if the table needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Include takes precedence over exclude. None name is treated as
+    filtered out (matches `_filter`'s contract).
 
     :param table_filter_pattern: Model defining schema filtering logic
     :param table_fqn: table fqn
@@ -170,11 +174,12 @@ def filter_by_fqn(fqn_filter_pattern: Optional[FilterPattern], fqn: str) -> bool
     return _filter(fqn_filter_pattern, fqn)
 
 
-def filter_by_database(database_filter_pattern: Optional[FilterPattern], database_name: str) -> bool:  # noqa: UP045
+def filter_by_database(database_filter_pattern: Optional[FilterPattern], database_name: Optional[str]) -> bool:  # noqa: UP045
     """
     Return True if the schema needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Include takes precedence over exclude. None name is treated as
+    filtered out (matches `_filter`'s contract).
 
     :param database_filter_pattern: Model defining database filtering logic
     :param database_name: database name
