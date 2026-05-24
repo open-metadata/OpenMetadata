@@ -12,10 +12,34 @@
  */
 .quick-link-form-modal {
   .block-editor-wrapper {
-    min-height: 150px;
+    max-height: 200px;
 
     .tiptap.ProseMirror {
-      min-height: 150px;
+      max-height: 150px;
+    }
+  }
+
+  .ant-input,
+  .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+    min-height: 38px;
+  }
+
+  .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+    display: flex;
+    align-items: center;
+  }
+}
+
+.quick-link-modal-footer {
+  > div:last-child {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    grid-template-columns: none;
+    flex-direction: row;
+
+    > * {
+      width: auto;
     }
   }
 }
