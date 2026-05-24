@@ -20,8 +20,8 @@ import {
 
 import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
 import { MemoryRouter } from 'react-router-dom';
-import { getTags } from 'rest/tagAPI';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
+import { getTags } from '../../../rest/tagAPI';
 import KnowledgePageListRightPanel, {
   KnowledgePageListRightPanelProps,
 } from './KnowledgePageListRightPanel';
