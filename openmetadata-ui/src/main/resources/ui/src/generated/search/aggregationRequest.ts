@@ -31,6 +31,16 @@ export interface AggregationRequest {
      */
     index?: string;
     /**
+     * Ordering mode for terms aggregation buckets. 'key' (default) sorts alphabetically by term
+     * value and preserves existing behavior for all callers. 'relevance' ranks buckets so that
+     * exact matches against the typed literal in fieldValue surface first, followed by prefix
+     * matches, then substring matches. Relevance ordering activates only when fieldValue is a
+     * wildcard-wrapped literal of the form '.*<literal>.*' (the convention used by the
+     * OpenMetadata UI autocomplete dropdowns); otherwise the request silently falls back to
+     * 'key' ordering.
+     */
+    orderBy?: OrderBy;
+    /**
      * Query string to be sent to the search engine.
      */
     query?: string;
@@ -50,6 +60,20 @@ export interface AggregationRequest {
      * Optional top_hits sub-aggregation to fetch selected source fields per bucket.
      */
     topHits?: TopHits;
+}
+
+/**
+ * Ordering mode for terms aggregation buckets. 'key' (default) sorts alphabetically by term
+ * value and preserves existing behavior for all callers. 'relevance' ranks buckets so that
+ * exact matches against the typed literal in fieldValue surface first, followed by prefix
+ * matches, then substring matches. Relevance ordering activates only when fieldValue is a
+ * wildcard-wrapped literal of the form '.*<literal>.*' (the convention used by the
+ * OpenMetadata UI autocomplete dropdowns); otherwise the request silently falls back to
+ * 'key' ordering.
+ */
+export enum OrderBy {
+    Key = "key",
+    Relevance = "relevance",
 }
 
 /**
